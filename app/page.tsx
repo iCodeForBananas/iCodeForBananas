@@ -8,7 +8,7 @@ export default function Home() {
       }}
     >
       {/* Sidebar */}
-      <aside className='w-52 bg-zinc-800/20 dark:bg-zinc-900/20 text-white p-6 flex flex-col gap-4 border-r border-white/20'>
+      <aside className='w-52 bg-white/10 dark:bg-white/10 text-white p-6 flex flex-col gap-4 border-r border-white/20'>
         <h2 className='text-xl font-bold'>Sidebar</h2>
         <nav className='flex flex-col gap-2'>
           <a href='#' className='hover:text-zinc-300 transition-colors'>
@@ -23,12 +23,22 @@ export default function Home() {
           <a href='#' className='hover:text-zinc-300 transition-colors'>
             Contact
           </a>
+          <a href='#' className='hover:text-zinc-300 transition-colors'>
+            Harmonic Flow
+          </a>
         </nav>
       </aside>
 
       {/* Main Content */}
-      <main className='flex min-h-screen w-full flex-col py-32 px-16 bg-white/20 dark:bg-black/20'>
-        {/* Your content goes here */}
+      <main className='flex min-h-screen w-full flex-col items-center justify-center py-32 px-16 bg-white/10 dark:bg-white/10'>
+        <div className='w-full max-w-4xl flex flex-col gap-4'>
+          {[...Array(10)].map((_, index) => (
+            <div key={index} className='bg-white/50 dark:bg-white/50 p-6 rounded-[20px] shadow-lg'>
+              <h3 className='text-xl font-semibold text-black dark:text-white'>Container {index + 1}</h3>
+              <p className='text-gray-800 dark:text-gray-200 mt-2'>This is container number {index + 1}</p>
+            </div>
+          ))}
+        </div>
       </main>
     </div>
   );
