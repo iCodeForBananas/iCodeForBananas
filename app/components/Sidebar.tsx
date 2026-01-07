@@ -9,7 +9,7 @@ export default function Sidebar() {
   return (
     <aside className='w-64 bg-white/10 dark:bg-white/10 text-white p-6 flex flex-col gap-6 border-r border-white/20'>
       <h2 className='text-xl font-bold'>Navigation</h2>
-      
+
       <nav className='flex flex-col gap-4'>
         <div>
           <h3 className='text-sm font-semibold text-white/60 mb-2 uppercase tracking-wider'>Main</h3>
@@ -82,4 +82,3 @@ export default function Sidebar() {
     </aside>
   );
 }
-

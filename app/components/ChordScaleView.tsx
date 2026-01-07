@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useMemo, useState } from 'react';
-import { useTheme } from '../lib/ThemeContext';
-import Fretboard from './Fretboard';
-import { allNotes, defaultTuning, totalFrets, generateChordsAndScales } from '../lib/music';
+import React, { useMemo, useState } from "react";
+import { useTheme } from "../lib/ThemeContext";
+import Fretboard from "./Fretboard";
+import { allNotes, defaultTuning, totalFrets, generateChordsAndScales } from "../lib/music";
 
 interface TuningControlProps {
   tuning: string[];
@@ -16,11 +16,11 @@ function TuningControl({ tuning, setTuning, theme }: TuningControlProps) {
     const newTuning = [...tuning];
     newTuning[index] = value;
     setTuning(newTuning);
-    localStorage.setItem('guitar-tuning', JSON.stringify(newTuning));
+    localStorage.setItem("guitar-tuning", JSON.stringify(newTuning));
   };
   const resetTuning = () => {
     setTuning([...defaultTuning]);
-    localStorage.setItem('guitar-tuning', JSON.stringify([...defaultTuning]));
+    localStorage.setItem("guitar-tuning", JSON.stringify([...defaultTuning]));
   };
   return (
     <div>
@@ -44,9 +44,9 @@ function TuningControl({ tuning, setTuning, theme }: TuningControlProps) {
       </div>
       <button
         className={`px-4 py-2 rounded border ${
-          theme === 'light'
-            ? 'border-gray-800 text-gray-800 hover:bg-gray-800 hover:text-white'
-            : 'border-gray-200 text-gray-200 hover:bg-gray-200 hover:text-gray-800'
+          theme === "light"
+            ? "border-gray-800 text-gray-800 hover:bg-gray-800 hover:text-white"
+            : "border-gray-200 text-gray-200 hover:bg-gray-200 hover:text-gray-800"
         }`}
         onClick={resetTuning}
       >
@@ -61,36 +61,36 @@ export default function ChordScaleView() {
   const { chords, scales } = useMemo(() => generateChordsAndScales(), []);
 
   const [tuning, setTuning] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('guitar-tuning');
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("guitar-tuning");
       return saved ? JSON.parse(saved) : [...defaultTuning];
     }
     return [...defaultTuning];
   });
   const [chord, setChord] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('guitar-chord') || '';
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("guitar-chord") || "";
     }
-    return '';
+    return "";
   });
   const [scale, setScale] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('guitar-scale') || '';
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("guitar-scale") || "";
     }
-    return '';
+    return "";
   });
 
   const chordOptions = useMemo(
     () =>
       Object.entries(chords).map(([name, notes]) => (
-        <option key={name} value={name}>{`${name} [${notes.join(', ')}]`}</option>
+        <option key={name} value={name}>{`${name} [${notes.join(", ")}]`}</option>
       )),
     [chords]
   );
   const scaleOptions = useMemo(
     () =>
       Object.entries(scales).map(([name, notes]) => (
-        <option key={name} value={name}>{`${name} [${notes.join(', ')}]`}</option>
+        <option key={name} value={name}>{`${name} [${notes.join(", ")}]`}</option>
       )),
     [scales]
   );
@@ -108,7 +108,7 @@ export default function ChordScaleView() {
             value={chord}
             onChange={(e) => {
               setChord(e.target.value);
-              localStorage.setItem('guitar-chord', e.target.value);
+              localStorage.setItem("guitar-chord", e.target.value);
             }}
           >
             <option value=''>-- Select Chord --</option>
@@ -119,7 +119,7 @@ export default function ChordScaleView() {
             value={scale}
             onChange={(e) => {
               setScale(e.target.value);
-              localStorage.setItem('guitar-scale', e.target.value);
+              localStorage.setItem("guitar-scale", e.target.value);
             }}
           >
             <option value=''>-- Select Scale --</option>
@@ -134,7 +134,7 @@ export default function ChordScaleView() {
         chordName={chord}
         chordNotes={chord ? chords[chord] : []}
         scaleNotes={scale ? scales[scale] : []}
-        title={chord || '(choose a chord)'}
+        title={chord || "(choose a chord)"}
       />
     </div>
   );

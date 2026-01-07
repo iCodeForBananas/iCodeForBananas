@@ -24,7 +24,6 @@ export default function Navigation() {
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-
       const handleStorageChange = () => {
         const s = localStorage.getItem("guitar-pinnedProgression");
         setPinnedProgression(s ? JSON.parse(s) : null);

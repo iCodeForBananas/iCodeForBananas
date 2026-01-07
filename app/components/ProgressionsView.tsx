@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useMemo, useState } from 'react';
-import { useTheme } from '../lib/ThemeContext';
-import Fretboard from './Fretboard';
+import React, { useMemo, useState } from "react";
+import { useTheme } from "../lib/ThemeContext";
+import Fretboard from "./Fretboard";
 import {
   allNotes,
   defaultTuning,
@@ -10,7 +10,7 @@ import {
   generateChordsAndScales,
   progressionPresets,
   buildProgressionChords,
-} from '../lib/music';
+} from "../lib/music";
 
 interface TuningControlProps {
   tuning: string[];
@@ -23,11 +23,11 @@ function TuningControl({ tuning, setTuning, theme }: TuningControlProps) {
     const newTuning = [...tuning];
     newTuning[index] = value;
     setTuning(newTuning);
-    localStorage.setItem('guitar-tuning', JSON.stringify(newTuning));
+    localStorage.setItem("guitar-tuning", JSON.stringify(newTuning));
   };
   const resetTuning = () => {
     setTuning([...defaultTuning]);
-    localStorage.setItem('guitar-tuning', JSON.stringify([...defaultTuning]));
+    localStorage.setItem("guitar-tuning", JSON.stringify([...defaultTuning]));
   };
   return (
     <div>
@@ -51,9 +51,9 @@ function TuningControl({ tuning, setTuning, theme }: TuningControlProps) {
       </div>
       <button
         className={`px-4 py-2 rounded border ${
-          theme === 'light'
-            ? 'border-gray-800 text-gray-800 hover:bg-gray-800 hover:text-white'
-            : 'border-gray-200 text-gray-200 hover:bg-gray-200 hover:text-gray-800'
+          theme === "light"
+            ? "border-gray-800 text-gray-800 hover:bg-gray-800 hover:text-white"
+            : "border-gray-200 text-gray-200 hover:bg-gray-200 hover:text-gray-800"
         }`}
         onClick={resetTuning}
       >
@@ -73,57 +73,57 @@ export default function ProgressionsView() {
   const { chords } = useMemo(() => generateChordsAndScales(), []);
 
   const [tuning, setTuning] = useState<string[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('guitar-tuning');
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("guitar-tuning");
       return saved ? JSON.parse(saved) : [...defaultTuning];
     }
     return [...defaultTuning];
   });
   const [progressionKey, setProgressionKey] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('guitar-progressionKey') || 'C';
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("guitar-progressionKey") || "C";
     }
-    return 'C';
+    return "C";
   });
   const [formulaIndex, setFormulaIndex] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return parseInt(localStorage.getItem('guitar-formulaIndex') || '0', 10);
+    if (typeof window !== "undefined") {
+      return parseInt(localStorage.getItem("guitar-formulaIndex") || "0", 10);
     }
     return 0;
   });
   const [chordProgression, setChordProgression] = useState<ChordEntry[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('guitar-chordProgression');
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("guitar-chordProgression");
       return saved
         ? JSON.parse(saved)
         : [
-            { name: '', fret: 0 },
-            { name: '', fret: 0 },
-            { name: '', fret: 0 },
-            { name: '', fret: 0 },
+            { name: "", fret: 0 },
+            { name: "", fret: 0 },
+            { name: "", fret: 0 },
+            { name: "", fret: 0 },
           ];
     }
     return [
-      { name: '', fret: 0 },
-      { name: '', fret: 0 },
-      { name: '', fret: 0 },
-      { name: '', fret: 0 },
+      { name: "", fret: 0 },
+      { name: "", fret: 0 },
+      { name: "", fret: 0 },
+      { name: "", fret: 0 },
     ];
   });
 
   const chordOptions = useMemo(
     () =>
       Object.entries(chords).map(([name, notes]) => (
-        <option key={name} value={name}>{`${name} [${notes.join(', ')}]`}</option>
+        <option key={name} value={name}>{`${name} [${notes.join(", ")}]`}</option>
       )),
     [chords]
   );
 
   const updateChordInProgression = (index: number, field: string, value: string) => {
     const updated = [...chordProgression];
-    updated[index] = { ...updated[index], [field]: field === 'fret' ? parseInt(value, 10) || 0 : value };
+    updated[index] = { ...updated[index], [field]: field === "fret" ? parseInt(value, 10) || 0 : value };
     setChordProgression(updated);
-    localStorage.setItem('guitar-chordProgression', JSON.stringify(updated));
+    localStorage.setItem("guitar-chordProgression", JSON.stringify(updated));
   };
 
   const generateProgression = () => {
@@ -131,24 +131,24 @@ export default function ProgressionsView() {
     const names = buildProgressionChords(progressionKey, preset);
     const progression = names.map((name) => ({ name, fret: 0 }));
     setChordProgression(progression);
-    localStorage.setItem('guitar-chordProgression', JSON.stringify(progression));
+    localStorage.setItem("guitar-chordProgression", JSON.stringify(progression));
   };
 
   const resetAll = () => {
     setTuning([...defaultTuning]);
-    localStorage.setItem('guitar-tuning', JSON.stringify([...defaultTuning]));
-    setProgressionKey('C');
-    localStorage.setItem('guitar-progressionKey', 'C');
+    localStorage.setItem("guitar-tuning", JSON.stringify([...defaultTuning]));
+    setProgressionKey("C");
+    localStorage.setItem("guitar-progressionKey", "C");
     setFormulaIndex(0);
-    localStorage.setItem('guitar-formulaIndex', '0');
+    localStorage.setItem("guitar-formulaIndex", "0");
     const defaultProgression = [
-      { name: '', fret: 0 },
-      { name: '', fret: 0 },
-      { name: '', fret: 0 },
-      { name: '', fret: 0 },
+      { name: "", fret: 0 },
+      { name: "", fret: 0 },
+      { name: "", fret: 0 },
+      { name: "", fret: 0 },
     ];
     setChordProgression(defaultProgression);
-    localStorage.setItem('guitar-chordProgression', JSON.stringify(defaultProgression));
+    localStorage.setItem("guitar-chordProgression", JSON.stringify(defaultProgression));
   };
 
   if (!mounted) return <div className='p-4'>Loading...</div>;
@@ -164,7 +164,7 @@ export default function ProgressionsView() {
             value={progressionKey}
             onChange={(e) => {
               setProgressionKey(e.target.value);
-              localStorage.setItem('guitar-progressionKey', e.target.value);
+              localStorage.setItem("guitar-progressionKey", e.target.value);
             }}
           >
             {allNotes.map((note) => (
@@ -177,7 +177,7 @@ export default function ProgressionsView() {
             onChange={(e) => {
               const value = parseInt(e.target.value, 10);
               setFormulaIndex(value);
-              localStorage.setItem('guitar-formulaIndex', value.toString());
+              localStorage.setItem("guitar-formulaIndex", value.toString());
             }}
           >
             {progressionPresets.map((formula, idx) => (
@@ -191,7 +191,7 @@ export default function ProgressionsView() {
               <select
                 className='flex-1 border border-gray-300 rounded px-3 py-1 text-sm'
                 value={entry.name}
-                onChange={(e) => updateChordInProgression(index, 'name', e.target.value)}
+                onChange={(e) => updateChordInProgression(index, "name", e.target.value)}
               >
                 <option value=''>{`-- Select Chord ${index + 1} --`}</option>
                 {chordOptions}
@@ -200,7 +200,10 @@ export default function ProgressionsView() {
           ))}
 
           <div className='mt-3'>
-            <button className='bg-gray-600 text-white px-4 py-2 rounded text-sm mr-2 hover:bg-gray-700' onClick={generateProgression}>
+            <button
+              className='bg-gray-600 text-white px-4 py-2 rounded text-sm mr-2 hover:bg-gray-700'
+              onClick={generateProgression}
+            >
               Generate Random Progression
             </button>
             <button
@@ -211,16 +214,16 @@ export default function ProgressionsView() {
                   key: progressionKey,
                   formula: progressionPresets[formulaIndex].label,
                 };
-                localStorage.setItem('guitar-pinnedProgression', JSON.stringify(progressionData));
+                localStorage.setItem("guitar-pinnedProgression", JSON.stringify(progressionData));
               }}
             >
               Pin Progression
             </button>
             <button
               className={`px-4 py-2 rounded text-sm border ${
-                theme === 'light'
-                  ? 'border-red-600 text-red-600 hover:bg-red-600 hover:text-white'
-                  : 'border-gray-200 text-gray-200 hover:bg-gray-200 hover:text-gray-800'
+                theme === "light"
+                  ? "border-red-600 text-red-600 hover:bg-red-600 hover:text-white"
+                  : "border-gray-200 text-gray-200 hover:bg-gray-200 hover:text-gray-800"
               }`}
               onClick={resetAll}
               title='Reset all selections to default values'
@@ -243,10 +246,10 @@ export default function ProgressionsView() {
                 totalFrets={totalFrets}
                 chordName={chordName}
                 chordNotes={chordNotes}
-                title={`Chord ${i + 1}: ${chordName || '(unset)'}`}
+                title={`Chord ${i + 1}: ${chordName || "(unset)"}`}
               />
               <div className='text-sm opacity-80'>
-                {chordName ? <span>{`Notes: ${chordNotes.join(', ')}`}</span> : <span>Notes: –</span>}
+                {chordName ? <span>{`Notes: ${chordNotes.join(", ")}`}</span> : <span>Notes: –</span>}
               </div>
             </div>
           );

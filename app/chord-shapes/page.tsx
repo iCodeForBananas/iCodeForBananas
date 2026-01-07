@@ -250,7 +250,7 @@ const ChordDiagram = ({ chord, shape }: ChordDiagramProps) => {
 
 export default function ChordShapesPage() {
   const [selectedType, setSelectedType] = useState(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       return localStorage.getItem("chord-shapes-selectedType") || "Major";
     }
     return "Major";
@@ -261,55 +261,55 @@ export default function ChordShapesPage() {
       <Navigation />
       <main className='px-4 py-6 flex-1'>
         <div className='w-full lg:max-w-5xl lg:mx-auto'>
-        <div className='rounded-lg border border-border bg-white p-8 shadow-sm'>
-          <div className='mb-8'>
-            <div className='flex flex-wrap gap-2 justify-center'>
-              {chordTypes.map((type) => {
-                const active = selectedType === type;
+          <div className='rounded-lg border border-border bg-white p-8 shadow-sm'>
+            <div className='mb-8'>
+              <div className='flex flex-wrap gap-2 justify-center'>
+                {chordTypes.map((type) => {
+                  const active = selectedType === type;
+                  return (
+                    <button
+                      key={type}
+                      type='button'
+                      aria-pressed={active}
+                      onClick={() => {
+                        setSelectedType(type);
+                        localStorage.setItem("chord-shapes-selectedType", type);
+                      }}
+                      className={`px-3 py-1 rounded border text-sm transition-colors ${
+                        active ? "bg-accent/20 border-accent font-medium" : "border-border hover:bg-foreground/10"
+                      }`}
+                    >
+                      {type}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className='grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6'>
+              {allNotes.map((note) => {
+                const chordName = formatChordLabel(note, selectedType);
+                const shape = resolveChordShape(note, selectedType);
+
                 return (
-                  <button
-                    key={type}
-                    type='button'
-                    aria-pressed={active}
-                    onClick={() => {
-                      setSelectedType(type);
-                      localStorage.setItem("chord-shapes-selectedType", type);
-                    }}
-                    className={`px-3 py-1 rounded border text-sm transition-colors ${
-                      active ? "bg-accent/20 border-accent font-medium" : "border-border hover:bg-foreground/10"
-                    }`}
-                  >
-                    {type}
-                  </button>
+                  <div key={note} className='flex justify-center'>
+                    {shape ? (
+                      <ChordDiagram chord={chordName} shape={shape} />
+                    ) : (
+                      <div className='text-center'>
+                        <h6 className='font-semibold'>{chordName}</h6>
+                        <p className='text-gray-500 text-sm'>Shape not available</p>
+                      </div>
+                    )}
+                  </div>
                 );
               })}
             </div>
           </div>
-
-          <div className='grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6'>
-            {allNotes.map((note) => {
-              const chordName = formatChordLabel(note, selectedType);
-              const shape = resolveChordShape(note, selectedType);
-
-              return (
-                <div key={note} className='flex justify-center'>
-                  {shape ? (
-                    <ChordDiagram chord={chordName} shape={shape} />
-                  ) : (
-                    <div className='text-center'>
-                      <h6 className='font-semibold'>{chordName}</h6>
-                      <p className='text-gray-500 text-sm'>Shape not available</p>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
         </div>
-      </div>
-    </main>
+      </main>
     </div>
   );
 }
 
-import Navigation from '../components/Navigation';
+import Navigation from "../components/Navigation";

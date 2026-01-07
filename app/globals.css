@@ -132,9 +132,7 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
-  transition:
-    background-color 0.3s ease,
-    color 0.3s ease;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 /* Silent Metronome animated background */
@@ -147,8 +145,7 @@ body {
 
 /* Vibrant tinted card surfaces */
 .tinted-card {
-  background:
-    linear-gradient(180deg, color-mix(in oklab, var(--accent) 14%, transparent), transparent),
+  background: linear-gradient(180deg, color-mix(in oklab, var(--accent) 14%, transparent), transparent),
     var(--bg-secondary);
   border-color: color-mix(in oklab, var(--accent) 38%, var(--border-color));
   box-shadow: 0 6px 16px color-mix(in oklab, var(--accent) 22%, transparent);
@@ -173,21 +170,35 @@ body {
   content: "";
   position: absolute;
   inset: 0;
-  background-image:
-    radial-gradient( 60% 60% at 50% 50%, color-mix(in oklab, var(--color-accent) 18%, transparent), transparent 70%),
-    repeating-linear-gradient(45deg, rgba(255,255,255,0.04) 0 2px, transparent 2px 14px);
+  background-image: radial-gradient(
+      60% 60% at 50% 50%,
+      color-mix(in oklab, var(--color-accent) 18%, transparent),
+      transparent 70%
+    ),
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.04) 0 2px, transparent 2px 14px);
   mix-blend-mode: overlay;
   animation: metronome-pulse var(--pulse-duration, 1s) ease-in-out infinite;
 }
 
 @keyframes metronome-swirl {
-  from { transform: rotate(0deg) scale(1); }
-  to   { transform: rotate(360deg) scale(1); }
+  from {
+    transform: rotate(0deg) scale(1);
+  }
+  to {
+    transform: rotate(360deg) scale(1);
+  }
 }
 
 @keyframes metronome-pulse {
-  0%, 100% { opacity: .55; transform: scale(1); }
-  50%      { opacity: .85; transform: scale(1.025); }
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.85;
+    transform: scale(1.025);
+  }
 }
 
 /* Override Bootstrap styles for dark mode */
@@ -215,4 +226,3 @@ body {
 .metronome-static {
   background: linear-gradient(135deg, #ff2f8a 0%, #ff9900 100%);
 }
-

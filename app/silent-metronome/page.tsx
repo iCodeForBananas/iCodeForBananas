@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import Navigation from '../components/Navigation';
+import Navigation from "../components/Navigation";
 
 export default function SilentMetronome() {
   const [chords, setChords] = useState<string[]>(() => {
@@ -84,10 +84,10 @@ export default function SilentMetronome() {
       <div className='flex flex-col flex-1'>
         <Navigation />
         <main className='relative min-h-screen px-4 py-6 metronome-static flex-1'>
-        <div className='relative w-full lg:max-w-5xl lg:mx-auto'>
-          <div className='p-4 text-foreground'>Loading...</div>
-        </div>
-      </main>
+          <div className='relative w-full lg:max-w-5xl lg:mx-auto'>
+            <div className='p-4 text-foreground'>Loading...</div>
+          </div>
+        </main>
       </div>
     );
   }
@@ -96,46 +96,46 @@ export default function SilentMetronome() {
     <div className='flex flex-col flex-1'>
       <Navigation />
       <main className='relative min-h-screen px-4 py-6 metronome-static flex-1'>
-      <div className='relative w-full lg:max-w-5xl lg:mx-auto'>
-        <div className='rounded-lg border border-border p-8 shadow-sm bg-white'>
-          <div className='mb-8'>
-            <label className='block text-sm font-medium text-gray-700 mb-2'>BPM: {bpm}</label>
-            <input
-              type='range'
-              min='40'
-              max='200'
-              value={bpm}
-              onChange={(e) => setBpm(parseInt(e.target.value))}
-              className='w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer'
-            />
-            <div className='flex justify-between text-xs text-gray-500 mt-1'>
-              <span>40</span>
-              <span>200</span>
+        <div className='relative w-full lg:max-w-5xl lg:mx-auto'>
+          <div className='rounded-lg border border-border p-8 shadow-sm bg-white'>
+            <div className='mb-8'>
+              <label className='block text-sm font-medium text-gray-700 mb-2'>BPM: {bpm}</label>
+              <input
+                type='range'
+                min='40'
+                max='200'
+                value={bpm}
+                onChange={(e) => setBpm(parseInt(e.target.value))}
+                className='w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer'
+              />
+              <div className='flex justify-between text-xs text-gray-500 mt-1'>
+                <span>40</span>
+                <span>200</span>
+              </div>
+              <div className='mt-3 text-sm text-gray-700'>Count: {beat + 1} / 4</div>
             </div>
-            <div className='mt-3 text-sm text-gray-700'>Count: {beat + 1} / 4</div>
-          </div>
 
-          {chords.length > 0 ? (
-            <div className='flex justify-center items-center space-x-8'>
-              {chords.map((chord, index) => (
-                <div
-                  key={index}
-                  className={`p-6 rounded-lg border-2 transition-all duration-200 ${
-                    index === activeIndex ? "border-blue-500 scale-110" : "border-gray-300"
-                  }`}
-                >
-                  <div className='text-2xl font-bold text-center'>{chord}</div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className='text-center opacity-80'>
-              No chord progression found. Please set and pin a progression from the Progressions page first.
-            </div>
-          )}
+            {chords.length > 0 ? (
+              <div className='flex justify-center items-center space-x-8'>
+                {chords.map((chord, index) => (
+                  <div
+                    key={index}
+                    className={`p-6 rounded-lg border-2 transition-all duration-200 ${
+                      index === activeIndex ? "border-blue-500 scale-110" : "border-gray-300"
+                    }`}
+                  >
+                    <div className='text-2xl font-bold text-center'>{chord}</div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className='text-center opacity-80'>
+                No chord progression found. Please set and pin a progression from the Progressions page first.
+              </div>
+            )}
+          </div>
         </div>
-      </div>
-    </main>
+      </main>
     </div>
   );
 }
