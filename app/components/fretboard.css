@@ -1,0 +1,57 @@
+.fretboard {
+  display: flex;
+  border-top: 2px solid var(--border-dark);
+  border-bottom: 2px solid var(--border-dark);
+  transition: border-color 0.3s ease;
+}
+
+.fret {
+  border-left: 1px solid var(--fret-border);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  transition: border-color 0.3s ease;
+}
+
+.note {
+  padding: 4px;
+  text-align: center;
+  font-size: 0.8rem;
+  border-bottom: 1px solid var(--note-border);
+  color: var(--text-primary);
+  transition: all 0.3s ease;
+}
+
+.note.open {
+  font-weight: bold;
+  background-color: var(--note-open-bg);
+}
+
+.note.scale {
+  background-color: var(--accent-scale);
+}
+
+.note.highlight {
+  background-color: var(--accent-chord);
+  font-weight: bold;
+}
+
+.note.highlight-p0 {
+  background-color: var(--highlight-p0);
+}
+
+.note.highlight-p1 {
+  background-color: var(--highlight-p1);
+}
+
+.note.highlight-p2 {
+  background-color: var(--accent-scale);
+}
+
+.note.highlight-p3 {
+  background-color: var(--highlight-p3);
+}
+
+.fretboard-wrapper {
+  overflow-x: auto;
+}

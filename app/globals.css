@@ -1,26 +1,218 @@
 @import "tailwindcss";
 
+/* Light theme (default, modern neutral + sunset accent) */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8fafc;
+  --text-primary: #0f172a;
+  --text-secondary: #334155;
+
+  /* Accent palette (sunset bright pink) */
+  --accent: #ff2f8a;
+  --seam-gradient: linear-gradient(90deg, #ff2f8a 0%, #ff9900 100%);
+  --seam-gradient-vert: linear-gradient(180deg, #ff5e99 0%, #ff8a00 100%);
+
+  /* Component/support colors */
+  --accent-chord: #ff2f8a;
+  --accent-scale: #ffd1e6;
+  --border-color: #e2e8f0;
+  --border-dark: #cbd5e1;
+  --note-open-bg: #f8fafc;
+  --note-border: #e2e8f0;
+  --fret-border: #e2e8f0;
+  --highlight-p0: #ffb3cf;
+  --highlight-p1: #ffd6e6;
+  --highlight-p3: #ffc6de;
+
+  /* Legacy variables for compatibility */
+  --background: var(--bg-primary);
+  --foreground: var(--text-primary);
+  --border: var(--border-color);
+  --muted: var(--text-secondary);
+}
+
+/* Dark theme */
+:root[data-theme="dark"] {
+  --bg-primary: #0f172a;
+  --bg-secondary: #111827;
+  --text-primary: #e5e7eb;
+  --text-secondary: #94a3b8;
+
+  /* Accent palette (same hue, tuned for dark) */
+  --accent: #ff4f9c;
+  --seam-gradient: linear-gradient(90deg, #ff4f9c 0%, #ff9900 100%);
+  --seam-gradient-vert: linear-gradient(180deg, #ff6aa5 0%, #ff8a00 100%);
+
+  /* Component/support colors */
+  --accent-chord: #ff4f9c;
+  --accent-scale: #5a1832;
+  --border-color: #3b4a5e;
+  --border-dark: #536279;
+  --note-open-bg: #0b1220;
+  --note-border: #334155;
+  --fret-border: #334155;
+  --highlight-p0: #7a2445;
+  --highlight-p1: #4a152b;
+  --highlight-p3: #5a1832;
+
+  /* Legacy variables for compatibility */
+  --background: var(--bg-primary);
+  --foreground: var(--text-primary);
+  --border: var(--border-color);
+  --muted: var(--text-secondary);
+}
+
+/* Accent seam across the top */
+body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background-image: var(--seam-gradient);
+  z-index: 50;
+  pointer-events: none;
+}
+
+/* Accent seams on left, right, and bottom edges */
+html::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 3px;
+  background-image: var(--seam-gradient-vert);
+  z-index: 50;
+  pointer-events: none;
+}
+
+html::after {
+  content: "";
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  width: 3px;
+  background-image: var(--seam-gradient-vert);
+  z-index: 50;
+  pointer-events: none;
+}
+
+body::after {
+  content: "";
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background-image: var(--seam-gradient);
+  z-index: 50;
+  pointer-events: none;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  /* App color tokens backed by CSS variables */
+  --color-background: var(--bg-primary);
+  --color-surface: var(--bg-secondary);
+  --color-foreground: var(--text-primary);
+  --color-muted: var(--text-secondary);
+  --color-border: var(--border-color);
+  --color-border-strong: var(--border-dark);
+  --color-accent: var(--accent);
+  --color-scale: var(--accent-scale);
+
+  /* Fonts from next/font */
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease;
 }
+
+/* Silent Metronome animated background */
+.metronome-bg {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Vibrant tinted card surfaces */
+.tinted-card {
+  background:
+    linear-gradient(180deg, color-mix(in oklab, var(--accent) 14%, transparent), transparent),
+    var(--bg-secondary);
+  border-color: color-mix(in oklab, var(--accent) 38%, var(--border-color));
+  box-shadow: 0 6px 16px color-mix(in oklab, var(--accent) 22%, transparent);
+}
+
+.metronome-bg::before {
+  content: "";
+  position: absolute;
+  inset: -20%;
+  background: conic-gradient(
+    from 0deg at 50% 50%,
+    color-mix(in oklab, var(--color-accent) 20%, transparent) 0deg,
+    color-mix(in oklab, var(--color-accent) 10%, transparent) 120deg,
+    color-mix(in oklab, var(--color-foreground) 8%, transparent) 240deg,
+    color-mix(in oklab, var(--color-accent) 20%, transparent) 360deg
+  );
+  filter: blur(60px);
+  animation: metronome-swirl 40s linear infinite;
+}
+
+.metronome-bg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient( 60% 60% at 50% 50%, color-mix(in oklab, var(--color-accent) 18%, transparent), transparent 70%),
+    repeating-linear-gradient(45deg, rgba(255,255,255,0.04) 0 2px, transparent 2px 14px);
+  mix-blend-mode: overlay;
+  animation: metronome-pulse var(--pulse-duration, 1s) ease-in-out infinite;
+}
+
+@keyframes metronome-swirl {
+  from { transform: rotate(0deg) scale(1); }
+  to   { transform: rotate(360deg) scale(1); }
+}
+
+@keyframes metronome-pulse {
+  0%, 100% { opacity: .55; transform: scale(1); }
+  50%      { opacity: .85; transform: scale(1.025); }
+}
+
+/* Override Bootstrap styles for dark mode */
+:root[data-theme="dark"] .form-select {
+  background-color: var(--bg-secondary) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-color) !important;
+}
+
+:root[data-theme="dark"] .btn-outline-dark {
+  color: var(--text-primary) !important;
+  border-color: var(--border-color) !important;
+}
+
+:root[data-theme="dark"] .btn-outline-danger {
+  color: #ff6b6b !important;
+  border-color: #ff6b6b !important;
+}
+
+:root[data-theme="dark"] .text-muted {
+  color: var(--text-secondary) !important;
+}
+
+/* Static gradient background for metronome view */
+.metronome-static {
+  background: linear-gradient(135deg, #ff2f8a 0%, #ff9900 100%);
+}
+

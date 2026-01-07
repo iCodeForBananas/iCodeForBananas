@@ -50,13 +50,6 @@ export default function ProgressionNavigator({ startKey = "G", bpm = 80 }: Progr
   const [key, setKey] = useState(startKey);
   const chords = useMemo(() => keyChords(key), [key]);
 
-  // Invert map: chordLabel -> function
-  const funcOf = useMemo(() => {
-    const m: Record<string, string> = {};
-    Object.entries(chords).forEach(([f, l]) => (m[l] = f));
-    return m;
-  }, [chords]);
-
   const [currentF, setCurrentF] = useState("I");
   const [prog, setProg] = useState<ProgressionStep[]>([{ f: "I", label: chords["I"] }]);
 
