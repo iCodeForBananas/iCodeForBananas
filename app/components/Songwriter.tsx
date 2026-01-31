@@ -109,6 +109,13 @@ export default function Songwriter() {
     }
   }, [activeColumn]);
 
+  // Scroll first column to top after arranging into columns
+  useEffect(() => {
+    if (textareaRefs.current[0]) {
+      textareaRefs.current[0].scrollTop = 0;
+    }
+  }, [columns]);
+
   const handleTextInput = (value: string) => {
     setText(value);
   };
