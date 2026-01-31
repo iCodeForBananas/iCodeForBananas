@@ -29,13 +29,7 @@ export default function RootLayout({
     <html lang='en'>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <ThemeProvider>
-          <div
-            className='flex min-h-screen font-sans bg-cover bg-center bg-fixed'
-            style={{
-              backgroundImage:
-                "url(https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&q=100&w=3000)",
-            }}
-          >
+          <div className='flex min-h-screen font-sans'>
             <Sidebar />
             {children}
           </div>

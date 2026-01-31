@@ -1,6 +1,6 @@
 export default function Home() {
   return (
-    <main className='flex min-h-screen w-full flex-col items-center justify-center py-32 px-16 bg-white/10 dark:bg-white/10'>
+    <main className='flex min-h-screen w-full flex-col items-center justify-center py-32 px-16 bg-white/10 dark:bg-white/10 metronome-static'>
       <div className='w-full max-w-4xl flex flex-col gap-4'>
         {[...Array(10)].map((_, index) => (
           <div

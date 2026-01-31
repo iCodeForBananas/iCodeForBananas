@@ -69,7 +69,7 @@ body::before {
   top: 0;
   left: 0;
   right: 0;
-  height: 3px;
+  height: 10px;
   background-image: var(--seam-gradient);
   z-index: 50;
   pointer-events: none;
@@ -82,7 +82,7 @@ html::before {
   top: 0;
   bottom: 0;
   left: 0;
-  width: 3px;
+  width: 10px;
   background-image: var(--seam-gradient-vert);
   z-index: 50;
   pointer-events: none;
@@ -94,7 +94,7 @@ html::after {
   top: 0;
   bottom: 0;
   right: 0;
-  width: 3px;
+  width: 10px;
   background-image: var(--seam-gradient-vert);
   z-index: 50;
   pointer-events: none;
@@ -106,7 +106,7 @@ body::after {
   left: 0;
   right: 0;
   bottom: 0;
-  height: 3px;
+  height: 10px;
   background-image: var(--seam-gradient);
   z-index: 50;
   pointer-events: none;
@@ -129,7 +129,7 @@ body::after {
 }
 
 body {
-  background: var(--background);
+  background: white;
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
   transition: background-color 0.3s ease, color 0.3s ease;

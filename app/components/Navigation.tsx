@@ -41,14 +41,14 @@ export default function Navigation() {
 
   if (!mounted) {
     return (
-      <nav className='relative z-20 bg-background border-b border-border text-foreground px-4 py-3 transition-colors'>
+      <nav className='relative z-20 bg-gradient-to-r from-pink-50 to-orange-50 border-b border-pink-200 text-gray-900 px-4 py-3 transition-colors'>
         <div className='w-full lg:max-w-5xl lg:mx-auto flex items-center justify-center'>
           <div className='flex flex-wrap items-center justify-center gap-3 sm:gap-4 lg:gap-6 text-sm sm:text-base'>
-            <span className='text-foreground/80'>Fretboard</span>
-            <span className='text-foreground/80'>Progressions</span>
-            <span className='text-foreground/80'>By Shape</span>
-            <span className='text-foreground/80'>Silent Metronome</span>
-            <span className='text-foreground/80'>Settings</span>
+            <span className='text-gray-700'>Fretboard</span>
+            <span className='text-gray-700'>Progressions</span>
+            <span className='text-gray-700'>By Shape</span>
+            <span className='text-gray-700'>Silent Metronome</span>
+            <span className='text-gray-700'>Settings</span>
           </div>
         </div>
       </nav>
@@ -57,13 +57,13 @@ export default function Navigation() {
 
   return (
     <>
-      <nav className='relative z-20 bg-background border-b border-border text-foreground px-4 py-3 transition-colors'>
+      <nav className='relative z-20 bg-gradient-to-r from-pink-50 to-orange-50 border-b border-pink-200 text-gray-900 px-4 py-3 transition-colors'>
         <div className='w-full lg:max-w-5xl lg:mx-auto flex items-center justify-center'>
           <div className='flex flex-wrap items-center justify-center gap-3 sm:gap-4 lg:gap-6 text-sm sm:text-base'>
             <Link
               href='/fretboard'
               className={`${
-                pathname === "/fretboard" ? "text-accent font-semibold" : "text-foreground/80 hover:text-foreground"
+                pathname === "/fretboard" ? "text-pink-600 font-semibold" : "text-gray-700 hover:text-gray-900"
               }`}
             >
               Fretboard
@@ -71,9 +71,7 @@ export default function Navigation() {
             <Link
               href='/chord-progressions'
               className={`${
-                pathname === "/chord-progressions"
-                  ? "text-accent font-semibold"
-                  : "text-foreground/80 hover:text-foreground"
+                pathname === "/chord-progressions" ? "text-pink-600 font-semibold" : "text-gray-700 hover:text-gray-900"
               }`}
             >
               Progressions
@@ -81,7 +79,7 @@ export default function Navigation() {
             <Link
               href='/chord-shapes'
               className={`${
-                pathname === "/chord-shapes" ? "text-accent font-semibold" : "text-foreground/80 hover:text-foreground"
+                pathname === "/chord-shapes" ? "text-pink-600 font-semibold" : "text-gray-700 hover:text-gray-900"
               }`}
             >
               By Shape
@@ -89,9 +87,7 @@ export default function Navigation() {
             <Link
               href='/silent-metronome'
               className={`${
-                pathname === "/silent-metronome"
-                  ? "text-accent font-semibold"
-                  : "text-foreground/80 hover:text-foreground"
+                pathname === "/silent-metronome" ? "text-pink-600 font-semibold" : "text-gray-700 hover:text-gray-900"
               }`}
             >
               Silent Metronome
@@ -99,7 +95,7 @@ export default function Navigation() {
             <Link
               href='/settings'
               className={`${
-                pathname === "/settings" ? "text-accent font-semibold" : "text-foreground/80 hover:text-foreground"
+                pathname === "/settings" ? "text-pink-600 font-semibold" : "text-gray-700 hover:text-gray-900"
               }`}
             >
               Settings
