@@ -1,14 +1,27 @@
 .circle-of-fifths-container {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto 1fr;
   gap: 3rem;
-  align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
+  align-items: start;
   margin-top: 2rem;
+  max-width: 1200px;
+}
+
+.circle-column {
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .circle-svg {
   flex-shrink: 0;
+}
+
+.chord-column {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
 }
 
 .key-circle {
@@ -44,7 +57,7 @@
   font-size: 18px;
   font-weight: bold;
   fill: white;
-  pointer-events: none;
+  cursor: pointer;
   user-select: none;
 }
 
@@ -65,7 +78,19 @@
   border-radius: 12px;
   padding: 2rem;
   min-width: 250px;
+  width: 100%;
+  max-width: 350px;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.chord-placeholder {
+  padding: 2rem;
+  min-width: 250px;
+  width: 100%;
+  max-width: 350px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .chord-diagram {

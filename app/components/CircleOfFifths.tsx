@@ -32,6 +32,11 @@ export default function CircleOfFifths() {
     frets: (number | null)[];
     type: "major" | "minor";
   } | null>(null);
+  const [selectedKey, setSelectedKey] = useState<{
+    chord: string;
+    frets: (number | null)[];
+    type: "major" | "minor";
+  } | null>(null);
 
   const centerX = 300;
   const centerY = 300;
@@ -50,160 +55,180 @@ export default function CircleOfFifths() {
 
   return (
     <div className='circle-of-fifths-container'>
-      <svg width='600' height='600' className='circle-svg'>
-        {/* Outer circle background */}
-        <circle
-          cx={centerX}
-          cy={centerY}
-          r={outerRadius + 30}
-          fill='none'
-          stroke='currentColor'
-          strokeWidth='1'
-          opacity='0.2'
-        />
+      {" "}
+      <div className='circle-column'>
+        {" "}
+        <svg width='600' height='600' className='circle-svg'>
+          {/* Outer circle background */}
+          <circle
+            cx={centerX}
+            cy={centerY}
+            r={outerRadius + 30}
+            fill='none'
+            stroke='currentColor'
+            strokeWidth='1'
+            opacity='0.2'
+          />
 
-        {/* Inner circle background */}
-        <circle
-          cx={centerX}
-          cy={centerY}
-          r={innerRadius - 10}
-          fill='none'
-          stroke='currentColor'
-          strokeWidth='1'
-          opacity='0.2'
-        />
+          {/* Inner circle background */}
+          <circle
+            cx={centerX}
+            cy={centerY}
+            r={innerRadius - 10}
+            fill='none'
+            stroke='currentColor'
+            strokeWidth='1'
+            opacity='0.2'
+          />
 
-        {/* Major keys (outer circle) */}
-        {circleData.map((data, index) => {
-          const pos = getPosition(index, outerRadius);
-          return (
-            <g key={`major-${index}`}>
-              <circle
-                cx={pos.x}
-                cy={pos.y}
-                r='35'
-                className='key-circle major-key'
-                onMouseEnter={() => setHoveredKey({ chord: data.major, frets: data.majorFrets, type: "major" })}
-                onMouseLeave={() => setHoveredKey(null)}
-              />
-              <text
-                x={pos.x}
-                y={pos.y}
-                textAnchor='middle'
-                dominantBaseline='middle'
-                className='key-text'
-                onMouseEnter={() => setHoveredKey({ chord: data.major, frets: data.majorFrets, type: "major" })}
-                onMouseLeave={() => setHoveredKey(null)}
-              >
-                {data.major}
-              </text>
-            </g>
-          );
-        })}
+          {/* Major keys (outer circle) */}
+          {circleData.map((data, index) => {
+            const pos = getPosition(index, outerRadius);
+            return (
+              <g key={`major-${index}`}>
+                <circle
+                  cx={pos.x}
+                  cy={pos.y}
+                  r='35'
+                  className='key-circle major-key'
+                  onMouseEnter={() => setHoveredKey({ chord: data.major, frets: data.majorFrets, type: "major" })}
+                  onMouseLeave={() => setHoveredKey(null)}
+                  onClick={() => setSelectedKey({ chord: data.major, frets: data.majorFrets, type: "major" })}
+                />
+                <text
+                  x={pos.x}
+                  y={pos.y}
+                  textAnchor='middle'
+                  dominantBaseline='middle'
+                  className='key-text'
+                  onMouseEnter={() => setHoveredKey({ chord: data.major, frets: data.majorFrets, type: "major" })}
+                  onMouseLeave={() => setHoveredKey(null)}
+                  onClick={() => setSelectedKey({ chord: data.major, frets: data.majorFrets, type: "major" })}
+                >
+                  {data.major}
+                </text>
+              </g>
+            );
+          })}
 
-        {/* Minor keys (inner circle) */}
-        {circleData.map((data, index) => {
-          const pos = getPosition(index, innerRadius);
-          return (
-            <g key={`minor-${index}`}>
-              <circle
-                cx={pos.x}
-                cy={pos.y}
-                r='30'
-                className='key-circle minor-key'
-                onMouseEnter={() => setHoveredKey({ chord: data.minor, frets: data.minorFrets, type: "minor" })}
-                onMouseLeave={() => setHoveredKey(null)}
-              />
-              <text
-                x={pos.x}
-                y={pos.y}
-                textAnchor='middle'
-                dominantBaseline='middle'
-                className='key-text minor-text'
-                onMouseEnter={() => setHoveredKey({ chord: data.minor, frets: data.minorFrets, type: "minor" })}
-                onMouseLeave={() => setHoveredKey(null)}
-              >
-                {data.minor}
-              </text>
-            </g>
-          );
-        })}
+          {/* Minor keys (inner circle) */}
+          {circleData.map((data, index) => {
+            const pos = getPosition(index, innerRadius);
+            return (
+              <g key={`minor-${index}`}>
+                <circle
+                  cx={pos.x}
+                  cy={pos.y}
+                  r='30'
+                  className='key-circle minor-key'
+                  onMouseEnter={() => setHoveredKey({ chord: data.minor, frets: data.minorFrets, type: "minor" })}
+                  onMouseLeave={() => setHoveredKey(null)}
+                  onClick={() => setSelectedKey({ chord: data.minor, frets: data.minorFrets, type: "minor" })}
+                />
+                <text
+                  x={pos.x}
+                  y={pos.y}
+                  textAnchor='middle'
+                  dominantBaseline='middle'
+                  className='key-text minor-text'
+                  onMouseEnter={() => setHoveredKey({ chord: data.minor, frets: data.minorFrets, type: "minor" })}
+                  onMouseLeave={() => setHoveredKey(null)}
+                  onClick={() => setSelectedKey({ chord: data.minor, frets: data.minorFrets, type: "minor" })}
+                >
+                  {data.minor}
+                </text>
+              </g>
+            );
+          })}
 
-        {/* Center label */}
-        <text x={centerX} y={centerY} textAnchor='middle' dominantBaseline='middle' className='center-text'>
-          Circle of
-        </text>
-        <text x={centerX} y={centerY + 20} textAnchor='middle' dominantBaseline='middle' className='center-text'>
-          Fifths
-        </text>
-      </svg>
-
+          {/* Center label */}
+          <text x={centerX} y={centerY} textAnchor='middle' dominantBaseline='middle' className='center-text'>
+            Circle of
+          </text>
+          <text x={centerX} y={centerY + 20} textAnchor='middle' dominantBaseline='middle' className='center-text'>
+            Fifths
+          </text>
+        </svg>
+      </div>
       {/* Chord diagram display */}
-      {hoveredKey && (
-        <div className='chord-display'>
-          <h3 className='text-2xl font-bold mb-4'>{hoveredKey.chord}</h3>
-          <div className='chord-diagram'>
-            <svg width='150' height='200' viewBox='0 0 150 200'>
-              {/* Fret lines */}
-              {[0, 1, 2, 3, 4].map((fret) => (
-                <line
-                  key={`fret-${fret}`}
-                  x1='20'
-                  y1={30 + fret * 35}
-                  x2='130'
-                  y2={30 + fret * 35}
-                  stroke='currentColor'
-                  strokeWidth={fret === 0 ? "3" : "1"}
-                />
-              ))}
+      <div className='chord-column'>
+        {hoveredKey || selectedKey ? (
+          <div className='chord-display'>
+            <h3 className='text-2xl font-bold mb-4'>{(hoveredKey || selectedKey)!.chord}</h3>
+            <div className='chord-diagram'>
+              <svg width='150' height='200' viewBox='0 0 150 200'>
+                {/* Fret lines */}
+                {[0, 1, 2, 3, 4].map((fret) => (
+                  <line
+                    key={`fret-${fret}`}
+                    x1='20'
+                    y1={30 + fret * 35}
+                    x2='130'
+                    y2={30 + fret * 35}
+                    stroke='currentColor'
+                    strokeWidth={fret === 0 ? "3" : "1"}
+                  />
+                ))}
 
-              {/* String lines */}
-              {[0, 1, 2, 3, 4, 5].map((string) => (
-                <line
-                  key={`string-${string}`}
-                  x1={30 + string * 20}
-                  y1='30'
-                  x2={30 + string * 20}
-                  y2='170'
-                  stroke='currentColor'
-                  strokeWidth='1'
-                />
-              ))}
+                {/* String lines */}
+                {[0, 1, 2, 3, 4, 5].map((string) => (
+                  <line
+                    key={`string-${string}`}
+                    x1={30 + string * 20}
+                    y1='30'
+                    x2={30 + string * 20}
+                    y2='170'
+                    stroke='currentColor'
+                    strokeWidth='1'
+                  />
+                ))}
 
-              {/* Finger positions and muted strings */}
-              {hoveredKey.frets.map((fret, stringIndex) => {
-                const x = 30 + stringIndex * 20;
-                if (fret === null) {
-                  // Muted string (X)
-                  return (
-                    <text key={`muted-${stringIndex}`} x={x} y='20' textAnchor='middle' fontSize='16' fontWeight='bold'>
-                      ×
-                    </text>
-                  );
-                } else if (fret === 0) {
-                  // Open string (O)
-                  return (
-                    <circle
-                      key={`open-${stringIndex}`}
-                      cx={x}
-                      cy='15'
-                      r='6'
-                      fill='none'
-                      stroke='currentColor'
-                      strokeWidth='2'
-                    />
-                  );
-                } else {
-                  // Fingered note
-                  const y = 30 + (fret - 0.5) * 35;
-                  return <circle key={`finger-${stringIndex}`} cx={x} cy={y} r='8' fill='currentColor' />;
-                }
-              })}
-            </svg>
-            <p className='text-sm mt-2 text-center'>First Position</p>
+                {/* Finger positions and muted strings */}
+                {(hoveredKey || selectedKey)!.frets.map((fret, stringIndex) => {
+                  const x = 30 + stringIndex * 20;
+                  if (fret === null) {
+                    // Muted string (X)
+                    return (
+                      <text
+                        key={`muted-${stringIndex}`}
+                        x={x}
+                        y='20'
+                        textAnchor='middle'
+                        fontSize='16'
+                        fontWeight='bold'
+                      >
+                        ×
+                      </text>
+                    );
+                  } else if (fret === 0) {
+                    // Open string (O)
+                    return (
+                      <circle
+                        key={`open-${stringIndex}`}
+                        cx={x}
+                        cy='15'
+                        r='6'
+                        fill='none'
+                        stroke='currentColor'
+                        strokeWidth='2'
+                      />
+                    );
+                  } else {
+                    // Fingered note
+                    const y = 30 + (fret - 0.5) * 35;
+                    return <circle key={`finger-${stringIndex}`} cx={x} cy={y} r='8' fill='currentColor' />;
+                  }
+                })}
+              </svg>
+              <p className='text-sm mt-2 text-center'>First Position</p>
+            </div>
           </div>
-        </div>
-      )}
+        ) : (
+          <div className='chord-placeholder'>
+            <p className='text-lg text-center opacity-60'>Hover over a key to see its guitar chord</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
