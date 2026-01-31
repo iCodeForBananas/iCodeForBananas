@@ -97,7 +97,7 @@ export default function ProgressionNavigator({ startKey = "G", bpm = 80 }: Progr
             setKey(e.target.value);
             reset();
           }}
-          className='bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-700 px-3 py-1.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
+          className='bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-gray-100 border dark:border-gray-700 px-3 py-1.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
         >
           {KEYS.map((k) => (
             <option key={k} value={k}>

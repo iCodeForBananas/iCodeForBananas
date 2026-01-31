@@ -37,7 +37,7 @@ function TuningControl({ tuning, setTuning, theme }: TuningControlProps) {
           <select
             id={`tun-${i}`}
             key={i}
-            className='border border-gray-300 rounded px-3 py-1 text-sm'
+            className='border rounded px-3 py-1 text-sm'
             value={note}
             onChange={(e) => updateTuning(i, e.target.value)}
           >
@@ -160,7 +160,7 @@ export default function ProgressionsView() {
         <div className='lg:col-span-2'>
           <h5 className='text-lg font-semibold mb-3'>Chord Progression</h5>
           <select
-            className='w-full border border-gray-300 rounded px-3 py-2 mb-3'
+            className='w-full border rounded px-3 py-2 mb-3'
             value={progressionKey}
             onChange={(e) => {
               setProgressionKey(e.target.value);
@@ -172,7 +172,7 @@ export default function ProgressionsView() {
             ))}
           </select>
           <select
-            className='w-full border border-gray-300 rounded px-3 py-2 mb-3'
+            className='w-full border rounded px-3 py-2 mb-3'
             value={formulaIndex}
             onChange={(e) => {
               const value = parseInt(e.target.value, 10);
@@ -189,7 +189,7 @@ export default function ProgressionsView() {
           {chordProgression.map((entry, index) => (
             <div key={index} className='flex items-center mb-2 gap-2'>
               <select
-                className='flex-1 border border-gray-300 rounded px-3 py-1 text-sm'
+                className='flex-1 border rounded px-3 py-1 text-sm'
                 value={entry.name}
                 onChange={(e) => updateChordInProgression(index, "name", e.target.value)}
               >

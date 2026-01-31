@@ -39,73 +39,10 @@ export default function Navigation() {
     }
   }, []);
 
-  if (!mounted) {
-    return (
-      <nav className='relative z-20 bg-gradient-to-r from-pink-50 to-orange-50 border-b border-pink-200 text-gray-900 px-4 py-3 transition-colors'>
-        <div className='w-full lg:max-w-5xl lg:mx-auto flex items-center justify-center'>
-          <div className='flex flex-wrap items-center justify-center gap-3 sm:gap-4 lg:gap-6 text-sm sm:text-base'>
-            <span className='text-gray-700'>Fretboard</span>
-            <span className='text-gray-700'>Progressions</span>
-            <span className='text-gray-700'>By Shape</span>
-            <span className='text-gray-700'>Silent Metronome</span>
-            <span className='text-gray-700'>Settings</span>
-          </div>
-        </div>
-      </nav>
-    );
-  }
-
   return (
     <>
-      <nav className='relative z-20 bg-gradient-to-r from-pink-50 to-orange-50 border-b border-pink-200 text-gray-900 px-4 py-3 transition-colors'>
-        <div className='w-full lg:max-w-5xl lg:mx-auto flex items-center justify-center'>
-          <div className='flex flex-wrap items-center justify-center gap-3 sm:gap-4 lg:gap-6 text-sm sm:text-base'>
-            <Link
-              href='/fretboard'
-              className={`${
-                pathname === "/fretboard" ? "text-pink-600 font-semibold" : "text-gray-700 hover:text-gray-900"
-              }`}
-            >
-              Fretboard
-            </Link>
-            <Link
-              href='/chord-progressions'
-              className={`${
-                pathname === "/chord-progressions" ? "text-pink-600 font-semibold" : "text-gray-700 hover:text-gray-900"
-              }`}
-            >
-              Progressions
-            </Link>
-            <Link
-              href='/chord-shapes'
-              className={`${
-                pathname === "/chord-shapes" ? "text-pink-600 font-semibold" : "text-gray-700 hover:text-gray-900"
-              }`}
-            >
-              By Shape
-            </Link>
-            <Link
-              href='/silent-metronome'
-              className={`${
-                pathname === "/silent-metronome" ? "text-pink-600 font-semibold" : "text-gray-700 hover:text-gray-900"
-              }`}
-            >
-              Silent Metronome
-            </Link>
-            <Link
-              href='/settings'
-              className={`${
-                pathname === "/settings" ? "text-pink-600 font-semibold" : "text-gray-700 hover:text-gray-900"
-              }`}
-            >
-              Settings
-            </Link>
-          </div>
-        </div>
-      </nav>
-
       {pinnedProgression && pinnedProgression.chords && pinnedProgression.chords.length > 0 && (
-        <div className='bg-accent/10 border-b border-accent/30 px-4 py-2 text-center text-sm'>
+        <div className='bg-accent/10 border-b border-accent/30 px-4 pt-5 pb-2 text-center text-sm'>
           <span className='font-medium'>Pinned Progression:</span> {pinnedProgression.chords.join(" → ")} in{" "}
           {pinnedProgression.key} ({pinnedProgression.formula})
         </div>
