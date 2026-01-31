@@ -1,0 +1,103 @@
+.circle-of-fifths-container {
+  display: flex;
+  gap: 3rem;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 2rem;
+}
+
+.circle-svg {
+  flex-shrink: 0;
+}
+
+.key-circle {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.major-key {
+  fill: hsl(210, 70%, 50%);
+  stroke: hsl(210, 70%, 40%);
+  stroke-width: 2;
+}
+
+.major-key:hover {
+  fill: hsl(210, 80%, 60%);
+  stroke: hsl(210, 80%, 50%);
+  stroke-width: 3;
+}
+
+.minor-key {
+  fill: hsl(280, 60%, 50%);
+  stroke: hsl(280, 60%, 40%);
+  stroke-width: 2;
+}
+
+.minor-key:hover {
+  fill: hsl(280, 70%, 60%);
+  stroke: hsl(280, 70%, 50%);
+  stroke-width: 3;
+}
+
+.key-text {
+  font-size: 18px;
+  font-weight: bold;
+  fill: white;
+  pointer-events: none;
+  user-select: none;
+}
+
+.minor-text {
+  font-size: 14px;
+}
+
+.center-text {
+  font-size: 16px;
+  font-weight: 600;
+  fill: currentColor;
+  opacity: 0.5;
+}
+
+.chord-display {
+  background: hsl(var(--background));
+  border: 2px solid hsl(var(--border));
+  border-radius: 12px;
+  padding: 2rem;
+  min-width: 250px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.chord-diagram {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 1rem;
+}
+
+.chord-diagram svg {
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
+}
+
+/* Dark mode adjustments */
+@media (prefers-color-scheme: dark) {
+  .major-key {
+    fill: hsl(210, 80%, 45%);
+    stroke: hsl(210, 80%, 55%);
+  }
+
+  .major-key:hover {
+    fill: hsl(210, 85%, 55%);
+    stroke: hsl(210, 85%, 65%);
+  }
+
+  .minor-key {
+    fill: hsl(280, 70%, 45%);
+    stroke: hsl(280, 70%, 55%);
+  }
+
+  .minor-key:hover {
+    fill: hsl(280, 75%, 55%);
+    stroke: hsl(280, 75%, 65%);
+  }
+}
