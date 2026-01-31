@@ -69,6 +69,14 @@ export default function Sidebar() {
               Harmonic Flow
             </Link>
             <Link
+              href='/songwriter'
+              className={`px-3 py-2 rounded hover:bg-pink-100 hover:text-gray-900 transition-colors ${
+                pathname === "/songwriter" ? "bg-pink-100 text-gray-900 font-semibold" : "text-gray-700"
+              }`}
+            >
+              Songwriter
+            </Link>
+            <Link
               href='/settings'
               className={`px-3 py-2 rounded hover:bg-pink-100 hover:text-gray-900 transition-colors ${
                 pathname === "/settings" ? "bg-pink-100 text-gray-900 font-semibold" : "text-gray-700"
