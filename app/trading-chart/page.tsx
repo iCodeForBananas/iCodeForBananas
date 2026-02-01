@@ -5,27 +5,23 @@ import Chart from "../components/Chart";
 import Navigation from "../components/Navigation";
 import { PricePoint, Position, PositionSide, Account } from "@/app/types";
 
-const RISK_PERCENTAGE = 0.005; // 0.5%
-const INITIAL_BALANCE = 100000; // $100k starting capital
-const CACHE_KEY = "spy_data_cache";
-const CACHE_EXPIRY_KEY = "spy_data_cache_expiry";
-const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
+const RISK_PERCENTAGE = 0.005;
+const INITIAL_BALANCE = 100000;
 
 export default function TradingChartPage() {
-  const [data, setData] = useState<PricePoint[]>([]);
+  const [allData, setAllData] = useState<PricePoint[]>([]);
+  const [visibleIndex, setVisibleIndex] = useState<number>(0);
   const [account, setAccount] = useState<Account>({ balance: INITIAL_BALANCE, riskPercentage: RISK_PERCENTAGE });
   const [positions, setPositions] = useState<Position[]>([]);
-  const [currentPrice, setCurrentPrice] = useState<number>(0);
-  const [isPaused, setIsPaused] = useState<boolean>(true);
-  const [currentIndex, setCurrentIndex] = useState<number>(0);
+  const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  const currentIndexRef = useRef(currentIndex);
+  const playIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  useEffect(() => {
-    currentIndexRef.current = currentIndex;
-  }, [currentIndex]);
+  // Visible data slice (last 100 candles up to current index)
+  const visibleData = allData.slice(Math.max(0, visibleIndex - 99), visibleIndex + 1);
+  const currentPrice = allData[visibleIndex]?.close || 0;
 
   // Load SPY data on mount
   useEffect(() => {
@@ -34,24 +30,6 @@ export default function TradingChartPage() {
         setIsLoading(true);
         setError(null);
 
-        // Try to load from cache first
-        const cachedData = localStorage.getItem(CACHE_KEY);
-        const cacheExpiry = localStorage.getItem(CACHE_EXPIRY_KEY);
-
-        if (cachedData && cacheExpiry && Date.now() < parseInt(cacheExpiry)) {
-          const parsed = JSON.parse(cachedData);
-          if (parsed && parsed.length > 0) {
-            console.log("Loaded data from cache:", parsed.length, "candles");
-            setData(parsed);
-            setCurrentPrice(parsed[parsed.length - 1]?.close || 0);
-            setCurrentIndex(parsed.length - 1);
-            setIsLoading(false);
-            return;
-          }
-        }
-
-        // Fetch from API route
-        console.log("Fetching SPY data from API...");
         const response = await fetch("/api/spy-data");
         const result = await response.json();
 
@@ -59,14 +37,10 @@ export default function TradingChartPage() {
           throw new Error(result.error || "No data received from API");
         }
 
-        console.log("Fetched", result.data.length, "candles");
-        setData(result.data);
-        setCurrentPrice(result.data[result.data.length - 1]?.close || 0);
-        setCurrentIndex(result.data.length - 1);
-
-        // Cache the data
-        localStorage.setItem(CACHE_KEY, JSON.stringify(result.data));
-        localStorage.setItem(CACHE_EXPIRY_KEY, (Date.now() + CACHE_DURATION).toString());
+        console.log("Loaded", result.data.length, "candles");
+        setAllData(result.data);
+        // Start at candle 200 so we have SMA data
+        setVisibleIndex(Math.min(200, result.data.length - 1));
       } catch (err) {
         console.error("Error loading SPY data:", err);
         setError(err instanceof Error ? err.message : "Failed to load data");
@@ -78,7 +52,86 @@ export default function TradingChartPage() {
     loadData();
   }, []);
 
-  // Move to useEffect below stepForward to ensure we access latest state
+  // Handle play/pause
+  useEffect(() => {
+    if (isPlaying && visibleIndex < allData.length - 1) {
+      playIntervalRef.current = setInterval(() => {
+        setVisibleIndex((prev) => {
+          if (prev >= allData.length - 1) {
+            setIsPlaying(false);
+            return prev;
+          }
+          return prev + 1;
+        });
+      }, 300);
+    }
+
+    return () => {
+      if (playIntervalRef.current) {
+        clearInterval(playIntervalRef.current);
+        playIntervalRef.current = null;
+      }
+    };
+  }, [isPlaying, allData.length]);
+
+  // Check for position stop-outs when index changes
+  useEffect(() => {
+    if (allData.length === 0 || visibleIndex >= allData.length) return;
+
+    const currentCandle = allData[visibleIndex];
+    if (!currentCandle.sma20) return;
+
+    setPositions((prev) => {
+      let pnlToAdd = 0;
+      const updated = prev.map((pos) => {
+        if (pos.status !== "open") return pos;
+
+        const shouldClose =
+          (pos.side === PositionSide.LONG && currentCandle.close < currentCandle.sma20!) ||
+          (pos.side === PositionSide.SHORT && currentCandle.close > currentCandle.sma20!);
+
+        if (shouldClose) {
+          const exitPrice = currentCandle.close;
+          const pnl =
+            pos.side === PositionSide.LONG
+              ? (exitPrice - pos.entryPrice) * pos.size
+              : (pos.entryPrice - exitPrice) * pos.size;
+          pnlToAdd += pnl;
+          return { ...pos, status: "closed" as const, exitPrice, exitTime: Date.now(), pnl };
+        }
+        return pos;
+      });
+
+      if (pnlToAdd !== 0) {
+        setAccount((acc) => ({ ...acc, balance: acc.balance + pnlToAdd }));
+      }
+      return updated;
+    });
+  }, [visibleIndex, allData]);
+
+  const stepForward = () => {
+    if (visibleIndex < allData.length - 1) {
+      setVisibleIndex((prev) => prev + 1);
+    }
+  };
+
+  const stepBackward = () => {
+    if (visibleIndex > 0) {
+      setVisibleIndex((prev) => prev - 1);
+    }
+  };
+
+  const togglePlay = () => {
+    setIsPlaying((prev) => !prev);
+  };
+
+  const goToRandom = () => {
+    if (allData.length < 300) return;
+    const randomIdx = Math.floor(Math.random() * (allData.length - 300)) + 200;
+    setVisibleIndex(randomIdx);
+    setIsPlaying(false);
+    setPositions([]);
+  };
 
   const calculatePositionSize = (entryPrice: number, sma20: number): number => {
     const riskAmount = account.balance * account.riskPercentage;
@@ -88,46 +141,39 @@ export default function TradingChartPage() {
   };
 
   const openPosition = (side: PositionSide) => {
-    const executePosition = () => {
-      // Close any existing positions first
-      flattenAllPositions();
+    const currentCandle = allData[visibleIndex];
+    if (!currentCandle?.sma20) {
+      alert("SMA20 not available yet.");
+      return;
+    }
 
-      const currentCandle = data[currentIndex];
-      if (!currentCandle.sma20) {
-        alert("SMA20 not available yet. Need at least 20 candles.");
-        return;
-      }
+    // Close existing positions first
+    flattenAllPositions();
 
-      const entryPrice = currentPrice;
-      const sma20 = currentCandle.sma20;
+    const entryPrice = currentPrice;
+    const size = calculatePositionSize(entryPrice, currentCandle.sma20);
 
-      const size = calculatePositionSize(entryPrice, sma20);
+    if (size === 0) {
+      alert("Position size is too small.");
+      return;
+    }
 
-      if (size === 0) {
-        alert("Position size is too small. Price is too close to SMA20.");
-        return;
-      }
-
-      const now = Date.now();
-      const newPosition: Position = {
-        id: now.toString(),
-        side,
-        entryPrice,
-        size,
-        entryTime: now,
-        stopLoss: sma20, // Using SMA20 as initial reference
-        status: "open",
-      };
-
-      setPositions([newPosition]);
+    const newPosition: Position = {
+      id: Date.now().toString(),
+      side,
+      entryPrice,
+      size,
+      entryTime: Date.now(),
+      stopLoss: currentCandle.sma20,
+      status: "open",
     };
 
-    executePosition();
+    setPositions([newPosition]);
   };
 
   const flattenAllPositions = () => {
     setPositions((prev) => {
-      const closedPositions = prev.map((pos) => {
+      const updated = prev.map((pos) => {
         if (pos.status === "open") {
           const exitPrice = currentPrice;
           const pnl =
@@ -137,91 +183,13 @@ export default function TradingChartPage() {
 
           setAccount((acc) => ({ ...acc, balance: acc.balance + pnl }));
 
-          return {
-            ...pos,
-            status: "closed" as const,
-            exitPrice,
-            exitTime: Date.now(),
-            pnl,
-          };
+          return { ...pos, status: "closed" as const, exitPrice, exitTime: Date.now(), pnl };
         }
         return pos;
       });
-
-      return closedPositions;
+      return updated;
     });
   };
-
-  const startRandom = () => {
-    if (data.length < 200) return;
-
-    // Pick a random index. Ensure we have at least 200 candles history or just some padding at start
-    const minStart = Math.min(200, data.length - 1);
-    const maxStart = Math.max(minStart, data.length - 100); // Ensure we have room to play
-
-    const randomIdx = Math.floor(Math.random() * (maxStart - minStart + 1)) + minStart;
-
-    setCurrentIndex(randomIdx);
-    if (data[randomIdx]) {
-      setCurrentPrice(data[randomIdx].close);
-    }
-
-    // Reset simulation state
-    setIsPaused(true);
-    setPositions([]);
-  };
-
-  const stepForward = () => {
-    const nextIndex = currentIndex + 1;
-    if (nextIndex >= data.length) {
-      setIsPaused(true);
-      return;
-    }
-
-    const currentCandle = data[nextIndex];
-    let pnlToAdd = 0;
-
-    const nextPositions = positions.map((pos) => {
-      if (pos.status === "open" && currentCandle.sma20) {
-        const shouldClose =
-          (pos.side === PositionSide.LONG && currentCandle.close < currentCandle.sma20) ||
-          (pos.side === PositionSide.SHORT && currentCandle.close > currentCandle.sma20);
-
-        if (shouldClose) {
-          const exitPrice = currentCandle.close;
-          const pnl =
-            pos.side === PositionSide.LONG
-              ? (exitPrice - pos.entryPrice) * pos.size
-              : (pos.entryPrice - exitPrice) * pos.size;
-
-          pnlToAdd += pnl;
-
-          return {
-            ...pos,
-            status: "closed" as const,
-            exitPrice,
-            exitTime: Date.now(),
-            pnl,
-          };
-        }
-      }
-      return pos;
-    });
-
-    // Update all state synchronously
-    setCurrentIndex(nextIndex);
-    setCurrentPrice(currentCandle.close);
-    setPositions(nextPositions);
-    if (pnlToAdd !== 0) {
-      setAccount((acc) => ({ ...acc, balance: acc.balance + pnlToAdd }));
-    }
-  };
-
-  useEffect(() => {
-    if (isPaused) return;
-    const timeout = setTimeout(stepForward, 2000);
-    return () => clearTimeout(timeout);
-  });
 
   const openPositions = positions.filter((p) => p.status === "open");
   const totalPnL = openPositions.reduce((sum, pos) => {
@@ -231,24 +199,19 @@ export default function TradingChartPage() {
         : (pos.entryPrice - currentPrice) * pos.size;
     return sum + unrealizedPnL;
   }, 0);
-
   const accountValue = account.balance + totalPnL;
-
-  // Show only data up to current index for replay functionality
-  const visibleData = data.slice(Math.max(0, currentIndex - 200), currentIndex + 1);
 
   if (isLoading) {
     return (
       <div className='flex flex-col flex-1'>
         <Navigation />
-        <main className='px-4 py-6 flex-1 metronome-static'>
+        <main className='px-4 py-6 flex-1'>
           <div className='w-full lg:max-w-7xl lg:mx-auto'>
             <div className='rounded-lg border border-border bg-white p-4 shadow-sm'>
               <div className='flex items-center justify-center h-96'>
                 <div className='text-center'>
                   <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-600 mx-auto mb-4'></div>
-                  <p className='text-gray-600'>Loading SPY historical data from Yahoo Finance...</p>
-                  <p className='text-sm text-gray-400 mt-2'>Fetching 60 days of 5-minute candles</p>
+                  <p className='text-gray-600'>Loading SPY data...</p>
                 </div>
               </div>
             </div>
@@ -262,7 +225,7 @@ export default function TradingChartPage() {
     return (
       <div className='flex flex-col flex-1'>
         <Navigation />
-        <main className='px-4 py-6 flex-1 metronome-static'>
+        <main className='px-4 py-6 flex-1'>
           <div className='w-full lg:max-w-7xl lg:mx-auto'>
             <div className='rounded-lg border border-border bg-white p-4 shadow-sm'>
               <div className='flex items-center justify-center h-96'>
@@ -288,81 +251,102 @@ export default function TradingChartPage() {
   return (
     <div className='flex flex-col flex-1'>
       <Navigation />
-      <main className='px-4 py-6 flex-1 metronome-static'>
+      <main className='px-4 py-6 flex-1'>
         <div className='w-full lg:max-w-7xl lg:mx-auto'>
           <div className='rounded-lg border border-border bg-white p-4 shadow-sm'>
             <div className='flex justify-between items-center mb-4'>
               <div>
                 <h1 className='text-2xl font-bold'>SPY Trading - 5min Chart</h1>
                 <p className='text-xs text-gray-500 mt-1'>
-                  Showing {currentIndex + 1} / {data.length} candles |
-                  {data.length > 0 &&
-                    ` ${new Date(data[0].time).toLocaleDateString()} - ${new Date(data[data.length - 1].time).toLocaleDateString()}`}
+                  Candle {visibleIndex + 1} / {allData.length}
+                  {allData.length > 0 && (
+                    <>
+                      {" | "}
+                      {new Date(allData[visibleIndex]?.time).toLocaleString()}
+                    </>
+                  )}
                 </p>
               </div>
               <div className='text-sm text-gray-600'>Risk: {(account.riskPercentage * 100).toFixed(2)}% per trade</div>
             </div>
 
             {/* Chart */}
-            <div className='bg-slate-50 rounded-lg p-4 mb-4'>
+            <div className='bg-slate-900 rounded-lg p-2 mb-4'>
               <div className='h-[500px]'>
                 <Chart data={visibleData} positions={positions} currentPrice={currentPrice} />
               </div>
             </div>
 
-            {/* Trading Controls */}
+            {/* Playback Controls */}
             <div className='bg-slate-50 rounded-lg p-4 mb-4 border border-border'>
-              <div className='flex flex-wrap gap-4 items-center'>
-                <div className='flex gap-2'>
-                  <button
-                    onClick={() => setIsPaused(!isPaused)}
-                    className={`px-6 py-2 font-semibold rounded-md transition-colors ${
-                      isPaused
-                        ? "bg-blue-600 hover:bg-blue-700 text-white"
-                        : "bg-orange-600 hover:bg-orange-700 text-white"
-                    }`}
-                  >
-                    {isPaused ? "▶ PLAY" : "⏸ PAUSE"}
-                  </button>
-                  <button
-                    onClick={stepForward}
-                    disabled={!isPaused}
-                    className='px-4 py-2 bg-purple-600 text-white font-semibold rounded-md hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors'
-                  >
-                    ⏭ STEP
-                  </button>
-                  <button
-                    onClick={startRandom}
-                    disabled={data.length === 0}
-                    className='px-4 py-2 bg-indigo-600 text-white font-semibold rounded-md hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors'
-                  >
-                    🎲 RANDOM
-                  </button>
+              <div className='flex flex-wrap gap-3 items-center'>
+                <button
+                  onClick={stepBackward}
+                  disabled={visibleIndex <= 0}
+                  className='px-4 py-2 bg-gray-600 text-white font-semibold rounded-md hover:bg-gray-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors'
+                >
+                  ⏮ BACK
+                </button>
+                <button
+                  onClick={togglePlay}
+                  className={`px-6 py-2 font-semibold rounded-md transition-colors ${
+                    isPlaying
+                      ? "bg-orange-600 hover:bg-orange-700 text-white"
+                      : "bg-blue-600 hover:bg-blue-700 text-white"
+                  }`}
+                >
+                  {isPlaying ? "⏸ PAUSE" : "▶ PLAY"}
+                </button>
+                <button
+                  onClick={stepForward}
+                  disabled={visibleIndex >= allData.length - 1}
+                  className='px-4 py-2 bg-purple-600 text-white font-semibold rounded-md hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors'
+                >
+                  ⏭ STEP
+                </button>
+                <button
+                  onClick={goToRandom}
+                  disabled={allData.length < 300}
+                  className='px-4 py-2 bg-indigo-600 text-white font-semibold rounded-md hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors'
+                >
+                  🎲 RANDOM
+                </button>
 
-                  <button
-                    onClick={() => openPosition(PositionSide.LONG)}
-                    disabled={openPositions.length > 0}
-                    className='px-6 py-2 bg-green-600 text-white font-semibold rounded-md hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors'
-                  >
-                    GO LONG
-                  </button>
+                <div className='border-l border-gray-300 h-8 mx-2'></div>
 
-                  <button
-                    onClick={() => openPosition(PositionSide.SHORT)}
-                    disabled={openPositions.length > 0}
-                    className='px-6 py-2 bg-red-600 text-white font-semibold rounded-md hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors'
-                  >
-                    GO SHORT
-                  </button>
+                <button
+                  onClick={() => openPosition(PositionSide.LONG)}
+                  disabled={openPositions.length > 0}
+                  className='px-6 py-2 bg-green-600 text-white font-semibold rounded-md hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors'
+                >
+                  GO LONG
+                </button>
+                <button
+                  onClick={() => openPosition(PositionSide.SHORT)}
+                  disabled={openPositions.length > 0}
+                  className='px-6 py-2 bg-red-600 text-white font-semibold rounded-md hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors'
+                >
+                  GO SHORT
+                </button>
+                <button
+                  onClick={flattenAllPositions}
+                  disabled={openPositions.length === 0}
+                  className='px-6 py-2 bg-orange-600 text-white font-semibold rounded-md hover:bg-orange-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors'
+                >
+                  FLATTEN
+                </button>
+              </div>
 
-                  <button
-                    onClick={flattenAllPositions}
-                    disabled={openPositions.length === 0}
-                    className='px-6 py-2 bg-orange-600 text-white font-semibold rounded-md hover:bg-orange-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors'
-                  >
-                    FLATTEN
-                  </button>
-                </div>
+              {/* Progress bar */}
+              <div className='mt-4'>
+                <input
+                  type='range'
+                  min={0}
+                  max={allData.length - 1}
+                  value={visibleIndex}
+                  onChange={(e) => setVisibleIndex(parseInt(e.target.value))}
+                  className='w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer'
+                />
               </div>
             </div>
 
@@ -401,7 +385,7 @@ export default function TradingChartPage() {
               <div className='mt-4 bg-slate-50 rounded-lg p-4 border border-border'>
                 <h2 className='text-lg font-semibold mb-3'>Open Position</h2>
                 {openPositions.map((pos) => {
-                  const currentSma20 = data[currentIndex]?.sma20 || pos.stopLoss || 0;
+                  const currentSma20 = allData[visibleIndex]?.sma20 || pos.stopLoss || 0;
                   return (
                     <div key={pos.id} className='grid grid-cols-5 gap-4 text-sm'>
                       <div>
