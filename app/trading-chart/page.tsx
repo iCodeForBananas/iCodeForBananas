@@ -20,7 +20,7 @@ export default function TradingChartPage() {
   const playIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Visible data slice (last 100 candles up to current index)
-  const visibleData = allData.slice(Math.max(0, visibleIndex - 99), visibleIndex + 1);
+  const visibleData = allData.slice(Math.max(0, visibleIndex - 199), visibleIndex + 1);
   const currentPrice = allData[visibleIndex]?.close || 0;
 
   // Load SPY data on mount
