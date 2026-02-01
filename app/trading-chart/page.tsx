@@ -252,7 +252,7 @@ export default function TradingChartPage() {
     <div className='flex flex-col flex-1'>
       <Navigation />
       <main className='px-4 py-6 flex-1'>
-        <div className='w-full lg:max-w-7xl lg:mx-auto'>
+        <div className='w-full lg:mx-auto'>
           <div className='rounded-lg border border-border bg-white p-4 shadow-sm'>
             <div className='flex justify-between items-center mb-4'>
               <div>
@@ -272,7 +272,7 @@ export default function TradingChartPage() {
 
             {/* Chart */}
             <div className='bg-slate-900 rounded-lg p-2 mb-4'>
-              <div className='h-[500px]'>
+              <div className='h-[900px]'>
                 <Chart data={visibleData} positions={positions} currentPrice={currentPrice} />
               </div>
             </div>
