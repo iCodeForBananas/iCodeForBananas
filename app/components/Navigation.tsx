@@ -14,13 +14,7 @@ interface PinnedProgression {
 export default function Navigation() {
   const { mounted } = useTheme();
   const pathname = usePathname();
-  const [pinnedProgression, setPinnedProgression] = useState<PinnedProgression | null>(() => {
-    if (typeof window !== "undefined") {
-      const stored = localStorage.getItem("guitar-pinnedProgression");
-      return stored ? JSON.parse(stored) : null;
-    }
-    return null;
-  });
+  const [pinnedProgression, setPinnedProgression] = useState<PinnedProgression | null>(null);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -28,6 +22,8 @@ export default function Navigation() {
         const s = localStorage.getItem("guitar-pinnedProgression");
         setPinnedProgression(s ? JSON.parse(s) : null);
       };
+
+      handleStorageChange();
 
       window.addEventListener("storage", handleStorageChange);
       const interval = setInterval(handleStorageChange, 1000);

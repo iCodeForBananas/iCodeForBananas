@@ -94,6 +94,20 @@ export default function Sidebar() {
             </Link>
           </div>
         </div>
+
+        <div>
+          <h3 className='text-sm font-semibold text-gray-600 mb-2 uppercase tracking-wider'>Trading</h3>
+          <div className='flex flex-col gap-1'>
+            <Link
+              href='/trading-chart'
+              className={`px-3 py-2 rounded hover:bg-pink-100 hover:text-gray-900 transition-colors ${
+                pathname === "/trading-chart" ? "bg-pink-100 text-gray-900 font-semibold" : "text-gray-700"
+              }`}
+            >
+              Trading Chart
+            </Link>
+          </div>
+        </div>
       </nav>
     </aside>
   );
