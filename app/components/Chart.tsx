@@ -82,7 +82,7 @@ const Chart: React.FC<ChartProps> = ({ data, positions, currentPrice, visibleInd
 
     // Calculate price range from visible data
     const allPrices = visibleData.flatMap((d) => [d.high, d.low]);
-    const smas = visibleData.flatMap((d) => [d.sma20, d.sma200]).filter((v): v is number => v !== undefined && v > 0);
+    const smas = visibleData.flatMap((d) => [d.sma20]).filter((v): v is number => v !== undefined && v > 0);
     const allValues = [...allPrices, ...smas, currentPrice].filter((v) => v > 0);
 
     const minPrice = Math.min(...allValues);
@@ -116,26 +116,8 @@ const Chart: React.FC<ChartProps> = ({ data, positions, currentPrice, visibleInd
       ctx.fillText(`$${price.toFixed(2)}`, width - padding.right + 5, y + 4);
     }
 
-    // Draw SMA200 (yellow)
-    ctx.strokeStyle = "#facc15";
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    let started = false;
-    visibleData.forEach((candle, i) => {
-      if (candle.sma200) {
-        const x = xScale(i);
-        const y = yScale(candle.sma200);
-        if (!started) {
-          ctx.moveTo(x, y);
-          started = true;
-        } else {
-          ctx.lineTo(x, y);
-        }
-      }
-    });
-    ctx.stroke();
-
     // Draw SMA20 (cyan or red if position open)
+    let started = false;
     const hasOpenPosition = positions.some((p) => p.status === "open");
     ctx.strokeStyle = hasOpenPosition ? "#ef4444" : "#22d3ee";
     ctx.lineWidth = hasOpenPosition ? 2.5 : 1.5;
