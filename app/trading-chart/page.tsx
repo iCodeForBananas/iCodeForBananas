@@ -29,8 +29,7 @@ export default function TradingChartPage() {
 
   const playIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Visible data slice (last 100 candles up to current index)
-  const visibleData = allData.slice(Math.max(0, visibleIndex - 199), visibleIndex + 1);
+  // Current price based on visible index
   const currentPrice = allData[visibleIndex]?.close || 0;
 
   // Load SPY data when timeframe changes
@@ -287,7 +286,7 @@ export default function TradingChartPage() {
             {/* Chart */}
             <div className='bg-slate-900 rounded-lg p-2 mb-4'>
               <div className='h-[900px]'>
-                <Chart data={visibleData} positions={positions} currentPrice={currentPrice} />
+                <Chart data={allData} positions={positions} currentPrice={currentPrice} visibleIndex={visibleIndex} />
               </div>
             </div>
 

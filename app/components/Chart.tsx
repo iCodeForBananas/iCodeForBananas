@@ -1,22 +1,62 @@
 "use client";
 
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useState, useCallback } from "react";
 import { PricePoint, Position, PositionSide } from "@/app/types";
 
 interface ChartProps {
   data: PricePoint[];
   positions: Position[];
   currentPrice: number;
+  visibleIndex?: number; // If provided, zoom slices from this index backwards
 }
 
-const Chart: React.FC<ChartProps> = ({ data, positions, currentPrice }) => {
+const MIN_CANDLES = 20;
+const MAX_CANDLES = 500;
+const DEFAULT_CANDLES = 200;
+
+const Chart: React.FC<ChartProps> = ({ data, positions, currentPrice, visibleIndex }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [visibleCandles, setVisibleCandles] = useState(DEFAULT_CANDLES);
+
+  const zoomIn = useCallback(() => {
+    setVisibleCandles((prev) => Math.max(MIN_CANDLES, Math.floor(prev * 0.8)));
+  }, []);
+
+  const zoomOut = useCallback(() => {
+    setVisibleCandles((prev) => Math.min(MAX_CANDLES, Math.floor(prev * 1.25)));
+  }, []);
+
+  // Handle mouse wheel zoom
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        if (e.deltaY < 0) {
+          zoomIn();
+        } else {
+          zoomOut();
+        }
+      }
+    };
+
+    container.addEventListener("wheel", handleWheel, { passive: false });
+    return () => container.removeEventListener("wheel", handleWheel);
+  }, [zoomIn, zoomOut]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     const container = containerRef.current;
     if (!canvas || !container || !data || data.length === 0) return;
+
+    // Determine the end index for visible data
+    const endIndex = visibleIndex !== undefined ? Math.min(visibleIndex + 1, data.length) : data.length;
+    // Slice data to show only visible candles (ending at endIndex)
+    const startIndex = Math.max(0, endIndex - visibleCandles);
+    const visibleData = data.slice(startIndex, endIndex);
 
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
@@ -40,9 +80,9 @@ const Chart: React.FC<ChartProps> = ({ data, positions, currentPrice }) => {
     ctx.fillStyle = "#0f172a";
     ctx.fillRect(0, 0, width, height);
 
-    // Calculate price range
-    const allPrices = data.flatMap((d) => [d.high, d.low]);
-    const smas = data.flatMap((d) => [d.sma20, d.sma200]).filter((v): v is number => v !== undefined && v > 0);
+    // Calculate price range from visible data
+    const allPrices = visibleData.flatMap((d) => [d.high, d.low]);
+    const smas = visibleData.flatMap((d) => [d.sma20, d.sma200]).filter((v): v is number => v !== undefined && v > 0);
     const allValues = [...allPrices, ...smas, currentPrice].filter((v) => v > 0);
 
     const minPrice = Math.min(...allValues);
@@ -53,7 +93,7 @@ const Chart: React.FC<ChartProps> = ({ data, positions, currentPrice }) => {
     const domainMax = maxPrice + pricePadding;
 
     // Scale functions
-    const xScale = (index: number) => padding.left + (index / (data.length - 1)) * chartWidth;
+    const xScale = (index: number) => padding.left + (index / (visibleData.length - 1)) * chartWidth;
     const yScale = (price: number) =>
       padding.top + chartHeight - ((price - domainMin) / (domainMax - domainMin)) * chartHeight;
 
@@ -81,7 +121,7 @@ const Chart: React.FC<ChartProps> = ({ data, positions, currentPrice }) => {
     ctx.lineWidth = 1.5;
     ctx.beginPath();
     let started = false;
-    data.forEach((candle, i) => {
+    visibleData.forEach((candle, i) => {
       if (candle.sma200) {
         const x = xScale(i);
         const y = yScale(candle.sma200);
@@ -101,7 +141,7 @@ const Chart: React.FC<ChartProps> = ({ data, positions, currentPrice }) => {
     ctx.lineWidth = hasOpenPosition ? 2.5 : 1.5;
     ctx.beginPath();
     started = false;
-    data.forEach((candle, i) => {
+    visibleData.forEach((candle, i) => {
       if (candle.sma20) {
         const x = xScale(i);
         const y = yScale(candle.sma20);
@@ -116,8 +156,8 @@ const Chart: React.FC<ChartProps> = ({ data, positions, currentPrice }) => {
     ctx.stroke();
 
     // Draw candlesticks
-    const candleWidth = Math.max(2, (chartWidth / data.length) * 0.7);
-    data.forEach((candle, i) => {
+    const candleWidth = Math.max(2, (chartWidth / visibleData.length) * 0.7);
+    visibleData.forEach((candle, i) => {
       const x = xScale(i);
       const isGreen = candle.close >= candle.open;
       const color = isGreen ? "#10b981" : "#ef4444";
@@ -189,12 +229,12 @@ const Chart: React.FC<ChartProps> = ({ data, positions, currentPrice }) => {
     ctx.textAlign = "center";
     const timeLabels = 6;
     for (let i = 0; i <= timeLabels; i++) {
-      const index = Math.floor((i / timeLabels) * (data.length - 1));
+      const index = Math.floor((i / timeLabels) * (visibleData.length - 1));
       const x = xScale(index);
-      const time = new Date(data[index].time);
+      const time = new Date(visibleData[index].time);
       ctx.fillText(time.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }), x, height - 10);
     }
-  }, [data, positions, currentPrice]);
+  }, [data, positions, currentPrice, visibleCandles, visibleIndex]);
 
   if (!data || data.length === 0) {
     return (
@@ -205,8 +245,29 @@ const Chart: React.FC<ChartProps> = ({ data, positions, currentPrice }) => {
   }
 
   return (
-    <div ref={containerRef} className='w-full h-full'>
+    <div ref={containerRef} className='w-full h-full relative'>
       <canvas ref={canvasRef} className='w-full h-full' />
+      <div className='absolute top-2 left-2 flex items-center gap-2 bg-slate-800/80 rounded-lg px-2 py-1 z-10 pointer-events-auto'>
+        <button
+          type='button'
+          onClick={zoomIn}
+          className='w-7 h-7 flex items-center justify-center text-slate-300 hover:text-white hover:bg-slate-700 rounded transition-colors text-lg font-bold'
+          title='Zoom In (fewer candles)'
+        >
+          +
+        </button>
+        <span className='text-slate-400 text-xs font-mono min-w-[60px] text-center'>
+          {Math.min(visibleCandles, data.length)} bars
+        </span>
+        <button
+          type='button'
+          onClick={zoomOut}
+          className='w-7 h-7 flex items-center justify-center text-slate-300 hover:text-white hover:bg-slate-700 rounded transition-colors text-lg font-bold'
+          title='Zoom Out (more candles)'
+        >
+          −
+        </button>
+      </div>
     </div>
   );
 };
