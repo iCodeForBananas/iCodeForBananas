@@ -25,12 +25,20 @@ async function downloadData() {
     const endDate = new Date();
 
     // Determine start date based on interval
-    // Intraday data is typically limited to ~60 days by Yahoo Finance
-    const intradayIntervals = ["1m", "2m", "5m", "15m", "30m", "60m", "90m", "1h"];
+    // Yahoo Finance limits vary by interval type
+    const veryShortIntervals = ["1m"]; // 8 days max
+    const shortIntradayIntervals = ["2m", "5m", "15m", "30m"]; // 59 days max
+    const longIntradayIntervals = ["60m", "90m", "1h"]; // 730 days max
 
-    if (intradayIntervals.includes(interval)) {
-      console.log("Intraday interval detected. Limiting fetch to last 59 days (Yahoo Finance limit).");
+    if (veryShortIntervals.includes(interval)) {
+      console.log("1m interval detected. Limiting fetch to last 7 days (Yahoo Finance limit).");
+      startDate.setDate(startDate.getDate() - 7);
+    } else if (shortIntradayIntervals.includes(interval)) {
+      console.log("Short intraday interval detected. Limiting fetch to last 59 days (Yahoo Finance limit).");
       startDate.setDate(startDate.getDate() - 59);
+    } else if (longIntradayIntervals.includes(interval)) {
+      console.log("Hourly interval detected. Limiting fetch to last 730 days (Yahoo Finance limit).");
+      startDate.setDate(startDate.getDate() - 730);
     } else {
       // For daily or longer, fetch 10 years
       console.log("Daily/Weekly/Monthly interval detected. Fetching last 10 years.");

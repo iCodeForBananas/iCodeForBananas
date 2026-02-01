@@ -1,12 +1,23 @@
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import fs from "fs";
 import path from "path";
 
 // Disable caching for API routes that fetch dynamic data
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+// Supported timeframes
+const VALID_TIMEFRAMES = ["1m", "5m", "15m", "30m", "1h", "1d"];
+
+export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url);
+    const timeframe = searchParams.get("timeframe") || "5m";
+
+    // Validate timeframe
+    if (!VALID_TIMEFRAMES.includes(timeframe)) {
+      throw new Error(`Invalid timeframe. Supported: ${VALID_TIMEFRAMES.join(", ")}`);
+    }
+
     const dataDir = path.join(process.cwd(), "data");
 
     // Check if data directory exists
@@ -14,15 +25,15 @@ export async function GET() {
       throw new Error('Data directory not found. Please run "npm run download-data SPY 5m" first.');
     }
 
-    // Find the latest SPY-5m-*.csv file
+    // Find the latest SPY-{timeframe}-*.csv file
     const files = fs.readdirSync(dataDir);
     const spyFile = files
-      .filter((file) => file.startsWith("SPY-5m-") && file.endsWith(".csv"))
+      .filter((file) => file.startsWith(`SPY-${timeframe}-`) && file.endsWith(".csv"))
       .sort()
       .reverse()[0]; // Get the last one alphabetically (which usually corresponds to latest date)
 
     if (!spyFile) {
-      throw new Error('No SPY 5m data found. Please run "npm run download-data SPY 5m" first.');
+      throw new Error(`No SPY ${timeframe} data found. Please run "npm run download-data SPY ${timeframe}" first.`);
     }
 
     const filePath = path.join(dataDir, spyFile);

@@ -8,6 +8,15 @@ import { PricePoint, Position, PositionSide, Account } from "@/app/types";
 const RISK_PERCENTAGE = 0.005;
 const INITIAL_BALANCE = 100000;
 
+const TIMEFRAMES = [
+  { value: "1m", label: "1 Minute" },
+  { value: "5m", label: "5 Minutes" },
+  { value: "15m", label: "15 Minutes" },
+  { value: "30m", label: "30 Minutes" },
+  { value: "1h", label: "1 Hour" },
+  { value: "1d", label: "Daily" },
+];
+
 export default function TradingChartPage() {
   const [allData, setAllData] = useState<PricePoint[]>([]);
   const [visibleIndex, setVisibleIndex] = useState<number>(0);
@@ -16,6 +25,7 @@ export default function TradingChartPage() {
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [timeframe, setTimeframe] = useState<string>("5m");
 
   const playIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -23,21 +33,23 @@ export default function TradingChartPage() {
   const visibleData = allData.slice(Math.max(0, visibleIndex - 199), visibleIndex + 1);
   const currentPrice = allData[visibleIndex]?.close || 0;
 
-  // Load SPY data on mount
+  // Load SPY data when timeframe changes
   useEffect(() => {
     async function loadData() {
       try {
         setIsLoading(true);
         setError(null);
+        setIsPlaying(false);
+        setPositions([]);
 
-        const response = await fetch("/api/spy-data");
+        const response = await fetch(`/api/spy-data?timeframe=${timeframe}`);
         const result = await response.json();
 
         if (!result.success || !result.data || result.data.length === 0) {
           throw new Error(result.error || "No data received from API");
         }
 
-        console.log("Loaded", result.data.length, "candles");
+        console.log("Loaded", result.data.length, "candles for", timeframe);
         setAllData(result.data);
         // Start at candle 200 so we have SMA data
         setVisibleIndex(Math.min(200, result.data.length - 1));
@@ -50,7 +62,7 @@ export default function TradingChartPage() {
     }
 
     loadData();
-  }, []);
+  }, [timeframe]);
 
   // Handle play/pause
   useEffect(() => {
@@ -256,7 +268,9 @@ export default function TradingChartPage() {
           <div className='rounded-lg border border-border bg-white p-4 shadow-sm'>
             <div className='flex justify-between items-center mb-4'>
               <div>
-                <h1 className='text-2xl font-bold'>SPY Trading - 5min Chart</h1>
+                <h1 className='text-2xl font-bold'>
+                  SPY Trading - {TIMEFRAMES.find((t) => t.value === timeframe)?.label || timeframe} Chart
+                </h1>
                 <p className='text-xs text-gray-500 mt-1'>
                   Candle {visibleIndex + 1} / {allData.length}
                   {allData.length > 0 && (
@@ -347,6 +361,30 @@ export default function TradingChartPage() {
                   onChange={(e) => setVisibleIndex(parseInt(e.target.value))}
                   className='w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer'
                 />
+              </div>
+            </div>
+
+            {/* Data Source Selector */}
+            <div className='bg-slate-50 rounded-lg p-4 mb-4 border border-border'>
+              <div className='flex items-center gap-4'>
+                <label className='text-sm font-semibold text-gray-700'>Data Source:</label>
+                <div className='flex gap-2'>
+                  {TIMEFRAMES.map((tf) => (
+                    <button
+                      key={tf.value}
+                      onClick={() => setTimeframe(tf.value)}
+                      disabled={isLoading}
+                      className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                        timeframe === tf.value
+                          ? "bg-cyan-600 text-white"
+                          : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
+                      } disabled:opacity-50 disabled:cursor-not-allowed`}
+                    >
+                      {tf.label}
+                    </button>
+                  ))}
+                </div>
+                {isLoading && <span className='text-sm text-gray-500 animate-pulse'>Loading...</span>}
               </div>
             </div>
 
