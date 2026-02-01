@@ -187,93 +187,89 @@ const Chart: React.FC<ChartProps> = ({ data, positions, currentPrice }) => {
   return (
     <div className='w-full h-full'>
       <ResponsiveContainer width='100%' height='100%'>
-        {({ height }) => (
-          <ComposedChart data={data} margin={{ top: 10, right: 10, left: 10, bottom: 10 }}>
-            <CartesianGrid strokeDasharray='3 3' stroke='#1e293b' vertical={false} opacity={0.5} />
-            <XAxis
-              dataKey='time'
-              tickFormatter={(time) => new Date(time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-              tick={{ fill: "#64748b", fontSize: 9 }}
-              interval='preserveStartEnd'
-            />
-            <YAxis
-              domain={[domainMin, domainMax]}
-              orientation='right'
-              tick={{ fill: "#64748b", fontSize: 10, fontWeight: 600 }}
-              tickFormatter={(val) => val.toFixed(2)}
-              width={60}
-              axisLine={false}
-              tickLine={false}
-            />
-            <Tooltip content={<CustomTooltip />} isAnimationActive={false} />
+        <ComposedChart data={data} margin={{ top: 10, right: 10, left: 10, bottom: 10 }}>
+          <CartesianGrid strokeDasharray='3 3' stroke='#1e293b' vertical={false} opacity={0.5} />
+          <XAxis
+            dataKey='time'
+            tickFormatter={(time) => new Date(time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+            tick={{ fill: "#64748b", fontSize: 9 }}
+            interval='preserveStartEnd'
+          />
+          <YAxis
+            domain={[domainMin, domainMax]}
+            orientation='right'
+            tick={{ fill: "#64748b", fontSize: 10, fontWeight: 600 }}
+            tickFormatter={(val) => val.toFixed(2)}
+            width={60}
+            axisLine={false}
+            tickLine={false}
+          />
+          <Tooltip content={<CustomTooltip />} isAnimationActive={false} />
 
-            {/* Moving Averages */}
-            {/* SMA20 - highlighted in red when position is open, cyan otherwise */}
-            <Line
-              type='monotone'
-              dataKey='sma20'
-              stroke={positions.filter((pos) => pos.status === "open").length > 0 ? "#ff0000" : "#22d3ee"}
-              strokeWidth={positions.filter((pos) => pos.status === "open").length > 0 ? 2.5 : 1.5}
-              dot={false}
-              isAnimationActive={false}
-              strokeOpacity={1}
-            />
-            <Line
-              type='monotone'
-              dataKey='sma200'
-              stroke='#facc15'
-              strokeWidth={1.5}
-              dot={false}
-              isAnimationActive={false}
-              strokeOpacity={0.8}
-            />
+          {/* Moving Averages */}
+          {/* SMA20 - highlighted in red when position is open, cyan otherwise */}
+          <Line
+            type='monotone'
+            dataKey='sma20'
+            stroke={positions.filter((pos) => pos.status === "open").length > 0 ? "#ff0000" : "#22d3ee"}
+            strokeWidth={positions.filter((pos) => pos.status === "open").length > 0 ? 2.5 : 1.5}
+            dot={false}
+            isAnimationActive={false}
+            strokeOpacity={1}
+          />
+          <Line
+            type='monotone'
+            dataKey='sma200'
+            stroke='#facc15'
+            strokeWidth={1.5}
+            dot={false}
+            isAnimationActive={false}
+            strokeOpacity={0.8}
+          />
 
-            {/* Candlesticks using custom shape */}
-            <Bar
-              dataKey='high'
-              shape={(props: CandlestickRenderProps) =>
-                renderCandlestick({ ...props, data, chartHeight: height, domainMin, domainMax })
-              }
-              isAnimationActive={false}
-              fill='#transparent'
-            />
+          {/* Candlesticks using custom shape */}
+          <Bar
+            dataKey='high'
+            shape={(props: CandlestickRenderProps) => renderCandlestick({ ...props, data, domainMin, domainMax })}
+            isAnimationActive={false}
+            fill='#transparent'
+          />
 
-            {/* Current Market Price Tracker */}
-            <ReferenceLine
-              y={currentPrice}
-              stroke='#94a3b8'
-              strokeDasharray='3 3'
-              strokeWidth={1}
-              label={{
-                position: "right",
-                value: `${currentPrice.toFixed(2)}`,
-                fill: "#f8fafc",
-                fontSize: 10,
-                fontWeight: "bold",
-                className: "font-mono bg-slate-900",
-              }}
-            />
+          {/* Current Market Price Tracker */}
+          <ReferenceLine
+            y={currentPrice}
+            stroke='#94a3b8'
+            strokeDasharray='3 3'
+            strokeWidth={1}
+            label={{
+              position: "right",
+              value: `${currentPrice.toFixed(2)}`,
+              fill: "#f8fafc",
+              fontSize: 10,
+              fontWeight: "bold",
+              className: "font-mono bg-slate-900",
+            }}
+          />
 
-            {/* Position Entry Markers */}
-            {positions
-              .filter((pos) => pos.status === "open")
-              .map((pos) => (
-                <ReferenceLine
-                  key={pos.id}
-                  y={pos.entryPrice}
-                  stroke={pos.side === PositionSide.LONG ? "#10b981" : "#f43f5e"}
-                  strokeWidth={2}
-                  strokeOpacity={0.6}
-                  label={{
-                    position: "left",
-                    value: `${pos.side} @${pos.entryPrice.toFixed(2)}`,
-                    fill: pos.side === PositionSide.LONG ? "#10b981" : "#f43f5e",
-                    fontSize: 9,
-                  }}
-                />
-              ))}
-          </ComposedChart>
-        )}
+          {/* Position Entry Markers */}
+          {positions
+            .filter((pos) => pos.status === "open")
+            .map((pos) => (
+              <ReferenceLine
+                key={pos.id}
+                y={pos.entryPrice}
+                stroke={pos.side === PositionSide.LONG ? "#10b981" : "#f43f5e"}
+                strokeWidth={2}
+                strokeOpacity={0.6}
+                label={{
+                  position: "left",
+                  value: `${pos.side} @${pos.entryPrice.toFixed(2)}`,
+                  fill: pos.side === PositionSide.LONG ? "#10b981" : "#f43f5e",
+                  fontSize: 9,
+                }}
+              />
+            ))}
+        </ComposedChart>
       </ResponsiveContainer>
     </div>
   );

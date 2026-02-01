@@ -303,9 +303,16 @@ export default function TradingChartPage() {
               <div className='text-sm text-gray-600'>Risk: {(account.riskPercentage * 100).toFixed(2)}% per trade</div>
             </div>
 
+            {/* Chart */}
+            <div className='bg-slate-50 rounded-lg p-4 mb-4'>
+              <div className='h-[500px]'>
+                <Chart data={visibleData} positions={positions} currentPrice={currentPrice} />
+              </div>
+            </div>
+
             {/* Trading Controls */}
             <div className='bg-slate-50 rounded-lg p-4 mb-4 border border-border'>
-              <div className='grid grid-cols-5 gap-4 items-center'>
+              <div className='flex flex-wrap gap-4 items-center'>
                 <div className='flex gap-2'>
                   <button
                     onClick={() => setIsPaused(!isPaused)}
@@ -331,38 +338,31 @@ export default function TradingChartPage() {
                   >
                     🎲 RANDOM
                   </button>
+
+                  <button
+                    onClick={() => openPosition(PositionSide.LONG)}
+                    disabled={openPositions.length > 0}
+                    className='px-6 py-2 bg-green-600 text-white font-semibold rounded-md hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors'
+                  >
+                    GO LONG
+                  </button>
+
+                  <button
+                    onClick={() => openPosition(PositionSide.SHORT)}
+                    disabled={openPositions.length > 0}
+                    className='px-6 py-2 bg-red-600 text-white font-semibold rounded-md hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors'
+                  >
+                    GO SHORT
+                  </button>
+
+                  <button
+                    onClick={flattenAllPositions}
+                    disabled={openPositions.length === 0}
+                    className='px-6 py-2 bg-orange-600 text-white font-semibold rounded-md hover:bg-orange-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors'
+                  >
+                    FLATTEN
+                  </button>
                 </div>
-
-                <button
-                  onClick={() => openPosition(PositionSide.LONG)}
-                  disabled={openPositions.length > 0}
-                  className='px-6 py-2 bg-green-600 text-white font-semibold rounded-md hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors'
-                >
-                  GO LONG
-                </button>
-
-                <button
-                  onClick={() => openPosition(PositionSide.SHORT)}
-                  disabled={openPositions.length > 0}
-                  className='px-6 py-2 bg-red-600 text-white font-semibold rounded-md hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors'
-                >
-                  GO SHORT
-                </button>
-
-                <button
-                  onClick={flattenAllPositions}
-                  disabled={openPositions.length === 0}
-                  className='px-6 py-2 bg-orange-600 text-white font-semibold rounded-md hover:bg-orange-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors'
-                >
-                  FLATTEN
-                </button>
-              </div>
-            </div>
-
-            {/* Chart */}
-            <div className='bg-slate-50 rounded-lg p-4 mb-4'>
-              <div className='h-[500px]'>
-                <Chart data={visibleData} positions={positions} currentPrice={currentPrice} />
               </div>
             </div>
 

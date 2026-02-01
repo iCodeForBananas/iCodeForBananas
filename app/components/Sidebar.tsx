@@ -96,7 +96,7 @@ export default function Sidebar() {
         </div>
 
         <div>
-          <h3 className='text-sm font-semibold text-gray-600 mb-2 uppercase tracking-wider'>Trading</h3>
+          <h3 className='text-sm font-semibold text-gray-600 mb-2 uppercase tracking-wider'>Trading simulator</h3>
           <div className='flex flex-col gap-1'>
             <Link
               href='/trading-chart'
@@ -104,7 +104,7 @@ export default function Sidebar() {
                 pathname === "/trading-chart" ? "bg-pink-100 text-gray-900 font-semibold" : "text-gray-700"
               }`}
             >
-              Trading Chart
+              Chart
             </Link>
           </div>
         </div>
