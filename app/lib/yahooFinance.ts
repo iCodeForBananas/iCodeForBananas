@@ -21,7 +21,7 @@ export interface YahooQuote {
 export async function fetchSPYData(
   symbol: string = "SPY",
   days: number = 60, // Maximum ~60 days for 5-minute data
-  interval: "1m" | "5m" | "15m" | "1h" | "1d" = "5m"
+  interval: "1m" | "5m" | "15m" | "1h" | "1d" = "5m",
 ): Promise<PricePoint[]> {
   try {
     const endDate = new Date();
@@ -74,20 +74,14 @@ export async function fetchSPYData(
 /**
  * Calculate Simple Moving Averages for the data
  */
-function calculateSMAs(data: PricePoint[]): PricePoint[] {
+function calculateSMAs(data: PricePoint[], period: number = 20): PricePoint[] {
   return data.map((point, index) => {
     const result = { ...point };
 
-    // Calculate SMA20
-    if (index >= 19) {
-      const last20 = data.slice(index - 19, index + 1);
-      result.sma20 = last20.reduce((sum, p) => sum + p.close, 0) / 20;
-    }
-
-    // Calculate SMA200
-    if (index >= 199) {
-      const last200 = data.slice(index - 199, index + 1);
-      result.sma200 = last200.reduce((sum, p) => sum + p.close, 0) / 200;
+    // Calculate Trailstop SMA
+    if (index >= period - 1) {
+      const lastN = data.slice(index - period + 1, index + 1);
+      result.trailstopSma = lastN.reduce((sum, p) => sum + p.close, 0) / period;
     }
 
     return result;

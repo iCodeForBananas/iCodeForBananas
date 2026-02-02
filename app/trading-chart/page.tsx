@@ -26,6 +26,7 @@ export default function TradingChartPage() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [timeframe, setTimeframe] = useState<string>("5m");
+  const [trailstopSmaPeriod, setTrailstopSmaPeriod] = useState<number>(20);
 
   const playIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -41,7 +42,7 @@ export default function TradingChartPage() {
         setIsPlaying(false);
         setPositions([]);
 
-        const response = await fetch(`/api/spy-data?timeframe=${timeframe}`);
+        const response = await fetch(`/api/spy-data?timeframe=${timeframe}&smaPeriod=${trailstopSmaPeriod}`);
         const result = await response.json();
 
         if (!result.success || !result.data || result.data.length === 0) {
@@ -61,7 +62,7 @@ export default function TradingChartPage() {
     }
 
     loadData();
-  }, [timeframe]);
+  }, [timeframe, trailstopSmaPeriod]);
 
   // Handle play/pause
   useEffect(() => {
@@ -90,7 +91,7 @@ export default function TradingChartPage() {
     if (allData.length === 0 || visibleIndex >= allData.length) return;
 
     const currentCandle = allData[visibleIndex];
-    if (!currentCandle.sma20) return;
+    if (!currentCandle.trailstopSma) return;
 
     setPositions((prev) => {
       let pnlToAdd = 0;
@@ -98,8 +99,8 @@ export default function TradingChartPage() {
         if (pos.status !== "open") return pos;
 
         const shouldClose =
-          (pos.side === PositionSide.LONG && currentCandle.close < currentCandle.sma20!) ||
-          (pos.side === PositionSide.SHORT && currentCandle.close > currentCandle.sma20!);
+          (pos.side === PositionSide.LONG && currentCandle.close < currentCandle.trailstopSma!) ||
+          (pos.side === PositionSide.SHORT && currentCandle.close > currentCandle.trailstopSma!);
 
         if (shouldClose) {
           const exitPrice = currentCandle.close;
@@ -144,17 +145,17 @@ export default function TradingChartPage() {
     setPositions([]);
   };
 
-  const calculatePositionSize = (entryPrice: number, sma20: number): number => {
+  const calculatePositionSize = (entryPrice: number, trailstopSma: number): number => {
     const riskAmount = account.balance * account.riskPercentage;
-    const riskPerShare = Math.abs(entryPrice - sma20);
+    const riskPerShare = Math.abs(entryPrice - trailstopSma);
     if (riskPerShare === 0) return 0;
     return Math.floor(riskAmount / riskPerShare);
   };
 
   const openPosition = (side: PositionSide) => {
     const currentCandle = allData[visibleIndex];
-    if (!currentCandle?.sma20) {
-      alert("SMA20 not available yet.");
+    if (!currentCandle?.trailstopSma) {
+      alert("Trailstop SMA not available yet.");
       return;
     }
 
@@ -162,7 +163,7 @@ export default function TradingChartPage() {
     flattenAllPositions();
 
     const entryPrice = currentPrice;
-    const size = calculatePositionSize(entryPrice, currentCandle.sma20);
+    const size = calculatePositionSize(entryPrice, currentCandle.trailstopSma);
 
     if (size === 0) {
       alert("Position size is too small.");
@@ -175,7 +176,7 @@ export default function TradingChartPage() {
       entryPrice,
       size,
       entryTime: Date.now(),
-      stopLoss: currentCandle.sma20,
+      stopLoss: currentCandle.trailstopSma,
       status: "open",
     };
 
@@ -211,6 +212,32 @@ export default function TradingChartPage() {
     return sum + unrealizedPnL;
   }, 0);
   const accountValue = account.balance + totalPnL;
+
+  // Handle Enter key for quick trade entry/exit
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Enter" && !isLoading) {
+        e.preventDefault();
+        const currentCandle = allData[visibleIndex];
+        if (!currentCandle?.trailstopSma) return;
+
+        if (openPositions.length > 0) {
+          // Flatten existing position
+          flattenAllPositions();
+        } else {
+          // Open new position based on price vs trailstop SMA
+          if (currentPrice > currentCandle.trailstopSma) {
+            openPosition(PositionSide.LONG);
+          } else if (currentPrice < currentCandle.trailstopSma) {
+            openPosition(PositionSide.SHORT);
+          }
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [allData, visibleIndex, currentPrice, openPositions.length, isLoading]);
 
   if (isLoading) {
     return (
@@ -261,7 +288,6 @@ export default function TradingChartPage() {
 
   return (
     <div className='flex flex-col flex-1'>
-      <Navigation />
       <main className='px-4 py-6 flex-1'>
         <div className='w-full lg:mx-auto'>
           <div className='rounded-lg border border-border bg-white p-4 shadow-sm'>
@@ -286,7 +312,14 @@ export default function TradingChartPage() {
             {/* Chart */}
             <div className='bg-slate-900 rounded-lg p-2 mb-4'>
               <div className='h-[900px]'>
-                <Chart data={allData} positions={positions} currentPrice={currentPrice} visibleIndex={visibleIndex} />
+                <Chart
+                  data={allData}
+                  positions={positions}
+                  currentPrice={currentPrice}
+                  visibleIndex={visibleIndex}
+                  trailstopSmaPeriod={trailstopSmaPeriod}
+                  onTrailstopSmaPeriodChange={setTrailstopSmaPeriod}
+                />
               </div>
             </div>
 
@@ -329,14 +362,16 @@ export default function TradingChartPage() {
 
                 <button
                   onClick={() => openPosition(PositionSide.LONG)}
-                  disabled={openPositions.length > 0}
+                  disabled={openPositions.length > 0 || currentPrice < (allData[visibleIndex]?.trailstopSma ?? 0)}
                   className='px-6 py-2 bg-green-600 text-white font-semibold rounded-md hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors'
                 >
                   GO LONG
                 </button>
                 <button
                   onClick={() => openPosition(PositionSide.SHORT)}
-                  disabled={openPositions.length > 0}
+                  disabled={
+                    openPositions.length > 0 || currentPrice > (allData[visibleIndex]?.trailstopSma ?? Infinity)
+                  }
                   className='px-6 py-2 bg-red-600 text-white font-semibold rounded-md hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors'
                 >
                   GO SHORT
@@ -422,7 +457,7 @@ export default function TradingChartPage() {
               <div className='mt-4 bg-slate-50 rounded-lg p-4 border border-border'>
                 <h2 className='text-lg font-semibold mb-3'>Open Position</h2>
                 {openPositions.map((pos) => {
-                  const currentSma20 = allData[visibleIndex]?.sma20 || pos.stopLoss || 0;
+                  const currentTrailstopSma = allData[visibleIndex]?.trailstopSma || pos.stopLoss || 0;
                   return (
                     <div key={pos.id} className='grid grid-cols-5 gap-4 text-sm'>
                       <div>
@@ -442,13 +477,13 @@ export default function TradingChartPage() {
                         <span className='ml-2 font-semibold'>${pos.entryPrice.toFixed(2)}</span>
                       </div>
                       <div>
-                        <span className='text-gray-600'>SMA20 (Stop):</span>
-                        <span className='ml-2 font-semibold text-red-600'>${currentSma20.toFixed(2)}</span>
+                        <span className='text-gray-600'>Trail SMA (Stop):</span>
+                        <span className='ml-2 font-semibold text-red-600'>${currentTrailstopSma.toFixed(2)}</span>
                       </div>
                       <div>
                         <span className='text-gray-600'>Risk:</span>
                         <span className='ml-2 font-semibold'>
-                          ${(Math.abs(pos.entryPrice - currentSma20) * pos.size).toFixed(2)}
+                          ${(Math.abs(pos.entryPrice - currentTrailstopSma) * pos.size).toFixed(2)}
                         </span>
                       </div>
                     </div>

@@ -12,10 +12,16 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const timeframe = searchParams.get("timeframe") || "5m";
+    const smaPeriod = parseInt(searchParams.get("smaPeriod") || "20", 10);
 
     // Validate timeframe
     if (!VALID_TIMEFRAMES.includes(timeframe)) {
       throw new Error(`Invalid timeframe. Supported: ${VALID_TIMEFRAMES.join(", ")}`);
+    }
+
+    // Validate smaPeriod
+    if (isNaN(smaPeriod) || smaPeriod < 5 || smaPeriod > 200) {
+      throw new Error("Invalid smaPeriod. Must be between 5 and 200.");
     }
 
     const dataDir = path.join(process.cwd(), "data");
@@ -71,8 +77,7 @@ export async function GET(request: NextRequest) {
 
     const priceData = parsedData.map((candle, index) => ({
       ...candle,
-      sma20: calculateSMA(parsedData, 20, index),
-      sma200: calculateSMA(parsedData, 200, index),
+      trailstopSma: calculateSMA(parsedData, smaPeriod, index),
     }));
 
     return NextResponse.json({

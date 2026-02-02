@@ -8,13 +8,22 @@ interface ChartProps {
   positions: Position[];
   currentPrice: number;
   visibleIndex?: number; // If provided, zoom slices from this index backwards
+  trailstopSmaPeriod: number;
+  onTrailstopSmaPeriodChange: (period: number) => void;
 }
 
 const MIN_CANDLES = 20;
 const MAX_CANDLES = 500;
 const DEFAULT_CANDLES = 200;
 
-const Chart: React.FC<ChartProps> = ({ data, positions, currentPrice, visibleIndex }) => {
+const Chart: React.FC<ChartProps> = ({
+  data,
+  positions,
+  currentPrice,
+  visibleIndex,
+  trailstopSmaPeriod,
+  onTrailstopSmaPeriodChange,
+}) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [visibleCandles, setVisibleCandles] = useState(DEFAULT_CANDLES);
@@ -82,7 +91,7 @@ const Chart: React.FC<ChartProps> = ({ data, positions, currentPrice, visibleInd
 
     // Calculate price range from visible data
     const allPrices = visibleData.flatMap((d) => [d.high, d.low]);
-    const smas = visibleData.flatMap((d) => [d.sma20]).filter((v): v is number => v !== undefined && v > 0);
+    const smas = visibleData.flatMap((d) => [d.trailstopSma]).filter((v): v is number => v !== undefined && v > 0);
     const allValues = [...allPrices, ...smas, currentPrice].filter((v) => v > 0);
 
     const minPrice = Math.min(...allValues);
@@ -116,7 +125,7 @@ const Chart: React.FC<ChartProps> = ({ data, positions, currentPrice, visibleInd
       ctx.fillText(`$${price.toFixed(2)}`, width - padding.right + 5, y + 4);
     }
 
-    // Draw SMA20 (cyan or red if position open)
+    // Draw Trailstop SMA (cyan or red if position open)
     let started = false;
     const hasOpenPosition = positions.some((p) => p.status === "open");
     ctx.strokeStyle = hasOpenPosition ? "#ef4444" : "#22d3ee";
@@ -124,9 +133,9 @@ const Chart: React.FC<ChartProps> = ({ data, positions, currentPrice, visibleInd
     ctx.beginPath();
     started = false;
     visibleData.forEach((candle, i) => {
-      if (candle.sma20) {
+      if (candle.trailstopSma) {
         const x = xScale(i);
-        const y = yScale(candle.sma20);
+        const y = yScale(candle.trailstopSma);
         if (!started) {
           ctx.moveTo(x, y);
           started = true;
@@ -229,26 +238,48 @@ const Chart: React.FC<ChartProps> = ({ data, positions, currentPrice, visibleInd
   return (
     <div ref={containerRef} className='w-full h-full relative'>
       <canvas ref={canvasRef} className='w-full h-full' />
-      <div className='absolute top-2 left-2 flex items-center gap-2 bg-slate-800/80 rounded-lg px-2 py-1 z-10 pointer-events-auto'>
-        <button
-          type='button'
-          onClick={zoomIn}
-          className='w-7 h-7 flex items-center justify-center text-slate-300 hover:text-white hover:bg-slate-700 rounded transition-colors text-lg font-bold'
-          title='Zoom In (fewer candles)'
-        >
-          +
-        </button>
-        <span className='text-slate-400 text-xs font-mono min-w-[60px] text-center'>
-          {Math.min(visibleCandles, data.length)} bars
-        </span>
-        <button
-          type='button'
-          onClick={zoomOut}
-          className='w-7 h-7 flex items-center justify-center text-slate-300 hover:text-white hover:bg-slate-700 rounded transition-colors text-lg font-bold'
-          title='Zoom Out (more candles)'
-        >
-          −
-        </button>
+      <div className='absolute top-2 left-2 flex items-center gap-4 bg-slate-800/80 rounded-lg px-2 py-1 z-10 pointer-events-auto'>
+        <div className='flex items-center gap-2'>
+          <button
+            type='button'
+            onClick={zoomIn}
+            className='w-7 h-7 flex items-center justify-center text-slate-300 hover:text-white hover:bg-slate-700 rounded transition-colors text-lg font-bold'
+            title='Zoom In (fewer candles)'
+          >
+            +
+          </button>
+          <span className='text-slate-400 text-xs font-mono min-w-[60px] text-center'>
+            {Math.min(visibleCandles, data.length)} bars
+          </span>
+          <button
+            type='button'
+            onClick={zoomOut}
+            className='w-7 h-7 flex items-center justify-center text-slate-300 hover:text-white hover:bg-slate-700 rounded transition-colors text-lg font-bold'
+            title='Zoom Out (more candles)'
+          >
+            −
+          </button>
+        </div>
+        <div className='flex items-center gap-2 border-l border-slate-600 pl-4'>
+          <span className='text-slate-400 text-xs'>Trail SMA:</span>
+          <button
+            type='button'
+            onClick={() => onTrailstopSmaPeriodChange(Math.max(5, trailstopSmaPeriod - 5))}
+            className='w-6 h-6 flex items-center justify-center text-slate-300 hover:text-white hover:bg-slate-700 rounded transition-colors text-sm font-bold'
+            title='Decrease SMA period'
+          >
+            −
+          </button>
+          <span className='text-cyan-400 text-xs font-mono min-w-[30px] text-center'>{trailstopSmaPeriod}</span>
+          <button
+            type='button'
+            onClick={() => onTrailstopSmaPeriodChange(Math.min(200, trailstopSmaPeriod + 5))}
+            className='w-6 h-6 flex items-center justify-center text-slate-300 hover:text-white hover:bg-slate-700 rounded transition-colors text-sm font-bold'
+            title='Increase SMA period'
+          >
+            +
+          </button>
+        </div>
       </div>
     </div>
   );

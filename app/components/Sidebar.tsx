@@ -84,19 +84,11 @@ export default function Sidebar() {
             >
               Songwriter
             </Link>
-            <Link
-              href='/settings'
-              className={`px-3 py-2 rounded hover:bg-pink-100 hover:text-gray-900 transition-colors ${
-                pathname === "/settings" ? "bg-pink-100 text-gray-900 font-semibold" : "text-gray-700"
-              }`}
-            >
-              Settings
-            </Link>
           </div>
         </div>
 
         <div>
-          <h3 className='text-sm font-semibold text-gray-600 mb-2 uppercase tracking-wider'>Trading simulator</h3>
+          <h3 className='text-sm font-semibold text-gray-600 mb-2 uppercase tracking-wider'>Trading</h3>
           <div className='flex flex-col gap-1'>
             <Link
               href='/trading-chart'
@@ -104,7 +96,7 @@ export default function Sidebar() {
                 pathname === "/trading-chart" ? "bg-pink-100 text-gray-900 font-semibold" : "text-gray-700"
               }`}
             >
-              Chart
+              Auto-Stop Simulator
             </Link>
           </div>
         </div>

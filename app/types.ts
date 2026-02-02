@@ -6,8 +6,7 @@ export interface PricePoint {
   high: number;
   low: number;
   close: number;
-  sma20?: number;
-  sma200?: number;
+  trailstopSma?: number;
 }
 
 export enum PositionSide {
