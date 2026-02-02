@@ -27,10 +27,10 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
       if (savedTheme && validThemes.includes(savedTheme)) {
         return savedTheme;
       }
-      const systemPrefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-      return systemPrefersDark ? "dark" : "light";
+      const systemPrefersLight = window.matchMedia("(prefers-color-scheme: light)").matches;
+      return systemPrefersLight ? "light" : "dark";
     }
-    return "light";
+    return "dark";
   });
   const [mounted, setMounted] = useState(false);
 
