@@ -311,7 +311,7 @@ export default function TradingChartPage() {
 
             {/* Chart */}
             <div className='bg-slate-900 rounded-lg p-2 mb-4'>
-              <div className='h-[900px]'>
+              <div className='h-[700px]'>
                 <Chart
                   data={allData}
                   positions={positions}
