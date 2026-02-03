@@ -10,11 +10,12 @@ interface ChartProps {
   visibleIndex?: number; // If provided, zoom slices from this index backwards
   trailstopSmaPeriod: number;
   onTrailstopSmaPeriodChange: (period: number) => void;
+  visibleCandles: number;
+  onVisibleCandlesChange: (candles: number) => void;
 }
 
 const MIN_CANDLES = 20;
 const MAX_CANDLES = 500;
-const DEFAULT_CANDLES = 200;
 
 const Chart: React.FC<ChartProps> = ({
   data,
@@ -23,10 +24,11 @@ const Chart: React.FC<ChartProps> = ({
   visibleIndex,
   trailstopSmaPeriod,
   onTrailstopSmaPeriodChange,
+  visibleCandles,
+  onVisibleCandlesChange,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [visibleCandles, setVisibleCandles] = useState(DEFAULT_CANDLES);
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
 
   // Watch for container size changes (including sidebar toggle)
@@ -46,12 +48,12 @@ const Chart: React.FC<ChartProps> = ({
   }, []);
 
   const zoomIn = useCallback(() => {
-    setVisibleCandles((prev) => Math.max(MIN_CANDLES, Math.floor(prev * 0.8)));
-  }, []);
+    onVisibleCandlesChange(Math.max(MIN_CANDLES, Math.floor(visibleCandles * 0.8)));
+  }, [visibleCandles, onVisibleCandlesChange]);
 
   const zoomOut = useCallback(() => {
-    setVisibleCandles((prev) => Math.min(MAX_CANDLES, Math.floor(prev * 1.25)));
-  }, []);
+    onVisibleCandlesChange(Math.min(MAX_CANDLES, Math.floor(visibleCandles * 1.25)));
+  }, [visibleCandles, onVisibleCandlesChange]);
 
   // Handle mouse wheel zoom
   useEffect(() => {

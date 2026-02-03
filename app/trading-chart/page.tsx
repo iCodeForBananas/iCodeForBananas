@@ -7,6 +7,8 @@ import { PricePoint, Position, PositionSide, Account } from "@/app/types";
 
 const RISK_PERCENTAGE = 0.005;
 const INITIAL_BALANCE = 100000;
+const DEFAULT_VISIBLE_CANDLES = 200;
+const STORAGE_KEY = "tradingChartGameState";
 
 interface DatasetInfo {
   file: string;
@@ -14,6 +16,37 @@ interface DatasetInfo {
   timeframe: string;
   date: string;
   label: string;
+}
+
+interface GameState {
+  visibleIndex: number;
+  account: Account;
+  positions: Position[];
+  selectedFile: string;
+  trailstopSmaPeriod: number;
+  visibleCandles: number;
+}
+
+function loadGameState(): Partial<GameState> | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      return JSON.parse(stored);
+    }
+  } catch (e) {
+    console.error("Failed to load game state from localStorage:", e);
+  }
+  return null;
+}
+
+function saveGameState(state: GameState): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch (e) {
+    console.error("Failed to save game state to localStorage:", e);
+  }
 }
 
 export default function TradingChartPage() {
@@ -27,11 +60,28 @@ export default function TradingChartPage() {
   const [availableDatasets, setAvailableDatasets] = useState<DatasetInfo[]>([]);
   const [selectedFile, setSelectedFile] = useState<string>("");
   const [trailstopSmaPeriod, setTrailstopSmaPeriod] = useState<number>(20);
+  const [visibleCandles, setVisibleCandles] = useState<number>(DEFAULT_VISIBLE_CANDLES);
+  const [isInitialized, setIsInitialized] = useState<boolean>(false);
+  
+  const initialStateRef = useRef<Partial<GameState> | null>(null);
 
   const playIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Current price based on visible index
   const currentPrice = allData[visibleIndex]?.close || 0;
+
+  // Load saved state on mount
+  useEffect(() => {
+    const savedState = loadGameState();
+    if (savedState) {
+      initialStateRef.current = savedState;
+      if (savedState.account) setAccount(savedState.account);
+      if (savedState.positions) setPositions(savedState.positions);
+      if (savedState.trailstopSmaPeriod) setTrailstopSmaPeriod(savedState.trailstopSmaPeriod);
+      if (savedState.visibleCandles) setVisibleCandles(savedState.visibleCandles);
+      // selectedFile and visibleIndex will be applied after datasets load
+    }
+  }, []);
 
   // Fetch available datasets on mount
   useEffect(() => {
@@ -41,8 +91,13 @@ export default function TradingChartPage() {
         const result = await response.json();
         if (result.success && result.files.length > 0) {
           setAvailableDatasets(result.files);
-          // Select the first file by default
-          setSelectedFile(result.files[0].file);
+          // Use saved file if available, otherwise first file
+          const savedState = initialStateRef.current;
+          if (savedState?.selectedFile && result.files.some((f: DatasetInfo) => f.file === savedState.selectedFile)) {
+            setSelectedFile(savedState.selectedFile);
+          } else {
+            setSelectedFile(result.files[0].file);
+          }
         }
       } catch (err) {
         console.error("Error fetching datasets:", err);
@@ -60,7 +115,13 @@ export default function TradingChartPage() {
         setIsLoading(true);
         setError(null);
         setIsPlaying(false);
-        setPositions([]);
+        
+        // Only reset positions if this is a different file than saved
+        const savedState = initialStateRef.current;
+        const isSameFile = savedState?.selectedFile === selectedFile;
+        if (!isSameFile) {
+          setPositions([]);
+        }
 
         const response = await fetch(`/api/spy-data?file=${encodeURIComponent(selectedFile)}&smaPeriod=${trailstopSmaPeriod}`);
         const result = await response.json();
@@ -71,8 +132,20 @@ export default function TradingChartPage() {
 
         console.log("Loaded", result.data.length, "candles from", selectedFile);
         setAllData(result.data);
-        // Start at candle 200 so we have SMA data
-        setVisibleIndex(Math.min(200, result.data.length - 1));
+        
+        // Restore saved visibleIndex if same file, otherwise start at candle 200
+        if (isSameFile && savedState?.visibleIndex !== undefined) {
+          setVisibleIndex(Math.min(savedState.visibleIndex, result.data.length - 1));
+        } else {
+          setVisibleIndex(Math.min(200, result.data.length - 1));
+        }
+        
+        // Mark as initialized after first load
+        setIsInitialized(true);
+        // Clear the initial state ref so subsequent file changes don't try to restore
+        if (isSameFile) {
+          initialStateRef.current = null;
+        }
       } catch (err) {
         console.error("Error loading data:", err);
         setError(err instanceof Error ? err.message : "Failed to load data");
@@ -83,6 +156,20 @@ export default function TradingChartPage() {
 
     loadData();
   }, [selectedFile, trailstopSmaPeriod]);
+
+  // Save game state to localStorage whenever relevant values change
+  useEffect(() => {
+    if (!isInitialized || !selectedFile) return;
+    
+    saveGameState({
+      visibleIndex,
+      account,
+      positions,
+      selectedFile,
+      trailstopSmaPeriod,
+      visibleCandles,
+    });
+  }, [isInitialized, visibleIndex, account, positions, selectedFile, trailstopSmaPeriod, visibleCandles]);
 
   // Handle play/pause
   useEffect(() => {
@@ -392,6 +479,8 @@ export default function TradingChartPage() {
                 visibleIndex={visibleIndex}
                 trailstopSmaPeriod={trailstopSmaPeriod}
                 onTrailstopSmaPeriodChange={setTrailstopSmaPeriod}
+                visibleCandles={visibleCandles}
+                onVisibleCandlesChange={setVisibleCandles}
               />
             </div>
           </div>
