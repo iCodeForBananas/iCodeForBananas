@@ -8,8 +8,8 @@ interface ChartProps {
   positions: Position[];
   currentPrice: number;
   visibleIndex?: number; // If provided, zoom slices from this index backwards
-  donchianPeriod: number;
-  onDonchianPeriodChange: (period: number) => void;
+  emaPeriod: number;
+  onEmaPeriodChange: (period: number) => void;
   visibleCandles: number;
   onVisibleCandlesChange: (candles: number) => void;
 }
@@ -22,8 +22,8 @@ const Chart: React.FC<ChartProps> = ({
   positions,
   currentPrice,
   visibleIndex,
-  donchianPeriod,
-  onDonchianPeriodChange,
+  emaPeriod,
+  onEmaPeriodChange,
   visibleCandles,
   onVisibleCandlesChange,
 }) => {
@@ -110,15 +110,13 @@ const Chart: React.FC<ChartProps> = ({
 
     // Calculate price range from visible data
     const allPrices = visibleData.flatMap((d) => [d.high, d.low]);
-    const donchianMids = visibleData
-      .flatMap((d) => [d.donchianMiddle])
-      .filter((v): v is number => v !== undefined && v > 0);
+    const emaValues = visibleData.flatMap((d) => [d.ema]).filter((v): v is number => v !== undefined && v > 0);
     // Include current stop loss in price range so it's always visible
     const stopLossPrices = positions
       .filter((p) => p.status === "open")
       .map((p) => p.currentStopLoss ?? p.stopLoss)
       .filter((v): v is number => v !== undefined && v > 0);
-    const allValues = [...allPrices, ...donchianMids, ...stopLossPrices, currentPrice].filter((v) => v > 0);
+    const allValues = [...allPrices, ...emaValues, ...stopLossPrices, currentPrice].filter((v) => v > 0);
 
     const minPrice = Math.min(...allValues);
     const maxPrice = Math.max(...allValues);
@@ -151,7 +149,7 @@ const Chart: React.FC<ChartProps> = ({
       ctx.fillText(`$${price.toFixed(2)}`, width - padding.right + 5, y + 4);
     }
 
-    // Draw Donchian Middle line (cyan or red if position open)
+    // Draw EMA line (cyan or red if position open)
     let started = false;
     const hasOpenPosition = positions.some((p) => p.status === "open");
     ctx.strokeStyle = hasOpenPosition ? "#ef4444" : "#22d3ee";
@@ -159,9 +157,9 @@ const Chart: React.FC<ChartProps> = ({
     ctx.beginPath();
     started = false;
     visibleData.forEach((candle, i) => {
-      if (candle.donchianMiddle) {
+      if (candle.ema) {
         const x = xScale(i);
-        const y = yScale(candle.donchianMiddle);
+        const y = yScale(candle.ema);
         if (!started) {
           ctx.moveTo(x, y);
           started = true;
@@ -321,21 +319,21 @@ const Chart: React.FC<ChartProps> = ({
           </button>
         </div>
         <div className='flex items-center gap-2 border-l border-slate-600 pl-4'>
-          <span className='text-slate-400 text-xs'>Donchian:</span>
+          <span className='text-slate-400 text-xs'>EMA:</span>
           <button
             type='button'
-            onClick={() => onDonchianPeriodChange(Math.max(5, donchianPeriod - 5))}
+            onClick={() => onEmaPeriodChange(Math.max(5, emaPeriod - 5))}
             className='w-6 h-6 flex items-center justify-center text-slate-300 hover:text-white hover:bg-slate-700 rounded transition-colors text-sm font-bold'
-            title='Decrease Donchian period'
+            title='Decrease EMA period'
           >
             −
           </button>
-          <span className='text-cyan-400 text-xs font-mono min-w-[30px] text-center'>{donchianPeriod}</span>
+          <span className='text-cyan-400 text-xs font-mono min-w-[30px] text-center'>{emaPeriod}</span>
           <button
             type='button'
-            onClick={() => onDonchianPeriodChange(Math.min(200, donchianPeriod + 5))}
+            onClick={() => onEmaPeriodChange(Math.min(200, emaPeriod + 5))}
             className='w-6 h-6 flex items-center justify-center text-slate-300 hover:text-white hover:bg-slate-700 rounded transition-colors text-sm font-bold'
-            title='Increase Donchian period'
+            title='Increase EMA period'
           >
             +
           </button>
