@@ -4,8 +4,9 @@ import React, { useState, useEffect, useRef } from "react";
 import VRPChart from "../components/VRPChart";
 import { PricePoint, Position, PositionSide, Account } from "@/app/types";
 
-const RISK_PERCENTAGE = 0.005;
+const RISK_PERCENTAGE = 0.01; // 2% risk per trade for options strategies
 const INITIAL_BALANCE = 100000;
+const NOTIONAL_MULTIPLIER = 100; // Options control 100 shares per contract
 const DEFAULT_VISIBLE_CANDLES = 200;
 const STORAGE_KEY = "vrpStrategyGameState";
 
@@ -246,67 +247,9 @@ export default function VRPStrategyPage() {
 
   // VRP-based position management
   // The strategy: Sell premium (short volatility) when IV > RV (positive VRP)
-  // This simulates collecting theta/premium when volatility is overpriced
-  useEffect(() => {
-    if (allData.length === 0 || visibleIndex >= allData.length) return;
-
-    const currentCandle = allData[visibleIndex];
-    const rv = calculateRealizedVolatility(allData, visibleIndex, rvPeriod);
-    const iv = calculateImpliedVolatility(rv, allData, visibleIndex, ivMultiplier);
-    const vrp = iv - rv;
-
-    setPositions((prev) => {
-      let pnlToAdd = 0;
-      const updated = prev.map((pos) => {
-        if (pos.status !== "open") return pos;
-
-        // For VRP strategy, we're "selling volatility"
-        // Profit when actual moves are smaller than implied
-        // Loss when actual moves are larger than implied (vol spikes)
-
-        const priceMove = Math.abs(currentCandle.close - currentCandle.open) / currentCandle.open;
-        const impliedDailyMove = iv / (100 * Math.sqrt(252)); // Daily implied move
-
-        // Check for "blow up" - when realized move exceeds implied significantly
-        if (priceMove > impliedDailyMove * 2) {
-          // Big move - short vol position loses
-          const loss = pos.size * pos.entryPrice * priceMove * 2;
-          pnlToAdd -= loss;
-          return {
-            ...pos,
-            status: "closed" as const,
-            exitPrice: currentCandle.close,
-            exitTime: Date.now(),
-            pnl: -loss,
-          };
-        }
-
-        // If VRP goes negative (RV > IV), close the position
-        if (vrp < -2) {
-          const exitPrice = currentCandle.close;
-          const pnl =
-            pos.side === PositionSide.LONG
-              ? (exitPrice - pos.entryPrice) * pos.size
-              : (pos.entryPrice - exitPrice) * pos.size;
-          pnlToAdd += pnl;
-          return {
-            ...pos,
-            status: "closed" as const,
-            exitPrice,
-            exitTime: Date.now(),
-            pnl,
-          };
-        }
-
-        return pos;
-      });
-
-      if (pnlToAdd !== 0) {
-        setAccount((acc) => ({ ...acc, balance: acc.balance + pnlToAdd }));
-      }
-      return updated;
-    });
-  }, [visibleIndex, allData, rvPeriod, ivMultiplier]);
+  // NOTE: No automatic stop-outs - you control when to exit
+  // In real options trading, you manage risk with position sizing and hedging, not hard stops
+  // Premium sellers typically hold through volatility to collect theta decay
 
   const stepForward = () => {
     if (visibleIndex < allData.length - 1) {
@@ -349,11 +292,14 @@ export default function VRPStrategyPage() {
 
   const calculatePositionSize = (entryPrice: number): number => {
     const riskAmount = account.balance * account.riskPercentage;
-    // For VRP, risk is based on potential vol spike
-    const maxVolSpike = currentIV * 0.5; // 50% of IV as max loss scenario
-    const riskPerContract = entryPrice * (maxVolSpike / 100);
+    // For selling premium, we're collecting the VRP spread
+    // Position size based on notional exposure we can afford to risk
+    // Each "contract" represents 100 shares worth of premium sold
+    // Risk per contract is roughly the max expected move (2 std devs)
+    const maxMove = entryPrice * (currentIV / 100) * 0.1; // ~10% of annual IV as short-term risk
+    const riskPerContract = maxMove * NOTIONAL_MULTIPLIER;
     if (riskPerContract === 0) return 0;
-    return Math.floor(riskAmount / riskPerContract);
+    return Math.max(1, Math.floor(riskAmount / riskPerContract));
   };
 
   // Open a "sell premium" position (short volatility)
@@ -390,10 +336,19 @@ export default function VRPStrategyPage() {
       const updated = prev.map((pos) => {
         if (pos.status === "open") {
           const exitPrice = currentPrice;
-          // Calculate P&L based on VRP decay
-          const daysHeld = 1; // Simplified
-          const thetaDecay = (currentIV / 365) * daysHeld; // Daily theta as % of position
-          const pnl = pos.size * pos.entryPrice * (thetaDecay / 100);
+          // P&L based on:
+          // 1. Premium collected (approximated as VRP spread * notional)
+          // 2. Minus any adverse price movement impact
+          const notional = pos.size * pos.entryPrice * NOTIONAL_MULTIPLIER;
+          const vrpSpread = Math.max(0, currentVRP) / 100; // VRP as decimal
+          const premiumCollected = notional * vrpSpread * 0.1; // ~10% of VRP captured per trade
+
+          // Price movement impact (delta exposure for short vol)
+          const priceChange = (exitPrice - pos.entryPrice) / pos.entryPrice;
+          const deltaImpact = notional * Math.abs(priceChange) * 0.3; // 30% delta exposure
+
+          // Net P&L: premium collected minus delta losses (if price moved significantly)
+          const pnl = premiumCollected - (Math.abs(priceChange) > 0.005 ? deltaImpact : 0);
 
           setAccount((acc) => ({ ...acc, balance: acc.balance + pnl }));
 
@@ -407,9 +362,16 @@ export default function VRPStrategyPage() {
 
   const openPositions = positions.filter((p) => p.status === "open");
   const totalPnL = openPositions.reduce((sum, pos) => {
-    // For short vol, profit from theta decay when market is calm
-    const thetaDecay = currentIV / 365;
-    const unrealizedPnL = pos.size * pos.entryPrice * (thetaDecay / 100);
+    // Unrealized P&L for short vol position
+    const notional = pos.size * pos.entryPrice * NOTIONAL_MULTIPLIER;
+    const vrpSpread = Math.max(0, currentVRP) / 100;
+    const premiumAccrued = notional * vrpSpread * 0.1;
+
+    // Current price impact
+    const priceChange = (currentPrice - pos.entryPrice) / pos.entryPrice;
+    const deltaImpact = notional * Math.abs(priceChange) * 0.3;
+
+    const unrealizedPnL = premiumAccrued - (Math.abs(priceChange) > 0.005 ? deltaImpact : 0);
     return sum + unrealizedPnL;
   }, 0);
   const accountValue = account.balance + totalPnL;
