@@ -27,6 +27,23 @@ const Chart: React.FC<ChartProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [visibleCandles, setVisibleCandles] = useState(DEFAULT_CANDLES);
+  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
+
+  // Watch for container size changes (including sidebar toggle)
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const { width, height } = entry.contentRect;
+        setContainerSize({ width, height });
+      }
+    });
+
+    resizeObserver.observe(container);
+    return () => resizeObserver.disconnect();
+  }, []);
 
   const zoomIn = useCallback(() => {
     setVisibleCandles((prev) => Math.max(MIN_CANDLES, Math.floor(prev * 0.8)));
@@ -264,7 +281,7 @@ const Chart: React.FC<ChartProps> = ({
       const time = new Date(visibleData[index].time);
       ctx.fillText(time.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }), x, height - 10);
     }
-  }, [data, positions, currentPrice, visibleCandles, visibleIndex]);
+  }, [data, positions, currentPrice, visibleCandles, visibleIndex, containerSize]);
 
   if (!data || data.length === 0) {
     return (

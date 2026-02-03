@@ -29,9 +29,9 @@ export default function RootLayout({
     <html lang='en'>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <ThemeProvider>
-          <div className='flex min-h-screen font-sans'>
+          <div className='flex min-h-screen font-sans overflow-hidden'>
             <Sidebar />
-            {children}
+            <div className='flex-1 overflow-auto'>{children}</div>
           </div>
         </ThemeProvider>
       </body>

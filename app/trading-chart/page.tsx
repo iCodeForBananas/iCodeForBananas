@@ -314,12 +314,12 @@ export default function TradingChartPage() {
 
   if (isLoading) {
     return (
-      <div className='flex flex-col flex-1'>
+      <div className='flex flex-col flex-1 h-screen overflow-hidden'>
         <Navigation />
-        <main className='px-4 py-6 flex-1'>
-          <div className='w-full lg:max-w-7xl lg:mx-auto'>
+        <main className='px-2 sm:px-4 py-4 flex-1'>
+          <div className='w-full'>
             <div className='rounded-lg border border-border bg-white p-4 shadow-sm'>
-              <div className='flex items-center justify-center h-96'>
+              <div className='flex items-center justify-center h-[50vh]'>
                 <div className='text-center'>
                   <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-600 mx-auto mb-4'></div>
                   <p className='text-gray-600'>Loading SPY data...</p>
@@ -334,11 +334,11 @@ export default function TradingChartPage() {
 
   if (error) {
     return (
-      <div className='flex flex-col flex-1'>
-        <main className='px-4 py-6 flex-1 metronome-static'>
-          <div className='w-full lg:max-w-7xl lg:mx-auto'>
+      <div className='flex flex-col flex-1 h-screen overflow-hidden'>
+        <main className='px-2 sm:px-4 py-4 flex-1 metronome-static'>
+          <div className='w-full'>
             <div className='rounded-lg border border-border bg-white p-4 shadow-sm'>
-              <div className='flex items-center justify-center h-96'>
+              <div className='flex items-center justify-center h-[50vh]'>
                 <div className='text-center'>
                   <div className='text-red-600 text-5xl mb-4'>⚠</div>
                   <p className='text-gray-900 font-semibold mb-2'>Error Loading Data</p>
@@ -359,12 +359,12 @@ export default function TradingChartPage() {
   }
 
   return (
-    <main className='flex-1 metronome-static'>
-      <div className='w-full lg:mx-auto'>
-        <div className='rounded-lg px-4 py-3 shadow-sm'>
+    <main className='flex-1 metronome-static h-screen overflow-y-auto'>
+      <div className='w-full'>
+        <div className='rounded-lg px-2 sm:px-4 py-2 sm:py-3 shadow-sm'>
           {/* Chart */}
-          <div className='bg-slate-900 rounded-lg p-2 mb-4'>
-            <div className='h-[70vh]'>
+          <div className='bg-slate-900 rounded-lg p-1 sm:p-2 mb-2 sm:mb-4'>
+            <div className='h-[40vh] sm:h-[45vh] md:h-[50vh] lg:h-[55vh] xl:h-[60vh]'>
               <Chart
                 data={allData}
                 positions={positions}
@@ -377,67 +377,70 @@ export default function TradingChartPage() {
           </div>
 
           {/* Playback Controls */}
-          <div className='bg-slate-50 rounded-lg p-4 mb-4 border border-border'>
-            <div className='flex flex-wrap gap-3 items-center'>
+          <div className='bg-slate-50 rounded-lg p-2 sm:p-4 mb-2 sm:mb-4 border border-border'>
+            <div className='flex flex-wrap gap-1.5 sm:gap-3 items-center justify-center sm:justify-start'>
               <button
                 onClick={stepBackward}
                 disabled={visibleIndex <= 0}
-                className='px-4 py-2 bg-gray-600 text-white font-semibold rounded-md hover:bg-gray-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors'
+                className='px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-base bg-gray-600 text-white font-semibold rounded-md hover:bg-gray-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors'
               >
-                ⏮ BACK
+                ⏮ <span className='hidden sm:inline'>BACK</span>
               </button>
               <button
                 onClick={togglePlay}
-                className={`px-6 py-2 font-semibold rounded-md transition-colors ${
+                className={`px-3 sm:px-6 py-1.5 sm:py-2 text-xs sm:text-base font-semibold rounded-md transition-colors ${
                   isPlaying
                     ? "bg-orange-600 hover:bg-orange-700 text-white"
                     : "bg-blue-600 hover:bg-blue-700 text-white"
                 }`}
               >
-                {isPlaying ? "⏸ PAUSE" : "▶ PLAY"}
+                {isPlaying ? "⏸" : "▶"} <span className='hidden sm:inline'>{isPlaying ? "PAUSE" : "PLAY"}</span>
               </button>
               <button
                 onClick={stepForward}
                 disabled={visibleIndex >= allData.length - 1}
-                className='px-4 py-2 bg-purple-600 text-white font-semibold rounded-md hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors'
+                className='px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-base bg-purple-600 text-white font-semibold rounded-md hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors'
               >
-                ⏭ STEP
+                ⏭ <span className='hidden sm:inline'>STEP</span>
               </button>
               <button
                 onClick={goToRandom}
                 disabled={allData.length < 300}
-                className='px-4 py-2 bg-indigo-600 text-white font-semibold rounded-md hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors'
+                className='px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-base bg-indigo-600 text-white font-semibold rounded-md hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors'
               >
-                🎲 RANDOM
+                🎲 <span className='hidden sm:inline'>RANDOM</span>
               </button>
 
-              <div className='border-l border-gray-300 h-8 mx-2'></div>
+              <div className='hidden sm:block border-l border-gray-300 h-8 mx-2'></div>
 
               <button
                 onClick={() => openPosition(PositionSide.LONG)}
                 disabled={openPositions.length > 0 || currentPrice < (allData[visibleIndex]?.trailstopSma ?? 0)}
-                className='px-6 py-2 bg-green-600 text-white font-semibold rounded-md hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors'
+                className='px-3 sm:px-6 py-1.5 sm:py-2 text-xs sm:text-base bg-green-600 text-white font-semibold rounded-md hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors'
               >
-                GO LONG
+                <span className='sm:hidden'>LONG</span>
+                <span className='hidden sm:inline'>GO LONG</span>
               </button>
               <button
                 onClick={() => openPosition(PositionSide.SHORT)}
                 disabled={openPositions.length > 0 || currentPrice > (allData[visibleIndex]?.trailstopSma ?? Infinity)}
-                className='px-6 py-2 bg-red-600 text-white font-semibold rounded-md hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors'
+                className='px-3 sm:px-6 py-1.5 sm:py-2 text-xs sm:text-base bg-red-600 text-white font-semibold rounded-md hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors'
               >
-                GO SHORT
+                <span className='sm:hidden'>SHORT</span>
+                <span className='hidden sm:inline'>GO SHORT</span>
               </button>
               <button
                 onClick={flattenAllPositions}
                 disabled={openPositions.length === 0}
-                className='px-6 py-2 bg-orange-600 text-white font-semibold rounded-md hover:bg-orange-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors'
+                className='px-3 sm:px-6 py-1.5 sm:py-2 text-xs sm:text-base bg-orange-600 text-white font-semibold rounded-md hover:bg-orange-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors'
               >
-                FLATTEN
+                <span className='sm:hidden'>FLAT</span>
+                <span className='hidden sm:inline'>FLATTEN</span>
               </button>
             </div>
 
             {/* Progress bar */}
-            <div className='mt-4'>
+            <div className='mt-2 sm:mt-4'>
               <input
                 type='range'
                 min={0}
@@ -450,91 +453,97 @@ export default function TradingChartPage() {
           </div>
 
           {/* Data Source Selector */}
-          <div className='bg-slate-50 rounded-lg p-4 mb-4 border border-border'>
-            <div className='flex items-center gap-4'>
-              <label className='text-sm font-semibold text-gray-700'>Data Source:</label>
-              <div className='flex gap-2'>
+          <div className='bg-slate-50 rounded-lg p-2 sm:p-4 mb-2 sm:mb-4 border border-border'>
+            <div className='flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4'>
+              <label className='text-xs sm:text-sm font-semibold text-gray-700'>Timeframe:</label>
+              <div className='flex flex-wrap gap-1 sm:gap-2'>
                 {TIMEFRAMES.map((tf) => (
                   <button
                     key={tf.value}
                     onClick={() => setTimeframe(tf.value)}
                     disabled={isLoading}
-                    className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                    className={`px-2 sm:px-4 py-1 sm:py-2 text-xs sm:text-sm font-medium rounded-md transition-colors ${
                       timeframe === tf.value
                         ? "bg-cyan-600 text-white"
                         : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
                     } disabled:opacity-50 disabled:cursor-not-allowed`}
                   >
-                    {tf.label}
+                    <span className='sm:hidden'>{tf.value}</span>
+                    <span className='hidden sm:inline'>{tf.label}</span>
                   </button>
                 ))}
               </div>
-              {isLoading && <span className='text-sm text-gray-500 animate-pulse'>Loading...</span>}
+              {isLoading && <span className='text-xs sm:text-sm text-gray-500 animate-pulse'>Loading...</span>}
             </div>
           </div>
 
           {/* Account Stats */}
-          <div className='grid grid-cols-4 gap-4'>
-            <div className='bg-slate-50 rounded-lg p-4 border border-border'>
-              <h2 className='text-sm font-semibold text-gray-600 mb-2'>Account Balance</h2>
-              <p className='text-2xl font-bold text-gray-900'>
-                ${account.balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          <div className='grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4'>
+            <div className='bg-slate-50 rounded-lg p-2 sm:p-4 border border-border'>
+              <h2 className='text-xs sm:text-sm font-semibold text-gray-600 mb-1 sm:mb-2'>Balance</h2>
+              <p className='text-sm sm:text-xl lg:text-2xl font-bold text-gray-900 truncate'>
+                ${account.balance.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
               </p>
             </div>
 
-            <div className='bg-slate-50 rounded-lg p-4 border border-border'>
-              <h2 className='text-sm font-semibold text-gray-600 mb-2'>Account Value</h2>
-              <p className='text-2xl font-bold text-gray-900'>
-                ${accountValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            <div className='bg-slate-50 rounded-lg p-2 sm:p-4 border border-border'>
+              <h2 className='text-xs sm:text-sm font-semibold text-gray-600 mb-1 sm:mb-2'>Value</h2>
+              <p className='text-sm sm:text-xl lg:text-2xl font-bold text-gray-900 truncate'>
+                ${accountValue.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
               </p>
             </div>
 
-            <div className='bg-slate-50 rounded-lg p-4 border border-border'>
-              <h2 className='text-sm font-semibold text-gray-600 mb-2'>Unrealized P&L</h2>
-              <p className={`text-2xl font-bold ${totalPnL >= 0 ? "text-green-600" : "text-red-600"}`}>
+            <div className='bg-slate-50 rounded-lg p-2 sm:p-4 border border-border'>
+              <h2 className='text-xs sm:text-sm font-semibold text-gray-600 mb-1 sm:mb-2'>P&L</h2>
+              <p
+                className={`text-sm sm:text-xl lg:text-2xl font-bold truncate ${totalPnL >= 0 ? "text-green-600" : "text-red-600"}`}
+              >
                 {totalPnL >= 0 ? "+" : ""}$
-                {totalPnL.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                {totalPnL.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
               </p>
             </div>
 
-            <div className='bg-slate-50 rounded-lg p-4 border border-border'>
-              <h2 className='text-sm font-semibold text-gray-600 mb-2'>Current Price (SPY)</h2>
-              <p className='text-2xl font-bold text-cyan-600'>${currentPrice.toFixed(2)}</p>
+            <div className='bg-slate-50 rounded-lg p-2 sm:p-4 border border-border'>
+              <h2 className='text-xs sm:text-sm font-semibold text-gray-600 mb-1 sm:mb-2'>SPY Price</h2>
+              <p className='text-sm sm:text-xl lg:text-2xl font-bold text-cyan-600'>${currentPrice.toFixed(2)}</p>
             </div>
           </div>
 
           {/* Position Details */}
           {openPositions.length > 0 && (
-            <div className='mt-4 bg-slate-50 rounded-lg p-4 border border-border'>
-              <h2 className='text-lg font-semibold mb-3'>Open Position</h2>
+            <div className='mt-2 sm:mt-4 bg-slate-50 rounded-lg p-2 sm:p-4 border border-border'>
+              <h2 className='text-sm sm:text-lg font-semibold mb-2 sm:mb-3'>Open Position</h2>
               {openPositions.map((pos) => {
                 const currentTrailstopSma = allData[visibleIndex]?.trailstopSma || pos.stopLoss || 0;
                 return (
-                  <div key={pos.id} className='grid grid-cols-5 gap-4 text-sm'>
+                  <div
+                    key={pos.id}
+                    className='grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-4 text-xs sm:text-sm'
+                  >
                     <div>
                       <span className='text-gray-600'>Side:</span>
                       <span
-                        className={`ml-2 font-bold ${pos.side === PositionSide.LONG ? "text-green-600" : "text-red-600"}`}
+                        className={`ml-1 sm:ml-2 font-bold ${pos.side === PositionSide.LONG ? "text-green-600" : "text-red-600"}`}
                       >
                         {pos.side}
                       </span>
                     </div>
                     <div>
                       <span className='text-gray-600'>Size:</span>
-                      <span className='ml-2 font-semibold'>{pos.size} shares</span>
+                      <span className='ml-1 sm:ml-2 font-semibold'>{pos.size}</span>
                     </div>
                     <div>
                       <span className='text-gray-600'>Entry:</span>
-                      <span className='ml-2 font-semibold'>${pos.entryPrice.toFixed(2)}</span>
+                      <span className='ml-1 sm:ml-2 font-semibold'>${pos.entryPrice.toFixed(2)}</span>
                     </div>
                     <div>
-                      <span className='text-gray-600'>Trail SMA (Stop):</span>
-                      <span className='ml-2 font-semibold text-red-600'>${currentTrailstopSma.toFixed(2)}</span>
+                      <span className='text-gray-600'>Stop:</span>
+                      <span className='ml-1 sm:ml-2 font-semibold text-red-600'>${currentTrailstopSma.toFixed(2)}</span>
                     </div>
-                    <div>
+                    <div className='col-span-2 sm:col-span-1'>
                       <span className='text-gray-600'>Risk:</span>
-                      <span className='ml-2 font-semibold'>
-                        ${(Math.abs(pos.entryPrice - currentTrailstopSma) * pos.size).toFixed(2)}
+                      <span className='ml-1 sm:ml-2 font-semibold'>
+                        ${(Math.abs(pos.entryPrice - currentTrailstopSma) * pos.size).toFixed(0)}
                       </span>
                     </div>
                   </div>
