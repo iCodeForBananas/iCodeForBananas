@@ -8,14 +8,13 @@ import { PricePoint, Position, PositionSide, Account } from "@/app/types";
 const RISK_PERCENTAGE = 0.005;
 const INITIAL_BALANCE = 100000;
 
-const TIMEFRAMES = [
-  { value: "1m", label: "1 Minute" },
-  { value: "5m", label: "5 Minutes" },
-  { value: "15m", label: "15 Minutes" },
-  { value: "30m", label: "30 Minutes" },
-  { value: "1h", label: "1 Hour" },
-  { value: "1d", label: "Daily" },
-];
+interface DatasetInfo {
+  file: string;
+  symbol: string;
+  timeframe: string;
+  date: string;
+  label: string;
+}
 
 export default function TradingChartPage() {
   const [allData, setAllData] = useState<PricePoint[]>([]);
@@ -25,7 +24,8 @@ export default function TradingChartPage() {
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [timeframe, setTimeframe] = useState<string>("5m");
+  const [availableDatasets, setAvailableDatasets] = useState<DatasetInfo[]>([]);
+  const [selectedFile, setSelectedFile] = useState<string>("");
   const [trailstopSmaPeriod, setTrailstopSmaPeriod] = useState<number>(20);
 
   const playIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -33,8 +33,28 @@ export default function TradingChartPage() {
   // Current price based on visible index
   const currentPrice = allData[visibleIndex]?.close || 0;
 
-  // Load SPY data when timeframe changes
+  // Fetch available datasets on mount
   useEffect(() => {
+    async function fetchDatasets() {
+      try {
+        const response = await fetch("/api/data-files");
+        const result = await response.json();
+        if (result.success && result.files.length > 0) {
+          setAvailableDatasets(result.files);
+          // Select the first file by default
+          setSelectedFile(result.files[0].file);
+        }
+      } catch (err) {
+        console.error("Error fetching datasets:", err);
+      }
+    }
+    fetchDatasets();
+  }, []);
+
+  // Load data when selected file changes
+  useEffect(() => {
+    if (!selectedFile) return;
+
     async function loadData() {
       try {
         setIsLoading(true);
@@ -42,19 +62,19 @@ export default function TradingChartPage() {
         setIsPlaying(false);
         setPositions([]);
 
-        const response = await fetch(`/api/spy-data?timeframe=${timeframe}&smaPeriod=${trailstopSmaPeriod}`);
+        const response = await fetch(`/api/spy-data?file=${encodeURIComponent(selectedFile)}&smaPeriod=${trailstopSmaPeriod}`);
         const result = await response.json();
 
         if (!result.success || !result.data || result.data.length === 0) {
           throw new Error(result.error || "No data received from API");
         }
 
-        console.log("Loaded", result.data.length, "candles for", timeframe);
+        console.log("Loaded", result.data.length, "candles from", selectedFile);
         setAllData(result.data);
         // Start at candle 200 so we have SMA data
         setVisibleIndex(Math.min(200, result.data.length - 1));
       } catch (err) {
-        console.error("Error loading SPY data:", err);
+        console.error("Error loading data:", err);
         setError(err instanceof Error ? err.message : "Failed to load data");
       } finally {
         setIsLoading(false);
@@ -62,7 +82,7 @@ export default function TradingChartPage() {
     }
 
     loadData();
-  }, [timeframe, trailstopSmaPeriod]);
+  }, [selectedFile, trailstopSmaPeriod]);
 
   // Handle play/pause
   useEffect(() => {
@@ -459,24 +479,19 @@ export default function TradingChartPage() {
           {/* Data Source Selector */}
           <div className='bg-slate-50 rounded-lg p-2 sm:p-4 mb-2 sm:mb-4 border border-border'>
             <div className='flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4'>
-              <label className='text-xs sm:text-sm font-semibold text-gray-700'>Timeframe:</label>
-              <div className='flex flex-wrap gap-1 sm:gap-2'>
-                {TIMEFRAMES.map((tf) => (
-                  <button
-                    key={tf.value}
-                    onClick={() => setTimeframe(tf.value)}
-                    disabled={isLoading}
-                    className={`px-2 sm:px-4 py-1 sm:py-2 text-xs sm:text-sm font-medium rounded-md transition-colors ${
-                      timeframe === tf.value
-                        ? "bg-cyan-600 text-white"
-                        : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
-                    } disabled:opacity-50 disabled:cursor-not-allowed`}
-                  >
-                    <span className='sm:hidden'>{tf.value}</span>
-                    <span className='hidden sm:inline'>{tf.label}</span>
-                  </button>
+              <label className='text-xs sm:text-sm font-semibold text-gray-700'>Dataset:</label>
+              <select
+                value={selectedFile}
+                onChange={(e) => setSelectedFile(e.target.value)}
+                disabled={isLoading || availableDatasets.length === 0}
+                className='px-3 py-2 text-xs sm:text-sm font-medium rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed'
+              >
+                {availableDatasets.map((dataset) => (
+                  <option key={dataset.file} value={dataset.file}>
+                    {dataset.label} ({dataset.date})
+                  </option>
                 ))}
-              </div>
+              </select>
               {isLoading && <span className='text-xs sm:text-sm text-gray-500 animate-pulse'>Loading...</span>}
             </div>
           </div>

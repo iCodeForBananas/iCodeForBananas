@@ -5,19 +5,11 @@ import path from "path";
 // Disable caching for API routes that fetch dynamic data
 export const dynamic = "force-dynamic";
 
-// Supported timeframes
-const VALID_TIMEFRAMES = ["1m", "5m", "15m", "30m", "1h", "1d"];
-
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const timeframe = searchParams.get("timeframe") || "5m";
+    const fileParam = searchParams.get("file");
     const smaPeriod = parseInt(searchParams.get("smaPeriod") || "20", 10);
-
-    // Validate timeframe
-    if (!VALID_TIMEFRAMES.includes(timeframe)) {
-      throw new Error(`Invalid timeframe. Supported: ${VALID_TIMEFRAMES.join(", ")}`);
-    }
 
     // Validate smaPeriod
     if (isNaN(smaPeriod) || smaPeriod < 5 || smaPeriod > 200) {
@@ -31,18 +23,27 @@ export async function GET(request: NextRequest) {
       throw new Error('Data directory not found. Please run "npm run download-data SPY 5m" first.');
     }
 
-    // Find the latest SPY-{timeframe}-*.csv file
-    const files = fs.readdirSync(dataDir);
-    const spyFile = files
-      .filter((file) => file.startsWith(`SPY-${timeframe}-`) && file.endsWith(".csv"))
-      .sort()
-      .reverse()[0]; // Get the last one alphabetically (which usually corresponds to latest date)
+    let targetFile: string;
 
-    if (!spyFile) {
-      throw new Error(`No SPY ${timeframe} data found. Please run "npm run download-data SPY ${timeframe}" first.`);
+    if (fileParam) {
+      // Use the specified file
+      targetFile = fileParam;
+      if (!fs.existsSync(path.join(dataDir, targetFile))) {
+        throw new Error(`File "${targetFile}" not found in data directory.`);
+      }
+    } else {
+      // Default: find any available CSV file
+      const files = fs
+        .readdirSync(dataDir)
+        .filter((file) => file.endsWith(".csv"))
+        .sort();
+      if (files.length === 0) {
+        throw new Error('No data files found. Please run "npm run download-data SPY 5m" first.');
+      }
+      targetFile = files[0];
     }
 
-    const filePath = path.join(dataDir, spyFile);
+    const filePath = path.join(dataDir, targetFile);
     const csvText = fs.readFileSync(filePath, "utf-8");
 
     // Parse CSV
@@ -84,7 +85,7 @@ export async function GET(request: NextRequest) {
       success: true,
       data: priceData,
       count: priceData.length,
-      source: spyFile,
+      source: targetFile,
     });
   } catch (error) {
     console.error("Data loading error:", error);
