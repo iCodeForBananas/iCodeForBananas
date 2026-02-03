@@ -378,65 +378,69 @@ export default function TradingChartPage() {
 
           {/* Playback Controls */}
           <div className='bg-slate-50 rounded-lg p-2 sm:p-4 mb-2 sm:mb-4 border border-border'>
-            <div className='flex flex-wrap gap-1.5 sm:gap-3 items-center justify-center sm:justify-start'>
-              <button
-                onClick={stepBackward}
-                disabled={visibleIndex <= 0}
-                className='px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-base bg-gray-600 text-white font-semibold rounded-md hover:bg-gray-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors'
-              >
-                ⏮ <span className='hidden sm:inline'>BACK</span>
-              </button>
-              <button
-                onClick={togglePlay}
-                className={`px-3 sm:px-6 py-1.5 sm:py-2 text-xs sm:text-base font-semibold rounded-md transition-colors ${
-                  isPlaying
-                    ? "bg-orange-600 hover:bg-orange-700 text-white"
-                    : "bg-blue-600 hover:bg-blue-700 text-white"
-                }`}
-              >
-                {isPlaying ? "⏸" : "▶"} <span className='hidden sm:inline'>{isPlaying ? "PAUSE" : "PLAY"}</span>
-              </button>
-              <button
-                onClick={stepForward}
-                disabled={visibleIndex >= allData.length - 1}
-                className='px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-base bg-purple-600 text-white font-semibold rounded-md hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors'
-              >
-                ⏭ <span className='hidden sm:inline'>STEP</span>
-              </button>
-              <button
-                onClick={goToRandom}
-                disabled={allData.length < 300}
-                className='px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-base bg-indigo-600 text-white font-semibold rounded-md hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors'
-              >
-                🎲 <span className='hidden sm:inline'>RANDOM</span>
-              </button>
+            <div className='flex flex-wrap gap-1.5 sm:gap-3 items-center justify-between'>
+              <div className='flex flex-wrap gap-1.5 sm:gap-3 items-center'>
+                <button
+                  onClick={stepBackward}
+                  disabled={visibleIndex <= 0}
+                  className='px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-base bg-gray-600 text-white font-semibold rounded-md hover:bg-gray-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors'
+                >
+                  ⏮ <span className='hidden sm:inline'>BACK</span>
+                </button>
+                <button
+                  onClick={togglePlay}
+                  className={`px-3 sm:px-6 py-1.5 sm:py-2 text-xs sm:text-base font-semibold rounded-md transition-colors ${
+                    isPlaying
+                      ? "bg-orange-600 hover:bg-orange-700 text-white"
+                      : "bg-blue-600 hover:bg-blue-700 text-white"
+                  }`}
+                >
+                  {isPlaying ? "⏸" : "▶"} <span className='hidden sm:inline'>{isPlaying ? "PAUSE" : "PLAY"}</span>
+                </button>
+                <button
+                  onClick={stepForward}
+                  disabled={visibleIndex >= allData.length - 1}
+                  className='px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-base bg-purple-600 text-white font-semibold rounded-md hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors'
+                >
+                  ⏭ <span className='hidden sm:inline'>STEP</span>
+                </button>
+                <button
+                  onClick={goToRandom}
+                  disabled={allData.length < 300}
+                  className='px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-base bg-indigo-600 text-white font-semibold rounded-md hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors'
+                >
+                  🎲 <span className='hidden sm:inline'>RANDOM</span>
+                </button>
+              </div>
 
-              <div className='hidden sm:block border-l border-gray-300 h-8 mx-2'></div>
-
-              <button
-                onClick={() => openPosition(PositionSide.LONG)}
-                disabled={openPositions.length > 0 || currentPrice < (allData[visibleIndex]?.trailstopSma ?? 0)}
-                className='px-3 sm:px-6 py-1.5 sm:py-2 text-xs sm:text-base bg-green-600 text-white font-semibold rounded-md hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors'
-              >
-                <span className='sm:hidden'>LONG</span>
-                <span className='hidden sm:inline'>GO LONG</span>
-              </button>
-              <button
-                onClick={() => openPosition(PositionSide.SHORT)}
-                disabled={openPositions.length > 0 || currentPrice > (allData[visibleIndex]?.trailstopSma ?? Infinity)}
-                className='px-3 sm:px-6 py-1.5 sm:py-2 text-xs sm:text-base bg-red-600 text-white font-semibold rounded-md hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors'
-              >
-                <span className='sm:hidden'>SHORT</span>
-                <span className='hidden sm:inline'>GO SHORT</span>
-              </button>
-              <button
-                onClick={flattenAllPositions}
-                disabled={openPositions.length === 0}
-                className='px-3 sm:px-6 py-1.5 sm:py-2 text-xs sm:text-base bg-orange-600 text-white font-semibold rounded-md hover:bg-orange-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors'
-              >
-                <span className='sm:hidden'>FLAT</span>
-                <span className='hidden sm:inline'>FLATTEN</span>
-              </button>
+              <div className='flex flex-wrap gap-1.5 sm:gap-3 items-center'>
+                <button
+                  onClick={flattenAllPositions}
+                  disabled={openPositions.length === 0}
+                  className='px-3 sm:px-6 py-1.5 sm:py-2 text-xs sm:text-base bg-orange-600 text-white font-semibold rounded-md hover:bg-orange-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors'
+                >
+                  <span className='sm:hidden'>FLAT</span>
+                  <span className='hidden sm:inline'>FLATTEN</span>
+                </button>
+                <button
+                  onClick={() => openPosition(PositionSide.LONG)}
+                  disabled={openPositions.length > 0 || currentPrice < (allData[visibleIndex]?.trailstopSma ?? 0)}
+                  className='px-3 sm:px-6 py-1.5 sm:py-2 text-xs sm:text-base bg-green-600 text-white font-semibold rounded-md hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors'
+                >
+                  <span className='sm:hidden'>LONG</span>
+                  <span className='hidden sm:inline'>LONG</span>
+                </button>
+                <button
+                  onClick={() => openPosition(PositionSide.SHORT)}
+                  disabled={
+                    openPositions.length > 0 || currentPrice > (allData[visibleIndex]?.trailstopSma ?? Infinity)
+                  }
+                  className='px-3 sm:px-6 py-1.5 sm:py-2 text-xs sm:text-base bg-red-600 text-white font-semibold rounded-md hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors'
+                >
+                  <span className='sm:hidden'>SHORT</span>
+                  <span className='hidden sm:inline'>SHORT</span>
+                </button>
+              </div>
             </div>
 
             {/* Progress bar */}
