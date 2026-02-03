@@ -324,6 +324,15 @@ export default function TradingChartPage() {
     setPositions([]);
   };
 
+  const resetAccount = () => {
+    if (window.confirm('Are you sure you want to reset your account to the initial balance? This will close all positions and reset your balance to $' + INITIAL_BALANCE.toLocaleString() + '.')) {
+      setAccount({ balance: INITIAL_BALANCE, riskPercentage: RISK_PERCENTAGE });
+      setPositions([]);
+      setVisibleIndex(Math.min(200, allData.length - 1));
+      setIsPlaying(false);
+    }
+  };
+
   const calculatePositionSize = (entryPrice: number, trailstopSma: number): number => {
     const riskAmount = account.balance * account.riskPercentage;
     const riskPerShare = Math.abs(entryPrice - trailstopSma);
@@ -520,6 +529,12 @@ export default function TradingChartPage() {
                 >
                   🎲 <span className='hidden sm:inline'>RANDOM</span>
                 </button>
+                <button
+                  onClick={resetAccount}
+                  className='px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-base bg-rose-600 text-white font-semibold rounded-md hover:bg-rose-700 transition-colors'
+                >
+                  🔄 <span className='hidden sm:inline'>RESET</span>
+                </button>
               </div>
 
               <div className='flex flex-wrap gap-1.5 sm:gap-3 items-center'>
@@ -612,8 +627,36 @@ export default function TradingChartPage() {
             </div>
 
             <div className='bg-slate-50 rounded-lg p-2 sm:p-4 border border-border'>
-              <h2 className='text-xs sm:text-sm font-semibold text-gray-600 mb-1 sm:mb-2'>SPY Price</h2>
-              <p className='text-sm sm:text-xl lg:text-2xl font-bold text-cyan-600'>${currentPrice.toFixed(2)}</p>
+              <h2 className='text-xs sm:text-sm font-semibold text-gray-600 mb-1 sm:mb-2'>Buy & Hold</h2>
+              <p className='text-sm sm:text-xl lg:text-2xl font-bold text-cyan-600'>
+                ${(() => {
+                  // Calculate buy & hold value assuming same risk as first trade
+                  // Find the first candle with valid trailstopSma (starting point)
+                  const startingIndex = allData.findIndex(d => d.trailstopSma && d.trailstopSma > 0);
+                  if (startingIndex < 0 || visibleIndex < startingIndex) {
+                    return INITIAL_BALANCE.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+                  }
+                  
+                  const startCandle = allData[startingIndex];
+                  const entryPrice = startCandle.close;
+                  const stopLoss = startCandle.trailstopSma!;
+                  const riskPerShare = Math.abs(entryPrice - stopLoss);
+                  
+                  if (riskPerShare === 0) {
+                    return INITIAL_BALANCE.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+                  }
+                  
+                  // Same position sizing as the trading strategy
+                  const riskAmount = INITIAL_BALANCE * RISK_PERCENTAGE;
+                  const shares = Math.floor(riskAmount / riskPerShare);
+                  const invested = shares * entryPrice;
+                  const cash = INITIAL_BALANCE - invested;
+                  
+                  // Calculate current value of that position
+                  const currentValue = cash + (shares * currentPrice);
+                  return currentValue.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+                })()}
+              </p>
             </div>
           </div>
 
