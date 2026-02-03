@@ -87,6 +87,7 @@ export default function TradingChartPage() {
   }, [isPlaying, allData.length]);
 
   // Check for position stop-outs when index changes
+  // Uses realistic price execution: checks high/low, handles gaps, uses stop price when candle crosses through
   useEffect(() => {
     if (allData.length === 0 || visibleIndex >= allData.length) return;
 
@@ -98,20 +99,91 @@ export default function TradingChartPage() {
       const updated = prev.map((pos) => {
         if (pos.status !== "open") return pos;
 
-        const shouldClose =
-          (pos.side === PositionSide.LONG && currentCandle.close < currentCandle.trailstopSma!) ||
-          (pos.side === PositionSide.SHORT && currentCandle.close > currentCandle.trailstopSma!);
+        const currentStop = pos.currentStopLoss ?? pos.stopLoss ?? currentCandle.trailstopSma!;
+        const initialRisk = Math.abs(pos.entryPrice - (pos.stopLoss ?? currentStop));
 
-        if (shouldClose) {
-          const exitPrice = currentCandle.close;
+        // Calculate unrealized P&L to check for 1R
+        const unrealizedPnL =
+          pos.side === PositionSide.LONG ? currentCandle.close - pos.entryPrice : pos.entryPrice - currentCandle.close;
+        const unrealizedR = initialRisk > 0 ? unrealizedPnL / initialRisk : 0;
+
+        // Determine new trailing stop level
+        let newStopLoss = currentStop;
+
+        // Trail stop based on SMA, but only in favorable direction
+        if (pos.side === PositionSide.LONG) {
+          // For long: only move stop UP (trail up towards price)
+          if (currentCandle.trailstopSma! > currentStop) {
+            newStopLoss = currentCandle.trailstopSma!;
+          }
+        } else {
+          // For short: only move stop DOWN (trail down towards price)
+          if (currentCandle.trailstopSma! < currentStop) {
+            newStopLoss = currentCandle.trailstopSma!;
+          }
+        }
+
+        // After 1R of unrealized gains, move stop to break-even (entry price)
+        if (unrealizedR >= 1.0) {
+          if (pos.side === PositionSide.LONG) {
+            // For long: stop must be at least at entry price
+            newStopLoss = Math.max(newStopLoss, pos.entryPrice);
+          } else {
+            // For short: stop must be at most at entry price
+            newStopLoss = Math.min(newStopLoss, pos.entryPrice);
+          }
+        }
+
+        // Check if stopped out using realistic price execution
+        let stoppedOut = false;
+        let exitPrice = 0;
+
+        if (pos.side === PositionSide.LONG) {
+          // Long position: stopped out if low goes below stop
+          if (currentCandle.low <= newStopLoss) {
+            stoppedOut = true;
+            // Check for gap down (open below stop)
+            if (currentCandle.open < newStopLoss) {
+              // Gap down - must take the open price (slippage)
+              exitPrice = currentCandle.open;
+            } else {
+              // Candle traded through stop - get stop price
+              exitPrice = newStopLoss;
+            }
+          }
+        } else {
+          // Short position: stopped out if high goes above stop
+          if (currentCandle.high >= newStopLoss) {
+            stoppedOut = true;
+            // Check for gap up (open above stop)
+            if (currentCandle.open > newStopLoss) {
+              // Gap up - must take the open price (slippage)
+              exitPrice = currentCandle.open;
+            } else {
+              // Candle traded through stop - get stop price
+              exitPrice = newStopLoss;
+            }
+          }
+        }
+
+        if (stoppedOut) {
           const pnl =
             pos.side === PositionSide.LONG
               ? (exitPrice - pos.entryPrice) * pos.size
               : (pos.entryPrice - exitPrice) * pos.size;
           pnlToAdd += pnl;
-          return { ...pos, status: "closed" as const, exitPrice, exitTime: Date.now(), pnl };
+          return {
+            ...pos,
+            status: "closed" as const,
+            exitPrice,
+            exitTime: Date.now(),
+            pnl,
+            currentStopLoss: newStopLoss,
+          };
         }
-        return pos;
+
+        // Update the trailing stop
+        return { ...pos, currentStopLoss: newStopLoss };
       });
 
       if (pnlToAdd !== 0) {
@@ -176,7 +248,8 @@ export default function TradingChartPage() {
       entryPrice,
       size,
       entryTime: Date.now(),
-      stopLoss: currentCandle.trailstopSma,
+      stopLoss: currentCandle.trailstopSma, // Initial stop loss (defines 1R)
+      currentStopLoss: currentCandle.trailstopSma, // Trailing stop (will update)
       status: "open",
     };
 

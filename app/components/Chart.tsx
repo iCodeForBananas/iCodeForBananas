@@ -92,7 +92,12 @@ const Chart: React.FC<ChartProps> = ({
     // Calculate price range from visible data
     const allPrices = visibleData.flatMap((d) => [d.high, d.low]);
     const smas = visibleData.flatMap((d) => [d.trailstopSma]).filter((v): v is number => v !== undefined && v > 0);
-    const allValues = [...allPrices, ...smas, currentPrice].filter((v) => v > 0);
+    // Include current stop loss in price range so it's always visible
+    const stopLossPrices = positions
+      .filter((p) => p.status === "open")
+      .map((p) => p.currentStopLoss ?? p.stopLoss)
+      .filter((v): v is number => v !== undefined && v > 0);
+    const allValues = [...allPrices, ...smas, ...stopLossPrices, currentPrice].filter((v) => v > 0);
 
     const minPrice = Math.min(...allValues);
     const maxPrice = Math.max(...allValues);
@@ -190,6 +195,40 @@ const Chart: React.FC<ChartProps> = ({
     ctx.fillStyle = "#f8fafc";
     ctx.font = "bold 11px monospace";
     ctx.fillText(`$${currentPrice.toFixed(2)}`, width - padding.right + 5, currentY + 4);
+
+    // Draw current stop loss line (red horizontal line)
+    positions
+      .filter((pos) => pos.status === "open")
+      .forEach((pos) => {
+        const stopPrice = pos.currentStopLoss ?? pos.stopLoss;
+        if (stopPrice) {
+          const stopY = yScale(stopPrice);
+
+          // Draw solid red line for current stop
+          ctx.strokeStyle = "#ef4444";
+          ctx.lineWidth = 2;
+          ctx.setLineDash([]);
+          ctx.beginPath();
+          ctx.moveTo(padding.left, stopY);
+          ctx.lineTo(width - padding.right, stopY);
+          ctx.stroke();
+
+          // Stop loss label on the right
+          ctx.fillStyle = "#ef4444";
+          ctx.fillRect(width - padding.right + 2, stopY - 10, 65, 20);
+          ctx.fillStyle = "#ffffff";
+          ctx.font = "bold 10px monospace";
+          ctx.textAlign = "left";
+          ctx.fillText(`SL $${stopPrice.toFixed(2)}`, width - padding.right + 4, stopY + 4);
+
+          // Label on the left side
+          ctx.fillStyle = "#ef4444";
+          ctx.font = "bold 9px sans-serif";
+          ctx.textAlign = "left";
+          const label = pos.currentStopLoss === pos.entryPrice ? "STOP (B/E)" : "STOP";
+          ctx.fillText(label, padding.left + 5, stopY - 5);
+        }
+      });
 
     // Draw position entry lines
     positions

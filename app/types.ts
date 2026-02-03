@@ -22,7 +22,8 @@ export interface Position {
   entryTime: number;
   exitPrice?: number;
   exitTime?: number;
-  stopLoss?: number;
+  stopLoss?: number; // Initial stop loss at entry
+  currentStopLoss?: number; // Trailing stop loss (updates as trade progresses)
   pnl?: number;
   status: "open" | "closed";
 }
