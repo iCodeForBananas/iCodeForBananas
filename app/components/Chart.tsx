@@ -8,8 +8,8 @@ interface ChartProps {
   positions: Position[];
   currentPrice: number;
   visibleIndex?: number; // If provided, zoom slices from this index backwards
-  trailstopSmaPeriod: number;
-  onTrailstopSmaPeriodChange: (period: number) => void;
+  donchianPeriod: number;
+  onDonchianPeriodChange: (period: number) => void;
   visibleCandles: number;
   onVisibleCandlesChange: (candles: number) => void;
 }
@@ -22,8 +22,8 @@ const Chart: React.FC<ChartProps> = ({
   positions,
   currentPrice,
   visibleIndex,
-  trailstopSmaPeriod,
-  onTrailstopSmaPeriodChange,
+  donchianPeriod,
+  onDonchianPeriodChange,
   visibleCandles,
   onVisibleCandlesChange,
 }) => {
@@ -110,13 +110,15 @@ const Chart: React.FC<ChartProps> = ({
 
     // Calculate price range from visible data
     const allPrices = visibleData.flatMap((d) => [d.high, d.low]);
-    const smas = visibleData.flatMap((d) => [d.trailstopSma]).filter((v): v is number => v !== undefined && v > 0);
+    const donchianMids = visibleData
+      .flatMap((d) => [d.donchianMiddle])
+      .filter((v): v is number => v !== undefined && v > 0);
     // Include current stop loss in price range so it's always visible
     const stopLossPrices = positions
       .filter((p) => p.status === "open")
       .map((p) => p.currentStopLoss ?? p.stopLoss)
       .filter((v): v is number => v !== undefined && v > 0);
-    const allValues = [...allPrices, ...smas, ...stopLossPrices, currentPrice].filter((v) => v > 0);
+    const allValues = [...allPrices, ...donchianMids, ...stopLossPrices, currentPrice].filter((v) => v > 0);
 
     const minPrice = Math.min(...allValues);
     const maxPrice = Math.max(...allValues);
@@ -149,7 +151,7 @@ const Chart: React.FC<ChartProps> = ({
       ctx.fillText(`$${price.toFixed(2)}`, width - padding.right + 5, y + 4);
     }
 
-    // Draw Trailstop SMA (cyan or red if position open)
+    // Draw Donchian Middle line (cyan or red if position open)
     let started = false;
     const hasOpenPosition = positions.some((p) => p.status === "open");
     ctx.strokeStyle = hasOpenPosition ? "#ef4444" : "#22d3ee";
@@ -157,9 +159,9 @@ const Chart: React.FC<ChartProps> = ({
     ctx.beginPath();
     started = false;
     visibleData.forEach((candle, i) => {
-      if (candle.trailstopSma) {
+      if (candle.donchianMiddle) {
         const x = xScale(i);
-        const y = yScale(candle.trailstopSma);
+        const y = yScale(candle.donchianMiddle);
         if (!started) {
           ctx.moveTo(x, y);
           started = true;
@@ -319,21 +321,21 @@ const Chart: React.FC<ChartProps> = ({
           </button>
         </div>
         <div className='flex items-center gap-2 border-l border-slate-600 pl-4'>
-          <span className='text-slate-400 text-xs'>Trail SMA:</span>
+          <span className='text-slate-400 text-xs'>Donchian:</span>
           <button
             type='button'
-            onClick={() => onTrailstopSmaPeriodChange(Math.max(5, trailstopSmaPeriod - 5))}
+            onClick={() => onDonchianPeriodChange(Math.max(5, donchianPeriod - 5))}
             className='w-6 h-6 flex items-center justify-center text-slate-300 hover:text-white hover:bg-slate-700 rounded transition-colors text-sm font-bold'
-            title='Decrease SMA period'
+            title='Decrease Donchian period'
           >
             −
           </button>
-          <span className='text-cyan-400 text-xs font-mono min-w-[30px] text-center'>{trailstopSmaPeriod}</span>
+          <span className='text-cyan-400 text-xs font-mono min-w-[30px] text-center'>{donchianPeriod}</span>
           <button
             type='button'
-            onClick={() => onTrailstopSmaPeriodChange(Math.min(200, trailstopSmaPeriod + 5))}
+            onClick={() => onDonchianPeriodChange(Math.min(200, donchianPeriod + 5))}
             className='w-6 h-6 flex items-center justify-center text-slate-300 hover:text-white hover:bg-slate-700 rounded transition-colors text-sm font-bold'
-            title='Increase SMA period'
+            title='Increase Donchian period'
           >
             +
           </button>

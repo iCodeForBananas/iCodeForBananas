@@ -23,7 +23,7 @@ interface GameState {
   account: Account;
   positions: Position[];
   selectedFile: string;
-  trailstopSmaPeriod: number;
+  donchianPeriod: number;
   visibleCandles: number;
 }
 
@@ -59,7 +59,7 @@ export default function TradingChartPage() {
   const [error, setError] = useState<string | null>(null);
   const [availableDatasets, setAvailableDatasets] = useState<DatasetInfo[]>([]);
   const [selectedFile, setSelectedFile] = useState<string>("");
-  const [trailstopSmaPeriod, setTrailstopSmaPeriod] = useState<number>(20);
+  const [donchianPeriod, setDonchianPeriod] = useState<number>(10);
   const [visibleCandles, setVisibleCandles] = useState<number>(DEFAULT_VISIBLE_CANDLES);
   const [isInitialized, setIsInitialized] = useState<boolean>(false);
 
@@ -77,7 +77,7 @@ export default function TradingChartPage() {
       initialStateRef.current = savedState;
       if (savedState.account) setAccount(savedState.account);
       if (savedState.positions) setPositions(savedState.positions);
-      if (savedState.trailstopSmaPeriod) setTrailstopSmaPeriod(savedState.trailstopSmaPeriod);
+      if (savedState.donchianPeriod) setDonchianPeriod(savedState.donchianPeriod);
       if (savedState.visibleCandles) setVisibleCandles(savedState.visibleCandles);
       // selectedFile and visibleIndex will be applied after datasets load
     }
@@ -124,7 +124,7 @@ export default function TradingChartPage() {
         }
 
         const response = await fetch(
-          `/api/spy-data?file=${encodeURIComponent(selectedFile)}&smaPeriod=${trailstopSmaPeriod}`,
+          `/api/spy-data?file=${encodeURIComponent(selectedFile)}&donchianPeriod=${donchianPeriod}`,
         );
         const result = await response.json();
 
@@ -157,7 +157,7 @@ export default function TradingChartPage() {
     }
 
     loadData();
-  }, [selectedFile, trailstopSmaPeriod]);
+  }, [selectedFile, donchianPeriod]);
 
   // Save game state to localStorage whenever relevant values change
   useEffect(() => {
@@ -168,10 +168,10 @@ export default function TradingChartPage() {
       account,
       positions,
       selectedFile,
-      trailstopSmaPeriod,
+      donchianPeriod,
       visibleCandles,
     });
-  }, [isInitialized, visibleIndex, account, positions, selectedFile, trailstopSmaPeriod, visibleCandles]);
+  }, [isInitialized, visibleIndex, account, positions, selectedFile, donchianPeriod, visibleCandles]);
 
   // Handle play/pause
   useEffect(() => {
@@ -201,14 +201,14 @@ export default function TradingChartPage() {
     if (allData.length === 0 || visibleIndex >= allData.length) return;
 
     const currentCandle = allData[visibleIndex];
-    if (!currentCandle.trailstopSma) return;
+    if (!currentCandle.donchianMiddle) return;
 
     setPositions((prev) => {
       let pnlToAdd = 0;
       const updated = prev.map((pos) => {
         if (pos.status !== "open") return pos;
 
-        const currentStop = pos.currentStopLoss ?? pos.stopLoss ?? currentCandle.trailstopSma!;
+        const currentStop = pos.currentStopLoss ?? pos.stopLoss ?? currentCandle.donchianMiddle!;
         const initialRisk = Math.abs(pos.entryPrice - (pos.stopLoss ?? currentStop));
 
         // Calculate unrealized P&L to check for 1R
@@ -219,16 +219,16 @@ export default function TradingChartPage() {
         // Determine new trailing stop level
         let newStopLoss = currentStop;
 
-        // Trail stop based on SMA, but only in favorable direction
+        // Trail stop based on Donchian middle, but only in favorable direction
         if (pos.side === PositionSide.LONG) {
           // For long: only move stop UP (trail up towards price)
-          if (currentCandle.trailstopSma! > currentStop) {
-            newStopLoss = currentCandle.trailstopSma!;
+          if (currentCandle.donchianMiddle! > currentStop) {
+            newStopLoss = currentCandle.donchianMiddle!;
           }
         } else {
           // For short: only move stop DOWN (trail down towards price)
-          if (currentCandle.trailstopSma! < currentStop) {
-            newStopLoss = currentCandle.trailstopSma!;
+          if (currentCandle.donchianMiddle! < currentStop) {
+            newStopLoss = currentCandle.donchianMiddle!;
           }
         }
 
@@ -350,8 +350,8 @@ export default function TradingChartPage() {
 
   const openPosition = (side: PositionSide) => {
     const currentCandle = allData[visibleIndex];
-    if (!currentCandle?.trailstopSma) {
-      alert("Trailstop SMA not available yet.");
+    if (!currentCandle?.donchianMiddle) {
+      alert("Donchian middle line not available yet.");
       return;
     }
 
@@ -359,7 +359,7 @@ export default function TradingChartPage() {
     flattenAllPositions();
 
     const entryPrice = currentPrice;
-    const size = calculatePositionSize(entryPrice, currentCandle.trailstopSma);
+    const size = calculatePositionSize(entryPrice, currentCandle.donchianMiddle);
 
     if (size === 0) {
       alert("Position size is too small.");
@@ -372,8 +372,8 @@ export default function TradingChartPage() {
       entryPrice,
       size,
       entryTime: Date.now(),
-      stopLoss: currentCandle.trailstopSma, // Initial stop loss (defines 1R)
-      currentStopLoss: currentCandle.trailstopSma, // Trailing stop (will update)
+      stopLoss: currentCandle.donchianMiddle, // Initial stop loss (defines 1R)
+      currentStopLoss: currentCandle.donchianMiddle, // Trailing stop (will update)
       status: "open",
     };
 
@@ -416,16 +416,16 @@ export default function TradingChartPage() {
       if (e.key === "Enter" && !isLoading) {
         e.preventDefault();
         const currentCandle = allData[visibleIndex];
-        if (!currentCandle?.trailstopSma) return;
+        if (!currentCandle?.donchianMiddle) return;
 
         if (openPositions.length > 0) {
           // Flatten existing position
           flattenAllPositions();
         } else {
-          // Open new position based on price vs trailstop SMA
-          if (currentPrice > currentCandle.trailstopSma) {
+          // Open new position based on price vs donchian middle
+          if (currentPrice > currentCandle.donchianMiddle) {
             openPosition(PositionSide.LONG);
-          } else if (currentPrice < currentCandle.trailstopSma) {
+          } else if (currentPrice < currentCandle.donchianMiddle) {
             openPosition(PositionSide.SHORT);
           }
         }
@@ -494,8 +494,8 @@ export default function TradingChartPage() {
                 positions={positions}
                 currentPrice={currentPrice}
                 visibleIndex={visibleIndex}
-                trailstopSmaPeriod={trailstopSmaPeriod}
-                onTrailstopSmaPeriodChange={setTrailstopSmaPeriod}
+                donchianPeriod={donchianPeriod}
+                onDonchianPeriodChange={setDonchianPeriod}
                 visibleCandles={visibleCandles}
                 onVisibleCandlesChange={setVisibleCandles}
               />
@@ -556,7 +556,7 @@ export default function TradingChartPage() {
                 </button>
                 <button
                   onClick={() => openPosition(PositionSide.LONG)}
-                  disabled={openPositions.length > 0 || currentPrice < (allData[visibleIndex]?.trailstopSma ?? 0)}
+                  disabled={openPositions.length > 0 || currentPrice < (allData[visibleIndex]?.donchianMiddle ?? 0)}
                   className='px-3 sm:px-6 py-1.5 sm:py-2 text-xs sm:text-base bg-green-600 text-white font-semibold rounded-md hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors'
                 >
                   <span className='sm:hidden'>LONG</span>
@@ -565,7 +565,7 @@ export default function TradingChartPage() {
                 <button
                   onClick={() => openPosition(PositionSide.SHORT)}
                   disabled={
-                    openPositions.length > 0 || currentPrice > (allData[visibleIndex]?.trailstopSma ?? Infinity)
+                    openPositions.length > 0 || currentPrice > (allData[visibleIndex]?.donchianMiddle ?? Infinity)
                   }
                   className='px-3 sm:px-6 py-1.5 sm:py-2 text-xs sm:text-base bg-red-600 text-white font-semibold rounded-md hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors'
                 >
@@ -640,8 +640,8 @@ export default function TradingChartPage() {
                 $
                 {(() => {
                   // Calculate buy & hold value assuming same risk as first trade
-                  // Find the first candle with valid trailstopSma (starting point)
-                  const startingIndex = allData.findIndex((d) => d.trailstopSma && d.trailstopSma > 0);
+                  // Find the first candle with valid donchianMiddle (starting point)
+                  const startingIndex = allData.findIndex((d) => d.donchianMiddle && d.donchianMiddle > 0);
                   if (startingIndex < 0 || visibleIndex < startingIndex) {
                     return INITIAL_BALANCE.toLocaleString(undefined, {
                       minimumFractionDigits: 0,
@@ -651,7 +651,7 @@ export default function TradingChartPage() {
 
                   const startCandle = allData[startingIndex];
                   const entryPrice = startCandle.close;
-                  const stopLoss = startCandle.trailstopSma!;
+                  const stopLoss = startCandle.donchianMiddle!;
                   const riskPerShare = Math.abs(entryPrice - stopLoss);
 
                   if (riskPerShare === 0) {
@@ -680,7 +680,7 @@ export default function TradingChartPage() {
             <div className='mt-2 sm:mt-4 bg-slate-50 rounded-lg p-2 sm:p-4 border border-border'>
               <h2 className='text-sm sm:text-lg font-semibold mb-2 sm:mb-3'>Open Position</h2>
               {openPositions.map((pos) => {
-                const currentTrailstopSma = allData[visibleIndex]?.trailstopSma || pos.stopLoss || 0;
+                const currentDonchianMiddle = allData[visibleIndex]?.donchianMiddle || pos.stopLoss || 0;
                 return (
                   <div
                     key={pos.id}
@@ -704,12 +704,14 @@ export default function TradingChartPage() {
                     </div>
                     <div>
                       <span className='text-gray-600'>Stop:</span>
-                      <span className='ml-1 sm:ml-2 font-semibold text-red-600'>${currentTrailstopSma.toFixed(2)}</span>
+                      <span className='ml-1 sm:ml-2 font-semibold text-red-600'>
+                        ${currentDonchianMiddle.toFixed(2)}
+                      </span>
                     </div>
                     <div className='col-span-2 sm:col-span-1'>
                       <span className='text-gray-600'>Risk:</span>
                       <span className='ml-1 sm:ml-2 font-semibold'>
-                        ${(Math.abs(pos.entryPrice - currentTrailstopSma) * pos.size).toFixed(0)}
+                        ${(Math.abs(pos.entryPrice - currentDonchianMiddle) * pos.size).toFixed(0)}
                       </span>
                     </div>
                   </div>

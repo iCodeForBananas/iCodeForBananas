@@ -9,11 +9,11 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const fileParam = searchParams.get("file");
-    const smaPeriod = parseInt(searchParams.get("smaPeriod") || "20", 10);
+    const donchianPeriod = parseInt(searchParams.get("donchianPeriod") || "10", 10);
 
-    // Validate smaPeriod
-    if (isNaN(smaPeriod) || smaPeriod < 5 || smaPeriod > 200) {
-      throw new Error("Invalid smaPeriod. Must be between 5 and 200.");
+    // Validate donchianPeriod
+    if (isNaN(donchianPeriod) || donchianPeriod < 5 || donchianPeriod > 200) {
+      throw new Error("Invalid donchianPeriod. Must be between 5 and 200.");
     }
 
     const dataDir = path.join(process.cwd(), "data");
@@ -69,16 +69,18 @@ export async function GET(request: NextRequest) {
       )
       .sort((a, b) => a.time - b.time);
 
-    // Calculate SMAs
-    const calculateSMA = (data: typeof parsedData, period: number, index: number): number | undefined => {
+    // Calculate Donchian Channel middle line (highest high + lowest low) / 2
+    const calculateDonchianMiddle = (data: typeof parsedData, period: number, index: number): number | undefined => {
       if (index < period - 1) return undefined;
-      const sum = data.slice(index - period + 1, index + 1).reduce((acc, candle) => acc + candle.close, 0);
-      return sum / period;
+      const slice = data.slice(index - period + 1, index + 1);
+      const highestHigh = Math.max(...slice.map((c) => c.high));
+      const lowestLow = Math.min(...slice.map((c) => c.low));
+      return (highestHigh + lowestLow) / 2;
     };
 
     const priceData = parsedData.map((candle, index) => ({
       ...candle,
-      trailstopSma: calculateSMA(parsedData, smaPeriod, index),
+      donchianMiddle: calculateDonchianMiddle(parsedData, donchianPeriod, index),
     }));
 
     return NextResponse.json({
