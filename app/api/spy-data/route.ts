@@ -78,9 +78,33 @@ export async function GET(request: NextRequest) {
       return (highestHigh + lowestLow) / 2;
     };
 
+    // Calculate EMA (Exponential Moving Average)
+    const calculateEMA = (data: typeof parsedData, period: number): (number | undefined)[] => {
+      const emaValues: (number | undefined)[] = [];
+      const multiplier = 2 / (period + 1);
+
+      for (let i = 0; i < data.length; i++) {
+        if (i < period - 1) {
+          emaValues.push(undefined);
+        } else if (i === period - 1) {
+          // First EMA is SMA
+          const sum = data.slice(0, period).reduce((acc, c) => acc + c.close, 0);
+          emaValues.push(sum / period);
+        } else {
+          const prevEma = emaValues[i - 1]!;
+          const ema = (data[i].close - prevEma) * multiplier + prevEma;
+          emaValues.push(ema);
+        }
+      }
+      return emaValues;
+    };
+
+    const emaValues = calculateEMA(parsedData, donchianPeriod);
+
     const priceData = parsedData.map((candle, index) => ({
       ...candle,
       donchianMiddle: calculateDonchianMiddle(parsedData, donchianPeriod, index),
+      ema: emaValues[index],
     }));
 
     return NextResponse.json({

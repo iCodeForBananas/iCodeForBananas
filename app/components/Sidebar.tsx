@@ -176,6 +176,15 @@ export default function Sidebar() {
                   Time-Series Momentum
                 </Link>
                 <Link
+                  href='/scalping-chart'
+                  onClick={() => isMobile && setIsOpen(false)}
+                  className={`px-3 py-2 rounded hover:bg-pink-100 hover:text-gray-900 transition-colors whitespace-nowrap ${
+                    pathname === "/scalping-chart" ? "bg-pink-100 text-gray-900 font-semibold" : "text-gray-700"
+                  }`}
+                >
+                  Scalping (1R/2R TP)
+                </Link>
+                <Link
                   href='/donchian-channels'
                   onClick={() => isMobile && setIsOpen(false)}
                   className={`px-3 py-2 rounded hover:bg-pink-100 hover:text-gray-900 transition-colors whitespace-nowrap ${
