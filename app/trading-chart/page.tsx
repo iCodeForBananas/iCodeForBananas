@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import Chart from "../components/Chart";
-import Navigation from "../components/Navigation";
 import { PricePoint, Position, PositionSide, Account } from "@/app/types";
 
 const RISK_PERCENTAGE = 0.01;
@@ -243,35 +242,21 @@ export default function TradingChartPage() {
           }
         }
 
-        // Check if stopped out using realistic price execution
+        // Check if stopped out based on candle close crossing the EMA stop
         let stoppedOut = false;
         let exitPrice = 0;
 
         if (pos.side === PositionSide.LONG) {
-          // Long position: stopped out if low goes below stop
-          if (currentCandle.low <= newStopLoss) {
+          // Long position: stopped out if close goes below stop
+          if (currentCandle.close <= newStopLoss) {
             stoppedOut = true;
-            // Check for gap down (open below stop)
-            if (currentCandle.open < newStopLoss) {
-              // Gap down - must take the open price (slippage)
-              exitPrice = currentCandle.open;
-            } else {
-              // Candle traded through stop - get stop price
-              exitPrice = newStopLoss;
-            }
+            exitPrice = currentCandle.close;
           }
         } else {
-          // Short position: stopped out if high goes above stop
-          if (currentCandle.high >= newStopLoss) {
+          // Short position: stopped out if close goes above stop
+          if (currentCandle.close >= newStopLoss) {
             stoppedOut = true;
-            // Check for gap up (open above stop)
-            if (currentCandle.open > newStopLoss) {
-              // Gap up - must take the open price (slippage)
-              exitPrice = currentCandle.open;
-            } else {
-              // Candle traded through stop - get stop price
-              exitPrice = newStopLoss;
-            }
+            exitPrice = currentCandle.close;
           }
         }
 
@@ -439,7 +424,6 @@ export default function TradingChartPage() {
   if (isLoading) {
     return (
       <div className='flex flex-col flex-1 h-screen overflow-hidden'>
-        <Navigation />
         <main className='px-2 sm:px-4 py-4 flex-1'>
           <div className='w-full'>
             <div className='rounded-lg border border-border bg-white p-4 shadow-sm'>

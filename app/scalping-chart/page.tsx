@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import ScalpingChart, { ScalpingPosition } from "../components/ScalpingChart";
-import Navigation from "../components/Navigation";
 import { PricePoint, PositionSide, Account } from "@/app/types";
 
 const RISK_PERCENTAGE = 0.01;
@@ -427,7 +426,6 @@ export default function ScalpingChartPage() {
   if (isLoading) {
     return (
       <div className='flex flex-col flex-1 h-screen overflow-hidden'>
-        <Navigation />
         <main className='px-2 sm:px-4 py-4 flex-1'>
           <div className='w-full'>
             <div className='rounded-lg border border-border bg-white p-4 shadow-sm'>

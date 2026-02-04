@@ -33,3 +33,71 @@ export interface Account {
   balance: number;
   riskPercentage: number;
 }
+
+// Algo Backtest Types
+
+export interface TradeSignal {
+  type: "entry" | "exit";
+  side: PositionSide;
+  price: number;
+  time: number;
+  reason: string;
+}
+
+export interface BacktestTrade {
+  id: string;
+  side: PositionSide;
+  entryPrice: number;
+  entryTime: number;
+  exitPrice: number;
+  exitTime: number;
+  pnl: number;
+  pnlPercent: number;
+  reason: string;
+}
+
+export interface BacktestResult {
+  trades: BacktestTrade[];
+  totalPnl: number;
+  totalPnlPercent: number;
+  winRate: number;
+  totalTrades: number;
+  winningTrades: number;
+  losingTrades: number;
+  averageWin: number;
+  averageLoss: number;
+  profitFactor: number;
+  maxDrawdown: number;
+  maxDrawdownPercent: number;
+  sharpeRatio: number;
+  buyAndHoldPnl: number;
+  buyAndHoldPnlPercent: number;
+  equityCurve: { time: number; equity: number }[];
+}
+
+export interface StrategyCondition {
+  id: string;
+  name: string;
+  code: string;
+  description: string;
+}
+
+// Extended price point with computed indicators for strategy
+export interface IndicatorData extends PricePoint {
+  sma20?: number;
+  sma50?: number;
+  sma200?: number;
+  ema9?: number;
+  ema21?: number;
+  rsi?: number;
+  macd?: number;
+  macdSignal?: number;
+  macdHistogram?: number;
+  atr?: number;
+  upperBand?: number;
+  lowerBand?: number;
+  midLine?: number;
+  prevClose?: number;
+  prevHigh?: number;
+  prevLow?: number;
+}
