@@ -22,7 +22,7 @@ export interface OHLCBar {
   high: number;        // Highest price
   low: number;         // Lowest price
   close: number;       // Closing price
-  volume: number;      // Trading volume
+  volume?: number;     // Trading volume (optional, may not be available from all data sources)
 }
 
 // Technical indicators (all optional, may not be available for early candles)
