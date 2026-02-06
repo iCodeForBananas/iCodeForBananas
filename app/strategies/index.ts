@@ -38,21 +38,24 @@ export function generateParameterVariations(
   // Start with default values
   const defaults = getDefaultParams(strategy.id);
   
-  // Generate cartesian product of all variations
-  const result: Record<string, number | boolean | string>[] = [{ ...defaults }];
+  // Filter to only variations with actual values
+  const validVariations = variations.filter((v) => v.values.length > 0);
   
-  for (const variation of variations) {
+  if (validVariations.length === 0) {
+    return [defaults];
+  }
+  
+  // Generate cartesian product of all valid variations
+  let result: Record<string, number | boolean | string>[] = [{ ...defaults }];
+  
+  for (const variation of validVariations) {
     const newResult: Record<string, number | boolean | string>[] = [];
     for (const existing of result) {
       for (const value of variation.values) {
         newResult.push({ ...existing, [variation.key]: value });
       }
     }
-    // If this variation had values, use the expanded set; otherwise keep existing
-    if (variation.values.length > 0) {
-      result.length = 0;
-      result.push(...newResult);
-    }
+    result = newResult;
   }
   
   return result;
