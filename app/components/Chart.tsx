@@ -68,7 +68,7 @@ const Chart: React.FC<ChartProps> = ({
         } else {
           zoomOut();
         }
-    
+      }
     };
 
     container.addEventListener("wheel", handleWheel, { passive: false });

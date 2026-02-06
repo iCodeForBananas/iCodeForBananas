@@ -1,42 +1,11 @@
 @import "tailwindcss";
 
-/* Dark theme (default) */
+/* Light theme (only mode) */
 :root {
-  --bg-primary: #0f172a;
-  --bg-secondary: #111827;
-  --text-primary: #e5e7eb;
-  --text-secondary: #94a3b8;
-
-  /* Accent palette (tuned for dark) */
-  --accent: #ff4f9c;
-  --seam-gradient: linear-gradient(90deg, #ff4f9c 0%, #ff9900 100%);
-  --seam-gradient-vert: linear-gradient(180deg, #ff6aa5 0%, #ff8a00 100%);
-
-  /* Component/support colors */
-  --accent-chord: #ff4f9c;
-  --accent-scale: #5a1832;
-  --border-color: #3b4a5e;
-  --border-dark: #536279;
-  --note-open-bg: #0b1220;
-  --note-border: #334155;
-  --fret-border: #334155;
-  --highlight-p0: #7a2445;
-  --highlight-p1: #4a152b;
-  --highlight-p3: #5a1832;
-
-  /* Legacy variables for compatibility */
-  --background: var(--bg-primary);
-  --foreground: var(--text-primary);
-  --border: var(--border-color);
-  --muted: var(--text-secondary);
-}
-
-/* Light theme */
-:root[data-theme="light"] {
   --bg-primary: #ffffff;
   --bg-secondary: #f8fafc;
-  --text-primary: #0f172a;
-  --text-secondary: #334155;
+  --text-primary: #1a1a1a;
+  --text-secondary: #4a4a4a;
 
   /* Accent palette (sunset bright pink) */
   --accent: #ff2f8a;
@@ -200,24 +169,24 @@ body {
   }
 }
 
-/* Override Bootstrap styles for dark mode (now default) */
-:root:not([data-theme="light"]) .form-select {
+/* Form and button styles for light mode */
+.form-select {
   background-color: var(--bg-secondary) !important;
   color: var(--text-primary) !important;
   border-color: var(--border-color) !important;
 }
 
-:root:not([data-theme="light"]) .btn-outline-dark {
+.btn-outline-dark {
   color: var(--text-primary) !important;
   border-color: var(--border-color) !important;
 }
 
-:root:not([data-theme="light"]) .btn-outline-danger {
-  color: #ff6b6b !important;
-  border-color: #ff6b6b !important;
+.btn-outline-danger {
+  color: #dc2626 !important;
+  border-color: #dc2626 !important;
 }
 
-:root:not([data-theme="light"]) .text-muted {
+.text-muted {
   color: var(--text-secondary) !important;
 }
 
