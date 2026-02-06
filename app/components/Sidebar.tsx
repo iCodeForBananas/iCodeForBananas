@@ -203,6 +203,15 @@ export default function Sidebar() {
                   Variance Risk Premium
                 </Link>
                 <Link
+                  href='/options-practice'
+                  onClick={() => isMobile && setIsOpen(false)}
+                  className={`px-3 py-2 rounded hover:bg-pink-100 hover:text-gray-900 transition-colors whitespace-nowrap ${
+                    pathname === "/options-practice" ? "bg-pink-100 text-gray-900 font-semibold" : "text-gray-700"
+                  }`}
+                >
+                  Options Practice
+                </Link>
+                <Link
                   href='/algo-backtest'
                   onClick={() => isMobile && setIsOpen(false)}
                   className={`px-3 py-2 rounded hover:bg-pink-100 hover:text-gray-900 transition-colors whitespace-nowrap ${
