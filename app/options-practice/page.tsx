@@ -185,14 +185,14 @@ export default function OptionsPracticePage() {
     });
   };
 
-  const handleChartFlatten = (dataIndex: number) => {
+  const flattenTrade = () => {
     if (!trade || trade.status !== "open") return;
-    if (dataIndex < trade.entryIndex) {
+    if (visibleIndex < trade.entryIndex) {
       alert("Exit time must be after entry.");
       return;
     }
 
-    const exitPrice = allData[dataIndex]?.close;
+    const exitPrice = allData[visibleIndex]?.close;
     if (exitPrice === undefined) return;
 
     const exitValue = Math.max(0, exitPrice - trade.strike) * trade.contracts * 100;
@@ -202,8 +202,8 @@ export default function OptionsPracticePage() {
     setTrade({
       ...trade,
       status: "closed",
-      exitIndex: dataIndex,
-      exitTime: allData[dataIndex].time,
+      exitIndex: visibleIndex,
+      exitTime: allData[visibleIndex].time,
       exitUnderlying: exitPrice,
       pnl,
     });
@@ -273,7 +273,6 @@ export default function OptionsPracticePage() {
                 visibleIndex={visibleIndex}
                 visibleCandles={visibleCandles}
                 onVisibleCandlesChange={setVisibleCandles}
-                onChartClick={handleChartFlatten}
                 strike={strike}
               />
             </div>
@@ -328,7 +327,13 @@ export default function OptionsPracticePage() {
                 >
                   BUY CALL
                 </button>
-                <span className='text-xs sm:text-sm text-gray-600'>Click chart to flatten</span>
+                <button
+                  onClick={flattenTrade}
+                  disabled={!trade || trade.status !== "open"}
+                  className='px-3 sm:px-6 py-1.5 sm:py-2 text-xs sm:text-base bg-amber-600 text-white font-semibold rounded-md hover:bg-amber-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors'
+                >
+                  FLATTEN
+                </button>
               </div>
             </div>
 
