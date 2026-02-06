@@ -20,18 +20,8 @@ export const useTheme = () => {
 };
 
 export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
-  const [theme, setTheme] = useState(() => {
-    if (typeof window !== "undefined") {
-      const savedTheme = localStorage.getItem("guitar-fretboard-theme");
-      const validThemes = ["light", "dark"];
-      if (savedTheme && validThemes.includes(savedTheme)) {
-        return savedTheme;
-      }
-      const systemPrefersLight = window.matchMedia("(prefers-color-scheme: light)").matches;
-      return systemPrefersLight ? "light" : "dark";
-    }
-    return "dark";
-  });
+  // Always use light theme
+  const [theme] = useState("light");
   const [mounted, setMounted] = useState(false);
 
   // Set mounted flag after hydration
@@ -39,20 +29,20 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
     setMounted(true);
   }, []);
 
-  // Save theme to localStorage and update document
+  // Update document to use light theme
   useEffect(() => {
     if (mounted) {
-      localStorage.setItem("guitar-fretboard-theme", theme);
-      document.documentElement.setAttribute("data-theme", theme);
+      document.documentElement.setAttribute("data-theme", "light");
     }
-  }, [theme, mounted]);
+  }, [mounted]);
+
+  // No-op functions for compatibility
+  const setTheme = () => {
+    // Theme is fixed to light mode
+  };
 
   const toggleTheme = () => {
-    setTheme((prevTheme) => {
-      const order = ["light", "dark"];
-      const idx = order.indexOf(prevTheme);
-      return order[(idx + 1) % order.length];
-    });
+    // Theme is fixed to light mode
   };
 
   const value = {
