@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import BacktestChart from "../components/BacktestChart";
 import { PricePoint, IndicatorData, BacktestResult, BacktestTrade, PositionSide } from "@/app/types";
 import { AVAILABLE_STRATEGIES, StrategyDefinition } from "@/app/strategies";
@@ -314,7 +314,6 @@ export default function AlgoBacktestPage() {
   // Strategy state
   const [selectedStrategyId, setSelectedStrategyId] = useState<string>("ema-crossover");
   const [backtestResult, setBacktestResult] = useState<BacktestResult | null>(null);
-  const [isRunning, setIsRunning] = useState(false);
 
   // Fetch available datasets on mount
   useEffect(() => {
@@ -372,7 +371,6 @@ export default function AlgoBacktestPage() {
     }
 
     loadData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedFile, selectedStrategyId]);
 
   if (isLoading) {

@@ -6,7 +6,7 @@ export interface OHLCBar {
   high: number;
   low: number;
   close: number;
-  volume: number;
+  volume?: number; // Optional since not all data sources provide volume
 }
 
 export interface IndicatorValues {
