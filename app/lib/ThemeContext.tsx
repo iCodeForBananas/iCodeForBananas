@@ -37,8 +37,8 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
   }, [mounted]);
 
   // No-op functions for compatibility
-  const setTheme = () => {
-    // Theme is fixed to light mode
+  const setTheme = (_theme: string) => {
+    // Theme is fixed to light mode - parameter ignored
   };
 
   const toggleTheme = () => {
