@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import BacktestChart from "../components/BacktestChart";
 import { PricePoint, IndicatorData, BacktestResult, BacktestTrade, PositionSide } from "@/app/types";
+import { AVAILABLE_STRATEGIES, StrategyDefinition } from "@/app/strategies";
 
 const DEFAULT_VISIBLE_CANDLES = 300;
 const INITIAL_CAPITAL = 100000;
@@ -14,193 +15,6 @@ interface DatasetInfo {
   date: string;
   label: string;
 }
-
-// Example strategy templates
-const STRATEGY_TEMPLATES = {
-  emaCrossover: {
-    name: "EMA Crossover",
-    description: "Buy when EMA 9 crosses above EMA 21, sell when it crosses below",
-    code: `// EMA Crossover Strategy
-// Available data: current (IndicatorData), previous (IndicatorData), index (number)
-// Return: { action: 'buy' | 'sell' | 'hold', reason: string }
-
-function evaluate(current, previous, index) {
-  if (!current.ema9 || !current.ema21 || !previous?.ema9 || !previous?.ema21) {
-    return { action: 'hold', reason: 'Waiting for indicators' };
-  }
-
-  // EMA 9 crosses above EMA 21 - BUY signal
-  if (previous.ema9 <= previous.ema21 && current.ema9 > current.ema21) {
-    return { action: 'buy', reason: 'EMA 9 crossed above EMA 21' };
-  }
-
-  // EMA 9 crosses below EMA 21 - SELL signal
-  if (previous.ema9 >= previous.ema21 && current.ema9 < current.ema21) {
-    return { action: 'sell', reason: 'EMA 9 crossed below EMA 21' };
-  }
-
-  return { action: 'hold', reason: '' };
-}`,
-  },
-  meanReversion: {
-    name: "RSI Mean Reversion",
-    description: "Buy when RSI < 30 (oversold), sell when RSI > 70 (overbought)",
-    code: `// RSI Mean Reversion Strategy
-// Available data: current (IndicatorData), previous (IndicatorData), index (number)
-// Return: { action: 'buy' | 'sell' | 'hold', reason: string }
-
-function evaluate(current, previous, index) {
-  if (!current.rsi) {
-    return { action: 'hold', reason: 'Waiting for RSI' };
-  }
-
-  // RSI below 30 - oversold, BUY signal
-  if (current.rsi < 30) {
-    return { action: 'buy', reason: 'RSI oversold (' + current.rsi.toFixed(1) + ')' };
-  }
-
-  // RSI above 70 - overbought, SELL signal
-  if (current.rsi > 70) {
-    return { action: 'sell', reason: 'RSI overbought (' + current.rsi.toFixed(1) + ')' };
-  }
-
-  return { action: 'hold', reason: '' };
-}`,
-  },
-  donchianBreakout: {
-    name: "Donchian Breakout",
-    description: "20-period high/low breakout with 200 SMA trend filter and ATR stop",
-    code: `/**
- * DONCHIAN BREAKOUT STRATEGY (2026 Optimized)
- * Entry: 20-period high/low breakout
- * Exit: 10-period opposite band (Fast Exit)
- * Filter: 200 SMA (Long-term trend)
- */
-function evaluate(current, previous, index) {
-  // 1. Data Integrity Check
-  if (!current.upperBand || !current.lowerBand || !current.sma200 || !current.atr) {
-    return { action: 'hold', reason: 'Waiting for indicators' };
-  }
-
-  // Define "Exit Window" using the midLine as a proxy for faster exit
-  const exitThresholdLong = current.midLine || current.lowerBand; 
-  const exitThresholdShort = current.midLine || current.upperBand;
-
-  // --- BUY LOGIC (Trend Following) ---
-  // Entry: Price touches or exceeds the 20-period Upper Band
-  const isBullishBreakout = current.close >= current.upperBand;
-  const isAboveLongTermTrend = current.close > current.sma200;
-
-  if (isBullishBreakout && isAboveLongTermTrend) {
-    return { 
-      action: 'buy', 
-      reason: 'Bullish Breakout: Price hit 20-period high (' + current.upperBand.toFixed(2) + ') above SMA 200.' 
-    };
-  }
-
-  // --- SELL LOGIC (Risk Management) ---
-  // Exit: Price breaks the opposite 10-period band or the Midline
-  const isTrendReversal = current.close <= exitThresholdLong;
-  
-  // ATR-based Emergency Stop: Exit if price drops 2x ATR from previous close
-  const emergencyStop = previous && current.close < (previous.close - (current.atr * 2));
-
-  if (isTrendReversal || emergencyStop) {
-    let reason = emergencyStop ? 'Emergency ATR Stop triggered' : 'Trend reversal: Price crossed Midline/Lower Band';
-    return { action: 'sell', reason: reason };
-  }
-
-  return { action: 'hold', reason: '' };
-}`,
-  },
-  breakout: {
-    name: "Price Breakout",
-    description: "Buy on new highs, sell on new lows (momentum following)",
-    code: `// Breakout Strategy
-// Available data: current (IndicatorData), previous (IndicatorData), index (number)
-// Return: { action: 'buy' | 'sell' | 'hold', reason: string }
-
-function evaluate(current, previous, index) {
-  if (!current.upperBand || !current.lowerBand) {
-    return { action: 'hold', reason: 'Waiting for Donchian bands' };
-  }
-
-  // Price breaks above upper band - BUY
-  if (current.close > current.upperBand) {
-    return { action: 'buy', reason: 'Breakout above upper band' };
-  }
-
-  // Price breaks below lower band - SELL
-  if (current.close < current.lowerBand) {
-    return { action: 'sell', reason: 'Breakdown below lower band' };
-  }
-
-  return { action: 'hold', reason: '' };
-}`,
-  },
-  goldenCross: {
-    name: "Golden Cross/Death Cross",
-    description: "Buy when SMA 50 crosses above SMA 200, sell on death cross",
-    code: `// Golden Cross / Death Cross Strategy
-// Available data: current (IndicatorData), previous (IndicatorData), index (number)
-// Return: { action: 'buy' | 'sell' | 'hold', reason: string }
-
-function evaluate(current, previous, index) {
-  if (!current.sma50 || !current.sma200 || !previous?.sma50 || !previous?.sma200) {
-    return { action: 'hold', reason: 'Waiting for SMAs' };
-  }
-
-  // Golden Cross: SMA 50 crosses above SMA 200
-  if (previous.sma50 <= previous.sma200 && current.sma50 > current.sma200) {
-    return { action: 'buy', reason: 'Golden Cross - SMA 50 crossed above SMA 200' };
-  }
-
-  // Death Cross: SMA 50 crosses below SMA 200
-  if (previous.sma50 >= previous.sma200 && current.sma50 < current.sma200) {
-    return { action: 'sell', reason: 'Death Cross - SMA 50 crossed below SMA 200' };
-  }
-
-  return { action: 'hold', reason: '' };
-}`,
-  },
-  custom: {
-    name: "Custom Strategy",
-    description: "Write your own strategy logic",
-    code: `// Custom Strategy Template
-// Available data: current (IndicatorData), previous (IndicatorData), index (number)
-// 
-// IndicatorData contains:
-//   - time, open, high, low, close (price data)
-//   - sma20, sma50, sma200 (Simple Moving Averages)
-//   - ema9, ema21 (Exponential Moving Averages)
-//   - rsi (Relative Strength Index, 0-100)
-//   - macd, macdSignal, macdHistogram
-//   - atr (Average True Range)
-//   - upperBand, lowerBand, midLine (Donchian Channels)
-//   - prevClose, prevHigh, prevLow
-//
-// Return: { action: 'buy' | 'sell' | 'hold', reason: string }
-
-function evaluate(current, previous, index) {
-  // Your strategy logic here
-  // Example: Buy when price closes above SMA 20
-  
-  if (!current.sma20 || !previous?.sma20) {
-    return { action: 'hold', reason: 'Waiting for indicators' };
-  }
-
-  if (previous.close <= previous.sma20 && current.close > current.sma20) {
-    return { action: 'buy', reason: 'Price crossed above SMA 20' };
-  }
-
-  if (previous.close >= previous.sma20 && current.close < current.sma20) {
-    return { action: 'sell', reason: 'Price crossed below SMA 20' };
-  }
-
-  return { action: 'hold', reason: '' };
-}`,
-  },
-};
 
 // Calculate all indicators for the data
 function calculateIndicators(data: PricePoint[]): IndicatorData[] {
@@ -340,95 +154,59 @@ function calculateIndicators(data: PricePoint[]): IndicatorData[] {
 }
 
 // Run backtest with given strategy
-function runBacktest(data: IndicatorData[], strategyCode: string, initialCapital: number): BacktestResult {
+function runBacktest(data: IndicatorData[], strategy: StrategyDefinition, initialCapital: number): BacktestResult {
   const trades: BacktestTrade[] = [];
   const equityCurve: { time: number; equity: number }[] = [];
   let equity = initialCapital;
   let position: { side: PositionSide; entryPrice: number; entryTime: number; entryIdx: number } | null = null;
   let tradeId = 1;
 
-  // Create the evaluate function from strategy code
-  let evaluateFn: (
-    current: IndicatorData,
-    previous: IndicatorData | null,
-    index: number,
-  ) => { action: string; reason: string };
-
-  try {
-    // Extract the function body and create it
-    const fnMatch = strategyCode.match(/function\s+evaluate\s*\([^)]*\)\s*\{([\s\S]*)\}/);
-    if (fnMatch) {
-      evaluateFn = new Function("current", "previous", "index", fnMatch[1]) as typeof evaluateFn;
-    } else {
-      throw new Error("Could not parse strategy function");
-    }
-  } catch (error) {
-    console.error("Strategy parsing error:", error);
-    return {
-      trades: [],
-      totalPnl: 0,
-      totalPnlPercent: 0,
-      winRate: 0,
-      totalTrades: 0,
-      winningTrades: 0,
-      losingTrades: 0,
-      averageWin: 0,
-      averageLoss: 0,
-      profitFactor: 0,
-      maxDrawdown: 0,
-      maxDrawdownPercent: 0,
-      sharpeRatio: 0,
-      buyAndHoldPnl: 0,
-      buyAndHoldPnlPercent: 0,
-      equityCurve: [],
-    };
-  }
-
   // Run through the data
   for (let i = 1; i < data.length; i++) {
     const current = data[i];
     const previous = data[i - 1];
 
-    try {
-      const signal = evaluateFn(current, previous, i);
+    const signal = strategy.handler({
+      current,
+      previous,
+      index: i,
+      series: data.slice(0, i + 1), // Full series up to current point
+    });
 
-      if (signal.action === "buy" && !position) {
-        // Open long position
-        position = {
-          side: PositionSide.LONG,
-          entryPrice: current.close,
-          entryTime: current.time,
-          entryIdx: i,
-        };
-      } else if (signal.action === "sell" && position) {
-        // Close position
-        const pnl =
-          position.side === PositionSide.LONG
-            ? (current.close - position.entryPrice) * (equity / position.entryPrice)
-            : (position.entryPrice - current.close) * (equity / position.entryPrice);
-        const pnlPercent =
-          ((current.close - position.entryPrice) / position.entryPrice) *
-          100 *
-          (position.side === PositionSide.LONG ? 1 : -1);
+    if (signal.action === "buy" && !position) {
+      // Open long position
+      position = {
+        side: PositionSide.LONG,
+        entryPrice: current.close,
+        entryTime: current.time,
+        entryIdx: i,
+      };
+    } else if (signal.action === "sell" && position) {
+      // Close position
+      const pnl =
+        position.side === PositionSide.LONG
+          ? (current.close - position.entryPrice) * (equity / position.entryPrice)
+          : (position.entryPrice - current.close) * (equity / position.entryPrice);
+      const pnlPercent =
+        ((current.close - position.entryPrice) / position.entryPrice) *
+        100 *
+        (position.side === PositionSide.LONG ? 1 : -1);
 
-        equity += pnl;
+      equity += pnl;
 
-        trades.push({
-          id: `trade-${tradeId++}`,
-          side: position.side,
-          entryPrice: position.entryPrice,
-          entryTime: position.entryTime,
-          exitPrice: current.close,
-          exitTime: current.time,
-          pnl,
-          pnlPercent,
-          reason: signal.reason,
-        });
+      trades.push({
+        id: `trade-${tradeId++}`,
+        side: position.side,
+        entryPrice: position.entryPrice,
+        entryTime: position.entryTime,
+        exitPrice: current.close,
+        exitTime: current.time,
+        pnl,
+        pnlPercent,
+        reason: signal.reason,
+      });
 
-        position = null;
-      }
-    } catch (error) {
-      console.error("Strategy execution error at index", i, error);
+      position = null;
     }
 
     equityCurve.push({ time: current.time, equity });
@@ -534,10 +312,8 @@ export default function AlgoBacktestPage() {
   const [showEquityCurve, setShowEquityCurve] = useState(true);
 
   // Strategy state
-  const [selectedTemplate, setSelectedTemplate] = useState<string>("emaCrossover");
-  const [strategyCode, setStrategyCode] = useState(STRATEGY_TEMPLATES.emaCrossover.code);
+  const [selectedStrategyId, setSelectedStrategyId] = useState<string>("ema-crossover");
   const [backtestResult, setBacktestResult] = useState<BacktestResult | null>(null);
-  const [isRunning, setIsRunning] = useState(false);
 
   // Fetch available datasets on mount
   useEffect(() => {
@@ -581,8 +357,11 @@ export default function AlgoBacktestPage() {
         setIndicatorData(withIndicators);
 
         // Auto-run backtest with current strategy
-        const backtest = runBacktest(withIndicators, strategyCode, INITIAL_CAPITAL);
-        setBacktestResult(backtest);
+        const strategy = AVAILABLE_STRATEGIES[selectedStrategyId];
+        if (strategy) {
+          const backtest = runBacktest(withIndicators, strategy, INITIAL_CAPITAL);
+          setBacktestResult(backtest);
+        }
       } catch (err) {
         console.error("Error loading data:", err);
         setError(err instanceof Error ? err.message : "Failed to load data");
@@ -592,33 +371,7 @@ export default function AlgoBacktestPage() {
     }
 
     loadData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedFile]);
-
-  // Handle template selection
-  const handleTemplateChange = (templateKey: string) => {
-    setSelectedTemplate(templateKey);
-    const template = STRATEGY_TEMPLATES[templateKey as keyof typeof STRATEGY_TEMPLATES];
-    if (template) {
-      setStrategyCode(template.code);
-    }
-  };
-
-  // Run backtest
-  const handleRunBacktest = useCallback(() => {
-    if (indicatorData.length === 0) return;
-
-    setIsRunning(true);
-    try {
-      const result = runBacktest(indicatorData, strategyCode, INITIAL_CAPITAL);
-      setBacktestResult(result);
-    } catch (err) {
-      console.error("Backtest error:", err);
-      setError(err instanceof Error ? err.message : "Backtest failed");
-    } finally {
-      setIsRunning(false);
-    }
-  }, [indicatorData, strategyCode]);
+  }, [selectedFile, selectedStrategyId]);
 
   if (isLoading) {
     return (
@@ -649,7 +402,7 @@ export default function AlgoBacktestPage() {
   return (
     <div className='flex flex-col h-screen bg-slate-900 text-white overflow-hidden'>
       <div className='flex-1 flex overflow-hidden'>
-        {/* Left Panel - Strategy Editor */}
+        {/* Left Panel - Strategy Selector */}
         <div className='w-[450px] flex-shrink-0 border-r border-slate-700 flex flex-col overflow-hidden'>
           {/* Dataset Selector */}
           <div className='p-4 border-b border-slate-700'>
@@ -667,41 +420,50 @@ export default function AlgoBacktestPage() {
             </select>
           </div>
 
-          {/* Strategy Template Selector */}
+          {/* Strategy Selector */}
           <div className='p-4 border-b border-slate-700'>
-            <label className='block text-sm text-slate-400 mb-2'>Strategy Template</label>
+            <label className='block text-sm text-slate-400 mb-2'>Strategy</label>
             <select
-              value={selectedTemplate}
-              onChange={(e) => handleTemplateChange(e.target.value)}
+              value={selectedStrategyId}
+              onChange={(e) => setSelectedStrategyId(e.target.value)}
               className='w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white'
             >
-              {Object.entries(STRATEGY_TEMPLATES).map(([key, template]) => (
-                <option key={key} value={key}>
-                  {template.name}
+              {Object.values(AVAILABLE_STRATEGIES).map((strategy) => (
+                <option key={strategy.id} value={strategy.id}>
+                  {strategy.name}
                 </option>
               ))}
             </select>
             <p className='text-xs text-slate-500 mt-1'>
-              {STRATEGY_TEMPLATES[selectedTemplate as keyof typeof STRATEGY_TEMPLATES]?.description}
+              {AVAILABLE_STRATEGIES[selectedStrategyId]?.description}
             </p>
           </div>
 
-          {/* Code Editor */}
+          {/* Strategy Information */}
           <div className='flex-1 flex flex-col overflow-hidden p-4'>
-            <label className='block text-sm text-slate-400 mb-2'>Strategy Code</label>
-            <textarea
-              value={strategyCode}
-              onChange={(e) => setStrategyCode(e.target.value)}
-              className='flex-1 bg-slate-950 border border-slate-600 rounded p-3 text-sm font-mono text-green-400 resize-none focus:outline-none focus:border-blue-500'
-              spellCheck={false}
-            />
-            <button
-              onClick={handleRunBacktest}
-              disabled={isRunning || indicatorData.length === 0}
-              className='mt-3 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-600 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 rounded transition-colors'
-            >
-              {isRunning ? "Running..." : "▶ Run Backtest"}
-            </button>
+            <div className='bg-slate-800 rounded p-4 mb-3'>
+              <h3 className='text-sm font-semibold text-slate-300 mb-2'>
+                {AVAILABLE_STRATEGIES[selectedStrategyId]?.name}
+              </h3>
+              <p className='text-xs text-slate-400 mb-3'>
+                {AVAILABLE_STRATEGIES[selectedStrategyId]?.description}
+              </p>
+              <div className='text-xs text-slate-500 border-t border-slate-700 pt-3'>
+                <p className='mb-1'>✓ Type-safe strategy handler</p>
+                <p className='mb-1'>✓ No eval() or dynamic code execution</p>
+                <p>✓ Full TypeScript support</p>
+              </div>
+            </div>
+
+            <div className='bg-blue-900/20 border border-blue-800/30 rounded p-3'>
+              <p className='text-xs text-blue-300 mb-1 font-semibold'>💡 Adding New Strategies</p>
+              <p className='text-xs text-slate-400'>
+                To add new strategies, see{" "}
+                <code className='bg-slate-950 px-1 py-0.5 rounded text-blue-400'>
+                  app/strategies/README.md
+                </code>
+              </p>
+            </div>
           </div>
         </div>
 
