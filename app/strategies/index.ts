@@ -13,3 +13,56 @@ export const AVAILABLE_STRATEGIES: Record<string, StrategyDefinition> = {
 };
 
 export * from './types';
+
+// Helper to get default parameter values for a strategy
+export function getDefaultParams(strategyId: string): Record<string, number | boolean | string> {
+  const strategy = AVAILABLE_STRATEGIES[strategyId];
+  if (!strategy?.parameters) return {};
+  
+  const defaults: Record<string, number | boolean | string> = {};
+  for (const param of strategy.parameters) {
+    defaults[param.key] = param.default;
+  }
+  return defaults;
+}
+
+// Generate parameter variations for batch testing
+export function generateParameterVariations(
+  strategy: StrategyDefinition,
+  variations: { key: string; values: (number | boolean | string)[] }[]
+): Record<string, number | boolean | string>[] {
+  if (variations.length === 0 || !strategy.parameters) {
+    return [getDefaultParams(strategy.id)];
+  }
+
+  // Start with default values
+  const defaults = getDefaultParams(strategy.id);
+  
+  // Generate cartesian product of all variations
+  const result: Record<string, number | boolean | string>[] = [{ ...defaults }];
+  
+  for (const variation of variations) {
+    const newResult: Record<string, number | boolean | string>[] = [];
+    for (const existing of result) {
+      for (const value of variation.values) {
+        newResult.push({ ...existing, [variation.key]: value });
+      }
+    }
+    // If this variation had values, use the expanded set; otherwise keep existing
+    if (variation.values.length > 0) {
+      result.length = 0;
+      result.push(...newResult);
+    }
+  }
+  
+  return result;
+}
+
+// Create a human-readable label for a parameter set
+export function createParamLabel(params: Record<string, number | boolean | string>): string {
+  const parts: string[] = [];
+  for (const [key, value] of Object.entries(params)) {
+    parts.push(`${key}=${value}`);
+  }
+  return parts.join(', ');
+}

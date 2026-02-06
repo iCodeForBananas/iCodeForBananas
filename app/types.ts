@@ -101,4 +101,7 @@ export interface IndicatorData extends PricePoint {
   prevClose?: number;
   prevHigh?: number;
   prevLow?: number;
+  // Dynamic indicators (keyed by period) for parameterized strategies
+  [key: `sma${number}`]: number | undefined;
+  [key: `ema${number}`]: number | undefined;
 }
