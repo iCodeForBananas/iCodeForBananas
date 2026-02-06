@@ -20,6 +20,7 @@ export default function OptionsPracticePage() {
   const [visibleIndex, setVisibleIndex] = useState<number>(0);
   const [account, setAccount] = useState<Account>({ balance: INITIAL_BALANCE, riskPercentage: 0 });
   const [trade, setTrade] = useState<OptionTrade | null>(null);
+  const [lastTradePnl, setLastTradePnl] = useState<number | null>(null);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -199,15 +200,8 @@ export default function OptionsPracticePage() {
     const pnl = exitValue - trade.entryCost;
 
     setAccount((prev) => ({ ...prev, balance: prev.balance + exitValue }));
-    setTrade({
-      ...trade,
-      status: "closed",
-      exitIndex: visibleIndex,
-      exitTime: allData[visibleIndex].time,
-      exitUnderlying: exitPrice,
-      pnl,
-    });
-    setIsPlaying(false);
+    setLastTradePnl(pnl);
+    setTrade(null);
   };
 
   const openOptionValue =
@@ -458,15 +452,15 @@ export default function OptionsPracticePage() {
               <h2 className='text-xs sm:text-sm font-semibold text-gray-600 mb-1 sm:mb-2'>Last Trade P&L</h2>
               <p
                 className={`text-sm sm:text-xl lg:text-2xl font-bold truncate ${
-                  trade?.pnl === undefined
+                  lastTradePnl === null
                     ? "text-gray-400"
-                    : trade.pnl >= 0
+                    : lastTradePnl >= 0
                       ? "text-green-600"
                       : "text-red-600"
                 }`}
               >
-                {trade?.pnl !== undefined
-                  ? `${trade.pnl >= 0 ? "+" : ""}$${trade.pnl.toLocaleString(undefined, {
+                {lastTradePnl !== null
+                  ? `${lastTradePnl >= 0 ? "+" : ""}$${lastTradePnl.toLocaleString(undefined, {
                       minimumFractionDigits: 0,
                       maximumFractionDigits: 0,
                     })}`
