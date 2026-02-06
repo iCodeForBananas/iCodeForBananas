@@ -8,6 +8,7 @@ export interface PricePoint {
   close: number;
   donchianMiddle?: number;
   ema?: number;
+  trailstopSma?: number;
 }
 
 export enum PositionSide {
