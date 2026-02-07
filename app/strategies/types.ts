@@ -26,6 +26,9 @@ export interface IndicatorValues {
   prevClose?: number;
   prevHigh?: number;
   prevLow?: number;
+  // Dynamic indicators (keyed by period)
+  [key: `sma${number}`]: number | undefined;
+  [key: `ema${number}`]: number | undefined;
 }
 
 export interface StrategyContext {
@@ -33,6 +36,7 @@ export interface StrategyContext {
   previous: (OHLCBar & IndicatorValues) | null;
   index: number;
   series: (OHLCBar & IndicatorValues)[]; // Full historical series for lookback
+  params: Record<string, number | boolean | string>; // Strategy parameters
 }
 
 export interface StrategySignal {
@@ -42,9 +46,61 @@ export interface StrategySignal {
 
 export type StrategyHandler = (context: StrategyContext) => StrategySignal;
 
+// Strategy parameter definition for UI configuration
+export interface StrategyParameter {
+  key: string;
+  name: string;
+  description: string;
+  type: 'number' | 'boolean' | 'select';
+  default: number | boolean | string;
+  min?: number;
+  max?: number;
+  step?: number;
+  options?: string[];
+}
+
 export interface StrategyDefinition {
   id: string;
   name: string;
   description: string;
   handler: StrategyHandler;
+  parameters?: StrategyParameter[];
+}
+
+// Parameter variation for batch testing
+export interface ParameterVariation {
+  key: string;
+  values: (number | boolean | string)[];
+}
+
+// Result for a single parameterized backtest run
+export interface ParameterizedResult {
+  params: Record<string, number | boolean | string>;
+  label: string;
+  totalPnl: number;
+  totalPnlPercent: number;
+  winRate: number;
+  totalTrades: number;
+  winningTrades: number;
+  losingTrades: number;
+  averageWin: number;
+  averageLoss: number;
+  profitFactor: number;
+  maxDrawdown: number;
+  maxDrawdownPercent: number;
+  sharpeRatio: number;
+  buyAndHoldPnl: number;
+  buyAndHoldPnlPercent: number;
+  equityCurve: { time: number; equity: number }[];
+  trades: {
+    id: string;
+    side: string;
+    entryPrice: number;
+    entryTime: number;
+    exitPrice: number;
+    exitTime: number;
+    pnl: number;
+    pnlPercent: number;
+    reason: string;
+  }[];
 }

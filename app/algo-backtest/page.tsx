@@ -1,12 +1,20 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import BacktestChart from "../components/BacktestChart";
-import { PricePoint, IndicatorData, BacktestResult, BacktestTrade, PositionSide } from "@/app/types";
-import { AVAILABLE_STRATEGIES, StrategyDefinition } from "@/app/strategies";
+import EquityCurveChart from "../components/EquityCurveChart";
+import { PricePoint, IndicatorData, BacktestTrade, PositionSide } from "@/app/types";
+import {
+  AVAILABLE_STRATEGIES,
+  StrategyDefinition,
+  getDefaultParams,
+  createParamLabel,
+  ParameterizedResult,
+} from "@/app/strategies";
 
 const DEFAULT_VISIBLE_CANDLES = 300;
 const INITIAL_CAPITAL = 100000;
+const MAX_BATCH_RUNS = 50;
 
 interface DatasetInfo {
   file: string;
@@ -16,25 +24,32 @@ interface DatasetInfo {
   label: string;
 }
 
-// Calculate all indicators for the data
-function calculateIndicators(data: PricePoint[]): IndicatorData[] {
+interface ParameterVariationConfig {
+  key: string;
+  enabled: boolean;
+  values: string; // Comma-separated values, e.g., "5, 9, 13, 21"
+}
+
+// Calculate indicators dynamically based on required periods
+function calculateIndicatorsWithParams(
+  data: PricePoint[],
+  requiredEMAs: number[],
+  requiredSMAs: number[]
+): IndicatorData[] {
   const result: IndicatorData[] = [];
 
-  // Helper functions
   const calcSMA = (values: number[], period: number): number | undefined => {
     if (values.length < period) return undefined;
     return values.slice(-period).reduce((a, b) => a + b, 0) / period;
   };
 
-  const calcEMA = (currentPrice: number, prevEMA: number | undefined, period: number): number | undefined => {
-    const multiplier = 2 / (period + 1);
-    if (prevEMA === undefined) return currentPrice;
-    return (currentPrice - prevEMA) * multiplier + prevEMA;
-  };
-
   const closePrices: number[] = [];
-  let prevEma9: number | undefined;
-  let prevEma21: number | undefined;
+
+  // Track EMA values for each required period
+  const emaState: Record<number, number | undefined> = {};
+  for (const period of requiredEMAs) {
+    emaState[period] = undefined;
+  }
 
   // For RSI
   let avgGain = 0;
@@ -66,21 +81,33 @@ function calculateIndicators(data: PricePoint[]): IndicatorData[] {
       indicatorData.prevLow = data[i - 1].low;
     }
 
-    // SMAs
+    // Standard SMAs (always computed)
     indicatorData.sma20 = calcSMA(closePrices, 20);
     indicatorData.sma50 = calcSMA(closePrices, 50);
     indicatorData.sma200 = calcSMA(closePrices, 200);
 
-    // EMAs
-    if (i === 0) {
-      prevEma9 = candle.close;
-      prevEma21 = candle.close;
-    } else {
-      prevEma9 = calcEMA(candle.close, prevEma9, 9);
-      prevEma21 = calcEMA(candle.close, prevEma21, 21);
+    // Dynamic SMAs based on required periods
+    for (const period of requiredSMAs) {
+      indicatorData[`sma${period}`] = calcSMA(closePrices, period);
     }
-    indicatorData.ema9 = prevEma9;
-    indicatorData.ema21 = prevEma21;
+
+    // Dynamic EMAs for all required periods
+    for (const period of requiredEMAs) {
+      const multiplier = 2 / (period + 1);
+      if (i === 0) {
+        emaState[period] = candle.close;
+      } else {
+        const prevEma = emaState[period];
+        if (prevEma !== undefined) {
+          emaState[period] = (candle.close - prevEma) * multiplier + prevEma;
+        }
+      }
+      indicatorData[`ema${period}`] = emaState[period];
+    }
+
+    // Standard EMAs (always include 9 and 21)
+    indicatorData.ema9 = emaState[9];
+    indicatorData.ema21 = emaState[21];
 
     // RSI
     if (i > 0) {
@@ -106,19 +133,26 @@ function calculateIndicators(data: PricePoint[]): IndicatorData[] {
     }
 
     // MACD
+    const macdMultiplier12 = 2 / (12 + 1);
+    const macdMultiplier26 = 2 / (26 + 1);
     if (i === 0) {
       ema12 = candle.close;
       ema26 = candle.close;
     } else {
-      ema12 = calcEMA(candle.close, ema12, 12);
-      ema26 = calcEMA(candle.close, ema26, 26);
+      if (ema12 !== undefined) {
+        ema12 = (candle.close - ema12) * macdMultiplier12 + ema12;
+      }
+      if (ema26 !== undefined) {
+        ema26 = (candle.close - ema26) * macdMultiplier26 + ema26;
+      }
     }
     if (ema12 !== undefined && ema26 !== undefined && i >= 26) {
       indicatorData.macd = ema12 - ema26;
+      const signalMultiplier = 2 / (9 + 1);
       if (signalEma === undefined) {
         signalEma = indicatorData.macd;
       } else {
-        signalEma = calcEMA(indicatorData.macd, signalEma, 9);
+        signalEma = (indicatorData.macd - signalEma) * signalMultiplier + signalEma;
       }
       indicatorData.macdSignal = signalEma;
       if (indicatorData.macdSignal !== undefined) {
@@ -131,7 +165,7 @@ function calculateIndicators(data: PricePoint[]): IndicatorData[] {
       const tr = Math.max(
         candle.high - candle.low,
         Math.abs(candle.high - data[i - 1].close),
-        Math.abs(candle.low - data[i - 1].close),
+        Math.abs(candle.low - data[i - 1].close)
       );
       trValues.push(tr);
       if (trValues.length >= atrPeriod) {
@@ -153,8 +187,13 @@ function calculateIndicators(data: PricePoint[]): IndicatorData[] {
   return result;
 }
 
-// Run backtest with given strategy
-function runBacktest(data: IndicatorData[], strategy: StrategyDefinition, initialCapital: number): BacktestResult {
+// Run backtest with given strategy and parameters
+function runBacktestWithParams(
+  data: IndicatorData[],
+  strategy: StrategyDefinition,
+  params: Record<string, number | boolean | string>,
+  initialCapital: number
+): ParameterizedResult {
   const trades: BacktestTrade[] = [];
   const equityCurve: { time: number; equity: number }[] = [];
   let equity = initialCapital;
@@ -170,11 +209,11 @@ function runBacktest(data: IndicatorData[], strategy: StrategyDefinition, initia
       current,
       previous,
       index: i,
-      series: data.slice(0, i + 1), // Full series up to current point
+      series: data.slice(0, i + 1),
+      params,
     });
 
     if (signal.action === "buy" && !position) {
-      // Open long position
       position = {
         side: PositionSide.LONG,
         entryPrice: current.close,
@@ -182,7 +221,6 @@ function runBacktest(data: IndicatorData[], strategy: StrategyDefinition, initia
         entryIdx: i,
       };
     } else if (signal.action === "sell" && position) {
-      // Close position
       const pnl =
         position.side === PositionSide.LONG
           ? (current.close - position.entryPrice) * (equity / position.entryPrice)
@@ -267,7 +305,7 @@ function runBacktest(data: IndicatorData[], strategy: StrategyDefinition, initia
     }
   }
 
-  // Sharpe ratio (simplified - annualized)
+  // Sharpe ratio
   const returns = equityCurve.slice(1).map((p, i) => (p.equity - equityCurve[i].equity) / equityCurve[i].equity);
   const avgReturn = returns.length > 0 ? returns.reduce((a, b) => a + b, 0) / returns.length : 0;
   const stdDev =
@@ -276,14 +314,15 @@ function runBacktest(data: IndicatorData[], strategy: StrategyDefinition, initia
       : 0;
   const sharpeRatio = stdDev === 0 ? 0 : (avgReturn / stdDev) * Math.sqrt(252);
 
-  // Buy and hold comparison
+  // Buy and hold
   const firstPrice = data[0]?.close || 0;
   const lastPrice = data[data.length - 1]?.close || 0;
   const buyAndHoldPnlPercent = firstPrice > 0 ? ((lastPrice - firstPrice) / firstPrice) * 100 : 0;
   const buyAndHoldPnl = initialCapital * (buyAndHoldPnlPercent / 100);
 
   return {
-    trades,
+    params,
+    label: createParamLabel(params),
     totalPnl,
     totalPnlPercent,
     winRate: trades.length > 0 ? (winningTrades.length / trades.length) * 100 : 0,
@@ -299,12 +338,52 @@ function runBacktest(data: IndicatorData[], strategy: StrategyDefinition, initia
     buyAndHoldPnl,
     buyAndHoldPnlPercent,
     equityCurve,
+    trades: trades.map((t) => ({ ...t, side: t.side.toString() })),
   };
 }
 
+// Parse comma-separated values into array of numbers
+function parseValuesString(str: string): number[] {
+  return str
+    .split(",")
+    .map((s) => parseFloat(s.trim()))
+    .filter((n) => !isNaN(n));
+}
+
+// Generate all parameter combinations from variations config
+function generateCombinations(
+  defaults: Record<string, number | boolean | string>,
+  variations: ParameterVariationConfig[]
+): Record<string, number | boolean | string>[] {
+  const enabledVariations = variations.filter((v) => v.enabled);
+
+  if (enabledVariations.length === 0) {
+    return [defaults];
+  }
+
+  let combinations: Record<string, number | boolean | string>[] = [{ ...defaults }];
+
+  for (const variation of enabledVariations) {
+    const values = parseValuesString(variation.values);
+    if (values.length === 0) continue;
+
+    const newCombinations: Record<string, number | boolean | string>[] = [];
+    for (const combo of combinations) {
+      for (const value of values) {
+        newCombinations.push({ ...combo, [variation.key]: value });
+      }
+    }
+    combinations = newCombinations;
+  }
+
+  return combinations.slice(0, MAX_BATCH_RUNS);
+}
+
 export default function AlgoBacktestPage() {
+  const [rawData, setRawData] = useState<PricePoint[]>([]);
   const [indicatorData, setIndicatorData] = useState<IndicatorData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRunningBatch, setIsRunningBatch] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [availableDatasets, setAvailableDatasets] = useState<DatasetInfo[]>([]);
   const [selectedFile, setSelectedFile] = useState<string>("");
@@ -313,7 +392,32 @@ export default function AlgoBacktestPage() {
 
   // Strategy state
   const [selectedStrategyId, setSelectedStrategyId] = useState<string>("ema-crossover");
-  const [backtestResult, setBacktestResult] = useState<BacktestResult | null>(null);
+  const [currentParams, setCurrentParams] = useState<Record<string, number | boolean | string>>({});
+  const [paramVariations, setParamVariations] = useState<ParameterVariationConfig[]>([]);
+
+  // Results state (multiple results for batch mode)
+  const [results, setResults] = useState<ParameterizedResult[]>([]);
+  const [activeResultTab, setActiveResultTab] = useState<number>(0);
+
+  // Initialize params when strategy changes
+  useEffect(() => {
+    const defaults = getDefaultParams(selectedStrategyId);
+    setCurrentParams(defaults);
+
+    // Initialize variation configs
+    const strategy = AVAILABLE_STRATEGIES[selectedStrategyId];
+    if (strategy?.parameters) {
+      setParamVariations(
+        strategy.parameters.map((p) => ({
+          key: p.key,
+          enabled: false,
+          values: String(p.default),
+        }))
+      );
+    } else {
+      setParamVariations([]);
+    }
+  }, [selectedStrategyId]);
 
   // Fetch available datasets on mount
   useEffect(() => {
@@ -323,7 +427,6 @@ export default function AlgoBacktestPage() {
         const result = await response.json();
         if (result.success && result.files.length > 0) {
           setAvailableDatasets(result.files);
-          // Prefer 1d timeframe for backtesting
           const dailyFile = result.files.find((f: DatasetInfo) => f.timeframe === "1d");
           setSelectedFile(dailyFile?.file || result.files[0].file);
         }
@@ -334,7 +437,7 @@ export default function AlgoBacktestPage() {
     fetchDatasets();
   }, []);
 
-  // Load data when selected file changes
+  // Load raw data when file changes
   useEffect(() => {
     if (!selectedFile) return;
 
@@ -351,17 +454,7 @@ export default function AlgoBacktestPage() {
         }
 
         console.log("Loaded", result.data.length, "candles from", selectedFile);
-
-        // Calculate indicators
-        const withIndicators = calculateIndicators(result.data);
-        setIndicatorData(withIndicators);
-
-        // Auto-run backtest with current strategy
-        const strategy = AVAILABLE_STRATEGIES[selectedStrategyId];
-        if (strategy) {
-          const backtest = runBacktest(withIndicators, strategy, INITIAL_CAPITAL);
-          setBacktestResult(backtest);
-        }
+        setRawData(result.data);
       } catch (err) {
         console.error("Error loading data:", err);
         setError(err instanceof Error ? err.message : "Failed to load data");
@@ -371,7 +464,114 @@ export default function AlgoBacktestPage() {
     }
 
     loadData();
-  }, [selectedFile, selectedStrategyId]);
+  }, [selectedFile]);
+
+  // Run single backtest
+  const runSingleBacktest = useCallback(() => {
+    if (rawData.length === 0) return;
+
+    const strategy = AVAILABLE_STRATEGIES[selectedStrategyId];
+    if (!strategy) return;
+
+    // Determine required indicator periods from current params
+    const requiredEMAs = new Set<number>([9, 21]); // Always include defaults
+    const requiredSMAs = new Set<number>([20, 50, 200]); // Always include defaults
+
+    // Add periods from params
+    for (const [key, value] of Object.entries(currentParams)) {
+      if (typeof value === "number") {
+        if (key.includes("ema") || key.includes("fast") || key.includes("slow")) {
+          // Assume EMA periods for crossover strategies
+          if (selectedStrategyId.includes("ema")) {
+            requiredEMAs.add(value);
+          } else if (selectedStrategyId.includes("sma")) {
+            requiredSMAs.add(value);
+          }
+        }
+        // Add based on param key naming
+        if (key === "fastPeriod" || key === "slowPeriod") {
+          if (selectedStrategyId.includes("ema")) {
+            requiredEMAs.add(value);
+          } else {
+            requiredSMAs.add(value);
+          }
+        }
+      }
+    }
+
+    const dataWithIndicators = calculateIndicatorsWithParams(
+      rawData,
+      Array.from(requiredEMAs),
+      Array.from(requiredSMAs)
+    );
+    setIndicatorData(dataWithIndicators);
+
+    const result = runBacktestWithParams(dataWithIndicators, strategy, currentParams, INITIAL_CAPITAL);
+    setResults([result]);
+    setActiveResultTab(0);
+  }, [rawData, selectedStrategyId, currentParams]);
+
+  // Run batch backtest with parameter variations
+  const runBatchBacktest = useCallback(() => {
+    if (rawData.length === 0) return;
+
+    const strategy = AVAILABLE_STRATEGIES[selectedStrategyId];
+    if (!strategy) return;
+
+    setIsRunningBatch(true);
+
+    const combinations = generateCombinations(currentParams, paramVariations);
+    console.log(`Running ${combinations.length} parameter combinations`);
+
+    // Determine all required indicator periods
+    const requiredEMAs = new Set<number>([9, 21]);
+    const requiredSMAs = new Set<number>([20, 50, 200]);
+
+    for (const combo of combinations) {
+      for (const [key, value] of Object.entries(combo)) {
+        if (typeof value === "number") {
+          if (key === "fastPeriod" || key === "slowPeriod") {
+            if (selectedStrategyId.includes("ema")) {
+              requiredEMAs.add(value);
+            } else {
+              requiredSMAs.add(value);
+            }
+          }
+        }
+      }
+    }
+
+    const dataWithIndicators = calculateIndicatorsWithParams(
+      rawData,
+      Array.from(requiredEMAs),
+      Array.from(requiredSMAs)
+    );
+    setIndicatorData(dataWithIndicators);
+
+    // Run all backtests
+    const batchResults: ParameterizedResult[] = [];
+    for (const params of combinations) {
+      const result = runBacktestWithParams(dataWithIndicators, strategy, params, INITIAL_CAPITAL);
+      batchResults.push(result);
+    }
+
+    // Sort by total P&L descending
+    batchResults.sort((a, b) => b.totalPnlPercent - a.totalPnlPercent);
+
+    setResults(batchResults);
+    setActiveResultTab(0);
+    setIsRunningBatch(false);
+  }, [rawData, selectedStrategyId, currentParams, paramVariations]);
+
+  // Auto-run single backtest when data or params change
+  useEffect(() => {
+    if (rawData.length > 0 && Object.keys(currentParams).length > 0) {
+      runSingleBacktest();
+    }
+  }, [rawData, currentParams, runSingleBacktest]);
+
+  const activeResult = results[activeResultTab];
+  const strategy = AVAILABLE_STRATEGIES[selectedStrategyId];
 
   if (isLoading) {
     return (
@@ -402,7 +602,7 @@ export default function AlgoBacktestPage() {
   return (
     <div className='flex flex-col h-screen bg-slate-900 text-white overflow-hidden'>
       <div className='flex-1 flex overflow-hidden'>
-        {/* Left Panel - Strategy Selector */}
+        {/* Left Panel - Strategy & Parameters */}
         <div className='w-[450px] flex-shrink-0 border-r border-slate-700 flex flex-col overflow-hidden'>
           {/* Dataset Selector */}
           <div className='p-4 border-b border-slate-700'>
@@ -428,99 +628,246 @@ export default function AlgoBacktestPage() {
               onChange={(e) => setSelectedStrategyId(e.target.value)}
               className='w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white'
             >
-              {Object.values(AVAILABLE_STRATEGIES).map((strategy) => (
-                <option key={strategy.id} value={strategy.id}>
-                  {strategy.name}
+              {Object.values(AVAILABLE_STRATEGIES).map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
                 </option>
               ))}
             </select>
-            <p className='text-xs text-slate-500 mt-1'>
-              {AVAILABLE_STRATEGIES[selectedStrategyId]?.description}
-            </p>
+            <p className='text-xs text-slate-500 mt-1'>{strategy?.description}</p>
           </div>
 
-          {/* Strategy Information */}
-          <div className='flex-1 flex flex-col overflow-hidden p-4'>
-            <div className='bg-slate-800 rounded p-4 mb-3'>
-              <h3 className='text-sm font-semibold text-slate-300 mb-2'>
-                {AVAILABLE_STRATEGIES[selectedStrategyId]?.name}
-              </h3>
-              <p className='text-xs text-slate-400 mb-3'>
-                {AVAILABLE_STRATEGIES[selectedStrategyId]?.description}
-              </p>
-              <div className='text-xs text-slate-500 border-t border-slate-700 pt-3'>
-                <p className='mb-1'>✓ Type-safe strategy handler</p>
-                <p className='mb-1'>✓ No eval() or dynamic code execution</p>
-                <p>✓ Full TypeScript support</p>
+          {/* Parameter Configuration */}
+          {strategy?.parameters && strategy.parameters.length > 0 && (
+            <div className='p-4 border-b border-slate-700 overflow-y-auto flex-shrink-0'>
+              <div className='flex items-center justify-between mb-3'>
+                <label className='text-sm text-slate-400'>Parameters</label>
+                <span className='text-xs text-slate-500'>
+                  {paramVariations.filter((v) => v.enabled).length > 0
+                    ? `${generateCombinations(currentParams, paramVariations).length} combinations`
+                    : "Single run"}
+                </span>
+              </div>
+
+              {strategy.parameters.map((param) => {
+                const variation = paramVariations.find((v) => v.key === param.key);
+                const isVariationEnabled = variation?.enabled || false;
+
+                return (
+                  <div key={param.key} className='mb-4 bg-slate-800 rounded p-3'>
+                    <div className='flex items-center justify-between mb-2'>
+                      <div>
+                        <span className='text-sm text-white font-medium'>{param.name}</span>
+                        <p className='text-xs text-slate-500'>{param.description}</p>
+                      </div>
+                      <label className='flex items-center gap-2 text-xs text-slate-400 cursor-pointer'>
+                        <input
+                          type='checkbox'
+                          checked={isVariationEnabled}
+                          onChange={(e) => {
+                            setParamVariations((prev) =>
+                              prev.map((v) => (v.key === param.key ? { ...v, enabled: e.target.checked } : v))
+                            );
+                          }}
+                          className='rounded'
+                        />
+                        Vary
+                      </label>
+                    </div>
+
+                    {isVariationEnabled ? (
+                      <div>
+                        <label className='block text-xs text-slate-400 mb-1'>Values (comma-separated)</label>
+                        <input
+                          type='text'
+                          value={variation?.values || ""}
+                          onChange={(e) => {
+                            setParamVariations((prev) =>
+                              prev.map((v) => (v.key === param.key ? { ...v, values: e.target.value } : v))
+                            );
+                          }}
+                          placeholder={`e.g., ${param.min || 5}, ${param.default}, ${param.max || 50}`}
+                          className='w-full bg-slate-900 border border-slate-600 rounded px-2 py-1 text-sm text-white'
+                        />
+                        <p className='text-xs text-slate-600 mt-1'>
+                          Parsed: {parseValuesString(variation?.values || "").join(", ") || "none"}
+                        </p>
+                      </div>
+                    ) : (
+                      <input
+                        type='number'
+                        value={Number(currentParams[param.key] ?? param.default)}
+                        min={param.min}
+                        max={param.max}
+                        step={param.step}
+                        onChange={(e) => {
+                          setCurrentParams((prev) => ({
+                            ...prev,
+                            [param.key]: parseFloat(e.target.value) || Number(param.default),
+                          }));
+                        }}
+                        className='w-full bg-slate-900 border border-slate-600 rounded px-2 py-1 text-sm text-white'
+                      />
+                    )}
+                  </div>
+                );
+              })}
+
+              {/* Run Batch Button */}
+              {paramVariations.some((v) => v.enabled) && (
+                <button
+                  onClick={runBatchBacktest}
+                  disabled={isRunningBatch}
+                  className='w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:cursor-not-allowed text-white font-medium py-2 px-4 rounded transition-colors'
+                >
+                  {isRunningBatch
+                    ? "Running..."
+                    : `Run ${generateCombinations(currentParams, paramVariations).length} Variations`}
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Results Summary (when multiple results) */}
+          {results.length > 1 && (
+            <div className='flex-1 overflow-y-auto p-4'>
+              <div className='text-sm text-slate-400 mb-2'>Results Comparison ({results.length} runs)</div>
+              <div className='space-y-2'>
+                {results.map((result, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setActiveResultTab(idx)}
+                    className={`w-full text-left p-3 rounded text-sm transition-colors ${
+                      activeResultTab === idx
+                        ? "bg-blue-600/20 border border-blue-500"
+                        : "bg-slate-800 hover:bg-slate-750 border border-transparent"
+                    }`}
+                  >
+                    <div className='flex items-center justify-between'>
+                      <span className='font-mono text-xs text-slate-400 truncate max-w-[200px]'>{result.label}</span>
+                      <span
+                        className={`font-bold ${result.totalPnlPercent >= 0 ? "text-green-400" : "text-red-400"}`}
+                      >
+                        {result.totalPnlPercent >= 0 ? "+" : ""}
+                        {result.totalPnlPercent.toFixed(2)}%
+                      </span>
+                    </div>
+                    <div className='flex items-center justify-between mt-1 text-xs text-slate-500'>
+                      <span>
+                        {result.totalTrades} trades • {result.winRate.toFixed(0)}% win
+                      </span>
+                      <span>Sharpe: {result.sharpeRatio.toFixed(2)}</span>
+                    </div>
+                  </button>
+                ))}
               </div>
             </div>
+          )}
 
-            <div className='bg-blue-900/20 border border-blue-800/30 rounded p-3'>
-              <p className='text-xs text-blue-300 mb-1 font-semibold'>💡 Adding New Strategies</p>
-              <p className='text-xs text-slate-400'>
-                To add new strategies, see{" "}
-                <code className='bg-slate-950 px-1 py-0.5 rounded text-blue-400'>
-                  app/strategies/README.md
-                </code>
-              </p>
+          {/* Strategy Info (when single result) */}
+          {results.length <= 1 && (
+            <div className='flex-1 flex flex-col overflow-hidden p-4'>
+              <div className='bg-slate-800 rounded p-4 mb-3'>
+                <h3 className='text-sm font-semibold text-slate-300 mb-2'>{strategy?.name}</h3>
+                <p className='text-xs text-slate-400 mb-3'>{strategy?.description}</p>
+                <div className='text-xs text-slate-500 border-t border-slate-700 pt-3'>
+                  <p className='mb-1'>✓ Type-safe strategy handler</p>
+                  <p className='mb-1'>✓ Configurable parameters</p>
+                  <p>✓ Batch optimization support</p>
+                </div>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Right Panel - Chart and Stats */}
         <div className='flex-1 flex flex-col overflow-hidden'>
+          {/* Tabs for Multiple Results */}
+          {results.length > 1 && (
+            <div className='flex border-b border-slate-700 bg-slate-800 overflow-x-auto'>
+              {results.slice(0, 10).map((result, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setActiveResultTab(idx)}
+                  className={`px-4 py-2 text-xs font-medium whitespace-nowrap border-b-2 transition-colors ${
+                    activeResultTab === idx
+                      ? "border-blue-500 text-blue-400 bg-slate-900"
+                      : "border-transparent text-slate-400 hover:text-white hover:bg-slate-750"
+                  }`}
+                >
+                  #{idx + 1}{" "}
+                  <span className={result.totalPnlPercent >= 0 ? "text-green-400" : "text-red-400"}>
+                    {result.totalPnlPercent >= 0 ? "+" : ""}
+                    {result.totalPnlPercent.toFixed(1)}%
+                  </span>
+                </button>
+              ))}
+              {results.length > 10 && (
+                <span className='px-4 py-2 text-xs text-slate-500'>+{results.length - 10} more</span>
+              )}
+            </div>
+          )}
+
+          {/* Active Result Label */}
+          {activeResult && results.length > 1 && (
+            <div className='px-4 py-2 bg-slate-850 border-b border-slate-700 text-xs'>
+              <span className='text-slate-400'>Parameters: </span>
+              <span className='font-mono text-blue-400'>{activeResult.label}</span>
+            </div>
+          )}
+
           {/* Stats Panel */}
-          {backtestResult && (
+          {activeResult && (
             <div className='p-4 border-b border-slate-700 bg-slate-800'>
               <div className='grid grid-cols-6 gap-4 text-sm'>
                 <div className='bg-slate-900 rounded p-3'>
                   <div className='text-slate-400 text-xs mb-1'>Strategy P&L</div>
                   <div
-                    className={`text-lg font-bold ${backtestResult.totalPnl >= 0 ? "text-green-400" : "text-red-400"}`}
+                    className={`text-lg font-bold ${activeResult.totalPnl >= 0 ? "text-green-400" : "text-red-400"}`}
                   >
-                    {backtestResult.totalPnl >= 0 ? "+" : ""}${backtestResult.totalPnl.toFixed(2)}
-                    <span className='text-sm ml-1'>({backtestResult.totalPnlPercent.toFixed(2)}%)</span>
+                    {activeResult.totalPnl >= 0 ? "+" : ""}${activeResult.totalPnl.toFixed(2)}
+                    <span className='text-sm ml-1'>({activeResult.totalPnlPercent.toFixed(2)}%)</span>
                   </div>
                 </div>
                 <div className='bg-slate-900 rounded p-3'>
                   <div className='text-slate-400 text-xs mb-1'>Buy & Hold</div>
                   <div
-                    className={`text-lg font-bold ${backtestResult.buyAndHoldPnl >= 0 ? "text-green-400" : "text-red-400"}`}
+                    className={`text-lg font-bold ${activeResult.buyAndHoldPnl >= 0 ? "text-green-400" : "text-red-400"}`}
                   >
-                    {backtestResult.buyAndHoldPnl >= 0 ? "+" : ""}${backtestResult.buyAndHoldPnl.toFixed(2)}
-                    <span className='text-sm ml-1'>({backtestResult.buyAndHoldPnlPercent.toFixed(2)}%)</span>
+                    {activeResult.buyAndHoldPnl >= 0 ? "+" : ""}${activeResult.buyAndHoldPnl.toFixed(2)}
+                    <span className='text-sm ml-1'>({activeResult.buyAndHoldPnlPercent.toFixed(2)}%)</span>
                   </div>
                 </div>
                 <div className='bg-slate-900 rounded p-3'>
                   <div className='text-slate-400 text-xs mb-1'>Win Rate</div>
                   <div className='text-lg font-bold text-white'>
-                    {backtestResult.winRate.toFixed(1)}%
+                    {activeResult.winRate.toFixed(1)}%
                     <span className='text-sm text-slate-400 ml-1'>
-                      ({backtestResult.winningTrades}W / {backtestResult.losingTrades}L)
+                      ({activeResult.winningTrades}W / {activeResult.losingTrades}L)
                     </span>
                   </div>
                 </div>
                 <div className='bg-slate-900 rounded p-3'>
                   <div className='text-slate-400 text-xs mb-1'>Profit Factor</div>
                   <div
-                    className={`text-lg font-bold ${backtestResult.profitFactor >= 1 ? "text-green-400" : "text-red-400"}`}
+                    className={`text-lg font-bold ${activeResult.profitFactor >= 1 ? "text-green-400" : "text-red-400"}`}
                   >
-                    {backtestResult.profitFactor === Infinity ? "∞" : backtestResult.profitFactor.toFixed(2)}
+                    {activeResult.profitFactor === Infinity ? "∞" : activeResult.profitFactor.toFixed(2)}
                   </div>
                 </div>
                 <div className='bg-slate-900 rounded p-3'>
                   <div className='text-slate-400 text-xs mb-1'>Max Drawdown</div>
                   <div className='text-lg font-bold text-red-400'>
-                    -${backtestResult.maxDrawdown.toFixed(2)}
-                    <span className='text-sm ml-1'>({backtestResult.maxDrawdownPercent.toFixed(2)}%)</span>
+                    -${activeResult.maxDrawdown.toFixed(2)}
+                    <span className='text-sm ml-1'>({activeResult.maxDrawdownPercent.toFixed(2)}%)</span>
                   </div>
                 </div>
                 <div className='bg-slate-900 rounded p-3'>
                   <div className='text-slate-400 text-xs mb-1'>Sharpe Ratio</div>
                   <div
-                    className={`text-lg font-bold ${backtestResult.sharpeRatio >= 1 ? "text-green-400" : backtestResult.sharpeRatio >= 0 ? "text-yellow-400" : "text-red-400"}`}
+                    className={`text-lg font-bold ${activeResult.sharpeRatio >= 1 ? "text-green-400" : activeResult.sharpeRatio >= 0 ? "text-yellow-400" : "text-red-400"}`}
                   >
-                    {backtestResult.sharpeRatio.toFixed(2)}
+                    {activeResult.sharpeRatio.toFixed(2)}
                   </div>
                 </div>
               </div>
@@ -529,23 +876,23 @@ export default function AlgoBacktestPage() {
               <div className='grid grid-cols-6 gap-4 text-sm mt-2'>
                 <div className='text-center'>
                   <span className='text-slate-400 text-xs'>Trades:</span>
-                  <span className='ml-1 text-white'>{backtestResult.totalTrades}</span>
+                  <span className='ml-1 text-white'>{activeResult.totalTrades}</span>
                 </div>
                 <div className='text-center'>
                   <span className='text-slate-400 text-xs'>Avg Win:</span>
-                  <span className='ml-1 text-green-400'>${backtestResult.averageWin.toFixed(2)}</span>
+                  <span className='ml-1 text-green-400'>${activeResult.averageWin.toFixed(2)}</span>
                 </div>
                 <div className='text-center'>
                   <span className='text-slate-400 text-xs'>Avg Loss:</span>
-                  <span className='ml-1 text-red-400'>-${backtestResult.averageLoss.toFixed(2)}</span>
+                  <span className='ml-1 text-red-400'>-${activeResult.averageLoss.toFixed(2)}</span>
                 </div>
                 <div className='text-center col-span-2'>
                   <span className='text-slate-400 text-xs'>Alpha vs B&H:</span>
                   <span
-                    className={`ml-1 font-bold ${backtestResult.totalPnlPercent - backtestResult.buyAndHoldPnlPercent >= 0 ? "text-green-400" : "text-red-400"}`}
+                    className={`ml-1 font-bold ${activeResult.totalPnlPercent - activeResult.buyAndHoldPnlPercent >= 0 ? "text-green-400" : "text-red-400"}`}
                   >
-                    {backtestResult.totalPnlPercent - backtestResult.buyAndHoldPnlPercent >= 0 ? "+" : ""}
-                    {(backtestResult.totalPnlPercent - backtestResult.buyAndHoldPnlPercent).toFixed(2)}%
+                    {activeResult.totalPnlPercent - activeResult.buyAndHoldPnlPercent >= 0 ? "+" : ""}
+                    {(activeResult.totalPnlPercent - activeResult.buyAndHoldPnlPercent).toFixed(2)}%
                   </span>
                 </div>
                 <div className='text-center'>
@@ -563,23 +910,39 @@ export default function AlgoBacktestPage() {
             </div>
           )}
 
-          {/* Chart */}
-          <div className='flex-1 overflow-hidden'>
-            <BacktestChart
-              data={indicatorData}
-              trades={backtestResult?.trades || []}
-              equityCurve={backtestResult?.equityCurve || []}
-              visibleCandles={visibleCandles}
-              onVisibleCandlesChange={setVisibleCandles}
-              showEquityCurve={showEquityCurve}
-            />
+          {/* Charts Container */}
+          <div className='flex-1 flex flex-col overflow-hidden'>
+            {/* Price Chart */}
+            <div className={showEquityCurve ? 'flex-1 min-h-0' : 'flex-1 overflow-hidden'}>
+              <BacktestChart
+                data={indicatorData}
+                trades={
+                  activeResult?.trades.map((t) => ({
+                    ...t,
+                    side: t.side === "LONG" ? PositionSide.LONG : PositionSide.SHORT,
+                  })) || []
+                }
+                visibleCandles={visibleCandles}
+                onVisibleCandlesChange={setVisibleCandles}
+              />
+            </div>
+            
+            {/* Equity Curve Chart (Separate) */}
+            {showEquityCurve && activeResult && (
+              <div className='h-32 border-t border-slate-700'>
+                <EquityCurveChart
+                  equityCurve={activeResult.equityCurve}
+                  initialCapital={INITIAL_CAPITAL}
+                />
+              </div>
+            )}
           </div>
 
           {/* Trade Log */}
-          {backtestResult && backtestResult.trades.length > 0 && (
+          {activeResult && activeResult.trades.length > 0 && (
             <div className='h-48 border-t border-slate-700 overflow-hidden flex flex-col'>
               <div className='px-4 py-2 bg-slate-800 text-sm font-semibold border-b border-slate-700'>
-                Trade Log ({backtestResult.trades.length} trades)
+                Trade Log ({activeResult.trades.length} trades)
               </div>
               <div className='flex-1 overflow-y-auto'>
                 <table className='w-full text-xs'>
@@ -596,10 +959,10 @@ export default function AlgoBacktestPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {backtestResult.trades.map((trade) => (
+                    {activeResult.trades.map((trade) => (
                       <tr key={trade.id} className='border-b border-slate-800 hover:bg-slate-800/50'>
                         <td
-                          className={`px-3 py-2 font-semibold ${trade.side === PositionSide.LONG ? "text-green-400" : "text-red-400"}`}
+                          className={`px-3 py-2 font-semibold ${trade.side === "LONG" ? "text-green-400" : "text-red-400"}`}
                         >
                           {trade.side}
                         </td>

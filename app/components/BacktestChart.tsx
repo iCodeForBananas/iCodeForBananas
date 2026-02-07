@@ -6,10 +6,8 @@ import { IndicatorData, BacktestTrade, PositionSide } from "@/app/types";
 interface BacktestChartProps {
   data: IndicatorData[];
   trades: BacktestTrade[];
-  equityCurve: { time: number; equity: number }[];
   visibleCandles: number;
   onVisibleCandlesChange: (candles: number) => void;
-  showEquityCurve?: boolean;
 }
 
 const MIN_CANDLES = 50;
@@ -18,10 +16,8 @@ const MAX_CANDLES = 1000;
 const BacktestChart: React.FC<BacktestChartProps> = ({
   data,
   trades,
-  equityCurve,
   visibleCandles,
   onVisibleCandlesChange,
-  showEquityCurve = false,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -99,10 +95,7 @@ const BacktestChart: React.FC<BacktestChartProps> = ({
     const width = rect.width;
     const height = rect.height;
     const padding = { top: 30, right: 80, bottom: 40, left: 10 };
-    const chartHeight = showEquityCurve
-      ? (height - padding.top - padding.bottom) * 0.7
-      : height - padding.top - padding.bottom;
-    const equityHeight = showEquityCurve ? (height - padding.top - padding.bottom) * 0.25 : 0;
+    const chartHeight = height - padding.top - padding.bottom;
     const chartWidth = width - padding.left - padding.right;
 
     // Background
@@ -345,53 +338,6 @@ const BacktestChart: React.FC<BacktestChartProps> = ({
       }
     });
 
-    // Draw equity curve if enabled
-    if (showEquityCurve && equityCurve.length > 0) {
-      const equityTop = padding.top + chartHeight + 20;
-      const equityValues = equityCurve.map((e) => e.equity);
-      const minEquity = Math.min(...equityValues);
-      const maxEquity = Math.max(...equityValues);
-      const equityRange = maxEquity - minEquity || 1;
-
-      const equityYScale = (equity: number) =>
-        equityTop + equityHeight - ((equity - minEquity) / equityRange) * equityHeight;
-
-      // Equity background
-      ctx.fillStyle = "#1e293b";
-      ctx.fillRect(padding.left, equityTop, chartWidth, equityHeight);
-
-      // Draw equity line
-      ctx.strokeStyle = "#60a5fa";
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      equityCurve.forEach((point, i) => {
-        const x = padding.left + (i / (equityCurve.length - 1 || 1)) * chartWidth;
-        const y = equityYScale(point.equity);
-        if (i === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-      });
-      ctx.stroke();
-
-      // Fill under the curve
-      ctx.lineTo(padding.left + chartWidth, equityTop + equityHeight);
-      ctx.lineTo(padding.left, equityTop + equityHeight);
-      ctx.closePath();
-      ctx.fillStyle = "rgba(96, 165, 250, 0.1)";
-      ctx.fill();
-
-      // Equity labels
-      ctx.fillStyle = "#64748b";
-      ctx.font = "10px monospace";
-      ctx.textAlign = "left";
-      ctx.fillText(`$${maxEquity.toFixed(0)}`, width - padding.right + 5, equityTop + 10);
-      ctx.fillText(`$${minEquity.toFixed(0)}`, width - padding.right + 5, equityTop + equityHeight - 5);
-
-      // Label
-      ctx.fillStyle = "#60a5fa";
-      ctx.font = "bold 10px sans-serif";
-      ctx.fillText("EQUITY CURVE", padding.left + 5, equityTop + 15);
-    }
-
     // Time labels
     ctx.fillStyle = "#64748b";
     ctx.font = "9px monospace";
@@ -410,11 +356,11 @@ const BacktestChart: React.FC<BacktestChartProps> = ({
     ctx.fillStyle = "#f8fafc";
     ctx.font = "bold 12px sans-serif";
     ctx.textAlign = "left";
-    ctx.fillText("Backtest Results", padding.left + 5, 18);
+    ctx.fillText("Price Chart", padding.left + 5, 18);
 
     // Legend
     ctx.font = "9px sans-serif";
-    let legendX = padding.left + 130;
+    let legendX = padding.left + 100;
     const legendItems = [
       { label: "EMA 9", color: "#fbbf24" },
       { label: "EMA 21", color: "#a855f7" },
@@ -429,7 +375,7 @@ const BacktestChart: React.FC<BacktestChartProps> = ({
       ctx.fillText(item.label, legendX + 16, 15);
       legendX += 60;
     });
-  }, [data, trades, equityCurve, visibleCandles, scrollOffset, containerSize, showEquityCurve]);
+  }, [data, trades, visibleCandles, scrollOffset, containerSize]);
 
   if (!data || data.length === 0) {
     return (
