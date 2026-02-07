@@ -88,14 +88,16 @@ const BacktestChart: React.FC<BacktestChartProps> = ({
   }, []);
 
   // Scroll to selected trade when selectedTradeId changes
-  // Using a ref to track previous value to avoid setState on initial mount
-  const prevSelectedTradeIdRef = useRef<string | null | undefined>(undefined);
+  // Using refs to track mount state and previous value to avoid setState on initial mount
+  const isInitialMountRef = useRef(true);
+  const prevSelectedTradeIdRef = useRef<string | null | undefined>(selectedTradeId);
   useEffect(() => {
-    // Skip on initial mount or if selectedTradeId hasn't changed
-    if (prevSelectedTradeIdRef.current === undefined) {
-      prevSelectedTradeIdRef.current = selectedTradeId;
+    // Skip scroll on initial mount
+    if (isInitialMountRef.current) {
+      isInitialMountRef.current = false;
       return;
     }
+    // Skip if selectedTradeId hasn't actually changed
     if (prevSelectedTradeIdRef.current === selectedTradeId) return;
     prevSelectedTradeIdRef.current = selectedTradeId;
     
@@ -110,13 +112,13 @@ const BacktestChart: React.FC<BacktestChartProps> = ({
     
     // Calculate the scroll offset to center the trade in the view
     // We want to position the trade in the middle of the visible area
-    const centerOffset = Math.floor(visibleCandles / 2);
-    const targetOffset = Math.max(0, data.length - entryDataIdx - centerOffset);
-    const maxOffset = Math.max(0, data.length - visibleCandles);
+    const halfVisibleCandles = Math.floor(visibleCandles / 2);
+    const scrollOffsetToCenterTrade = Math.max(0, data.length - entryDataIdx - halfVisibleCandles);
+    const maxScrollOffset = Math.max(0, data.length - visibleCandles);
     
     // Use requestAnimationFrame to batch the state update
     requestAnimationFrame(() => {
-      setScrollOffset(Math.max(0, Math.min(maxOffset, targetOffset)));
+      setScrollOffset(Math.max(0, Math.min(maxScrollOffset, scrollOffsetToCenterTrade)));
     });
   }, [selectedTradeId, trades, data, visibleCandles]);
 
