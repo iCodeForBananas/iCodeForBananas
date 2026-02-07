@@ -1112,7 +1112,7 @@ export default function AlgoBacktestPage() {
     <div className='flex flex-col h-screen bg-slate-900 text-white overflow-hidden'>
       <div className='flex-1 flex overflow-hidden'>
         {/* Left Panel - Strategy & Parameters */}
-        <div className='w-[450px] flex-shrink-0 border-r border-slate-700 flex flex-col overflow-hidden'>
+        <div className='w-[450px] flex-shrink-0 border-r border-slate-700 flex flex-col overflow-y-auto'>
           {/* Dataset Selector - Multi-select */}
           <div className='p-4 border-b border-slate-700'>
             <div className='flex items-center justify-between mb-2'>
