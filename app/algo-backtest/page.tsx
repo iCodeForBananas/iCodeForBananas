@@ -571,7 +571,9 @@ export default function AlgoBacktestPage() {
     const requiredDonchianPeriods = new Set<number>([20]); // Always include default
     if (selectedStrategyId.includes("donchian")) {
       const period = (currentParams.period as number) || 20;
+      const centerLinePeriod = (currentParams.centerLinePeriod as number) || 10;
       requiredDonchianPeriods.add(period);
+      requiredDonchianPeriods.add(centerLinePeriod);
     }
 
     const dataWithIndicators = calculateIndicatorsWithParams(
@@ -643,7 +645,9 @@ export default function AlgoBacktestPage() {
     if (selectedStrategyId.includes("donchian")) {
       for (const combo of combinations) {
         const period = (combo.period as number) || 20;
+        const centerLinePeriod = (combo.centerLinePeriod as number) || 10;
         requiredDonchianPeriods.add(period);
+        requiredDonchianPeriods.add(centerLinePeriod);
       }
     }
 
