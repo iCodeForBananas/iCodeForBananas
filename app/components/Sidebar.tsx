@@ -17,32 +17,22 @@ export default function Sidebar() {
 
   // Load sidebar state from localStorage and check screen size on mount
   useEffect(() => {
+    let shouldBeOpen = true; // Default state
+    
     try {
       const savedState = localStorage.getItem(SIDEBAR_STATE_KEY);
       if (savedState !== null) {
-        const shouldBeOpen = savedState === "true";
-        // On mobile, always start closed regardless of saved state
-        const mobile = isMobileDevice();
-        setIsMobile(mobile);
-        setIsOpen(mobile ? false : shouldBeOpen);
-      } else {
-        // No saved state, check if mobile and close if so
-        const mobile = isMobileDevice();
-        setIsMobile(mobile);
-        if (mobile) {
-          setIsOpen(false);
-        }
+        shouldBeOpen = savedState === "true";
       }
     } catch (error) {
       // localStorage not available, use default state
       console.warn("Failed to load sidebar state from localStorage:", error);
-      // Still check if mobile
-      const mobile = isMobileDevice();
-      setIsMobile(mobile);
-      if (mobile) {
-        setIsOpen(false);
-      }
     }
+    
+    // On mobile, always start closed regardless of saved state
+    const mobile = isMobileDevice();
+    setIsMobile(mobile);
+    setIsOpen(mobile ? false : shouldBeOpen);
   }, []);
 
   // Handle window resize
