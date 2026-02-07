@@ -385,7 +385,7 @@ export default function AlgoBacktestPage() {
   const [isRunningBatch, setIsRunningBatch] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [availableDatasets, setAvailableDatasets] = useState<DatasetInfo[]>([]);
-  const [selectedFile, setSelectedFile] = useState<string>("");
+  const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
   const [visibleCandles, setVisibleCandles] = useState<number>(DEFAULT_VISIBLE_CANDLES);
   const [showEquityCurve, setShowEquityCurve] = useState(true);
 
@@ -430,7 +430,7 @@ export default function AlgoBacktestPage() {
         if (result.success && result.files.length > 0) {
           setAvailableDatasets(result.files);
           const dailyFile = result.files.find((f: DatasetInfo) => f.timeframe === "1d");
-          setSelectedFile(dailyFile?.file || result.files[0].file);
+          setSelectedFiles([dailyFile?.file || result.files[0].file]);
         }
       } catch (err) {
         console.error("Error fetching datasets:", err);
@@ -439,9 +439,10 @@ export default function AlgoBacktestPage() {
     fetchDatasets();
   }, []);
 
-  // Load raw data when file changes
+  // Load raw data when file changes (load first selected file for preview)
   useEffect(() => {
-    if (!selectedFile) return;
+    if (selectedFiles.length === 0) return;
+    const selectedFile = selectedFiles[0];
 
     async function loadData() {
       try {
@@ -466,7 +467,7 @@ export default function AlgoBacktestPage() {
     }
 
     loadData();
-  }, [selectedFile]);
+  }, [selectedFiles]);
 
   // Run single backtest
   const runSingleBacktest = useCallback(() => {
@@ -513,17 +514,18 @@ export default function AlgoBacktestPage() {
     setActiveResultTab(0);
   }, [rawData, selectedStrategyId, currentParams]);
 
-  // Run batch backtest with parameter variations
-  const runBatchBacktest = useCallback(() => {
-    if (rawData.length === 0) return;
+  // Run batch backtest with parameter variations against all selected datasets
+  const runBatchBacktest = useCallback(async () => {
+    if (selectedFiles.length === 0) return;
 
     const strategy = AVAILABLE_STRATEGIES[selectedStrategyId];
     if (!strategy) return;
 
     setIsRunningBatch(true);
+    setError(null);
 
     const combinations = generateCombinations(paramVariations);
-    console.log(`Running ${combinations.length} parameter combinations`);
+    console.log(`Running ${combinations.length} parameter combinations across ${selectedFiles.length} datasets`);
 
     // Determine all required indicator periods
     const requiredEMAs = new Set<number>([9, 21]);
@@ -543,27 +545,78 @@ export default function AlgoBacktestPage() {
       }
     }
 
-    const dataWithIndicators = calculateIndicatorsWithParams(
-      rawData,
-      Array.from(requiredEMAs),
-      Array.from(requiredSMAs)
-    );
-    setIndicatorData(dataWithIndicators);
+    const failedDatasets: string[] = [];
 
-    // Run all backtests
+    // Process all datasets in parallel
+    const datasetResults = await Promise.all(
+      selectedFiles.map(async (datasetFile) => {
+        const datasetInfo = availableDatasets.find(ds => ds.file === datasetFile);
+        const datasetLabel = datasetInfo?.label || datasetFile;
+
+        try {
+          // Load dataset
+          const response = await fetch(`/api/spy-data?file=${encodeURIComponent(datasetFile)}`);
+          const result = await response.json();
+
+          if (!result.success || !result.data || result.data.length === 0) {
+            const errorMsg = result.error || "No data received";
+            console.error(`Failed to load dataset ${datasetFile}: ${errorMsg}`);
+            failedDatasets.push(`${datasetLabel}: ${errorMsg}`);
+            return { datasetFile, datasetLabel, data: null };
+          }
+
+          return { datasetFile, datasetLabel, data: result.data };
+        } catch (err) {
+          const errorMsg = err instanceof Error ? err.message : "Unknown error";
+          console.error(`Error processing dataset ${datasetFile}: ${errorMsg}`);
+          failedDatasets.push(`${datasetLabel}: ${errorMsg}`);
+          return { datasetFile, datasetLabel, data: null };
+        }
+      })
+    );
+
     const batchResults: ParameterizedResult[] = [];
-    for (const params of combinations) {
-      const result = runBacktestWithParams(dataWithIndicators, strategy, params, INITIAL_CAPITAL);
-      batchResults.push(result);
+    let firstDatasetWithData = true;
+
+    // Process results and run backtests
+    for (const { datasetFile, datasetLabel, data } of datasetResults) {
+      if (!data) continue;
+
+      const dataWithIndicators = calculateIndicatorsWithParams(
+        data,
+        Array.from(requiredEMAs),
+        Array.from(requiredSMAs)
+      );
+
+      // Update indicator data for first successful dataset (for chart display)
+      if (firstDatasetWithData) {
+        setIndicatorData(dataWithIndicators);
+        firstDatasetWithData = false;
+      }
+
+      // Run all backtests for this dataset
+      for (const params of combinations) {
+        const backtestResult = runBacktestWithParams(dataWithIndicators, strategy, params, INITIAL_CAPITAL);
+        batchResults.push({
+          ...backtestResult,
+          dataset: datasetFile,
+          datasetLabel,
+        });
+      }
     }
 
     // Sort by total P&L descending
     batchResults.sort((a, b) => b.totalPnlPercent - a.totalPnlPercent);
 
+    // Show error if some datasets failed
+    if (failedDatasets.length > 0) {
+      setError(`Failed to load ${failedDatasets.length} dataset(s): ${failedDatasets.join("; ")}`);
+    }
+
     setResults(batchResults);
     setActiveResultTab(0);
     setIsRunningBatch(false);
-  }, [rawData, selectedStrategyId, currentParams, paramVariations]);
+  }, [selectedFiles, selectedStrategyId, paramVariations, availableDatasets]);
 
   // Auto-run single backtest when data or params change
   useEffect(() => {
@@ -606,20 +659,39 @@ export default function AlgoBacktestPage() {
       <div className='flex-1 flex overflow-hidden'>
         {/* Left Panel - Strategy & Parameters */}
         <div className='w-[450px] flex-shrink-0 border-r border-slate-700 flex flex-col overflow-hidden'>
-          {/* Dataset Selector */}
+          {/* Dataset Selector - Multi-select */}
           <div className='p-4 border-b border-slate-700'>
-            <label className='block text-sm text-slate-400 mb-2'>Dataset</label>
-            <select
-              value={selectedFile}
-              onChange={(e) => setSelectedFile(e.target.value)}
-              className='w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white'
-            >
+            <div className='flex items-center justify-between mb-2'>
+              <label className='text-sm text-slate-400'>Datasets</label>
+              <span className='text-xs text-slate-500'>
+                {selectedFiles.length} selected
+              </span>
+            </div>
+            <div className='max-h-48 overflow-y-auto bg-slate-800 border border-slate-600 rounded p-2 space-y-1'>
               {availableDatasets.map((ds) => (
-                <option key={ds.file} value={ds.file}>
-                  {ds.label}
-                </option>
+                <label
+                  key={ds.file}
+                  className='flex items-center gap-2 px-2 py-1 hover:bg-slate-700 rounded cursor-pointer'
+                >
+                  <input
+                    type='checkbox'
+                    checked={selectedFiles.includes(ds.file)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedFiles((prev) => [...prev, ds.file]);
+                      } else {
+                        setSelectedFiles((prev) => prev.filter((f) => f !== ds.file));
+                      }
+                    }}
+                    className='rounded border-slate-500 bg-slate-700 text-blue-500'
+                  />
+                  <span className='text-sm text-white'>{ds.label}</span>
+                </label>
               ))}
-            </select>
+            </div>
+            {selectedFiles.length === 0 && (
+              <p className='text-xs text-amber-400 mt-1'>Select at least one dataset</p>
+            )}
           </div>
 
           {/* Strategy Selector */}
@@ -645,7 +717,7 @@ export default function AlgoBacktestPage() {
               <div className='flex items-center justify-between mb-3'>
                 <label className='text-sm text-slate-400'>Parameters</label>
                 <span className='text-xs text-slate-500'>
-                  {`${generateCombinations(paramVariations).length} combinations`}
+                  {`${generateCombinations(paramVariations).length} combinations × ${selectedFiles.length} datasets`}
                 </span>
               </div>
 
@@ -706,12 +778,12 @@ export default function AlgoBacktestPage() {
               {/* Run Batch Button */}
               <button
                 onClick={runBatchBacktest}
-                disabled={isRunningBatch}
+                disabled={isRunningBatch || selectedFiles.length === 0}
                 className='w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:cursor-not-allowed text-white font-medium py-2 px-4 rounded transition-colors'
               >
                 {isRunningBatch
                   ? "Running..."
-                  : `Run ${generateCombinations(paramVariations).length} Variations`}
+                  : `Run ${generateCombinations(paramVariations).length * selectedFiles.length} Variations`}
               </button>
             </div>
           )}
@@ -731,6 +803,9 @@ export default function AlgoBacktestPage() {
                         : "bg-slate-800 hover:bg-slate-750 border border-transparent"
                     }`}
                   >
+                    {result.datasetLabel && (
+                      <div className='text-xs text-blue-400 mb-1 truncate'>{result.datasetLabel}</div>
+                    )}
                     <div className='flex items-center justify-between'>
                       <span className='font-mono text-xs text-slate-400 truncate max-w-[200px]'>{result.label}</span>
                       <span
@@ -799,6 +874,12 @@ export default function AlgoBacktestPage() {
           {/* Active Result Label */}
           {activeResult && results.length > 1 && (
             <div className='px-4 py-2 bg-slate-850 border-b border-slate-700 text-xs'>
+              {activeResult.datasetLabel && (
+                <>
+                  <span className='text-slate-400'>Dataset: </span>
+                  <span className='text-blue-400 mr-3'>{activeResult.datasetLabel}</span>
+                </>
+              )}
               <span className='text-slate-400'>Parameters: </span>
               <span className='font-mono text-blue-400'>{activeResult.label}</span>
             </div>

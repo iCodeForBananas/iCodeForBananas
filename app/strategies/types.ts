@@ -77,6 +77,8 @@ export interface ParameterVariation {
 export interface ParameterizedResult {
   params: Record<string, number | boolean | string>;
   label: string;
+  dataset?: string; // Dataset file name for multi-dataset runs
+  datasetLabel?: string; // Human-readable dataset label
   totalPnl: number;
   totalPnlPercent: number;
   winRate: number;
