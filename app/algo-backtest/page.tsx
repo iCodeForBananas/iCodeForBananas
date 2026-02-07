@@ -671,7 +671,8 @@ export default function AlgoBacktestPage() {
                             max={param.max}
                             step={param.step}
                             onChange={(e) => {
-                              const newMin = parseFloat(e.target.value) || Number(param.min ?? param.default);
+                              const parsed = parseFloat(e.target.value);
+                              const newMin = isNaN(parsed) ? Number(param.min ?? param.default) : parsed;
                               setParamVariations((prev) =>
                                 prev.map((v) => (v.key === param.key ? { ...v, min: newMin } : v))
                               );
@@ -688,7 +689,8 @@ export default function AlgoBacktestPage() {
                             max={param.max}
                             step={param.step}
                             onChange={(e) => {
-                              const newMax = parseFloat(e.target.value) || Number(param.max ?? param.default);
+                              const parsed = parseFloat(e.target.value);
+                              const newMax = isNaN(parsed) ? Number(param.max ?? param.default) : parsed;
                               setParamVariations((prev) =>
                                 prev.map((v) => (v.key === param.key ? { ...v, max: newMax } : v))
                               );
@@ -698,7 +700,14 @@ export default function AlgoBacktestPage() {
                         </div>
                       </div>
                       <p className='text-xs text-slate-600 mt-1'>
-                        Values: {variation ? generateRangeValues(variation.min, variation.max, variation.step).join(", ") : "none"}
+                        Values: {variation ? (() => {
+                          const values = generateRangeValues(variation.min, variation.max, variation.step);
+                          const MAX_PREVIEW = 20;
+                          if (values.length <= MAX_PREVIEW) {
+                            return values.join(", ");
+                          }
+                          return `${values.slice(0, MAX_PREVIEW).join(", ")}... (${values.length} total)`;
+                        })() : "none"}
                       </p>
                     </div>
                   );
