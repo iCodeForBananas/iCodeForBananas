@@ -3,11 +3,13 @@
 
 import { StrategyDefinition } from './types';
 import emaCrossover from './ema-crossover';
+import macdCrossover from './macd-crossover';
 import rsiMeanReversion from './rsi-mean-reversion';
 import smaCrossover from './sma-crossover';
 
 export const AVAILABLE_STRATEGIES: Record<string, StrategyDefinition> = {
   'ema-crossover': emaCrossover,
+  'macd-crossover': macdCrossover,
   'rsi-mean-reversion': rsiMeanReversion,
   'sma-crossover': smaCrossover,
 };
