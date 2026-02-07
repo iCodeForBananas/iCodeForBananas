@@ -229,6 +229,23 @@ export default function Sidebar() {
                 </Link>
               </div>
             </div>
+
+            <div>
+              <h3 className='text-sm font-semibold text-gray-600 mb-2 uppercase tracking-wider whitespace-nowrap'>
+                Visualizations
+              </h3>
+              <div className='flex flex-col gap-1'>
+                <Link
+                  href='/spd-crime-density'
+                  onClick={() => isMobile && setIsOpen(false)}
+                  className={`px-3 py-2 rounded hover:bg-pink-100 hover:text-gray-900 transition-colors whitespace-nowrap ${
+                    pathname === "/spd-crime-density" ? "bg-pink-100 text-gray-900 font-semibold" : "text-gray-700"
+                  }`}
+                >
+                  SPD Crime Density
+                </Link>
+              </div>
+            </div>
           </nav>
         </div>
       </aside>
