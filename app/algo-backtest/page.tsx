@@ -26,8 +26,9 @@ interface DatasetInfo {
 
 interface ParameterVariationConfig {
   key: string;
-  enabled: boolean;
-  values: string; // Comma-separated values, e.g., "5, 9, 13, 21"
+  min: number;
+  max: number;
+  step: number;
 }
 
 // Calculate indicators dynamically based on required periods
@@ -342,29 +343,27 @@ function runBacktestWithParams(
   };
 }
 
-// Parse comma-separated values into array of numbers
-function parseValuesString(str: string): number[] {
-  return str
-    .split(",")
-    .map((s) => parseFloat(s.trim()))
-    .filter((n) => !isNaN(n));
+// Generate array of values from min to max with step
+function generateRangeValues(min: number, max: number, step: number): number[] {
+  const values: number[] = [];
+  for (let v = min; v <= max; v += step) {
+    values.push(v);
+  }
+  return values;
 }
 
 // Generate all parameter combinations from variations config
 function generateCombinations(
-  defaults: Record<string, number | boolean | string>,
   variations: ParameterVariationConfig[]
 ): Record<string, number | boolean | string>[] {
-  const enabledVariations = variations.filter((v) => v.enabled);
-
-  if (enabledVariations.length === 0) {
-    return [defaults];
+  if (variations.length === 0) {
+    return [{}];
   }
 
-  let combinations: Record<string, number | boolean | string>[] = [{ ...defaults }];
+  let combinations: Record<string, number | boolean | string>[] = [{}];
 
-  for (const variation of enabledVariations) {
-    const values = parseValuesString(variation.values);
+  for (const variation of variations) {
+    const values = generateRangeValues(variation.min, variation.max, variation.step);
     if (values.length === 0) continue;
 
     const newCombinations: Record<string, number | boolean | string>[] = [];
@@ -404,15 +403,18 @@ export default function AlgoBacktestPage() {
     const defaults = getDefaultParams(selectedStrategyId);
     setCurrentParams(defaults);
 
-    // Initialize variation configs
+    // Initialize variation configs with min/max/step from parameter definitions
     const strategy = AVAILABLE_STRATEGIES[selectedStrategyId];
     if (strategy?.parameters) {
       setParamVariations(
-        strategy.parameters.map((p) => ({
-          key: p.key,
-          enabled: false,
-          values: String(p.default),
-        }))
+        strategy.parameters
+          .filter((p) => p.type === 'number')
+          .map((p) => ({
+            key: p.key,
+            min: p.min ?? Number(p.default),
+            max: p.max ?? Number(p.default),
+            step: p.step ?? 1,
+          }))
       );
     } else {
       setParamVariations([]);
@@ -520,7 +522,7 @@ export default function AlgoBacktestPage() {
 
     setIsRunningBatch(true);
 
-    const combinations = generateCombinations(currentParams, paramVariations);
+    const combinations = generateCombinations(paramVariations);
     console.log(`Running ${combinations.length} parameter combinations`);
 
     // Determine all required indicator periods
@@ -643,88 +645,75 @@ export default function AlgoBacktestPage() {
               <div className='flex items-center justify-between mb-3'>
                 <label className='text-sm text-slate-400'>Parameters</label>
                 <span className='text-xs text-slate-500'>
-                  {paramVariations.filter((v) => v.enabled).length > 0
-                    ? `${generateCombinations(currentParams, paramVariations).length} combinations`
-                    : "Single run"}
+                  {`${generateCombinations(paramVariations).length} combinations`}
                 </span>
               </div>
 
-              {strategy.parameters.map((param) => {
-                const variation = paramVariations.find((v) => v.key === param.key);
-                const isVariationEnabled = variation?.enabled || false;
+              {strategy.parameters
+                .filter((param) => param.type === 'number')
+                .map((param) => {
+                  const variation = paramVariations.find((v) => v.key === param.key);
 
-                return (
-                  <div key={param.key} className='mb-4 bg-slate-800 rounded p-3'>
-                    <div className='flex items-center justify-between mb-2'>
-                      <div>
+                  return (
+                    <div key={param.key} className='mb-4 bg-slate-800 rounded p-3'>
+                      <div className='mb-2'>
                         <span className='text-sm text-white font-medium'>{param.name}</span>
                         <p className='text-xs text-slate-500'>{param.description}</p>
                       </div>
-                      <label className='flex items-center gap-2 text-xs text-slate-400 cursor-pointer'>
-                        <input
-                          type='checkbox'
-                          checked={isVariationEnabled}
-                          onChange={(e) => {
-                            setParamVariations((prev) =>
-                              prev.map((v) => (v.key === param.key ? { ...v, enabled: e.target.checked } : v))
-                            );
-                          }}
-                          className='rounded'
-                        />
-                        Vary
-                      </label>
-                    </div>
 
-                    {isVariationEnabled ? (
-                      <div>
-                        <label className='block text-xs text-slate-400 mb-1'>Values (comma-separated)</label>
-                        <input
-                          type='text'
-                          value={variation?.values || ""}
-                          onChange={(e) => {
-                            setParamVariations((prev) =>
-                              prev.map((v) => (v.key === param.key ? { ...v, values: e.target.value } : v))
-                            );
-                          }}
-                          placeholder={`e.g., ${param.min || 5}, ${param.default}, ${param.max || 50}`}
-                          className='w-full bg-slate-900 border border-slate-600 rounded px-2 py-1 text-sm text-white'
-                        />
-                        <p className='text-xs text-slate-600 mt-1'>
-                          Parsed: {parseValuesString(variation?.values || "").join(", ") || "none"}
-                        </p>
+                      <div className='grid grid-cols-2 gap-2'>
+                        <div>
+                          <label className='block text-xs text-slate-400 mb-1'>Min</label>
+                          <input
+                            type='number'
+                            value={variation?.min ?? param.min ?? Number(param.default)}
+                            min={param.min}
+                            max={param.max}
+                            step={param.step}
+                            onChange={(e) => {
+                              const newMin = parseFloat(e.target.value) || Number(param.min ?? param.default);
+                              setParamVariations((prev) =>
+                                prev.map((v) => (v.key === param.key ? { ...v, min: newMin } : v))
+                              );
+                            }}
+                            className='w-full bg-slate-900 border border-slate-600 rounded px-2 py-1 text-sm text-white'
+                          />
+                        </div>
+                        <div>
+                          <label className='block text-xs text-slate-400 mb-1'>Max</label>
+                          <input
+                            type='number'
+                            value={variation?.max ?? param.max ?? Number(param.default)}
+                            min={param.min}
+                            max={param.max}
+                            step={param.step}
+                            onChange={(e) => {
+                              const newMax = parseFloat(e.target.value) || Number(param.max ?? param.default);
+                              setParamVariations((prev) =>
+                                prev.map((v) => (v.key === param.key ? { ...v, max: newMax } : v))
+                              );
+                            }}
+                            className='w-full bg-slate-900 border border-slate-600 rounded px-2 py-1 text-sm text-white'
+                          />
+                        </div>
                       </div>
-                    ) : (
-                      <input
-                        type='number'
-                        value={Number(currentParams[param.key] ?? param.default)}
-                        min={param.min}
-                        max={param.max}
-                        step={param.step}
-                        onChange={(e) => {
-                          setCurrentParams((prev) => ({
-                            ...prev,
-                            [param.key]: parseFloat(e.target.value) || Number(param.default),
-                          }));
-                        }}
-                        className='w-full bg-slate-900 border border-slate-600 rounded px-2 py-1 text-sm text-white'
-                      />
-                    )}
-                  </div>
-                );
-              })}
+                      <p className='text-xs text-slate-600 mt-1'>
+                        Values: {variation ? generateRangeValues(variation.min, variation.max, variation.step).join(", ") : "none"}
+                      </p>
+                    </div>
+                  );
+                })}
 
               {/* Run Batch Button */}
-              {paramVariations.some((v) => v.enabled) && (
-                <button
-                  onClick={runBatchBacktest}
-                  disabled={isRunningBatch}
-                  className='w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:cursor-not-allowed text-white font-medium py-2 px-4 rounded transition-colors'
-                >
-                  {isRunningBatch
-                    ? "Running..."
-                    : `Run ${generateCombinations(currentParams, paramVariations).length} Variations`}
-                </button>
-              )}
+              <button
+                onClick={runBatchBacktest}
+                disabled={isRunningBatch}
+                className='w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:cursor-not-allowed text-white font-medium py-2 px-4 rounded transition-colors'
+              >
+                {isRunningBatch
+                  ? "Running..."
+                  : `Run ${generateCombinations(paramVariations).length} Variations`}
+              </button>
             </div>
           )}
 
