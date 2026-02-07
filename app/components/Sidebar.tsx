@@ -4,28 +4,62 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
 
+const MOBILE_BREAKPOINT = 1024;
+const SIDEBAR_STATE_KEY = "sidebarOpen";
+
+// Helper function to check if current window width is below mobile breakpoint
+const isMobileDevice = () => window.innerWidth < MOBILE_BREAKPOINT;
+
 export default function Sidebar() {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
 
-  // Check screen size on mount and resize
+  // Load sidebar state from localStorage and check screen size on mount
+  useEffect(() => {
+    let shouldBeOpen = true; // Default state
+    
+    try {
+      const savedState = localStorage.getItem(SIDEBAR_STATE_KEY);
+      if (savedState !== null) {
+        shouldBeOpen = savedState === "true";
+      }
+    } catch (error) {
+      // localStorage not available, use default state
+      console.warn("Failed to load sidebar state from localStorage:", error);
+    }
+    
+    // On mobile, always start closed regardless of saved state
+    const mobile = isMobileDevice();
+    setIsMobile(mobile);
+    setIsOpen(mobile ? false : shouldBeOpen);
+  }, []);
+
+  // Handle window resize
   useEffect(() => {
     const checkScreenSize = () => {
-      const mobile = window.innerWidth < 1024;
+      const mobile = isMobileDevice();
       setIsMobile(mobile);
-      // Auto-close on mobile/tablet by default
-      if (mobile && isOpen) {
-        setIsOpen(false);
+      // Auto-close on mobile/tablet (only if currently open to avoid unnecessary state updates)
+      if (mobile) {
+        setIsOpen((prev) => prev ? false : prev);
       }
     };
 
-    checkScreenSize();
     window.addEventListener("resize", checkScreenSize);
     return () => window.removeEventListener("resize", checkScreenSize);
   }, []);
 
-  const toggleSidebar = () => setIsOpen(!isOpen);
+  const toggleSidebar = () => {
+    const newState = !isOpen;
+    setIsOpen(newState);
+    try {
+      localStorage.setItem(SIDEBAR_STATE_KEY, String(newState));
+    } catch (error) {
+      // localStorage not available, state will reset on page reload
+      console.warn("Failed to save sidebar state to localStorage:", error);
+    }
+  };
 
   return (
     <>
