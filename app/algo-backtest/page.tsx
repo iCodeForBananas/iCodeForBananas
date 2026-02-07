@@ -44,7 +44,8 @@ function calculateIndicatorsWithParams(
   data: PricePoint[],
   requiredEMAs: number[],
   requiredSMAs: number[],
-  requiredMACDs: MACDConfig[] = [{ fastPeriod: 12, slowPeriod: 26, signalPeriod: 9 }]
+  requiredMACDs: MACDConfig[] = [{ fastPeriod: 12, slowPeriod: 26, signalPeriod: 9 }],
+  requiredDonchianPeriods: number[] = [20]
 ): IndicatorData[] {
   const result: IndicatorData[] = [];
 
@@ -78,8 +79,9 @@ function calculateIndicatorsWithParams(
   const trValues: number[] = [];
   const atrPeriod = 14;
 
-  // For Donchian
-  const donchianPeriod = 20;
+  // For Donchian (dynamic periods)
+  // Always include default period 20 for backward compatibility
+  const donchianPeriods = new Set([20, ...requiredDonchianPeriods]);
 
   for (let i = 0; i < data.length; i++) {
     const candle = data[i];
@@ -204,12 +206,26 @@ function calculateIndicatorsWithParams(
       }
     }
 
-    // Donchian Channels
-    if (i >= donchianPeriod - 1) {
-      const slice = data.slice(i - donchianPeriod + 1, i + 1);
-      indicatorData.upperBand = Math.max(...slice.map((d) => d.high));
-      indicatorData.lowerBand = Math.min(...slice.map((d) => d.low));
-      indicatorData.midLine = (indicatorData.upperBand + indicatorData.lowerBand) / 2;
+    // Donchian Channels (dynamic periods)
+    for (const donchianPeriod of donchianPeriods) {
+      if (i >= donchianPeriod - 1) {
+        const slice = data.slice(i - donchianPeriod + 1, i + 1);
+        const upperBand = Math.max(...slice.map((d) => d.high));
+        const lowerBand = Math.min(...slice.map((d) => d.low));
+        const midLine = (upperBand + lowerBand) / 2;
+
+        // Store with dynamic keys
+        indicatorData[`donchian_${donchianPeriod}_upperBand` as `donchian_${number}_upperBand`] = upperBand;
+        indicatorData[`donchian_${donchianPeriod}_lowerBand` as `donchian_${number}_lowerBand`] = lowerBand;
+        indicatorData[`donchian_${donchianPeriod}_midLine` as `donchian_${number}_midLine`] = midLine;
+
+        // Also set the default keys for backward compatibility (period 20)
+        if (donchianPeriod === 20) {
+          indicatorData.upperBand = upperBand;
+          indicatorData.lowerBand = lowerBand;
+          indicatorData.midLine = midLine;
+        }
+      }
     }
 
     result.push(indicatorData);
@@ -575,11 +591,21 @@ export default function AlgoBacktestPage() {
       requiredMACDs.push({ fastPeriod: 12, slowPeriod: 26, signalPeriod: 9 });
     }
 
+    // Add Donchian period if Donchian strategy is selected
+    const requiredDonchianPeriods = new Set<number>([20]); // Always include default
+    if (selectedStrategyId.includes("donchian")) {
+      const period = (currentParams.period as number) || 20;
+      const centerLinePeriod = (currentParams.centerLinePeriod as number) || 10;
+      requiredDonchianPeriods.add(period);
+      requiredDonchianPeriods.add(centerLinePeriod);
+    }
+
     const dataWithIndicators = calculateIndicatorsWithParams(
       rawData,
       Array.from(requiredEMAs),
       Array.from(requiredSMAs),
-      requiredMACDs
+      requiredMACDs,
+      Array.from(requiredDonchianPeriods)
     );
     setIndicatorData(dataWithIndicators);
 
@@ -641,6 +667,17 @@ export default function AlgoBacktestPage() {
       requiredMACDs.push({ fastPeriod: 12, slowPeriod: 26, signalPeriod: 9 });
     }
 
+    // Collect Donchian periods for Donchian strategy
+    const requiredDonchianPeriods = new Set<number>([20]); // Always include default
+    if (selectedStrategyId.includes("donchian")) {
+      for (const combo of combinations) {
+        const period = (combo.period as number) || 20;
+        const centerLinePeriod = (combo.centerLinePeriod as number) || 10;
+        requiredDonchianPeriods.add(period);
+        requiredDonchianPeriods.add(centerLinePeriod);
+      }
+    }
+
     const failedDatasets: string[] = [];
 
     // Process all datasets in parallel
@@ -682,7 +719,8 @@ export default function AlgoBacktestPage() {
         data,
         Array.from(requiredEMAs),
         Array.from(requiredSMAs),
-        requiredMACDs
+        requiredMACDs,
+        Array.from(requiredDonchianPeriods)
       );
 
       // Update indicator data for first successful dataset (for chart display)
