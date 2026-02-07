@@ -928,9 +928,23 @@ export default function AlgoBacktestPage() {
           <div className='p-4 border-b border-slate-700'>
             <div className='flex items-center justify-between mb-2'>
               <label className='text-sm text-slate-400'>Datasets</label>
-              <span className='text-xs text-slate-500'>
-                {selectedFiles.length} selected
-              </span>
+              <div className='flex items-center gap-2'>
+                <button
+                  onClick={() => {
+                    if (selectedFiles.length === availableDatasets.length) {
+                      setSelectedFiles([]);
+                    } else {
+                      setSelectedFiles(availableDatasets.map((ds) => ds.file));
+                    }
+                  }}
+                  className='text-xs text-blue-400 hover:text-blue-300 transition-colors'
+                >
+                  {selectedFiles.length === availableDatasets.length ? 'Deselect All' : 'Select All'}
+                </button>
+                <span className='text-xs text-slate-500'>
+                  {selectedFiles.length} selected
+                </span>
+              </div>
             </div>
             <div className='max-h-48 overflow-y-auto bg-slate-800 border border-slate-600 rounded p-2 space-y-1'>
               {availableDatasets.map((ds) => (
