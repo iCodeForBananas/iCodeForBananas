@@ -672,7 +672,8 @@ Schedule expression: cron(*/5 9-16 ? * MON-FRI *)
 
 For daily execution (after market close):
 Schedule expression: cron(0 21 ? * MON-FRI *)
-- Runs at 4:00 PM ET (21:00 UTC) on weekdays
+- Runs at 4:00 PM ET / 5:00 PM EDT (21:00 UTC) on weekdays
+- Note: Adjust for daylight saving time if needed
 
 ## IAM Role Permissions
 
