@@ -37,6 +37,8 @@ const handler: StrategyHandler = ({ current, index, series, params }) => {
   const lookbackBars = series.slice(index - lookbackPeriod, index);
 
   // Calculate highest high and lowest low in the lookback period
+  // When useClose is true, use close prices for breakout levels
+  // When useClose is false, use high/low prices for breakout levels
   const highestHigh = useClose
     ? Math.max(...lookbackBars.map(bar => bar.close))
     : Math.max(...lookbackBars.map(bar => bar.high));
@@ -45,21 +47,25 @@ const handler: StrategyHandler = ({ current, index, series, params }) => {
     ? Math.min(...lookbackBars.map(bar => bar.close))
     : Math.min(...lookbackBars.map(bar => bar.low));
 
-  const currentPrice = current.close;
+  // Use consistent price comparison based on useClose setting
+  // When useClose is true, compare close to close-based levels
+  // When useClose is false, compare high/low to high/low-based levels
+  const priceForBuySignal = useClose ? current.close : current.high;
+  const priceForSellSignal = useClose ? current.close : current.low;
 
   // Breakout above the highest high - BUY signal
-  if (currentPrice > highestHigh) {
+  if (priceForBuySignal > highestHigh) {
     return {
       action: 'buy',
-      reason: `Breakout above ${lookbackPeriod}-period high (${currentPrice.toFixed(2)} > ${highestHigh.toFixed(2)})`,
+      reason: `Breakout above ${lookbackPeriod}-period high (${priceForBuySignal.toFixed(2)} > ${highestHigh.toFixed(2)})`,
     };
   }
 
   // Breakdown below the lowest low - SELL signal
-  if (currentPrice < lowestLow) {
+  if (priceForSellSignal < lowestLow) {
     return {
       action: 'sell',
-      reason: `Breakdown below ${lookbackPeriod}-period low (${currentPrice.toFixed(2)} < ${lowestLow.toFixed(2)})`,
+      reason: `Breakdown below ${lookbackPeriod}-period low (${priceForSellSignal.toFixed(2)} < ${lowestLow.toFixed(2)})`,
     };
   }
 
