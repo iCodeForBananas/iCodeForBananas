@@ -56,16 +56,16 @@ const handler: StrategyHandler = ({ current, previous, params, series, index }) 
     return { action: 'hold', reason: 'Waiting for previous price' };
   }
 
-  // Buy signal: price crosses below lower band
-  if (previousPrice >= lowerBand && currentPrice < lowerBand) {
+  // Buy signal: price crosses from above to below lower band
+  if (previousPrice > lowerBand && currentPrice < lowerBand) {
     return {
       action: 'buy',
       reason: `Price touched lower Bollinger Band (${currentPrice.toFixed(2)} < ${lowerBand.toFixed(2)})`,
     };
   }
 
-  // Sell signal: price crosses above upper band
-  if (previousPrice <= upperBand && currentPrice > upperBand) {
+  // Sell signal: price crosses from below to above upper band
+  if (previousPrice < upperBand && currentPrice > upperBand) {
     return {
       action: 'sell',
       reason: `Price touched upper Bollinger Band (${currentPrice.toFixed(2)} > ${upperBand.toFixed(2)})`,
