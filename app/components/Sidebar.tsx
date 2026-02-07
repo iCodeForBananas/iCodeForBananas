@@ -9,6 +9,14 @@ export default function Sidebar() {
   const [isOpen, setIsOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
 
+  // Load sidebar state from localStorage on mount
+  useEffect(() => {
+    const savedState = localStorage.getItem("sidebarOpen");
+    if (savedState !== null) {
+      setIsOpen(savedState === "true");
+    }
+  }, []);
+
   // Check screen size on mount and resize
   useEffect(() => {
     const checkScreenSize = () => {
@@ -25,7 +33,11 @@ export default function Sidebar() {
     return () => window.removeEventListener("resize", checkScreenSize);
   }, []);
 
-  const toggleSidebar = () => setIsOpen(!isOpen);
+  const toggleSidebar = () => {
+    const newState = !isOpen;
+    setIsOpen(newState);
+    localStorage.setItem("sidebarOpen", String(newState));
+  };
 
   return (
     <>
