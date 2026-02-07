@@ -293,7 +293,7 @@ export default function ChordPracticePage() {
     <div className='flex flex-col flex-1'>
       <Navigation />
       <main className='px-4 py-6 flex-1 metronome-static'>
-        <div className='w-full lg:max-w-4xl lg:mx-auto'>
+        <div className='w-full lg:max-w-4xl lg:mx-auto rounded-lg border border-border bg-white p-4 shadow-sm'>
           {/* Header */}
           <div className='text-center mb-8'>
             <h1 className='text-4xl font-bold text-[var(--foreground)] mb-2'>Chord Practice</h1>
