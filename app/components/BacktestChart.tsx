@@ -9,6 +9,7 @@ interface BacktestChartProps {
   visibleCandles: number;
   onVisibleCandlesChange: (candles: number) => void;
   selectedStrategyId?: string;
+  selectedTradeId?: string | null;
 }
 
 const MIN_CANDLES = 50;
@@ -63,6 +64,7 @@ const BacktestChart: React.FC<BacktestChartProps> = ({
   visibleCandles,
   onVisibleCandlesChange,
   selectedStrategyId,
+  selectedTradeId,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -84,6 +86,41 @@ const BacktestChart: React.FC<BacktestChartProps> = ({
     resizeObserver.observe(container);
     return () => resizeObserver.disconnect();
   }, []);
+
+  // Scroll to selected trade when selectedTradeId changes
+  // Using refs to track mount state and previous value to avoid setState on initial mount
+  const isInitialMountRef = useRef(true);
+  const prevSelectedTradeIdRef = useRef<string | null | undefined>(selectedTradeId);
+  useEffect(() => {
+    // Skip scroll on initial mount
+    if (isInitialMountRef.current) {
+      isInitialMountRef.current = false;
+      return;
+    }
+    // Skip if selectedTradeId hasn't actually changed
+    if (prevSelectedTradeIdRef.current === selectedTradeId) return;
+    prevSelectedTradeIdRef.current = selectedTradeId;
+    
+    if (!selectedTradeId || !data || data.length === 0) return;
+    
+    const selectedTrade = trades.find(t => t.id === selectedTradeId);
+    if (!selectedTrade) return;
+    
+    // Find the data index for the entry time of the selected trade
+    const entryDataIdx = data.findIndex((d) => d.time >= selectedTrade.entryTime);
+    if (entryDataIdx === -1) return;
+    
+    // Calculate the scroll offset to center the trade in the view
+    // We want to position the trade in the middle of the visible area
+    const halfVisibleCandles = Math.floor(visibleCandles / 2);
+    const scrollOffsetToCenterTrade = Math.max(0, data.length - entryDataIdx - halfVisibleCandles);
+    const maxScrollOffset = Math.max(0, data.length - visibleCandles);
+    
+    // Use requestAnimationFrame to batch the state update
+    requestAnimationFrame(() => {
+      setScrollOffset(Math.max(0, Math.min(maxScrollOffset, scrollOffsetToCenterTrade)));
+    });
+  }, [selectedTradeId, trades, data, visibleCandles]);
 
   const zoomIn = useCallback(() => {
     onVisibleCandlesChange(Math.max(MIN_CANDLES, Math.floor(visibleCandles * 0.8)));
@@ -256,6 +293,37 @@ const BacktestChart: React.FC<BacktestChartProps> = ({
     visibleTrades.forEach((trade) => {
       const entryDataIdx = data.findIndex((d) => d.time >= trade.entryTime);
       const exitDataIdx = data.findIndex((d) => d.time >= trade.exitTime);
+      const isSelected = trade.id === selectedTradeId;
+
+      // Draw highlight background for selected trade
+      if (isSelected && entryDataIdx >= startIndex && exitDataIdx >= startIndex) {
+        const entryLocalIdx = Math.max(0, entryDataIdx - startIndex);
+        const exitLocalIdx = Math.min(visibleData.length - 1, exitDataIdx - startIndex);
+        const x1 = xScale(entryLocalIdx);
+        const x2 = xScale(exitLocalIdx);
+        const highlightPadding = 20;
+        
+        // Draw a semi-transparent highlight box around the selected trade
+        ctx.fillStyle = "rgba(59, 130, 246, 0.15)";
+        ctx.fillRect(
+          x1 - highlightPadding,
+          padding.top,
+          (x2 - x1) + (highlightPadding * 2),
+          chartHeight
+        );
+        
+        // Draw vertical lines at entry and exit
+        ctx.strokeStyle = "rgba(59, 130, 246, 0.6)";
+        ctx.lineWidth = 2;
+        ctx.setLineDash([5, 5]);
+        ctx.beginPath();
+        ctx.moveTo(x1, padding.top);
+        ctx.lineTo(x1, padding.top + chartHeight);
+        ctx.moveTo(x2, padding.top);
+        ctx.lineTo(x2, padding.top + chartHeight);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
 
       // Draw entry marker
       if (entryDataIdx >= startIndex && entryDataIdx < endIndex) {
@@ -264,26 +332,39 @@ const BacktestChart: React.FC<BacktestChartProps> = ({
         const y = yScale(trade.entryPrice);
         const isLong = trade.side === PositionSide.LONG;
 
+        // Draw larger triangle marker for selected trade
+        const markerScale = isSelected ? 1.4 : 1;
+        const baseOffset = 15 * markerScale;
+        const tipOffset = 25 * markerScale;
+        const width = 8 * markerScale;
+
         // Draw triangle marker
         ctx.beginPath();
         if (isLong) {
-          ctx.moveTo(x, y + 15);
-          ctx.lineTo(x - 8, y + 25);
-          ctx.lineTo(x + 8, y + 25);
+          ctx.moveTo(x, y + baseOffset);
+          ctx.lineTo(x - width, y + tipOffset);
+          ctx.lineTo(x + width, y + tipOffset);
         } else {
-          ctx.moveTo(x, y - 15);
-          ctx.lineTo(x - 8, y - 25);
-          ctx.lineTo(x + 8, y - 25);
+          ctx.moveTo(x, y - baseOffset);
+          ctx.lineTo(x - width, y - tipOffset);
+          ctx.lineTo(x + width, y - tipOffset);
         }
         ctx.closePath();
         ctx.fillStyle = isLong ? "#22c55e" : "#ef4444";
         ctx.fill();
+        
+        // Draw outline ring for selected trade marker
+        if (isSelected) {
+          ctx.strokeStyle = "#3b82f6";
+          ctx.lineWidth = 3;
+          ctx.stroke();
+        }
 
         // Entry label
         ctx.fillStyle = "#ffffff";
-        ctx.font = "bold 9px sans-serif";
+        ctx.font = isSelected ? "bold 11px sans-serif" : "bold 9px sans-serif";
         ctx.textAlign = "center";
-        ctx.fillText(isLong ? "BUY" : "SELL", x, isLong ? y + 38 : y - 30);
+        ctx.fillText(isLong ? "BUY" : "SELL", x, isLong ? y + tipOffset + 13 : y - tipOffset - 5);
       }
 
       // Draw exit marker
@@ -292,23 +373,33 @@ const BacktestChart: React.FC<BacktestChartProps> = ({
         const x = xScale(localIdx);
         const y = yScale(trade.exitPrice);
         const isProfit = trade.pnl > 0;
+        const markerSize = isSelected ? 8 : 6;
 
         // Draw X marker for exit
         ctx.strokeStyle = isProfit ? "#22c55e" : "#ef4444";
-        ctx.lineWidth = 3;
+        ctx.lineWidth = isSelected ? 4 : 3;
         ctx.beginPath();
-        ctx.moveTo(x - 6, y - 6);
-        ctx.lineTo(x + 6, y + 6);
-        ctx.moveTo(x + 6, y - 6);
-        ctx.lineTo(x - 6, y + 6);
+        ctx.moveTo(x - markerSize, y - markerSize);
+        ctx.lineTo(x + markerSize, y + markerSize);
+        ctx.moveTo(x + markerSize, y - markerSize);
+        ctx.lineTo(x - markerSize, y + markerSize);
         ctx.stroke();
+        
+        // Draw circle around exit marker for selected trade
+        if (isSelected) {
+          ctx.strokeStyle = "#3b82f6";
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(x, y, markerSize + 5, 0, Math.PI * 2);
+          ctx.stroke();
+        }
 
         // Exit label with P&L
         ctx.fillStyle = isProfit ? "#22c55e" : "#ef4444";
-        ctx.font = "bold 9px sans-serif";
+        ctx.font = isSelected ? "bold 11px sans-serif" : "bold 9px sans-serif";
         ctx.textAlign = "center";
         const pnlText = `${isProfit ? "+" : ""}${trade.pnlPercent.toFixed(2)}%`;
-        ctx.fillText(pnlText, x, y - 15);
+        ctx.fillText(pnlText, x, y - (isSelected ? 20 : 15));
       }
 
       // Draw connection line between entry and exit
@@ -325,8 +416,14 @@ const BacktestChart: React.FC<BacktestChartProps> = ({
         const y1 = yScale(trade.entryPrice);
         const y2 = yScale(trade.exitPrice);
 
-        ctx.strokeStyle = trade.pnl > 0 ? "rgba(34, 197, 94, 0.3)" : "rgba(239, 68, 68, 0.3)";
-        ctx.lineWidth = 2;
+        // Use more prominent line for selected trade
+        if (isSelected) {
+          ctx.strokeStyle = trade.pnl > 0 ? "rgba(34, 197, 94, 0.6)" : "rgba(239, 68, 68, 0.6)";
+          ctx.lineWidth = 3;
+        } else {
+          ctx.strokeStyle = trade.pnl > 0 ? "rgba(34, 197, 94, 0.3)" : "rgba(239, 68, 68, 0.3)";
+          ctx.lineWidth = 2;
+        }
         ctx.setLineDash([4, 4]);
         ctx.beginPath();
         ctx.moveTo(x1, y1);
@@ -370,7 +467,7 @@ const BacktestChart: React.FC<BacktestChartProps> = ({
       ctx.fillText(item.label, legendX + 16, 15);
       legendX += 60;
     });
-  }, [data, trades, visibleCandles, scrollOffset, containerSize, selectedStrategyId]);
+  }, [data, trades, visibleCandles, scrollOffset, containerSize, selectedStrategyId, selectedTradeId]);
 
   if (!data || data.length === 0) {
     return (
