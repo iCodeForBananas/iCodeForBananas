@@ -40,9 +40,9 @@ export default function Sidebar() {
     const checkScreenSize = () => {
       const mobile = isMobileDevice();
       setIsMobile(mobile);
-      // Auto-close on mobile/tablet if currently open
+      // Auto-close on mobile/tablet (only if currently open to avoid unnecessary state updates)
       if (mobile) {
-        setIsOpen(false);
+        setIsOpen((prev) => prev ? false : prev);
       }
     };
 
