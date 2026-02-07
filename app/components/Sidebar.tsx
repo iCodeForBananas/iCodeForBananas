@@ -48,15 +48,15 @@ export default function Sidebar() {
     const checkScreenSize = () => {
       const mobile = window.innerWidth < MOBILE_BREAKPOINT;
       setIsMobile(mobile);
-      // Auto-close on mobile/tablet
-      if (mobile && isOpen) {
-        setIsOpen(false);
+      // Auto-close on mobile/tablet if currently open
+      if (mobile) {
+        setIsOpen((prev) => (prev ? false : prev));
       }
     };
 
     window.addEventListener("resize", checkScreenSize);
     return () => window.removeEventListener("resize", checkScreenSize);
-  }, [isOpen]);
+  }, []);
 
   const toggleSidebar = () => {
     const newState = !isOpen;
