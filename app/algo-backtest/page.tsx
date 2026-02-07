@@ -993,6 +993,7 @@ export default function AlgoBacktestPage() {
                 }
                 visibleCandles={visibleCandles}
                 onVisibleCandlesChange={setVisibleCandles}
+                selectedStrategyId={selectedStrategyId}
               />
             </div>
             

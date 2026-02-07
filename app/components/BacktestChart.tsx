@@ -8,16 +8,61 @@ interface BacktestChartProps {
   trades: BacktestTrade[];
   visibleCandles: number;
   onVisibleCandlesChange: (candles: number) => void;
+  selectedStrategyId?: string;
 }
 
 const MIN_CANDLES = 50;
 const MAX_CANDLES = 1000;
+
+// Strategy indicator configuration - defines which indicators to show for each strategy
+interface IndicatorConfig {
+  key: string;
+  label: string;
+  color: string;
+  lineWidth?: number;
+  lineDash?: number[];
+}
+
+interface StrategyIndicatorConfig {
+  indicators: IndicatorConfig[];
+}
+
+const STRATEGY_INDICATORS: Record<string, StrategyIndicatorConfig> = {
+  'ema-crossover': {
+    indicators: [
+      { key: 'ema9', label: 'EMA 9', color: '#fbbf24', lineWidth: 1 },
+      { key: 'ema21', label: 'EMA 21', color: '#a855f7', lineWidth: 1 },
+    ],
+  },
+  'sma-crossover': {
+    indicators: [
+      { key: 'sma50', label: 'SMA 50', color: '#3b82f6', lineWidth: 1 },
+      { key: 'sma200', label: 'SMA 200', color: '#f97316', lineWidth: 1 },
+    ],
+  },
+  'bollinger-bands': {
+    indicators: [
+      { key: 'sma20', label: 'SMA 20', color: '#3b82f6', lineWidth: 1 },
+    ],
+  },
+  'donchian-channel': {
+    indicators: [
+      { key: 'upperBand', label: 'Donchian', color: '#06b6d4', lineWidth: 1, lineDash: [4, 4] },
+      { key: 'lowerBand', label: '', color: '#06b6d4', lineWidth: 1, lineDash: [4, 4] },
+      { key: 'midLine', label: '', color: '#22d3ee', lineWidth: 0.8, lineDash: [2, 2] },
+    ],
+  },
+  // MACD and RSI don't have price chart overlays (they're oscillators)
+  'macd-crossover': { indicators: [] },
+  'rsi-mean-reversion': { indicators: [] },
+};
 
 const BacktestChart: React.FC<BacktestChartProps> = ({
   data,
   trades,
   visibleCandles,
   onVisibleCandlesChange,
+  selectedStrategyId,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -155,72 +200,25 @@ const BacktestChart: React.FC<BacktestChartProps> = ({
       ctx.stroke();
     };
 
-    // Draw EMA 9 (fast) - yellow
-    if (visibleData.some((d) => d.ema9)) {
-      drawIndicatorLine(
-        data.map((d) => d.ema9),
-        "#fbbf24",
-        1,
-      );
-    }
-
-    // Draw EMA 21 (slow) - purple
-    if (visibleData.some((d) => d.ema21)) {
-      drawIndicatorLine(
-        data.map((d) => d.ema21),
-        "#a855f7",
-        1,
-      );
-    }
-
-    // Draw SMA 50 - blue
-    if (visibleData.some((d) => d.sma50)) {
-      drawIndicatorLine(
-        data.map((d) => d.sma50),
-        "#3b82f6",
-        1,
-      );
-    }
-
-    // Draw SMA 200 - orange
-    if (visibleData.some((d) => d.sma200)) {
-      drawIndicatorLine(
-        data.map((d) => d.sma200),
-        "#f97316",
-        1,
-      );
-    }
-
-    // Draw Donchian Channels - cyan (upper/lower bands and midline)
-    if (visibleData.some((d) => d.upperBand)) {
-      // Upper band - dashed
-      ctx.setLineDash([4, 4]);
-      drawIndicatorLine(
-        data.map((d) => d.upperBand),
-        "#06b6d4",
-        1,
-      );
-      ctx.setLineDash([]);
-    }
-    if (visibleData.some((d) => d.lowerBand)) {
-      // Lower band - dashed
-      ctx.setLineDash([4, 4]);
-      drawIndicatorLine(
-        data.map((d) => d.lowerBand),
-        "#06b6d4",
-        1,
-      );
-      ctx.setLineDash([]);
-    }
-    if (visibleData.some((d) => d.midLine)) {
-      // Mid line - dotted
-      ctx.setLineDash([2, 2]);
-      drawIndicatorLine(
-        data.map((d) => d.midLine),
-        "#22d3ee",
-        0.8,
-      );
-      ctx.setLineDash([]);
+    // Draw indicators based on strategy configuration
+    const strategyConfig = selectedStrategyId ? STRATEGY_INDICATORS[selectedStrategyId] : undefined;
+    if (strategyConfig) {
+      for (const indicator of strategyConfig.indicators) {
+        const indicatorKey = indicator.key as keyof IndicatorData;
+        if (visibleData.some((d) => d[indicatorKey] !== undefined)) {
+          if (indicator.lineDash) {
+            ctx.setLineDash(indicator.lineDash);
+          }
+          drawIndicatorLine(
+            data.map((d) => d[indicatorKey] as number | undefined),
+            indicator.color,
+            indicator.lineWidth ?? 1,
+          );
+          if (indicator.lineDash) {
+            ctx.setLineDash([]);
+          }
+        }
+      }
     }
 
     // Draw candlesticks
@@ -358,16 +356,13 @@ const BacktestChart: React.FC<BacktestChartProps> = ({
     ctx.textAlign = "left";
     ctx.fillText("Price Chart", padding.left + 5, 18);
 
-    // Legend
+    // Legend - derive from strategy configuration (only show indicators with labels)
     ctx.font = "9px sans-serif";
     let legendX = padding.left + 100;
-    const legendItems = [
-      { label: "EMA 9", color: "#fbbf24" },
-      { label: "EMA 21", color: "#a855f7" },
-      { label: "SMA 50", color: "#3b82f6" },
-      { label: "SMA 200", color: "#f97316" },
-      { label: "Donchian", color: "#06b6d4" },
-    ];
+    const legendItems = strategyConfig?.indicators
+      .filter((ind) => ind.label) // Only show indicators with labels
+      .map((ind) => ({ label: ind.label, color: ind.color })) ?? [];
+
     legendItems.forEach((item) => {
       ctx.fillStyle = item.color;
       ctx.fillRect(legendX, 10, 12, 3);
@@ -375,7 +370,7 @@ const BacktestChart: React.FC<BacktestChartProps> = ({
       ctx.fillText(item.label, legendX + 16, 15);
       legendX += 60;
     });
-  }, [data, trades, visibleCandles, scrollOffset, containerSize]);
+  }, [data, trades, visibleCandles, scrollOffset, containerSize, selectedStrategyId]);
 
   if (!data || data.length === 0) {
     return (
