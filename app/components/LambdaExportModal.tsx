@@ -843,7 +843,7 @@ export default function LambdaExportModal({
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-hidden p-4">
+        <div className="flex-1 overflow-auto p-4">
           <div className="h-full bg-slate-900 rounded-lg overflow-hidden flex flex-col">
             {/* Code/Settings Display */}
             <pre className="flex-1 overflow-auto p-4 text-sm text-slate-300 font-mono whitespace-pre">
