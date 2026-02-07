@@ -7,19 +7,13 @@ import { useState, useEffect } from "react";
 const MOBILE_BREAKPOINT = 1024;
 const SIDEBAR_STATE_KEY = "sidebarOpen";
 
+// Helper function to check if current window width is below mobile breakpoint
+const isMobileDevice = () => window.innerWidth < MOBILE_BREAKPOINT;
+
 export default function Sidebar() {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
-
-  // Helper function to check if device is mobile and update state accordingly
-  const checkAndSetMobileState = () => {
-    const mobile = window.innerWidth < MOBILE_BREAKPOINT;
-    setIsMobile(mobile);
-    if (mobile) {
-      setIsOpen(false);
-    }
-  };
 
   // Load sidebar state from localStorage and check screen size on mount
   useEffect(() => {
@@ -28,29 +22,37 @@ export default function Sidebar() {
       if (savedState !== null) {
         const shouldBeOpen = savedState === "true";
         // On mobile, always start closed regardless of saved state
-        const mobile = window.innerWidth < MOBILE_BREAKPOINT;
+        const mobile = isMobileDevice();
         setIsMobile(mobile);
         setIsOpen(mobile ? false : shouldBeOpen);
       } else {
-        // No saved state, just check if mobile
-        checkAndSetMobileState();
+        // No saved state, check if mobile and close if so
+        const mobile = isMobileDevice();
+        setIsMobile(mobile);
+        if (mobile) {
+          setIsOpen(false);
+        }
       }
     } catch (error) {
       // localStorage not available, use default state
       console.warn("Failed to load sidebar state from localStorage:", error);
       // Still check if mobile
-      checkAndSetMobileState();
+      const mobile = isMobileDevice();
+      setIsMobile(mobile);
+      if (mobile) {
+        setIsOpen(false);
+      }
     }
   }, []);
 
   // Handle window resize
   useEffect(() => {
     const checkScreenSize = () => {
-      const mobile = window.innerWidth < MOBILE_BREAKPOINT;
+      const mobile = isMobileDevice();
       setIsMobile(mobile);
       // Auto-close on mobile/tablet if currently open
       if (mobile) {
-        setIsOpen((prev) => (prev ? false : prev));
+        setIsOpen(false);
       }
     };
 
