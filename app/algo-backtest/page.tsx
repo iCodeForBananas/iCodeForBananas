@@ -699,16 +699,6 @@ export default function AlgoBacktestPage() {
                           />
                         </div>
                       </div>
-                      <p className='text-xs text-slate-600 mt-1'>
-                        Values: {variation ? (() => {
-                          const values = generateRangeValues(variation.min, variation.max, variation.step);
-                          const MAX_PREVIEW = 20;
-                          if (values.length <= MAX_PREVIEW) {
-                            return values.join(", ");
-                          }
-                          return `${values.slice(0, MAX_PREVIEW).join(", ")}... (${values.length} total)`;
-                        })() : "none"}
-                      </p>
                     </div>
                   );
                 })}
