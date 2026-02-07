@@ -11,9 +11,14 @@ export default function Sidebar() {
 
   // Load sidebar state from localStorage after hydration
   useEffect(() => {
-    const savedState = localStorage.getItem("sidebarOpen");
-    if (savedState !== null) {
-      setIsOpen(savedState === "true");
+    try {
+      const savedState = localStorage.getItem("sidebarOpen");
+      if (savedState !== null) {
+        setIsOpen(savedState === "true");
+      }
+    } catch (error) {
+      // localStorage not available, use default state
+      console.warn("Failed to load sidebar state from localStorage:", error);
     }
   }, []);
 
@@ -36,7 +41,12 @@ export default function Sidebar() {
   const toggleSidebar = () => {
     const newState = !isOpen;
     setIsOpen(newState);
-    localStorage.setItem("sidebarOpen", String(newState));
+    try {
+      localStorage.setItem("sidebarOpen", String(newState));
+    } catch (error) {
+      // localStorage not available, state will reset on page reload
+      console.warn("Failed to save sidebar state to localStorage:", error);
+    }
   };
 
   return (
