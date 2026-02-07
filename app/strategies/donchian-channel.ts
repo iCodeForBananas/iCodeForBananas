@@ -1,10 +1,20 @@
 // Donchian Channel Breakout Strategy
 // Buy when price breaks above upper channel, sell when price breaks below lower channel
-// Note: The backtest system calculates Donchian Channels with a fixed 20-period
+// Note: The backtest system calculates Donchian Channels dynamically based on the period parameter
 
 import { StrategyDefinition, StrategyHandler, StrategyParameter } from './types';
 
 const parameters: StrategyParameter[] = [
+  {
+    key: 'period',
+    name: 'Channel Period',
+    description: 'Number of bars to calculate the Donchian Channel (default: 20)',
+    type: 'number',
+    default: 20,
+    min: 5,
+    max: 100,
+    step: 1,
+  },
   {
     key: 'useMidlineExit',
     name: 'Exit at Midline',
@@ -15,15 +25,19 @@ const parameters: StrategyParameter[] = [
 ];
 
 const handler: StrategyHandler = ({ current, previous, params }) => {
+  const period = (params.period as number) || 20;
   const useMidlineExit = params.useMidlineExit as boolean;
 
-  // The backtest system pre-calculates Donchian Channels with a fixed 20-period
-  // These are available as upperBand, lowerBand, and midLine
+  // Access dynamic Donchian values keyed by period
+  const upperKey = `donchian_${period}_upperBand` as keyof typeof current;
+  const lowerKey = `donchian_${period}_lowerBand` as keyof typeof current;
+  const midKey = `donchian_${period}_midLine` as keyof typeof current;
+
   // We compare current price to PREVIOUS bar's bands for breakout detection
   // (since current bar's bands include current bar's high/low)
-  const prevUpperBand = previous?.upperBand;
-  const prevLowerBand = previous?.lowerBand;
-  const prevMidLine = previous?.midLine;
+  const prevUpperBand = previous?.[upperKey] as number | undefined;
+  const prevLowerBand = previous?.[lowerKey] as number | undefined;
+  const prevMidLine = previous?.[midKey] as number | undefined;
 
   if (!previous || prevUpperBand === undefined || prevLowerBand === undefined) {
     return { action: 'hold', reason: 'Waiting for Donchian Channel' };

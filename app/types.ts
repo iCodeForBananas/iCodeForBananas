@@ -108,4 +108,8 @@ export interface IndicatorData extends PricePoint {
   [key: `macd_${number}_${number}_${number}`]: number | undefined;
   [key: `macdSignal_${number}_${number}_${number}`]: number | undefined;
   [key: `macdHistogram_${number}_${number}_${number}`]: number | undefined;
+  // Dynamic Donchian indicators (keyed by period)
+  [key: `donchian_${number}_upperBand`]: number | undefined;
+  [key: `donchian_${number}_lowerBand`]: number | undefined;
+  [key: `donchian_${number}_midLine`]: number | undefined;
 }
