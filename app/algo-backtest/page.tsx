@@ -259,9 +259,10 @@ function runBacktestWithParams(
       let exitPrice = current.close;
       let exitReason = signal.reason;
 
-      // Check if this is a trailing stop EMA exit - if the bar's low hits the EMA,
-      // exit at the EMA price (intrabar exit) rather than the close
-      if (trailingStopEmaPeriod > 0 && signal.reason.includes("Trailing stop EMA")) {
+      // Check if trailing stop EMA is configured and if the bar's low hit the EMA.
+      // If so, exit at the EMA price (intrabar exit) rather than the close.
+      // This applies when trailingStopEmaPeriod > 0 and the low touched or crossed the EMA.
+      if (trailingStopEmaPeriod > 0) {
         const emaKey = `ema${trailingStopEmaPeriod}` as keyof typeof current;
         const trailingStopEma = current[emaKey] as number | undefined;
 
