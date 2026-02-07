@@ -5,11 +5,13 @@ import { StrategyDefinition } from './types';
 import emaCrossover from './ema-crossover';
 import rsiMeanReversion from './rsi-mean-reversion';
 import smaCrossover from './sma-crossover';
+import donchianChannel from './donchian-channel';
 
 export const AVAILABLE_STRATEGIES: Record<string, StrategyDefinition> = {
   'ema-crossover': emaCrossover,
   'rsi-mean-reversion': rsiMeanReversion,
   'sma-crossover': smaCrossover,
+  'donchian-channel': donchianChannel,
 };
 
 export * from './types';
