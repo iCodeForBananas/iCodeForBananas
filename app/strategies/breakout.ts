@@ -1,6 +1,6 @@
 // Breakout Strategy
 // Buy when price breaks above the highest high of the lookback period
-// Sell when price breaks below the lowest low of the lookback period
+// Exit using a trailing stop EMA
 
 import { StrategyDefinition, StrategyHandler, StrategyParameter } from './types';
 
@@ -22,11 +22,22 @@ const parameters: StrategyParameter[] = [
     type: 'boolean',
     default: false,
   },
+  {
+    key: 'trailingStopEmaPeriod',
+    name: 'Trailing Stop EMA Period',
+    description: 'EMA period for trailing stop exit (default: 21). Set to 0 to use breakdown exit.',
+    type: 'number',
+    default: 21,
+    min: 0,
+    max: 200,
+    step: 1,
+  },
 ];
 
 const handler: StrategyHandler = ({ current, index, series, params }) => {
   const lookbackPeriod = (params.lookbackPeriod as number) || 20;
   const useClose = params.useClose as boolean;
+  const trailingStopEmaPeriod = (params.trailingStopEmaPeriod as number) ?? 21;
 
   // Need enough data for lookback period
   if (index < lookbackPeriod) {
@@ -51,7 +62,6 @@ const handler: StrategyHandler = ({ current, index, series, params }) => {
   // When useClose is true, compare close to close-based levels
   // When useClose is false, compare high/low to high/low-based levels
   const priceForBuySignal = useClose ? current.close : current.high;
-  const priceForSellSignal = useClose ? current.close : current.low;
 
   // Breakout above the highest high - BUY signal
   if (priceForBuySignal > highestHigh) {
@@ -61,12 +71,31 @@ const handler: StrategyHandler = ({ current, index, series, params }) => {
     };
   }
 
-  // Breakdown below the lowest low - SELL signal
-  if (priceForSellSignal < lowestLow) {
-    return {
-      action: 'sell',
-      reason: `Breakdown below ${lookbackPeriod}-period low (${priceForSellSignal.toFixed(2)} < ${lowestLow.toFixed(2)})`,
-    };
+  // Exit logic: Use trailing stop EMA if configured, otherwise use breakdown
+  if (trailingStopEmaPeriod > 0) {
+    // Get the trailing stop EMA value
+    const emaKey = `ema${trailingStopEmaPeriod}` as keyof typeof current;
+    const trailingStopEma = current[emaKey] as number | undefined;
+
+    if (trailingStopEma !== undefined) {
+      // Check if the low of the bar hits the trailing stop EMA
+      // This allows for intrabar exit at the stop level
+      if (current.low <= trailingStopEma) {
+        return {
+          action: 'sell',
+          reason: `Trailing stop EMA ${trailingStopEmaPeriod} hit (low ${current.low.toFixed(2)} <= EMA ${trailingStopEma.toFixed(2)})`,
+        };
+      }
+    }
+  } else {
+    // Fallback to original breakdown logic
+    const priceForSellSignal = useClose ? current.close : current.low;
+    if (priceForSellSignal < lowestLow) {
+      return {
+        action: 'sell',
+        reason: `Breakdown below ${lookbackPeriod}-period low (${priceForSellSignal.toFixed(2)} < ${lowestLow.toFixed(2)})`,
+      };
+    }
   }
 
   return { action: 'hold', reason: 'Within range' };
@@ -75,7 +104,7 @@ const handler: StrategyHandler = ({ current, index, series, params }) => {
 const strategy: StrategyDefinition = {
   id: 'breakout',
   name: 'Breakout',
-  description: 'Buy on breakout above highest high, sell on breakdown below lowest low',
+  description: 'Buy on breakout above highest high, exit using trailing stop EMA',
   handler,
   parameters,
 };

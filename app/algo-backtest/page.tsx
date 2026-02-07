@@ -231,6 +231,9 @@ function runBacktestWithParams(
   let position: { side: PositionSide; entryPrice: number; entryTime: number; entryIdx: number } | null = null;
   let tradeId = 1;
 
+  // Get trailing stop EMA period from params (for breakout strategy)
+  const trailingStopEmaPeriod = (params.trailingStopEmaPeriod as number) ?? 0;
+
   // Run through the data
   for (let i = 1; i < data.length; i++) {
     const current = data[i];
@@ -252,12 +255,29 @@ function runBacktestWithParams(
         entryIdx: i,
       };
     } else if (signal.action === "sell" && position) {
+      // Determine exit price based on trailing stop EMA intrabar hit
+      let exitPrice = current.close;
+      let exitReason = signal.reason;
+
+      // Check if this is a trailing stop EMA exit - if the bar's low hits the EMA,
+      // exit at the EMA price (intrabar exit) rather than the close
+      if (trailingStopEmaPeriod > 0 && signal.reason.includes("Trailing stop EMA")) {
+        const emaKey = `ema${trailingStopEmaPeriod}` as keyof typeof current;
+        const trailingStopEma = current[emaKey] as number | undefined;
+
+        if (trailingStopEma !== undefined && current.low <= trailingStopEma) {
+          // Exit at the trailing stop EMA price (intrabar stop out)
+          exitPrice = trailingStopEma;
+          exitReason = `Trailing stop EMA ${trailingStopEmaPeriod} hit (exited at EMA ${trailingStopEma.toFixed(2)})`;
+        }
+      }
+
       const pnl =
         position.side === PositionSide.LONG
-          ? (current.close - position.entryPrice) * (equity / position.entryPrice)
-          : (position.entryPrice - current.close) * (equity / position.entryPrice);
+          ? (exitPrice - position.entryPrice) * (equity / position.entryPrice)
+          : (position.entryPrice - exitPrice) * (equity / position.entryPrice);
       const pnlPercent =
-        ((current.close - position.entryPrice) / position.entryPrice) *
+        ((exitPrice - position.entryPrice) / position.entryPrice) *
         100 *
         (position.side === PositionSide.LONG ? 1 : -1);
 
@@ -268,11 +288,11 @@ function runBacktestWithParams(
         side: position.side,
         entryPrice: position.entryPrice,
         entryTime: position.entryTime,
-        exitPrice: current.close,
+        exitPrice,
         exitTime: current.time,
         pnl,
         pnlPercent,
-        reason: signal.reason,
+        reason: exitReason,
       });
 
       position = null;
@@ -520,7 +540,10 @@ export default function AlgoBacktestPage() {
     // Add periods from params
     for (const [key, value] of Object.entries(currentParams)) {
       if (typeof value === "number") {
-        if (key.includes("ema") || key.includes("fast") || key.includes("slow")) {
+        // Add EMA periods from any param key containing "ema" (case insensitive)
+        if (key.toLowerCase().includes("ema")) {
+          requiredEMAs.add(value);
+        } else if (key.includes("fast") || key.includes("slow")) {
           // Assume EMA periods for crossover strategies
           if (selectedStrategyId.includes("ema")) {
             requiredEMAs.add(value);
@@ -585,7 +608,10 @@ export default function AlgoBacktestPage() {
     for (const combo of combinations) {
       for (const [key, value] of Object.entries(combo)) {
         if (typeof value === "number") {
-          if (key === "fastPeriod" || key === "slowPeriod") {
+          // Add EMA periods from any param key containing "ema" (case insensitive)
+          if (key.toLowerCase().includes("ema")) {
+            requiredEMAs.add(value);
+          } else if (key === "fastPeriod" || key === "slowPeriod") {
             if (selectedStrategyId.includes("ema")) {
               requiredEMAs.add(value);
             } else if (!selectedStrategyId.includes("macd")) {
