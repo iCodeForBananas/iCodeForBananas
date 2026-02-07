@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import BacktestChart from "../components/BacktestChart";
+import EquityCurveChart from "../components/EquityCurveChart";
 import { PricePoint, IndicatorData, BacktestTrade, PositionSide } from "@/app/types";
 import {
   AVAILABLE_STRATEGIES,
@@ -775,13 +776,6 @@ export default function AlgoBacktestPage() {
                   <p>✓ Batch optimization support</p>
                 </div>
               </div>
-
-              <div className='bg-blue-900/20 border border-blue-800/30 rounded p-3'>
-                <p className='text-xs text-blue-300 mb-1 font-semibold'>💡 Parameter Optimization</p>
-                <p className='text-xs text-slate-400'>
-                  Enable &quot;Vary&quot; on parameters and enter comma-separated values to test multiple combinations.
-                </p>
-              </div>
             </div>
           )}
         </div>
@@ -916,21 +910,32 @@ export default function AlgoBacktestPage() {
             </div>
           )}
 
-          {/* Chart */}
-          <div className='flex-1 overflow-hidden'>
-            <BacktestChart
-              data={indicatorData}
-              trades={
-                activeResult?.trades.map((t) => ({
-                  ...t,
-                  side: t.side === "LONG" ? PositionSide.LONG : PositionSide.SHORT,
-                })) || []
-              }
-              equityCurve={activeResult?.equityCurve || []}
-              visibleCandles={visibleCandles}
-              onVisibleCandlesChange={setVisibleCandles}
-              showEquityCurve={showEquityCurve}
-            />
+          {/* Charts Container */}
+          <div className='flex-1 flex flex-col overflow-hidden'>
+            {/* Price Chart */}
+            <div className={showEquityCurve ? 'flex-1 min-h-0' : 'flex-1 overflow-hidden'}>
+              <BacktestChart
+                data={indicatorData}
+                trades={
+                  activeResult?.trades.map((t) => ({
+                    ...t,
+                    side: t.side === "LONG" ? PositionSide.LONG : PositionSide.SHORT,
+                  })) || []
+                }
+                visibleCandles={visibleCandles}
+                onVisibleCandlesChange={setVisibleCandles}
+              />
+            </div>
+            
+            {/* Equity Curve Chart (Separate) */}
+            {showEquityCurve && activeResult && (
+              <div className='h-32 border-t border-slate-700'>
+                <EquityCurveChart
+                  equityCurve={activeResult.equityCurve}
+                  initialCapital={INITIAL_CAPITAL}
+                />
+              </div>
+            )}
           </div>
 
           {/* Trade Log */}
