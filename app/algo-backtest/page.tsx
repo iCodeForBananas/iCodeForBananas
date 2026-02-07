@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import BacktestChart from "../components/BacktestChart";
 import EquityCurveChart from "../components/EquityCurveChart";
 import { PricePoint, IndicatorData, BacktestTrade, PositionSide } from "@/app/types";
@@ -589,6 +589,37 @@ export default function AlgoBacktestPage() {
   const [stopLossPercent, setStopLossPercent] = useState<number>(0);
   const [takeProfitPercent, setTakeProfitPercent] = useState<number>(0);
 
+  // Unique timeframes derived from available datasets
+  const uniqueTimeframes = useMemo(() => {
+    const timeframes = Array.from(new Set(availableDatasets.map((ds) => ds.timeframe)));
+    // Sort by duration: minutes, hours, days, weeks
+    const order: Record<string, number> = { m: 1, h: 2, d: 3, wk: 4 };
+    return timeframes.sort((a, b) => {
+      const unitA = a.replace(/[0-9]/g, '').toLowerCase();
+      const unitB = b.replace(/[0-9]/g, '').toLowerCase();
+      const numA = parseInt(a) || 1;
+      const numB = parseInt(b) || 1;
+      const orderDiff = (order[unitA] || 99) - (order[unitB] || 99);
+      return orderDiff !== 0 ? orderDiff : numA - numB;
+    });
+  }, [availableDatasets]);
+
+  // Toggle selection of all datasets with a given timeframe
+  const toggleTimeframe = useCallback(
+    (timeframe: string) => {
+      const filesForTimeframe = availableDatasets
+        .filter((ds) => ds.timeframe === timeframe)
+        .map((ds) => ds.file);
+      const allSelected = filesForTimeframe.every((f) => selectedFiles.includes(f));
+      if (allSelected) {
+        setSelectedFiles((prev) => prev.filter((f) => !filesForTimeframe.includes(f)));
+      } else {
+        setSelectedFiles((prev) => [...new Set([...prev, ...filesForTimeframe])]);
+      }
+    },
+    [availableDatasets, selectedFiles]
+  );
+
   // Initialize params when strategy changes
   useEffect(() => {
     const defaults = getDefaultParams(selectedStrategyId);
@@ -946,6 +977,29 @@ export default function AlgoBacktestPage() {
                 </span>
               </div>
             </div>
+            {uniqueTimeframes.length > 1 && (
+              <div className='flex flex-wrap gap-1 mb-2'>
+                {uniqueTimeframes.map((tf) => {
+                  const filesForTf = availableDatasets
+                    .filter((ds) => ds.timeframe === tf)
+                    .map((ds) => ds.file);
+                  const allSelected = filesForTf.every((f) => selectedFiles.includes(f));
+                  return (
+                    <button
+                      key={tf}
+                      onClick={() => toggleTimeframe(tf)}
+                      className={`px-2 py-0.5 text-xs rounded border transition-colors ${
+                        allSelected
+                          ? 'bg-blue-600 border-blue-500 text-white'
+                          : 'bg-slate-800 border-slate-600 text-slate-400 hover:border-blue-500 hover:text-blue-300'
+                      }`}
+                    >
+                      {tf.toUpperCase()}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
             <div className='max-h-48 overflow-y-auto bg-slate-800 border border-slate-600 rounded p-2 space-y-1'>
               {availableDatasets.map((ds) => (
                 <label
