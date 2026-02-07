@@ -105,6 +105,15 @@ export default function Sidebar() {
                   Fretboard
                 </Link>
                 <Link
+                  href='/fretboard-quiz'
+                  onClick={() => isMobile && setIsOpen(false)}
+                  className={`px-3 py-2 rounded hover:bg-pink-100 hover:text-gray-900 transition-colors whitespace-nowrap ${
+                    pathname === "/fretboard-quiz" ? "bg-pink-100 text-gray-900 font-semibold" : "text-gray-700"
+                  }`}
+                >
+                  Fret Board Quiz
+                </Link>
+                <Link
                   href='/chord-progressions'
                   onClick={() => isMobile && setIsOpen(false)}
                   className={`px-3 py-2 rounded hover:bg-pink-100 hover:text-gray-900 transition-colors whitespace-nowrap ${
