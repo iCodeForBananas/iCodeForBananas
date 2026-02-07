@@ -7,6 +7,304 @@ import { allNotes } from "../lib/music";
 // Circle of fifths order
 const circleOfFifths = ["C", "G", "D", "A", "E", "B", "F#", "C#", "G#", "D#", "A#", "F"];
 
+// ── Chord shape data & diagram ──────────────────────────────────────────────
+
+const sharpNotes = ["A", "A#", "B", "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#"];
+const stringTuning = ["E", "A", "D", "G", "B", "E"];
+
+interface ChordShape {
+  frets: number[];
+  fingers: number[];
+}
+
+const chordShapes: Record<string, ChordShape[]> = {
+  "C Major": [{ frets: [-1, 3, 2, 0, 1, 0], fingers: [0, 3, 2, 0, 1, 0] }],
+  "C Minor": [{ frets: [-1, 3, 5, 5, 4, 3], fingers: [0, 1, 3, 4, 2, 1] }],
+  "C Maj7": [{ frets: [-1, 3, 2, 0, 0, 0], fingers: [0, 3, 2, 0, 0, 0] }],
+  C7: [{ frets: [-1, 3, 2, 3, 1, 0], fingers: [0, 3, 2, 4, 1, 0] }],
+  Cm7: [{ frets: [-1, 3, 5, 3, 4, 3], fingers: [0, 1, 3, 1, 2, 1] }],
+  "C Sus4": [{ frets: [-1, 3, 3, 0, 1, 1], fingers: [0, 3, 4, 0, 1, 1] }],
+  "C Add9": [{ frets: [-1, 3, 2, 0, 3, 0], fingers: [0, 3, 2, 0, 4, 0] }],
+  "D Major": [{ frets: [-1, -1, 0, 2, 3, 2], fingers: [0, 0, 0, 1, 3, 2] }],
+  "D Minor": [{ frets: [-1, -1, 0, 2, 3, 1], fingers: [0, 0, 0, 2, 3, 1] }],
+  "D Maj7": [{ frets: [-1, -1, 0, 2, 2, 2], fingers: [0, 0, 0, 1, 1, 1] }],
+  D7: [{ frets: [-1, -1, 0, 2, 1, 2], fingers: [0, 0, 0, 3, 1, 2] }],
+  Dm7: [{ frets: [-1, -1, 0, 2, 1, 1], fingers: [0, 0, 0, 2, 1, 1] }],
+  "D Sus4": [{ frets: [-1, -1, 0, 2, 3, 3], fingers: [0, 0, 0, 1, 2, 3] }],
+  "D Add9": [{ frets: [-1, -1, 0, 2, 3, 0], fingers: [0, 0, 0, 1, 2, 0] }],
+  "E Major": [{ frets: [0, 2, 2, 1, 0, 0], fingers: [0, 2, 3, 1, 0, 0] }],
+  "E Minor": [{ frets: [0, 2, 2, 0, 0, 0], fingers: [0, 2, 3, 0, 0, 0] }],
+  "E Maj7": [{ frets: [0, 2, 1, 1, 0, 0], fingers: [0, 3, 1, 2, 0, 0] }],
+  E7: [{ frets: [0, 2, 0, 1, 0, 0], fingers: [0, 2, 0, 1, 0, 0] }],
+  Em7: [{ frets: [0, 2, 0, 0, 0, 0], fingers: [0, 2, 0, 0, 0, 0] }],
+  "E Sus4": [{ frets: [0, 2, 2, 2, 0, 0], fingers: [0, 1, 2, 3, 0, 0] }],
+  "E Add9": [{ frets: [0, 2, 2, 1, 0, 2], fingers: [0, 2, 3, 1, 0, 4] }],
+  "F Major": [{ frets: [1, 3, 3, 2, 1, 1], fingers: [1, 3, 4, 2, 1, 1] }],
+  "F Minor": [{ frets: [1, 3, 3, 1, 1, 1], fingers: [1, 3, 4, 1, 1, 1] }],
+  "F Maj7": [{ frets: [1, 3, 2, 2, 1, 1], fingers: [1, 4, 2, 3, 1, 1] }],
+  F7: [{ frets: [1, 3, 1, 2, 1, 1], fingers: [1, 3, 1, 2, 1, 1] }],
+  Fm7: [{ frets: [1, 3, 1, 1, 1, 1], fingers: [1, 3, 1, 1, 1, 1] }],
+  "F Sus4": [{ frets: [1, 3, 3, 3, 1, 1], fingers: [1, 2, 3, 4, 1, 1] }],
+  "F Add9": [{ frets: [1, 3, 3, 0, 1, 1], fingers: [1, 3, 4, 0, 1, 1] }],
+  "G Major": [{ frets: [3, 2, 0, 0, 3, 3], fingers: [2, 1, 0, 0, 3, 4] }],
+  "G Minor": [{ frets: [3, 5, 5, 3, 3, 3], fingers: [1, 3, 4, 1, 1, 1] }],
+  "G Maj7": [{ frets: [3, 2, 0, 0, 0, 2], fingers: [3, 1, 0, 0, 0, 2] }],
+  G7: [{ frets: [3, 2, 0, 0, 0, 1], fingers: [3, 2, 0, 0, 0, 1] }],
+  Gm7: [{ frets: [3, 5, 3, 3, 3, 3], fingers: [1, 4, 1, 1, 1, 1] }],
+  "G Sus4": [{ frets: [3, 3, 0, 0, 1, 3], fingers: [3, 4, 0, 0, 1, 3] }],
+  "G Add9": [{ frets: [3, 0, 0, 2, 0, 3], fingers: [3, 0, 0, 2, 0, 4] }],
+  "A Major": [{ frets: [-1, 0, 2, 2, 2, 0], fingers: [0, 0, 1, 2, 3, 0] }],
+  "A Minor": [{ frets: [-1, 0, 2, 2, 1, 0], fingers: [0, 0, 2, 3, 1, 0] }],
+  "A Maj7": [{ frets: [-1, 0, 2, 1, 2, 0], fingers: [0, 0, 2, 1, 3, 0] }],
+  A7: [{ frets: [-1, 0, 2, 0, 2, 0], fingers: [0, 0, 2, 0, 3, 0] }],
+  Am7: [{ frets: [-1, 0, 2, 0, 1, 0], fingers: [0, 0, 2, 0, 1, 0] }],
+  "A Sus4": [{ frets: [-1, 0, 2, 2, 3, 0], fingers: [0, 0, 1, 2, 4, 0] }],
+  "A Add9": [{ frets: [-1, 0, 2, 4, 2, 0], fingers: [0, 0, 1, 4, 2, 0] }],
+  "B Major": [{ frets: [-1, 2, 4, 4, 4, 2], fingers: [0, 1, 2, 3, 4, 1] }],
+  "B Minor": [{ frets: [-1, 2, 4, 4, 3, 2], fingers: [0, 1, 3, 4, 2, 1] }],
+  "B Maj7": [{ frets: [-1, 2, 4, 3, 4, 2], fingers: [0, 1, 3, 2, 4, 1] }],
+  B7: [{ frets: [-1, 2, 1, 2, 0, 2], fingers: [0, 2, 1, 3, 0, 4] }],
+  Bm7: [{ frets: [-1, 2, 4, 2, 3, 2], fingers: [0, 1, 3, 1, 2, 1] }],
+  "B Sus4": [{ frets: [-1, 2, 4, 4, 5, 2], fingers: [0, 1, 2, 3, 4, 1] }],
+  "B Add9": [{ frets: [-1, 2, 4, 4, 2, 2], fingers: [0, 1, 3, 4, 1, 1] }],
+  "Bb Major": [{ frets: [-1, 1, 3, 3, 3, 1], fingers: [0, 1, 2, 3, 4, 1] }],
+  "Bb Minor": [{ frets: [-1, 1, 3, 3, 2, 1], fingers: [0, 1, 3, 4, 2, 1] }],
+  "Bb Maj7": [{ frets: [-1, 1, 3, 2, 3, 1], fingers: [0, 1, 3, 2, 4, 1] }],
+  Bb7: [{ frets: [-1, 1, 3, 1, 3, 1], fingers: [0, 1, 3, 1, 4, 1] }],
+  Bbm7: [{ frets: [-1, 1, 3, 1, 2, 1], fingers: [0, 1, 3, 1, 2, 1] }],
+  "Bb Sus4": [{ frets: [-1, 1, 3, 3, 4, 1], fingers: [0, 1, 2, 3, 4, 1] }],
+  "Bb Add9": [{ frets: [-1, 1, 0, 3, 1, 1], fingers: [0, 1, 0, 4, 2, 1] }],
+  "Db Major": [{ frets: [-1, 4, 6, 6, 6, 4], fingers: [0, 1, 2, 3, 4, 1] }],
+  "Db Minor": [{ frets: [-1, 4, 6, 6, 5, 4], fingers: [0, 1, 3, 4, 2, 1] }],
+  "Db Maj7": [{ frets: [-1, 4, 6, 5, 6, 4], fingers: [0, 1, 3, 2, 4, 1] }],
+  Db7: [{ frets: [-1, 4, 6, 4, 6, 4], fingers: [0, 1, 3, 1, 4, 1] }],
+  Dbm7: [{ frets: [-1, 4, 6, 4, 5, 4], fingers: [0, 1, 3, 1, 2, 1] }],
+  "Db Sus4": [{ frets: [-1, 4, 6, 6, 7, 4], fingers: [0, 1, 2, 3, 4, 1] }],
+  "Db Add9": [{ frets: [-1, 4, 3, 6, 4, 4], fingers: [0, 2, 1, 4, 3, 2] }],
+  "Eb Major": [{ frets: [-1, -1, 1, 3, 4, 3], fingers: [0, 0, 1, 2, 4, 3] }],
+  "Eb Minor": [{ frets: [-1, -1, 1, 3, 4, 2], fingers: [0, 0, 1, 3, 4, 2] }],
+  "Eb Maj7": [{ frets: [-1, -1, 1, 3, 3, 3], fingers: [0, 0, 1, 2, 3, 4] }],
+  Eb7: [{ frets: [-1, -1, 1, 3, 2, 3], fingers: [0, 0, 1, 3, 2, 4] }],
+  Ebm7: [{ frets: [-1, -1, 1, 3, 2, 2], fingers: [0, 0, 1, 4, 2, 3] }],
+  "Eb Sus4": [{ frets: [-1, -1, 1, 3, 4, 4], fingers: [0, 0, 1, 2, 3, 4] }],
+  "Eb Add9": [{ frets: [-1, -1, 1, 3, 4, 1], fingers: [0, 0, 1, 2, 3, 1] }],
+  "Gb Major": [{ frets: [2, 4, 4, 3, 2, 2], fingers: [1, 3, 4, 2, 1, 1] }],
+  "Gb Minor": [{ frets: [2, 4, 4, 2, 2, 2], fingers: [1, 3, 4, 1, 1, 1] }],
+  "Gb Maj7": [{ frets: [2, 4, 3, 3, 2, 2], fingers: [1, 4, 2, 3, 1, 1] }],
+  Gb7: [{ frets: [2, 4, 2, 3, 2, 2], fingers: [1, 3, 1, 2, 1, 1] }],
+  Gbm7: [{ frets: [2, 4, 2, 2, 2, 2], fingers: [1, 3, 1, 1, 1, 1] }],
+  "Gb Sus4": [{ frets: [2, 4, 4, 4, 2, 2], fingers: [1, 2, 3, 4, 1, 1] }],
+  "Gb Add9": [{ frets: [2, 4, 4, 1, 2, 2], fingers: [1, 3, 4, 0, 1, 1] }],
+  "Ab Major": [{ frets: [4, 6, 6, 5, 4, 4], fingers: [1, 3, 4, 2, 1, 1] }],
+  "Ab Minor": [{ frets: [4, 6, 6, 4, 4, 4], fingers: [1, 3, 4, 1, 1, 1] }],
+  "Ab Maj7": [{ frets: [4, 6, 5, 5, 4, 4], fingers: [1, 4, 2, 3, 1, 1] }],
+  Ab7: [{ frets: [4, 6, 4, 5, 4, 4], fingers: [1, 3, 1, 2, 1, 1] }],
+  Abm7: [{ frets: [4, 6, 4, 4, 4, 4], fingers: [1, 3, 1, 1, 1, 1] }],
+  "Ab Sus4": [{ frets: [4, 6, 6, 6, 4, 4], fingers: [1, 2, 3, 4, 1, 1] }],
+  "Ab Add9": [{ frets: [4, 6, 6, 3, 4, 4], fingers: [1, 3, 4, 0, 1, 1] }],
+};
+
+const sharpToFlat: Record<string, string> = { "A#": "Bb", "C#": "Db", "D#": "Eb", "F#": "Gb", "G#": "Ab" };
+const flatToSharp: Record<string, string> = { Bb: "A#", Db: "C#", Eb: "D#", Gb: "F#", Ab: "G#" };
+const sharpBaseMap: Record<string, string> = { "A#": "A", "C#": "C", "D#": "D", "F#": "F", "G#": "G" };
+
+// Map chord-practice suffix → chord-shapes lookup key
+function mapSuffixToShapeType(suffix: string): string {
+  switch (suffix) {
+    case "Major": return "Major";
+    case "Minor": return "Minor";
+    case "maj7": return "Maj7";
+    case "m7": return "m7";
+    case "7": return "7";
+    case "sus2": return "Sus4"; // fallback
+    case "sus4": return "Sus4";
+    case "dim": return "Minor"; // fallback
+    case "aug": return "Major"; // fallback
+    case "m7b5": return "m7"; // fallback
+    case "maj9": return "Add9"; // fallback
+    case "9": return "7"; // fallback
+    case "m9": return "m7"; // fallback
+    case "dim7": return "m7"; // fallback
+    case "13": return "7"; // fallback
+    case "maj13": return "Maj7"; // fallback
+    case "m11": return "m7"; // fallback
+    case "7#9": return "7"; // fallback
+    case "7b9": return "7"; // fallback
+    default: return "Major";
+  }
+}
+
+function buildShapeKey(note: string, type: string): string {
+  if (type === "7" || type === "m7") return `${note}${type}`;
+  return `${note} ${type}`;
+}
+
+function transposeShape(shape: ChordShape, semitones: number): ChordShape {
+  return {
+    frets: shape.frets.map((f) => (f === -1 ? -1 : f + semitones)),
+    fingers: [...shape.fingers],
+  };
+}
+
+function resolveChordShapeForPractice(root: string, suffix: string): ChordShape | null {
+  const shapeType = mapSuffixToShapeType(suffix);
+  const tryKey = (n: string, t: string) => chordShapes[buildShapeKey(n, t)]?.[0] || null;
+
+  // Direct lookup
+  const direct = tryKey(root, shapeType);
+  if (direct) return direct;
+
+  // Try enharmonic
+  const enharmonic = flatToSharp[root] || sharpToFlat[root];
+  if (enharmonic) {
+    const found = tryKey(enharmonic, shapeType);
+    if (found) return found;
+  }
+
+  // Try transposing from natural note below
+  const sharpNote = flatToSharp[root] || root;
+  const baseNote = sharpBaseMap[sharpNote];
+  if (baseNote) {
+    const found = tryKey(baseNote, shapeType);
+    if (found) return transposeShape(found, 1);
+  }
+
+  // Fallback: try Major/Minor
+  for (const fb of ["Major", "Minor"]) {
+    const found = tryKey(root, fb);
+    if (found) return found;
+    if (enharmonic) {
+      const efound = tryKey(enharmonic, fb);
+      if (efound) return efound;
+    }
+  }
+
+  return null;
+}
+
+function getNoteAtFret(openNote: string, fret: number): string {
+  const idx = sharpNotes.indexOf(openNote);
+  return sharpNotes[(idx + fret) % 12];
+}
+
+function ChordDiagram({ shape, label }: { shape: ChordShape; label: string }) {
+  const stringSpacing = 22;
+  const fretSpacing = 24;
+  const displayFrets = 5;
+  const dotSize = 18;
+  const diagramWidth = stringSpacing * 5 + 20;
+  const diagramHeight = fretSpacing * displayFrets + 40;
+
+  const playedFrets = shape.frets.filter((f) => f > 0);
+  const minFret = playedFrets.length > 0 ? Math.min(...playedFrets) : 1;
+  const maxFret = playedFrets.length > 0 ? Math.max(...playedFrets) : 1;
+  const startFret = minFret > 2 || maxFret > 5 ? minFret : 1;
+
+  return (
+    <div className='flex flex-col items-center'>
+      <h6 className='text-center mb-1 font-semibold text-sm text-[var(--foreground)]'>{label}</h6>
+      <div className='relative' style={{ width: `${diagramWidth}px`, height: `${diagramHeight}px` }}>
+        {/* Muted / open indicators */}
+        <div className='flex' style={{ paddingLeft: "10px", marginBottom: "2px" }}>
+          {shape.frets.map((fret, i) => (
+            <span
+              key={i}
+              className='text-center text-xs font-medium'
+              style={{ width: `${stringSpacing}px`, color: fret === -1 ? "#9ca3af" : "transparent" }}
+            >
+              {fret === -1 ? "✕" : ""}
+            </span>
+          ))}
+        </div>
+
+        {startFret > 1 && (
+          <span
+            className='absolute text-xs font-medium text-gray-500'
+            style={{ left: `${diagramWidth + 2}px`, top: "24px" }}
+          >
+            {startFret}fr
+          </span>
+        )}
+
+        {/* Strings */}
+        {[0, 1, 2, 3, 4, 5].map((si) => (
+          <div
+            key={si}
+            className='absolute bg-gray-400'
+            style={{
+              left: `${si * stringSpacing + 10}px`,
+              top: "20px",
+              width: "1px",
+              height: `${fretSpacing * displayFrets}px`,
+              zIndex: 1,
+            }}
+          />
+        ))}
+
+        {/* Frets */}
+        {Array.from({ length: displayFrets + 1 }, (_, i) => i).map((f) => (
+          <div
+            key={f}
+            className={`absolute ${f === 0 && startFret <= 1 ? "bg-gray-800" : "bg-gray-400"}`}
+            style={{
+              left: "6px",
+              top: `${20 + f * fretSpacing}px`,
+              width: `${stringSpacing * 5 + 8}px`,
+              height: f === 0 && startFret <= 1 ? "3px" : "1px",
+              zIndex: 1,
+            }}
+          />
+        ))}
+
+        {/* Finger dots with note names */}
+        {shape.frets.map((fretNum, si) => {
+          if (fretNum === -1) return null;
+          const note = getNoteAtFret(stringTuning[si], fretNum);
+
+          if (fretNum === 0) {
+            return (
+              <div
+                key={si}
+                className='absolute rounded-full border-2 border-pink-500 bg-white flex items-center justify-center font-bold'
+                style={{
+                  left: `${si * stringSpacing + 10 - dotSize / 2}px`,
+                  top: `${20 - dotSize - 2}px`,
+                  width: `${dotSize}px`,
+                  height: `${dotSize}px`,
+                  fontSize: "9px",
+                  zIndex: 2,
+                }}
+              >
+                {note}
+              </div>
+            );
+          }
+
+          const displayPos = fretNum - startFret;
+          return (
+            <div
+              key={si}
+              className='absolute bg-pink-500 rounded-full text-white flex items-center justify-center font-bold'
+              style={{
+                left: `${si * stringSpacing + 10 - dotSize / 2}px`,
+                top: `${20 + displayPos * fretSpacing + fretSpacing / 2 - dotSize / 2}px`,
+                width: `${dotSize}px`,
+                height: `${dotSize}px`,
+                fontSize: "9px",
+                zIndex: 2,
+              }}
+            >
+              {note}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── End chord shape data & diagram ──────────────────────────────────────────
+
 // Major scale intervals (semitones from root)
 const majorScaleIntervals = [0, 2, 4, 5, 7, 9, 11];
 
@@ -409,7 +707,7 @@ export default function ChordPracticePage() {
                     <div className='text-sm text-[var(--foreground)]/60 mb-4'>
                       Key of {currentChord.key}
                     </div>
-                    <div className='flex flex-wrap justify-center gap-2'>
+                    <div className='flex flex-wrap justify-center gap-2 mb-4'>
                       {currentChord.notes.map((note, i) => (
                         <span
                           key={i}
@@ -419,6 +717,15 @@ export default function ChordPracticePage() {
                         </span>
                       ))}
                     </div>
+                    {(() => {
+                      const shape = resolveChordShapeForPractice(currentChord.root, currentChord.suffix);
+                      if (!shape) return null;
+                      return (
+                        <div className='flex justify-center mt-2'>
+                          <ChordDiagram shape={shape} label='Shape' />
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
 
