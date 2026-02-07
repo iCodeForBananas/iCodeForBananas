@@ -1082,7 +1082,7 @@ export default function AlgoBacktestPage() {
             
             {/* Equity Curve Chart (Separate) */}
             {showEquityCurve && activeResult && (
-              <div className='h-32 border-t border-slate-700'>
+              <div className='h-40 border-t border-slate-700'>
                 <EquityCurveChart
                   equityCurve={activeResult.equityCurve}
                   initialCapital={INITIAL_CAPITAL}
