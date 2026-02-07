@@ -11,6 +11,7 @@ import {
   createParamLabel,
   ParameterizedResult,
 } from "@/app/strategies";
+import LambdaExportModal from "../components/LambdaExportModal";
 
 const DEFAULT_VISIBLE_CANDLES = 300;
 const INITIAL_CAPITAL = 100000;
@@ -427,6 +428,9 @@ export default function AlgoBacktestPage() {
   const [results, setResults] = useState<ParameterizedResult[]>([]);
   const [activeResultTab, setActiveResultTab] = useState<number>(0);
 
+  // Lambda export modal state
+  const [showLambdaExport, setShowLambdaExport] = useState(false);
+
   // Initialize params when strategy changes
   useEffect(() => {
     const defaults = getDefaultParams(selectedStrategyId);
@@ -759,7 +763,19 @@ export default function AlgoBacktestPage() {
 
           {/* Strategy Selector */}
           <div className='p-4 border-b border-slate-700'>
-            <label className='block text-sm text-slate-400 mb-2'>Strategy</label>
+            <div className='flex items-center justify-between mb-2'>
+              <label className='text-sm text-slate-400'>Strategy</label>
+              <button
+                onClick={() => setShowLambdaExport(true)}
+                className='flex items-center gap-1.5 px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white text-xs font-medium rounded transition-colors'
+                title='Export as AWS Lambda with Tradier API'
+              >
+                <svg className='w-3.5 h-3.5' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                  <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12' />
+                </svg>
+                Export Lambda
+              </button>
+            </div>
             <select
               value={selectedStrategyId}
               onChange={(e) => setSelectedStrategyId(e.target.value)}
@@ -1126,6 +1142,15 @@ export default function AlgoBacktestPage() {
           )}
         </div>
       </div>
+
+      {/* Lambda Export Modal */}
+      <LambdaExportModal
+        isOpen={showLambdaExport}
+        onClose={() => setShowLambdaExport(false)}
+        strategyId={selectedStrategyId}
+        strategyName={strategy?.name || selectedStrategyId}
+        params={currentParams}
+      />
     </div>
   );
 }
