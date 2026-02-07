@@ -426,6 +426,9 @@ export default function AlgoBacktestPage() {
   // Results state (multiple results for batch mode)
   const [results, setResults] = useState<ParameterizedResult[]>([]);
   const [activeResultTab, setActiveResultTab] = useState<number>(0);
+  
+  // Selected trade for chart highlighting
+  const [selectedTradeId, setSelectedTradeId] = useState<string | null>(null);
 
   // Initialize params when strategy changes
   useEffect(() => {
@@ -1057,6 +1060,7 @@ export default function AlgoBacktestPage() {
                 visibleCandles={visibleCandles}
                 onVisibleCandlesChange={setVisibleCandles}
                 selectedStrategyId={selectedStrategyId}
+                selectedTradeId={selectedTradeId}
               />
             </div>
             
@@ -1093,7 +1097,11 @@ export default function AlgoBacktestPage() {
                   </thead>
                   <tbody>
                     {activeResult.trades.map((trade) => (
-                      <tr key={trade.id} className='border-b border-slate-800 hover:bg-slate-800/50'>
+                      <tr 
+                        key={trade.id} 
+                        className={`border-b border-slate-800 hover:bg-slate-800/50 cursor-pointer transition-colors ${selectedTradeId === trade.id ? 'bg-blue-900/40 ring-1 ring-blue-500' : ''}`}
+                        onClick={() => setSelectedTradeId(selectedTradeId === trade.id ? null : trade.id)}
+                      >
                         <td
                           className={`px-3 py-2 font-semibold ${trade.side === "LONG" ? "text-green-400" : "text-red-400"}`}
                         >
