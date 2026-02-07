@@ -234,17 +234,31 @@ function calculateIndicatorsWithParams(
   return result;
 }
 
+// Risk management settings for stop loss and take profit
+interface RiskSettings {
+  stopLossPercent: number; // Stop loss as percentage (e.g., 2 = 2%)
+  takeProfitPercent: number; // Take profit as percentage (e.g., 4 = 4%)
+}
+
 // Run backtest with given strategy and parameters
 function runBacktestWithParams(
   data: IndicatorData[],
   strategy: StrategyDefinition,
   params: Record<string, number | boolean | string>,
-  initialCapital: number
+  initialCapital: number,
+  riskSettings?: RiskSettings
 ): ParameterizedResult {
   const trades: BacktestTrade[] = [];
   const equityCurve: { time: number; equity: number }[] = [];
   let equity = initialCapital;
-  let position: { side: PositionSide; entryPrice: number; entryTime: number; entryIdx: number } | null = null;
+  let position: { 
+    side: PositionSide; 
+    entryPrice: number; 
+    entryTime: number; 
+    entryIdx: number;
+    stopLoss?: number;
+    takeProfit?: number;
+  } | null = null;
   let tradeId = 1;
 
   // Get trailing stop EMA period from params (for breakout strategy)
@@ -255,6 +269,90 @@ function runBacktestWithParams(
     const current = data[i];
     const previous = data[i - 1];
 
+    // Check for stop loss / take profit hit within bar's high-low range
+    // This happens BEFORE checking strategy signals for this bar
+    if (position && riskSettings) {
+      let exitPrice: number | null = null;
+      let exitReason: string | null = null;
+
+      if (position.side === PositionSide.LONG) {
+        // For long positions: stop loss is hit if low <= stopLoss, take profit if high >= takeProfit
+        const slHit = position.stopLoss !== undefined && current.low <= position.stopLoss;
+        const tpHit = position.takeProfit !== undefined && current.high >= position.takeProfit;
+
+        if (slHit && tpHit) {
+          // Both could be hit - determine which is closer to the open price
+          // If open is closer to SL, SL was likely hit first; if closer to TP, TP was likely hit first
+          const slDistance = Math.abs(current.open - position.stopLoss!);
+          const tpDistance = Math.abs(current.open - position.takeProfit!);
+          if (slDistance <= tpDistance) {
+            exitPrice = position.stopLoss!;
+            exitReason = `Stop loss hit at ${position.stopLoss!.toFixed(2)}`;
+          } else {
+            exitPrice = position.takeProfit!;
+            exitReason = `Take profit hit at ${position.takeProfit!.toFixed(2)}`;
+          }
+        } else if (slHit) {
+          exitPrice = position.stopLoss!;
+          exitReason = `Stop loss hit at ${position.stopLoss!.toFixed(2)}`;
+        } else if (tpHit) {
+          exitPrice = position.takeProfit!;
+          exitReason = `Take profit hit at ${position.takeProfit!.toFixed(2)}`;
+        }
+      } else if (position.side === PositionSide.SHORT) {
+        // For short positions: stop loss is hit if high >= stopLoss, take profit if low <= takeProfit
+        const slHit = position.stopLoss !== undefined && current.high >= position.stopLoss;
+        const tpHit = position.takeProfit !== undefined && current.low <= position.takeProfit;
+
+        if (slHit && tpHit) {
+          // Both could be hit - determine which is closer to the open price
+          const slDistance = Math.abs(current.open - position.stopLoss!);
+          const tpDistance = Math.abs(current.open - position.takeProfit!);
+          if (slDistance <= tpDistance) {
+            exitPrice = position.stopLoss!;
+            exitReason = `Stop loss hit at ${position.stopLoss!.toFixed(2)}`;
+          } else {
+            exitPrice = position.takeProfit!;
+            exitReason = `Take profit hit at ${position.takeProfit!.toFixed(2)}`;
+          }
+        } else if (slHit) {
+          exitPrice = position.stopLoss!;
+          exitReason = `Stop loss hit at ${position.stopLoss!.toFixed(2)}`;
+        } else if (tpHit) {
+          exitPrice = position.takeProfit!;
+          exitReason = `Take profit hit at ${position.takeProfit!.toFixed(2)}`;
+        }
+      }
+
+      // Exit trade if SL/TP was hit
+      if (exitPrice !== null && exitReason !== null) {
+        const pnl =
+          position.side === PositionSide.LONG
+            ? (exitPrice - position.entryPrice) * (equity / position.entryPrice)
+            : (position.entryPrice - exitPrice) * (equity / position.entryPrice);
+        const pnlPercent =
+          ((exitPrice - position.entryPrice) / position.entryPrice) *
+          100 *
+          (position.side === PositionSide.LONG ? 1 : -1);
+
+        equity += pnl;
+
+        trades.push({
+          id: `trade-${tradeId++}`,
+          side: position.side,
+          entryPrice: position.entryPrice,
+          entryTime: position.entryTime,
+          exitPrice,
+          exitTime: current.time,
+          pnl,
+          pnlPercent,
+          reason: exitReason,
+        });
+
+        position = null;
+      }
+    }
+
     const signal = strategy.handler({
       current,
       previous,
@@ -264,11 +362,27 @@ function runBacktestWithParams(
     });
 
     if (signal.action === "buy" && !position) {
+      // Entry on the close price of the bar
+      const entryPrice = current.close;
+      
+      // Calculate stop loss and take profit levels based on entry price
+      let stopLoss: number | undefined;
+      let takeProfit: number | undefined;
+      
+      if (riskSettings && riskSettings.stopLossPercent > 0) {
+        stopLoss = entryPrice * (1 - riskSettings.stopLossPercent / 100);
+      }
+      if (riskSettings && riskSettings.takeProfitPercent > 0) {
+        takeProfit = entryPrice * (1 + riskSettings.takeProfitPercent / 100);
+      }
+
       position = {
         side: PositionSide.LONG,
-        entryPrice: current.close,
+        entryPrice,
         entryTime: current.time,
         entryIdx: i,
+        stopLoss,
+        takeProfit,
       };
     } else if (signal.action === "sell" && position) {
       // Determine exit price based on trailing stop EMA intrabar hit
@@ -471,6 +585,10 @@ export default function AlgoBacktestPage() {
   // Lambda export modal state
   const [showLambdaExport, setShowLambdaExport] = useState(false);
 
+  // Risk management state (stop loss / take profit)
+  const [stopLossPercent, setStopLossPercent] = useState<number>(0);
+  const [takeProfitPercent, setTakeProfitPercent] = useState<number>(0);
+
   // Initialize params when strategy changes
   useEffect(() => {
     const defaults = getDefaultParams(selectedStrategyId);
@@ -609,10 +727,16 @@ export default function AlgoBacktestPage() {
     );
     setIndicatorData(dataWithIndicators);
 
-    const result = runBacktestWithParams(dataWithIndicators, strategy, currentParams, INITIAL_CAPITAL);
+    // Create risk settings only if SL or TP is configured
+    const riskSettings: RiskSettings | undefined = 
+      (stopLossPercent > 0 || takeProfitPercent > 0)
+        ? { stopLossPercent, takeProfitPercent }
+        : undefined;
+
+    const result = runBacktestWithParams(dataWithIndicators, strategy, currentParams, INITIAL_CAPITAL, riskSettings);
     setResults([result]);
     setActiveResultTab(0);
-  }, [rawData, selectedStrategyId, currentParams]);
+  }, [rawData, selectedStrategyId, currentParams, stopLossPercent, takeProfitPercent]);
 
   // Run batch backtest with parameter variations against all selected datasets
   const runBatchBacktest = useCallback(async () => {
@@ -729,9 +853,15 @@ export default function AlgoBacktestPage() {
         firstDatasetWithData = false;
       }
 
+      // Create risk settings only if SL or TP is configured
+      const riskSettings: RiskSettings | undefined = 
+        (stopLossPercent > 0 || takeProfitPercent > 0)
+          ? { stopLossPercent, takeProfitPercent }
+          : undefined;
+
       // Run all backtests for this dataset
       for (const params of combinations) {
-        const backtestResult = runBacktestWithParams(dataWithIndicators, strategy, params, INITIAL_CAPITAL);
+        const backtestResult = runBacktestWithParams(dataWithIndicators, strategy, params, INITIAL_CAPITAL, riskSettings);
         batchResults.push({
           ...backtestResult,
           dataset: datasetFile,
@@ -751,7 +881,7 @@ export default function AlgoBacktestPage() {
     setResults(batchResults);
     setActiveResultTab(0);
     setIsRunningBatch(false);
-  }, [selectedFiles, selectedStrategyId, paramVariations, availableDatasets]);
+  }, [selectedFiles, selectedStrategyId, paramVariations, availableDatasets, stopLossPercent, takeProfitPercent]);
 
   // Auto-run single backtest when data or params change
   useEffect(() => {
@@ -856,6 +986,50 @@ export default function AlgoBacktestPage() {
               ))}
             </select>
             <p className='text-xs text-slate-500 mt-1'>{strategy?.description}</p>
+          </div>
+
+          {/* Risk Management Settings */}
+          <div className='p-4 border-b border-slate-700'>
+            <label className='text-sm text-slate-400 mb-3 block'>Risk Management</label>
+            <div className='grid grid-cols-2 gap-3'>
+              <div>
+                <label className='block text-xs text-slate-400 mb-1'>Stop Loss %</label>
+                <input
+                  type='number'
+                  value={stopLossPercent}
+                  min={0}
+                  max={100}
+                  step={0.5}
+                  onChange={(e) => {
+                    const value = parseFloat(e.target.value);
+                    setStopLossPercent(isNaN(value) ? 0 : Math.max(0, value));
+                  }}
+                  placeholder='0 = disabled'
+                  className='w-full bg-slate-800 border border-slate-600 rounded px-2 py-1.5 text-sm text-white'
+                />
+              </div>
+              <div>
+                <label className='block text-xs text-slate-400 mb-1'>Take Profit %</label>
+                <input
+                  type='number'
+                  value={takeProfitPercent}
+                  min={0}
+                  max={1000}
+                  step={0.5}
+                  onChange={(e) => {
+                    const value = parseFloat(e.target.value);
+                    setTakeProfitPercent(isNaN(value) ? 0 : Math.max(0, value));
+                  }}
+                  placeholder='0 = disabled'
+                  className='w-full bg-slate-800 border border-slate-600 rounded px-2 py-1.5 text-sm text-white'
+                />
+              </div>
+            </div>
+            {(stopLossPercent > 0 || takeProfitPercent > 0) && (
+              <p className='text-xs text-blue-400 mt-2'>
+                ✓ Entry on bar close, exit at SL/TP if hit within bar range
+              </p>
+            )}
           </div>
 
           {/* Parameter Configuration */}

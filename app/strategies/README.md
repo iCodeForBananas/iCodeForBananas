@@ -239,6 +239,21 @@ The backtest engine pre-calculates these indicators for every candle:
 - If you `'buy'` when already in a position, the signal is ignored
 - If you `'sell'` with no position, the signal is ignored
 
+## Risk Management (Stop Loss / Take Profit)
+
+The backtest engine supports configurable stop loss and take profit levels:
+
+- **Entry**: Trades always enter at the bar's close price
+- **Stop Loss**: If configured (> 0%), the stop loss is set as a percentage below the entry price
+- **Take Profit**: If configured (> 0%), the take profit is set as a percentage above the entry price
+- **Intra-bar Exits**: On each bar, the engine checks if the high-low range would hit the SL or TP:
+  - For long positions: If the bar's low <= stop loss price, the trade exits at the stop loss price
+  - For long positions: If the bar's high >= take profit price, the trade exits at the take profit price
+- **Priority**: Stop loss and take profit are checked before strategy signals for that bar
+- **Exit Price**: When SL/TP is hit, the trade exits at the exact SL/TP price, not the bar's close
+
+This ensures realistic backtesting where trades can exit mid-bar when risk levels are breached.
+
 ## AI Code Generation Prompt Template
 
 If asking an AI to generate a strategy, use this template:
