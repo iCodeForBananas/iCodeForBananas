@@ -9,7 +9,7 @@ export default function Sidebar() {
   const [isOpen, setIsOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
 
-  // Load sidebar state from localStorage on mount
+  // Load sidebar state from localStorage after hydration
   useEffect(() => {
     const savedState = localStorage.getItem("sidebarOpen");
     if (savedState !== null) {
