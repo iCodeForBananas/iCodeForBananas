@@ -17,6 +17,63 @@ const DEFAULT_VISIBLE_CANDLES = 300;
 const INITIAL_CAPITAL = 100000;
 const MAX_BATCH_RUNS = 50;
 
+// localStorage keys
+const STORAGE_KEY_GLOBAL = "algo-backtest-global";
+const STORAGE_KEY_STRATEGY_PREFIX = "algo-backtest-strategy-";
+
+interface GlobalSettings {
+  selectedStrategyId: string;
+  selectedFiles: string[];
+}
+
+interface StrategySettings {
+  currentParams: Record<string, number | boolean | string>;
+  paramVariations: ParameterVariationConfig[];
+  stopLossPercent: number;
+  takeProfitPercent: number;
+  enableShorts: boolean;
+}
+
+function loadGlobalSettings(): Partial<GlobalSettings> | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY_GLOBAL);
+    if (stored) return JSON.parse(stored);
+  } catch (e) {
+    console.error("Failed to load global backtest settings:", e);
+  }
+  return null;
+}
+
+function saveGlobalSettings(settings: GlobalSettings): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(STORAGE_KEY_GLOBAL, JSON.stringify(settings));
+  } catch (e) {
+    console.error("Failed to save global backtest settings:", e);
+  }
+}
+
+function loadStrategySettings(strategyId: string): Partial<StrategySettings> | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY_STRATEGY_PREFIX + strategyId);
+    if (stored) return JSON.parse(stored);
+  } catch (e) {
+    console.error("Failed to load strategy settings:", e);
+  }
+  return null;
+}
+
+function saveStrategySettings(strategyId: string, settings: StrategySettings): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(STORAGE_KEY_STRATEGY_PREFIX + strategyId, JSON.stringify(settings));
+  } catch (e) {
+    console.error("Failed to save strategy settings:", e);
+  }
+}
+
 interface DatasetInfo {
   file: string;
   symbol: string;
@@ -603,8 +660,13 @@ export default function AlgoBacktestPage() {
   const [visibleCandles, setVisibleCandles] = useState<number>(DEFAULT_VISIBLE_CANDLES);
   const [showEquityCurve, setShowEquityCurve] = useState(true);
 
-  // Strategy state
-  const [selectedStrategyId, setSelectedStrategyId] = useState<string>("ema-crossover");
+  // Strategy state - initialize from localStorage if available
+  const [selectedStrategyId, setSelectedStrategyId] = useState<string>(() => {
+    const saved = loadGlobalSettings();
+    return saved?.selectedStrategyId && AVAILABLE_STRATEGIES[saved.selectedStrategyId]
+      ? saved.selectedStrategyId
+      : "ema-crossover";
+  });
   const [currentParams, setCurrentParams] = useState<Record<string, number | boolean | string>>({});
   const [paramVariations, setParamVariations] = useState<ParameterVariationConfig[]>([]);
 
@@ -619,6 +681,7 @@ export default function AlgoBacktestPage() {
   const [showLambdaExport, setShowLambdaExport] = useState(false);
 
   // Risk management state (stop loss / take profit)
+  // Initialized to 0/false; the strategy change effect restores saved values
   const [stopLossPercent, setStopLossPercent] = useState<number>(0);
   const [takeProfitPercent, setTakeProfitPercent] = useState<number>(0);
   const [enableShorts, setEnableShorts] = useState<boolean>(false);
@@ -654,26 +717,60 @@ export default function AlgoBacktestPage() {
     [availableDatasets, selectedFiles]
   );
 
-  // Initialize params when strategy changes
+  // Initialize params when strategy changes - load from localStorage or use defaults
   useEffect(() => {
     const defaults = getDefaultParams(selectedStrategyId);
-    setCurrentParams(defaults);
+    const saved = loadStrategySettings(selectedStrategyId);
 
-    // Initialize variation configs with min/max/step from parameter definitions
+    // Use saved params if available, falling back to defaults for any missing keys
+    if (saved?.currentParams) {
+      const merged = { ...defaults };
+      for (const key of Object.keys(defaults)) {
+        if (key in saved.currentParams) {
+          merged[key] = saved.currentParams[key];
+        }
+      }
+      setCurrentParams(merged);
+    } else {
+      setCurrentParams(defaults);
+    }
+
+    // Initialize variation configs from saved or from parameter definitions
     const strategy = AVAILABLE_STRATEGIES[selectedStrategyId];
     if (strategy?.parameters) {
-      setParamVariations(
-        strategy.parameters
-          .filter((p) => p.type === 'number')
-          .map((p) => ({
-            key: p.key,
-            min: p.min ?? Number(p.default),
-            max: p.max ?? Number(p.default),
-            step: p.step ?? 1,
-          }))
-      );
+      const defaultVariations = strategy.parameters
+        .filter((p) => p.type === 'number')
+        .map((p) => ({
+          key: p.key,
+          min: p.min ?? Number(p.default),
+          max: p.max ?? Number(p.default),
+          step: p.step ?? 1,
+        }));
+
+      if (saved?.paramVariations && saved.paramVariations.length > 0) {
+        // Merge saved variations with defaults for any new parameters
+        const savedKeys = new Set(saved.paramVariations.map((v) => v.key));
+        const merged = [
+          ...saved.paramVariations.filter((v) => strategy.parameters!.some((p) => p.key === v.key)),
+          ...defaultVariations.filter((v) => !savedKeys.has(v.key)),
+        ];
+        setParamVariations(merged);
+      } else {
+        setParamVariations(defaultVariations);
+      }
     } else {
       setParamVariations([]);
+    }
+
+    // Restore risk management settings for this strategy
+    if (saved) {
+      setStopLossPercent(saved.stopLossPercent ?? 0);
+      setTakeProfitPercent(saved.takeProfitPercent ?? 0);
+      setEnableShorts(saved.enableShorts ?? false);
+    } else {
+      setStopLossPercent(0);
+      setTakeProfitPercent(0);
+      setEnableShorts(false);
     }
   }, [selectedStrategyId]);
 
@@ -685,6 +782,16 @@ export default function AlgoBacktestPage() {
         const result = await response.json();
         if (result.success && result.files.length > 0) {
           setAvailableDatasets(result.files);
+          const savedGlobal = loadGlobalSettings();
+          const availableFileNames = result.files.map((f: DatasetInfo) => f.file);
+          // Restore saved file selection if valid, otherwise use default
+          if (savedGlobal?.selectedFiles && savedGlobal.selectedFiles.length > 0) {
+            const validFiles = savedGlobal.selectedFiles.filter((f: string) => availableFileNames.includes(f));
+            if (validFiles.length > 0) {
+              setSelectedFiles(validFiles);
+              return;
+            }
+          }
           const dailyFile = result.files.find((f: DatasetInfo) => f.timeframe === "1d");
           setSelectedFiles([dailyFile?.file || result.files[0].file]);
         }
@@ -694,6 +801,23 @@ export default function AlgoBacktestPage() {
     }
     fetchDatasets();
   }, []);
+
+  // Save global settings when strategy or selected files change
+  useEffect(() => {
+    saveGlobalSettings({ selectedStrategyId, selectedFiles });
+  }, [selectedStrategyId, selectedFiles]);
+
+  // Save per-strategy settings when any strategy-specific setting changes
+  useEffect(() => {
+    if (Object.keys(currentParams).length === 0) return;
+    saveStrategySettings(selectedStrategyId, {
+      currentParams,
+      paramVariations,
+      stopLossPercent,
+      takeProfitPercent,
+      enableShorts,
+    });
+  }, [selectedStrategyId, currentParams, paramVariations, stopLossPercent, takeProfitPercent, enableShorts]);
 
   // Load raw data when file changes (load first selected file for preview)
   useEffect(() => {
