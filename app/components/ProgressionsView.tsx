@@ -10,6 +10,7 @@ import {
   generateChordsAndScales,
   progressionPresets,
   buildProgressionChords,
+  chordVoicings,
 } from "../lib/music";
 
 interface TuningControlProps {
@@ -91,6 +92,12 @@ export default function ProgressionsView() {
     }
     return 0;
   });
+  const [voicing, setVoicing] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("guitar-voicing") || "triad";
+    }
+    return "triad";
+  });
   const [chordProgression, setChordProgression] = useState<ChordEntry[]>(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("guitar-chordProgression");
@@ -128,7 +135,7 @@ export default function ProgressionsView() {
 
   const generateProgression = () => {
     const preset = progressionPresets[formulaIndex];
-    const names = buildProgressionChords(progressionKey, preset);
+    const names = buildProgressionChords(progressionKey, preset, voicing);
     const progression = names.map((name) => ({ name, fret: 0 }));
     setChordProgression(progression);
     localStorage.setItem("guitar-chordProgression", JSON.stringify(progression));
@@ -141,6 +148,8 @@ export default function ProgressionsView() {
     localStorage.setItem("guitar-progressionKey", "C");
     setFormulaIndex(0);
     localStorage.setItem("guitar-formulaIndex", "0");
+    setVoicing("triad");
+    localStorage.setItem("guitar-voicing", "triad");
     const defaultProgression = [
       { name: "", fret: 0 },
       { name: "", fret: 0 },
@@ -183,6 +192,20 @@ export default function ProgressionsView() {
             {progressionPresets.map((formula, idx) => (
               <option key={idx} value={idx}>
                 {formula.label}
+              </option>
+            ))}
+          </select>
+          <select
+            className='w-full border rounded px-3 py-2 mb-3'
+            value={voicing}
+            onChange={(e) => {
+              setVoicing(e.target.value);
+              localStorage.setItem("guitar-voicing", e.target.value);
+            }}
+          >
+            {chordVoicings.map((v) => (
+              <option key={v.value} value={v.value}>
+                {v.label}
               </option>
             ))}
           </select>
