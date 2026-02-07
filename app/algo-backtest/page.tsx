@@ -258,12 +258,50 @@ function runBacktestWithParams(
 
       if (position.side === PositionSide.LONG) {
         // For long positions: stop loss is hit if low <= stopLoss, take profit if high >= takeProfit
-        if (position.stopLoss !== undefined && current.low <= position.stopLoss) {
-          exitPrice = position.stopLoss;
-          exitReason = `Stop loss hit at ${position.stopLoss.toFixed(2)}`;
-        } else if (position.takeProfit !== undefined && current.high >= position.takeProfit) {
-          exitPrice = position.takeProfit;
-          exitReason = `Take profit hit at ${position.takeProfit.toFixed(2)}`;
+        const slHit = position.stopLoss !== undefined && current.low <= position.stopLoss;
+        const tpHit = position.takeProfit !== undefined && current.high >= position.takeProfit;
+
+        if (slHit && tpHit) {
+          // Both could be hit - determine which is closer to the open price
+          // If open is closer to SL, SL was likely hit first; if closer to TP, TP was likely hit first
+          const slDistance = Math.abs(current.open - position.stopLoss!);
+          const tpDistance = Math.abs(current.open - position.takeProfit!);
+          if (slDistance <= tpDistance) {
+            exitPrice = position.stopLoss!;
+            exitReason = `Stop loss hit at ${position.stopLoss!.toFixed(2)}`;
+          } else {
+            exitPrice = position.takeProfit!;
+            exitReason = `Take profit hit at ${position.takeProfit!.toFixed(2)}`;
+          }
+        } else if (slHit) {
+          exitPrice = position.stopLoss!;
+          exitReason = `Stop loss hit at ${position.stopLoss!.toFixed(2)}`;
+        } else if (tpHit) {
+          exitPrice = position.takeProfit!;
+          exitReason = `Take profit hit at ${position.takeProfit!.toFixed(2)}`;
+        }
+      } else if (position.side === PositionSide.SHORT) {
+        // For short positions: stop loss is hit if high >= stopLoss, take profit if low <= takeProfit
+        const slHit = position.stopLoss !== undefined && current.high >= position.stopLoss;
+        const tpHit = position.takeProfit !== undefined && current.low <= position.takeProfit;
+
+        if (slHit && tpHit) {
+          // Both could be hit - determine which is closer to the open price
+          const slDistance = Math.abs(current.open - position.stopLoss!);
+          const tpDistance = Math.abs(current.open - position.takeProfit!);
+          if (slDistance <= tpDistance) {
+            exitPrice = position.stopLoss!;
+            exitReason = `Stop loss hit at ${position.stopLoss!.toFixed(2)}`;
+          } else {
+            exitPrice = position.takeProfit!;
+            exitReason = `Take profit hit at ${position.takeProfit!.toFixed(2)}`;
+          }
+        } else if (slHit) {
+          exitPrice = position.stopLoss!;
+          exitReason = `Stop loss hit at ${position.stopLoss!.toFixed(2)}`;
+        } else if (tpHit) {
+          exitPrice = position.takeProfit!;
+          exitReason = `Take profit hit at ${position.takeProfit!.toFixed(2)}`;
         }
       }
 
@@ -904,7 +942,6 @@ export default function AlgoBacktestPage() {
                   placeholder='0 = disabled'
                   className='w-full bg-slate-800 border border-slate-600 rounded px-2 py-1.5 text-sm text-white'
                 />
-                <p className='text-xs text-slate-500 mt-0.5'>0 = disabled</p>
               </div>
               <div>
                 <label className='block text-xs text-slate-400 mb-1'>Take Profit %</label>
@@ -921,7 +958,6 @@ export default function AlgoBacktestPage() {
                   placeholder='0 = disabled'
                   className='w-full bg-slate-800 border border-slate-600 rounded px-2 py-1.5 text-sm text-white'
                 />
-                <p className='text-xs text-slate-500 mt-0.5'>0 = disabled</p>
               </div>
             </div>
             {(stopLossPercent > 0 || takeProfitPercent > 0) && (
