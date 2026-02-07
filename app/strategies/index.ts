@@ -7,6 +7,7 @@ import emaCrossover from './ema-crossover';
 import macdCrossover from './macd-crossover';
 import rsiMeanReversion from './rsi-mean-reversion';
 import smaCrossover from './sma-crossover';
+import donchianChannel from './donchian-channel';
 
 export const AVAILABLE_STRATEGIES: Record<string, StrategyDefinition> = {
   'bollinger-bands': bollingerBands,
@@ -14,6 +15,7 @@ export const AVAILABLE_STRATEGIES: Record<string, StrategyDefinition> = {
   'macd-crossover': macdCrossover,
   'rsi-mean-reversion': rsiMeanReversion,
   'sma-crossover': smaCrossover,
+  'donchian-channel': donchianChannel,
 };
 
 export * from './types';
