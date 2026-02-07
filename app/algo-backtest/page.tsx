@@ -215,11 +215,9 @@ function calculateIndicatorsWithParams(
         const midLine = (upperBand + lowerBand) / 2;
 
         // Store with dynamic keys
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const indicatorAny = indicatorData as any;
-        indicatorAny[`donchian_${donchianPeriod}_upperBand`] = upperBand;
-        indicatorAny[`donchian_${donchianPeriod}_lowerBand`] = lowerBand;
-        indicatorAny[`donchian_${donchianPeriod}_midLine`] = midLine;
+        indicatorData[`donchian_${donchianPeriod}_upperBand` as `donchian_${number}_upperBand`] = upperBand;
+        indicatorData[`donchian_${donchianPeriod}_lowerBand` as `donchian_${number}_lowerBand`] = lowerBand;
+        indicatorData[`donchian_${donchianPeriod}_midLine` as `donchian_${number}_midLine`] = midLine;
 
         // Also set the default keys for backward compatibility (period 20)
         if (donchianPeriod === 20) {
