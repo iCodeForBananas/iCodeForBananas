@@ -6,6 +6,7 @@ import Navigation from "../components/Navigation";
 const sharpNotes = ["A", "A#", "B", "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#"];
 const flatNotes = ["A", "Bb", "B", "C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab"];
 const chordTypes = ["Major", "Minor", "7", "m7", "Sus4", "Add9", "9", "13", "Maj7", "Maj9", "Maj13"];
+const stringNotes = ["E", "A", "D", "G", "B", "E"];
 
 interface ChordShape {
   frets: number[];
@@ -172,6 +173,14 @@ const transposeShape = (shape: ChordShape, semitoneShift: number): ChordShape | 
   };
 };
 
+const sharpBaseMap: Record<string, string> = {
+  "A#": "A",
+  "C#": "C",
+  "D#": "D",
+  "F#": "F",
+  "G#": "G",
+};
+
 const resolveChordShape = (note: string, type: string): ChordShape | null => {
   const tryKey = (n: string, t: string) => chordShapes[buildChordKey(n, t)]?.[0] || null;
 
@@ -204,13 +213,6 @@ const resolveChordShape = (note: string, type: string): ChordShape | null => {
 
   // Try transposing from the natural note below
   const sharpNote = flatToSharp[note] || note;
-  const sharpBaseMap: Record<string, string> = {
-    "A#": "A",
-    "C#": "C",
-    "D#": "D",
-    "F#": "F",
-    "G#": "G",
-  };
   const baseNote = sharpBaseMap[sharpNote];
   if (baseNote) {
     const baseExact = tryKey(baseNote, type);
@@ -231,7 +233,6 @@ interface ChordDiagramProps {
 }
 
 const ChordDiagram = ({ chord, shape, useFlats }: ChordDiagramProps) => {
-  const stringNotes = ["E", "A", "D", "G", "B", "E"];
   const noteNames = useFlats ? flatNotes : sharpNotes;
 
   const getNoteAtFret = (openNote: string, fret: number) => {
