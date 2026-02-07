@@ -974,19 +974,17 @@ export default function AlgoBacktestPage() {
                 <div className='bg-slate-900 rounded p-3'>
                   <div className='text-slate-400 text-xs mb-1'>Strategy P&L</div>
                   <div
-                    className={`text-lg font-bold ${activeResult.totalPnl >= 0 ? "text-green-400" : "text-red-400"}`}
+                    className={`text-lg font-bold ${activeResult.totalPnlPercent >= 0 ? "text-green-400" : "text-red-400"}`}
                   >
-                    {activeResult.totalPnl >= 0 ? "+" : ""}${activeResult.totalPnl.toFixed(2)}
-                    <span className='text-sm ml-1'>({activeResult.totalPnlPercent.toFixed(2)}%)</span>
+                    {activeResult.totalPnlPercent >= 0 ? "+" : ""}{activeResult.totalPnlPercent.toFixed(2)}%
                   </div>
                 </div>
                 <div className='bg-slate-900 rounded p-3'>
                   <div className='text-slate-400 text-xs mb-1'>Buy & Hold</div>
                   <div
-                    className={`text-lg font-bold ${activeResult.buyAndHoldPnl >= 0 ? "text-green-400" : "text-red-400"}`}
+                    className={`text-lg font-bold ${activeResult.buyAndHoldPnlPercent >= 0 ? "text-green-400" : "text-red-400"}`}
                   >
-                    {activeResult.buyAndHoldPnl >= 0 ? "+" : ""}${activeResult.buyAndHoldPnl.toFixed(2)}
-                    <span className='text-sm ml-1'>({activeResult.buyAndHoldPnlPercent.toFixed(2)}%)</span>
+                    {activeResult.buyAndHoldPnlPercent >= 0 ? "+" : ""}{activeResult.buyAndHoldPnlPercent.toFixed(2)}%
                   </div>
                 </div>
                 <div className='bg-slate-900 rounded p-3'>
