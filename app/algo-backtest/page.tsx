@@ -246,7 +246,8 @@ function runBacktestWithParams(
   strategy: StrategyDefinition,
   params: Record<string, number | boolean | string>,
   initialCapital: number,
-  riskSettings?: RiskSettings
+  riskSettings?: RiskSettings,
+  enableShorts: boolean = false
 ): ParameterizedResult {
   const trades: BacktestTrade[] = [];
   const equityCurve: { time: number; equity: number }[] = [];
@@ -361,48 +362,9 @@ function runBacktestWithParams(
       params,
     });
 
-    if (signal.action === "buy" && !position) {
-      // Entry on the close price of the bar
-      const entryPrice = current.close;
-      
-      // Calculate stop loss and take profit levels based on entry price
-      let stopLoss: number | undefined;
-      let takeProfit: number | undefined;
-      
-      if (riskSettings && riskSettings.stopLossPercent > 0) {
-        stopLoss = entryPrice * (1 - riskSettings.stopLossPercent / 100);
-      }
-      if (riskSettings && riskSettings.takeProfitPercent > 0) {
-        takeProfit = entryPrice * (1 + riskSettings.takeProfitPercent / 100);
-      }
-
-      position = {
-        side: PositionSide.LONG,
-        entryPrice,
-        entryTime: current.time,
-        entryIdx: i,
-        stopLoss,
-        takeProfit,
-      };
-    } else if (signal.action === "sell" && position) {
-      // Determine exit price based on trailing stop EMA intrabar hit
-      let exitPrice = current.close;
-      let exitReason = signal.reason;
-
-      // Check if trailing stop EMA is configured and if the bar's low hit the EMA.
-      // If so, exit at the EMA price (intrabar exit) rather than the close.
-      // This applies when trailingStopEmaPeriod > 0 and the low touched or crossed the EMA.
-      if (trailingStopEmaPeriod > 0) {
-        const emaKey = `ema${trailingStopEmaPeriod}` as keyof typeof current;
-        const trailingStopEma = current[emaKey] as number | undefined;
-
-        if (trailingStopEma !== undefined && current.low <= trailingStopEma) {
-          // Exit at the trailing stop EMA price (intrabar stop out)
-          exitPrice = trailingStopEma;
-          exitReason = `Trailing stop EMA ${trailingStopEmaPeriod} hit (exited at EMA ${trailingStopEma.toFixed(2)})`;
-        }
-      }
-
+    // Helper to close current position
+    const closePosition = (exitPrice: number, exitReason: string) => {
+      if (!position) return;
       const pnl =
         position.side === PositionSide.LONG
           ? (exitPrice - position.entryPrice) * (equity / position.entryPrice)
@@ -427,6 +389,77 @@ function runBacktestWithParams(
       });
 
       position = null;
+    };
+
+    if (signal.action === "buy" && !position) {
+      // Entry on the close price of the bar
+      const entryPrice = current.close;
+      
+      // Calculate stop loss and take profit levels based on entry price
+      let stopLoss: number | undefined;
+      let takeProfit: number | undefined;
+      
+      if (riskSettings && riskSettings.stopLossPercent > 0) {
+        stopLoss = entryPrice * (1 - riskSettings.stopLossPercent / 100);
+      }
+      if (riskSettings && riskSettings.takeProfitPercent > 0) {
+        takeProfit = entryPrice * (1 + riskSettings.takeProfitPercent / 100);
+      }
+
+      position = {
+        side: PositionSide.LONG,
+        entryPrice,
+        entryTime: current.time,
+        entryIdx: i,
+        stopLoss,
+        takeProfit,
+      };
+    } else if (signal.action === "buy" && position && position.side === PositionSide.SHORT) {
+      // Buy signal closes a short position
+      closePosition(current.close, signal.reason);
+    } else if (signal.action === "sell" && position && position.side === PositionSide.LONG) {
+      // Determine exit price based on trailing stop EMA intrabar hit
+      let exitPrice = current.close;
+      let exitReason = signal.reason;
+
+      // Check if trailing stop EMA is configured and if the bar's low hit the EMA.
+      // If so, exit at the EMA price (intrabar exit) rather than the close.
+      // This applies when trailingStopEmaPeriod > 0 and the low touched or crossed the EMA.
+      if (trailingStopEmaPeriod > 0) {
+        const emaKey = `ema${trailingStopEmaPeriod}` as keyof typeof current;
+        const trailingStopEma = current[emaKey] as number | undefined;
+
+        if (trailingStopEma !== undefined && current.low <= trailingStopEma) {
+          // Exit at the trailing stop EMA price (intrabar stop out)
+          exitPrice = trailingStopEma;
+          exitReason = `Trailing stop EMA ${trailingStopEmaPeriod} hit (exited at EMA ${trailingStopEma.toFixed(2)})`;
+        }
+      }
+
+      closePosition(exitPrice, exitReason);
+    } else if (signal.action === "sell" && !position && enableShorts) {
+      // Short entry: sell signal with no open position and shorts enabled
+      const entryPrice = current.close;
+
+      // Calculate stop loss and take profit levels for short position (inverted)
+      let stopLoss: number | undefined;
+      let takeProfit: number | undefined;
+
+      if (riskSettings && riskSettings.stopLossPercent > 0) {
+        stopLoss = entryPrice * (1 + riskSettings.stopLossPercent / 100);
+      }
+      if (riskSettings && riskSettings.takeProfitPercent > 0) {
+        takeProfit = entryPrice * (1 - riskSettings.takeProfitPercent / 100);
+      }
+
+      position = {
+        side: PositionSide.SHORT,
+        entryPrice,
+        entryTime: current.time,
+        entryIdx: i,
+        stopLoss,
+        takeProfit,
+      };
     }
 
     equityCurve.push({ time: current.time, equity });
@@ -588,6 +621,7 @@ export default function AlgoBacktestPage() {
   // Risk management state (stop loss / take profit)
   const [stopLossPercent, setStopLossPercent] = useState<number>(0);
   const [takeProfitPercent, setTakeProfitPercent] = useState<number>(0);
+  const [enableShorts, setEnableShorts] = useState<boolean>(false);
 
   // Unique timeframes derived from available datasets
   const uniqueTimeframes = useMemo(() => {
@@ -764,10 +798,10 @@ export default function AlgoBacktestPage() {
         ? { stopLossPercent, takeProfitPercent }
         : undefined;
 
-    const result = runBacktestWithParams(dataWithIndicators, strategy, currentParams, INITIAL_CAPITAL, riskSettings);
+    const result = runBacktestWithParams(dataWithIndicators, strategy, currentParams, INITIAL_CAPITAL, riskSettings, enableShorts);
     setResults([result]);
     setActiveResultTab(0);
-  }, [rawData, selectedStrategyId, currentParams, stopLossPercent, takeProfitPercent]);
+  }, [rawData, selectedStrategyId, currentParams, stopLossPercent, takeProfitPercent, enableShorts]);
 
   // Run batch backtest with parameter variations against all selected datasets
   const runBatchBacktest = useCallback(async () => {
@@ -892,7 +926,7 @@ export default function AlgoBacktestPage() {
 
       // Run all backtests for this dataset
       for (const params of combinations) {
-        const backtestResult = runBacktestWithParams(dataWithIndicators, strategy, params, INITIAL_CAPITAL, riskSettings);
+        const backtestResult = runBacktestWithParams(dataWithIndicators, strategy, params, INITIAL_CAPITAL, riskSettings, enableShorts);
         batchResults.push({
           ...backtestResult,
           dataset: datasetFile,
@@ -912,7 +946,7 @@ export default function AlgoBacktestPage() {
     setResults(batchResults);
     setActiveResultTab(0);
     setIsRunningBatch(false);
-  }, [selectedFiles, selectedStrategyId, paramVariations, availableDatasets, stopLossPercent, takeProfitPercent]);
+  }, [selectedFiles, selectedStrategyId, paramVariations, availableDatasets, stopLossPercent, takeProfitPercent, enableShorts]);
 
   // Auto-run single backtest when data or params change
   useEffect(() => {
@@ -1092,6 +1126,22 @@ export default function AlgoBacktestPage() {
                   className='w-full bg-slate-800 border border-slate-600 rounded px-2 py-1.5 text-sm text-white'
                 />
               </div>
+            </div>
+            <div className='mt-3'>
+              <label className='flex items-center gap-2 cursor-pointer'>
+                <input
+                  type='checkbox'
+                  checked={enableShorts}
+                  onChange={(e) => setEnableShorts(e.target.checked)}
+                  className='w-4 h-4 rounded border-slate-600 bg-slate-800 text-blue-500 focus:ring-blue-500 focus:ring-offset-0'
+                />
+                <span className='text-xs text-slate-400'>Enable Short Entries</span>
+              </label>
+              {enableShorts && (
+                <p className='text-xs text-amber-400 mt-1 ml-6'>
+                  Sell signals will open short positions when no position is active
+                </p>
+              )}
             </div>
             {(stopLossPercent > 0 || takeProfitPercent > 0) && (
               <p className='text-xs text-blue-400 mt-2'>
