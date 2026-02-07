@@ -14,6 +14,7 @@ export default function Sidebar() {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
+  const [hasMounted, setHasMounted] = useState(false);
 
   // Load sidebar state from localStorage and check screen size on mount
   useEffect(() => {
@@ -33,6 +34,12 @@ export default function Sidebar() {
     const mobile = isMobileDevice();
     setIsMobile(mobile);
     setIsOpen(mobile ? false : shouldBeOpen);
+
+    // Enable transitions after initial state is resolved
+    // Use requestAnimationFrame to ensure the browser has painted the correct initial state
+    requestAnimationFrame(() => {
+      setHasMounted(true);
+    });
   }, []);
 
   // Handle window resize
@@ -66,7 +73,7 @@ export default function Sidebar() {
       {/* Toggle Button - Always visible */}
       <button
         onClick={toggleSidebar}
-        className={`fixed top-4 z-50 p-2 bg-gradient-to-br from-pink-100 to-orange-100 hover:from-pink-200 hover:to-orange-200 text-gray-900 rounded-md shadow-lg border border-pink-200 transition-all duration-300 ${
+        className={`fixed top-4 z-50 p-2 bg-gradient-to-br from-pink-100 to-orange-100 hover:from-pink-200 hover:to-orange-200 text-gray-900 rounded-md shadow-lg border border-pink-200 ${hasMounted ? "transition-all duration-300" : ""} ${
           isOpen ? "left-[216px]" : "left-4"
         }`}
         aria-label={isOpen ? "Close sidebar" : "Open sidebar"}
@@ -99,11 +106,11 @@ export default function Sidebar() {
 
       {/* Sidebar */}
       <aside
-        className={`fixed lg:relative h-screen bg-gradient-to-br from-pink-50 to-orange-50 text-gray-900 p-6 flex flex-col gap-6 border-r border-pink-200 z-40 transition-all duration-300 overflow-y-auto ${
+        className={`fixed lg:relative h-screen bg-gradient-to-br from-pink-50 to-orange-50 text-gray-900 p-6 flex flex-col gap-6 border-r border-pink-200 z-40 ${hasMounted ? "transition-all duration-300" : ""} overflow-y-auto ${
           isOpen ? "w-64 translate-x-0" : "w-0 -translate-x-full lg:w-0 p-0 overflow-hidden"
         }`}
       >
-        <div className={`${isOpen ? "opacity-100" : "opacity-0"} transition-opacity duration-200`}>
+        <div className={`${isOpen ? "opacity-100" : "opacity-0"} ${hasMounted ? "transition-opacity duration-200" : ""}`}>
           <h2 className='text-xl font-bold whitespace-nowrap'>iCodeForBananas</h2>
 
           <nav className='flex flex-col gap-4 mt-6'>
