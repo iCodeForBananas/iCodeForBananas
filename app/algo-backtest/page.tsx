@@ -522,6 +522,7 @@ export default function AlgoBacktestPage() {
     if (!strategy) return;
 
     setIsRunningBatch(true);
+    setError(null);
 
     const combinations = generateCombinations(paramVariations);
     console.log(`Running ${combinations.length} parameter combinations across ${selectedFiles.length} datasets`);
@@ -544,50 +545,73 @@ export default function AlgoBacktestPage() {
       }
     }
 
+    const failedDatasets: string[] = [];
+
+    // Process all datasets in parallel
+    const datasetResults = await Promise.all(
+      selectedFiles.map(async (datasetFile) => {
+        const datasetInfo = availableDatasets.find(ds => ds.file === datasetFile);
+        const datasetLabel = datasetInfo?.label || datasetFile;
+
+        try {
+          // Load dataset
+          const response = await fetch(`/api/spy-data?file=${encodeURIComponent(datasetFile)}`);
+          const result = await response.json();
+
+          if (!result.success || !result.data || result.data.length === 0) {
+            const errorMsg = result.error || "No data received";
+            console.error(`Failed to load dataset ${datasetFile}: ${errorMsg}`);
+            failedDatasets.push(`${datasetLabel}: ${errorMsg}`);
+            return { datasetFile, datasetLabel, data: null };
+          }
+
+          return { datasetFile, datasetLabel, data: result.data };
+        } catch (err) {
+          const errorMsg = err instanceof Error ? err.message : "Unknown error";
+          console.error(`Error processing dataset ${datasetFile}: ${errorMsg}`);
+          failedDatasets.push(`${datasetLabel}: ${errorMsg}`);
+          return { datasetFile, datasetLabel, data: null };
+        }
+      })
+    );
+
     const batchResults: ParameterizedResult[] = [];
+    let firstDatasetWithData = true;
 
-    // Run backtests for each selected dataset
-    for (const datasetFile of selectedFiles) {
-      const datasetInfo = availableDatasets.find(ds => ds.file === datasetFile);
-      const datasetLabel = datasetInfo?.label || datasetFile;
+    // Process results and run backtests
+    for (const { datasetFile, datasetLabel, data } of datasetResults) {
+      if (!data) continue;
 
-      try {
-        // Load dataset
-        const response = await fetch(`/api/spy-data?file=${encodeURIComponent(datasetFile)}`);
-        const result = await response.json();
+      const dataWithIndicators = calculateIndicatorsWithParams(
+        data,
+        Array.from(requiredEMAs),
+        Array.from(requiredSMAs)
+      );
 
-        if (!result.success || !result.data || result.data.length === 0) {
-          console.error(`Failed to load dataset: ${datasetFile}`);
-          continue;
-        }
+      // Update indicator data for first successful dataset (for chart display)
+      if (firstDatasetWithData) {
+        setIndicatorData(dataWithIndicators);
+        firstDatasetWithData = false;
+      }
 
-        const dataWithIndicators = calculateIndicatorsWithParams(
-          result.data,
-          Array.from(requiredEMAs),
-          Array.from(requiredSMAs)
-        );
-
-        // Update indicator data if this is the first dataset (for chart display)
-        if (datasetFile === selectedFiles[0]) {
-          setIndicatorData(dataWithIndicators);
-        }
-
-        // Run all backtests for this dataset
-        for (const params of combinations) {
-          const backtestResult = runBacktestWithParams(dataWithIndicators, strategy, params, INITIAL_CAPITAL);
-          batchResults.push({
-            ...backtestResult,
-            dataset: datasetFile,
-            datasetLabel,
-          });
-        }
-      } catch (err) {
-        console.error(`Error processing dataset ${datasetFile}:`, err);
+      // Run all backtests for this dataset
+      for (const params of combinations) {
+        const backtestResult = runBacktestWithParams(dataWithIndicators, strategy, params, INITIAL_CAPITAL);
+        batchResults.push({
+          ...backtestResult,
+          dataset: datasetFile,
+          datasetLabel,
+        });
       }
     }
 
     // Sort by total P&L descending
     batchResults.sort((a, b) => b.totalPnlPercent - a.totalPnlPercent);
+
+    // Show error if some datasets failed
+    if (failedDatasets.length > 0) {
+      setError(`Failed to load ${failedDatasets.length} dataset(s): ${failedDatasets.join("; ")}`);
+    }
 
     setResults(batchResults);
     setActiveResultTab(0);
