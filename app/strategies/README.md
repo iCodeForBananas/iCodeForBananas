@@ -232,9 +232,12 @@ The backtest engine pre-calculates these indicators for every candle:
 
 ## Strategy Behavior
 
-- The backtest engine calls your handler for each candle in sequence
-- When you return `'buy'`, a long position is opened at the current close price
-- When you return `'sell'`, any open position is closed at the current close price
+The backtest engine uses **closed candle trading** for realistic signal execution:
+
+- Signals are evaluated on **closed candles** (the previous bar after it closes)
+- When you return `'buy'`, a long position is opened at the **next bar's open price**
+- When you return `'sell'`, any open position is closed at the **next bar's open price**
+- This prevents look-ahead bias by ensuring you only act on confirmed (closed) candle data
 - Only one position can be open at a time
 - If you `'buy'` when already in a position, the signal is ignored
 - If you `'sell'` with no position, the signal is ignored

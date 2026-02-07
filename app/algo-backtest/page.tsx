@@ -189,6 +189,8 @@ function calculateIndicatorsWithParams(
 }
 
 // Run backtest with given strategy and parameters
+// Uses closed candle trading: signals are evaluated on the previous (closed) candle,
+// and trades are executed at the next candle's open price
 function runBacktestWithParams(
   data: IndicatorData[],
   strategy: StrategyDefinition,
@@ -201,33 +203,37 @@ function runBacktestWithParams(
   let position: { side: PositionSide; entryPrice: number; entryTime: number; entryIdx: number } | null = null;
   let tradeId = 1;
 
-  // Run through the data
-  for (let i = 1; i < data.length; i++) {
+  // Run through the data starting at index 2 to have enough history
+  // We evaluate signals on the PREVIOUS (closed) candle and execute at CURRENT candle's open
+  for (let i = 2; i < data.length; i++) {
     const current = data[i];
-    const previous = data[i - 1];
+    // Signal is based on closed candles: previous candle (now closed) and the one before it
+    const signalCandle = data[i - 1]; // The closed candle we evaluate
+    const priorCandle = data[i - 2]; // The candle before that
 
     const signal = strategy.handler({
-      current,
-      previous,
-      index: i,
-      series: data.slice(0, i + 1),
+      current: signalCandle,
+      previous: priorCandle,
+      index: i - 1,
+      series: data.slice(0, i), // Series up to and including the signal candle
       params,
     });
 
+    // Execute trades at the CURRENT candle's open (next bar after signal)
     if (signal.action === "buy" && !position) {
       position = {
         side: PositionSide.LONG,
-        entryPrice: current.close,
+        entryPrice: current.open,
         entryTime: current.time,
         entryIdx: i,
       };
     } else if (signal.action === "sell" && position) {
       const pnl =
         position.side === PositionSide.LONG
-          ? (current.close - position.entryPrice) * (equity / position.entryPrice)
-          : (position.entryPrice - current.close) * (equity / position.entryPrice);
+          ? (current.open - position.entryPrice) * (equity / position.entryPrice)
+          : (position.entryPrice - current.open) * (equity / position.entryPrice);
       const pnlPercent =
-        ((current.close - position.entryPrice) / position.entryPrice) *
+        ((current.open - position.entryPrice) / position.entryPrice) *
         100 *
         (position.side === PositionSide.LONG ? 1 : -1);
 
@@ -238,7 +244,7 @@ function runBacktestWithParams(
         side: position.side,
         entryPrice: position.entryPrice,
         entryTime: position.entryTime,
-        exitPrice: current.close,
+        exitPrice: current.open,
         exitTime: current.time,
         pnl,
         pnlPercent,
