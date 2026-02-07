@@ -5,6 +5,7 @@ import { StrategyDefinition } from './types';
 import bollingerBands from './bollinger-bands';
 import breakout from './breakout';
 import emaCrossover from './ema-crossover';
+import emaPriceCross from './ema-price-cross';
 import macdCrossover from './macd-crossover';
 import rsiMeanReversion from './rsi-mean-reversion';
 import smaCrossover from './sma-crossover';
@@ -14,6 +15,7 @@ export const AVAILABLE_STRATEGIES: Record<string, StrategyDefinition> = {
   'bollinger-bands': bollingerBands,
   'breakout': breakout,
   'ema-crossover': emaCrossover,
+  'ema-price-cross': emaPriceCross,
   'macd-crossover': macdCrossover,
   'rsi-mean-reversion': rsiMeanReversion,
   'sma-crossover': smaCrossover,
