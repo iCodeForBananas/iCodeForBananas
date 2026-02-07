@@ -211,11 +211,13 @@ function runBacktestWithParams(
     const signalCandle = data[i - 1]; // The closed candle we evaluate
     const priorCandle = data[i - 2]; // The candle before that
 
+    // Note: index refers to the signal candle's position in the data array (i-1)
+    // This allows the strategy to reference its position in the historical series
     const signal = strategy.handler({
       current: signalCandle,
       previous: priorCandle,
-      index: i - 1,
-      series: data.slice(0, i), // Series up to and including the signal candle
+      index: i - 1, // Index of the signal candle in the data array
+      series: data.slice(0, i), // Series up to and including index i-1 (the signal candle)
       params,
     });
 
