@@ -1246,8 +1246,7 @@ export default function AlgoBacktestPage() {
                 <div className='bg-slate-900 rounded p-3'>
                   <div className='text-slate-400 text-xs mb-1'>Max Drawdown</div>
                   <div className='text-lg font-bold text-red-400'>
-                    -${activeResult.maxDrawdown.toFixed(2)}
-                    <span className='text-sm ml-1'>({activeResult.maxDrawdownPercent.toFixed(2)}%)</span>
+                    -{activeResult.maxDrawdownPercent.toFixed(2)}%
                   </div>
                 </div>
                 <div className='bg-slate-900 rounded p-3'>
