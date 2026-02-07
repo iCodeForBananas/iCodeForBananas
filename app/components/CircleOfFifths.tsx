@@ -92,8 +92,7 @@ export default function CircleOfFifths() {
                   cx={pos.x}
                   cy={pos.y}
                   r={isActive ? 30 : 27}
-                  className='key-circle major-key'
-                  style={isActive ? { fill: "#ffffff", stroke: "#ffffff", strokeWidth: 3, filter: "drop-shadow(0 0 12px rgba(255,255,255,0.5))" } : undefined}
+                  className={`key-circle major-key${isActive ? " active" : ""}`}
                   onMouseEnter={() => setHoveredKey({ chord: data.major, frets: data.majorFrets, type: "major" })}
                   onMouseLeave={() => setHoveredKey(null)}
                   onClick={() => setSelectedKey({ chord: data.major, frets: data.majorFrets, type: "major" })}
@@ -103,8 +102,7 @@ export default function CircleOfFifths() {
                   y={pos.y}
                   textAnchor='middle'
                   dominantBaseline='middle'
-                  className='key-text'
-                  style={isActive ? { fontWeight: 800 } : undefined}
+                  className={`key-text${isActive ? " active" : ""}`}
                   onMouseEnter={() => setHoveredKey({ chord: data.major, frets: data.majorFrets, type: "major" })}
                   onMouseLeave={() => setHoveredKey(null)}
                   onClick={() => setSelectedKey({ chord: data.major, frets: data.majorFrets, type: "major" })}
@@ -125,8 +123,7 @@ export default function CircleOfFifths() {
                   cx={pos.x}
                   cy={pos.y}
                   r={isActive ? 25 : 22}
-                  className='key-circle minor-key'
-                  style={isActive ? { fill: "rgba(255,255,255,0.4)", stroke: "rgba(255,255,255,0.8)", strokeWidth: 3, filter: "drop-shadow(0 0 10px rgba(255,255,255,0.4))" } : undefined}
+                  className={`key-circle minor-key${isActive ? " active" : ""}`}
                   onMouseEnter={() => setHoveredKey({ chord: data.minor, frets: data.minorFrets, type: "minor" })}
                   onMouseLeave={() => setHoveredKey(null)}
                   onClick={() => setSelectedKey({ chord: data.minor, frets: data.minorFrets, type: "minor" })}
@@ -136,8 +133,7 @@ export default function CircleOfFifths() {
                   y={pos.y}
                   textAnchor='middle'
                   dominantBaseline='middle'
-                  className='key-text minor-text'
-                  style={isActive ? { fontWeight: 800 } : undefined}
+                  className={`key-text minor-text${isActive ? " active" : ""}`}
                   onMouseEnter={() => setHoveredKey({ chord: data.minor, frets: data.minorFrets, type: "minor" })}
                   onMouseLeave={() => setHoveredKey(null)}
                   onClick={() => setSelectedKey({ chord: data.minor, frets: data.minorFrets, type: "minor" })}
@@ -240,7 +236,7 @@ export default function CircleOfFifths() {
                         cx={x}
                         cy={y}
                         r='8'
-                        fill='var(--accent, #ff2f8a)'
+                        fill='var(--accent)'
                       />
                     );
                   }

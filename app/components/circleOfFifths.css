@@ -57,7 +57,8 @@
   stroke-width: 2;
 }
 
-.major-key:hover {
+.major-key:hover,
+.major-key.active {
   fill: #ffffff;
   stroke: #ffffff;
   stroke-width: 3;
@@ -70,7 +71,8 @@
   stroke-width: 2;
 }
 
-.minor-key:hover {
+.minor-key:hover,
+.minor-key.active {
   fill: rgba(255, 255, 255, 0.35);
   stroke: rgba(255, 255, 255, 0.7);
   stroke-width: 3;
@@ -84,6 +86,10 @@
   cursor: pointer;
   user-select: none;
   letter-spacing: -0.02em;
+}
+
+.key-text.active {
+  font-weight: 800;
 }
 
 .minor-text {
