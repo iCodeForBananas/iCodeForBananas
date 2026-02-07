@@ -22,6 +22,7 @@ export default function FretboardQuiz() {
   const [selectedScaleType, setSelectedScaleType] = useState("Major");
   const [guessedNotes, setGuessedNotes] = useState<Set<string>>(new Set());
   const [incorrectGuesses, setIncorrectGuesses] = useState<Set<string>>(new Set());
+  const [incorrectCount, setIncorrectCount] = useState(0);
 
   const tuning = defaultTuning;
   const totalFrets = 12;
@@ -52,6 +53,8 @@ export default function FretboardQuiz() {
   const totalNotesToFind = scalePositions.size;
   const foundCount = guessedNotes.size;
   const isComplete = foundCount === totalNotesToFind;
+  const totalAttempts = foundCount + incorrectCount;
+  const scorePercent = totalAttempts > 0 ? Math.round((foundCount / totalAttempts) * 100) : 0;
 
   const handleNoteClick = (stringIndex: number, fret: number) => {
     const positionKey = `${stringIndex}-${fret}`;
@@ -63,27 +66,17 @@ export default function FretboardQuiz() {
     const isInScale = scaleNotes.includes(note);
 
     if (isInScale) {
-      // Correct guess - find ALL positions of this note and mark them as found
+      // Correct guess - mark only this specific position as found
       const newGuessed = new Set(guessedNotes);
-      for (let f = 0; f <= totalFrets; f++) {
-        tuning.forEach((baseNote, sIdx) => {
-          const n = getNoteAt(baseNote, f).toUpperCase();
-          if (n === note && scalePositions.has(`${sIdx}-${f}`)) {
-            newGuessed.add(`${sIdx}-${f}`);
-          }
-        });
-      }
+      newGuessed.add(positionKey);
       setGuessedNotes(newGuessed);
-      // Remove from incorrect if it was there
-      const newIncorrect = new Set(incorrectGuesses);
-      newIncorrect.delete(positionKey);
-      setIncorrectGuesses(newIncorrect);
     } else {
       // Incorrect guess
+      setIncorrectCount((prev) => prev + 1);
       const newIncorrect = new Set(incorrectGuesses);
       newIncorrect.add(positionKey);
       setIncorrectGuesses(newIncorrect);
-      // Clear it after a short delay
+      // Clear visual feedback after a short delay
       setTimeout(() => {
         setIncorrectGuesses((prev) => {
           const updated = new Set(prev);
@@ -97,18 +90,21 @@ export default function FretboardQuiz() {
   const handleRestart = () => {
     setGuessedNotes(new Set());
     setIncorrectGuesses(new Set());
+    setIncorrectCount(0);
   };
 
   const handleKeyChange = (newKey: string) => {
     setSelectedKey(newKey);
     setGuessedNotes(new Set());
     setIncorrectGuesses(new Set());
+    setIncorrectCount(0);
   };
 
   const handleScaleTypeChange = (newType: string) => {
     setSelectedScaleType(newType);
     setGuessedNotes(new Set());
     setIncorrectGuesses(new Set());
+    setIncorrectCount(0);
   };
 
   return (
@@ -164,9 +160,14 @@ export default function FretboardQuiz() {
         <div className='text-lg font-medium text-gray-700'>
           Progress: <span className='text-pink-600'>{foundCount}</span> / {totalNotesToFind} notes
         </div>
+        {totalAttempts > 0 && (
+          <div className='text-lg font-medium text-gray-700'>
+            Score: <span className='text-pink-600'>{scorePercent}%</span>
+          </div>
+        )}
         {isComplete && (
           <div className='px-4 py-2 bg-green-100 text-green-700 rounded-md font-medium animate-pulse'>
-            🎉 Congratulations! You found all the notes!
+            🎉 You found all the notes! Score: {scorePercent}%
           </div>
         )}
       </div>
