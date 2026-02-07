@@ -193,4 +193,5 @@ body {
 /* Static gradient background for metronome view */
 .metronome-static {
   background: linear-gradient(135deg, #ff2f8a 0%, #ff9900 100%);
+  min-height: 100vh;
 }
