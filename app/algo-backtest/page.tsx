@@ -31,11 +31,19 @@ interface ParameterVariationConfig {
   step: number;
 }
 
+// MACD configuration type
+interface MACDConfig {
+  fastPeriod: number;
+  slowPeriod: number;
+  signalPeriod: number;
+}
+
 // Calculate indicators dynamically based on required periods
 function calculateIndicatorsWithParams(
   data: PricePoint[],
   requiredEMAs: number[],
-  requiredSMAs: number[]
+  requiredSMAs: number[],
+  requiredMACDs: MACDConfig[] = [{ fastPeriod: 12, slowPeriod: 26, signalPeriod: 9 }]
 ): IndicatorData[] {
   const result: IndicatorData[] = [];
 
@@ -57,10 +65,13 @@ function calculateIndicatorsWithParams(
   let avgLoss = 0;
   const rsiPeriod = 14;
 
-  // For MACD
-  let ema12: number | undefined;
-  let ema26: number | undefined;
-  let signalEma: number | undefined;
+  // For MACD (dynamic configurations)
+  // Track state for each MACD configuration: { fast, slow, signal } -> { fastEma, slowEma, signalEma }
+  const macdState: Map<string, { fastEma: number | undefined; slowEma: number | undefined; signalEma: number | undefined }> = new Map();
+  for (const config of requiredMACDs) {
+    const key = `${config.fastPeriod}_${config.slowPeriod}_${config.signalPeriod}`;
+    macdState.set(key, { fastEma: undefined, slowEma: undefined, signalEma: undefined });
+  }
 
   // For ATR
   const trValues: number[] = [];
@@ -133,31 +144,49 @@ function calculateIndicatorsWithParams(
       }
     }
 
-    // MACD
-    const macdMultiplier12 = 2 / (12 + 1);
-    const macdMultiplier26 = 2 / (26 + 1);
-    if (i === 0) {
-      ema12 = candle.close;
-      ema26 = candle.close;
-    } else {
-      if (ema12 !== undefined) {
-        ema12 = (candle.close - ema12) * macdMultiplier12 + ema12;
-      }
-      if (ema26 !== undefined) {
-        ema26 = (candle.close - ema26) * macdMultiplier26 + ema26;
-      }
-    }
-    if (ema12 !== undefined && ema26 !== undefined && i >= 26) {
-      indicatorData.macd = ema12 - ema26;
-      const signalMultiplier = 2 / (9 + 1);
-      if (signalEma === undefined) {
-        signalEma = indicatorData.macd;
+    // MACD (dynamic configurations)
+    for (const config of requiredMACDs) {
+      const key = `${config.fastPeriod}_${config.slowPeriod}_${config.signalPeriod}`;
+      const state = macdState.get(key);
+      if (!state) continue;
+
+      const fastMultiplier = 2 / (config.fastPeriod + 1);
+      const slowMultiplier = 2 / (config.slowPeriod + 1);
+      
+      if (i === 0) {
+        state.fastEma = candle.close;
+        state.slowEma = candle.close;
       } else {
-        signalEma = (indicatorData.macd - signalEma) * signalMultiplier + signalEma;
+        if (state.fastEma !== undefined) {
+          state.fastEma = (candle.close - state.fastEma) * fastMultiplier + state.fastEma;
+        }
+        if (state.slowEma !== undefined) {
+          state.slowEma = (candle.close - state.slowEma) * slowMultiplier + state.slowEma;
+        }
       }
-      indicatorData.macdSignal = signalEma;
-      if (indicatorData.macdSignal !== undefined) {
-        indicatorData.macdHistogram = indicatorData.macd - indicatorData.macdSignal;
+
+      if (state.fastEma !== undefined && state.slowEma !== undefined && i >= config.slowPeriod) {
+        const macdValue = state.fastEma - state.slowEma;
+        indicatorData[`macd_${key}` as `macd_${number}_${number}_${number}`] = macdValue;
+
+        const signalMultiplier = 2 / (config.signalPeriod + 1);
+        if (state.signalEma === undefined) {
+          state.signalEma = macdValue;
+        } else {
+          state.signalEma = (macdValue - state.signalEma) * signalMultiplier + state.signalEma;
+        }
+        indicatorData[`macdSignal_${key}` as `macdSignal_${number}_${number}_${number}`] = state.signalEma;
+        
+        if (state.signalEma !== undefined) {
+          indicatorData[`macdHistogram_${key}` as `macdHistogram_${number}_${number}_${number}`] = macdValue - state.signalEma;
+        }
+      }
+
+      // Also populate the default macd, macdSignal, macdHistogram for backward compatibility
+      if (config.fastPeriod === 12 && config.slowPeriod === 26 && config.signalPeriod === 9) {
+        indicatorData.macd = indicatorData[`macd_${key}` as `macd_${number}_${number}_${number}`];
+        indicatorData.macdSignal = indicatorData[`macdSignal_${key}` as `macdSignal_${number}_${number}_${number}`];
+        indicatorData.macdHistogram = indicatorData[`macdHistogram_${key}` as `macdHistogram_${number}_${number}_${number}`];
       }
     }
 
@@ -479,6 +508,7 @@ export default function AlgoBacktestPage() {
     // Determine required indicator periods from current params
     const requiredEMAs = new Set<number>([9, 21]); // Always include defaults
     const requiredSMAs = new Set<number>([20, 50, 200]); // Always include defaults
+    const requiredMACDs: MACDConfig[] = [];
 
     // Add periods from params
     for (const [key, value] of Object.entries(currentParams)) {
@@ -495,17 +525,30 @@ export default function AlgoBacktestPage() {
         if (key === "fastPeriod" || key === "slowPeriod") {
           if (selectedStrategyId.includes("ema")) {
             requiredEMAs.add(value);
-          } else {
+          } else if (!selectedStrategyId.includes("macd")) {
             requiredSMAs.add(value);
           }
         }
       }
     }
 
+    // Add MACD configuration if MACD strategy is selected
+    if (selectedStrategyId.includes("macd")) {
+      const fastPeriod = (currentParams.fastPeriod as number) || 12;
+      const slowPeriod = (currentParams.slowPeriod as number) || 26;
+      const signalPeriod = (currentParams.signalPeriod as number) || 9;
+      requiredMACDs.push({ fastPeriod, slowPeriod, signalPeriod });
+    }
+    // Always include default MACD for backward compatibility
+    if (!requiredMACDs.some(m => m.fastPeriod === 12 && m.slowPeriod === 26 && m.signalPeriod === 9)) {
+      requiredMACDs.push({ fastPeriod: 12, slowPeriod: 26, signalPeriod: 9 });
+    }
+
     const dataWithIndicators = calculateIndicatorsWithParams(
       rawData,
       Array.from(requiredEMAs),
-      Array.from(requiredSMAs)
+      Array.from(requiredSMAs),
+      requiredMACDs
     );
     setIndicatorData(dataWithIndicators);
 
@@ -530,6 +573,7 @@ export default function AlgoBacktestPage() {
     // Determine all required indicator periods
     const requiredEMAs = new Set<number>([9, 21]);
     const requiredSMAs = new Set<number>([20, 50, 200]);
+    const requiredMACDsSet = new Set<string>();
 
     for (const combo of combinations) {
       for (const [key, value] of Object.entries(combo)) {
@@ -537,12 +581,30 @@ export default function AlgoBacktestPage() {
           if (key === "fastPeriod" || key === "slowPeriod") {
             if (selectedStrategyId.includes("ema")) {
               requiredEMAs.add(value);
-            } else {
+            } else if (!selectedStrategyId.includes("macd")) {
               requiredSMAs.add(value);
             }
           }
         }
       }
+
+      // Collect MACD configurations for MACD strategy
+      if (selectedStrategyId.includes("macd")) {
+        const fastPeriod = (combo.fastPeriod as number) || 12;
+        const slowPeriod = (combo.slowPeriod as number) || 26;
+        const signalPeriod = (combo.signalPeriod as number) || 9;
+        requiredMACDsSet.add(`${fastPeriod}_${slowPeriod}_${signalPeriod}`);
+      }
+    }
+
+    // Convert MACD set to array of configs
+    const requiredMACDs: MACDConfig[] = Array.from(requiredMACDsSet).map(key => {
+      const [fast, slow, signal] = key.split("_").map(Number);
+      return { fastPeriod: fast, slowPeriod: slow, signalPeriod: signal };
+    });
+    // Always include default MACD for backward compatibility
+    if (!requiredMACDs.some(m => m.fastPeriod === 12 && m.slowPeriod === 26 && m.signalPeriod === 9)) {
+      requiredMACDs.push({ fastPeriod: 12, slowPeriod: 26, signalPeriod: 9 });
     }
 
     const failedDatasets: string[] = [];
@@ -585,7 +647,8 @@ export default function AlgoBacktestPage() {
       const dataWithIndicators = calculateIndicatorsWithParams(
         data,
         Array.from(requiredEMAs),
-        Array.from(requiredSMAs)
+        Array.from(requiredSMAs),
+        requiredMACDs
       );
 
       // Update indicator data for first successful dataset (for chart display)

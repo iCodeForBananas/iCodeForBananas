@@ -29,6 +29,10 @@ export interface IndicatorValues {
   // Dynamic indicators (keyed by period)
   [key: `sma${number}`]: number | undefined;
   [key: `ema${number}`]: number | undefined;
+  // Dynamic MACD indicators (keyed by fast_slow_signal periods)
+  [key: `macd_${number}_${number}_${number}`]: number | undefined;
+  [key: `macdSignal_${number}_${number}_${number}`]: number | undefined;
+  [key: `macdHistogram_${number}_${number}_${number}`]: number | undefined;
 }
 
 export interface StrategyContext {
