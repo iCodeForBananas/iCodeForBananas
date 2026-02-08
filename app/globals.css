@@ -39,7 +39,9 @@ body::before {
   left: 0;
   right: 0;
   height: 10px;
-  background-image: var(--seam-gradient);
+  background: linear-gradient(90deg, #ff2f8a, #ff9900, #ff2f8a, #ff9900);
+  background-size: 300% 100%;
+  animation: seam-flow-h 4s linear infinite;
   z-index: 50;
   pointer-events: none;
 }
@@ -52,7 +54,9 @@ html::before {
   bottom: 0;
   left: 0;
   width: 10px;
-  background-image: var(--seam-gradient-vert);
+  background: linear-gradient(180deg, #ff5e99, #ff8a00, #ff5e99, #ff8a00);
+  background-size: 100% 300%;
+  animation: seam-flow-v 4s linear infinite;
   z-index: 50;
   pointer-events: none;
 }
@@ -64,7 +68,9 @@ html::after {
   bottom: 0;
   right: 0;
   width: 10px;
-  background-image: var(--seam-gradient-vert);
+  background: linear-gradient(180deg, #ff8a00, #ff5e99, #ff8a00, #ff5e99);
+  background-size: 100% 300%;
+  animation: seam-flow-v 4s linear infinite reverse;
   z-index: 50;
   pointer-events: none;
 }
@@ -76,9 +82,29 @@ body::after {
   right: 0;
   bottom: 0;
   height: 10px;
-  background-image: var(--seam-gradient);
+  background: linear-gradient(90deg, #ff9900, #ff2f8a, #ff9900, #ff2f8a);
+  background-size: 300% 100%;
+  animation: seam-flow-h 4s linear infinite reverse;
   z-index: 50;
   pointer-events: none;
+}
+
+@keyframes seam-flow-h {
+  0% {
+    background-position: 0% 0%;
+  }
+  100% {
+    background-position: 100% 0%;
+  }
+}
+
+@keyframes seam-flow-v {
+  0% {
+    background-position: 0% 0%;
+  }
+  100% {
+    background-position: 0% 100%;
+  }
 }
 
 @theme inline {
