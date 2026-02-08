@@ -690,6 +690,9 @@ export default function AlgoBacktestPage() {
   // Results state (multiple results for batch mode)
   const [results, setResults] = useState<ParameterizedResult[]>([]);
   const [activeResultTab, setActiveResultTab] = useState<number>(0);
+
+  // Per-dataset indicator data cache for batch mode (maps dataset file -> IndicatorData[])
+  const [datasetIndicatorCache, setDatasetIndicatorCache] = useState<Record<string, IndicatorData[]>>({});
   
   // Selected trade for chart highlighting
   const [selectedTradeId, setSelectedTradeId] = useState<string | null>(null);
@@ -1042,7 +1045,7 @@ export default function AlgoBacktestPage() {
     );
 
     const batchResults: ParameterizedResult[] = [];
-    let firstDatasetWithData = true;
+    const indicatorCache: Record<string, IndicatorData[]> = {};
 
     // Process results and run backtests
     for (const { datasetFile, datasetLabel, data } of datasetResults) {
@@ -1056,11 +1059,8 @@ export default function AlgoBacktestPage() {
         Array.from(requiredDonchianPeriods)
       );
 
-      // Update indicator data for first successful dataset (for chart display)
-      if (firstDatasetWithData) {
-        setIndicatorData(dataWithIndicators);
-        firstDatasetWithData = false;
-      }
+      // Cache indicator data per dataset for chart display when switching tabs
+      indicatorCache[datasetFile] = dataWithIndicators;
 
       // Create risk settings only if SL or TP is configured
       const riskSettings: RiskSettings | undefined = 
@@ -1087,8 +1087,13 @@ export default function AlgoBacktestPage() {
       setError(`Failed to load ${failedDatasets.length} dataset(s): ${failedDatasets.join("; ")}`);
     }
 
+    // Store the indicator cache and set initial chart data from the top result's dataset
+    setDatasetIndicatorCache(indicatorCache);
     setResults(batchResults);
     setActiveResultTab(0);
+    if (batchResults.length > 0 && batchResults[0].dataset && indicatorCache[batchResults[0].dataset]) {
+      setIndicatorData(indicatorCache[batchResults[0].dataset]);
+    }
     setIsRunningBatch(false);
   }, [selectedFiles, selectedStrategyId, paramVariations, availableDatasets, stopLossPercent, takeProfitPercent, enableShorts]);
 
@@ -1187,6 +1192,14 @@ export default function AlgoBacktestPage() {
       runSingleBacktest();
     }
   }, [rawData, currentParams, runSingleBacktest]);
+
+  // Update chart data when switching between result tabs with different datasets
+  useEffect(() => {
+    const activeResult = results[activeResultTab];
+    if (activeResult?.dataset && datasetIndicatorCache[activeResult.dataset]) {
+      setIndicatorData(datasetIndicatorCache[activeResult.dataset]);
+    }
+  }, [activeResultTab, results, datasetIndicatorCache]);
 
   const activeResult = results[activeResultTab];
   const strategy = AVAILABLE_STRATEGIES[selectedStrategyId];
