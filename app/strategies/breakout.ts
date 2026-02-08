@@ -90,7 +90,7 @@ const handler: StrategyHandler = ({ current, index, series, params }) => {
 
     if (trailingStopEma !== undefined) {
       // Long exit: low hits the trailing stop EMA from above
-      if (current.low <= trailingStopEma && current.close < trailingStopEma) {
+      if (current.low <= trailingStopEma) {
         return {
           action: 'sell',
           reason: `Trailing stop EMA ${trailingStopEmaPeriod} hit (low ${current.low.toFixed(2)} <= EMA ${trailingStopEma.toFixed(2)})`,
@@ -98,7 +98,7 @@ const handler: StrategyHandler = ({ current, index, series, params }) => {
       }
 
       // Short exit: high hits the trailing stop EMA from below
-      if (current.high >= trailingStopEma && current.close > trailingStopEma) {
+      if (current.high >= trailingStopEma) {
         return {
           action: 'buy',
           reason: `Trailing stop EMA ${trailingStopEmaPeriod} hit (high ${current.high.toFixed(2)} >= EMA ${trailingStopEma.toFixed(2)})`,
