@@ -473,7 +473,24 @@ function runBacktestWithParams(
       };
     } else if (signal.action === "buy" && position && position.side === PositionSide.SHORT) {
       // Buy signal closes a short position
-      closePosition(current.close, signal.reason);
+      // Determine exit price based on trailing stop EMA intrabar hit (for short positions)
+      let exitPrice = current.close;
+      let exitReason = signal.reason;
+
+      // Check if trailing stop EMA is configured and if the bar's high hit the EMA.
+      // If so, exit at the EMA price (intrabar exit) rather than the close.
+      if (trailingStopEmaPeriod > 0) {
+        const emaKey = `ema${trailingStopEmaPeriod}` as keyof typeof current;
+        const trailingStopEma = current[emaKey] as number | undefined;
+
+        if (trailingStopEma !== undefined && current.high >= trailingStopEma) {
+          // Exit at the trailing stop EMA price (intrabar stop out for short)
+          exitPrice = trailingStopEma;
+          exitReason = `Trailing stop EMA ${trailingStopEmaPeriod} hit (exited at EMA ${trailingStopEma.toFixed(2)})`;
+        }
+      }
+
+      closePosition(exitPrice, exitReason);
     } else if (signal.action === "sell" && position && position.side === PositionSide.LONG) {
       // Determine exit price based on trailing stop EMA intrabar hit
       let exitPrice = current.close;

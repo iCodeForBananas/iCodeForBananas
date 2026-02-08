@@ -1,6 +1,7 @@
 // Breakout Strategy
-// Buy when price breaks above the highest high of the lookback period
-// Exit using a trailing stop EMA
+// Long: Buy when price breaks above the highest high of the lookback period
+// Short: Sell when price breaks below the lowest low of the lookback period
+// Exit using a trailing stop EMA or opposite breakout
 
 import { StrategyDefinition, StrategyHandler, StrategyParameter } from './types';
 
@@ -29,7 +30,7 @@ const parameters: StrategyParameter[] = [
   {
     key: 'trailingStopEmaPeriod',
     name: 'Trailing Stop EMA Period',
-    description: `EMA period for trailing stop exit (default: ${DEFAULT_TRAILING_STOP_EMA_PERIOD}). Set to 0 to use breakdown exit.`,
+    description: `EMA period for trailing stop exit (default: ${DEFAULT_TRAILING_STOP_EMA_PERIOD}). Set to 0 to use opposite breakout exit.`,
     type: 'number',
     default: DEFAULT_TRAILING_STOP_EMA_PERIOD,
     min: 0,
@@ -63,11 +64,10 @@ const handler: StrategyHandler = ({ current, index, series, params }) => {
     : Math.min(...lookbackBars.map(bar => bar.low));
 
   // Use consistent price comparison based on useClose setting
-  // When useClose is true, compare close to close-based levels
-  // When useClose is false, compare high/low to high/low-based levels
   const priceForBuySignal = useClose ? current.close : current.high;
+  const priceForSellSignal = useClose ? current.close : current.low;
 
-  // Breakout above the highest high - BUY signal
+  // Breakout above the highest high - BUY signal (long entry / short exit)
   if (priceForBuySignal > highestHigh) {
     return {
       action: 'buy',
@@ -75,30 +75,35 @@ const handler: StrategyHandler = ({ current, index, series, params }) => {
     };
   }
 
-  // Exit logic: Use trailing stop EMA if configured, otherwise use breakdown
+  // Breakdown below the lowest low - SELL signal (short entry / long exit)
+  if (priceForSellSignal < lowestLow) {
+    return {
+      action: 'sell',
+      reason: `Breakdown below ${lookbackPeriod}-period low (${priceForSellSignal.toFixed(2)} < ${lowestLow.toFixed(2)})`,
+    };
+  }
+
+  // Trailing stop EMA exit logic (applies to both long and short positions)
   if (trailingStopEmaPeriod > 0) {
-    // Get the trailing stop EMA value
     const emaKey = `ema${trailingStopEmaPeriod}` as keyof typeof current;
     const trailingStopEma = current[emaKey] as number | undefined;
 
     if (trailingStopEma !== undefined) {
-      // Check if the low of the bar hits the trailing stop EMA
-      // This allows for intrabar exit at the stop level
-      if (current.low <= trailingStopEma) {
+      // Long exit: low hits the trailing stop EMA from above
+      if (current.low <= trailingStopEma && current.close < trailingStopEma) {
         return {
           action: 'sell',
           reason: `Trailing stop EMA ${trailingStopEmaPeriod} hit (low ${current.low.toFixed(2)} <= EMA ${trailingStopEma.toFixed(2)})`,
         };
       }
-    }
-  } else {
-    // Fallback to original breakdown logic
-    const priceForSellSignal = useClose ? current.close : current.low;
-    if (priceForSellSignal < lowestLow) {
-      return {
-        action: 'sell',
-        reason: `Breakdown below ${lookbackPeriod}-period low (${priceForSellSignal.toFixed(2)} < ${lowestLow.toFixed(2)})`,
-      };
+
+      // Short exit: high hits the trailing stop EMA from below
+      if (current.high >= trailingStopEma && current.close > trailingStopEma) {
+        return {
+          action: 'buy',
+          reason: `Trailing stop EMA ${trailingStopEmaPeriod} hit (high ${current.high.toFixed(2)} >= EMA ${trailingStopEma.toFixed(2)})`,
+        };
+      }
     }
   }
 
@@ -108,7 +113,7 @@ const handler: StrategyHandler = ({ current, index, series, params }) => {
 const strategy: StrategyDefinition = {
   id: 'breakout',
   name: 'Breakout',
-  description: 'Buy on breakout above highest high, exit using trailing stop EMA',
+  description: 'Buy on breakout above highest high, sell on breakdown below lowest low, with trailing stop EMA exits',
   handler,
   parameters,
 };

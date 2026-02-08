@@ -237,7 +237,10 @@ The backtest engine pre-calculates these indicators for every candle:
 - When you return `'sell'`, any open position is closed at the current close price
 - Only one position can be open at a time
 - If you `'buy'` when already in a position, the signal is ignored
-- If you `'sell'` with no position, the signal is ignored
+- When **Enable Short Entries** is turned on:
+  - A `'sell'` signal with no open position opens a short position
+  - A `'buy'` signal closes an open short position
+  - All strategies support short trades via their symmetric buy/sell signals
 
 ## Risk Management (Stop Loss / Take Profit)
 
