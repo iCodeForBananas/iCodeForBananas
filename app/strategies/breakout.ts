@@ -83,25 +83,31 @@ const handler: StrategyHandler = ({ current, index, series, params }) => {
     };
   }
 
-  // Trailing stop EMA exit logic (applies to both long and short positions)
-  if (trailingStopEmaPeriod > 0) {
+  // Trailing stop EMA exit logic
+  // Use a crossover-based approach: only trigger when close crosses through the EMA
+  // This prevents spurious entries by only firing on actual EMA crossover events
+  if (trailingStopEmaPeriod > 0 && index > 0) {
     const emaKey = `ema${trailingStopEmaPeriod}` as keyof typeof current;
     const trailingStopEma = current[emaKey] as number | undefined;
+    const prevBar = series[index - 1];
+    const prevTrailingStopEma = prevBar[emaKey] as number | undefined;
 
-    if (trailingStopEma !== undefined) {
-      // Long exit: low hits the trailing stop EMA from above
-      if (current.low <= trailingStopEma) {
+    if (trailingStopEma !== undefined && prevTrailingStopEma !== undefined) {
+      // Long exit: close crosses below the trailing stop EMA
+      // Previous close was above EMA, current close is below
+      if (prevBar.close > prevTrailingStopEma && current.close <= trailingStopEma) {
         return {
           action: 'sell',
-          reason: `Trailing stop EMA ${trailingStopEmaPeriod} hit (low ${current.low.toFixed(2)} <= EMA ${trailingStopEma.toFixed(2)})`,
+          reason: `Trailing stop EMA ${trailingStopEmaPeriod} hit (close ${current.close.toFixed(2)} crossed below EMA ${trailingStopEma.toFixed(2)})`,
         };
       }
 
-      // Short exit: high hits the trailing stop EMA from below
-      if (current.high >= trailingStopEma) {
+      // Short exit: close crosses above the trailing stop EMA
+      // Previous close was below EMA, current close is above
+      if (prevBar.close < prevTrailingStopEma && current.close >= trailingStopEma) {
         return {
           action: 'buy',
-          reason: `Trailing stop EMA ${trailingStopEmaPeriod} hit (high ${current.high.toFixed(2)} >= EMA ${trailingStopEma.toFixed(2)})`,
+          reason: `Trailing stop EMA ${trailingStopEmaPeriod} hit (close ${current.close.toFixed(2)} crossed above EMA ${trailingStopEma.toFixed(2)})`,
         };
       }
     }
