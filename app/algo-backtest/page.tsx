@@ -697,6 +697,9 @@ export default function AlgoBacktestPage() {
   // Lambda export modal state
   const [showLambdaExport, setShowLambdaExport] = useState(false);
 
+  // Copy report state
+  const [copied, setCopied] = useState(false);
+
   // Risk management state (stop loss / take profit)
   // Initialized to 0/false; the strategy change effect restores saved values
   const [stopLossPercent, setStopLossPercent] = useState<number>(0);
@@ -1088,6 +1091,95 @@ export default function AlgoBacktestPage() {
     setActiveResultTab(0);
     setIsRunningBatch(false);
   }, [selectedFiles, selectedStrategyId, paramVariations, availableDatasets, stopLossPercent, takeProfitPercent, enableShorts]);
+
+  // Generate markdown report for clipboard
+  const generateMarkdownReport = useCallback(() => {
+    const result = results[activeResultTab];
+    if (!result) return '';
+    const strat = AVAILABLE_STRATEGIES[selectedStrategyId];
+    if (!strat) return '';
+
+    const datasetLabels = selectedFiles.map(f => {
+      const ds = availableDatasets.find(d => d.file === f);
+      return ds?.label || f;
+    });
+
+    const lines: string[] = [
+      '# Algo Backtest Report',
+      '',
+      '## Strategy',
+      '',
+      `- **Name:** ${strat.name}`,
+      `- **Description:** ${strat.description}`,
+      '',
+      '## Inputs',
+      '',
+      `- **Dataset(s):** ${datasetLabels.join(', ')}`,
+      `- **Initial Capital:** $${INITIAL_CAPITAL.toLocaleString()}`,
+      `- **Stop Loss:** ${stopLossPercent > 0 ? `${stopLossPercent}%` : 'Disabled'}`,
+      `- **Take Profit:** ${takeProfitPercent > 0 ? `${takeProfitPercent}%` : 'Disabled'}`,
+      `- **Short Selling:** ${enableShorts ? 'Enabled' : 'Disabled'}`,
+    ];
+
+    if (strat.parameters && strat.parameters.length > 0) {
+      lines.push('', '### Strategy Parameters', '');
+      lines.push('| Parameter | Value |');
+      lines.push('|-----------|-------|');
+      for (const param of strat.parameters) {
+        const value = result.params[param.key] ?? currentParams[param.key] ?? param.default;
+        lines.push(`| ${param.name} | ${value} |`);
+      }
+    }
+
+    lines.push(
+      '',
+      '## Results',
+      '',
+      '| Metric | Value |',
+      '|--------|-------|',
+      `| Strategy P&L | ${result.totalPnlPercent >= 0 ? '+' : ''}${result.totalPnlPercent.toFixed(2)}% ($${result.totalPnl.toFixed(2)}) |`,
+      `| Buy & Hold P&L | ${result.buyAndHoldPnlPercent >= 0 ? '+' : ''}${result.buyAndHoldPnlPercent.toFixed(2)}% ($${result.buyAndHoldPnl.toFixed(2)}) |`,
+      `| Alpha vs B&H | ${(result.totalPnlPercent - result.buyAndHoldPnlPercent) >= 0 ? '+' : ''}${(result.totalPnlPercent - result.buyAndHoldPnlPercent).toFixed(2)}% |`,
+      `| Total Trades | ${result.totalTrades} |`,
+      `| Win Rate | ${result.winRate.toFixed(1)}% (${result.winningTrades}W / ${result.losingTrades}L) |`,
+      `| Avg Win | $${result.averageWin.toFixed(2)} |`,
+      `| Avg Loss | $${result.averageLoss.toFixed(2)} |`,
+      `| Profit Factor | ${result.profitFactor === Infinity ? 'Infinite' : result.profitFactor.toFixed(2)} |`,
+      `| Max Drawdown | -${result.maxDrawdownPercent.toFixed(2)}% ($${result.maxDrawdown.toFixed(2)}) |`,
+      `| Sharpe Ratio | ${result.sharpeRatio.toFixed(2)} |`,
+    );
+
+    if (result.trades.length > 0) {
+      lines.push(
+        '',
+        '## Trade Log',
+        '',
+        '| # | Side | Entry Time | Entry Price | Exit Time | Exit Price | P&L | P&L % | Reason |',
+        '|---|------|-----------|-------------|----------|-----------|-----|-------|--------|',
+      );
+      for (let i = 0; i < result.trades.length; i++) {
+        const t = result.trades[i];
+        lines.push(
+          `| ${i + 1} | ${t.side} | ${new Date(t.entryTime).toLocaleString()} | $${t.entryPrice.toFixed(2)} | ${new Date(t.exitTime).toLocaleString()} | $${t.exitPrice.toFixed(2)} | ${t.pnl >= 0 ? '+' : ''}$${t.pnl.toFixed(2)} | ${t.pnlPercent >= 0 ? '+' : ''}${t.pnlPercent.toFixed(2)}% | ${t.reason} |`
+        );
+      }
+    }
+
+    return lines.join('\n');
+  }, [results, activeResultTab, selectedStrategyId, selectedFiles, availableDatasets, currentParams, stopLossPercent, takeProfitPercent, enableShorts]);
+
+  // Copy report to clipboard
+  const copyReport = useCallback(async () => {
+    const markdown = generateMarkdownReport();
+    if (!markdown) return;
+    try {
+      await navigator.clipboard.writeText(markdown);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      alert('Unable to copy to clipboard. Please check your browser permissions.');
+    }
+  }, [generateMarkdownReport]);
 
   // Auto-run single backtest when data or params change
   useEffect(() => {
@@ -1519,29 +1611,31 @@ export default function AlgoBacktestPage() {
               </div>
 
               {/* Secondary stats */}
-              <div className='grid grid-cols-6 gap-4 text-sm mt-2'>
-                <div className='text-center'>
-                  <span className='text-slate-400 text-xs'>Trades:</span>
-                  <span className='ml-1 text-white'>{activeResult.totalTrades}</span>
+              <div className='flex items-center justify-between text-sm mt-2'>
+                <div className='flex items-center gap-4'>
+                  <div className='text-center'>
+                    <span className='text-slate-400 text-xs'>Trades:</span>
+                    <span className='ml-1 text-white'>{activeResult.totalTrades}</span>
+                  </div>
+                  <div className='text-center'>
+                    <span className='text-slate-400 text-xs'>Avg Win:</span>
+                    <span className='ml-1 text-green-400'>${activeResult.averageWin.toFixed(2)}</span>
+                  </div>
+                  <div className='text-center'>
+                    <span className='text-slate-400 text-xs'>Avg Loss:</span>
+                    <span className='ml-1 text-red-400'>-${activeResult.averageLoss.toFixed(2)}</span>
+                  </div>
+                  <div className='text-center'>
+                    <span className='text-slate-400 text-xs'>Alpha vs B&H:</span>
+                    <span
+                      className={`ml-1 font-bold ${activeResult.totalPnlPercent - activeResult.buyAndHoldPnlPercent >= 0 ? "text-green-400" : "text-red-400"}`}
+                    >
+                      {activeResult.totalPnlPercent - activeResult.buyAndHoldPnlPercent >= 0 ? "+" : ""}
+                      {(activeResult.totalPnlPercent - activeResult.buyAndHoldPnlPercent).toFixed(2)}%
+                    </span>
+                  </div>
                 </div>
-                <div className='text-center'>
-                  <span className='text-slate-400 text-xs'>Avg Win:</span>
-                  <span className='ml-1 text-green-400'>${activeResult.averageWin.toFixed(2)}</span>
-                </div>
-                <div className='text-center'>
-                  <span className='text-slate-400 text-xs'>Avg Loss:</span>
-                  <span className='ml-1 text-red-400'>-${activeResult.averageLoss.toFixed(2)}</span>
-                </div>
-                <div className='text-center col-span-2'>
-                  <span className='text-slate-400 text-xs'>Alpha vs B&H:</span>
-                  <span
-                    className={`ml-1 font-bold ${activeResult.totalPnlPercent - activeResult.buyAndHoldPnlPercent >= 0 ? "text-green-400" : "text-red-400"}`}
-                  >
-                    {activeResult.totalPnlPercent - activeResult.buyAndHoldPnlPercent >= 0 ? "+" : ""}
-                    {(activeResult.totalPnlPercent - activeResult.buyAndHoldPnlPercent).toFixed(2)}%
-                  </span>
-                </div>
-                <div className='text-center'>
+                <div className='flex items-center gap-3'>
                   <label className='text-slate-400 text-xs cursor-pointer'>
                     <input
                       type='checkbox'
@@ -1551,6 +1645,27 @@ export default function AlgoBacktestPage() {
                     />
                     Equity Curve
                   </label>
+                  <button
+                    onClick={copyReport}
+                    className='flex items-center gap-1.5 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs font-medium rounded transition-colors'
+                    title='Copy backtest report as markdown for LLM review'
+                  >
+                    {copied ? (
+                      <>
+                        <svg className='w-3.5 h-3.5 text-green-400' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                          <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M5 13l4 4L19 7' />
+                        </svg>
+                        <span className='text-green-400'>Copied!</span>
+                      </>
+                    ) : (
+                      <>
+                        <svg className='w-3.5 h-3.5' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                          <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3' />
+                        </svg>
+                        Copy Report
+                      </>
+                    )}
+                  </button>
                 </div>
               </div>
             </div>
