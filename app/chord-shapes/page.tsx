@@ -5,7 +5,7 @@ import Navigation from "../components/Navigation";
 
 const sharpNotes = ["A", "A#", "B", "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#"];
 const flatNotes = ["A", "Bb", "B", "C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab"];
-const chordTypes = ["Major", "Minor", "7", "m7", "Sus4", "Add9", "9", "13", "Maj7", "Maj9", "Maj13"];
+const chordTypes = ["Major", "Minor", "7", "m7", "Sus2", "Sus4", "Add9", "9", "13", "Maj7", "Maj9", "Maj13"];
 const stringNotes = ["E", "A", "D", "G", "B", "E"];
 
 interface ChordShape {
@@ -19,6 +19,7 @@ const chordShapes: Record<string, ChordShape[]> = {
   "C Maj7": [{ frets: [-1, 3, 2, 0, 0, 0], fingers: [0, 3, 2, 0, 0, 0] }],
   C7: [{ frets: [-1, 3, 2, 3, 1, 0], fingers: [0, 3, 2, 4, 1, 0] }],
   Cm7: [{ frets: [-1, 3, 5, 3, 4, 3], fingers: [0, 1, 3, 1, 2, 1] }],
+  "C Sus2": [{ frets: [-1, 3, 0, 0, 1, 3], fingers: [0, 2, 0, 0, 1, 3] }],
   "C Sus4": [{ frets: [-1, 3, 3, 0, 1, 1], fingers: [0, 3, 4, 0, 1, 1] }],
   "C Add9": [{ frets: [-1, 3, 2, 0, 3, 0], fingers: [0, 3, 2, 0, 4, 0] }],
   "C Maj9": [{ frets: [-1, 3, 2, 4, 3, 0], fingers: [0, 2, 1, 4, 3, 0] }],
@@ -28,6 +29,7 @@ const chordShapes: Record<string, ChordShape[]> = {
   "D Maj7": [{ frets: [-1, -1, 0, 2, 2, 2], fingers: [0, 0, 0, 1, 1, 1] }],
   D7: [{ frets: [-1, -1, 0, 2, 1, 2], fingers: [0, 0, 0, 3, 1, 2] }],
   Dm7: [{ frets: [-1, -1, 0, 2, 1, 1], fingers: [0, 0, 0, 2, 1, 1] }],
+  "D Sus2": [{ frets: [-1, -1, 0, 2, 3, 0], fingers: [0, 0, 0, 1, 3, 0] }],
   "D Sus4": [{ frets: [-1, -1, 0, 2, 3, 3], fingers: [0, 0, 0, 1, 2, 3] }],
   "D Add9": [{ frets: [-1, -1, 4, 2, 3, 0], fingers: [0, 0, 3, 1, 2, 0] }],
   "D Maj9": [{ frets: [-1, 5, 4, 6, 5, 0], fingers: [0, 2, 1, 4, 3, 0] }],
@@ -37,6 +39,7 @@ const chordShapes: Record<string, ChordShape[]> = {
   "E Maj7": [{ frets: [0, 2, 1, 1, 0, 0], fingers: [0, 3, 1, 2, 0, 0] }],
   E7: [{ frets: [0, 2, 0, 1, 0, 0], fingers: [0, 2, 0, 1, 0, 0] }],
   Em7: [{ frets: [0, 2, 0, 0, 0, 0], fingers: [0, 2, 0, 0, 0, 0] }],
+  "E Sus2": [{ frets: [0, 2, 4, 4, 0, 0], fingers: [0, 1, 3, 4, 0, 0] }],
   "E Sus4": [{ frets: [0, 2, 2, 2, 0, 0], fingers: [0, 1, 2, 3, 0, 0] }],
   "E Add9": [{ frets: [0, 2, 2, 1, 0, 2], fingers: [0, 2, 3, 1, 0, 4] }],
   "E Maj9": [{ frets: [0, 2, 1, 1, 0, 2], fingers: [0, 3, 1, 2, 0, 4] }],
@@ -46,6 +49,7 @@ const chordShapes: Record<string, ChordShape[]> = {
   "F Maj7": [{ frets: [1, 3, 2, 2, 1, 1], fingers: [1, 4, 2, 3, 1, 1] }],
   F7: [{ frets: [1, 3, 1, 2, 1, 1], fingers: [1, 3, 1, 2, 1, 1] }],
   Fm7: [{ frets: [1, 3, 1, 1, 1, 1], fingers: [1, 3, 1, 1, 1, 1] }],
+  "F Sus2": [{ frets: [1, 3, 3, 0, 1, 1], fingers: [1, 3, 4, 0, 1, 1] }],
   "F Sus4": [{ frets: [1, 3, 3, 3, 1, 1], fingers: [1, 2, 3, 4, 1, 1] }],
   "F Add9": [{ frets: [1, 0, 3, 0, 1, 1], fingers: [1, 0, 4, 0, 2, 1] }],
   "F Maj9": [{ frets: [1, 0, 2, 0, 1, 0], fingers: [1, 0, 3, 0, 2, 0] }],
@@ -55,6 +59,7 @@ const chordShapes: Record<string, ChordShape[]> = {
   "G Maj7": [{ frets: [3, 2, 0, 0, 0, 2], fingers: [3, 1, 0, 0, 0, 2] }],
   G7: [{ frets: [3, 2, 0, 0, 0, 1], fingers: [3, 2, 0, 0, 0, 1] }],
   Gm7: [{ frets: [3, 5, 3, 3, 3, 3], fingers: [1, 4, 1, 1, 1, 1] }],
+  "G Sus2": [{ frets: [3, 0, 0, 0, 3, 3], fingers: [1, 0, 0, 0, 3, 4] }],
   "G Sus4": [{ frets: [3, 3, 0, 0, 1, 3], fingers: [3, 4, 0, 0, 1, 3] }],
   "G Add9": [{ frets: [3, 0, 0, 2, 0, 3], fingers: [3, 0, 0, 2, 0, 4] }],
   "G Maj9": [{ frets: [3, 0, 0, 2, 0, 2], fingers: [3, 0, 0, 2, 0, 1] }],
@@ -64,6 +69,7 @@ const chordShapes: Record<string, ChordShape[]> = {
   "A Maj7": [{ frets: [-1, 0, 2, 1, 2, 0], fingers: [0, 0, 2, 1, 3, 0] }],
   A7: [{ frets: [-1, 0, 2, 0, 2, 0], fingers: [0, 0, 2, 0, 3, 0] }],
   Am7: [{ frets: [-1, 0, 2, 0, 1, 0], fingers: [0, 0, 2, 0, 1, 0] }],
+  "A Sus2": [{ frets: [-1, 0, 2, 2, 0, 0], fingers: [0, 0, 1, 2, 0, 0] }],
   "A Sus4": [{ frets: [-1, 0, 2, 2, 3, 0], fingers: [0, 0, 1, 2, 4, 0] }],
   "A Add9": [{ frets: [-1, 0, 2, 4, 2, 0], fingers: [0, 0, 1, 4, 2, 0] }],
   "A Maj9": [{ frets: [-1, 0, 2, 4, 2, 4], fingers: [0, 0, 1, 3, 2, 4] }],
@@ -73,6 +79,7 @@ const chordShapes: Record<string, ChordShape[]> = {
   "B Maj7": [{ frets: [-1, 2, 4, 3, 4, 2], fingers: [0, 1, 3, 2, 4, 1] }],
   B7: [{ frets: [-1, 2, 1, 2, 0, 2], fingers: [0, 2, 1, 3, 0, 4] }],
   Bm7: [{ frets: [-1, 2, 4, 2, 3, 2], fingers: [0, 1, 3, 1, 2, 1] }],
+  "B Sus2": [{ frets: [-1, 2, 4, 4, 2, 2], fingers: [0, 1, 3, 4, 1, 1] }],
   "B Sus4": [{ frets: [-1, 2, 4, 4, 5, 2], fingers: [0, 1, 2, 3, 4, 1] }],
   "B Add9": [{ frets: [-1, 2, 1, 4, 2, 2], fingers: [0, 2, 1, 4, 3, 3] }],
   "B Maj9": [{ frets: [-1, 2, 1, 3, 2, 2], fingers: [0, 1, 1, 3, 2, 2] }],
@@ -82,6 +89,7 @@ const chordShapes: Record<string, ChordShape[]> = {
   "Bb Maj7": [{ frets: [-1, 1, 3, 2, 3, 1], fingers: [0, 1, 3, 2, 4, 1] }],
   Bb7: [{ frets: [-1, 1, 3, 1, 3, 1], fingers: [0, 1, 3, 1, 4, 1] }],
   Bbm7: [{ frets: [-1, 1, 3, 1, 2, 1], fingers: [0, 1, 3, 1, 2, 1] }],
+  "Bb Sus2": [{ frets: [-1, 1, 3, 3, 1, 1], fingers: [0, 1, 3, 4, 1, 1] }],
   "Bb Sus4": [{ frets: [-1, 1, 3, 3, 4, 1], fingers: [0, 1, 2, 3, 4, 1] }],
   "Bb Add9": [{ frets: [-1, 1, 0, 3, 1, 1], fingers: [0, 1, 0, 4, 2, 1] }],
   "Bb Maj9": [{ frets: [-1, 1, 0, 2, 1, 1], fingers: [0, 1, 0, 3, 2, 2] }],
@@ -91,6 +99,7 @@ const chordShapes: Record<string, ChordShape[]> = {
   "Db Maj7": [{ frets: [-1, 4, 6, 5, 6, 4], fingers: [0, 1, 3, 2, 4, 1] }],
   Db7: [{ frets: [-1, 4, 6, 4, 6, 4], fingers: [0, 1, 3, 1, 4, 1] }],
   Dbm7: [{ frets: [-1, 4, 6, 4, 5, 4], fingers: [0, 1, 3, 1, 2, 1] }],
+  "Db Sus2": [{ frets: [-1, 4, 6, 6, 4, 4], fingers: [0, 1, 3, 4, 1, 1] }],
   "Db Sus4": [{ frets: [-1, 4, 6, 6, 7, 4], fingers: [0, 1, 2, 3, 4, 1] }],
   "Db Add9": [{ frets: [-1, 4, 3, 6, 4, 4], fingers: [0, 2, 1, 4, 3, 2] }],
   "Db Maj9": [{ frets: [-1, 4, 3, 5, 4, 4], fingers: [0, 1, 1, 3, 2, 2] }],
@@ -100,6 +109,7 @@ const chordShapes: Record<string, ChordShape[]> = {
   "Eb Maj7": [{ frets: [-1, -1, 1, 3, 3, 3], fingers: [0, 0, 1, 2, 3, 4] }],
   Eb7: [{ frets: [-1, -1, 1, 3, 2, 3], fingers: [0, 0, 1, 3, 2, 4] }],
   Ebm7: [{ frets: [-1, -1, 1, 3, 2, 2], fingers: [0, 0, 1, 4, 2, 3] }],
+  "Eb Sus2": [{ frets: [-1, -1, 1, 3, 4, 1], fingers: [0, 0, 1, 3, 4, 1] }],
   "Eb Sus4": [{ frets: [-1, -1, 1, 3, 4, 4], fingers: [0, 0, 1, 2, 3, 4] }],
   "Eb Add9": [{ frets: [-1, -1, 1, 0, 4, 1], fingers: [0, 0, 1, 0, 4, 2] }],
   "Eb Maj9": [{ frets: [-1, 6, 5, 7, 6, 6], fingers: [0, 1, 1, 3, 2, 2] }],
@@ -109,6 +119,7 @@ const chordShapes: Record<string, ChordShape[]> = {
   "Gb Maj7": [{ frets: [2, 4, 3, 3, 2, 2], fingers: [1, 4, 2, 3, 1, 1] }],
   Gb7: [{ frets: [2, 4, 2, 3, 2, 2], fingers: [1, 3, 1, 2, 1, 1] }],
   Gbm7: [{ frets: [2, 4, 2, 2, 2, 2], fingers: [1, 3, 1, 1, 1, 1] }],
+  "Gb Sus2": [{ frets: [2, 4, 4, 1, 2, 2], fingers: [1, 3, 4, 0, 1, 1] }],
   "Gb Sus4": [{ frets: [2, 4, 4, 4, 2, 2], fingers: [1, 2, 3, 4, 1, 1] }],
   "Gb Add9": [{ frets: [2, 4, 4, 3, 2, 4], fingers: [1, 3, 3, 2, 1, 4] }],
   "Gb Maj9": [{ frets: [2, 4, 3, 3, 2, 4], fingers: [1, 4, 3, 3, 1, 4] }],
@@ -118,6 +129,7 @@ const chordShapes: Record<string, ChordShape[]> = {
   "Ab Maj7": [{ frets: [4, 6, 5, 5, 4, 4], fingers: [1, 4, 2, 3, 1, 1] }],
   Ab7: [{ frets: [4, 6, 4, 5, 4, 4], fingers: [1, 3, 1, 2, 1, 1] }],
   Abm7: [{ frets: [4, 6, 4, 4, 4, 4], fingers: [1, 3, 1, 1, 1, 1] }],
+  "Ab Sus2": [{ frets: [4, 6, 6, 3, 4, 4], fingers: [1, 3, 4, 0, 1, 1] }],
   "Ab Sus4": [{ frets: [4, 6, 6, 6, 4, 4], fingers: [1, 2, 3, 4, 1, 1] }],
   "Ab Add9": [{ frets: [4, 6, 6, 5, 4, 6], fingers: [1, 3, 3, 2, 1, 4] }],
   "Ab Maj9": [{ frets: [4, 6, 5, 5, 4, 6], fingers: [1, 4, 3, 3, 1, 4] }],
