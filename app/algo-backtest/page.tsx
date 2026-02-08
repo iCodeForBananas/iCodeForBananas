@@ -1475,7 +1475,7 @@ export default function AlgoBacktestPage() {
 
           {/* Results Summary (when multiple results) */}
           {results.length > 1 && (
-            <div className='flex-1 overflow-y-auto p-4'>
+            <div className='flex-1 min-h-[200px] overflow-y-auto p-4'>
               <div className='text-sm text-slate-400 mb-2'>Results Comparison ({results.length} runs)</div>
               <div className='space-y-2'>
                 {results.map((result, idx) => (
