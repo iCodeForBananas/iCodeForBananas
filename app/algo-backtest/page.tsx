@@ -699,7 +699,7 @@ export default function AlgoBacktestPage() {
 
   // Risk management state (stop loss / take profit)
   // Initialized to 0/false; the strategy change effect restores saved values
-  const [stopLossPercent, setStopLossPercent] = useState<number>(0);
+  const [stopLossPercent, setStopLossPercent] = useState<number>(1);
   const [takeProfitPercent, setTakeProfitPercent] = useState<number>(0);
   const [enableShorts, setEnableShorts] = useState<boolean>(false);
 
@@ -781,11 +781,11 @@ export default function AlgoBacktestPage() {
 
     // Restore risk management settings for this strategy
     if (saved) {
-      setStopLossPercent(saved.stopLossPercent ?? 0);
+      setStopLossPercent(saved.stopLossPercent ?? 1);
       setTakeProfitPercent(saved.takeProfitPercent ?? 0);
       setEnableShorts(saved.enableShorts ?? false);
     } else {
-      setStopLossPercent(0);
+      setStopLossPercent(1);
       setTakeProfitPercent(0);
       setEnableShorts(false);
     }
