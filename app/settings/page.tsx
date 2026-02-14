@@ -1,12 +1,12 @@
 "use client";
 
 import React from "react";
-import Navigation from "../components/Navigation";
+import PinnedChordProgression from "../components/PinnedChordProgression";
 
 export default function SettingsPage() {
   return (
     <div className='flex flex-col flex-1'>
-      <Navigation />
+      <PinnedChordProgression />
       <main className='px-4 py-6 w-full lg:max-w-3xl lg:mx-auto flex-1 metronome-static'>
         <section className='mb-8'>
           <div className='rounded-lg border border-border bg-white p-8 shadow-sm'>

@@ -11,7 +11,7 @@ interface PinnedProgression {
   formula: string;
 }
 
-export default function Navigation() {
+export default function PinnedChordProgression() {
   const { mounted } = useTheme();
   const pathname = usePathname();
   const [pinnedProgression, setPinnedProgression] = useState<PinnedProgression | null>(null);

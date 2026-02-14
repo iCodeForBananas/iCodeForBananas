@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Navigation from "../components/Navigation";
+import PinnedChordProgression from "../components/PinnedChordProgression";
 
 const sharpNotes = ["A", "A#", "B", "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#"];
 const flatNotes = ["A", "Bb", "B", "C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab"];
@@ -388,7 +388,7 @@ export default function ChordShapesPage() {
 
   return (
     <div className='flex flex-col flex-1'>
-      <Navigation />
+      <PinnedChordProgression />
       <main className='px-4 py-6 flex-1 metronome-static'>
         <div className='w-full lg:max-w-5xl lg:mx-auto'>
           <div className='rounded-lg border border-border bg-white p-8 shadow-sm'>
