@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import Navigation from "../components/Navigation";
+import PinnedChordProgression from "../components/PinnedChordProgression";
 import { allNotes } from "../lib/music";
 
 // Circle of fifths order
@@ -589,7 +589,7 @@ export default function ChordPracticePage() {
 
   return (
     <div className='flex flex-col flex-1'>
-      <Navigation />
+      <PinnedChordProgression />
       <main className='px-4 py-6 flex-1 metronome-static'>
         <div className='w-full lg:max-w-4xl lg:mx-auto rounded-lg border border-border bg-white p-4 shadow-sm'>
           {/* Header */}

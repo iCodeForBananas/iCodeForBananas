@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import Navigation from "../components/Navigation";
+import PinnedChordProgression from "../components/PinnedChordProgression";
 
 export default function SilentMetronome() {
   const [chords, setChords] = useState<string[]>(() => {
@@ -82,7 +82,7 @@ export default function SilentMetronome() {
   if (!mounted) {
     return (
       <div className='flex flex-col flex-1'>
-        <Navigation />
+        <PinnedChordProgression />
         <main className='relative min-h-screen px-4 py-6 metronome-static flex-1'>
           <div className='relative w-full lg:max-w-5xl lg:mx-auto'>
             <div className='p-4 text-foreground'>Loading...</div>
@@ -94,7 +94,7 @@ export default function SilentMetronome() {
 
   return (
     <div className='flex flex-col flex-1'>
-      <Navigation />
+      <PinnedChordProgression />
       <main className='relative min-h-screen px-4 py-6 metronome-static flex-1'>
         <div className='relative w-full lg:max-w-5xl lg:mx-auto'>
           <div className='rounded-lg border border-border p-8 shadow-sm bg-white'>
