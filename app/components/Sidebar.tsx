@@ -267,6 +267,23 @@ export default function Sidebar() {
 
             <div>
               <h3 className="text-sm font-semibold text-gray-600 mb-2 uppercase tracking-wider whitespace-nowrap">
+                Finance
+              </h3>
+              <div className="flex flex-col gap-1">
+                <Link
+                  href="/fire-estimator"
+                  onClick={() => isMobile && setIsOpen(false)}
+                  className={`px-3 py-2 rounded hover:bg-pink-100 hover:text-gray-900 transition-colors whitespace-nowrap ${
+                    pathname === '/fire-estimator' ? 'bg-pink-100 text-gray-900 font-semibold' : 'text-gray-700'
+                  }`}
+                >
+                  FIRE Estimator
+                </Link>
+              </div>
+            </div>
+
+            <div>
+              <h3 className="text-sm font-semibold text-gray-600 mb-2 uppercase tracking-wider whitespace-nowrap">
                 Visualizations
               </h3>
               <div className="flex flex-col gap-1">
