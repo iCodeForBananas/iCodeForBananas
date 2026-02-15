@@ -28,29 +28,22 @@ export default function AsciiPlayerPage() {
   const [loading, setLoading] = useState(true);
   const cache = useRef<Partial<Record<MovieKey, string[][]>>>({});
   const timeout = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const playFrameRef = useRef<(f: string[][], idx: number) => void>(undefined);
 
-  useEffect(() => {
-    playFrameRef.current = (f: string[][], idx: number) => {
-      if (!f[idx]) {
-        // restart
-        setCurrentFrame(0);
-        playFrameRef.current?.(f, 0);
-        return;
-      }
-      const baseDelay = (1000 / 15) * parseInt(f[idx][0], 10);
-      const delay = f === cache.current["rick_roll"] ? baseDelay * 1.2 : baseDelay;
-      timeout.current = setTimeout(() => {
-        const next = idx + 1;
-        setCurrentFrame(next);
-        playFrameRef.current?.(f, next);
-      }, delay);
-    };
-  });
-
-  const playFrame = useCallback((f: string[][], idx: number) => {
-    playFrameRef.current?.(f, idx);
-  }, []);
+  function playFrame(f: string[][], idx: number) {
+    if (!f[idx]) {
+      // restart
+      setCurrentFrame(0);
+      playFrame(f, 0);
+      return;
+    }
+    const baseDelay = (1000 / 15) * parseInt(f[idx][0], 10);
+    const delay = f === cache.current["rick_roll"] ? baseDelay * 1.2 : baseDelay;
+    timeout.current = setTimeout(() => {
+      const next = idx + 1;
+      setCurrentFrame(next);
+      playFrame(f, next);
+    }, delay);
+  }
 
   const loadMovie = useCallback(
     async (movie: MovieKey) => {
@@ -70,14 +63,15 @@ export default function AsciiPlayerPage() {
       setLoading(false);
       playFrame(parsed, 0);
     },
-    [playFrame]
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- playFrame is a stable recursive function using only refs and setState
+    []
   );
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- loading initial movie on mount
     loadMovie("rick_roll");
     return () => clearTimeout(timeout.current);
-  }, [loadMovie]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run only on mount
+  }, []);
 
   const frameText =
     frames[currentFrame]?.slice(1).join("\n") ?? "";
