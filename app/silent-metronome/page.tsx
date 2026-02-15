@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import PinnedChordProgression from "../components/PinnedChordProgression";
 
 export default function SilentMetronome() {
-  const [chords, setChords] = useState<string[]>(() => {
+  const [chords] = useState<string[]>(() => {
     if (typeof window !== "undefined") {
       const savedProgression = localStorage.getItem("guitar-pinnedProgression");
       if (savedProgression) {
@@ -39,6 +39,7 @@ export default function SilentMetronome() {
 
   // Set mounted flag after hydration
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- tracking hydration mount state
     setMounted(true);
   }, []);
 

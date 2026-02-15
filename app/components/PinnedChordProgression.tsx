@@ -1,9 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
-import { useTheme } from "../lib/ThemeContext";
 
 interface PinnedProgression {
   chords: string[];
@@ -12,8 +9,6 @@ interface PinnedProgression {
 }
 
 export default function PinnedChordProgression() {
-  const { mounted } = useTheme();
-  const pathname = usePathname();
   const [pinnedProgression, setPinnedProgression] = useState<PinnedProgression | null>(null);
 
   useEffect(() => {
