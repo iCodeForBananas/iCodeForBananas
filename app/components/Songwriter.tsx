@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, KeyboardEvent, ClipboardEvent } from "react";
+import { useState, useRef, useEffect, useCallback, KeyboardEvent } from "react";
 
 export default function Songwriter() {
   const [text, setText] = useState("");
@@ -14,17 +14,7 @@ export default function Songwriter() {
 
   const LINE_HEIGHT_MULTIPLIER = 1.5;
 
-  // Recalculate columns whenever text or font size changes
-  useEffect(() => {
-    if (!text) {
-      setColumns([""]);
-      return;
-    }
-
-    arrangeTextIntoColumns();
-  }, [text, fontSize]);
-
-  const measureTextDimensions = () => {
+  const measureTextDimensions = useCallback(() => {
     if (!measureRef.current) return { longestLineWidth: 500, lineHeight: fontSize * LINE_HEIGHT_MULTIPLIER };
 
     // Create a temporary span to measure text
@@ -55,9 +45,9 @@ export default function Songwriter() {
     const calculatedWidth = Math.max(maxWidth + 100, 300);
 
     return { longestLineWidth: calculatedWidth, lineHeight };
-  };
+  }, [fontSize, text]);
 
-  const arrangeTextIntoColumns = () => {
+  const arrangeTextIntoColumns = useCallback(() => {
     if (!containerRef.current) return;
 
     const { longestLineWidth, lineHeight } = measureTextDimensions();
@@ -67,15 +57,6 @@ export default function Songwriter() {
     // Account for toolbar, instructions, and padding
     const availableHeight = containerHeight - 40; // padding
     const linesPerColumn = Math.floor(availableHeight / lineHeight);
-
-    console.log("Arranging columns:", {
-      containerHeight,
-      availableHeight,
-      lineHeight,
-      linesPerColumn,
-      columnWidth: longestLineWidth,
-      textLength: text.length,
-    });
 
     if (linesPerColumn <= 0) {
       setColumns([text]);
@@ -99,9 +80,19 @@ export default function Songwriter() {
       chunkedColumns.push(currentChunk.join("\n"));
     }
 
-    console.log("Created columns:", chunkedColumns.length);
     setColumns(chunkedColumns.length > 0 ? chunkedColumns : [""]);
-  };
+  }, [measureTextDimensions, text]);
+
+  // Recalculate columns whenever text or font size changes
+  useEffect(() => {
+    if (!text) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- resetting columns when text is cleared
+      setColumns([""]);
+      return;
+    }
+
+    arrangeTextIntoColumns();
+  }, [text, fontSize, arrangeTextIntoColumns]);
 
   useEffect(() => {
     if (textareaRefs.current[activeColumn]) {
@@ -120,7 +111,7 @@ export default function Songwriter() {
     setText(value);
   };
 
-  const handlePaste = (e: ClipboardEvent<HTMLTextAreaElement>) => {
+  const handlePaste = () => {
     // Default paste will update via onChange
   };
 

@@ -32,6 +32,7 @@ export default function Sidebar() {
 
     // On mobile, always start closed regardless of saved state
     const mobile = isMobileDevice();
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- initializing state from window dimensions on mount
     setIsMobile(mobile);
     setIsOpen(mobile ? false : shouldBeOpen);
 

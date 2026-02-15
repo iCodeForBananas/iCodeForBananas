@@ -27,9 +27,9 @@ export default function AsciiPlayerPage() {
   const [currentMovie, setCurrentMovie] = useState<MovieKey>("rick_roll");
   const [loading, setLoading] = useState(true);
   const cache = useRef<Partial<Record<MovieKey, string[][]>>>({});
-  const timeout = useRef<ReturnType<typeof setTimeout>>();
+  const timeout = useRef<ReturnType<typeof setTimeout>>(undefined);
 
-  const playFrame = useCallback((f: string[][], idx: number) => {
+  function playFrame(f: string[][], idx: number) {
     if (!f[idx]) {
       // restart
       setCurrentFrame(0);
@@ -43,7 +43,7 @@ export default function AsciiPlayerPage() {
       setCurrentFrame(next);
       playFrame(f, next);
     }, delay);
-  }, []);
+  }
 
   const loadMovie = useCallback(
     async (movie: MovieKey) => {
@@ -63,13 +63,15 @@ export default function AsciiPlayerPage() {
       setLoading(false);
       playFrame(parsed, 0);
     },
-    [playFrame]
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- playFrame is a stable recursive function using only refs and setState
+    []
   );
 
   useEffect(() => {
     loadMovie("rick_roll");
     return () => clearTimeout(timeout.current);
-  }, [loadMovie]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run only on mount
+  }, []);
 
   const frameText =
     frames[currentFrame]?.slice(1).join("\n") ?? "";

@@ -108,6 +108,7 @@ const BacktestChart: React.FC<BacktestChartProps> = ({
     const scrollOffsetToCenterTrade = Math.max(0, data.length - entryDataIdx - halfVisibleCandles);
     const maxScrollOffset = Math.max(0, data.length - visibleCandles);
     
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- syncing scroll position to external trade selection
     setScrollOffset(Math.max(0, Math.min(maxScrollOffset, scrollOffsetToCenterTrade)));
   }, [selectedTradeId, trades, data, visibleCandles]);
 

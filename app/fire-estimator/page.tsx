@@ -130,6 +130,7 @@ export default function FireEstimatorPage() {
   useEffect(() => {
     const saved = loadSaved();
     if (saved) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- loading saved state from localStorage on mount
       setIncome(saved.income);
       setMonthlyExpenses(saved.monthlyExpenses);
       if (saved.inflation != null) setInflation(saved.inflation);
@@ -275,7 +276,7 @@ export default function FireEstimatorPage() {
             </defs>
             <XAxis dataKey="age" tick={{ fontSize: 12 }} label={{ value: 'Age', position: 'insideBottom', offset: -2 }} />
             <YAxis tickFormatter={fmt} tick={{ fontSize: 12 }} width={60} />
-            <Tooltip labelFormatter={(a) => `Age ${a}`} formatter={(v: number) => fmt(v)} />
+            <Tooltip labelFormatter={(a) => `Age ${a}`} formatter={(v) => fmt(Number(v))} />
             <Legend />
 
             <Area type="monotone" dataKey="fireTarget" name="FIRE Number (25x Expenses)" stroke="#ff2f8a" strokeDasharray="6 3" fill="none" strokeWidth={1.5} dot={false} />

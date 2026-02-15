@@ -55,6 +55,7 @@ export default function ProgressionNavigator({ startKey = "G", bpm = 80 }: Progr
 
   // Update labels if key changes
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- syncing derived labels when key changes
     setProg((p) => p.map((step) => ({ ...step, label: chords[step.f] })));
   }, [chords]);
 
@@ -70,6 +71,7 @@ export default function ProgressionNavigator({ startKey = "G", bpm = 80 }: Progr
   useEffect(() => {
     if (!playing || prog.length === 0) return;
     const idx = beat % prog.length;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- advancing metronome step from beat counter
     setCurrentF(prog[idx].f);
   }, [beat, playing, prog]);
 

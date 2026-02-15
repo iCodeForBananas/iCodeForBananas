@@ -1,5 +1,4 @@
 import Songwriter from "../components/Songwriter";
-import PinnedChordProgression from "../components/PinnedChordProgression";
 
 export default function SongwriterPage() {
   return (

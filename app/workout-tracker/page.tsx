@@ -38,6 +38,7 @@ export default function WorkoutTrackerPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', sets: 3, reps: 10 });
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- loading saved state from localStorage on mount
   useEffect(() => { setWorkouts(load()); }, []);
 
   const persist = useCallback((next: Workout[]) => { setWorkouts(next); save(next); }, []);
