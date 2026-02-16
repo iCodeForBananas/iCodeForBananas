@@ -16,10 +16,7 @@ export async function GET() {
     const filePath = path.join(process.cwd(), "data", "spd-crime-data.csv");
 
     if (!fs.existsSync(filePath)) {
-      return NextResponse.json(
-        { error: "Crime data file not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Crime data file not found" }, { status: 404 });
     }
 
     const raw = fs.readFileSync(filePath, "utf-8");
@@ -63,13 +60,7 @@ export async function GET() {
       const ts = new Date(dateStr).getTime();
 
       // Filter out invalid / redacted coordinates
-      if (
-        !isNaN(lat) &&
-        !isNaN(lng) &&
-        !isNaN(year) &&
-        lat > 0 &&
-        lng < 0
-      ) {
+      if (!isNaN(lat) && !isNaN(lng) && !isNaN(year) && lat > 0 && lng < 0) {
         points.push({ lat, lng, year, ts: isNaN(ts) ? 0 : ts });
       }
     }
@@ -85,9 +76,6 @@ export async function GET() {
     return NextResponse.json({ points, minYear, maxYear });
   } catch (err) {
     console.error("Error reading crime data:", err);
-    return NextResponse.json(
-      { error: "Failed to read crime data" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to read crime data" }, { status: 500 });
   }
 }
