@@ -76,7 +76,7 @@ export default function CircleOfFifths() {
                 y1={outerPos.y}
                 x2={innerPos.x}
                 y2={innerPos.y}
-                stroke='rgba(255,255,255,0.08)'
+                stroke='rgba(59,130,246,0.1)'
                 strokeWidth='1'
               />
             );
@@ -159,9 +159,7 @@ export default function CircleOfFifths() {
         {activeKey ? (
           <div className='chord-display'>
             <h3 className='text-2xl font-bold mb-1 text-center'>{activeKey.chord}</h3>
-            <p className='text-sm text-center opacity-50 mb-3'>
-              {activeKey.type === "major" ? "Major" : "Minor"}
-            </p>
+            <p className='text-sm text-center opacity-50 mb-3'>{activeKey.type === "major" ? "Major" : "Minor"}</p>
             <div className='chord-diagram'>
               <svg width='150' height='200' viewBox='0 0 150 200'>
                 {/* Nut (top thick line) */}
@@ -230,15 +228,7 @@ export default function CircleOfFifths() {
                   } else {
                     // Fingered note
                     const y = 30 + (fret - 0.5) * 35;
-                    return (
-                      <circle
-                        key={`finger-${stringIndex}`}
-                        cx={x}
-                        cy={y}
-                        r='8'
-                        fill='var(--accent)'
-                      />
-                    );
+                    return <circle key={`finger-${stringIndex}`} cx={x} cy={y} r='8' fill='var(--accent)' />;
                   }
                 })}
               </svg>

@@ -2,14 +2,17 @@ import ProgressionNavigator from "../components/ProgressionNavigator";
 
 export default function HarmonicFlowPage() {
   return (
-    <main className='flex min-h-screen w-full flex-col items-center justify-center py-16 px-8 bg-white/10 dark:bg-white/10 metronome-static'>
-      <div className='w-full max-w-4xl flex flex-col gap-8'>
-        <div className='text-center mb-4'>
-          <h1 className='text-5xl font-bold text-white mb-4'>Harmonic Flow</h1>
-          <p className='text-xl text-white/90'>Build beautiful chord progressions interactively</p>
+    <main className='px-4 py-6 flex-1 metronome-static'>
+      <div className='w-full lg:max-w-4xl lg:mx-auto'>
+        <div className='rounded-lg p-6'>
+          <div className='text-center mb-10'>
+            <h1 className='text-5xl font-bold text-white drop-shadow-lg'>Harmonic Flow</h1>
+            <p className='text-lg text-white/80 mt-3'>Build beautiful chord progressions interactively</p>
+          </div>
+          <div className='rounded-lg shadow-md p-6 bg-white'>
+            <ProgressionNavigator startKey='G' bpm={80} />
+          </div>
         </div>
-
-        <ProgressionNavigator startKey='G' bpm={80} />
       </div>
     </main>
   );

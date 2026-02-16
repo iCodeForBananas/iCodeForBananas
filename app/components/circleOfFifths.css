@@ -28,13 +28,13 @@
 /* Decorative ring backgrounds */
 .outer-ring {
   fill: none;
-  stroke: rgba(255, 255, 255, 0.18);
+  stroke: rgba(59, 130, 246, 0.12);
   stroke-width: 60;
 }
 
 .inner-ring {
   fill: none;
-  stroke: rgba(255, 255, 255, 0.12);
+  stroke: rgba(59, 130, 246, 0.08);
   stroke-width: 50;
 }
 
@@ -53,37 +53,37 @@
 }
 
 .major-key {
-  fill: rgba(255, 255, 255, 0.92);
-  stroke: rgba(255, 255, 255, 0.6);
+  fill: #3b82f6;
+  stroke: #2563eb;
   stroke-width: 2;
 }
 
 .major-key:hover,
 .major-key.active {
-  fill: #ffffff;
-  stroke: #ffffff;
+  fill: #2563eb;
+  stroke: #1d4ed8;
   stroke-width: 3;
-  filter: drop-shadow(0 0 12px rgba(255, 255, 255, 0.5));
+  filter: drop-shadow(0 0 12px rgba(59, 130, 246, 0.5));
 }
 
 .minor-key {
-  fill: rgba(255, 255, 255, 0.2);
-  stroke: rgba(255, 255, 255, 0.4);
+  fill: #e5e7eb;
+  stroke: #d1d5db;
   stroke-width: 2;
 }
 
 .minor-key:hover,
 .minor-key.active {
-  fill: rgba(255, 255, 255, 0.35);
-  stroke: rgba(255, 255, 255, 0.7);
+  fill: #d1d5db;
+  stroke: #9ca3af;
   stroke-width: 3;
-  filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.4));
+  filter: drop-shadow(0 0 10px rgba(107, 114, 128, 0.4));
 }
 
 .key-text {
   font-size: 16px;
   font-weight: 700;
-  fill: #1a1a1a;
+  fill: #ffffff;
   cursor: pointer;
   user-select: none;
   letter-spacing: -0.02em;
@@ -95,34 +95,33 @@
 
 .minor-text {
   font-size: 13px;
-  fill: #ffffff;
+  fill: #374151;
   font-weight: 600;
 }
 
 .center-text {
   font-size: 15px;
   font-weight: 700;
-  fill: rgba(255, 255, 255, 0.7);
+  fill: rgba(55, 65, 81, 0.6);
   letter-spacing: 0.05em;
   text-transform: uppercase;
 }
 
 .chord-display {
-  background: rgba(255, 255, 255, 0.95);
-  border: 1px solid rgba(255, 255, 255, 0.5);
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
   border-radius: 20px;
   padding: 2rem;
   min-width: 230px;
   width: 100%;
   max-width: 300px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
-  backdrop-filter: blur(12px);
-  color: var(--text-primary);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+  color: #111827;
 }
 
 .chord-placeholder {
-  background: rgba(255, 255, 255, 0.15);
-  border: 1px dashed rgba(255, 255, 255, 0.35);
+  background: #f9fafb;
+  border: 1px dashed #d1d5db;
   border-radius: 20px;
   padding: 2rem;
   min-width: 230px;
@@ -131,7 +130,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: rgba(255, 255, 255, 0.8);
+  color: #6b7280;
 }
 
 .chord-diagram {

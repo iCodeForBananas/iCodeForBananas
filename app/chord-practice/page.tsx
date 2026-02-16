@@ -111,26 +111,46 @@ const sharpBaseMap: Record<string, string> = { "A#": "A", "C#": "C", "D#": "D", 
 // Map chord-practice suffix → chord-shapes lookup key
 function mapSuffixToShapeType(suffix: string): string {
   switch (suffix) {
-    case "Major": return "Major";
-    case "Minor": return "Minor";
-    case "maj7": return "Maj7";
-    case "m7": return "m7";
-    case "7": return "7";
-    case "sus2": return "Sus4"; // fallback
-    case "sus4": return "Sus4";
-    case "dim": return "Minor"; // fallback
-    case "aug": return "Major"; // fallback
-    case "m7b5": return "m7"; // fallback
-    case "maj9": return "Add9"; // fallback
-    case "9": return "7"; // fallback
-    case "m9": return "m7"; // fallback
-    case "dim7": return "m7"; // fallback
-    case "13": return "7"; // fallback
-    case "maj13": return "Maj7"; // fallback
-    case "m11": return "m7"; // fallback
-    case "7#9": return "7"; // fallback
-    case "7b9": return "7"; // fallback
-    default: return "Major";
+    case "Major":
+      return "Major";
+    case "Minor":
+      return "Minor";
+    case "maj7":
+      return "Maj7";
+    case "m7":
+      return "m7";
+    case "7":
+      return "7";
+    case "sus2":
+      return "Sus4"; // fallback
+    case "sus4":
+      return "Sus4";
+    case "dim":
+      return "Minor"; // fallback
+    case "aug":
+      return "Major"; // fallback
+    case "m7b5":
+      return "m7"; // fallback
+    case "maj9":
+      return "Add9"; // fallback
+    case "9":
+      return "7"; // fallback
+    case "m9":
+      return "m7"; // fallback
+    case "dim7":
+      return "m7"; // fallback
+    case "13":
+      return "7"; // fallback
+    case "maj13":
+      return "Maj7"; // fallback
+    case "m11":
+      return "m7"; // fallback
+    case "7#9":
+      return "7"; // fallback
+    case "7b9":
+      return "7"; // fallback
+    default:
+      return "Major";
   }
 }
 
@@ -401,7 +421,7 @@ function getRelatedKeys(currentKey: string, range: number): string[] {
   if (idx < 0) return [currentKey];
   const keys: string[] = [];
   for (let i = -range; i <= range; i++) {
-    keys.push(circleOfFifths[((idx + i) % 12 + 12) % 12]);
+    keys.push(circleOfFifths[(((idx + i) % 12) + 12) % 12]);
   }
   return keys;
 }
@@ -456,7 +476,10 @@ export default function ChordPracticePage() {
 
     // Random walk: sometimes modulate to a neighboring key
     let nextKey = currentKey;
-    const modulateChance = Math.min(BASE_MODULATE_CHANCE + (currentDifficulty - 1) * MODULATE_CHANCE_PER_LEVEL, MAX_MODULATE_CHANCE);
+    const modulateChance = Math.min(
+      BASE_MODULATE_CHANCE + (currentDifficulty - 1) * MODULATE_CHANCE_PER_LEVEL,
+      MAX_MODULATE_CHANCE,
+    );
     if (Math.random() < modulateChance) {
       const range = Math.min(BASE_KEY_RANGE + Math.floor((currentDifficulty - 1) / 2), MAX_KEY_RANGE);
       const relatedKeys = getRelatedKeys(currentKey, range);
@@ -591,209 +614,201 @@ export default function ChordPracticePage() {
     <div className='flex flex-col flex-1'>
       <PinnedChordProgression />
       <main className='px-4 py-6 flex-1 metronome-static'>
-        <div className='w-full lg:max-w-4xl lg:mx-auto rounded-lg border border-border bg-white p-4 shadow-sm'>
-          {/* Header */}
-          <div className='text-center mb-8'>
-            <h1 className='text-4xl font-bold text-[var(--foreground)] mb-2'>Chord Practice</h1>
-            <p className='text-lg text-[var(--foreground)]/70'>
-              Progressive chord training following the Circle of Fifths
-            </p>
-          </div>
-
-          {/* Game status bar */}
-          <div className='flex flex-wrap items-center justify-center gap-4 mb-8'>
-            <div className='bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl px-4 py-2 text-center'>
-              <div className='text-xs text-[var(--foreground)]/60 uppercase tracking-wider'>Level</div>
-              <div className='text-lg font-bold text-[var(--accent)]'>{tier.level}</div>
-              <div className='text-xs text-[var(--foreground)]/60'>{tier.label}</div>
+        <div className='w-full lg:max-w-4xl lg:mx-auto'>
+          <div className='rounded-lg p-6'>
+            <div className='text-center mb-10'>
+              <h1 className='text-5xl font-bold text-white drop-shadow-lg'>Chord Practice</h1>
+              <p className='text-lg text-white/80 mt-3'>Progressive chord training following the Circle of Fifths</p>
             </div>
-            <div className='bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl px-4 py-2 text-center'>
-              <div className='text-xs text-[var(--foreground)]/60 uppercase tracking-wider'>Key</div>
-              <div className='text-lg font-bold text-[var(--foreground)]'>{currentKey}</div>
-            </div>
-            <div className='bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl px-4 py-2 text-center'>
-              <div className='text-xs text-[var(--foreground)]/60 uppercase tracking-wider'>Chords</div>
-              <div className='text-lg font-bold text-[var(--foreground)]'>{chordsPlayed}</div>
-            </div>
-            <div className='bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl px-4 py-2 text-center min-w-[140px]'>
-              <div className='text-xs text-[var(--foreground)]/60 uppercase tracking-wider'>Focus</div>
-              <div className='text-sm font-medium text-[var(--foreground)]'>{tier.description}</div>
-            </div>
-          </div>
-
-          {/* Level progress bar */}
-          {isPlaying && difficulty < difficultyTiers.length && (
-            <div className='mb-6 max-w-md mx-auto'>
-              <div className='flex justify-between text-xs text-[var(--foreground)]/60 mb-1'>
-                <span>Level {tier.level} → {tier.level + 1}</span>
-                <span>{CHORDS_PER_LEVEL_UP - chordsInCurrentLevel} chords to next level</span>
-              </div>
-              <div className='h-2 bg-[var(--card-border)] rounded-full overflow-hidden'>
-                <div
-                  className='h-full bg-gradient-to-r from-pink-500 to-orange-500 rounded-full transition-all duration-500'
-                  style={{ width: `${levelProgress}%` }}
-                />
-              </div>
-            </div>
-          )}
-
-          {/* Main chord display */}
-          <div className='flex flex-col items-center mb-8'>
-            {!isPlaying ? (
-              <div className='text-center'>
-                <div className='bg-[var(--card-bg)] border border-[var(--card-border)] rounded-2xl p-12 mb-6 max-w-md mx-auto'>
-                  <p className='text-[var(--foreground)]/70 mb-4 text-lg'>
-                    Practice chords that progressively get harder. Starting in the key of G,
-                    the game walks through the Circle of Fifths introducing new chord types as you advance.
-                  </p>
-                  <ul className='text-left text-sm text-[var(--foreground)]/60 space-y-1 mb-6'>
-                    <li>• 10 seconds per chord</li>
-                    <li>• Starts with simple triads</li>
-                    <li>• Levels up every {CHORDS_PER_LEVEL_UP} chords</li>
-                    <li>• Follows the Circle of Fifths</li>
-                    <li>• Introduces 7ths, 9ths, 13ths & more</li>
-                  </ul>
-                  <button
-                    onClick={startGame}
-                    className='px-8 py-3 bg-gradient-to-r from-pink-500 to-orange-500 text-white rounded-xl font-bold text-lg hover:from-pink-600 hover:to-orange-600 transition-all shadow-lg'
-                  >
-                    Start Practice
-                  </button>
+            <div className='rounded-lg shadow-md p-6 bg-white'>
+              {/* Game status bar */}
+              <div className='flex flex-wrap items-center justify-center gap-4 mb-8'>
+                <div className='bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl px-4 py-2 text-center'>
+                  <div className='text-xs text-[var(--foreground)]/60 uppercase tracking-wider'>Level</div>
+                  <div className='text-lg font-bold text-[var(--accent)]'>{tier.level}</div>
+                  <div className='text-xs text-[var(--foreground)]/60'>{tier.label}</div>
+                </div>
+                <div className='bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl px-4 py-2 text-center'>
+                  <div className='text-xs text-[var(--foreground)]/60 uppercase tracking-wider'>Key</div>
+                  <div className='text-lg font-bold text-[var(--foreground)]'>{currentKey}</div>
+                </div>
+                <div className='bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl px-4 py-2 text-center'>
+                  <div className='text-xs text-[var(--foreground)]/60 uppercase tracking-wider'>Chords</div>
+                  <div className='text-lg font-bold text-[var(--foreground)]'>{chordsPlayed}</div>
+                </div>
+                <div className='bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl px-4 py-2 text-center min-w-[140px]'>
+                  <div className='text-xs text-[var(--foreground)]/60 uppercase tracking-wider'>Focus</div>
+                  <div className='text-sm font-medium text-[var(--foreground)]'>{tier.description}</div>
                 </div>
               </div>
-            ) : (
-              <>
-                {/* Timer ring + chord name */}
-                <div className='relative flex items-center justify-center mb-6'>
-                  <svg className='w-40 h-40 -rotate-90' viewBox='0 0 120 120'>
-                    <circle
-                      cx='60'
-                      cy='60'
-                      r='54'
-                      fill='none'
-                      stroke='var(--card-border)'
-                      strokeWidth='6'
+
+              {/* Level progress bar */}
+              {isPlaying && difficulty < difficultyTiers.length && (
+                <div className='mb-6 max-w-md mx-auto'>
+                  <div className='flex justify-between text-xs text-[var(--foreground)]/60 mb-1'>
+                    <span>
+                      Level {tier.level} → {tier.level + 1}
+                    </span>
+                    <span>{CHORDS_PER_LEVEL_UP - chordsInCurrentLevel} chords to next level</span>
+                  </div>
+                  <div className='h-2 bg-[var(--card-border)] rounded-full overflow-hidden'>
+                    <div
+                      className='h-full bg-gradient-to-r from-pink-500 to-orange-500 rounded-full transition-all duration-500'
+                      style={{ width: `${levelProgress}%` }}
                     />
-                    <circle
-                      cx='60'
-                      cy='60'
-                      r='54'
-                      fill='none'
-                      stroke='url(#timerGradient)'
-                      strokeWidth='6'
-                      strokeLinecap='round'
-                      strokeDasharray={circumference}
-                      strokeDashoffset={strokeDashoffset}
-                      className='transition-all duration-1000 ease-linear'
-                    />
-                    <defs>
-                      <linearGradient id='timerGradient' x1='0%' y1='0%' x2='100%' y2='0%'>
-                        <stop offset='0%' stopColor='#ec4899' />
-                        <stop offset='100%' stopColor='#f97316' />
-                      </linearGradient>
-                    </defs>
-                  </svg>
-                  <div className='absolute inset-0 flex flex-col items-center justify-center'>
-                    <span className='text-3xl font-bold text-[var(--foreground)]'>{timeLeft}s</span>
                   </div>
                 </div>
+              )}
 
-                {/* Chord display card */}
-                {currentChord && (
-                  <div className='bg-[var(--card-bg)] border border-[var(--card-border)] rounded-2xl p-8 text-center min-w-[280px] shadow-lg'>
-                    <div className='text-6xl font-bold text-[var(--foreground)] mb-3'>
-                      {currentChord.displayName}
+              {/* Main chord display */}
+              <div className='flex flex-col items-center mb-8'>
+                {!isPlaying ? (
+                  <div className='text-center'>
+                    <div className='bg-[var(--card-bg)] border border-[var(--card-border)] rounded-2xl p-12 mb-6 max-w-md mx-auto'>
+                      <p className='text-[var(--foreground)]/70 mb-4 text-lg'>
+                        Practice chords that progressively get harder. Starting in the key of G, the game walks through
+                        the Circle of Fifths introducing new chord types as you advance.
+                      </p>
+                      <ul className='text-left text-sm text-[var(--foreground)]/60 space-y-1 mb-6'>
+                        <li>• 10 seconds per chord</li>
+                        <li>• Starts with simple triads</li>
+                        <li>• Levels up every {CHORDS_PER_LEVEL_UP} chords</li>
+                        <li>• Follows the Circle of Fifths</li>
+                        <li>• Introduces 7ths, 9ths, 13ths & more</li>
+                      </ul>
+                      <button
+                        onClick={startGame}
+                        className='px-8 py-3 bg-gradient-to-r from-pink-500 to-orange-500 text-white rounded-xl font-bold text-lg hover:from-pink-600 hover:to-orange-600 transition-all shadow-lg'
+                      >
+                        Start Practice
+                      </button>
                     </div>
-                    <div className='text-sm text-[var(--foreground)]/60 mb-4'>
-                      Key of {currentChord.key}
+                  </div>
+                ) : (
+                  <>
+                    {/* Timer ring + chord name */}
+                    <div className='relative flex items-center justify-center mb-6'>
+                      <svg className='w-40 h-40 -rotate-90' viewBox='0 0 120 120'>
+                        <circle cx='60' cy='60' r='54' fill='none' stroke='var(--card-border)' strokeWidth='6' />
+                        <circle
+                          cx='60'
+                          cy='60'
+                          r='54'
+                          fill='none'
+                          stroke='url(#timerGradient)'
+                          strokeWidth='6'
+                          strokeLinecap='round'
+                          strokeDasharray={circumference}
+                          strokeDashoffset={strokeDashoffset}
+                          className='transition-all duration-1000 ease-linear'
+                        />
+                        <defs>
+                          <linearGradient id='timerGradient' x1='0%' y1='0%' x2='100%' y2='0%'>
+                            <stop offset='0%' stopColor='#ec4899' />
+                            <stop offset='100%' stopColor='#f97316' />
+                          </linearGradient>
+                        </defs>
+                      </svg>
+                      <div className='absolute inset-0 flex flex-col items-center justify-center'>
+                        <span className='text-3xl font-bold text-[var(--foreground)]'>{timeLeft}s</span>
+                      </div>
                     </div>
-                    <div className='flex flex-wrap justify-center gap-2 mb-4'>
-                      {currentChord.notes.map((note, i) => (
+
+                    {/* Chord display card */}
+                    {currentChord && (
+                      <div className='bg-[var(--card-bg)] border border-[var(--card-border)] rounded-2xl p-8 text-center min-w-[280px] shadow-lg'>
+                        <div className='text-6xl font-bold text-[var(--foreground)] mb-3'>
+                          {currentChord.displayName}
+                        </div>
+                        <div className='text-sm text-[var(--foreground)]/60 mb-4'>Key of {currentChord.key}</div>
+                        <div className='flex flex-wrap justify-center gap-2 mb-4'>
+                          {currentChord.notes.map((note, i) => (
+                            <span
+                              key={i}
+                              className='px-3 py-1 bg-gradient-to-r from-pink-500/20 to-orange-500/20 border border-pink-500/30 rounded-full text-sm font-medium text-[var(--foreground)]'
+                            >
+                              {note}
+                            </span>
+                          ))}
+                        </div>
+                        {(() => {
+                          const shape = resolveChordShapeForPractice(currentChord.root, currentChord.suffix);
+                          if (!shape) return null;
+                          return (
+                            <div className='flex justify-center mt-2'>
+                              <ChordDiagram shape={shape} label='Shape' />
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    )}
+
+                    {/* Controls */}
+                    <div className='flex gap-4 mt-6'>
+                      <button
+                        onClick={skipChord}
+                        className='px-6 py-2 bg-[var(--card-bg)] border border-[var(--card-border)] text-[var(--foreground)] rounded-xl font-medium hover:bg-[var(--card-border)] transition-all'
+                      >
+                        Skip →
+                      </button>
+                      <button
+                        onClick={stopGame}
+                        className='px-6 py-2 bg-red-500/20 border border-red-500/30 text-red-400 rounded-xl font-medium hover:bg-red-500/30 transition-all'
+                      >
+                        Stop
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* History */}
+              {history.length > 0 && (
+                <div className='mt-8'>
+                  <h2 className='text-lg font-semibold text-[var(--foreground)] mb-3 text-center'>Recent Chords</h2>
+                  <div className='flex flex-wrap justify-center gap-2'>
+                    {history
+                      .slice()
+                      .reverse()
+                      .map((chord, i) => (
                         <span
                           key={i}
-                          className='px-3 py-1 bg-gradient-to-r from-pink-500/20 to-orange-500/20 border border-pink-500/30 rounded-full text-sm font-medium text-[var(--foreground)]'
+                          className={`px-3 py-1 rounded-full text-sm font-medium border ${
+                            i === 0
+                              ? "bg-gradient-to-r from-pink-500/30 to-orange-500/30 border-pink-500/40 text-[var(--foreground)]"
+                              : "bg-[var(--card-bg)] border-[var(--card-border)] text-[var(--foreground)]/60"
+                          }`}
                         >
-                          {note}
+                          {chord.displayName}
                         </span>
                       ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Difficulty reference */}
+              <div className='mt-12'>
+                <h2 className='text-lg font-semibold text-[var(--foreground)] mb-4 text-center'>Difficulty Levels</h2>
+                <div className='grid grid-cols-2 md:grid-cols-3 gap-3 max-w-2xl mx-auto'>
+                  {difficultyTiers.map((t) => (
+                    <div
+                      key={t.level}
+                      className={`p-3 rounded-xl border text-center text-sm ${
+                        t.level === difficulty
+                          ? "bg-gradient-to-r from-pink-500/20 to-orange-500/20 border-pink-500/40"
+                          : t.level < difficulty
+                            ? "bg-[var(--card-bg)] border-green-500/30"
+                            : "bg-[var(--card-bg)] border-[var(--card-border)] opacity-60"
+                      }`}
+                    >
+                      <div className='font-bold text-[var(--foreground)]'>
+                        {t.level}. {t.label}
+                      </div>
+                      <div className='text-xs text-[var(--foreground)]/60'>{t.description}</div>
                     </div>
-                    {(() => {
-                      const shape = resolveChordShapeForPractice(currentChord.root, currentChord.suffix);
-                      if (!shape) return null;
-                      return (
-                        <div className='flex justify-center mt-2'>
-                          <ChordDiagram shape={shape} label='Shape' />
-                        </div>
-                      );
-                    })()}
-                  </div>
-                )}
-
-                {/* Controls */}
-                <div className='flex gap-4 mt-6'>
-                  <button
-                    onClick={skipChord}
-                    className='px-6 py-2 bg-[var(--card-bg)] border border-[var(--card-border)] text-[var(--foreground)] rounded-xl font-medium hover:bg-[var(--card-border)] transition-all'
-                  >
-                    Skip →
-                  </button>
-                  <button
-                    onClick={stopGame}
-                    className='px-6 py-2 bg-red-500/20 border border-red-500/30 text-red-400 rounded-xl font-medium hover:bg-red-500/30 transition-all'
-                  >
-                    Stop
-                  </button>
+                  ))}
                 </div>
-              </>
-            )}
-          </div>
-
-          {/* History */}
-          {history.length > 0 && (
-            <div className='mt-8'>
-              <h2 className='text-lg font-semibold text-[var(--foreground)] mb-3 text-center'>
-                Recent Chords
-              </h2>
-              <div className='flex flex-wrap justify-center gap-2'>
-                {history.slice().reverse().map((chord, i) => (
-                  <span
-                    key={i}
-                    className={`px-3 py-1 rounded-full text-sm font-medium border ${
-                      i === 0
-                        ? "bg-gradient-to-r from-pink-500/30 to-orange-500/30 border-pink-500/40 text-[var(--foreground)]"
-                        : "bg-[var(--card-bg)] border-[var(--card-border)] text-[var(--foreground)]/60"
-                    }`}
-                  >
-                    {chord.displayName}
-                  </span>
-                ))}
               </div>
-            </div>
-          )}
-
-          {/* Difficulty reference */}
-          <div className='mt-12'>
-            <h2 className='text-lg font-semibold text-[var(--foreground)] mb-4 text-center'>
-              Difficulty Levels
-            </h2>
-            <div className='grid grid-cols-2 md:grid-cols-3 gap-3 max-w-2xl mx-auto'>
-              {difficultyTiers.map((t) => (
-                <div
-                  key={t.level}
-                  className={`p-3 rounded-xl border text-center text-sm ${
-                    t.level === difficulty
-                      ? "bg-gradient-to-r from-pink-500/20 to-orange-500/20 border-pink-500/40"
-                      : t.level < difficulty
-                        ? "bg-[var(--card-bg)] border-green-500/30"
-                        : "bg-[var(--card-bg)] border-[var(--card-border)] opacity-60"
-                  }`}
-                >
-                  <div className='font-bold text-[var(--foreground)]'>
-                    {t.level}. {t.label}
-                  </div>
-                  <div className='text-xs text-[var(--foreground)]/60'>{t.description}</div>
-                </div>
-              ))}
             </div>
           </div>
         </div>

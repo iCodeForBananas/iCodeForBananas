@@ -33,7 +33,7 @@ export default function PinnedChordProgression() {
   return (
     <>
       {pinnedProgression && pinnedProgression.chords && pinnedProgression.chords.length > 0 && (
-        <div className='bg-accent/10 border-b border-accent/30 px-4 pt-5 pb-2 text-center text-sm'>
+        <div className='bg-accent/10 border-b border-accent/30 px-4 py-2 text-center text-sm'>
           <span className='font-medium'>Pinned Progression:</span> {pinnedProgression.chords.join(" → ")} in{" "}
           {pinnedProgression.key} ({pinnedProgression.formula})
         </div>

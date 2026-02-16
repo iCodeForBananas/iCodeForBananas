@@ -391,63 +391,69 @@ export default function ChordShapesPage() {
       <PinnedChordProgression />
       <main className='px-4 py-6 flex-1 metronome-static'>
         <div className='w-full lg:max-w-5xl lg:mx-auto'>
-          <div className='rounded-lg border border-border bg-white p-8 shadow-sm'>
-            <div className='mb-6'>
-              <div className='flex flex-wrap gap-2 justify-center items-center'>
-                {chordTypes.map((type) => {
-                  const active = selectedType === type;
+          <div className='rounded-lg p-6'>
+            <div className='text-center mb-10'>
+              <h1 className='text-5xl font-bold text-white drop-shadow-lg'>Chord Shapes</h1>
+              <p className='text-lg text-white/80 mt-3'>Browse chord diagrams for every key</p>
+            </div>
+            <div className='rounded-lg shadow-md p-6 bg-white'>
+              <div className='mb-6'>
+                <div className='flex flex-wrap gap-2 justify-center items-center'>
+                  {chordTypes.map((type) => {
+                    const active = selectedType === type;
+                    return (
+                      <button
+                        key={type}
+                        type='button'
+                        aria-pressed={active}
+                        onClick={() => {
+                          setSelectedType(type);
+                          localStorage.setItem("chord-shapes-selectedType", type);
+                        }}
+                        className={`px-3 py-1 rounded border text-sm transition-colors ${
+                          active ? "bg-accent/20 border-accent font-medium" : "border-border hover:bg-foreground/10"
+                        }`}
+                      >
+                        {type}
+                      </button>
+                    );
+                  })}
+                  <span className='mx-1 text-gray-300'>|</span>
+                  <button
+                    type='button'
+                    aria-pressed={useFlats}
+                    onClick={() => {
+                      setUseFlats(!useFlats);
+                      localStorage.setItem("chord-shapes-useFlats", String(!useFlats));
+                    }}
+                    className={`px-3 py-1 rounded border text-sm transition-colors ${
+                      useFlats ? "bg-accent/20 border-accent font-medium" : "border-border hover:bg-foreground/10"
+                    }`}
+                  >
+                    ♭ Flats
+                  </button>
+                </div>
+              </div>
+
+              <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4'>
+                {displayNotes.map((note) => {
+                  const chordName = formatChordLabel(note, selectedType);
+                  const shape = resolveChordShape(note, selectedType);
+
                   return (
-                    <button
-                      key={type}
-                      type='button'
-                      aria-pressed={active}
-                      onClick={() => {
-                        setSelectedType(type);
-                        localStorage.setItem("chord-shapes-selectedType", type);
-                      }}
-                      className={`px-3 py-1 rounded border text-sm transition-colors ${
-                        active ? "bg-accent/20 border-accent font-medium" : "border-border hover:bg-foreground/10"
-                      }`}
-                    >
-                      {type}
-                    </button>
+                    <div key={note} className='flex justify-center'>
+                      {shape ? (
+                        <ChordDiagram chord={chordName} shape={shape} useFlats={useFlats} />
+                      ) : (
+                        <div className='text-center'>
+                          <h6 className='font-semibold text-sm'>{chordName}</h6>
+                          <p className='text-gray-500 text-xs'>Shape not available</p>
+                        </div>
+                      )}
+                    </div>
                   );
                 })}
-                <span className='mx-1 text-gray-300'>|</span>
-                <button
-                  type='button'
-                  aria-pressed={useFlats}
-                  onClick={() => {
-                    setUseFlats(!useFlats);
-                    localStorage.setItem("chord-shapes-useFlats", String(!useFlats));
-                  }}
-                  className={`px-3 py-1 rounded border text-sm transition-colors ${
-                    useFlats ? "bg-accent/20 border-accent font-medium" : "border-border hover:bg-foreground/10"
-                  }`}
-                >
-                  ♭ Flats
-                </button>
               </div>
-            </div>
-
-            <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4'>
-              {displayNotes.map((note) => {
-                const chordName = formatChordLabel(note, selectedType);
-                const shape = resolveChordShape(note, selectedType);
-
-                return (
-                  <div key={note} className='flex justify-center'>
-                    {shape ? (
-                      <ChordDiagram chord={chordName} shape={shape} useFlats={useFlats} />
-                    ) : (
-                      <div className='text-center'>
-                        <h6 className='font-semibold text-sm'>{chordName}</h6>
-                        <p className='text-gray-500 text-xs'>Shape not available</p>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
             </div>
           </div>
         </div>
