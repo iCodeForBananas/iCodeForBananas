@@ -10,8 +10,10 @@
     "download-data": "node scripts/download-data.mjs"
   },
   "dependencies": {
+    "@google/genai": "^1.41.0",
     "geist": "^1.7.0",
     "leaflet": "^1.9.4",
+    "lucide-react": "^0.564.0",
     "next": "16.1.1",
     "react": "19.2.3",
     "react-dom": "19.2.3",
