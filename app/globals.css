@@ -31,82 +31,6 @@
   --muted: var(--text-secondary);
 }
 
-/* Accent seam across the top */
-body::before {
-  content: "";
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 10px;
-  background: linear-gradient(90deg, #ff2f8a, #ff9900, #ff2f8a, #ff9900);
-  background-size: 300% 100%;
-  animation: seam-flow-h 4s linear infinite;
-  z-index: 50;
-  pointer-events: none;
-}
-
-/* Accent seams on left, right, and bottom edges */
-html::before {
-  content: "";
-  position: fixed;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  width: 10px;
-  background: linear-gradient(180deg, #ff5e99, #ff8a00, #ff5e99, #ff8a00);
-  background-size: 100% 300%;
-  animation: seam-flow-v 4s linear infinite;
-  z-index: 50;
-  pointer-events: none;
-}
-
-html::after {
-  content: "";
-  position: fixed;
-  top: 0;
-  bottom: 0;
-  right: 0;
-  width: 10px;
-  background: linear-gradient(180deg, #ff8a00, #ff5e99, #ff8a00, #ff5e99);
-  background-size: 100% 300%;
-  animation: seam-flow-v 4s linear infinite reverse;
-  z-index: 50;
-  pointer-events: none;
-}
-
-body::after {
-  content: "";
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 10px;
-  background: linear-gradient(90deg, #ff9900, #ff2f8a, #ff9900, #ff2f8a);
-  background-size: 300% 100%;
-  animation: seam-flow-h 4s linear infinite reverse;
-  z-index: 50;
-  pointer-events: none;
-}
-
-@keyframes seam-flow-h {
-  0% {
-    background-position: 0% 0%;
-  }
-  100% {
-    background-position: 100% 0%;
-  }
-}
-
-@keyframes seam-flow-v {
-  0% {
-    background-position: 0% 0%;
-  }
-  100% {
-    background-position: 0% 100%;
-  }
-}
-
 @theme inline {
   /* App color tokens backed by CSS variables */
   --color-background: var(--bg-primary);
@@ -127,6 +51,8 @@ body {
   background: var(--bg-primary);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+  margin: 0;
+  padding: 0;
   transition:
     background-color 0.3s ease,
     color 0.3s ease;

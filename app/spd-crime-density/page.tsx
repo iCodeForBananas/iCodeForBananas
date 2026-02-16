@@ -25,7 +25,7 @@ export default function SPDCrimeDensityPage() {
   } | null>(null);
 
   const [crimeData, setCrimeData] = useState<CrimeData | null>(null);
-  const [percent, setPercent] = useState<number>(75);
+  const [percent, setPercent] = useState<number>(50);
   const [loading, setLoading] = useState(true);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [map, setMap] = useState<any>(null);
@@ -45,7 +45,7 @@ export default function SPDCrimeDensityPage() {
           TileLayer: rlMod.TileLayer,
         });
         setCrimeData(data);
-        setPercent(75);
+        setPercent(50);
         setLoading(false);
       })
       .catch((err) => {
@@ -91,7 +91,7 @@ export default function SPDCrimeDensityPage() {
   const shownCount = crimeData ? Math.ceil((percent / 100) * totalCount) : 0;
 
   return (
-    <div className='flex flex-col h-screen overflow-hidden'>
+    <div className='flex flex-col h-full overflow-hidden'>
       {/* Year range slider controls */}
       {crimeData && (
         <div className='bg-gray-900 border-b border-gray-700 px-4 py-3'>
@@ -116,7 +116,7 @@ export default function SPDCrimeDensityPage() {
         </div>
       )}
 
-      <main className='flex-1 overflow-hidden'>
+      <main className='flex-1 min-h-0 overflow-hidden'>
         {MapComponents && !loading ? (
           <MapComponents.MapContainer
             center={SEATTLE_CENTER}

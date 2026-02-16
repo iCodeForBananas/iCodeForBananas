@@ -20,9 +20,9 @@ export default function RootLayout({
     <html lang='en'>
       <body className={`${GeistSans.variable} ${GeistMono.variable} antialiased`}>
         <ThemeProvider>
-          <div className='flex min-h-screen font-sans overflow-hidden'>
+          <div className='flex h-screen font-sans overflow-hidden'>
             <Sidebar />
-            <div className='flex-1 overflow-auto'>{children}</div>
+            <div className='flex-1 min-w-0 overflow-auto'>{children}</div>
           </div>
         </ThemeProvider>
       </body>
