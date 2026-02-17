@@ -28,6 +28,7 @@ export interface Connection {
 
 export interface Scenario {
   id: number;
+  level: number;
   title: string;
   description: string;
   targetRPS: number;
