@@ -12,12 +12,13 @@ interface Path {
   toX: number;
   toY: number;
   isEntry: boolean;
+  destNodeId: string | null; // node ID at the end of this path segment
 }
 
 interface Particle {
   id: number;
-  pathIdx: number;
-  progress: number;
+  pathIdx: number;     // current path segment being traversed
+  progress: number;    // 0→1 along current segment
   speed: number;
   status: "active" | "success" | "failed";
 }
@@ -69,7 +70,7 @@ export default function TrafficSimulator({ nodes, connections, score, targetRPS,
 
   /* ── Build paths: virtual entry paths + real connections ── */
 
-  const allPaths = useMemo<Path[]>(() => {
+  const { allPaths, entryPathIndices, outgoingByNode } = useMemo(() => {
     // Entry nodes = nodes with no incoming connection (or fallback to leftmost)
     const incomingSet = new Set(connections.map((c) => c.to));
     let entries = nodes.filter((n) => !incomingSet.has(n.id));
@@ -77,24 +78,53 @@ export default function TrafficSimulator({ nodes, connections, score, targetRPS,
       entries = [nodes.reduce((a, b) => (a.x < b.x ? a : b))];
     }
 
-    const virtualPaths: Path[] = entries.map((n) => ({
-      fromX: 30,
-      fromY: n.y,
-      toX: n.x,
-      toY: n.y,
-      isEntry: true,
-    }));
+    const paths: Path[] = [];
+    const entryIndices: number[] = [];
 
-    const connPaths: Path[] = connections
-      .map((c) => {
-        const from = nodes.find((n) => n.id === c.from);
-        const to = nodes.find((n) => n.id === c.to);
-        if (!from || !to) return null;
-        return { fromX: from.x, fromY: from.y, toX: to.x, toY: to.y, isEntry: false };
-      })
-      .filter(Boolean) as Path[];
+    // Virtual "Users → entry node" paths
+    for (const n of entries) {
+      entryIndices.push(paths.length);
+      paths.push({
+        fromX: 30,
+        fromY: n.y,
+        toX: n.x,
+        toY: n.y,
+        isEntry: true,
+        destNodeId: n.id,
+      });
+    }
 
-    return [...virtualPaths, ...connPaths];
+    // Real connection paths
+    for (const c of connections) {
+      const from = nodes.find((n) => n.id === c.from);
+      const to = nodes.find((n) => n.id === c.to);
+      if (!from || !to) continue;
+      paths.push({
+        fromX: from.x,
+        fromY: from.y,
+        toX: to.x,
+        toY: to.y,
+        isEntry: false,
+        destNodeId: to.id,
+      });
+    }
+
+    // Build lookup: nodeId → indices of paths that START from that node
+    const outgoing: Record<string, number[]> = {};
+    for (let i = 0; i < paths.length; i++) {
+      const p = paths[i];
+      if (p.isEntry) continue; // entry paths start from "Users", not a node
+      // Find which node is at the start of this connection path
+      const fromNode = nodes.find(
+        (n) => Math.abs(n.x - p.fromX) < 1 && Math.abs(n.y - p.fromY) < 1,
+      );
+      if (fromNode) {
+        if (!outgoing[fromNode.id]) outgoing[fromNode.id] = [];
+        outgoing[fromNode.id].push(i);
+      }
+    }
+
+    return { allPaths: paths, entryPathIndices: entryIndices, outgoingByNode: outgoing };
   }, [nodes, connections]);
 
   /* ── Phase schedule ── */
@@ -117,7 +147,7 @@ export default function TrafficSimulator({ nodes, connections, score, targetRPS,
   /* ── Animation loop ── */
 
   useEffect(() => {
-    if (phase === "deploying" || phase === "done" || allPaths.length === 0) return;
+    if (phase === "deploying" || phase === "done" || allPaths.length === 0 || entryPathIndices.length === 0) return;
 
     const successRate = Math.min(score / 100, 1);
 
@@ -137,11 +167,11 @@ export default function TrafficSimulator({ nodes, connections, score, targetRPS,
       const spawnMult = currentPhase === "warmup" ? 0.4 : currentPhase === "scaling" ? 2.0 : 1.0;
       const interval = baseInterval / spawnMult;
 
-      // ── Spawn ──
+      // ── Spawn only on ENTRY paths ──
       timeSinceSpawn += dt;
       while (timeSinceSpawn >= interval) {
         timeSinceSpawn -= interval;
-        const pathIdx = Math.floor(Math.random() * allPaths.length);
+        const pathIdx = entryPathIndices[Math.floor(Math.random() * entryPathIndices.length)];
         const p: Particle = {
           id: pidRef.current++,
           pathIdx,
@@ -161,7 +191,24 @@ export default function TrafficSimulator({ nodes, connections, score, targetRPS,
       for (const p of particlesRef.current) {
         p.progress += p.speed * dt;
 
+        // Particle reached end of current segment
         if (p.progress >= 1 && p.status === "active") {
+          const currentPath = allPaths[p.pathIdx];
+          const destNodeId = currentPath?.destNodeId;
+
+          if (destNodeId) {
+            // Check for outgoing connections from this node
+            const nextPaths = outgoingByNode[destNodeId];
+            if (nextPaths && nextPaths.length > 0) {
+              // Chain to next segment: pick a random outgoing connection
+              p.pathIdx = nextPaths[Math.floor(Math.random() * nextPaths.length)];
+              p.progress = 0;
+              p.speed = 0.0004 + Math.random() * 0.0008; // slight speed variation per hop
+              continue; // don't terminate, keep moving
+            }
+          }
+
+          // Terminal node — no outgoing connections; resolve success/fail
           if (Math.random() < successRate) {
             p.status = "success";
             newStats.processed++;
