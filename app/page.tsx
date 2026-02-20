@@ -225,8 +225,8 @@ export default function Home() {
             Four Services. <GradientText>Real Results.</GradientText>
           </h2>
           <p className='text-[var(--text-secondary)] text-lg max-w-2xl mb-14 leading-relaxed'>
-            Each service is a focused, high-impact engagement. No bloated retainers, no waiting months for deliverables —
-            just sharp execution on the things that move the needle.
+            Each service is a focused, high-impact engagement. No bloated retainers, no waiting months for deliverables
+            — just sharp execution on the things that move the needle.
           </p>
 
           <div className='grid md:grid-cols-2 gap-6'>
