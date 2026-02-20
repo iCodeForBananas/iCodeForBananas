@@ -24,7 +24,7 @@ const SectionLabel = ({ children }: { children: React.ReactNode }) => (
   </span>
 );
 
-const SprintCard = ({
+const ServiceCard = ({
   number,
   title,
   subtitle,
@@ -138,7 +138,7 @@ export default function Home() {
               className='px-8 py-4 rounded-full text-white font-semibold text-base transition-opacity hover:opacity-90'
               style={{ background: "var(--seam-gradient)" }}
             >
-              Apply for a Free Sprint
+              Apply for a Free Service
             </a>
             <a
               href='#how-we-work'
@@ -217,41 +217,41 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── THE 4 SPRINTS ────────────────────────────────────── */}
+      {/* ── THE 4 SERVICES ─────────────────────────────────── */}
       <section id='how-we-work' className='px-6 py-24 md:py-32'>
         <div className='max-w-5xl mx-auto'>
           <SectionLabel>The Services</SectionLabel>
           <h2 className='text-4xl md:text-5xl font-bold leading-tight mb-4'>
-            Four Sprints. <GradientText>Real Results.</GradientText>
+            Four Services. <GradientText>Real Results.</GradientText>
           </h2>
           <p className='text-[var(--text-secondary)] text-lg max-w-2xl mb-14 leading-relaxed'>
-            Each sprint is a focused, high-impact engagement. No bloated retainers, no waiting months for deliverables —
+            Each service is a focused, high-impact engagement. No bloated retainers, no waiting months for deliverables —
             just sharp execution on the things that move the needle.
           </p>
 
           <div className='grid md:grid-cols-2 gap-6'>
-            <SprintCard
+            <ServiceCard
               number='01'
               title='The Digital Front Door'
               subtitle='Unified presence across every channel'
               description="I'll build you a cohesive hub that connects your social profiles, streaming links, and sales channels into a single, credible home. Customers find you easily. Everything works together. Your brand finally tells one consistent story."
               tags={["Website", "Link-in-Bio", "Social Profiles", "Streaming", "SEO Basics"]}
             />
-            <SprintCard
+            <ServiceCard
               number='02'
               title='The Content Multiplier'
               subtitle='One video → 20+ platform-ready assets'
               description="Record one long-form video or podcast and I'll use AI to atomize it into short-form clips, captions, quote cards, and audiograms optimized for TikTok, Instagram Reels, and YouTube Shorts. End content fatigue without sacrificing authenticity."
               tags={["TikTok", "Reels", "Shorts", "Captions", "Repurposing"]}
             />
-            <SprintCard
+            <ServiceCard
               number='03'
               title='The Instant Shop'
               subtitle='From concept to checkout in hours'
               description="Need to validate a product, merch drop, or service offering? I'll launch a professional storefront fast — including product photography guidance, copy, and payment integration. No guesswork, no wasted months building something nobody wants."
               tags={["E-Commerce", "Product Pages", "Payments", "Merch", "Validation"]}
             />
-            <SprintCard
+            <ServiceCard
               number='04'
               title='The Security Guard'
               subtitle='Protect your identity and your work'
@@ -349,7 +349,7 @@ export default function Home() {
             </p>
             <div className='h-px w-full rounded-full' style={{ background: "var(--border-color)" }} />
             <p className='text-xs text-[var(--text-secondary)]'>
-              Limited sprint slots available before the tournament. Apply early.
+              Limited service slots available before the tournament. Apply early.
             </p>
           </div>
         </div>
@@ -379,11 +379,11 @@ export default function Home() {
           </p>
           <div className='flex flex-col sm:flex-row gap-4'>
             <a
-              href='mailto:hello@icodeforbananas.com?subject=Free Sprint Application'
+              href='mailto:hello@icodeforbananas.com?subject=Free Service Application'
               className='px-10 py-4 rounded-full text-white font-semibold text-base transition-opacity hover:opacity-90'
               style={{ background: "var(--seam-gradient)" }}
             >
-              Apply for a Free Sprint
+              Apply for a Free Service
             </a>
             <a
               href='mailto:hello@icodeforbananas.com?subject=Strategy Call Request'

@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
 
 const MOBILE_BREAKPOINT = 1024;
-const SIDEBAR_STATE_KEY = "sidebarOpen";
 
 // Helper function to check if current window width is below mobile breakpoint
 const isMobileDevice = () => window.innerWidth < MOBILE_BREAKPOINT;
@@ -16,25 +15,13 @@ export default function Sidebar() {
   const [isMobile, setIsMobile] = useState(false);
   const [hasMounted, setHasMounted] = useState(false);
 
-  // Load sidebar state from localStorage and check screen size on mount
+  // Check screen size on mount; sidebar always defaults to open on desktop
   useEffect(() => {
-    let shouldBeOpen = true; // Default state
-
-    try {
-      const savedState = localStorage.getItem(SIDEBAR_STATE_KEY);
-      if (savedState !== null) {
-        shouldBeOpen = savedState === "true";
-      }
-    } catch (error) {
-      // localStorage not available, use default state
-      console.warn("Failed to load sidebar state from localStorage:", error);
-    }
-
-    // On mobile, always start closed regardless of saved state
     const mobile = isMobileDevice();
     // eslint-disable-next-line react-hooks/set-state-in-effect -- initializing state from window dimensions on mount
     setIsMobile(mobile);
-    setIsOpen(mobile ? false : shouldBeOpen);
+    // Always open on desktop by default; always closed on mobile
+    setIsOpen(!mobile);
 
     // Enable transitions after initial state is resolved
     // Use requestAnimationFrame to ensure the browser has painted the correct initial state
@@ -59,14 +46,7 @@ export default function Sidebar() {
   }, []);
 
   const toggleSidebar = () => {
-    const newState = !isOpen;
-    setIsOpen(newState);
-    try {
-      localStorage.setItem(SIDEBAR_STATE_KEY, String(newState));
-    } catch (error) {
-      // localStorage not available, state will reset on page reload
-      console.warn("Failed to save sidebar state to localStorage:", error);
-    }
+    setIsOpen((prev) => !prev);
   };
 
   return (
@@ -117,10 +97,8 @@ export default function Sidebar() {
           <h2 className='text-xl font-bold whitespace-nowrap'>iCodeForBananas</h2>
 
           <nav className='flex flex-col gap-4 mt-6'>
+            {/* ── Main ──────────────────────────────────────── */}
             <div>
-              <h3 className='text-sm font-semibold text-gray-600 mb-2 uppercase tracking-wider whitespace-nowrap'>
-                Main
-              </h3>
               <div className='flex flex-col gap-1'>
                 <Link
                   href='/'
@@ -129,60 +107,25 @@ export default function Sidebar() {
                     pathname === "/" ? "bg-pink-100 text-gray-900 font-semibold" : "text-gray-700"
                   }`}
                 >
-                  Home
+                  🏠 Home
                 </Link>
               </div>
             </div>
 
+            {/* ── Music Theory ──────────────────────────────── */}
             <div>
               <h3 className='text-sm font-semibold text-gray-600 mb-2 uppercase tracking-wider whitespace-nowrap'>
-                Guitar Tools
+                Music Theory
               </h3>
               <div className='flex flex-col gap-1'>
                 <Link
-                  href='/fretboard'
+                  href='/circle-of-fifths'
                   onClick={() => isMobile && setIsOpen(false)}
                   className={`px-3 py-2 rounded hover:bg-pink-100 hover:text-gray-900 transition-colors whitespace-nowrap ${
-                    pathname === "/fretboard" ? "bg-pink-100 text-gray-900 font-semibold" : "text-gray-700"
+                    pathname === "/circle-of-fifths" ? "bg-pink-100 text-gray-900 font-semibold" : "text-gray-700"
                   }`}
                 >
-                  Fretboard
-                </Link>
-                <Link
-                  href='/fretboard-quiz'
-                  onClick={() => isMobile && setIsOpen(false)}
-                  className={`px-3 py-2 rounded hover:bg-pink-100 hover:text-gray-900 transition-colors whitespace-nowrap ${
-                    pathname === "/fretboard-quiz" ? "bg-pink-100 text-gray-900 font-semibold" : "text-gray-700"
-                  }`}
-                >
-                  Fretboard Quiz
-                </Link>
-                <Link
-                  href='/chord-progressions'
-                  onClick={() => isMobile && setIsOpen(false)}
-                  className={`px-3 py-2 rounded hover:bg-pink-100 hover:text-gray-900 transition-colors whitespace-nowrap ${
-                    pathname === "/chord-progressions" ? "bg-pink-100 text-gray-900 font-semibold" : "text-gray-700"
-                  }`}
-                >
-                  Progressions
-                </Link>
-                <Link
-                  href='/chord-shapes'
-                  onClick={() => isMobile && setIsOpen(false)}
-                  className={`px-3 py-2 rounded hover:bg-pink-100 hover:text-gray-900 transition-colors whitespace-nowrap ${
-                    pathname === "/chord-shapes" ? "bg-pink-100 text-gray-900 font-semibold" : "text-gray-700"
-                  }`}
-                >
-                  By Shape
-                </Link>
-                <Link
-                  href='/silent-metronome'
-                  onClick={() => isMobile && setIsOpen(false)}
-                  className={`px-3 py-2 rounded hover:bg-pink-100 hover:text-gray-900 transition-colors whitespace-nowrap ${
-                    pathname === "/silent-metronome" ? "bg-pink-100 text-gray-900 font-semibold" : "text-gray-700"
-                  }`}
-                >
-                  Silent Metronome
+                  Circle of Fifths
                 </Link>
                 <Link
                   href='/harmonic-flow'
@@ -194,13 +137,22 @@ export default function Sidebar() {
                   Harmonic Flow
                 </Link>
                 <Link
-                  href='/circle-of-fifths'
+                  href='/chord-progressions'
                   onClick={() => isMobile && setIsOpen(false)}
                   className={`px-3 py-2 rounded hover:bg-pink-100 hover:text-gray-900 transition-colors whitespace-nowrap ${
-                    pathname === "/circle-of-fifths" ? "bg-pink-100 text-gray-900 font-semibold" : "text-gray-700"
+                    pathname === "/chord-progressions" ? "bg-pink-100 text-gray-900 font-semibold" : "text-gray-700"
                   }`}
                 >
-                  Circle of Fifths
+                  Chord Progressions
+                </Link>
+                <Link
+                  href='/chord-shapes'
+                  onClick={() => isMobile && setIsOpen(false)}
+                  className={`px-3 py-2 rounded hover:bg-pink-100 hover:text-gray-900 transition-colors whitespace-nowrap ${
+                    pathname === "/chord-shapes" ? "bg-pink-100 text-gray-900 font-semibold" : "text-gray-700"
+                  }`}
+                >
+                  Chord Shapes
                 </Link>
                 <Link
                   href='/songwriter'
@@ -211,6 +163,33 @@ export default function Sidebar() {
                 >
                   Songwriter
                 </Link>
+              </div>
+            </div>
+
+            {/* ── Practice ──────────────────────────────────── */}
+            <div>
+              <h3 className='text-sm font-semibold text-gray-600 mb-2 uppercase tracking-wider whitespace-nowrap'>
+                Practice
+              </h3>
+              <div className='flex flex-col gap-1'>
+                <Link
+                  href='/fretboard'
+                  onClick={() => isMobile && setIsOpen(false)}
+                  className={`px-3 py-2 rounded hover:bg-pink-100 hover:text-gray-900 transition-colors whitespace-nowrap ${
+                    pathname === "/fretboard" ? "bg-pink-100 text-gray-900 font-semibold" : "text-gray-700"
+                  }`}
+                >
+                  Fretboard Explorer
+                </Link>
+                <Link
+                  href='/fretboard-quiz'
+                  onClick={() => isMobile && setIsOpen(false)}
+                  className={`px-3 py-2 rounded hover:bg-pink-100 hover:text-gray-900 transition-colors whitespace-nowrap ${
+                    pathname === "/fretboard-quiz" ? "bg-pink-100 text-gray-900 font-semibold" : "text-gray-700"
+                  }`}
+                >
+                  Fretboard Quiz
+                </Link>
                 <Link
                   href='/chord-practice'
                   onClick={() => isMobile && setIsOpen(false)}
@@ -220,9 +199,19 @@ export default function Sidebar() {
                 >
                   Chord Practice
                 </Link>
+                <Link
+                  href='/silent-metronome'
+                  onClick={() => isMobile && setIsOpen(false)}
+                  className={`px-3 py-2 rounded hover:bg-pink-100 hover:text-gray-900 transition-colors whitespace-nowrap ${
+                    pathname === "/silent-metronome" ? "bg-pink-100 text-gray-900 font-semibold" : "text-gray-700"
+                  }`}
+                >
+                  Silent Metronome
+                </Link>
               </div>
             </div>
 
+            {/* ── Trading ───────────────────────────────────── */}
             <div>
               <h3 className='text-sm font-semibold text-gray-600 mb-2 uppercase tracking-wider whitespace-nowrap'>
                 Trading
@@ -235,7 +224,7 @@ export default function Sidebar() {
                     pathname === "/trading-chart" ? "bg-pink-100 text-gray-900 font-semibold" : "text-gray-700"
                   }`}
                 >
-                  Time-Series Momentum
+                  Momentum Chart
                 </Link>
                 <Link
                   href='/algo-backtest'
@@ -249,11 +238,21 @@ export default function Sidebar() {
               </div>
             </div>
 
+            {/* ── Personal ──────────────────────────────────── */}
             <div>
               <h3 className='text-sm font-semibold text-gray-600 mb-2 uppercase tracking-wider whitespace-nowrap'>
-                Fitness
+                Personal
               </h3>
               <div className='flex flex-col gap-1'>
+                <Link
+                  href='/fire-estimator'
+                  onClick={() => isMobile && setIsOpen(false)}
+                  className={`px-3 py-2 rounded hover:bg-pink-100 hover:text-gray-900 transition-colors whitespace-nowrap ${
+                    pathname === "/fire-estimator" ? "bg-pink-100 text-gray-900 font-semibold" : "text-gray-700"
+                  }`}
+                >
+                  FIRE Estimator
+                </Link>
                 <Link
                   href='/workout-tracker'
                   onClick={() => isMobile && setIsOpen(false)}
@@ -266,26 +265,10 @@ export default function Sidebar() {
               </div>
             </div>
 
+            {/* ── Labs ──────────────────────────────────────── */}
             <div>
               <h3 className='text-sm font-semibold text-gray-600 mb-2 uppercase tracking-wider whitespace-nowrap'>
-                Finance
-              </h3>
-              <div className='flex flex-col gap-1'>
-                <Link
-                  href='/fire-estimator'
-                  onClick={() => isMobile && setIsOpen(false)}
-                  className={`px-3 py-2 rounded hover:bg-pink-100 hover:text-gray-900 transition-colors whitespace-nowrap ${
-                    pathname === "/fire-estimator" ? "bg-pink-100 text-gray-900 font-semibold" : "text-gray-700"
-                  }`}
-                >
-                  FIRE Estimator
-                </Link>
-              </div>
-            </div>
-
-            <div>
-              <h3 className='text-sm font-semibold text-gray-600 mb-2 uppercase tracking-wider whitespace-nowrap'>
-                Cloud
+                Labs
               </h3>
               <div className='flex flex-col gap-1'>
                 <Link
@@ -297,14 +280,6 @@ export default function Sidebar() {
                 >
                   Cloud Architect
                 </Link>
-              </div>
-            </div>
-
-            <div>
-              <h3 className='text-sm font-semibold text-gray-600 mb-2 uppercase tracking-wider whitespace-nowrap'>
-                Visualizations
-              </h3>
-              <div className='flex flex-col gap-1'>
                 <Link
                   href='/ascii-player'
                   onClick={() => isMobile && setIsOpen(false)}
