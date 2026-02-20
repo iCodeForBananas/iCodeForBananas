@@ -241,7 +241,7 @@ export default function SPDCrimeDensityPage() {
         {/* ── Map ─────────────────────────────────────────────────── */}
         <div>
           <SectionTitle>Incident Map</SectionTitle>
-          <div className="rounded-xl overflow-hidden border border-gray-800" style={{ height: 440 }}>
+          <div className="relative rounded-xl overflow-hidden border border-gray-800" style={{ height: 440 }}>
             {/* Map controls overlay */}
             <div className="absolute z-[1000] m-3 bg-gray-900/90 backdrop-blur border border-gray-700 rounded-lg px-4 py-3 flex items-center gap-4">
               <label className="text-xs text-gray-300 whitespace-nowrap">Most recent:</label>
