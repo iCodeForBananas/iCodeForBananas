@@ -648,8 +648,8 @@ export default function ChordPracticePage() {
                     <div className='text-center'>
                       <div className='bg-[var(--card-bg)] border border-[var(--card-border)] rounded-2xl p-12 mb-6 max-w-md mx-auto'>
                         <p className='text-[var(--foreground)]/70 mb-4 text-lg'>
-                          Practice chords that progressively get harder. Starting in the key of G, the game walks through
-                          the Circle of Fifths introducing new chord types as you advance.
+                          Practice chords that progressively get harder. Starting in the key of G, the game walks
+                          through the Circle of Fifths introducing new chord types as you advance.
                         </p>
                         <ul className='text-left text-sm text-[var(--foreground)]/60 space-y-1 mb-6'>
                           <li>• 10 seconds per chord</li>
@@ -693,7 +693,9 @@ export default function ChordPracticePage() {
                     {difficulty < difficultyTiers.length && (
                       <div>
                         <div className='flex justify-between text-xs text-[var(--foreground)]/60 mb-1'>
-                          <span>Lv {tier.level} → {tier.level + 1}</span>
+                          <span>
+                            Lv {tier.level} → {tier.level + 1}
+                          </span>
                           <span>{CHORDS_PER_LEVEL_UP - chordsInCurrentLevel} left</span>
                         </div>
                         <div className='h-2 bg-[var(--card-border)] rounded-full overflow-hidden'>
@@ -782,8 +784,6 @@ export default function ChordPracticePage() {
                   </div>
                 </div>
               )}
-
-
 
               {/* Difficulty reference */}
               <div className='mt-12'>

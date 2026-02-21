@@ -100,10 +100,7 @@ export default function ChordFinder() {
   const partialMatches = chordMatches.filter((m) => m.matchType !== "exact").slice(0, 20);
 
   // Notes to highlight when a chord is pinned
-  const pinnedNoteSet = useMemo(
-    () => new Set((pinnedChord?.notes ?? []).map((n) => n.toUpperCase())),
-    [pinnedChord]
-  );
+  const pinnedNoteSet = useMemo(() => new Set((pinnedChord?.notes ?? []).map((n) => n.toUpperCase())), [pinnedChord]);
 
   const matchTypeLabel = (m: ChordMatch) => {
     if (m.matchType === "exact") return "Exact";
@@ -198,13 +195,9 @@ export default function ChordFinder() {
                   return (
                     <div
                       key={reversedIndex}
-                      onClick={() => pinnedChord ? undefined : handleNoteClick(stringIndex, fret)}
+                      onClick={() => (pinnedChord ? undefined : handleNoteClick(stringIndex, fret))}
                       className={`note transition-colors select-none ${fret === 0 ? "open" : ""} ${
-                        isHighlighted
-                          ? "highlight"
-                          : pinnedChord
-                          ? "opacity-40"
-                          : "cursor-pointer hover:bg-pink-100"
+                        isHighlighted ? "highlight" : pinnedChord ? "opacity-40" : "cursor-pointer hover:bg-pink-100"
                       }`}
                       title={`${note} — string ${stringIndex + 1}, fret ${fret}`}
                     >
