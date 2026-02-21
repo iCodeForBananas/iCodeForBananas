@@ -155,6 +155,15 @@ export default function Sidebar() {
                   Chord Shapes
                 </Link>
                 <Link
+                  href='/chord-finder'
+                  onClick={() => isMobile && setIsOpen(false)}
+                  className={`px-3 py-2 rounded hover:bg-pink-100 hover:text-gray-900 transition-colors whitespace-nowrap ${
+                    pathname === "/chord-finder" ? "bg-pink-100 text-gray-900 font-semibold" : "text-gray-700"
+                  }`}
+                >
+                  Chord Finder
+                </Link>
+                <Link
                   href='/songwriter'
                   onClick={() => isMobile && setIsOpen(false)}
                   className={`px-3 py-2 rounded hover:bg-pink-100 hover:text-gray-900 transition-colors whitespace-nowrap ${

@@ -55,6 +55,108 @@ export const generateChordsAndScales = () => {
     chords[`${root}m7b5`] = [root, allNotes[(i + 3) % 12], allNotes[(i + 6) % 12], allNotes[(i + 10) % 12]];
     chords[`${root} add9`] = [root, allNotes[(i + 4) % 12], allNotes[(i + 7) % 12], allNotes[(i + 2) % 12]];
 
+    // 6th chords
+    chords[`${root}6`] = [root, allNotes[(i + 4) % 12], allNotes[(i + 7) % 12], allNotes[(i + 9) % 12]];
+    chords[`${root}m6`] = [root, allNotes[(i + 3) % 12], allNotes[(i + 7) % 12], allNotes[(i + 9) % 12]];
+    chords[`${root}6/9`] = [
+      root,
+      allNotes[(i + 4) % 12],
+      allNotes[(i + 7) % 12],
+      allNotes[(i + 9) % 12],
+      allNotes[(i + 2) % 12],
+    ];
+
+    // Fully diminished 7th
+    chords[`${root} dim7`] = [root, allNotes[(i + 3) % 12], allNotes[(i + 6) % 12], allNotes[(i + 9) % 12]];
+
+    // Suspended with 7th
+    chords[`${root}7sus4`] = [root, allNotes[(i + 5) % 12], allNotes[(i + 7) % 12], allNotes[(i + 10) % 12]];
+    chords[`${root}7sus2`] = [root, allNotes[(i + 2) % 12], allNotes[(i + 7) % 12], allNotes[(i + 10) % 12]];
+
+    // 11th chords
+    chords[`${root}11`] = [
+      root,
+      allNotes[(i + 4) % 12],
+      allNotes[(i + 7) % 12],
+      allNotes[(i + 10) % 12],
+      allNotes[(i + 2) % 12],
+      allNotes[(i + 5) % 12],
+    ];
+    chords[`${root}m11`] = [
+      root,
+      allNotes[(i + 3) % 12],
+      allNotes[(i + 7) % 12],
+      allNotes[(i + 10) % 12],
+      allNotes[(i + 2) % 12],
+      allNotes[(i + 5) % 12],
+    ];
+    chords[`${root} maj11`] = [
+      root,
+      allNotes[(i + 4) % 12],
+      allNotes[(i + 7) % 12],
+      allNotes[(i + 11) % 12],
+      allNotes[(i + 2) % 12],
+      allNotes[(i + 5) % 12],
+    ];
+
+    // 13th chords (minor)
+    chords[`${root}m13`] = [
+      root,
+      allNotes[(i + 3) % 12],
+      allNotes[(i + 7) % 12],
+      allNotes[(i + 10) % 12],
+      allNotes[(i + 2) % 12],
+      allNotes[(i + 5) % 12],
+      allNotes[(i + 9) % 12],
+    ];
+
+    // Altered dominant chords
+    chords[`${root}7b9`] = [
+      root,
+      allNotes[(i + 4) % 12],
+      allNotes[(i + 7) % 12],
+      allNotes[(i + 10) % 12],
+      allNotes[(i + 1) % 12],
+    ];
+    chords[`${root}7#9`] = [
+      root,
+      allNotes[(i + 4) % 12],
+      allNotes[(i + 7) % 12],
+      allNotes[(i + 10) % 12],
+      allNotes[(i + 3) % 12],
+    ];
+    chords[`${root}7b5`] = [root, allNotes[(i + 4) % 12], allNotes[(i + 6) % 12], allNotes[(i + 10) % 12]];
+    chords[`${root}7#5`] = [root, allNotes[(i + 4) % 12], allNotes[(i + 8) % 12], allNotes[(i + 10) % 12]];
+    chords[`${root}7#11`] = [
+      root,
+      allNotes[(i + 4) % 12],
+      allNotes[(i + 7) % 12],
+      allNotes[(i + 10) % 12],
+      allNotes[(i + 6) % 12],
+    ];
+
+    // Major 7 altered
+    chords[`${root} maj7#11`] = [
+      root,
+      allNotes[(i + 4) % 12],
+      allNotes[(i + 7) % 12],
+      allNotes[(i + 11) % 12],
+      allNotes[(i + 6) % 12],
+    ];
+    chords[`${root} maj7#5`] = [root, allNotes[(i + 4) % 12], allNotes[(i + 8) % 12], allNotes[(i + 11) % 12]];
+
+    // Minor with major 7th
+    chords[`${root}m maj7`] = [root, allNotes[(i + 3) % 12], allNotes[(i + 7) % 12], allNotes[(i + 11) % 12]];
+
+    // Minor add9
+    chords[`${root}m add9`] = [root, allNotes[(i + 3) % 12], allNotes[(i + 7) % 12], allNotes[(i + 2) % 12]];
+
+    // Add 11
+    chords[`${root} add11`] = [root, allNotes[(i + 4) % 12], allNotes[(i + 7) % 12], allNotes[(i + 5) % 12]];
+
+    // Power chord (5)
+    chords[`${root}5`] = [root, allNotes[(i + 7) % 12]];
+
     // Common scales
     const map = (arr: number[]) => arr.map((x) => allNotes[(i + x) % 12]);
     scales[`${root} Major`] = map([0, 2, 4, 5, 7, 9, 11]);
@@ -143,7 +245,11 @@ export const progressionPresets: ProgressionPreset[] = [
 ];
 
 // Build a list of chord names for a key + preset + optional voicing
-export function buildProgressionChords(keyRoot: string, preset: ProgressionPreset, voicing: string = "triad"): string[] {
+export function buildProgressionChords(
+  keyRoot: string,
+  preset: ProgressionPreset,
+  voicing: string = "triad",
+): string[] {
   const rootIndex = allNotes.indexOf(keyRoot);
   if (rootIndex < 0) return [];
 
