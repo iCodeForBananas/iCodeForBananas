@@ -1,19 +1,40 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { QUESTIONS, type Question, type Domain } from "./quizQuestions";
+import { QUESTIONS, AI_QUESTIONS, type Question, type Cert } from "./quizQuestions";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
-type Mode = "menu" | "exam" | "practice" | "results";
+type Mode = "certSelect" | "menu" | "exam" | "practice" | "results";
 
 interface Answer {
   questionId: string;
   selectedIndex: number | null;
 }
 
-const DOMAINS: Domain[] = ["Cloud Concepts", "Security & Compliance", "Technology", "Billing & Pricing"];
-const EXAM_DURATION = 90 * 60; // 90 minutes in seconds
+const CCP_DOMAINS = ["Cloud Concepts", "Security & Compliance", "Technology", "Billing & Pricing"] as const;
+const AI_DOMAINS = ["AI Fundamentals", "AI & ML Services", "Responsible AI", "AI Security & Compliance"] as const;
+
+const CERT_CONFIG = {
+  "clf-c02": {
+    label: "AWS Cloud Practitioner",
+    code: "CLF-C02",
+    questions: QUESTIONS,
+    domains: CCP_DOMAINS as unknown as string[],
+    examCount: 65,
+    examMinutes: 90,
+  },
+  "aif-c01": {
+    label: "AWS AI Practitioner",
+    code: "AIF-C01",
+    questions: AI_QUESTIONS,
+    domains: AI_DOMAINS as unknown as string[],
+    examCount: 65,
+    examMinutes: 90,
+  },
+} satisfies Record<Cert, unknown>;
+
+const EXAM_DURATION = 90 * 60;
 
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
@@ -24,17 +45,16 @@ function shuffle<T>(arr: T[]): T[] {
   return a;
 }
 
-function getExamQuestions(): Question[] {
-  // Pick questions proportionally across domains to fill 65 slots
-  const perDomain = Math.floor(65 / DOMAINS.length);
+function getExamQuestions(cert: Cert): Question[] {
+  const { questions, domains, examCount } = CERT_CONFIG[cert];
+  const perDomain = Math.floor(examCount / domains.length);
   const selected: Question[] = [];
-  for (const domain of DOMAINS) {
-    const pool = shuffle(QUESTIONS.filter((q) => q.domain === domain));
+  for (const domain of domains) {
+    const pool = shuffle(questions.filter((q) => q.domain === domain));
     selected.push(...pool.slice(0, perDomain));
   }
-  // Fill remaining slots from any domain
-  const remaining = shuffle(QUESTIONS.filter((q) => !selected.includes(q)));
-  selected.push(...remaining.slice(0, 65 - selected.length));
+  const remaining = shuffle(questions.filter((q) => !selected.includes(q)));
+  selected.push(...remaining.slice(0, examCount - selected.length));
   return shuffle(selected);
 }
 
@@ -59,8 +79,8 @@ function formatTime(s: number) {
 
 // ── Domain Score ───────────────────────────────────────────────────────────────
 
-function calcDomainScores(questions: Question[], answers: Answer[]) {
-  return DOMAINS.map((domain) => {
+function calcDomainScores(questions: Question[], answers: Answer[], domains: string[]) {
+  return domains.map((domain) => {
     const qs = questions.filter((q) => q.domain === domain);
     const correct = qs.filter((q) => {
       const a = answers.find((a) => a.questionId === q.id);
@@ -82,16 +102,59 @@ const S = {
   card: "rounded-2xl border border-[var(--border-color)] bg-[var(--bg-secondary)] p-5",
 };
 
-// ── Menu Screen ────────────────────────────────────────────────────────────────
+// ── Cert Select Screen ─────────────────────────────────────────────────────────
 
-function MenuScreen({ onStart }: { onStart: (mode: "exam" | "practice") => void }) {
+function CertSelectScreen({ onSelect }: { onSelect: (cert: Cert) => void }) {
+  const certs: Cert[] = ["clf-c02", "aif-c01"];
   return (
     <div className="flex flex-col items-center justify-center min-h-screen gap-8 px-4" style={{ background: "var(--bg-primary)", color: "var(--text-primary)" }}>
       <div className="text-center">
-        <div className={`${S.badge} mb-4 inline-block`}>AWS CLOUD PRACTITIONER · CLF-C02</div>
-        <h1 className="text-3xl font-bold mb-2" style={{ color: "var(--text-primary)" }}>Certification Quiz</h1>
+        <div className={`${S.badge} mb-4 inline-block`}>AWS CERTIFICATION QUIZ</div>
+        <h1 className="text-3xl font-bold mb-2">Choose a Certification</h1>
+        <p className="text-sm" style={{ color: "var(--text-secondary)" }}>Select the exam you want to practice</p>
+      </div>
+      <div className="grid sm:grid-cols-2 gap-4 w-full max-w-2xl">
+        {certs.map((cert) => {
+          const cfg = CERT_CONFIG[cert];
+          return (
+            <button
+              key={cert}
+              onClick={() => onSelect(cert)}
+              className="flex flex-col gap-3 p-6 rounded-2xl border transition-all text-left hover:-translate-y-1 hover:shadow-lg"
+              style={{
+                borderColor: "color-mix(in oklab, var(--accent) 30%, var(--border-color))",
+                background: "color-mix(in oklab, var(--accent) 6%, var(--bg-secondary))",
+              }}
+            >
+              <div className={`${S.badge} self-start`}>{cfg.code}</div>
+              <span className="font-bold text-lg" style={{ color: "var(--text-primary)" }}>{cfg.label}</span>
+              <p className="text-xs leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+                {cfg.questions.length} questions · {cfg.domains.length} domains · {cfg.examMinutes} min exam
+              </p>
+              <div className="flex gap-2 flex-wrap">
+                {cfg.domains.map((d) => (
+                  <span key={d} className="text-[10px] px-2 py-0.5 rounded-full border font-medium" style={{ color: "var(--text-secondary)", borderColor: "var(--border-color)", background: "var(--bg-primary)" }}>{d}</span>
+                ))}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── Menu Screen ────────────────────────────────────────────────────────────────
+
+function MenuScreen({ cert, onStart, onBack }: { cert: Cert; onStart: (mode: "exam" | "practice") => void; onBack: () => void }) {
+  const cfg = CERT_CONFIG[cert];
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen gap-8 px-4" style={{ background: "var(--bg-primary)", color: "var(--text-primary)" }}>
+      <div className="text-center">
+        <div className={`${S.badge} mb-4 inline-block`}>{cfg.label.toUpperCase()} · {cfg.code}</div>
+        <h1 className="text-3xl font-bold mb-2">Certification Quiz</h1>
         <p className="text-sm max-w-md" style={{ color: "var(--text-secondary)" }}>
-          {QUESTIONS.length} questions across 4 official exam domains
+          {cfg.questions.length} questions across {cfg.domains.length} official exam domains
         </p>
       </div>
 
@@ -109,10 +172,10 @@ function MenuScreen({ onStart }: { onStart: (mode: "exam" | "practice") => void 
             <span className="font-bold" style={{ color: "var(--text-primary)" }}>Exam Mode</span>
           </div>
           <p className="text-xs leading-relaxed" style={{ color: "var(--text-secondary)" }}>
-            65 questions · 90 minutes · No feedback until the end. Simulates the real exam environment.
+            {cfg.examCount} questions · {cfg.examMinutes} minutes · No feedback until the end.
           </p>
           <div className="flex gap-2 flex-wrap">
-            {["65 Questions", "90 Min", "Timed"].map((t) => (
+            {[`${cfg.examCount} Questions`, `${cfg.examMinutes} Min`, "Timed"].map((t) => (
               <span key={t} className={S.badge}>{t}</span>
             ))}
           </div>
@@ -121,17 +184,14 @@ function MenuScreen({ onStart }: { onStart: (mode: "exam" | "practice") => void 
         <button
           onClick={() => onStart("practice")}
           className="flex flex-col gap-3 p-6 rounded-2xl border transition-all text-left hover:-translate-y-1 hover:shadow-lg"
-          style={{
-            borderColor: "var(--border-color)",
-            background: "var(--bg-secondary)",
-          }}
+          style={{ borderColor: "var(--border-color)", background: "var(--bg-secondary)" }}
         >
           <div className="flex items-center gap-2">
             <span className="text-lg" style={{ color: "var(--accent)" }}>📚</span>
             <span className="font-bold" style={{ color: "var(--text-primary)" }}>Practice Mode</span>
           </div>
           <p className="text-xs leading-relaxed" style={{ color: "var(--text-secondary)" }}>
-            Immediate feedback after every answer with detailed explanations of why each answer is correct.
+            Immediate feedback after every answer with detailed explanations.
           </p>
           <div className="flex gap-2 flex-wrap">
             {["Instant Feedback", "Explanations", "Learn"].map((t) => (
@@ -142,8 +202,8 @@ function MenuScreen({ onStart }: { onStart: (mode: "exam" | "practice") => void 
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full max-w-2xl">
-        {DOMAINS.map((d) => {
-          const count = QUESTIONS.filter((q) => q.domain === d).length;
+        {cfg.domains.map((d) => {
+          const count = cfg.questions.filter((q) => q.domain === d).length;
           return (
             <div key={d} className={`${S.card} text-center`}>
               <div className="text-lg font-bold" style={{ color: "var(--accent)" }}>{count}</div>
@@ -152,6 +212,8 @@ function MenuScreen({ onStart }: { onStart: (mode: "exam" | "practice") => void 
           );
         })}
       </div>
+
+      <button onClick={onBack} className={`${S.btn} ${S.btnGhost} text-xs`}>← Change Certification</button>
     </div>
   );
 }
@@ -159,19 +221,10 @@ function MenuScreen({ onStart }: { onStart: (mode: "exam" | "practice") => void 
 // ── Question Card ──────────────────────────────────────────────────────────────
 
 function QuestionCard({
-  question,
-  index,
-  total,
-  selectedIndex,
-  onSelect,
-  showFeedback,
+  question, index, total, selectedIndex, onSelect, showFeedback,
 }: {
-  question: Question;
-  index: number;
-  total: number;
-  selectedIndex: number | null;
-  onSelect: (i: number) => void;
-  showFeedback: boolean;
+  question: Question; index: number; total: number; selectedIndex: number | null;
+  onSelect: (i: number) => void; showFeedback: boolean;
 }) {
   return (
     <div className="flex flex-col gap-5">
@@ -179,9 +232,7 @@ function QuestionCard({
         <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--accent)" }}>{question.domain}</span>
         <span className="text-[10px]" style={{ color: "var(--text-secondary)" }}>Q {index + 1} / {total}</span>
       </div>
-
       <p className="text-base leading-relaxed" style={{ color: "var(--text-primary)" }}>{question.question}</p>
-
       <div className="flex flex-col gap-2">
         {question.options.map((opt, i) => {
           const isSelected = selectedIndex === i;
@@ -210,7 +261,6 @@ function QuestionCard({
           );
         })}
       </div>
-
       {showFeedback && (
         <div className="rounded-xl border p-4" style={{ borderColor: "rgba(34,197,94,0.3)", background: "rgba(34,197,94,0.05)" }}>
           <div className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: "#22c55e" }}>Explanation</div>
@@ -224,13 +274,9 @@ function QuestionCard({
 // ── Results Screen ─────────────────────────────────────────────────────────────
 
 function ResultsScreen({
-  questions,
-  answers,
-  onRestart,
+  questions, answers, domains, onRestart,
 }: {
-  questions: Question[];
-  answers: Answer[];
-  onRestart: () => void;
+  questions: Question[]; answers: Answer[]; domains: string[]; onRestart: () => void;
 }) {
   const [reviewIndex, setReviewIndex] = useState<number | null>(null);
   const correct = answers.filter((a) => {
@@ -239,7 +285,7 @@ function ResultsScreen({
   }).length;
   const pct = Math.round((correct / questions.length) * 100);
   const passed = pct >= 70;
-  const domainScores = calcDomainScores(questions, answers);
+  const domainScores = calcDomainScores(questions, answers, domains);
 
   if (reviewIndex !== null) {
     const q = questions[reviewIndex];
@@ -253,14 +299,7 @@ function ResultsScreen({
             {reviewIndex < questions.length - 1 && <button onClick={() => setReviewIndex(reviewIndex + 1)} className={`${S.btn} ${S.btnGhost}`}>Next</button>}
           </div>
         </div>
-        <QuestionCard
-          question={q}
-          index={reviewIndex}
-          total={questions.length}
-          selectedIndex={a?.selectedIndex ?? null}
-          onSelect={() => {}}
-          showFeedback
-        />
+        <QuestionCard question={q} index={reviewIndex} total={questions.length} selectedIndex={a?.selectedIndex ?? null} onSelect={() => {}} showFeedback />
       </div>
     );
   }
@@ -268,7 +307,7 @@ function ResultsScreen({
   return (
     <div className="max-w-2xl mx-auto px-4 py-8 flex flex-col gap-6" style={{ background: "var(--bg-primary)", color: "var(--text-primary)" }}>
       <div className={`${S.card} text-center`}>
-        <div className={`text-5xl font-bold mb-1`} style={{ color: passed ? "#22c55e" : "#ef4444" }}>{pct}%</div>
+        <div className="text-5xl font-bold mb-1" style={{ color: passed ? "#22c55e" : "#ef4444" }}>{pct}%</div>
         <div className="text-sm font-bold mb-1" style={{ color: passed ? "#22c55e" : "#ef4444" }}>
           {passed ? "PASS" : "FAIL"} · {correct}/{questions.length} correct
         </div>
@@ -287,10 +326,7 @@ function ResultsScreen({
                   <span style={{ color: p >= 70 ? "#22c55e" : "#ef4444" }}>{correct}/{total} · {p}%</span>
                 </div>
                 <div className="h-1.5 rounded-full" style={{ background: "var(--border-color)" }}>
-                  <div
-                    className="h-full rounded-full transition-all"
-                    style={{ width: `${p}%`, background: p >= 70 ? "#22c55e" : "#ef4444" }}
-                  />
+                  <div className="h-full rounded-full transition-all" style={{ width: `${p}%`, background: p >= 70 ? "#22c55e" : "#ef4444" }} />
                 </div>
               </div>
             );
@@ -322,11 +358,7 @@ function ResultsScreen({
         </div>
       </div>
 
-      <button
-        onClick={onRestart}
-        className={`${S.btn} ${S.btnPrimary} w-full`}
-        style={{ background: "var(--seam-gradient)" }}
-      >
+      <button onClick={onRestart} className={`${S.btn} ${S.btnPrimary} w-full`} style={{ background: "var(--seam-gradient)" }}>
         Start New Session
       </button>
     </div>
@@ -336,7 +368,8 @@ function ResultsScreen({
 // ── Main Component ─────────────────────────────────────────────────────────────
 
 export default function AwsQuiz() {
-  const [mode, setMode] = useState<Mode>("menu");
+  const [mode, setMode] = useState<Mode>("certSelect");
+  const [cert, setCert] = useState<Cert>("clf-c02");
   const [questions, setQuestions] = useState<Question[]>([]);
   const [answers, setAnswers] = useState<Answer[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -348,22 +381,25 @@ export default function AwsQuiz() {
 
   const currentAnswer = answers.find((a) => a.questionId === questions[currentIndex]?.id);
 
+  const selectCert = (c: Cert) => {
+    setCert(c);
+    setMode("menu");
+  };
+
   const startSession = useCallback((m: "exam" | "practice") => {
-    const qs = getExamQuestions();
+    const qs = getExamQuestions(cert);
     setQuestions(qs);
     setAnswers(qs.map((q) => ({ questionId: q.id, selectedIndex: null })));
     setCurrentIndex(0);
     setPracticeRevealed(false);
     resetTimer();
     setMode(m);
-  }, [resetTimer]);
+  }, [cert, resetTimer]);
 
-  // Auto-submit when exam timer expires
   useEffect(() => {
     if (timerExpired) setMode("results");
   }, [timerExpired]);
 
-  // Scroll sidebar item into view
   useEffect(() => {
     const el = sidebarRef.current?.querySelector(`[data-idx="${currentIndex}"]`);
     el?.scrollIntoView({ block: "nearest" });
@@ -376,32 +412,33 @@ export default function AwsQuiz() {
     if (mode === "practice") setPracticeRevealed(true);
   };
 
-  const goTo = (i: number) => {
-    setCurrentIndex(i);
-    setPracticeRevealed(false);
-  };
-
+  const goTo = (i: number) => { setCurrentIndex(i); setPracticeRevealed(false); };
   const submitExam = () => setMode("results");
 
-  if (mode === "menu") return <div className={S.page} style={{ background: "var(--bg-primary)" }}><MenuScreen onStart={startSession} /></div>;
-  if (mode === "results") return (
-    <div className={S.page} style={{ background: "var(--bg-primary)" }}>
-      <div className={S.header}>
-        <span className={S.badge}>RESULTS</span>
+  if (mode === "certSelect") return <div className={S.page} style={{ background: "var(--bg-primary)" }}><CertSelectScreen onSelect={selectCert} /></div>;
+  if (mode === "menu") return <div className={S.page} style={{ background: "var(--bg-primary)" }}><MenuScreen cert={cert} onStart={startSession} onBack={() => setMode("certSelect")} /></div>;
+  if (mode === "results") {
+    const domains = CERT_CONFIG[cert].domains;
+    return (
+      <div className={S.page} style={{ background: "var(--bg-primary)" }}>
+        <div className={S.header}>
+          <span className={S.badge}>RESULTS</span>
+        </div>
+        <ResultsScreen questions={questions} answers={answers} domains={domains} onRestart={() => setMode("menu")} />
       </div>
-      <ResultsScreen questions={questions} answers={answers} onRestart={() => setMode("menu")} />
-    </div>
-  );
+    );
+  }
 
   const answered = answers.filter((a) => a.selectedIndex !== null).length;
   const q = questions[currentIndex];
+  const cfg = CERT_CONFIG[cert];
 
   return (
     <div className={`${S.page} flex flex-col`} style={{ height: "100vh", background: "var(--bg-primary)", color: "var(--text-primary)" }}>
-      {/* Header */}
       <div className={S.header}>
         <div className="flex items-center gap-3">
           <span className={S.badge}>{mode === "exam" ? "EXAM MODE" : "PRACTICE MODE"}</span>
+          <span className="text-xs hidden sm:inline" style={{ color: "var(--text-secondary)" }}>{cfg.code}</span>
           <span className="text-xs" style={{ color: "var(--text-secondary)" }}>{answered}/{questions.length} answered</span>
         </div>
         <div className="flex items-center gap-3">
@@ -415,15 +452,11 @@ export default function AwsQuiz() {
               Submit Exam
             </button>
           )}
-          <button onClick={() => setMode("menu")} className={`${S.btn} ${S.btnGhost} text-xs`}>
-            Exit
-          </button>
+          <button onClick={() => setMode("menu")} className={`${S.btn} ${S.btnGhost} text-xs`}>Exit</button>
         </div>
       </div>
 
-      {/* Body */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar */}
         <div
           ref={sidebarRef}
           className="w-20 shrink-0 border-r overflow-y-auto p-2 flex flex-col gap-1"
@@ -434,16 +467,9 @@ export default function AwsQuiz() {
             const isAnswered = ans?.selectedIndex !== null && ans?.selectedIndex !== undefined;
             const isCorrect = isAnswered && ans?.selectedIndex === question.correctIndex;
             const isCurrent = i === currentIndex;
-            // In practice mode show green/red; in exam mode just show answered (accent)
-            const answeredColor = mode === "practice"
-              ? (isCorrect ? "#22c55e" : "#ef4444")
-              : "var(--accent)";
-            const answeredBorder = mode === "practice"
-              ? (isCorrect ? "rgba(34,197,94,0.4)" : "rgba(239,68,68,0.4)")
-              : "color-mix(in oklab, var(--accent) 40%, transparent)";
-            const answeredBg = mode === "practice"
-              ? (isCorrect ? "rgba(34,197,94,0.06)" : "rgba(239,68,68,0.06)")
-              : "color-mix(in oklab, var(--accent) 8%, transparent)";
+            const answeredColor = mode === "practice" ? (isCorrect ? "#22c55e" : "#ef4444") : "var(--accent)";
+            const answeredBorder = mode === "practice" ? (isCorrect ? "rgba(34,197,94,0.4)" : "rgba(239,68,68,0.4)") : "color-mix(in oklab, var(--accent) 40%, transparent)";
+            const answeredBg = mode === "practice" ? (isCorrect ? "rgba(34,197,94,0.06)" : "rgba(239,68,68,0.06)") : "color-mix(in oklab, var(--accent) 8%, transparent)";
             return (
               <button
                 key={question.id}
@@ -462,7 +488,6 @@ export default function AwsQuiz() {
           })}
         </div>
 
-        {/* Question area */}
         <div className="flex-1 overflow-y-auto p-6">
           <div className="max-w-2xl mx-auto flex flex-col gap-6">
             <QuestionCard
@@ -473,7 +498,6 @@ export default function AwsQuiz() {
               onSelect={selectAnswer}
               showFeedback={mode === "practice" && practiceRevealed}
             />
-
             <div className="flex justify-between">
               <button
                 onClick={() => goTo(Math.max(0, currentIndex - 1))}
