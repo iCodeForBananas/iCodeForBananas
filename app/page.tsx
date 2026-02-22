@@ -185,23 +185,28 @@ const MODULES: Module[] = [
 const AI_STEPS = [
   {
     number: "01",
-    title: "Spec in Parallel",
-    body: "Concurrent agents own the schema, API contract, and component tree simultaneously. The spec is locked before a file is touched.",
+    title: "Identify the Problem",
+    body: "Real products start with real conversations. I dig into what's actually blocking someone before writing a line of code — because building the right thing matters more than building fast.",
   },
   {
     number: "02",
-    title: "Build the Full Slice",
-    body: "DB → API → UI scaffolded in one pass. A working vertical slice is clickable the same day the spec closes.",
+    title: "Design the Solution",
+    body: "I map the full solution — data model, user flow, edge cases — then bring concurrent AI sessions in to scaffold every layer at once. Clear thinking up front makes the build phase effortless.",
   },
   {
     number: "03",
-    title: "Test & Merge",
-    body: "Coverage is generated alongside code, not after. A pre-merge audit catches conflicts before they reach users.",
+    title: "Test It Honestly",
+    body: "Coverage is written alongside the feature, not after. I test the happy path and the edges, so what ships is solid and what breaks is caught before anyone else sees it.",
   },
   {
     number: "04",
-    title: "Ship & Observe",
-    body: "Error boundaries and rollback paths are in the spec from day one. Every deployment closes the lifecycle cleanly.",
+    title: "Deploy with Intention",
+    body: "Every release goes out with error boundaries, rollback paths, and observability already in place. The goal isn't just to ship — it's to ship something that keeps working.",
+  },
+  {
+    number: "05",
+    title: "Repeat and Build Momentum",
+    body: "Each completed cycle makes the next one faster. Patterns compound, confidence grows, and the product improves in ways that only come from sustained, deliberate iteration.",
   },
 ];
 
@@ -543,12 +548,7 @@ export default function Home() {
             >
               Explore the Lab
             </a>
-            <a
-              href='#how-i-build'
-              className='px-7 py-3 rounded-full font-semibold text-sm border border-[var(--border-dark)] text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] transition-colors'
-            >
-              How I Work
-            </a>
+
           </div>
         </div>
 
@@ -572,30 +572,30 @@ export default function Home() {
         <div className='max-w-5xl mx-auto'>
           <SectionLabel>How I Work</SectionLabel>
           <h2 className='text-4xl md:text-5xl font-bold leading-tight mb-4'>
-            Parallel agents. <GradientText>One coherent product.</GradientText>
+            A cycle that <GradientText>builds momentum.</GradientText>
           </h2>
           <p className='text-[var(--text-secondary)] text-base md:text-lg max-w-2xl mb-14 leading-relaxed'>
-            Concurrent AI sessions across every layer — spec, build, test, ship — so the full product lifecycle moves
-            as one without bottlenecks between phases.
+            Every great product is the result of the same loop, run well and run repeatedly. AI lets me
+            run that loop faster than ever — without skipping the steps that make the outcome worth having.
           </p>
 
-          <div className='grid sm:grid-cols-2 md:grid-cols-4 gap-6'>
+          <div className='flex flex-col gap-4'>
             {AI_STEPS.map(({ number, title, body }) => (
               <div
                 key={number}
-                className='flex gap-5 p-6 rounded-2xl border'
+                className='flex items-start gap-6 p-6 rounded-2xl border'
                 style={{
                   background: "var(--bg-primary)",
                   borderColor: "var(--border-color)",
                 }}
               >
                 <span
-                  className='shrink-0 text-2xl font-bold tabular-nums leading-none mt-0.5'
+                  className='shrink-0 text-2xl font-bold tabular-nums leading-none mt-0.5 w-8'
                   style={{ color: "color-mix(in oklab, var(--accent) 40%, var(--border-color))" }}
                 >
                   {number}
                 </span>
-                <div className='flex flex-col gap-1.5'>
+                <div className='flex flex-col gap-1 flex-1'>
                   <h3 className='font-bold text-[var(--text-primary)]'>{title}</h3>
                   <p className='text-sm text-[var(--text-secondary)] leading-relaxed'>{body}</p>
                 </div>
@@ -603,23 +603,7 @@ export default function Home() {
             ))}
           </div>
 
-          {/* Signal strip */}
-          <div
-            className='mt-10 p-6 rounded-2xl border flex flex-col sm:flex-row items-start sm:items-center gap-4'
-            style={{
-              background: "color-mix(in oklab, var(--accent) 6%, var(--bg-secondary))",
-              borderColor: "color-mix(in oklab, var(--accent) 25%, var(--border-color))",
-            }}
-          >
-            <span className='text-3xl shrink-0' style={{ color: "var(--accent)" }}>
-              ⬡
-            </span>
-            <div>
-              <p className='font-semibold text-[var(--text-primary)] text-sm'>
-                Spec → Build → Test → Ship — compressed in parallel, never cut short.
-              </p>
-            </div>
-          </div>
+
         </div>
       </section>
 
