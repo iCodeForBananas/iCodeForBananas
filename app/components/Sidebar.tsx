@@ -281,6 +281,15 @@ export default function Sidebar() {
               </h3>
               <div className='flex flex-col gap-1'>
                 <Link
+                  href='/aws-quiz'
+                  onClick={() => isMobile && setIsOpen(false)}
+                  className={`px-3 py-2 rounded hover:bg-pink-100 hover:text-gray-900 transition-colors whitespace-nowrap ${
+                    pathname === "/aws-quiz" ? "bg-pink-100 text-gray-900 font-semibold" : "text-gray-700"
+                  }`}
+                >
+                  AWS CCP Quiz
+                </Link>
+                <Link
                   href='/cloud-architect'
                   onClick={() => isMobile && setIsOpen(false)}
                   className={`px-3 py-2 rounded hover:bg-pink-100 hover:text-gray-900 transition-colors whitespace-nowrap ${

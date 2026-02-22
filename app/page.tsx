@@ -172,6 +172,16 @@ const MODULES: Module[] = [
     size: "small",
   },
   {
+    slug: "aws-quiz",
+    title: "AWS CCP Quiz",
+    category: "Certification Prep",
+    description:
+      "Full-length AWS Cloud Practitioner exam simulator with Exam Mode (90 min, 65 questions) and Practice Mode with instant feedback and domain-based scoring.",
+    stack: ["React", "TypeScript", "Static Question Bank"],
+    metric: "65 questions · 4 domains",
+    size: "small",
+  },
+  {
     slug: "ascii-player",
     title: "ASCII Player",
     category: "Labs",
