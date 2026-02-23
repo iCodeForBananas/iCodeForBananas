@@ -31,7 +31,7 @@ const formatChordLabel = (note: string, type: string) => {
   return `${note} ${type}`;
 };
 
-/** Collect all available voicings for a given note + chord type. */
+/** Collect all available voicings for a given note + chord type (deduplicated). */
 const getAllVoicings = (note: string, type: string): LabeledShape[] => {
   const voicings: LabeledShape[] = [];
   const seenFrets = new Set<string>();
@@ -63,8 +63,7 @@ const getAllVoicings = (note: string, type: string): LabeledShape[] => {
     const shift = semitoneFromA(note);
     const aShape = transposeShape(aTemplate, shift);
     if (aShape) {
-      const fret = shift;
-      const label = fret === 0 ? "A-Shape (Open)" : `A-Shape (${fret}fr)`;
+      const label = shift === 0 ? "A-Shape (Open)" : `A-Shape (${shift}fr)`;
       addIfNew(aShape, label);
     }
   }
@@ -75,8 +74,7 @@ const getAllVoicings = (note: string, type: string): LabeledShape[] => {
     const shift = semitoneFromE(note);
     const eShape = transposeShape(eTemplate, shift);
     if (eShape) {
-      const fret = shift;
-      const label = fret === 0 ? "E-Shape (Open)" : `E-Shape (${fret}fr)`;
+      const label = shift === 0 ? "E-Shape (Open)" : `E-Shape (${shift}fr)`;
       addIfNew(eShape, label);
     }
   }
@@ -85,13 +83,11 @@ const getAllVoicings = (note: string, type: string): LabeledShape[] => {
 };
 
 interface ChordDiagramProps {
-  chord: string;
-  label: string;
   shape: ChordShape;
   useFlats: boolean;
 }
 
-const ChordDiagram = ({ chord, label, shape, useFlats }: ChordDiagramProps) => {
+const ChordDiagram = ({ shape, useFlats }: ChordDiagramProps) => {
   const noteNames = useFlats ? flatNotes : sharpNotes;
 
   const getNoteAtFret = (openNote: string, fret: number) => {
@@ -111,109 +107,153 @@ const ChordDiagram = ({ chord, label, shape, useFlats }: ChordDiagramProps) => {
   const diagramHeight = fretSpacing * displayFrets + 40;
 
   return (
-    <div className='chord-diagram flex flex-col items-center'>
-      <h6 className='text-center mb-0.5 font-semibold text-sm'>{chord}</h6>
-      <p className='text-center text-xs text-gray-500 mb-1'>{label}</p>
-      <div className='relative' style={{ width: `${diagramWidth}px`, height: `${diagramHeight}px` }}>
-        {/* Muted / Open string indicators */}
-        <div className='flex' style={{ paddingLeft: "10px", marginBottom: "2px" }}>
-          {shape.frets.map((fret, i) => (
-            <span
-              key={i}
-              className='text-center text-xs font-medium'
-              style={{ width: `${stringSpacing}px`, color: fret === -1 ? "#9ca3af" : "transparent" }}
-            >
-              {fret === -1 ? "✕" : ""}
-            </span>
-          ))}
-        </div>
-
-        {/* Starting fret indicator */}
-        {startFret > 1 && (
+    <div className='relative' style={{ width: `${diagramWidth}px`, height: `${diagramHeight}px` }}>
+      {/* Muted / Open string indicators */}
+      <div className='flex' style={{ paddingLeft: "10px", marginBottom: "2px" }}>
+        {shape.frets.map((fret, i) => (
           <span
-            className='absolute text-xs font-medium text-gray-500'
-            style={{ left: `${diagramWidth + 2}px`, top: "24px" }}
+            key={i}
+            className='text-center text-xs font-medium'
+            style={{ width: `${stringSpacing}px`, color: fret === -1 ? "#9ca3af" : "transparent" }}
           >
-            {startFret}fr
+            {fret === -1 ? "✕" : ""}
           </span>
-        )}
-
-        {/* Strings (vertical lines) */}
-        {[0, 1, 2, 3, 4, 5].map((stringIndex) => (
-          <div
-            key={stringIndex}
-            className='absolute bg-gray-400'
-            style={{
-              left: `${stringIndex * stringSpacing + 10}px`,
-              top: "20px",
-              width: "1px",
-              height: `${fretSpacing * displayFrets}px`,
-              zIndex: 1,
-            }}
-          />
         ))}
-
-        {/* Frets (horizontal lines) */}
-        {Array.from({ length: displayFrets + 1 }, (_, i) => i).map((fret) => (
-          <div
-            key={fret}
-            className={`absolute ${fret === 0 && startFret <= 1 ? "bg-gray-800" : "bg-gray-400"}`}
-            style={{
-              left: "6px",
-              top: `${20 + fret * fretSpacing}px`,
-              width: `${stringSpacing * 5 + 8}px`,
-              height: fret === 0 && startFret <= 1 ? "3px" : "1px",
-              zIndex: 1,
-            }}
-          />
-        ))}
-
-        {/* Finger dots */}
-        {shape.frets.map((fretNum, stringIndex) => {
-          if (fretNum === -1) return null;
-
-          const note = getNoteAtFret(stringNotes[stringIndex], fretNum);
-          const dotSize = 18;
-
-          if (fretNum === 0) {
-            return (
-              <div
-                key={stringIndex}
-                className='absolute rounded-full border-2 border-blue-500 bg-white flex items-center justify-center font-bold'
-                style={{
-                  left: `${stringIndex * stringSpacing + 10 - dotSize / 2}px`,
-                  top: `${20 - dotSize - 2}px`,
-                  width: `${dotSize}px`,
-                  height: `${dotSize}px`,
-                  fontSize: "9px",
-                  zIndex: 2,
-                }}
-              >
-                {note}
-              </div>
-            );
-          } else if (fretNum > 0) {
-            const displayPos = fretNum - startFret;
-            return (
-              <div
-                key={stringIndex}
-                className='absolute bg-blue-500 rounded-full text-white flex items-center justify-center font-bold'
-                style={{
-                  left: `${stringIndex * stringSpacing + 10 - dotSize / 2}px`,
-                  top: `${20 + displayPos * fretSpacing + fretSpacing / 2 - dotSize / 2}px`,
-                  width: `${dotSize}px`,
-                  height: `${dotSize}px`,
-                  fontSize: "9px",
-                  zIndex: 2,
-                }}
-              >
-                {note}
-              </div>
-            );
-          }
-          return null;
-        })}
       </div>
+
+      {/* Starting fret indicator */}
+      {startFret > 1 && (
+        <span
+          className='absolute text-xs font-medium text-gray-500'
+          style={{ left: `${diagramWidth + 2}px`, top: "24px" }}
+        >
+          {startFret}fr
+        </span>
+      )}
+
+      {/* Strings (vertical lines) */}
+      {[0, 1, 2, 3, 4, 5].map((stringIndex) => (
+        <div
+          key={stringIndex}
+          className='absolute bg-gray-400'
+          style={{
+            left: `${stringIndex * stringSpacing + 10}px`,
+            top: "20px",
+            width: "1px",
+            height: `${fretSpacing * displayFrets}px`,
+            zIndex: 1,
+          }}
+        />
+      ))}
+
+      {/* Frets (horizontal lines) */}
+      {Array.from({ length: displayFrets + 1 }, (_, i) => i).map((fret) => (
+        <div
+          key={fret}
+          className={`absolute ${fret === 0 && startFret <= 1 ? "bg-gray-800" : "bg-gray-400"}`}
+          style={{
+            left: "6px",
+            top: `${20 + fret * fretSpacing}px`,
+            width: `${stringSpacing * 5 + 8}px`,
+            height: fret === 0 && startFret <= 1 ? "3px" : "1px",
+            zIndex: 1,
+          }}
+        />
+      ))}
+
+      {/* Finger dots */}
+      {shape.frets.map((fretNum, stringIndex) => {
+        if (fretNum === -1) return null;
+
+        const note = getNoteAtFret(stringNotes[stringIndex], fretNum);
+        const dotSize = 18;
+
+        if (fretNum === 0) {
+          return (
+            <div
+              key={stringIndex}
+              className='absolute rounded-full border-2 border-blue-500 bg-white flex items-center justify-center font-bold'
+              style={{
+                left: `${stringIndex * stringSpacing + 10 - dotSize / 2}px`,
+                top: `${20 - dotSize - 2}px`,
+                width: `${dotSize}px`,
+                height: `${dotSize}px`,
+                fontSize: "9px",
+                zIndex: 2,
+              }}
+            >
+              {note}
+            </div>
+          );
+        } else if (fretNum > 0) {
+          const displayPos = fretNum - startFret;
+          return (
+            <div
+              key={stringIndex}
+              className='absolute bg-blue-500 rounded-full text-white flex items-center justify-center font-bold'
+              style={{
+                left: `${stringIndex * stringSpacing + 10 - dotSize / 2}px`,
+                top: `${20 + displayPos * fretSpacing + fretSpacing / 2 - dotSize / 2}px`,
+                width: `${dotSize}px`,
+                height: `${dotSize}px`,
+                fontSize: "9px",
+                zIndex: 2,
+              }}
+            >
+              {note}
+            </div>
+          );
+        }
+        return null;
+      })}
+    </div>
+  );
+};
+
+interface ChordCardProps {
+  note: string;
+  type: string;
+  useFlats: boolean;
+}
+
+/** A single chord card that lets the user switch between available voicings via a dropdown. */
+const ChordCard = ({ note, type, useFlats }: ChordCardProps) => {
+  const [voicingIdx, setVoicingIdx] = useState(0);
+  const voicings = getAllVoicings(note, type);
+  const chordLabel = formatChordLabel(note, type);
+
+  if (voicings.length === 0) {
+    return (
+      <div className='flex flex-col items-center p-2'>
+        <p className='font-semibold text-sm mb-1'>{chordLabel}</p>
+        <p className='text-gray-400 text-xs'>N/A</p>
+      </div>
+    );
+  }
+
+  const current = voicings[Math.min(voicingIdx, voicings.length - 1)];
+
+  return (
+    <div className='flex flex-col items-center gap-1'>
+      <p className='font-semibold text-sm'>{chordLabel}</p>
+      {voicings.length > 1 && (
+        <select
+          value={voicingIdx}
+          onChange={(e) => setVoicingIdx(Number(e.target.value))}
+          className='text-xs border border-gray-300 rounded px-1 py-0.5 bg-white text-gray-700 w-full max-w-[130px]'
+          aria-label={`Position for ${chordLabel}`}
+        >
+          {voicings.map((v, i) => (
+            <option key={i} value={i}>
+              {v.label}
+            </option>
+          ))}
+        </select>
+      )}
+      {voicings.length === 1 && (
+        <p className='text-xs text-gray-500'>{current.label}</p>
+      )}
+      <ChordDiagram shape={current.shape} useFlats={useFlats} />
     </div>
   );
 };
@@ -226,13 +266,6 @@ export default function NoteShapesPage() {
     return "C";
   });
 
-  const [selectedType, setSelectedType] = useState(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("note-shapes-selectedType") || "Major";
-    }
-    return "Major";
-  });
-
   const [useFlats, setUseFlats] = useState(() => {
     if (typeof window !== "undefined") {
       return localStorage.getItem("note-shapes-useFlats") === "true";
@@ -241,8 +274,6 @@ export default function NoteShapesPage() {
   });
 
   const displayNotes = useFlats ? flatNotes : sharpNotes;
-  const chordLabel = formatChordLabel(selectedNote, selectedType);
-  const voicings = getAllVoicings(selectedNote, selectedType);
 
   return (
     <div className='flex flex-col flex-1'>
@@ -252,107 +283,74 @@ export default function NoteShapesPage() {
           <div className='rounded-lg p-6'>
             <div className='text-center mb-10'>
               <h1 className='text-5xl font-bold text-white drop-shadow-lg'>Note Shapes</h1>
-              <p className='text-lg text-white/80 mt-3'>All voicings for a single chord</p>
+              <p className='text-lg text-white/80 mt-3'>All chords for a root note with multiple voicings</p>
             </div>
             <div className='rounded-lg shadow-md p-6 bg-white'>
-              {/* Controls */}
-              <div className='mb-6 space-y-4'>
-                {/* Note selector */}
-                <div>
-                  <p className='text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2'>Root Note</p>
-                  <div className='flex flex-wrap gap-2'>
-                    {displayNotes.map((note) => {
-                      const active =
-                        selectedNote === note ||
-                        (flatToSharp[selectedNote] ?? selectedNote) === (flatToSharp[note] ?? note);
-                      return (
-                        <button
-                          key={note}
-                          type='button'
-                          aria-pressed={active}
-                          onClick={() => {
-                            setSelectedNote(note);
-                            localStorage.setItem("note-shapes-selectedNote", note);
-                          }}
-                          className={`px-3 py-1 rounded border text-sm transition-colors ${
-                            active ? "bg-accent/20 border-accent font-medium" : "border-border hover:bg-foreground/10"
-                          }`}
-                        >
-                          {note}
-                        </button>
-                      );
-                    })}
-                    <span className='mx-1 text-gray-300'>|</span>
-                    <button
-                      type='button'
-                      aria-pressed={useFlats}
-                      onClick={() => {
-                        const newVal = !useFlats;
-                        setUseFlats(newVal);
-                        localStorage.setItem("note-shapes-useFlats", String(newVal));
-                        // Convert selected note when switching notation
-                        if (newVal) {
-                          const asFlat = sharpToFlat[selectedNote];
-                          if (asFlat) {
-                            setSelectedNote(asFlat);
-                            localStorage.setItem("note-shapes-selectedNote", asFlat);
-                          }
-                        } else {
-                          const asSharp = flatToSharp[selectedNote];
-                          if (asSharp) {
-                            setSelectedNote(asSharp);
-                            localStorage.setItem("note-shapes-selectedNote", asSharp);
-                          }
+              {/* Root note selector */}
+              <div className='mb-6'>
+                <p className='text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2'>Root Note</p>
+                <div className='flex flex-wrap gap-2'>
+                  {displayNotes.map((note) => {
+                    const active =
+                      selectedNote === note ||
+                      (flatToSharp[selectedNote] ?? selectedNote) === (flatToSharp[note] ?? note);
+                    return (
+                      <button
+                        key={note}
+                        type='button'
+                        aria-pressed={active}
+                        onClick={() => {
+                          setSelectedNote(note);
+                          localStorage.setItem("note-shapes-selectedNote", note);
+                        }}
+                        className={`px-3 py-1 rounded border text-sm transition-colors ${
+                          active ? "bg-accent/20 border-accent font-medium" : "border-border hover:bg-foreground/10"
+                        }`}
+                      >
+                        {note}
+                      </button>
+                    );
+                  })}
+                  <span className='mx-1 text-gray-300'>|</span>
+                  <button
+                    type='button'
+                    aria-pressed={useFlats}
+                    onClick={() => {
+                      const newVal = !useFlats;
+                      setUseFlats(newVal);
+                      localStorage.setItem("note-shapes-useFlats", String(newVal));
+                      // Convert selected note when switching notation
+                      if (newVal) {
+                        const asFlat = sharpToFlat[selectedNote];
+                        if (asFlat) {
+                          setSelectedNote(asFlat);
+                          localStorage.setItem("note-shapes-selectedNote", asFlat);
                         }
-                      }}
-                      className={`px-3 py-1 rounded border text-sm transition-colors ${
-                        useFlats ? "bg-accent/20 border-accent font-medium" : "border-border hover:bg-foreground/10"
-                      }`}
-                    >
-                      ♭ Flats
-                    </button>
-                  </div>
-                </div>
-
-                {/* Chord type selector */}
-                <div>
-                  <p className='text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2'>Chord Type</p>
-                  <div className='flex flex-wrap gap-2'>
-                    {chordTypes.map((type) => {
-                      const active = selectedType === type;
-                      return (
-                        <button
-                          key={type}
-                          type='button'
-                          aria-pressed={active}
-                          onClick={() => {
-                            setSelectedType(type);
-                            localStorage.setItem("note-shapes-selectedType", type);
-                          }}
-                          className={`px-3 py-1 rounded border text-sm transition-colors ${
-                            active ? "bg-accent/20 border-accent font-medium" : "border-border hover:bg-foreground/10"
-                          }`}
-                        >
-                          {type}
-                        </button>
-                      );
-                    })}
-                  </div>
+                      } else {
+                        const asSharp = flatToSharp[selectedNote];
+                        if (asSharp) {
+                          setSelectedNote(asSharp);
+                          localStorage.setItem("note-shapes-selectedNote", asSharp);
+                        }
+                      }
+                    }}
+                    className={`px-3 py-1 rounded border text-sm transition-colors ${
+                      useFlats ? "bg-accent/20 border-accent font-medium" : "border-border hover:bg-foreground/10"
+                    }`}
+                  >
+                    ♭ Flats
+                  </button>
                 </div>
               </div>
 
-              {/* Voicings grid */}
-              {voicings.length > 0 ? (
-                <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 mt-4'>
-                  {voicings.map(({ shape, label }, idx) => (
-                    <div key={idx} className='flex justify-center'>
-                      <ChordDiagram chord={chordLabel} label={label} shape={shape} useFlats={useFlats} />
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className='text-center text-gray-500 mt-8'>No voicings found for {chordLabel}.</p>
-              )}
+              {/* All chord types for the selected note */}
+              <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6'>
+                {chordTypes.map((type) => (
+                  <div key={type} className='flex justify-center'>
+                    <ChordCard note={selectedNote} type={type} useFlats={useFlats} />
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
