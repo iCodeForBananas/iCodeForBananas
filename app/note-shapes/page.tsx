@@ -210,15 +210,18 @@ const ChordDiagram = ({ shape, useFlats }: ChordDiagramProps) => {
   );
 };
 
+const POSITION_TYPES = ["Standard", "A-Shape", "E-Shape"] as const;
+type PositionType = (typeof POSITION_TYPES)[number];
+
 interface ChordCardProps {
   note: string;
   type: string;
   useFlats: boolean;
+  position: PositionType;
 }
 
-/** A single chord card that lets the user switch between available voicings via a dropdown. */
-const ChordCard = ({ note, type, useFlats }: ChordCardProps) => {
-  const [voicingIdx, setVoicingIdx] = useState(0);
+/** A single chord card displaying the voicing that matches the global position. */
+const ChordCard = ({ note, type, useFlats, position }: ChordCardProps) => {
   const voicings = useMemo(() => getAllVoicings(note, type), [note, type]);
   const chordLabel = formatChordLabel(note, type);
 
@@ -231,29 +234,13 @@ const ChordCard = ({ note, type, useFlats }: ChordCardProps) => {
     );
   }
 
-  const safeIdx = Math.min(voicingIdx, voicings.length - 1);
-  const current = voicings[safeIdx];
+  const matchIdx = voicings.findIndex((v) => v.label.startsWith(position));
+  const current = voicings[matchIdx !== -1 ? matchIdx : 0];
 
   return (
     <div className='flex flex-col items-center gap-1'>
       <p className='font-semibold text-sm'>{chordLabel}</p>
-      {voicings.length > 1 && (
-        <select
-          value={safeIdx}
-          onChange={(e) => setVoicingIdx(Number(e.target.value))}
-          className='text-xs border border-gray-300 rounded px-1 py-0.5 bg-white text-gray-700 w-full max-w-[130px]'
-          aria-label={`Position for ${chordLabel}`}
-        >
-          {voicings.map((v, i) => (
-            <option key={i} value={i}>
-              {v.label}
-            </option>
-          ))}
-        </select>
-      )}
-      {voicings.length === 1 && (
-        <p className='text-xs text-gray-500'>{current.label}</p>
-      )}
+      <p className='text-xs text-gray-500'>{current.label}</p>
       <ChordDiagram shape={current.shape} useFlats={useFlats} />
     </div>
   );
@@ -274,6 +261,8 @@ export default function NoteShapesPage() {
     return false;
   });
 
+  const [position, setPosition] = useState<PositionType>("Standard");
+
   const displayNotes = useFlats ? flatNotes : sharpNotes;
 
   return (
@@ -287,60 +276,79 @@ export default function NoteShapesPage() {
               <p className='text-lg text-white/80 mt-3'>All chords for a root note with multiple voicings</p>
             </div>
             <div className='rounded-lg shadow-md p-6 bg-white'>
-              {/* Root note selector */}
-              <div className='mb-6'>
-                <p className='text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2'>Root Note</p>
-                <div className='flex flex-wrap gap-2'>
-                  {displayNotes.map((note) => {
-                    const active =
-                      selectedNote === note ||
-                      (flatToSharp[selectedNote] ?? selectedNote) === (flatToSharp[note] ?? note);
-                    return (
-                      <button
-                        key={note}
-                        type='button'
-                        aria-pressed={active}
-                        onClick={() => {
-                          setSelectedNote(note);
-                          localStorage.setItem("note-shapes-selectedNote", note);
-                        }}
-                        className={`px-3 py-1 rounded border text-sm transition-colors ${
-                          active ? "bg-accent/20 border-accent font-medium" : "border-border hover:bg-foreground/10"
-                        }`}
-                      >
-                        {note}
-                      </button>
-                    );
-                  })}
-                  <span className='mx-1 text-gray-300'>|</span>
-                  <button
-                    type='button'
-                    aria-pressed={useFlats}
-                    onClick={() => {
-                      const newVal = !useFlats;
-                      setUseFlats(newVal);
-                      localStorage.setItem("note-shapes-useFlats", String(newVal));
-                      // Convert selected note when switching notation
-                      if (newVal) {
-                        const asFlat = sharpToFlat[selectedNote];
-                        if (asFlat) {
-                          setSelectedNote(asFlat);
-                          localStorage.setItem("note-shapes-selectedNote", asFlat);
+              {/* Root note selector + position dropdown */}
+              <div className='mb-6 flex flex-wrap items-start justify-between gap-4'>
+                <div>
+                  <p className='text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2'>Root Note</p>
+                  <div className='flex flex-wrap gap-2'>
+                    {displayNotes.map((note) => {
+                      const active =
+                        selectedNote === note ||
+                        (flatToSharp[selectedNote] ?? selectedNote) === (flatToSharp[note] ?? note);
+                      return (
+                        <button
+                          key={note}
+                          type='button'
+                          aria-pressed={active}
+                          onClick={() => {
+                            setSelectedNote(note);
+                            localStorage.setItem("note-shapes-selectedNote", note);
+                          }}
+                          className={`px-3 py-1 rounded border text-sm transition-colors ${
+                            active ? "bg-accent/20 border-accent font-medium" : "border-border hover:bg-foreground/10"
+                          }`}
+                        >
+                          {note}
+                        </button>
+                      );
+                    })}
+                    <span className='mx-1 text-gray-300'>|</span>
+                    <button
+                      type='button'
+                      aria-pressed={useFlats}
+                      onClick={() => {
+                        const newVal = !useFlats;
+                        setUseFlats(newVal);
+                        localStorage.setItem("note-shapes-useFlats", String(newVal));
+                        // Convert selected note when switching notation
+                        if (newVal) {
+                          const asFlat = sharpToFlat[selectedNote];
+                          if (asFlat) {
+                            setSelectedNote(asFlat);
+                            localStorage.setItem("note-shapes-selectedNote", asFlat);
+                          }
+                        } else {
+                          const asSharp = flatToSharp[selectedNote];
+                          if (asSharp) {
+                            setSelectedNote(asSharp);
+                            localStorage.setItem("note-shapes-selectedNote", asSharp);
+                          }
                         }
-                      } else {
-                        const asSharp = flatToSharp[selectedNote];
-                        if (asSharp) {
-                          setSelectedNote(asSharp);
-                          localStorage.setItem("note-shapes-selectedNote", asSharp);
-                        }
-                      }
-                    }}
-                    className={`px-3 py-1 rounded border text-sm transition-colors ${
-                      useFlats ? "bg-accent/20 border-accent font-medium" : "border-border hover:bg-foreground/10"
-                    }`}
+                      }}
+                      className={`px-3 py-1 rounded border text-sm transition-colors ${
+                        useFlats ? "bg-accent/20 border-accent font-medium" : "border-border hover:bg-foreground/10"
+                      }`}
+                    >
+                      ♭ Flats
+                    </button>
+                  </div>
+                </div>
+
+                {/* Global fret position selector */}
+                <div className='flex flex-col items-end gap-1'>
+                  <p className='text-xs font-semibold text-gray-500 uppercase tracking-wider'>Fret Position</p>
+                  <select
+                    value={position}
+                    onChange={(e) => setPosition(e.target.value as PositionType)}
+                    className='text-sm border border-gray-300 rounded px-2 py-1 bg-white text-gray-700'
+                    aria-label='Fret position for all shapes'
                   >
-                    ♭ Flats
-                  </button>
+                    {POSITION_TYPES.map((p) => (
+                      <option key={p} value={p}>
+                        {p}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
@@ -348,7 +356,7 @@ export default function NoteShapesPage() {
               <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6'>
                 {chordTypes.map((type) => (
                   <div key={type} className='flex justify-center'>
-                    <ChordCard note={selectedNote} type={type} useFlats={useFlats} />
+                    <ChordCard note={selectedNote} type={type} useFlats={useFlats} position={position} />
                   </div>
                 ))}
               </div>
