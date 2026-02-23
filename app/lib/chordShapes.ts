@@ -157,6 +157,18 @@ export const chordShapes: Record<string, ChordShape[]> = {
   "Ab Maj9": [{ frets: [4, 6, 5, 5, 4, 6], fingers: [1, 4, 3, 3, 1, 4] }],
   "Ab Maj13": [{ frets: [4, 6, 5, 5, 6, 6], fingers: [1, 3, 2, 2, 4, 4] }],
   Ab6: [{ frets: [4, 6, 6, 5, 6, 4], fingers: [1, 3, 3, 2, 4, 1] }],
+  // 9th chord open-position shapes (dominant 9th: 1-3-5-b7-9)
+  "C 9": [{ frets: [-1, 3, 2, 3, 3, 3], fingers: [0, 3, 2, 4, 4, 4] }],
+  "D 9": [{ frets: [-1, -1, 0, 2, 1, 0], fingers: [0, 0, 0, 2, 1, 0] }],
+  "E 9": [{ frets: [0, 2, 0, 1, 0, 2], fingers: [0, 2, 0, 1, 0, 3] }],
+  "G 9": [{ frets: [3, 0, 0, 2, 0, 1], fingers: [4, 0, 0, 2, 0, 1] }],
+  "A 9": [{ frets: [-1, 0, 2, 0, 0, 3], fingers: [0, 0, 2, 0, 0, 3] }],
+  "B 9": [{ frets: [-1, 2, 4, 2, 2, 2], fingers: [0, 1, 3, 1, 1, 1] }],
+  // 13th chord open-position shapes (dominant 13th: 1-3-b7-13)
+  "E 13": [{ frets: [0, 2, 0, 1, 2, 0], fingers: [0, 2, 0, 1, 3, 0] }],
+  "G 13": [{ frets: [3, 2, 3, 0, 0, 0], fingers: [2, 1, 3, 0, 0, 0] }],
+  "A 13": [{ frets: [-1, 0, 2, 0, 2, 2], fingers: [0, 0, 2, 0, 3, 3] }],
+  "B 13": [{ frets: [-1, 2, 4, 2, 4, 4], fingers: [0, 1, 3, 1, 4, 4] }],
 };
 
 // ── CAGED barre templates ─────────────────────────────────────────────────────
@@ -171,6 +183,8 @@ export const eShapeTemplates: Partial<Record<string, ChordShape>> = {
   Sus4: { frets: [0, 2, 2, 2, 0, 0], fingers: [1, 2, 3, 4, 1, 1] },
   Add9: { frets: [0, 2, 2, 1, 0, 2], fingers: [1, 3, 4, 2, 1, 4] },
   "6": { frets: [0, 2, 2, 1, 2, 0], fingers: [1, 3, 4, 2, 4, 1] },
+  "9": { frets: [0, 2, 0, 1, 0, 2], fingers: [1, 3, 1, 2, 1, 4] },
+  "13": { frets: [0, 2, 0, 1, 2, 0], fingers: [1, 3, 1, 2, 4, 1] },
 };
 
 // A-shape: root on A string (5th string). Template anchored at fret 0 = A note.
@@ -184,6 +198,8 @@ export const aShapeTemplates: Partial<Record<string, ChordShape>> = {
   Sus4: { frets: [-1, 0, 2, 2, 3, 0], fingers: [0, 1, 2, 3, 4, 1] },
   Add9: { frets: [-1, 0, 2, 4, 2, 0], fingers: [0, 1, 2, 4, 3, 1] },
   "6": { frets: [-1, 0, 2, 2, 2, 2], fingers: [0, 1, 2, 3, 3, 3] },
+  "9": { frets: [-1, 0, 2, 0, 0, 3], fingers: [0, 1, 3, 1, 1, 4] },
+  "13": { frets: [-1, 0, 2, 0, 2, 2], fingers: [0, 1, 3, 1, 3, 3] },
 };
 
 export const normalizeTypeForShape = (type: string) => {
