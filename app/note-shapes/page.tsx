@@ -240,7 +240,6 @@ const ChordCard = ({ note, type, useFlats, position }: ChordCardProps) => {
   return (
     <div className='flex flex-col items-center gap-1'>
       <p className='font-semibold text-sm'>{chordLabel}</p>
-      <p className='text-xs text-gray-500'>{current.label}</p>
       <ChordDiagram shape={current.shape} useFlats={useFlats} />
     </div>
   );
