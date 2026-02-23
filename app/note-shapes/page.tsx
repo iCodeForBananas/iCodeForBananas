@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import PinnedChordProgression from "../components/PinnedChordProgression";
 import {
   type ChordShape,
@@ -219,7 +219,7 @@ interface ChordCardProps {
 /** A single chord card that lets the user switch between available voicings via a dropdown. */
 const ChordCard = ({ note, type, useFlats }: ChordCardProps) => {
   const [voicingIdx, setVoicingIdx] = useState(0);
-  const voicings = getAllVoicings(note, type);
+  const voicings = useMemo(() => getAllVoicings(note, type), [note, type]);
   const chordLabel = formatChordLabel(note, type);
 
   if (voicings.length === 0) {
@@ -231,14 +231,15 @@ const ChordCard = ({ note, type, useFlats }: ChordCardProps) => {
     );
   }
 
-  const current = voicings[Math.min(voicingIdx, voicings.length - 1)];
+  const safeIdx = Math.min(voicingIdx, voicings.length - 1);
+  const current = voicings[safeIdx];
 
   return (
     <div className='flex flex-col items-center gap-1'>
       <p className='font-semibold text-sm'>{chordLabel}</p>
       {voicings.length > 1 && (
         <select
-          value={voicingIdx}
+          value={safeIdx}
           onChange={(e) => setVoicingIdx(Number(e.target.value))}
           className='text-xs border border-gray-300 rounded px-1 py-0.5 bg-white text-gray-700 w-full max-w-[130px]'
           aria-label={`Position for ${chordLabel}`}
