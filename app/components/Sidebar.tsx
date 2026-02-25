@@ -283,6 +283,24 @@ export default function Sidebar() {
               </div>
             </div>
 
+            {/* ── City ──────────────────────────────────────── */}
+            <div>
+              <h3 className='text-sm font-semibold text-gray-600 mb-2 uppercase tracking-wider whitespace-nowrap'>
+                City
+              </h3>
+              <div className='flex flex-col gap-1'>
+                <Link
+                  href='/whats-happening-today'
+                  onClick={() => isMobile && setIsOpen(false)}
+                  className={`px-3 py-2 rounded hover:bg-pink-100 hover:text-gray-900 transition-colors whitespace-nowrap ${
+                    pathname === "/whats-happening-today" ? "bg-pink-100 text-gray-900 font-semibold" : "text-gray-700"
+                  }`}
+                >
+                  📅 What&apos;s Happening Today?
+                </Link>
+              </div>
+            </div>
+
             {/* ── Labs ──────────────────────────────────────── */}
             <div>
               <h3 className='text-sm font-semibold text-gray-600 mb-2 uppercase tracking-wider whitespace-nowrap'>
