@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
 import Script from "next/script";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import "./components/fretboard.css";
 import { ThemeProvider } from "./lib/ThemeContext";
@@ -37,6 +38,7 @@ export default function RootLayout({
             <div className='flex-1 min-w-0 overflow-auto'>{children}</div>
           </div>
         </ThemeProvider>
+        <Analytics />
       </body>
     </html>
   );
