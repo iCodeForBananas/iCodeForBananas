@@ -285,7 +285,7 @@ function ChordDiagram({ shape, label }: { shape: ChordShape; label: string }) {
             return (
               <div
                 key={si}
-                className='absolute rounded-full border-2 border-pink-500 bg-white flex items-center justify-center font-bold'
+                className='absolute rounded-full border-2 border-yellow-400 bg-white flex items-center justify-center font-bold'
                 style={{
                   left: `${si * stringSpacing + 10 - dotSize / 2}px`,
                   top: `${20 - dotSize - 2}px`,
@@ -304,7 +304,7 @@ function ChordDiagram({ shape, label }: { shape: ChordShape; label: string }) {
           return (
             <div
               key={si}
-              className='absolute bg-pink-500 rounded-full text-white flex items-center justify-center font-bold'
+              className='absolute bg-yellow-400 rounded-full text-white flex items-center justify-center font-bold'
               style={{
                 left: `${si * stringSpacing + 10 - dotSize / 2}px`,
                 top: `${20 + displayPos * fretSpacing + fretSpacing / 2 - dotSize / 2}px`,
@@ -660,7 +660,7 @@ export default function ChordPracticePage() {
                         </ul>
                         <button
                           onClick={startGame}
-                          className='px-8 py-3 bg-gradient-to-r from-pink-500 to-orange-500 text-white rounded-xl font-bold text-lg hover:from-pink-600 hover:to-orange-600 transition-all shadow-lg'
+                          className='px-8 py-3 bg-gradient-to-r from-yellow-400 to-yellow-300 text-white rounded-xl font-bold text-lg hover:from-yellow-500 hover:to-yellow-400 transition-all shadow-lg'
                         >
                           Start Practice
                         </button>
@@ -700,7 +700,7 @@ export default function ChordPracticePage() {
                         </div>
                         <div className='h-2 bg-[var(--card-border)] rounded-full overflow-hidden'>
                           <div
-                            className='h-full bg-gradient-to-r from-pink-500 to-orange-500 rounded-full transition-all duration-500'
+                            className='h-full bg-gradient-to-r from-yellow-400 to-yellow-300 rounded-full transition-all duration-500'
                             style={{ width: `${levelProgress}%` }}
                           />
                         </div>
@@ -720,7 +720,7 @@ export default function ChordPracticePage() {
                           {currentChord.notes.map((note, i) => (
                             <span
                               key={i}
-                              className='px-3 py-1 bg-gradient-to-r from-pink-500/20 to-orange-500/20 border border-pink-500/30 rounded-full text-sm font-medium text-[var(--foreground)]'
+                              className='px-3 py-1 bg-gradient-to-r from-yellow-400/20 to-yellow-300/20 border border-yellow-400/30 rounded-full text-sm font-medium text-[var(--foreground)]'
                             >
                               {note}
                             </span>
@@ -794,7 +794,7 @@ export default function ChordPracticePage() {
                       key={t.level}
                       className={`p-3 rounded-xl border text-center text-sm ${
                         t.level === difficulty
-                          ? "bg-gradient-to-r from-pink-500/20 to-orange-500/20 border-pink-500/40"
+                          ? "bg-gradient-to-r from-yellow-400/20 to-yellow-300/20 border-yellow-400/40"
                           : t.level < difficulty
                             ? "bg-[var(--card-bg)] border-green-500/30"
                             : "bg-[var(--card-bg)] border-[var(--card-border)] opacity-60"

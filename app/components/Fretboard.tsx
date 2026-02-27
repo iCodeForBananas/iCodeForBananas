@@ -27,7 +27,7 @@ export default function Fretboard({ tuning, totalFrets, chordNotes, scaleNotes =
       <div className='fretboard-wrapper overflow-auto'>
         <div className='flex mb-1'>
           {[...Array(totalFrets + 1).keys()].map((fret) => (
-            <div key={fret} className='fret-number text-center flex-1 text-xs text-gray-600'>
+            <div key={fret} className='fret-number text-center flex-1 text-xs text-yellow-600'>
               {fret}
             </div>
           ))}

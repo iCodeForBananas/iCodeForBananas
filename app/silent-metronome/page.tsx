@@ -105,7 +105,7 @@ export default function SilentMetronome() {
             </div>
             <div className='rounded-lg shadow-md p-6 bg-white'>
               <div className='mb-8'>
-                <label className='block text-sm font-medium text-gray-700 mb-2'>BPM: {bpm}</label>
+                <label className='block text-sm font-medium text-yellow-400 mb-2'>BPM: {bpm}</label>
                 <input
                   type='range'
                   min='40'
@@ -118,7 +118,7 @@ export default function SilentMetronome() {
                   <span>40</span>
                   <span>200</span>
                 </div>
-                <div className='mt-3 text-sm text-gray-700'>Count: {beat + 1} / 4</div>
+                <div className='mt-3 text-sm text-yellow-400'>Count: {beat + 1} / 4</div>
               </div>
 
               {chords.length > 0 ? (

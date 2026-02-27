@@ -22,7 +22,7 @@ function PriceBadge({ price }: { price: number | null }) {
 
 function CategoryPill({ category }: { category: string }) {
   return (
-    <span className="bg-gray-100 text-gray-600 text-xs px-2 py-0.5 rounded-full">{category}</span>
+    <span className="bg-gray-100 text-yellow-600 text-xs px-2 py-0.5 rounded-full">{category}</span>
   );
 }
 
@@ -52,12 +52,12 @@ export default function WhatsHappeningListView({ events, selectedEventId, onSele
               onClick={() => handleCardClick(event.id)}
               className={`w-full text-left rounded-lg border shadow-sm p-3 transition-all hover:shadow-md focus:outline-none ${
                 isSelected
-                  ? "border border-gray-200 border-l-4 border-l-pink-400 bg-pink-50"
+                  ? "border border-gray-200 border-l-4 border-l-yellow-400 bg-yellow-400/10"
                   : "border border-gray-200 bg-white hover:bg-gray-50"
               }`}
             >
               <div className="flex items-start gap-3">
-                <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-pink-100 to-orange-100 flex items-center justify-center text-xl">
+                <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-300 flex items-center justify-center text-xl">
                   {event.imageEmoji}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -98,7 +98,7 @@ export default function WhatsHappeningListView({ events, selectedEventId, onSele
           <div className="p-4">
             <button
               onClick={handleCloseDetail}
-              className="mb-4 flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900"
+              className="mb-4 flex items-center gap-2 text-sm text-yellow-600 hover:text-black"
             >
               ← Back to list
             </button>
@@ -117,9 +117,9 @@ function DetailPanel({ event }: { event: WhatsHappeningEvent }) {
       <div className="text-6xl mb-4">{event.imageEmoji}</div>
       <h2 className="text-2xl font-bold text-gray-900 mb-2">{event.name}</h2>
       <div className="flex items-center gap-2 mb-4">
-        <span className="bg-gray-100 text-gray-600 text-xs px-2 py-0.5 rounded-full">{event.category}</span>
+        <span className="bg-gray-100 text-yellow-600 text-xs px-2 py-0.5 rounded-full">{event.category}</span>
       </div>
-      <div className="space-y-2 mb-4 text-sm text-gray-700">
+      <div className="space-y-2 mb-4 text-sm text-yellow-400">
         <p className="flex items-center gap-2">
           <span className="text-base">📍</span>
           <span>
@@ -137,12 +137,12 @@ function DetailPanel({ event }: { event: WhatsHappeningEvent }) {
           </span>
         </p>
       </div>
-      <p className="text-gray-700 leading-relaxed mb-6">{event.description}</p>
+      <p className="text-yellow-400 leading-relaxed mb-6">{event.description}</p>
       <a
         href={directionsUrl}
         target="_blank"
         rel="noopener noreferrer"
-        className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-br from-pink-100 to-orange-100 hover:from-pink-200 hover:to-orange-200 text-gray-900 font-semibold rounded-lg border border-pink-200 transition-colors"
+        className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-br from-yellow-400 to-yellow-300 hover:bg-yellow-300 text-gray-900 font-semibold rounded-lg border border-yellow-400/30 transition-colors"
       >
         🗺️ Directions
       </a>

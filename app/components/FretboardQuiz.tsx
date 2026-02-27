@@ -112,14 +112,14 @@ export default function FretboardQuiz() {
       {/* Controls */}
       <div className='flex flex-wrap items-center gap-4'>
         <div className='flex items-center gap-2'>
-          <label htmlFor='key-select' className='font-medium text-gray-700'>
+          <label htmlFor='key-select' className='font-medium text-yellow-400'>
             Key:
           </label>
           <select
             id='key-select'
             value={selectedKey}
             onChange={(e) => handleKeyChange(e.target.value)}
-            className='px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 bg-white'
+            className='px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 bg-white'
           >
             {allNotes.map((note) => (
               <option key={note} value={note}>
@@ -130,14 +130,14 @@ export default function FretboardQuiz() {
         </div>
 
         <div className='flex items-center gap-2'>
-          <label htmlFor='scale-select' className='font-medium text-gray-700'>
+          <label htmlFor='scale-select' className='font-medium text-yellow-400'>
             Scale:
           </label>
           <select
             id='scale-select'
             value={selectedScaleType}
             onChange={(e) => handleScaleTypeChange(e.target.value)}
-            className='px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 bg-white'
+            className='px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 bg-white'
           >
             {scaleTypes.map((type) => (
               <option key={type} value={type}>
@@ -149,7 +149,7 @@ export default function FretboardQuiz() {
 
         <button
           onClick={handleRestart}
-          className='px-4 py-2 bg-gradient-to-r from-pink-500 to-orange-500 text-white rounded-md hover:from-pink-600 hover:to-orange-600 transition-all shadow-sm font-medium'
+          className='px-4 py-2 bg-gradient-to-r from-yellow-400 to-yellow-300 text-white rounded-md hover:from-yellow-500 hover:to-yellow-400 transition-all shadow-sm font-medium'
         >
           Restart
         </button>
@@ -157,12 +157,12 @@ export default function FretboardQuiz() {
 
       {/* Progress */}
       <div className='flex items-center gap-4'>
-        <div className='text-lg font-medium text-gray-700'>
-          Progress: <span className='text-pink-600'>{foundCount}</span> / {totalNotesToFind} notes
+        <div className='text-lg font-medium text-yellow-400'>
+          Progress: <span className='text-yellow-400'>{foundCount}</span> / {totalNotesToFind} notes
         </div>
         {totalAttempts > 0 && (
-          <div className='text-lg font-medium text-gray-700'>
-            Score: <span className='text-pink-600'>{scorePercent}%</span>
+          <div className='text-lg font-medium text-yellow-400'>
+            Score: <span className='text-yellow-400'>{scorePercent}%</span>
           </div>
         )}
         {isComplete && (
@@ -173,8 +173,8 @@ export default function FretboardQuiz() {
       </div>
 
       {/* Scale info */}
-      <div className='text-sm text-gray-600'>
-        Find all the <span className='font-semibold text-pink-600'>{selectedKey} {selectedScaleType}</span> notes on the fretboard!
+      <div className='text-sm text-yellow-600'>
+        Find all the <span className='font-semibold text-yellow-400'>{selectedKey} {selectedScaleType}</span> notes on the fretboard!
         Click on any fret position to guess if that note is in the scale.
       </div>
 
@@ -182,7 +182,7 @@ export default function FretboardQuiz() {
       <div className='fretboard-wrapper overflow-auto'>
         <div className='flex mb-1'>
           {[...Array(totalFrets + 1).keys()].map((fret) => (
-            <div key={fret} className='fret-number text-center flex-1 text-xs text-gray-600'>
+            <div key={fret} className='fret-number text-center flex-1 text-xs text-yellow-600'>
               {fret}
             </div>
           ))}
@@ -211,7 +211,7 @@ export default function FretboardQuiz() {
                     <div
                       key={reversedIndex}
                       onClick={() => handleNoteClick(stringIndex, fret)}
-                      className={`note cursor-pointer hover:bg-pink-100 transition-colors ${
+                      className={`note cursor-pointer hover:bg-yellow-400 transition-colors ${
                         fret === 0 ? "open" : ""
                       } ${bgClass}`}
                       style={{ userSelect: "none" }}
@@ -226,7 +226,7 @@ export default function FretboardQuiz() {
       </div>
 
       {/* Legend */}
-      <div className='flex flex-wrap gap-4 text-sm text-gray-600'>
+      <div className='flex flex-wrap gap-4 text-sm text-yellow-600'>
         <div className='flex items-center gap-2'>
           <div className='w-4 h-4 bg-green-300 rounded'></div>
           <span>Correct (in scale)</span>

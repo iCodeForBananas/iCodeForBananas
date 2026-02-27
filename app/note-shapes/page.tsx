@@ -339,7 +339,7 @@ export default function NoteShapesPage() {
                   <select
                     value={position}
                     onChange={(e) => setPosition(e.target.value as PositionType)}
-                    className='text-sm border border-gray-300 rounded px-2 py-1 bg-white text-gray-700'
+                    className='text-sm border border-gray-300 rounded px-2 py-1 bg-white text-yellow-400'
                     aria-label='Fret position for all shapes'
                   >
                     {POSITION_TYPES.map((p) => (

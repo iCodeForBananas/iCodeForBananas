@@ -73,9 +73,9 @@ export default function WhatsHappeningMapView({ events }: Props) {
             <Popup>
               <div className="text-sm">
                 <p className="font-bold text-gray-900 mb-1">{event.name}</p>
-                <p className="text-gray-600 mb-0.5">{event.venue}</p>
-                <p className="text-gray-600 mb-0.5">🕐 {event.time}</p>
-                <p className="text-gray-600 mb-1">
+                <p className="text-yellow-600 mb-0.5">{event.venue}</p>
+                <p className="text-yellow-600 mb-0.5">🕐 {event.time}</p>
+                <p className="text-yellow-600 mb-1">
                   {event.price ? (
                     <span className="text-amber-700 font-semibold">{priceLabel}</span>
                   ) : (

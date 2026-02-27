@@ -503,14 +503,14 @@ export default function SPDCrimeDensityPage() {
                 <p>North Precinct has the most incidents ({stats.byPrecinct.find(p => p.name === "North")?.count.toLocaleString() ?? "—"}), followed by West. Together they account for over 60% of all records.</p>
               </div>
               <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
-                <div className="text-pink-400 font-semibold mb-1">🚗 Vehicle Targets</div>
+                <div className="text-yellow-400 font-semibold mb-1">🚗 Vehicle Targets</div>
                 <p>Combining Theft From Motor Vehicle, Motor Vehicle Theft, and Parts/Accessories theft = over 5,700 vehicle-related incidents (28%+ of all crimes).</p>
               </div>
             </div>
           </div>
         )}
 
-        <p className="text-xs text-gray-600 pb-4">
+        <p className="text-xs text-yellow-600 pb-4">
           Data sourced from Seattle Police Department public records. Incidents with redacted or invalid coordinates (~15%) are excluded from the map but included in all charts.
         </p>
       </div>

@@ -157,8 +157,8 @@ export default function WhatsHappeningTodayPage() {
             onClick={() => setViewMode("list")}
             className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
               viewMode === "list"
-                ? "bg-gradient-to-br from-pink-100 to-orange-100 text-gray-900 font-semibold shadow-sm"
-                : "text-gray-600 hover:bg-gray-200"
+                ? "bg-gradient-to-br from-yellow-400 to-yellow-300 text-gray-900 font-semibold shadow-sm"
+                : "text-yellow-600 hover:bg-gray-200"
             }`}
           >
             📋 List
@@ -167,8 +167,8 @@ export default function WhatsHappeningTodayPage() {
             onClick={() => setViewMode("map")}
             className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
               viewMode === "map"
-                ? "bg-gradient-to-br from-pink-100 to-orange-100 text-gray-900 font-semibold shadow-sm"
-                : "text-gray-600 hover:bg-gray-200"
+                ? "bg-gradient-to-br from-yellow-400 to-yellow-300 text-gray-900 font-semibold shadow-sm"
+                : "text-yellow-600 hover:bg-gray-200"
             }`}
           >
             🗺️ Map

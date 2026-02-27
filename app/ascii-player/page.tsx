@@ -85,7 +85,7 @@ export default function AsciiPlayerPage() {
             onClick={() => loadMovie(m.key)}
             className={`px-4 py-2 rounded font-mono text-sm transition-colors ${
               currentMovie === m.key
-                ? "bg-pink-600 text-white"
+                ? "bg-yellow-500 text-white"
                 : "bg-gray-700 hover:bg-gray-600 text-gray-200"
             }`}
           >

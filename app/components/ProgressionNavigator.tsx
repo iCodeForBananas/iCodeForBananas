@@ -143,7 +143,7 @@ export default function ProgressionNavigator({ startKey = "G", bpm = 80 }: Progr
       </div>
 
       {/* Next-step hints */}
-      <div className='mb-4 text-sm text-gray-700 dark:text-gray-300'>
+      <div className='mb-4 text-sm text-yellow-400 dark:text-gray-300'>
         Next from <span className='font-bold'>{currentF}</span>: {nextFs.join(" → ")}
       </div>
 
@@ -178,7 +178,7 @@ export default function ProgressionNavigator({ startKey = "G", bpm = 80 }: Progr
       </div>
 
       {/* Tip */}
-      <div className='mt-4 text-xs text-gray-600 dark:text-gray-400'>
+      <div className='mt-4 text-xs text-yellow-600 dark:text-gray-400'>
         Click chords to build a path. Only valid next steps are highlighted. Use this as a live follow-along map while
         you play.
       </div>

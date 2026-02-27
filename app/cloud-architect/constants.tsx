@@ -109,7 +109,7 @@ export const SERVICE_METADATA: Record<
   },
   [AWSServiceType.API_GATEWAY]: {
     icon: <Layout size={24} />,
-    color: "bg-pink-600",
+    color: "bg-yellow-500",
     cost: 25,
     description: "API Management",
     availableConfigs: [

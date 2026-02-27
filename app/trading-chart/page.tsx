@@ -430,7 +430,7 @@ export default function TradingChartPage() {
               <div className='flex items-center justify-center h-[50vh]'>
                 <div className='text-center'>
                   <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-600 mx-auto mb-4'></div>
-                  <p className='text-gray-600'>Loading SPY data...</p>
+                  <p className='text-yellow-600'>Loading SPY data...</p>
                 </div>
               </div>
             </div>
@@ -450,7 +450,7 @@ export default function TradingChartPage() {
                 <div className='text-center'>
                   <div className='text-red-600 text-5xl mb-4'>⚠</div>
                   <p className='text-gray-900 font-semibold mb-2'>Error Loading Data</p>
-                  <p className='text-gray-600 mb-4'>{error}</p>
+                  <p className='text-yellow-600 mb-4'>{error}</p>
                   <button
                     onClick={() => window.location.reload()}
                     className='px-4 py-2 bg-cyan-600 text-white rounded-md hover:bg-cyan-700'
@@ -573,12 +573,12 @@ export default function TradingChartPage() {
           {/* Data Source Selector */}
           <div className='bg-slate-50 rounded-lg p-2 sm:p-4 mb-2 sm:mb-4 border border-border'>
             <div className='flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4'>
-              <label className='text-xs sm:text-sm font-semibold text-gray-700'>Dataset:</label>
+              <label className='text-xs sm:text-sm font-semibold text-yellow-400'>Dataset:</label>
               <select
                 value={selectedFile}
                 onChange={(e) => setSelectedFile(e.target.value)}
                 disabled={isLoading || availableDatasets.length === 0}
-                className='px-3 py-2 text-xs sm:text-sm font-medium rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed'
+                className='px-3 py-2 text-xs sm:text-sm font-medium rounded-md border border-gray-300 bg-white text-yellow-400 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed'
               >
                 {availableDatasets.map((dataset) => (
                   <option key={dataset.file} value={dataset.file}>
@@ -593,21 +593,21 @@ export default function TradingChartPage() {
           {/* Account Stats */}
           <div className='grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4'>
             <div className='bg-slate-50 rounded-lg p-2 sm:p-4 border border-border'>
-              <h2 className='text-xs sm:text-sm font-semibold text-gray-600 mb-1 sm:mb-2'>Balance</h2>
+              <h2 className='text-xs sm:text-sm font-semibold text-yellow-600 mb-1 sm:mb-2'>Balance</h2>
               <p className='text-sm sm:text-xl lg:text-2xl font-bold text-gray-900 truncate'>
                 ${account.balance.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
               </p>
             </div>
 
             <div className='bg-slate-50 rounded-lg p-2 sm:p-4 border border-border'>
-              <h2 className='text-xs sm:text-sm font-semibold text-gray-600 mb-1 sm:mb-2'>Value</h2>
+              <h2 className='text-xs sm:text-sm font-semibold text-yellow-600 mb-1 sm:mb-2'>Value</h2>
               <p className='text-sm sm:text-xl lg:text-2xl font-bold text-gray-900 truncate'>
                 ${accountValue.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
               </p>
             </div>
 
             <div className='bg-slate-50 rounded-lg p-2 sm:p-4 border border-border'>
-              <h2 className='text-xs sm:text-sm font-semibold text-gray-600 mb-1 sm:mb-2'>P&L</h2>
+              <h2 className='text-xs sm:text-sm font-semibold text-yellow-600 mb-1 sm:mb-2'>P&L</h2>
               <p
                 className={`text-sm sm:text-xl lg:text-2xl font-bold truncate ${totalPnL >= 0 ? "text-green-600" : "text-red-600"}`}
               >
@@ -617,7 +617,7 @@ export default function TradingChartPage() {
             </div>
 
             <div className='bg-slate-50 rounded-lg p-2 sm:p-4 border border-border'>
-              <h2 className='text-xs sm:text-sm font-semibold text-gray-600 mb-1 sm:mb-2'>Buy & Hold</h2>
+              <h2 className='text-xs sm:text-sm font-semibold text-yellow-600 mb-1 sm:mb-2'>Buy & Hold</h2>
               <p className='text-sm sm:text-xl lg:text-2xl font-bold text-cyan-600'>
                 $
                 {(() => {
@@ -669,7 +669,7 @@ export default function TradingChartPage() {
                     className='grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-4 text-xs sm:text-sm'
                   >
                     <div>
-                      <span className='text-gray-600'>Side:</span>
+                      <span className='text-yellow-600'>Side:</span>
                       <span
                         className={`ml-1 sm:ml-2 font-bold ${pos.side === PositionSide.LONG ? "text-green-600" : "text-red-600"}`}
                       >
@@ -677,19 +677,19 @@ export default function TradingChartPage() {
                       </span>
                     </div>
                     <div>
-                      <span className='text-gray-600'>Size:</span>
+                      <span className='text-yellow-600'>Size:</span>
                       <span className='ml-1 sm:ml-2 font-semibold'>{pos.size}</span>
                     </div>
                     <div>
-                      <span className='text-gray-600'>Entry:</span>
+                      <span className='text-yellow-600'>Entry:</span>
                       <span className='ml-1 sm:ml-2 font-semibold'>${pos.entryPrice.toFixed(2)}</span>
                     </div>
                     <div>
-                      <span className='text-gray-600'>Stop:</span>
+                      <span className='text-yellow-600'>Stop:</span>
                       <span className='ml-1 sm:ml-2 font-semibold text-red-600'>${currentEma.toFixed(2)}</span>
                     </div>
                     <div className='col-span-2 sm:col-span-1'>
-                      <span className='text-gray-600'>Risk:</span>
+                      <span className='text-yellow-600'>Risk:</span>
                       <span className='ml-1 sm:ml-2 font-semibold'>
                         ${(Math.abs(pos.entryPrice - currentEma) * pos.size).toFixed(0)}
                       </span>
