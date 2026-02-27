@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
+import GeminiKeyModal from "./GeminiKeyModal";
 
 const MOBILE_BREAKPOINT = 1024;
 const isMobileDevice = () => window.innerWidth < MOBILE_BREAKPOINT;
@@ -68,6 +69,7 @@ export default function Sidebar() {
   const [isOpen, setIsOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const [hasMounted, setHasMounted] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     const mobile = isMobileDevice();
@@ -116,6 +118,13 @@ export default function Sidebar() {
             iCodeForBananas
           </h2>
 
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="w-full text-sm font-semibold border-2 border-yellow-400 text-yellow-400 bg-black rounded px-3 py-2 mt-3 mb-1 hover:bg-yellow-400 hover:text-black transition-colors whitespace-nowrap"
+          >
+            🔑 Set Gemini API Key
+          </button>
+
           <nav className="flex flex-col gap-4 mt-6">
             {NAV.map((section) => (
               <div key={section.label ?? "main"}>
@@ -145,6 +154,7 @@ export default function Sidebar() {
           </nav>
         </div>
       </aside>
+      <GeminiKeyModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
     </>
   );
 }
