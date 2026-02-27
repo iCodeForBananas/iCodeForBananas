@@ -83,6 +83,16 @@ const MODULES: Module[] = [
   },
   // Small
   {
+    slug: 'practice-coach',
+    title: 'AI Practice Coach',
+    category: 'Practice',
+    description:
+      'Describe your goal, get a structured session. Gemini builds timed practice blocks linked to your tools, then adapts future sessions based on what you skip.',
+    stack: ['Gemini AI', 'React', 'localStorage', 'TypeScript'],
+    metric: 'Adapts to your history',
+    size: 'medium',
+  },
+  {
     slug: 'fretboard',
     title: 'Fretboard Explorer',
     category: 'Practice',
