@@ -145,30 +145,30 @@ export default function WhatsHappeningTodayPage() {
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
 
   return (
-    <div className="flex flex-col h-full bg-white">
+    <div className="flex flex-col h-full bg-black text-yellow-400">
       {/* Header */}
-      <div className="px-6 pt-6 pb-4 border-b border-gray-200">
-        <h1 className="text-2xl font-bold text-gray-900">What&apos;s Happening Today?</h1>
-        <p className="text-gray-500 mt-1">Events happening in your city today</p>
+      <div className="px-6 pt-6 pb-4 border-b-2 border-yellow-400">
+        <h1 className="text-2xl font-black uppercase tracking-widest text-yellow-400">📅 What&apos;s Happening Today?</h1>
+        <p className="text-yellow-600 mt-1 text-sm">Events happening in your city today</p>
 
         {/* View toggle */}
-        <div className="flex gap-1 mt-4 bg-gray-100 p-1 rounded-lg w-fit">
+        <div className="flex gap-1 mt-4 bg-yellow-400/10 border border-yellow-400/30 p-1 rounded-none w-fit">
           <button
             onClick={() => setViewMode("list")}
-            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+            className={`px-4 py-1.5 text-sm font-bold uppercase tracking-widest transition-colors ${
               viewMode === "list"
-                ? "bg-gradient-to-br from-yellow-400 to-yellow-300 text-gray-900 font-semibold shadow-sm"
-                : "text-yellow-600 hover:bg-gray-200"
+                ? "bg-yellow-400 text-black"
+                : "text-yellow-400 hover:bg-yellow-400/20"
             }`}
           >
             📋 List
           </button>
           <button
             onClick={() => setViewMode("map")}
-            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+            className={`px-4 py-1.5 text-sm font-bold uppercase tracking-widest transition-colors ${
               viewMode === "map"
-                ? "bg-gradient-to-br from-yellow-400 to-yellow-300 text-gray-900 font-semibold shadow-sm"
-                : "text-yellow-600 hover:bg-gray-200"
+                ? "bg-yellow-400 text-black"
+                : "text-yellow-400 hover:bg-yellow-400/20"
             }`}
           >
             🗺️ Map
@@ -185,7 +185,7 @@ export default function WhatsHappeningTodayPage() {
             onSelectEvent={setSelectedEventId}
           />
         ) : (
-          <div className="p-4">
+          <div style={{ height: "calc(100vh - 130px)" }}>
             <WhatsHappeningMapView events={TODAY_EVENTS} />
           </div>
         )}

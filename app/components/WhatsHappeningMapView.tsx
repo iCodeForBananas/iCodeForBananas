@@ -38,8 +38,8 @@ export default function WhatsHappeningMapView({ events }: Props) {
 
   if (!MapComponents) {
     return (
-      <div className="flex items-center justify-center bg-gray-50 rounded-lg" style={{ height: "500px" }}>
-        <p className="text-gray-500">Loading map…</p>
+      <div className="flex items-center justify-center bg-black border-2 border-yellow-400/30 h-full w-full">
+        <p className="text-yellow-400 font-bold uppercase tracking-widest">🍌 Loading map…</p>
       </div>
     );
   }
@@ -50,7 +50,7 @@ export default function WhatsHappeningMapView({ events }: Props) {
     <MapContainer
       center={SEATTLE_CENTER}
       zoom={12}
-      style={{ height: "500px", width: "100%" }}
+      style={{ height: "100%", width: "100%" }}
     >
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
@@ -58,7 +58,7 @@ export default function WhatsHappeningMapView({ events }: Props) {
       />
       {events.map((event) => {
         const icon = L.divIcon({
-          html: `<div style="width:36px;height:36px;background:white;border:2px solid #e5e7eb;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 2px 6px rgba(0,0,0,0.15);">${event.imageEmoji}</div>`,
+          html: `<div style="width:36px;height:36px;background:#facc15;border:2px solid black;display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:4px 4px 0px rgba(0,0,0,1);">${event.imageEmoji}</div>`,
           className: "",
           iconSize: [36, 36],
           iconAnchor: [18, 18],
@@ -71,18 +71,14 @@ export default function WhatsHappeningMapView({ events }: Props) {
         return (
           <Marker key={event.id} position={[event.lat, event.lng]} icon={icon}>
             <Popup>
-              <div className="text-sm">
-                <p className="font-bold text-gray-900 mb-1">{event.name}</p>
-                <p className="text-yellow-600 mb-0.5">{event.venue}</p>
-                <p className="text-yellow-600 mb-0.5">🕐 {event.time}</p>
-                <p className="text-yellow-600 mb-1">
-                  {event.price ? (
-                    <span className="text-amber-700 font-semibold">{priceLabel}</span>
-                  ) : (
-                    <span className="text-green-700 font-semibold">{priceLabel}</span>
-                  )}
+              <div className="text-sm" style={{ background: '#000', color: '#facc15', border: '2px solid #facc15', padding: '8px', minWidth: '160px' }}>
+                <p style={{ fontWeight: 900, color: '#facc15', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{event.name}</p>
+                <p style={{ color: '#ca8a04', marginBottom: '2px' }}>{event.venue}</p>
+                <p style={{ color: '#ca8a04', marginBottom: '2px' }}>🕐 {event.time}</p>
+                <p style={{ color: '#facc15', fontWeight: 700, marginBottom: '4px' }}>
+                  {event.price ? `$${event.price} cover` : 'Free'}
                 </p>
-                <p className="text-gray-500 text-xs">{shortDescription}</p>
+                <p style={{ color: '#854d0e', fontSize: '11px' }}>{shortDescription}</p>
               </div>
             </Popup>
           </Marker>
