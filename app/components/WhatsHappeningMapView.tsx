@@ -3,6 +3,11 @@
 import { useEffect, useState } from "react";
 import "leaflet/dist/leaflet.css";
 import { WhatsHappeningEvent } from "./WhatsHappeningTypes";
+import { EVENT_SOURCES } from "@/app/lib/eventSources";
+
+const SOURCE_COORDS = Object.fromEntries(
+  EVENT_SOURCES.filter((s) => s.lat != null).map((s) => [s.label, { lat: s.lat!, lng: s.lng! }])
+);
 
 interface Props {
   events: WhatsHappeningEvent[];
@@ -56,20 +61,20 @@ export default function WhatsHappeningMapView({ events }: Props) {
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
-      {events.map((event) => {
+      {events.filter((e) => SOURCE_COORDS[e.source ?? ""] != null).map((event) => {
+        const coords = SOURCE_COORDS[event.source ?? ""];
         const icon = L.divIcon({
-          html: `<div style="width:36px;height:36px;background:#facc15;border:2px solid black;display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:4px 4px 0px rgba(0,0,0,1);">${event.imageEmoji}</div>`,
+          html: `<div style="width:36px;height:36px;background:#facc15;border:2px solid black;display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:4px 4px 0px rgba(0,0,0,1);">📍</div>`,
           className: "",
           iconSize: [36, 36],
           iconAnchor: [18, 18],
         });
 
-        const firstSentenceMatch = event.description.match(/^[^.!?]+[.!?]/);
-        const shortDescription = firstSentenceMatch ? firstSentenceMatch[0] : event.description;
-        const priceLabel = event.price ? `$${event.price} cover` : "Free";
+        const firstSentenceMatch = event.description?.match(/^[^.!?]+[.!?]/);
+        const shortDescription = firstSentenceMatch ? firstSentenceMatch[0] : (event.description ?? "");
 
         return (
-          <Marker key={event.id} position={[event.lat, event.lng]} icon={icon}>
+          <Marker key={event.id} position={[coords.lat, coords.lng]} icon={icon}>
             <Popup>
               <div className="text-sm" style={{ background: '#000', color: '#facc15', border: '2px solid #facc15', padding: '8px', minWidth: '160px' }}>
                 <p style={{ fontWeight: 900, color: '#facc15', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{event.name}</p>
@@ -79,6 +84,9 @@ export default function WhatsHappeningMapView({ events }: Props) {
                   {event.price ? `$${event.price} cover` : 'Free'}
                 </p>
                 <p style={{ color: '#854d0e', fontSize: '11px' }}>{shortDescription}</p>
+                {event.eventUrl && (
+                  <a href={event.eventUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#facc15', fontSize: '11px', display: 'block', marginTop: '4px' }}>View event →</a>
+                )}
               </div>
             </Popup>
           </Marker>

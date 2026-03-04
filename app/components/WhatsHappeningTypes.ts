@@ -4,10 +4,12 @@ export interface WhatsHappeningEvent {
   venue: string;
   address: string;
   time: string;
+  date: string | null;
   price: number | null;
   category: string;
   description: string;
   lat: number;
   lng: number;
-  imageEmoji: string;
+  source?: string;
+  eventUrl?: string | null;
 }

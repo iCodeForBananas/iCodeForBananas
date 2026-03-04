@@ -1,7 +1,12 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { WhatsHappeningEvent } from "./WhatsHappeningTypes";
+import { useState } from 'react';
+import { WhatsHappeningEvent } from './WhatsHappeningTypes';
+import { EVENT_SOURCES } from '@/app/lib/eventSources';
+
+const SOURCE_COORDS = Object.fromEntries(
+  EVENT_SOURCES.filter((s) => s.lat != null).map((s) => [s.label, { lat: s.lat!, lng: s.lng! }]),
+);
 
 interface Props {
   events: WhatsHappeningEvent[];
@@ -10,13 +15,11 @@ interface Props {
 }
 
 function PriceBadge({ price }: { price: number | null }) {
-  if (!price) {
-    return (
-      <span className="bg-yellow-400/20 text-yellow-400 border border-yellow-400/40 text-xs font-bold px-2 py-0.5">Free</span>
-    );
-  }
+  if (!price) return null;
   return (
-    <span className="bg-black text-yellow-400 border border-yellow-400/40 text-xs font-bold px-2 py-0.5">${price} cover</span>
+    <span className="bg-black text-yellow-400 border border-yellow-400/40 text-xs font-bold px-2 py-0.5">
+      ${price} cover
+    </span>
   );
 }
 
@@ -52,21 +55,23 @@ export default function WhatsHappeningListView({ events, selectedEventId, onSele
               onClick={() => handleCardClick(event.id)}
               className={`w-full text-left border p-3 transition-all focus:outline-none ${
                 isSelected
-                  ? "border-yellow-400 bg-yellow-400/10 border-l-4"
-                  : "border-yellow-400/20 bg-black hover:bg-yellow-400/5 hover:border-yellow-400/50"
+                  ? 'border-yellow-400 bg-yellow-400/10 border-l-4'
+                  : 'border-yellow-400/20 bg-black hover:bg-yellow-400/5 hover:border-yellow-400/50'
               }`}
             >
               <div className="flex items-start gap-3">
-                <div className="flex-shrink-0 w-10 h-10 bg-yellow-400 flex items-center justify-center text-xl">
-                  {event.imageEmoji}
-                </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-bold text-yellow-400 truncate uppercase tracking-wide text-sm">{event.name}</p>
                   <p className="text-xs text-yellow-600 truncate">{event.venue}</p>
                   <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                    <span className="text-xs text-yellow-600 flex items-center gap-1">
-                      🕐 {event.time}
-                    </span>
+                    {event.date && (
+                      <span className="text-xs text-yellow-600">
+                        📅 {new Date(event.date.length === 10 ? event.date + 'T00:00:00' : event.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                      </span>
+                    )}
+                    {event.time && (
+                      <span className="text-xs text-yellow-600 flex items-center gap-1">🕐 {event.time}</span>
+                    )}
                     <PriceBadge price={event.price} />
                     <CategoryPill category={event.category} />
                   </div>
@@ -111,39 +116,71 @@ export default function WhatsHappeningListView({ events, selectedEventId, onSele
 }
 
 function DetailPanel({ event }: { event: WhatsHappeningEvent }) {
-  const directionsUrl = `https://maps.google.com/?q=${encodeURIComponent(event.address)}`;
+  const coords = event.source ? SOURCE_COORDS[event.source] : null;
+  const directionsUrl = coords
+    ? `https://maps.google.com/?q=${coords.lat},${coords.lng}`
+    : `https://maps.google.com/?q=${encodeURIComponent(event.address ?? '')}`;
   return (
     <div className="max-w-lg">
-      <div className="text-6xl mb-4">{event.imageEmoji}</div>
       <h2 className="text-2xl font-black uppercase tracking-widest text-yellow-400 mb-2">{event.name}</h2>
       <div className="flex items-center gap-2 mb-4">
-        <span className="bg-yellow-400/10 text-yellow-400 border border-yellow-400/30 text-xs font-bold px-2 py-0.5 uppercase tracking-widest">{event.category}</span>
+        <span className="bg-yellow-400/10 text-yellow-400 border border-yellow-400/30 text-xs font-bold px-2 py-0.5 uppercase tracking-widest">
+          {event.category}
+        </span>
       </div>
       <div className="space-y-2 mb-4 text-sm text-yellow-600">
         <p className="flex items-center gap-2">
           <span className="text-base">📍</span>
-          <span><span className="font-bold text-yellow-400">{event.venue}</span> — {event.address}</span>
+          <span>
+            <span className="font-bold text-yellow-400">{event.venue}</span>
+          </span>
         </p>
         <p className="flex items-center gap-2">
           <span className="text-base">🕐</span>
-          <span>{event.time}</span>
-        </p>
-        <p className="flex items-center gap-2">
-          <span className="text-base">💰</span>
-          <span className="font-bold text-yellow-400">
-            {event.price ? `$${event.price} cover` : "Free admission"}
+          <span>
+            {event.date
+              ? (() => {
+                  const hasTime = event.date.includes('T') || event.time != null;
+                  const datePart = new Date(
+                    event.date.length === 10 ? event.date + 'T00:00:00' : event.date,
+                  ).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+                  const timePart =
+                    hasTime && event.date.includes('T')
+                      ? new Date(event.date).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+                      : event.time;
+                  return timePart ? `${datePart} · ${timePart}` : datePart;
+                })()
+              : (event.time ?? '')}
           </span>
         </p>
+        {event.price != null && (
+          <p className="flex items-center gap-2">
+            <span className="text-base">💰</span>
+            <span className="font-bold text-yellow-400">${event.price} cover</span>
+          </p>
+        )}
       </div>
       <p className="text-yellow-600 leading-relaxed mb-6">{event.description}</p>
-      <a
-        href={directionsUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="inline-flex items-center gap-2 px-4 py-2 bg-yellow-400 text-black font-black uppercase tracking-widest border-2 border-black shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all text-sm"
-      >
-        🗺️ Directions
-      </a>
+      <div className="flex gap-3 flex-wrap">
+        {event.eventUrl && (
+          <a
+            href={event.eventUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-yellow-400 text-black font-black uppercase tracking-widest border-2 border-black shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all text-sm"
+          >
+            🎟️ Event Page
+          </a>
+        )}
+        <a
+          href={directionsUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-yellow-400 text-black font-black uppercase tracking-widest border-2 border-black shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all text-sm"
+        >
+          🗺️ Directions
+        </a>
+      </div>
     </div>
   );
 }

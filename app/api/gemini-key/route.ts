@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 
 export function getGeminiApiKey(req: NextRequest): string | null {
-  return req.cookies.get("gemini_api_key")?.value ?? null;
+  return req.cookies.get("gemini_api_key")?.value ?? process.env.GEMINI_API_KEY ?? null;
 }
 
 export async function POST(req: NextRequest) {
