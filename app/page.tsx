@@ -83,16 +83,6 @@ const MODULES: Module[] = [
   },
   // Small
   {
-    slug: 'practice-coach',
-    title: 'AI Practice Coach',
-    category: 'Practice',
-    description:
-      'Describe your goal, get a structured session. Gemini builds timed practice blocks linked to your tools, then adapts future sessions based on what you skip.',
-    stack: ['Gemini AI', 'React', 'localStorage', 'TypeScript'],
-    metric: 'Adapts to your history',
-    size: 'medium',
-  },
-  {
     slug: 'fretboard',
     title: 'Fretboard Explorer',
     category: 'Practice',
@@ -250,10 +240,6 @@ const KANBAN = {
     {
       title: 'WebSocket Market Feed',
       note: 'Replace polling with a persistent WS stream. No more waiting for the fruit to ripen.',
-    },
-    {
-      title: 'AI Practice Coach',
-      note: 'Adaptive guitar schedule driven by logged performance. Your personal monkey trainer.',
     },
   ],
   later: [

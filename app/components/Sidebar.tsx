@@ -28,7 +28,6 @@ const NAV = [
   {
     label: "Practice",
     links: [
-      { href: "/practice-coach", text: "🤖 AI Practice Coach" },
       { href: "/fretboard", text: "Fretboard Explorer" },
       { href: "/fretboard-quiz", text: "Fretboard Quiz" },
       { href: "/chord-practice", text: "Chord Practice" },
