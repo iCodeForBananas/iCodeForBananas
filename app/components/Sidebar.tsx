@@ -109,20 +109,18 @@ export default function Sidebar() {
         className={`fixed lg:relative h-screen bg-black text-yellow-400 flex flex-col gap-6 z-40 border-r-2 border-yellow-400 ${hasMounted ? "transition-all duration-300" : ""} overflow-y-auto ${isOpen ? "w-64 translate-x-0" : "w-0 -translate-x-full lg:w-0 overflow-hidden"}`}
       >
         <div className={`${isOpen ? "opacity-100" : "opacity-0"} p-6 ${hasMounted ? "transition-opacity duration-200" : ""}`}>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-xl font-black whitespace-nowrap uppercase tracking-widest text-yellow-400">
-              iCodeForBananas
-            </h2>
-            <button
-              onClick={toggle}
-              className="p-1.5 bg-yellow-400 hover:bg-yellow-300 text-black rounded-md border-2 border-black shrink-0"
-              aria-label="Close sidebar"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
+          <button
+            onClick={toggle}
+            className="p-2 bg-yellow-400 hover:bg-yellow-300 text-black rounded-md border-2 border-black mb-3"
+            aria-label="Close sidebar"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+          <h2 className="text-xl font-black uppercase tracking-widest text-yellow-400 mb-3 overflow-hidden text-ellipsis whitespace-nowrap">
+            iCodeForBananas
+          </h2>
 
           <button
             onClick={() => setIsModalOpen(true)}
