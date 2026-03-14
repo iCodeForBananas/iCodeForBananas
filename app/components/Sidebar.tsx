@@ -91,35 +91,42 @@ export default function Sidebar() {
 
   return (
     <>
-      <button
-        onClick={toggle}
-        className={`fixed top-4 z-50 p-2 bg-yellow-400 hover:bg-yellow-300 text-black rounded-md shadow-lg border-2 border-black ${hasMounted ? "transition-all duration-300" : ""} ${isOpen ? "left-[216px]" : "left-4"}`}
-        aria-label={isOpen ? "Close sidebar" : "Open sidebar"}
-      >
-        {isOpen ? (
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
-          </svg>
-        ) : (
+      {!isOpen && (
+        <button
+          onClick={toggle}
+          className="fixed top-3 left-3 z-50 p-2 bg-yellow-400 hover:bg-yellow-300 text-black rounded-md shadow-lg border-2 border-black"
+          aria-label="Open sidebar"
+        >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
           </svg>
-        )}
-      </button>
+        </button>
+      )}
 
       {isOpen && isMobile && <div className="fixed inset-0 bg-black/70 z-30 lg:hidden" onClick={toggle} />}
 
       <aside
-        className={`fixed lg:relative h-screen bg-black text-yellow-400 flex flex-col gap-6 z-40 border-r-2 border-yellow-400 ${hasMounted ? "transition-all duration-300" : ""} overflow-y-auto ${isOpen ? "w-64 translate-x-0 p-6" : "w-0 -translate-x-full lg:w-0 p-0 overflow-hidden"}`}
+        className={`fixed lg:relative h-screen bg-black text-yellow-400 flex flex-col gap-6 z-40 border-r-2 border-yellow-400 ${hasMounted ? "transition-all duration-300" : ""} overflow-y-auto ${isOpen ? "w-64 translate-x-0" : "w-0 -translate-x-full lg:w-0 overflow-hidden"}`}
       >
-        <div className={`${isOpen ? "opacity-100" : "opacity-0"} ${hasMounted ? "transition-opacity duration-200" : ""}`}>
-          <h2 className="text-xl font-black whitespace-nowrap uppercase tracking-widest text-yellow-400">
-            iCodeForBananas
-          </h2>
+        <div className={`${isOpen ? "opacity-100" : "opacity-0"} p-6 ${hasMounted ? "transition-opacity duration-200" : ""}`}>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-xl font-black whitespace-nowrap uppercase tracking-widest text-yellow-400">
+              iCodeForBananas
+            </h2>
+            <button
+              onClick={toggle}
+              className="p-1.5 bg-yellow-400 hover:bg-yellow-300 text-black rounded-md border-2 border-black shrink-0"
+              aria-label="Close sidebar"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
 
           <button
             onClick={() => setIsModalOpen(true)}
-            className="w-full text-sm font-semibold border-2 border-yellow-400 text-yellow-400 bg-black rounded px-3 py-2 mt-3 mb-1 hover:bg-yellow-400 hover:text-black transition-colors whitespace-nowrap"
+            className="w-full text-sm font-semibold border-2 border-yellow-400 text-yellow-400 bg-black rounded px-3 py-2 mt-1 mb-1 hover:bg-yellow-400 hover:text-black transition-colors whitespace-nowrap"
           >
             🔑 Set Gemini API Key
           </button>
