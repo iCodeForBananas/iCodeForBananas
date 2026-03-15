@@ -12,10 +12,10 @@ export default function FretboardQuizPage() {
         <div className='w-full lg:max-w-5xl lg:mx-auto'>
           <div className='rounded-lg p-6'>
             <div className='text-center mb-10'>
-              <h1 className='text-5xl font-bold text-white drop-shadow-lg'>Fretboard Quiz</h1>
-              <p className='text-lg text-white/80 mt-3'>Test your knowledge of scales on the guitar fretboard</p>
+              <h1 className='text-5xl font-bold text-black drop-shadow-lg'>Fretboard Quiz</h1>
+              <p className='text-lg text-black/70 mt-3'>Test your knowledge of scales on the guitar fretboard</p>
             </div>
-            <div className='rounded-lg shadow-md p-6 bg-white'>
+            <div className='p-6'>
               <FretboardQuiz />
             </div>
           </div>

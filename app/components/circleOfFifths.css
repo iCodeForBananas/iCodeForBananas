@@ -67,14 +67,14 @@
 }
 
 .minor-key {
-  fill: #1a1a1a;
-  stroke: #2a2a2a;
+  fill: #000000;
+  stroke: #1a1a1a;
   stroke-width: 2;
 }
 
 .minor-key:hover,
 .minor-key.active {
-  fill: #2a2a2a;
+  fill: #111111;
   stroke: #facc15;
   stroke-width: 3;
   filter: drop-shadow(0 0 10px rgba(250, 204, 21, 0.3));
@@ -108,8 +108,8 @@
 }
 
 .chord-display {
-  background: #111111;
-  border: 1px solid #2a2a2a;
+  background: #000000;
+  border: 1px solid #1a1a1a;
   border-radius: 20px;
   padding: 2rem;
   min-width: 230px;
@@ -120,8 +120,8 @@
 }
 
 .chord-placeholder {
-  background: #111111;
-  border: 1px dashed #2a2a2a;
+  background: #000000;
+  border: 1px dashed #1a1a1a;
   border-radius: 20px;
   padding: 2rem;
   min-width: 230px;

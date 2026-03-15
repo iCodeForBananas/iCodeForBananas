@@ -62,7 +62,7 @@ const ChordDiagram = ({ chord, shape, useFlats }: ChordDiagramProps) => {
         {/* Starting fret indicator */}
         {startFret > 1 && (
           <span
-            className='absolute text-xs font-medium text-gray-500'
+            className='absolute text-xs font-medium text-black/50'
             style={{ left: `${diagramWidth + 2}px`, top: "24px" }}
           >
             {startFret}fr
@@ -73,7 +73,7 @@ const ChordDiagram = ({ chord, shape, useFlats }: ChordDiagramProps) => {
         {[0, 1, 2, 3, 4, 5].map((stringIndex) => (
           <div
             key={stringIndex}
-            className='absolute bg-gray-400'
+            className='absolute bg-black/40'
             style={{
               left: `${stringIndex * stringSpacing + 10}px`,
               top: "20px",
@@ -88,7 +88,7 @@ const ChordDiagram = ({ chord, shape, useFlats }: ChordDiagramProps) => {
         {Array.from({ length: displayFrets + 1 }, (_, i) => i).map((fret) => (
           <div
             key={fret}
-            className={`absolute ${fret === 0 && startFret <= 1 ? "bg-gray-800" : "bg-gray-400"}`}
+            className={`absolute ${fret === 0 && startFret <= 1 ? "bg-black" : "bg-black/40"}`}
             style={{
               left: "6px",
               top: `${20 + fret * fretSpacing}px`,
@@ -110,7 +110,7 @@ const ChordDiagram = ({ chord, shape, useFlats }: ChordDiagramProps) => {
             return (
               <div
                 key={stringIndex}
-                className='absolute rounded-full border-2 border-blue-500 bg-white flex items-center justify-center font-bold'
+                className='absolute rounded-full border-2 border-[#facc15] bg-black flex items-center justify-center font-bold'
                 style={{
                   left: `${stringIndex * stringSpacing + 10 - dotSize / 2}px`,
                   top: `${20 - dotSize - 2}px`,
@@ -128,7 +128,7 @@ const ChordDiagram = ({ chord, shape, useFlats }: ChordDiagramProps) => {
             return (
               <div
                 key={stringIndex}
-                className='absolute bg-blue-500 rounded-full text-white flex items-center justify-center font-bold'
+                className='absolute bg-[#facc15] rounded-full text-black flex items-center justify-center font-bold'
                 style={{
                   left: `${stringIndex * stringSpacing + 10 - dotSize / 2}px`,
                   top: `${20 + displayPos * fretSpacing + fretSpacing / 2 - dotSize / 2}px`,
@@ -173,10 +173,10 @@ export default function ChordShapesPage() {
         <div className='w-full lg:max-w-5xl lg:mx-auto'>
           <div className='rounded-lg p-6'>
             <div className='text-center mb-10'>
-              <h1 className='text-5xl font-bold text-white drop-shadow-lg'>Chord Shapes</h1>
-              <p className='text-lg text-white/80 mt-3'>Browse chord diagrams for every key</p>
+              <h1 className='text-5xl font-bold text-black drop-shadow-lg'>Chord Shapes</h1>
+              <p className='text-lg text-black/70 mt-3'>Browse chord diagrams for every key</p>
             </div>
-            <div className='rounded-lg shadow-md p-6 bg-white'>
+            <div className='p-6'>
               <div className='mb-6'>
                 <div className='flex flex-wrap gap-2 justify-center items-center'>
                   {chordTypes.map((type) => {
@@ -198,7 +198,7 @@ export default function ChordShapesPage() {
                       </button>
                     );
                   })}
-                  <span className='mx-1 text-gray-300'>|</span>
+                  <span className='mx-1 text-black/30'>|</span>
                   <button
                     type='button'
                     aria-pressed={useFlats}
@@ -227,7 +227,7 @@ export default function ChordShapesPage() {
                       ) : (
                         <div className='text-center'>
                           <h6 className='font-semibold text-sm'>{chordName}</h6>
-                          <p className='text-gray-500 text-xs'>Shape not available</p>
+                           <p className='text-black/50 text-xs'>Shape not available</p>
                         </div>
                       )}
                     </div>

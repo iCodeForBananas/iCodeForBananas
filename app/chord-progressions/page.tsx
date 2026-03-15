@@ -12,10 +12,10 @@ export default function ChordProgressionsPage() {
         <div className='w-full'>
           <div className='rounded-lg p-6'>
             <div className='text-center mb-10'>
-              <h1 className='text-5xl font-bold text-white drop-shadow-lg'>Chord Progressions</h1>
-              <p className='text-lg text-white/80 mt-3'>Browse and practice common chord progressions</p>
+              <h1 className='text-5xl font-bold text-black drop-shadow-lg'>Chord Progressions</h1>
+              <p className='text-lg text-black/70 mt-3'>Browse and practice common chord progressions</p>
             </div>
-            <div className='rounded-lg shadow-md p-6 bg-white text-gray-900'>
+            <div className='p-6'>
               <ProgressionsView />
             </div>
           </div>

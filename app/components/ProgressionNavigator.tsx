@@ -90,7 +90,7 @@ export default function ProgressionNavigator({ startKey = "G", bpm = 80 }: Progr
   };
 
   return (
-    <div className='bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm text-gray-900 dark:text-gray-100 p-6 rounded-[20px] shadow-lg max-w-4xl'>
+    <div className='bg-black/10 backdrop-blur-sm text-black p-6 rounded-[20px] shadow-lg max-w-4xl'>
       <div className='flex flex-wrap gap-3 items-center mb-4'>
         <label className='font-medium'>Key:</label>
         <select
@@ -99,7 +99,7 @@ export default function ProgressionNavigator({ startKey = "G", bpm = 80 }: Progr
             setKey(e.target.value);
             reset();
           }}
-          className='bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-gray-100 border dark:border-gray-700 px-3 py-1.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
+          className='bg-black/20 text-black border border-black/20 px-3 py-1.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#facc15]'
         >
           {KEYS.map((k) => (
             <option key={k} value={k}>
@@ -109,7 +109,7 @@ export default function ProgressionNavigator({ startKey = "G", bpm = 80 }: Progr
         </select>
         <button
           onClick={() => setPlaying((p) => !p)}
-          className='bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded-lg transition-colors font-medium'
+          className='bg-black hover:bg-black/80 text-[#facc15] px-4 py-1.5 rounded-lg transition-colors font-medium'
         >
           {playing ? "Stop" : "Play"}
         </button>
@@ -124,16 +124,16 @@ export default function ProgressionNavigator({ startKey = "G", bpm = 80 }: Progr
           const isNext = nextFs.includes(f);
           const isMinor = f === "ii" || f === "iii" || f === "vi";
 
-          let bgColor = "bg-gray-700 hover:bg-gray-600";
-          if (isCurrent) bgColor = "bg-red-500 hover:bg-red-600";
-          else if (isNext) bgColor = "bg-amber-500 hover:bg-amber-600";
-          else if (isMinor) bgColor = "bg-cyan-600 hover:bg-cyan-700";
+          let bgColor = "bg-black/70 hover:bg-black/90";
+          if (isCurrent) bgColor = "bg-red-600 hover:bg-red-700";
+          else if (isNext) bgColor = "bg-[#facc15] hover:bg-[#fde047]";
+          else if (isMinor) bgColor = "bg-black/50 hover:bg-black/70";
 
           return (
             <button
               key={f}
               onClick={() => addStep(f)}
-              className={`${bgColor} p-3 rounded-xl transition-colors font-bold text-white shadow-md`}
+              className={`${bgColor} p-3 rounded-xl transition-colors font-bold shadow-md ${isNext ? "text-black" : "text-white"}`}
             >
               <div className='text-xs opacity-80'>{f}</div>
               <div className='text-lg'>{label}</div>
@@ -143,19 +143,19 @@ export default function ProgressionNavigator({ startKey = "G", bpm = 80 }: Progr
       </div>
 
       {/* Next-step hints */}
-      <div className='mb-4 text-sm text-yellow-400 dark:text-gray-300'>
+      <div className='mb-4 text-sm text-black/70'>
         Next from <span className='font-bold'>{currentF}</span>: {nextFs.join(" → ")}
       </div>
 
       {/* Progression timeline */}
-      <div className='bg-gray-100 dark:bg-gray-800 p-4 rounded-xl flex gap-2 flex-wrap items-center'>
+      <div className='bg-black/10 p-4 rounded-xl flex gap-2 flex-wrap items-center'>
         {prog.map((s, i) => {
           const active = playing ? i === beat % prog.length : i === prog.length - 1;
           return (
             <div
               key={i}
               className={`px-3 py-2 rounded-lg font-bold transition-colors ${
-                active ? "bg-yellow-300 text-gray-900" : "bg-gray-300 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                active ? "bg-[#facc15] text-black" : "bg-black/20 text-black"
               }`}
             >
               {s.label}
@@ -164,21 +164,21 @@ export default function ProgressionNavigator({ startKey = "G", bpm = 80 }: Progr
         })}
         <button
           onClick={reset}
-          className='ml-auto bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded-lg transition-colors text-sm font-medium'
+          className='ml-auto bg-black hover:bg-black/80 text-[#facc15] px-3 py-2 rounded-lg transition-colors text-sm font-medium'
         >
           Reset
         </button>
         <button
           onClick={() => setProg((p) => p.slice(0, -1))}
           disabled={prog.length <= 1}
-          className='bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded-lg transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed'
+          className='bg-black hover:bg-black/80 text-[#facc15] px-3 py-2 rounded-lg transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed'
         >
           Undo
         </button>
       </div>
 
       {/* Tip */}
-      <div className='mt-4 text-xs text-yellow-600 dark:text-gray-400'>
+      <div className='mt-4 text-xs text-black/60'>
         Click chords to build a path. Only valid next steps are highlighted. Use this as a live follow-along map while
         you play.
       </div>

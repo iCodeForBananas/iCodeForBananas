@@ -51,11 +51,7 @@ function TuningControl({ tuning, setTuning, theme }: TuningControlProps) {
         ))}
       </div>
       <button
-        className={`px-4 py-2 rounded border ${
-          theme === "light"
-            ? "border-gray-800 text-gray-800 hover:bg-gray-800 hover:text-white"
-            : "border-gray-200 text-gray-200 hover:bg-gray-200 hover:text-gray-800"
-        }`}
+        className='px-4 py-2 rounded border border-black text-black hover:bg-black hover:text-[#facc15]'
         onClick={resetTuning}
       >
         Reset Tuning
@@ -224,13 +220,13 @@ export default function ProgressionsView() {
 
           <div className='mt-3'>
             <button
-              className='bg-gray-600 text-white px-4 py-2 rounded text-sm mr-2 hover:bg-gray-700'
+              className='bg-black text-[#facc15] px-4 py-2 rounded text-sm mr-2 hover:bg-black/80'
               onClick={generateProgression}
             >
               Generate Random Progression
             </button>
             <button
-              className='bg-blue-600 text-white px-4 py-2 rounded text-sm mr-2 hover:bg-blue-700'
+              className='bg-[#facc15] text-black px-4 py-2 rounded text-sm mr-2 hover:bg-[#fde047]'
               onClick={() => {
                 const progressionData = {
                   chords: chordProgression.map((e) => e.name).filter(Boolean),
@@ -243,11 +239,7 @@ export default function ProgressionsView() {
               Pin Progression
             </button>
             <button
-              className={`px-4 py-2 rounded text-sm border ${
-                theme === "light"
-                  ? "border-red-600 text-red-600 hover:bg-red-600 hover:text-white"
-                  : "border-gray-200 text-gray-200 hover:bg-gray-200 hover:text-gray-800"
-              }`}
+              className='px-4 py-2 rounded text-sm border border-red-600 text-red-600 hover:bg-red-600 hover:text-white'
               onClick={resetAll}
               title='Reset all selections to default values'
             >
