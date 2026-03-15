@@ -506,7 +506,7 @@ const KanbanCard = ({ title, note }: { title: string; note: string }) => (
 
 export default function Home() {
   return (
-    <main className="flex w-full flex-col" style={{ background: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
+    <main className="flex w-full flex-col h-full overflow-hidden" style={{ background: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
       {/* ── MARQUEE ───────────────────────────────────────────── */}
       <div className="bg-black text-yellow-400 py-2 overflow-hidden whitespace-nowrap border-b-2 border-black">
         <motion.div
@@ -521,7 +521,7 @@ export default function Home() {
       </div>
 
       {/* ── HERO ──────────────────────────────────────────────── */}
-      <section className="bg-yellow-400 text-black relative flex flex-col items-center justify-center min-h-[90vh] px-6 py-24 overflow-hidden">
+      <section className="bg-yellow-400 text-black relative flex flex-col items-center justify-center flex-1 px-6 overflow-hidden">
         <div className="flex flex-col items-center text-center gap-16">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
