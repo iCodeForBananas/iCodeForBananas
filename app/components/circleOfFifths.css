@@ -102,7 +102,7 @@
 .center-text {
   font-size: 15px;
   font-weight: 700;
-  fill: rgba(250, 204, 21, 0.5);
+  fill: rgba(0, 0, 0, 0.7);
   letter-spacing: 0.05em;
   text-transform: uppercase;
 }

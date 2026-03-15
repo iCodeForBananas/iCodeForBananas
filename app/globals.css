@@ -26,7 +26,7 @@
 
   /* Legacy variables for compatibility */
   --background: var(--bg-primary);
-  --foreground: var(--text-primary);
+  --foreground: #000000;
   --border: var(--border-color);
   --muted: var(--text-secondary);
 
