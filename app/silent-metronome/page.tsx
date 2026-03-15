@@ -100,10 +100,10 @@ export default function SilentMetronome() {
         <div className='w-full lg:max-w-5xl lg:mx-auto'>
           <div className='rounded-lg p-6'>
             <div className='text-center mb-10'>
-              <h1 className='text-5xl font-bold text-white drop-shadow-lg'>Silent Metronome</h1>
-              <p className='text-lg text-white/80 mt-3'>Practice timing with a visual metronome</p>
+              <h1 className='text-5xl font-bold text-black drop-shadow-lg'>Silent Metronome</h1>
+              <p className='text-lg text-black/70 mt-3'>Practice timing with a visual metronome</p>
             </div>
-            <div className='rounded-lg shadow-md p-6 bg-white'>
+            <div className='p-6'>
               <div className='mb-8'>
                 <label className='block text-sm font-medium text-yellow-400 mb-2'>BPM: {bpm}</label>
                 <input
@@ -112,9 +112,9 @@ export default function SilentMetronome() {
                   max='200'
                   value={bpm}
                   onChange={(e) => setBpm(parseInt(e.target.value))}
-                  className='w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer'
+                  className='w-full h-2 bg-black/20 rounded-lg appearance-none cursor-pointer'
                 />
-                <div className='flex justify-between text-xs text-gray-500 mt-1'>
+                <div className='flex justify-between text-xs text-black/50 mt-1'>
                   <span>40</span>
                   <span>200</span>
                 </div>
@@ -127,7 +127,7 @@ export default function SilentMetronome() {
                     <div
                       key={index}
                       className={`p-6 rounded-lg border-2 transition-all duration-200 ${
-                        index === activeIndex ? "border-blue-500 scale-110" : "border-gray-300"
+                        index === activeIndex ? "border-[#facc15] scale-110" : "border-black/20"
                       }`}
                     >
                       <div className='text-2xl font-bold text-center'>{chord}</div>

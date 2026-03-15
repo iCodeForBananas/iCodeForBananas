@@ -109,9 +109,9 @@ export default function ChordFinder() {
   };
 
   const matchTypeBadgeClass = (m: ChordMatch) => {
-    if (m.matchType === "exact") return "bg-green-100 text-green-700 border border-green-200";
-    if (m.matchType === "subset") return "bg-orange-100 text-orange-700 border border-orange-200";
-    return "bg-blue-100 text-blue-700 border border-blue-200";
+    if (m.matchType === "exact") return "bg-green-900/30 text-green-400 border border-green-700";
+    if (m.matchType === "subset") return "bg-orange-900/30 text-orange-400 border border-orange-700";
+    return "bg-black/30 text-[#facc15] border border-[#facc15]/30";
   };
 
   return (
@@ -128,7 +128,7 @@ export default function ChordFinder() {
           <div>
             <span className='text-xs font-semibold text-yellow-400 uppercase tracking-wider'>Previewing</span>
             <div className='flex items-baseline gap-2 mt-0.5'>
-              <span className='text-lg font-bold text-gray-800'>{pinnedChord.name}</span>
+              <span className='text-lg font-bold text-black'>{pinnedChord.name}</span>
               <span className='text-sm text-gray-500'>{pinnedChord.notes.join(" – ")}</span>
             </div>
           </div>
@@ -151,7 +151,7 @@ export default function ChordFinder() {
           Clear
         </button>
         {selectedNotes.length === 0 ? (
-          <span className='text-gray-400 text-sm italic'>No notes selected yet</span>
+          <span className='text-black/50 text-sm italic'>No notes selected yet</span>
         ) : (
           <div className='flex flex-wrap gap-2'>
             {selectedNotes.map((note) => (
@@ -213,7 +213,7 @@ export default function ChordFinder() {
       {/* Chord Results */}
       <div className='space-y-4'>
         {selectedNotes.length === 0 && (
-          <div className='rounded-xl border border-dashed border-gray-300 p-8 text-center text-gray-400'>
+          <div className='rounded-xl border border-dashed border-black/30 p-8 text-center text-black/50'>
             Select notes on the fretboard above to identify chords
           </div>
         )}
@@ -238,7 +238,7 @@ export default function ChordFinder() {
                       : "border-green-200 bg-green-50 hover:border-yellow-400/50 hover:bg-yellow-400/10"
                   }`}
                 >
-                  <span className='font-bold text-gray-800 text-lg leading-tight'>{m.name}</span>
+                  <span className='font-bold text-black text-lg leading-tight'>{m.name}</span>
                   <span className='text-xs text-gray-500'>{m.notes.join(" – ")}</span>
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium w-fit ${matchTypeBadgeClass(m)}`}>
                     {matchTypeLabel(m)}
@@ -260,10 +260,10 @@ export default function ChordFinder() {
                   className={`flex flex-col gap-1 px-4 py-3 rounded-xl border shadow-sm min-w-[120px] text-left transition-all ${
                     pinnedChord?.name === m.name
                       ? "border-yellow-400 bg-yellow-400/10 ring-2 ring-yellow-400"
-                      : "border-gray-200 bg-white hover:border-yellow-400/50 hover:bg-yellow-400/10"
+                      : "border-black/20 bg-black/10 hover:border-[#facc15]/50 hover:bg-[#facc15]/10"
                   }`}
                 >
-                  <span className='font-semibold text-gray-800 leading-tight'>{m.name}</span>
+                  <span className='font-semibold text-black leading-tight'>{m.name}</span>
                   <span className='text-xs text-gray-500'>{m.notes.join(" – ")}</span>
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium w-fit ${matchTypeBadgeClass(m)}`}>
                     {matchTypeLabel(m)}

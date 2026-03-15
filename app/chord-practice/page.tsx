@@ -239,7 +239,7 @@ function ChordDiagram({ shape, label }: { shape: ChordShape; label: string }) {
 
         {startFret > 1 && (
           <span
-            className='absolute text-xs font-medium text-gray-500'
+            className='absolute text-xs font-medium text-black/50'
             style={{ left: `${diagramWidth + 2}px`, top: "24px" }}
           >
             {startFret}fr
@@ -250,7 +250,7 @@ function ChordDiagram({ shape, label }: { shape: ChordShape; label: string }) {
         {[0, 1, 2, 3, 4, 5].map((si) => (
           <div
             key={si}
-            className='absolute bg-gray-400'
+            className='absolute bg-black/40'
             style={{
               left: `${si * stringSpacing + 10}px`,
               top: "20px",
@@ -265,7 +265,7 @@ function ChordDiagram({ shape, label }: { shape: ChordShape; label: string }) {
         {Array.from({ length: displayFrets + 1 }, (_, i) => i).map((f) => (
           <div
             key={f}
-            className={`absolute ${f === 0 && startFret <= 1 ? "bg-gray-800" : "bg-gray-400"}`}
+            className={`absolute ${f === 0 && startFret <= 1 ? "bg-black" : "bg-black/40"}`}
             style={{
               left: "6px",
               top: `${20 + f * fretSpacing}px`,
@@ -285,7 +285,7 @@ function ChordDiagram({ shape, label }: { shape: ChordShape; label: string }) {
             return (
               <div
                 key={si}
-                className='absolute rounded-full border-2 border-yellow-400 bg-white flex items-center justify-center font-bold'
+                className='absolute rounded-full border-2 border-[#facc15] bg-black flex items-center justify-center font-bold'
                 style={{
                   left: `${si * stringSpacing + 10 - dotSize / 2}px`,
                   top: `${20 - dotSize - 2}px`,
@@ -304,7 +304,7 @@ function ChordDiagram({ shape, label }: { shape: ChordShape; label: string }) {
           return (
             <div
               key={si}
-              className='absolute bg-yellow-400 rounded-full text-white flex items-center justify-center font-bold'
+              className='absolute bg-[#facc15] rounded-full text-black flex items-center justify-center font-bold'
               style={{
                 left: `${si * stringSpacing + 10 - dotSize / 2}px`,
                 top: `${20 + displayPos * fretSpacing + fretSpacing / 2 - dotSize / 2}px`,
@@ -617,10 +617,10 @@ export default function ChordPracticePage() {
         <div className='w-full lg:max-w-4xl lg:mx-auto'>
           <div className='rounded-lg p-6'>
             <div className='text-center mb-10'>
-              <h1 className='text-5xl font-bold text-white drop-shadow-lg'>Chord Practice</h1>
-              <p className='text-lg text-white/80 mt-3'>Progressive chord training following the Circle of Fifths</p>
+              <h1 className='text-5xl font-bold text-black drop-shadow-lg'>Chord Practice</h1>
+              <p className='text-lg text-black/70 mt-3'>Progressive chord training following the Circle of Fifths</p>
             </div>
-            <div className='rounded-lg shadow-md p-6 bg-white'>
+            <div className='p-6'>
               {!isPlaying ? (
                 <>
                   {/* Game status bar (not playing) */}
@@ -660,7 +660,7 @@ export default function ChordPracticePage() {
                         </ul>
                         <button
                           onClick={startGame}
-                          className='px-8 py-3 bg-gradient-to-r from-yellow-400 to-yellow-300 text-white rounded-xl font-bold text-lg hover:from-yellow-500 hover:to-yellow-400 transition-all shadow-lg'
+                          className='px-8 py-3 bg-gradient-to-r from-yellow-400 to-yellow-300 text-black rounded-xl font-bold text-lg hover:from-yellow-500 hover:to-yellow-400 transition-all shadow-lg'
                         >
                           Start Practice
                         </button>
