@@ -12,8 +12,8 @@ export default function FretboardPage() {
         <div className='w-full lg:max-w-5xl lg:mx-auto'>
           <div className='rounded-lg p-6'>
             <div className='text-center mb-10'>
-              <h1 className='text-5xl font-bold text-black drop-shadow-lg'>Fretboard</h1>
-              <p className='text-lg text-black/70 mt-3'>Explore chords and scales on the guitar fretboard</p>
+              <h1 className='text-5xl font-bold text-[#000000] drop-shadow-lg'>Fretboard</h1>
+              <p className='text-lg text-[#000000]/70 mt-3'>Explore chords and scales on the guitar fretboard</p>
             </div>
             <div className='p-6'>
               <ChordScaleView />

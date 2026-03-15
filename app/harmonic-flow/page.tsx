@@ -6,8 +6,8 @@ export default function HarmonicFlowPage() {
       <div className='w-full lg:max-w-4xl lg:mx-auto'>
         <div className='rounded-lg p-6'>
           <div className='text-center mb-10'>
-            <h1 className='text-5xl font-bold text-black drop-shadow-lg'>Harmonic Flow</h1>
-            <p className='text-lg text-black/70 mt-3'>Build beautiful chord progressions interactively</p>
+            <h1 className='text-5xl font-bold text-[#000000] drop-shadow-lg'>Harmonic Flow</h1>
+            <p className='text-lg text-[#000000]/70 mt-3'>Build beautiful chord progressions interactively</p>
           </div>
           <div className='p-6'>
             <ProgressionNavigator startKey='G' bpm={80} />
