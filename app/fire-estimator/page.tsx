@@ -231,12 +231,12 @@ export default function FireEstimatorPage() {
 
       {/* FIRE metrics */}
       <div className="flex flex-wrap gap-4 mb-6">
-        <div className="rounded-lg px-4 py-3 border border-yellow-400/50" style={{ background: '#ff2f8a11' }} title="This is how much you need to never work again — once your portfolio hits this number, you can withdraw 4% per year to cover expenses forever">
+        <div className="rounded-xl px-4 py-3 bg-black/10 border border-black/20 shadow-sm" title="This is how much you need to never work again — once your portfolio hits this number, you can withdraw 4% per year to cover expenses forever">
           <div className="text-xs font-semibold uppercase text-[#000000]">FIRE Number (Rule of 25)</div>
           <div className="text-lg font-bold">{fmt(fireNumber)}</div>
           <div className="text-xs text-[#000000]/70">4% safe withdrawal = {fmt(fireNumber * SAFE_WITHDRAWAL_RATE)}/yr</div>
         </div>
-        <div className="rounded-lg px-4 py-3 border border-yellow-400/50" style={{ background: '#ff2f8a11' }} title={`${fireType}: ${fireType === 'Lean FIRE' ? 'Retiring on ≤$50K/yr — you can quit sooner with a frugal lifestyle' : fireType === 'Fat FIRE' ? 'Retiring on $100K+/yr — comfortable but takes longer to reach' : 'Retiring on $50K–$100K/yr — a balanced approach'}. This is when you can stop working entirely.`}>
+        <div className="rounded-xl px-4 py-3 bg-black/10 border border-black/20 shadow-sm" title={`${fireType}: ${fireType === 'Lean FIRE' ? 'Retiring on ≤$50K/yr — you can quit sooner with a frugal lifestyle' : fireType === 'Fat FIRE' ? 'Retiring on $100K+/yr — comfortable but takes longer to reach' : 'Retiring on $50K–$100K/yr — a balanced approach'}. This is when you can stop working entirely.`}>
           <div className="text-xs font-semibold uppercase text-[#000000]">{fireType}</div>
           <div className="text-lg font-bold">
             {retireAge != null
@@ -250,14 +250,14 @@ export default function FireEstimatorPage() {
           )}
         </div>
         {coastFireAge != null && (
-          <div className="rounded-lg px-4 py-3 border border-emerald-300" style={{ background: '#22c55e11' }} title="You can stop saving at this age — your investments will grow on their own to hit your FIRE number by 65. You still work to pay bills, but the pressure is off">
+          <div className="rounded-xl px-4 py-3 bg-black/10 border border-black/20 shadow-sm" title="You can stop saving at this age — your investments will grow on their own to hit your FIRE number by 65. You still work to pay bills, but the pressure is off">
             <div className="text-xs font-semibold uppercase text-[#000000]">Coast FIRE</div>
             <div className="text-lg font-bold">Age {coastFireAge}</div>
             <div className="text-xs text-[#000000]/70">No more savings needed to retire at 65</div>
           </div>
         )}
         {baristaFireAge != null && (
-          <div className="rounded-lg px-4 py-3 border border-amber-300" style={{ background: '#f59e0b11' }} title="You can quit your career at this age — a chill part-time gig plus your investment withdrawals will cover all your expenses">
+          <div className="rounded-xl px-4 py-3 bg-black/10 border border-black/20 shadow-sm" title="You can quit your career at this age — a chill part-time gig plus your investment withdrawals will cover all your expenses">
             <div className="text-xs font-semibold uppercase text-[#000000]">Barista FIRE</div>
             <div className="text-lg font-bold">Age {baristaFireAge}</div>
             <div className="text-xs text-[#000000]/70">Part-time {fmt(partTimeIncome)}/yr + 4% withdrawal covers expenses</div>
