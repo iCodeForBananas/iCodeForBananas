@@ -94,7 +94,8 @@ export default function Sidebar() {
       {!isOpen && (
         <button
           onClick={toggle}
-          className="fixed top-0 left-0 z-50 py-2 px-3 bg-yellow-400 hover:bg-yellow-300 text-black border-b-2 border-r-2 border-black"
+          className="fixed top-0 left-0 z-50 px-3 bg-yellow-400 hover:bg-yellow-300 text-black border-b-2 border-r-2 border-black flex items-center"
+          style={{ height: '42px' }}
           aria-label="Open sidebar"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
