@@ -28,13 +28,13 @@
 /* Decorative ring backgrounds */
 .outer-ring {
   fill: none;
-  stroke: rgba(59, 130, 246, 0.12);
+  stroke: rgba(250, 204, 21, 0.1);
   stroke-width: 60;
 }
 
 .inner-ring {
   fill: none;
-  stroke: rgba(59, 130, 246, 0.08);
+  stroke: rgba(250, 204, 21, 0.06);
   stroke-width: 50;
 }
 
@@ -53,37 +53,37 @@
 }
 
 .major-key {
-  fill: #3b82f6;
-  stroke: #2563eb;
+  fill: #facc15;
+  stroke: #e5a800;
   stroke-width: 2;
 }
 
 .major-key:hover,
 .major-key.active {
-  fill: #2563eb;
-  stroke: #1d4ed8;
+  fill: #fde047;
+  stroke: #ca8a04;
   stroke-width: 3;
-  filter: drop-shadow(0 0 12px rgba(59, 130, 246, 0.5));
+  filter: drop-shadow(0 0 12px rgba(250, 204, 21, 0.6));
 }
 
 .minor-key {
-  fill: #e5e7eb;
-  stroke: #d1d5db;
+  fill: #1a1a1a;
+  stroke: #2a2a2a;
   stroke-width: 2;
 }
 
 .minor-key:hover,
 .minor-key.active {
-  fill: #d1d5db;
-  stroke: #9ca3af;
+  fill: #2a2a2a;
+  stroke: #facc15;
   stroke-width: 3;
-  filter: drop-shadow(0 0 10px rgba(107, 114, 128, 0.4));
+  filter: drop-shadow(0 0 10px rgba(250, 204, 21, 0.3));
 }
 
 .key-text {
   font-size: 16px;
   font-weight: 700;
-  fill: #ffffff;
+  fill: #0a0a0a;
   cursor: pointer;
   user-select: none;
   letter-spacing: -0.02em;
@@ -95,33 +95,33 @@
 
 .minor-text {
   font-size: 13px;
-  fill: #374151;
+  fill: #facc15;
   font-weight: 600;
 }
 
 .center-text {
   font-size: 15px;
   font-weight: 700;
-  fill: rgba(55, 65, 81, 0.6);
+  fill: rgba(250, 204, 21, 0.5);
   letter-spacing: 0.05em;
   text-transform: uppercase;
 }
 
 .chord-display {
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
+  background: #111111;
+  border: 1px solid #2a2a2a;
   border-radius: 20px;
   padding: 2rem;
   min-width: 230px;
   width: 100%;
   max-width: 300px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
-  color: #111827;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  color: #facc15;
 }
 
 .chord-placeholder {
-  background: #f9fafb;
-  border: 1px dashed #d1d5db;
+  background: #111111;
+  border: 1px dashed #2a2a2a;
   border-radius: 20px;
   padding: 2rem;
   min-width: 230px;
@@ -130,7 +130,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #6b7280;
+  color: #a89a00;
 }
 
 .chord-diagram {

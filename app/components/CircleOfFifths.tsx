@@ -76,7 +76,7 @@ export default function CircleOfFifths() {
                 y1={outerPos.y}
                 x2={innerPos.x}
                 y2={innerPos.y}
-                stroke='rgba(59,130,246,0.1)'
+                stroke='rgba(250,204,21,0.15)'
                 strokeWidth='1'
               />
             );
