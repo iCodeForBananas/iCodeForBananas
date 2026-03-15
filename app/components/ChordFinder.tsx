@@ -128,7 +128,7 @@ export default function ChordFinder() {
           <div>
             <span className='text-xs font-semibold text-yellow-400 uppercase tracking-wider'>Previewing</span>
             <div className='flex items-baseline gap-2 mt-0.5'>
-              <span className='text-lg font-bold text-gray-800'>{pinnedChord.name}</span>
+              <span className='text-lg font-bold text-black'>{pinnedChord.name}</span>
               <span className='text-sm text-gray-500'>{pinnedChord.notes.join(" – ")}</span>
             </div>
           </div>
@@ -238,7 +238,7 @@ export default function ChordFinder() {
                       : "border-green-200 bg-green-50 hover:border-yellow-400/50 hover:bg-yellow-400/10"
                   }`}
                 >
-                  <span className='font-bold text-gray-800 text-lg leading-tight'>{m.name}</span>
+                  <span className='font-bold text-black text-lg leading-tight'>{m.name}</span>
                   <span className='text-xs text-gray-500'>{m.notes.join(" – ")}</span>
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium w-fit ${matchTypeBadgeClass(m)}`}>
                     {matchTypeLabel(m)}
@@ -263,7 +263,7 @@ export default function ChordFinder() {
                       : "border-black/20 bg-black/10 hover:border-[#facc15]/50 hover:bg-[#facc15]/10"
                   }`}
                 >
-                  <span className='font-semibold text-gray-800 leading-tight'>{m.name}</span>
+                  <span className='font-semibold text-black leading-tight'>{m.name}</span>
                   <span className='text-xs text-gray-500'>{m.notes.join(" – ")}</span>
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium w-fit ${matchTypeBadgeClass(m)}`}>
                     {matchTypeLabel(m)}

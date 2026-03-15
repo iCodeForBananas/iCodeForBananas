@@ -124,16 +124,16 @@ export default function ProgressionNavigator({ startKey = "G", bpm = 80 }: Progr
           const isNext = nextFs.includes(f);
           const isMinor = f === "ii" || f === "iii" || f === "vi";
 
-          let bgColor = "bg-black/70 hover:bg-black/90";
-          if (isCurrent) bgColor = "bg-red-600 hover:bg-red-700";
-          else if (isNext) bgColor = "bg-[#facc15] hover:bg-[#fde047]";
-          else if (isMinor) bgColor = "bg-black/50 hover:bg-black/70";
+          let bgColor = "bg-black/70 hover:bg-black/90 text-white";
+          if (isCurrent) bgColor = "bg-red-600 hover:bg-red-700 text-white";
+          else if (isNext) bgColor = "bg-[#facc15] hover:bg-[#fde047] text-black";
+          else if (isMinor) bgColor = "bg-black/50 hover:bg-black/70 text-white";
 
           return (
             <button
               key={f}
               onClick={() => addStep(f)}
-              className={`${bgColor} p-3 rounded-xl transition-colors font-bold shadow-md ${isNext ? "text-black" : "text-white"}`}
+              className={`${bgColor} p-3 rounded-xl transition-colors font-bold shadow-md`}
             >
               <div className='text-xs opacity-80'>{f}</div>
               <div className='text-lg'>{label}</div>
