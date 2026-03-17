@@ -61,6 +61,12 @@ const NAV = [
       { href: "/spd-crime-density", text: "SPD Crime Density" },
     ],
   },
+  {
+    label: "Misc",
+    links: [
+      { href: "/wordsmith", text: "Wordsmith" },
+    ],
+  },
 ];
 
 export default function Sidebar() {
