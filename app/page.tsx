@@ -194,6 +194,16 @@ const MODULES: Module[] = [
     metric: 'Real-time render',
     size: 'small',
   },
+  {
+    slug: 'wordsmith',
+    title: 'Wordsmith',
+    category: 'AI Writing Tools',
+    description:
+      'AI-powered note editor with tone rewriting, version history, template library, and context-aware Gemini assistant.',
+    stack: ['Gemini AI', 'React', 'TypeScript', 'localStorage'],
+    metric: 'Multi-tone · version history',
+    size: 'small',
+  },
 ];
 
 const AI_STEPS = [

@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Dark mode variant for wordsmith (data-theme="dark" on a wrapper element) */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
 /* Banana yellow + black theme */
 :root {
   --bg-primary: #0a0a0a;
