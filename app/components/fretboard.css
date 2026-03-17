@@ -33,6 +33,7 @@
 
 .note.highlight {
   background-color: var(--accent-chord);
+  color: var(--foreground);
   font-weight: bold;
 }
 

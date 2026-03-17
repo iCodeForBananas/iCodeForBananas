@@ -52,7 +52,7 @@ const ChordDiagram = ({ chord, shape, useFlats }: ChordDiagramProps) => {
             <span
               key={i}
               className='text-center text-xs font-medium'
-              style={{ width: `${stringSpacing}px`, color: fret === -1 ? "#9ca3af" : "transparent" }}
+              style={{ width: `${stringSpacing}px`, color: fret === -1 ? "#000000" : "transparent" }}
             >
               {fret === -1 ? "✕" : ""}
             </span>
@@ -173,8 +173,8 @@ export default function ChordShapesPage() {
         <div className='w-full lg:max-w-5xl lg:mx-auto'>
           <div className='rounded-lg p-6'>
             <div className='text-center mb-10'>
-              <h1 className='text-5xl font-bold text-black drop-shadow-lg'>Chord Shapes</h1>
-              <p className='text-lg text-black/70 mt-3'>Browse chord diagrams for every key</p>
+              <h1 className='text-5xl font-bold text-[#000000] drop-shadow-lg'>Chord Shapes</h1>
+              <p className='text-lg text-[#000000]/70 mt-3'>Browse chord diagrams for every key</p>
             </div>
             <div className='p-6'>
               <div className='mb-6'>

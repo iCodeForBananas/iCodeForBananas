@@ -54,7 +54,7 @@ export default function Songwriter() {
     <div className="flex flex-col h-screen">
       {/* Toolbar */}
       <div className="bg-gradient-to-r from-yellow-400 to-yellow-300 border-b border-yellow-400/30 px-4 py-3 flex items-center justify-between flex-shrink-0">
-        <h1 className="text-xl font-bold text-gray-800">Songwriter</h1>
+        <h1 className="text-xl font-bold text-[#000000]">Songwriter</h1>
         <div className="flex gap-4 items-center">
           <label className="text-sm font-medium text-yellow-400">Font Size:</label>
           <input
