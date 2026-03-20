@@ -49,10 +49,6 @@ const NAV = [
     ],
   },
   {
-    label: "City",
-    links: [{ href: "/whats-happening-today", text: "📅 What's Happening Today?" }],
-  },
-  {
     label: "Labs",
     links: [
       { href: "/aws-quiz", text: "AWS CCP Quiz" },
