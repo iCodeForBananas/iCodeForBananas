@@ -38,7 +38,7 @@ export const SERVICE_METADATA: Record<
   },
   [AWSServiceType.LAMBDA]: {
     icon: <Zap size={24} />,
-    color: "bg-yellow-500",
+    color: "bg-[#0d9e73]",
     cost: 10,
     description: "Serverless compute",
     availableConfigs: [
@@ -109,7 +109,7 @@ export const SERVICE_METADATA: Record<
   },
   [AWSServiceType.API_GATEWAY]: {
     icon: <Layout size={24} />,
-    color: "bg-yellow-500",
+    color: "bg-[#0d9e73]",
     cost: 25,
     description: "API Management",
     availableConfigs: [

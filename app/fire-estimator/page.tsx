@@ -167,58 +167,58 @@ export default function FireEstimatorPage() {
         <label className="flex flex-col gap-1" title="Starting earlier means more years of compound growth — even a few years makes a big difference in when you can retire">
           <span className="text-sm font-semibold text-[#000000]">Current Age</span>
           <input type="number" value={age} onChange={(e) => setAge(Number(e.target.value))}
-            className="border border-yellow-400/30 rounded px-3 py-2 w-28 bg-white" />
+            className="border border-[#373A40]/30 rounded px-3 py-2 w-28 bg-white" />
         </label>
         <label className="flex flex-col gap-1" title="How long your money needs to last — retiring at 35 with a life expectancy of 90 means 55 years of withdrawals">
           <span className="text-sm font-semibold text-[#000000]">Life Expectancy</span>
           <input type="number" value={lifeExpectancy} onChange={(e) => setLifeExpectancy(Number(e.target.value))}
-            className="border border-yellow-400/30 rounded px-3 py-2 w-28 bg-white" />
+            className="border border-[#373A40]/30 rounded px-3 py-2 w-28 bg-white" />
         </label>
         <label className="flex flex-col gap-1" title="Higher income means more you can save each year — the gap between this and your expenses is what gets invested toward retirement">
           <span className="text-sm font-semibold text-[#000000]">Yearly Income (after tax)</span>
           <input type="number" step="1000" value={income} onChange={(e) => setIncome(Number(e.target.value))}
-            className="border border-yellow-400/30 rounded px-3 py-2 w-48 bg-white" />
+            className="border border-[#373A40]/30 rounded px-3 py-2 w-48 bg-white" />
         </label>
         <label className="flex flex-col gap-1" title="Money you already have invested — a head start that compounds and can shave years off your retirement date">
           <span className="text-sm font-semibold text-[#000000]">Current Net Worth</span>
           <input type="number" step="1000" value={netWorth} onChange={(e) => setNetWorth(Number(e.target.value))}
-            className="border border-yellow-400/30 rounded px-3 py-2 w-48 bg-white" />
+            className="border border-[#373A40]/30 rounded px-3 py-2 w-48 bg-white" />
         </label>
         <label className="flex flex-col gap-1" title="The single biggest lever — cutting expenses lowers your FIRE number AND increases how much you save. Reducing by $500/mo can move retirement up by years">
           <span className="text-sm font-semibold text-[#000000]">Monthly Expenses</span>
           <input type="number" step="100" value={monthlyExpenses} onChange={(e) => setMonthlyExpenses(Number(e.target.value))}
-            className="border border-yellow-400/30 rounded px-3 py-2 w-48 bg-white" />
+            className="border border-[#373A40]/30 rounded px-3 py-2 w-48 bg-white" />
         </label>
         <label className="flex flex-col gap-1" title="With Barista FIRE, part-time income fills the gap so you can quit your career years before full FIRE — even a small side gig helps">
           <span className="text-sm font-semibold text-[#000000]">Part-Time Income (yr)</span>
           <input type="number" step="1000" value={partTimeIncome} onChange={(e) => setPartTimeIncome(Number(e.target.value))}
-            className="border border-yellow-400/30 rounded px-3 py-2 w-48 bg-white" />
+            className="border border-[#373A40]/30 rounded px-3 py-2 w-48 bg-white" />
         </label>
         <label className="flex flex-col gap-1" title="401k contributions come from pre-tax income and get invested — maxing this out accelerates your retirement date">
           <span className="text-sm font-semibold text-[#000000]">Monthly 401k</span>
           <input type="number" step="100" value={monthly401k} onChange={(e) => setMonthly401k(Number(e.target.value))}
-            className="border border-yellow-400/30 rounded px-3 py-2 w-36 bg-white" />
+            className="border border-[#373A40]/30 rounded px-3 py-2 w-36 bg-white" />
         </label>
         <label className="flex flex-col gap-1" title="Free money from your employer — a 50% match means every $1 you contribute adds $1.50 toward retirement">
           <span className="text-sm font-semibold text-[#000000]">Employer Match %</span>
           <input type="number" step="5" value={employerMatchPct} onChange={(e) => setEmployerMatchPct(Number(e.target.value))}
-            className="border border-yellow-400/30 rounded px-3 py-2 w-28 bg-white" />
+            className="border border-[#373A40]/30 rounded px-3 py-2 w-28 bg-white" />
         </label>
         <label className="flex flex-col gap-1" title="Your employer only matches up to this % of your salary — contribute at least this much to get the full free money">
           <span className="text-sm font-semibold text-[#000000]">Match Cap %</span>
           <input type="number" step="1" value={matchCapPct} onChange={(e) => setMatchCapPct(Number(e.target.value))}
-            className="border border-yellow-400/30 rounded px-3 py-2 w-28 bg-white" />
+            className="border border-[#373A40]/30 rounded px-3 py-2 w-28 bg-white" />
         </label>
         <label className="flex flex-col gap-1" title="Inflation raises your cost of living every year — higher inflation means you need a bigger portfolio to retire, pushing your date out">
           <span className="text-sm font-semibold text-[#000000]">Inflation %</span>
           <input type="number" step="0.5" value={inflation} onChange={(e) => setInflation(Number(e.target.value))}
-            className="border border-yellow-400/30 rounded px-3 py-2 w-28 bg-white" />
+            className="border border-[#373A40]/30 rounded px-3 py-2 w-28 bg-white" />
         </label>
         <div className="flex flex-col gap-1 justify-end">
           <label className="flex flex-col gap-1" title="Investing in index funds grows your money faster — SPY or QQQ can cut years off your retirement date vs keeping cash">
             <span className="text-sm font-semibold text-[#000000]">Invest In</span>
             <select value={investIn} onChange={(e) => setInvestIn(e.target.value)}
-              className="border border-yellow-400/30 rounded px-3 py-2 bg-white text-sm">
+              className="border border-[#373A40]/30 rounded px-3 py-2 bg-white text-sm">
               <option value="none">None (cash)</option>
               <option value="spy">SPY (S&P 500)</option>
               <option value="qqq">QQQ (Nasdaq-100)</option>
@@ -231,12 +231,12 @@ export default function FireEstimatorPage() {
 
       {/* FIRE metrics */}
       <div className="flex flex-wrap gap-4 mb-6">
-        <div className="rounded-xl px-4 py-3 bg-black/10 border border-black/20 shadow-sm" title="This is how much you need to never work again — once your portfolio hits this number, you can withdraw 4% per year to cover expenses forever">
+        <div className="rounded-xl px-4 py-3 bg-[#1A1B1E]/10 border border-[#373A40]/20 shadow-sm" title="This is how much you need to never work again — once your portfolio hits this number, you can withdraw 4% per year to cover expenses forever">
           <div className="text-xs font-semibold uppercase text-[#000000]">FIRE Number (Rule of 25)</div>
           <div className="text-lg font-bold">{fmt(fireNumber)}</div>
           <div className="text-xs text-[#000000]/70">4% safe withdrawal = {fmt(fireNumber * SAFE_WITHDRAWAL_RATE)}/yr</div>
         </div>
-        <div className="rounded-xl px-4 py-3 bg-black/10 border border-black/20 shadow-sm" title={`${fireType}: ${fireType === 'Lean FIRE' ? 'Retiring on ≤$50K/yr — you can quit sooner with a frugal lifestyle' : fireType === 'Fat FIRE' ? 'Retiring on $100K+/yr — comfortable but takes longer to reach' : 'Retiring on $50K–$100K/yr — a balanced approach'}. This is when you can stop working entirely.`}>
+        <div className="rounded-xl px-4 py-3 bg-[#1A1B1E]/10 border border-[#373A40]/20 shadow-sm" title={`${fireType}: ${fireType === 'Lean FIRE' ? 'Retiring on ≤$50K/yr — you can quit sooner with a frugal lifestyle' : fireType === 'Fat FIRE' ? 'Retiring on $100K+/yr — comfortable but takes longer to reach' : 'Retiring on $50K–$100K/yr — a balanced approach'}. This is when you can stop working entirely.`}>
           <div className="text-xs font-semibold uppercase text-[#000000]">{fireType}</div>
           <div className="text-lg font-bold">
             {retireAge != null
@@ -250,14 +250,14 @@ export default function FireEstimatorPage() {
           )}
         </div>
         {coastFireAge != null && (
-          <div className="rounded-xl px-4 py-3 bg-black/10 border border-black/20 shadow-sm" title="You can stop saving at this age — your investments will grow on their own to hit your FIRE number by 65. You still work to pay bills, but the pressure is off">
+          <div className="rounded-xl px-4 py-3 bg-[#1A1B1E]/10 border border-[#373A40]/20 shadow-sm" title="You can stop saving at this age — your investments will grow on their own to hit your FIRE number by 65. You still work to pay bills, but the pressure is off">
             <div className="text-xs font-semibold uppercase text-[#000000]">Coast FIRE</div>
             <div className="text-lg font-bold">Age {coastFireAge}</div>
             <div className="text-xs text-[#000000]/70">No more savings needed to retire at 65</div>
           </div>
         )}
         {baristaFireAge != null && (
-          <div className="rounded-xl px-4 py-3 bg-black/10 border border-black/20 shadow-sm" title="You can quit your career at this age — a chill part-time gig plus your investment withdrawals will cover all your expenses">
+          <div className="rounded-xl px-4 py-3 bg-[#1A1B1E]/10 border border-[#373A40]/20 shadow-sm" title="You can quit your career at this age — a chill part-time gig plus your investment withdrawals will cover all your expenses">
             <div className="text-xs font-semibold uppercase text-[#000000]">Barista FIRE</div>
             <div className="text-lg font-bold">Age {baristaFireAge}</div>
             <div className="text-xs text-[#000000]/70">Part-time {fmt(partTimeIncome)}/yr + 4% withdrawal covers expenses</div>
@@ -266,7 +266,7 @@ export default function FireEstimatorPage() {
       </div>
 
       {/* Chart */}
-      <div className="bg-white rounded-xl border border-yellow-400/30 p-4" style={{ height: 480 }} title="When the purple portfolio line crosses above the pink FIRE target line, you can retire — the green vertical line marks that age">
+      <div className="bg-white rounded-xl border border-[#373A40]/30 p-4" style={{ height: 480 }} title="When the purple portfolio line crosses above the pink FIRE target line, you can retire — the green vertical line marks that age">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data} margin={{ top: 10, right: 30, left: 10, bottom: 0 }}>
             <defs>

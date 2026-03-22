@@ -22,19 +22,18 @@
 
 .circle-svg {
   flex-shrink: 0;
-  filter: drop-shadow(0 4px 24px rgba(0, 0, 0, 0.15));
+  filter: drop-shadow(0 4px 24px rgba(0, 0, 0, 0.3));
 }
 
-/* Decorative ring backgrounds */
 .outer-ring {
   fill: none;
-  stroke: rgba(250, 204, 21, 0.1);
+  stroke: rgba(18, 184, 134, 0.1);
   stroke-width: 60;
 }
 
 .inner-ring {
   fill: none;
-  stroke: rgba(250, 204, 21, 0.06);
+  stroke: rgba(18, 184, 134, 0.06);
   stroke-width: 50;
 }
 
@@ -49,41 +48,41 @@
 .key-circle {
   cursor: pointer;
   transition: all 0.25s ease;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
 }
 
 .major-key {
-  fill: #facc15;
-  stroke: #e5a800;
+  fill: #12B886;
+  stroke: #0d9e73;
   stroke-width: 2;
 }
 
 .major-key:hover,
 .major-key.active {
-  fill: #fde047;
-  stroke: #ca8a04;
+  fill: #20c997;
+  stroke: #12B886;
   stroke-width: 3;
-  filter: drop-shadow(0 0 12px rgba(250, 204, 21, 0.6));
+  filter: drop-shadow(0 0 12px rgba(18, 184, 134, 0.5));
 }
 
 .minor-key {
-  fill: #000000;
-  stroke: #1a1a1a;
+  fill: #25262B;
+  stroke: #373A40;
   stroke-width: 2;
 }
 
 .minor-key:hover,
 .minor-key.active {
-  fill: #111111;
-  stroke: #facc15;
+  fill: #2C2E33;
+  stroke: #12B886;
   stroke-width: 3;
-  filter: drop-shadow(0 0 10px rgba(250, 204, 21, 0.3));
+  filter: drop-shadow(0 0 10px rgba(18, 184, 134, 0.3));
 }
 
 .key-text {
   font-size: 16px;
   font-weight: 700;
-  fill: #0a0a0a;
+  fill: #1A1B1E;
   cursor: pointer;
   user-select: none;
   letter-spacing: -0.02em;
@@ -95,33 +94,33 @@
 
 .minor-text {
   font-size: 13px;
-  fill: #facc15;
+  fill: #F8F9FA;
   font-weight: 600;
 }
 
 .center-text {
   font-size: 15px;
   font-weight: 700;
-  fill: rgba(0, 0, 0, 0.7);
+  fill: rgba(248, 249, 250, 0.7);
   letter-spacing: 0.05em;
   text-transform: uppercase;
 }
 
 .chord-display {
-  background: #000000;
-  border: 1px solid #1a1a1a;
+  background: #25262B;
+  border: 1px solid #373A40;
   border-radius: 20px;
   padding: 2rem;
   min-width: 230px;
   width: 100%;
   max-width: 300px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-  color: #facc15;
+  color: #F8F9FA;
 }
 
 .chord-placeholder {
-  background: #000000;
-  border: 1px dashed #1a1a1a;
+  background: #25262B;
+  border: 1px dashed #373A40;
   border-radius: 20px;
   padding: 2rem;
   min-width: 230px;
@@ -130,7 +129,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #a89a00;
+  color: #909296;
 }
 
 .chord-diagram {
@@ -141,5 +140,5 @@
 }
 
 .chord-diagram svg {
-  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.08));
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.15));
 }

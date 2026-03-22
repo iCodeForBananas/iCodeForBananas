@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import PinnedChordProgression from "../components/PinnedChordProgression";
 
 export default function SilentMetronome() {
   const [chords] = useState<string[]>(() => {
@@ -83,7 +82,6 @@ export default function SilentMetronome() {
   if (!mounted) {
     return (
       <div className='flex flex-col flex-1'>
-        <PinnedChordProgression />
         <main className='px-4 py-6 flex-1 metronome-static'>
           <div className='w-full lg:max-w-5xl lg:mx-auto'>
             <div className='p-4 text-foreground'>Loading...</div>
@@ -95,7 +93,6 @@ export default function SilentMetronome() {
 
   return (
     <div className='flex flex-col flex-1'>
-      <PinnedChordProgression />
       <main className='px-4 py-6 flex-1 metronome-static'>
         <div className='w-full lg:max-w-5xl lg:mx-auto'>
           <div className='rounded-lg p-6'>
@@ -105,20 +102,20 @@ export default function SilentMetronome() {
             </div>
             <div className='p-6'>
               <div className='mb-8'>
-                <label className='block text-sm font-medium text-yellow-400 mb-2'>BPM: {bpm}</label>
+                <label className='block text-sm font-medium text-[#F8F9FA] mb-2'>BPM: {bpm}</label>
                 <input
                   type='range'
                   min='40'
                   max='200'
                   value={bpm}
                   onChange={(e) => setBpm(parseInt(e.target.value))}
-                  className='w-full h-2 bg-black/20 rounded-lg appearance-none cursor-pointer'
+                  className='w-full h-2 bg-[#1A1B1E]/20 rounded-lg appearance-none cursor-pointer'
                 />
-                <div className='flex justify-between text-xs text-black/50 mt-1'>
+                <div className='flex justify-between text-xs text-[#1A1B1E]/50 mt-1'>
                   <span>40</span>
                   <span>200</span>
                 </div>
-                <div className='mt-3 text-sm text-yellow-400'>Count: {beat + 1} / 4</div>
+                <div className='mt-3 text-sm text-[#F8F9FA]'>Count: {beat + 1} / 4</div>
               </div>
 
               {chords.length > 0 ? (
@@ -127,7 +124,7 @@ export default function SilentMetronome() {
                     <div
                       key={index}
                       className={`p-6 rounded-lg border-2 transition-all duration-200 ${
-                        index === activeIndex ? "border-[#facc15] scale-110" : "border-black/20"
+                        index === activeIndex ? "border-[#12B886] scale-110" : "border-[#373A40]/20"
                       }`}
                     >
                       <div className='text-2xl font-bold text-center'>{chord}</div>

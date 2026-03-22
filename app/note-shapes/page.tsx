@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import PinnedChordProgression from "../components/PinnedChordProgression";
 import {
   type ChordShape,
   sharpNotes,
@@ -124,7 +123,7 @@ const ChordDiagram = ({ shape, useFlats }: ChordDiagramProps) => {
       {/* Starting fret indicator */}
       {startFret > 1 && (
         <span
-          className='absolute text-xs font-medium text-black/50'
+          className='absolute text-xs font-medium text-[#1A1B1E]/50'
           style={{ left: `${diagramWidth + 2}px`, top: "24px" }}
         >
           {startFret}fr
@@ -135,7 +134,7 @@ const ChordDiagram = ({ shape, useFlats }: ChordDiagramProps) => {
       {[0, 1, 2, 3, 4, 5].map((stringIndex) => (
         <div
           key={stringIndex}
-          className='absolute bg-black/40'
+          className='absolute bg-[#1A1B1E]/40'
           style={{
             left: `${stringIndex * stringSpacing + 10}px`,
             top: "20px",
@@ -150,7 +149,7 @@ const ChordDiagram = ({ shape, useFlats }: ChordDiagramProps) => {
       {Array.from({ length: displayFrets + 1 }, (_, i) => i).map((fret) => (
         <div
           key={fret}
-          className={`absolute ${fret === 0 && startFret <= 1 ? "bg-black" : "bg-black/40"}`}
+          className={`absolute ${fret === 0 && startFret <= 1 ? "bg-[#1A1B1E]" : "bg-[#1A1B1E]/40"}`}
           style={{
             left: "6px",
             top: `${20 + fret * fretSpacing}px`,
@@ -172,7 +171,7 @@ const ChordDiagram = ({ shape, useFlats }: ChordDiagramProps) => {
           return (
             <div
               key={stringIndex}
-              className='absolute rounded-full border-2 border-[#facc15] bg-black flex items-center justify-center font-bold'
+              className='absolute rounded-full border-2 border-[#12B886] bg-[#1A1B1E] flex items-center justify-center font-bold'
               style={{
                 left: `${stringIndex * stringSpacing + 10 - dotSize / 2}px`,
                 top: `${20 - dotSize - 2}px`,
@@ -190,7 +189,7 @@ const ChordDiagram = ({ shape, useFlats }: ChordDiagramProps) => {
           return (
             <div
               key={stringIndex}
-              className='absolute bg-[#facc15] rounded-full text-black flex items-center justify-center font-bold'
+              className='absolute bg-[#12B886] rounded-full text-[#1A1B1E] flex items-center justify-center font-bold'
               style={{
                 left: `${stringIndex * stringSpacing + 10 - dotSize / 2}px`,
                 top: `${20 + displayPos * fretSpacing + fretSpacing / 2 - dotSize / 2}px`,
@@ -229,7 +228,7 @@ const ChordCard = ({ note, type, useFlats, position }: ChordCardProps) => {
     return (
       <div className='flex flex-col items-center p-2'>
         <p className='font-semibold text-sm mb-1'>{chordLabel}</p>
-        <p className='text-black/40 text-xs'>N/A</p>
+        <p className='text-[#1A1B1E]/40 text-xs'>N/A</p>
       </div>
     );
   }
@@ -266,7 +265,6 @@ export default function NoteShapesPage() {
 
   return (
     <div className='flex flex-col flex-1'>
-      <PinnedChordProgression />
       <main className='px-4 py-6 flex-1 metronome-static'>
         <div className='w-full lg:max-w-5xl lg:mx-auto'>
           <div className='rounded-lg p-6'>
@@ -278,7 +276,7 @@ export default function NoteShapesPage() {
               {/* Root note selector + position dropdown */}
               <div className='mb-6 flex flex-wrap items-start justify-between gap-4'>
                 <div>
-                  <p className='text-xs font-semibold text-black/50 uppercase tracking-wider mb-2'>Root Note</p>
+                  <p className='text-xs font-semibold text-[#1A1B1E]/50 uppercase tracking-wider mb-2'>Root Note</p>
                   <div className='flex flex-wrap gap-2'>
                     {displayNotes.map((note) => {
                       const active =
@@ -301,7 +299,7 @@ export default function NoteShapesPage() {
                         </button>
                       );
                     })}
-                    <span className='mx-1 text-black/30'>|</span>
+                    <span className='mx-1 text-[#1A1B1E]/30'>|</span>
                     <button
                       type='button'
                       aria-pressed={useFlats}
@@ -335,11 +333,11 @@ export default function NoteShapesPage() {
 
                 {/* Global fret position selector */}
                 <div className='flex flex-col items-end gap-1'>
-                  <p className='text-xs font-semibold text-black/50 uppercase tracking-wider'>Fret Position</p>
+                  <p className='text-xs font-semibold text-[#1A1B1E]/50 uppercase tracking-wider'>Fret Position</p>
                   <select
                     value={position}
                     onChange={(e) => setPosition(e.target.value as PositionType)}
-                    className='text-sm border border-black/20 rounded px-2 py-1 bg-black text-[#facc15]'
+                    className='text-sm border border-[#373A40]/20 rounded px-2 py-1 bg-[#1A1B1E] text-[#12B886]'
                     aria-label='Fret position for all shapes'
                   >
                     {POSITION_TYPES.map((p) => (

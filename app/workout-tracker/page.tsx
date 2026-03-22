@@ -122,13 +122,13 @@ export default function WorkoutTrackerPage() {
                 className="mb-3 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900" />
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <div>
-                  <label className="block text-sm font-medium text-yellow-400">Sets</label>
+                  <label className="block text-sm font-medium text-[#F8F9FA]">Sets</label>
                   <input type="number" min={1} value={form.sets}
                     onChange={e => setForm({ ...form, sets: +e.target.value })}
                     className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-yellow-400">Reps</label>
+                  <label className="block text-sm font-medium text-[#F8F9FA]">Reps</label>
                   <input type="number" min={1} value={form.reps}
                     onChange={e => setForm({ ...form, reps: +e.target.value })}
                     className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900" />
@@ -171,7 +171,7 @@ export default function WorkoutTrackerPage() {
 
           {completed.length > 0 && (
             <div className="mt-8">
-              <h3 className="font-medium text-lg mb-3 text-yellow-600">Completed Workouts</h3>
+              <h3 className="font-medium text-lg mb-3 text-[#909296]">Completed Workouts</h3>
               {completed.map(w => (
                 <WorkoutRow key={w.id} workout={w} onToggle={toggle} editingId={editingId}
                   onEdit={(id) => { setEditingId(id); setForm({ name: w.name, sets: w.sets, reps: w.reps }); }}
@@ -237,18 +237,18 @@ function WorkoutRow({ workout: w, onToggle, editingId, onEdit, form, setForm, on
           className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900" />
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-yellow-400">Sets</label>
+            <label className="block text-sm font-medium text-[#F8F9FA]">Sets</label>
             <input type="number" min={1} value={form.sets} onChange={e => setForm({ ...form, sets: +e.target.value })}
               className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-yellow-400">Reps</label>
+            <label className="block text-sm font-medium text-[#F8F9FA]">Reps</label>
             <input type="number" min={1} value={form.reps} onChange={e => setForm({ ...form, reps: +e.target.value })}
               className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900" />
           </div>
         </div>
         <div className="flex justify-end space-x-2">
-          <button onClick={onCancel} className="rounded-md bg-gray-200 px-3 py-1.5 text-sm font-medium text-yellow-400 hover:bg-gray-300">Cancel</button>
+          <button onClick={onCancel} className="rounded-md bg-gray-200 px-3 py-1.5 text-sm font-medium text-[#F8F9FA] hover:bg-gray-300">Cancel</button>
           <button onClick={() => onSave(w.id)} className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700">Save</button>
         </div>
       </div>
@@ -262,11 +262,11 @@ function WorkoutRow({ workout: w, onToggle, editingId, onEdit, form, setForm, on
           className="h-5 w-5 rounded border-gray-300 text-blue-600" />
         <div className={w.completed ? 'line-through text-gray-400' : ''}>
           <h3 className="text-lg font-medium text-gray-900">{w.name}</h3>
-          <p className="text-sm text-yellow-600">{w.sets} sets × {w.reps} reps</p>
+          <p className="text-sm text-[#909296]">{w.sets} sets × {w.reps} reps</p>
         </div>
       </div>
       <button onClick={() => onEdit(w.id)}
-        className="rounded-md bg-gray-100 px-3 py-1.5 text-sm font-medium text-yellow-400 hover:bg-gray-200">Edit</button>
+        className="rounded-md bg-gray-100 px-3 py-1.5 text-sm font-medium text-[#F8F9FA] hover:bg-gray-200">Edit</button>
     </div>
   );
 }

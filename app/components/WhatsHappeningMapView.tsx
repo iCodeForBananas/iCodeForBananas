@@ -43,8 +43,8 @@ export default function WhatsHappeningMapView({ events }: Props) {
 
   if (!MapComponents) {
     return (
-      <div className="flex items-center justify-center bg-black border-2 border-yellow-400/30 h-full w-full">
-        <p className="text-yellow-400 font-bold uppercase tracking-widest">🍌 Loading map…</p>
+      <div className="flex items-center justify-center h-full w-full" style={{ background: '#1A1B1E', border: '1px solid #373A40' }}>
+        <p className="font-bold uppercase tracking-widest" style={{ color: '#12B886' }}>🍌 Loading map…</p>
       </div>
     );
   }
@@ -52,11 +52,7 @@ export default function WhatsHappeningMapView({ events }: Props) {
   const { MapContainer, TileLayer, Marker, Popup, leaflet: L } = MapComponents;
 
   return (
-    <MapContainer
-      center={SEATTLE_CENTER}
-      zoom={12}
-      style={{ height: "100%", width: "100%" }}
-    >
+    <MapContainer center={SEATTLE_CENTER} zoom={12} style={{ height: "100%", width: "100%" }}>
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -64,7 +60,7 @@ export default function WhatsHappeningMapView({ events }: Props) {
       {events.filter((e) => SOURCE_COORDS[e.source ?? ""] != null).map((event) => {
         const coords = SOURCE_COORDS[event.source ?? ""];
         const icon = L.divIcon({
-          html: `<div style="width:36px;height:36px;background:#facc15;border:2px solid black;display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:4px 4px 0px rgba(0,0,0,1);">📍</div>`,
+          html: `<div style="width:36px;height:36px;background:#12B886;border:1px solid #373A40;display:flex;align-items:center;justify-content:center;font-size:18px;border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,0.4);">📍</div>`,
           className: "",
           iconSize: [36, 36],
           iconAnchor: [18, 18],
@@ -76,16 +72,16 @@ export default function WhatsHappeningMapView({ events }: Props) {
         return (
           <Marker key={event.id} position={[coords.lat, coords.lng]} icon={icon}>
             <Popup>
-              <div className="text-sm" style={{ background: '#000', color: '#facc15', border: '2px solid #facc15', padding: '8px', minWidth: '160px' }}>
-                <p style={{ fontWeight: 900, color: '#facc15', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{event.name}</p>
-                <p style={{ color: '#ca8a04', marginBottom: '2px' }}>{event.venue}</p>
-                <p style={{ color: '#ca8a04', marginBottom: '2px' }}>🕐 {event.time}</p>
-                <p style={{ color: '#facc15', fontWeight: 700, marginBottom: '4px' }}>
+              <div className="text-sm" style={{ background: '#25262B', color: '#F8F9FA', border: '1px solid #373A40', padding: '8px', minWidth: '160px', borderRadius: '4px' }}>
+                <p style={{ fontWeight: 900, color: '#F8F9FA', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{event.name}</p>
+                <p style={{ color: '#909296', marginBottom: '2px' }}>{event.venue}</p>
+                <p style={{ color: '#909296', marginBottom: '2px' }}>🕐 {event.time}</p>
+                <p style={{ color: '#12B886', fontWeight: 700, marginBottom: '4px' }}>
                   {event.price ? `$${event.price} cover` : 'Free'}
                 </p>
-                <p style={{ color: '#854d0e', fontSize: '11px' }}>{shortDescription}</p>
+                <p style={{ color: '#909296', fontSize: '11px' }}>{shortDescription}</p>
                 {event.eventUrl && (
-                  <a href={event.eventUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#facc15', fontSize: '11px', display: 'block', marginTop: '4px' }}>View event →</a>
+                  <a href={event.eventUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#4C6EF5', fontSize: '11px', display: 'block', marginTop: '4px' }}>View event →</a>
                 )}
               </div>
             </Popup>

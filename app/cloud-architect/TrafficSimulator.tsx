@@ -427,7 +427,7 @@ export default function TrafficSimulator({ nodes, connections, score, targetRPS,
             <div className='text-center'>
               <div className='text-[10px] text-slate-500 uppercase font-bold tracking-widest'>Uptime</div>
               <div
-                className={`text-base font-black tabular-nums ${uptimePct >= 90 ? "text-green-400" : uptimePct >= 70 ? "text-yellow-400" : "text-red-400"}`}
+                className={`text-base font-black tabular-nums ${uptimePct >= 90 ? "text-green-400" : uptimePct >= 70 ? "text-[#F8F9FA]" : "text-red-400"}`}
               >
                 {uptimePct}%
               </div>

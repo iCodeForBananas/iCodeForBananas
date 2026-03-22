@@ -68,17 +68,18 @@ export default function GeminiKeyModal({ isOpen, onClose }: GeminiKeyModalProps)
   };
 
   return (
-    <div
-      className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4"
-      onClick={onClose}
-    >
+    <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div
-        className="bg-black border-2 border-yellow-400 rounded-lg shadow-2xl w-full max-w-md p-6 relative"
+        className="rounded-lg shadow-2xl w-full max-w-md p-6 relative"
+        style={{ background: '#25262B', border: '1px solid #373A40' }}
         onClick={(e) => e.stopPropagation()}
       >
         <button
           onClick={onClose}
-          className="absolute top-3 right-3 text-yellow-400 hover:text-black hover:bg-yellow-400 rounded p-1 transition-colors"
+          className="absolute top-3 right-3 rounded p-1 transition-colors"
+          style={{ color: '#909296' }}
+          onMouseEnter={e => { e.currentTarget.style.color = '#12B886'; }}
+          onMouseLeave={e => { e.currentTarget.style.color = '#909296'; }}
           aria-label="Close modal"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -86,10 +87,10 @@ export default function GeminiKeyModal({ isOpen, onClose }: GeminiKeyModalProps)
           </svg>
         </button>
 
-        <h2 className="text-xl font-black text-yellow-400 uppercase tracking-widest mb-2">
+        <h2 className="text-xl font-black uppercase tracking-widest mb-2" style={{ color: '#F8F9FA' }}>
           Set Gemini API Key
         </h2>
-        <p className="text-sm text-yellow-600 mb-5">
+        <p className="text-sm mb-5" style={{ color: '#909296' }}>
           Your key is stored as a secure, HttpOnly cookie for 2 days and never logged.
         </p>
 
@@ -101,12 +102,16 @@ export default function GeminiKeyModal({ isOpen, onClose }: GeminiKeyModalProps)
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
               placeholder="Enter your Gemini API key"
-              className="w-full bg-black border-2 border-yellow-400 text-yellow-400 placeholder-yellow-700 rounded px-3 py-2 pr-16 text-sm focus:outline-none focus:border-yellow-300"
+              className="w-full rounded px-3 py-2 pr-16 text-sm focus:outline-none"
+              style={{ background: '#1A1B1E', border: '1px solid #373A40', color: '#F8F9FA' }}
+              onFocus={e => { e.currentTarget.style.borderColor = '#12B886'; }}
+              onBlur={e => { e.currentTarget.style.borderColor = '#373A40'; }}
             />
             <button
               type="button"
               onClick={() => setShowKey((v) => !v)}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-yellow-600 hover:text-yellow-400 font-semibold"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-xs font-semibold"
+              style={{ color: '#909296' }}
             >
               {showKey ? "Hide" : "Show"}
             </button>
@@ -121,7 +126,8 @@ export default function GeminiKeyModal({ isOpen, onClose }: GeminiKeyModalProps)
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-yellow-400 text-black font-bold text-sm rounded px-3 py-2 hover:bg-yellow-300 transition-colors disabled:opacity-50"
+            className="w-full font-bold text-sm rounded px-3 py-2 transition-colors disabled:opacity-50"
+            style={{ background: '#4C6EF5', color: '#F8F9FA' }}
           >
             Save Key
           </button>
@@ -130,7 +136,10 @@ export default function GeminiKeyModal({ isOpen, onClose }: GeminiKeyModalProps)
         <button
           onClick={handleRemove}
           disabled={loading}
-          className="mt-3 w-full border-2 border-yellow-400 text-yellow-400 font-semibold text-sm rounded px-3 py-2 hover:bg-yellow-400 hover:text-black transition-colors disabled:opacity-50"
+          className="mt-3 w-full font-semibold text-sm rounded px-3 py-2 transition-colors disabled:opacity-50"
+          style={{ border: '1px solid #373A40', color: '#F8F9FA', background: 'transparent' }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(18,184,134,0.15)'; e.currentTarget.style.color = '#12B886'; e.currentTarget.style.borderColor = '#12B886'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#F8F9FA'; e.currentTarget.style.borderColor = '#373A40'; }}
         >
           Remove Key
         </button>

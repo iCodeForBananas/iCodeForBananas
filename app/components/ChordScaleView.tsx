@@ -43,7 +43,7 @@ function TuningControl({ tuning, setTuning, theme }: TuningControlProps) {
         ))}
       </div>
       <button
-        className='px-4 py-2 rounded border border-black text-black hover:bg-black hover:text-[#facc15]'
+        className='px-4 py-2 rounded border border-[#373A40] text-[#1A1B1E] hover:bg-[#1A1B1E] hover:text-[#12B886]'
         onClick={resetTuning}
       >
         Reset Tuning

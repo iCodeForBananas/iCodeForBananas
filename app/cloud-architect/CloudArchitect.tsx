@@ -519,7 +519,7 @@ export default function CloudArchitect() {
                     </p>
                   </div>
                   <div
-                    className={`text-3xl font-black ${simulationResult.score >= PASS_THRESHOLD ? "text-green-500" : simulationResult.score >= 50 ? "text-yellow-500" : "text-red-500"}`}
+                    className={`text-3xl font-black ${simulationResult.score >= PASS_THRESHOLD ? "text-green-500" : simulationResult.score >= 50 ? "text-[#F8F9FA]" : "text-red-500"}`}
                   >
                     {simulationResult.score}
                   </div>
@@ -568,7 +568,7 @@ export default function CloudArchitect() {
 
                 <section>
                   <h3 className='text-xs font-bold text-slate-500 uppercase tracking-widest mb-3 flex items-center gap-2'>
-                    <Lightbulb size={14} className='text-yellow-500' /> Architect&apos;s Hints
+                    <Lightbulb size={14} className='text-[#F8F9FA]' /> Architect&apos;s Hints
                   </h3>
                   <ul className='space-y-3'>
                     {simulationResult.hints.map((h, i) => (
@@ -702,7 +702,7 @@ export default function CloudArchitect() {
                       currentScenario.difficulty === "Easy"
                         ? "text-green-400"
                         : currentScenario.difficulty === "Medium"
-                          ? "text-yellow-400"
+                          ? "text-[#F8F9FA]"
                           : "text-red-400"
                     }`}
                   >
@@ -738,7 +738,7 @@ export default function CloudArchitect() {
               <div className='flex items-center gap-3'>
                 <div className='flex-1 bg-slate-700 h-2.5 rounded-full overflow-hidden'>
                   <div
-                    className='h-full bg-gradient-to-r from-orange-500 to-yellow-400 transition-all duration-500'
+                    className='h-full bg-gradient-to-r from-orange-500 to-[#3b5de7] transition-all duration-500'
                     style={{ width: `${((unlockedLevel - 1) / SCENARIOS.length) * 100}%` }}
                   />
                 </div>
@@ -796,7 +796,7 @@ export default function CloudArchitect() {
                               s.difficulty === "Easy"
                                 ? "bg-green-500/20 text-green-400"
                                 : s.difficulty === "Medium"
-                                  ? "bg-yellow-500/20 text-yellow-400"
+                                  ? "bg-[#0d9e73]/20 text-[#F8F9FA]"
                                   : "bg-red-500/20 text-red-400"
                             }`}
                           >
@@ -841,7 +841,7 @@ export default function CloudArchitect() {
       {showLevelUp && (
         <div className='fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[60] flex items-center justify-center p-6'>
           <div className='bg-slate-800 rounded-3xl border border-orange-500/50 max-w-md w-full shadow-2xl overflow-hidden text-center'>
-            <div className='p-10 bg-gradient-to-br from-orange-600/30 via-yellow-500/10 to-transparent'>
+            <div className='p-10 bg-gradient-to-br from-[#4C6EF5]/20 via-[#12B886]/10 to-transparent'>
               <div className='inline-flex items-center justify-center w-20 h-20 rounded-full bg-orange-500/20 border-2 border-orange-500 mb-6'>
                 <Trophy size={36} className='text-orange-400' />
               </div>

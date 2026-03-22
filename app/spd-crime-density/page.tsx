@@ -487,7 +487,7 @@ export default function SPDCrimeDensityPage() {
                 <p>{propertyCrimePct}% of all incidents are property crimes. Theft from motor vehicles alone accounts for ~20% of all crime.</p>
               </div>
               <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
-                <div className="text-yellow-400 font-semibold mb-1">📍 Capitol Hill Hotspot</div>
+                <div className="text-[#F8F9FA] font-semibold mb-1">📍 Capitol Hill Hotspot</div>
                 <p>Capitol Hill and Queen Anne are the top two neighborhoods by incident count, together representing over 15% of all reported crimes.</p>
               </div>
               <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
@@ -503,14 +503,14 @@ export default function SPDCrimeDensityPage() {
                 <p>North Precinct has the most incidents ({stats.byPrecinct.find(p => p.name === "North")?.count.toLocaleString() ?? "—"}), followed by West. Together they account for over 60% of all records.</p>
               </div>
               <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
-                <div className="text-yellow-400 font-semibold mb-1">🚗 Vehicle Targets</div>
+                <div className="text-[#F8F9FA] font-semibold mb-1">🚗 Vehicle Targets</div>
                 <p>Combining Theft From Motor Vehicle, Motor Vehicle Theft, and Parts/Accessories theft = over 5,700 vehicle-related incidents (28%+ of all crimes).</p>
               </div>
             </div>
           </div>
         )}
 
-        <p className="text-xs text-yellow-600 pb-4">
+        <p className="text-xs text-[#909296] pb-4">
           Data sourced from Seattle Police Department public records. Incidents with redacted or invalid coordinates (~15%) are excluded from the map but included in all charts.
         </p>
       </div>

@@ -10,10 +10,6 @@ const isMobileDevice = () => window.innerWidth < MOBILE_BREAKPOINT;
 
 const NAV = [
   {
-    label: null,
-    links: [{ href: "/", text: "🏠 Home" }],
-  },
-  {
     label: "Music Theory",
     links: [
       { href: "/circle-of-fifths", text: "Circle of Fifths" },
@@ -30,7 +26,6 @@ const NAV = [
     links: [
       { href: "/fretboard", text: "Fretboard Explorer" },
       { href: "/fretboard-quiz", text: "Fretboard Quiz" },
-      { href: "/chord-practice", text: "Chord Practice" },
       { href: "/silent-metronome", text: "Silent Metronome" },
     ],
   },
@@ -96,8 +91,8 @@ export default function Sidebar() {
       {!isOpen && (
         <button
           onClick={toggle}
-          className="fixed top-0 left-0 z-50 px-3 bg-yellow-400 hover:bg-yellow-300 text-black border-b-2 border-r-2 border-black flex items-center"
-          style={{ height: '42px' }}
+          className="fixed top-0 left-0 z-50 px-3 flex items-center"
+          style={{ height: '42px', background: 'rgba(37, 38, 43, 0.8)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', color: '#F8F9FA', border: 'none', borderBottom: '1px solid #373A40', borderRight: '1px solid #373A40' }}
           aria-label="Open sidebar"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -109,12 +104,13 @@ export default function Sidebar() {
       {isOpen && isMobile && <div className="fixed inset-0 bg-black/70 z-30 lg:hidden" onClick={toggle} />}
 
       <aside
-        className={`fixed lg:relative h-screen bg-black text-yellow-400 flex flex-col z-40 border-r-2 border-yellow-400 ${hasMounted ? "transition-all duration-300" : ""} ${isOpen ? "w-64 translate-x-0" : "w-0 -translate-x-full lg:w-0 overflow-hidden"}`}
+        className={`fixed lg:relative h-screen flex flex-col z-40 ${hasMounted ? "transition-all duration-300" : ""} ${isOpen ? "w-64 translate-x-0" : "w-0 -translate-x-full lg:w-0 overflow-hidden"}`}
+        style={{ background: 'rgba(37, 38, 43, 0.8)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', borderRight: '1px solid #373A40' }}
       >
-        {/* Toggle button — full sidebar width, same height as header marquee */}
         <button
           onClick={toggle}
-          className={`w-full flex items-center justify-center py-2 bg-yellow-400 hover:bg-yellow-300 text-black shrink-0 ${hasMounted ? "transition-opacity duration-200" : ""} ${isOpen ? "opacity-100" : "opacity-0"}`}
+          className={`w-full flex items-center justify-center py-2 shrink-0 ${hasMounted ? "transition-opacity duration-200" : ""} ${isOpen ? "opacity-100" : "opacity-0"}`}
+          style={{ background: 'rgba(37, 38, 43, 0.8)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', color: '#F8F9FA', borderBottom: '1px solid #373A40' }}
           aria-label="Close sidebar"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -122,15 +118,17 @@ export default function Sidebar() {
           </svg>
         </button>
 
-        {/* Scrollable sidebar content */}
         <div className={`flex-1 overflow-y-auto p-6 ${hasMounted ? "transition-opacity duration-200" : ""} ${isOpen ? "opacity-100" : "opacity-0"}`}>
-          <h2 className="text-xl font-black uppercase tracking-widest text-yellow-400 mb-3 overflow-hidden text-ellipsis whitespace-nowrap">
+          <Link href="/" className="text-xl font-black uppercase tracking-widest mb-3 overflow-hidden text-ellipsis whitespace-nowrap block" style={{ color: '#F8F9FA' }}>
             iCodeForBananas
-          </h2>
+          </Link>
 
           <button
             onClick={() => setIsModalOpen(true)}
-            className="w-full text-sm font-semibold border-2 border-yellow-400 text-yellow-400 bg-black rounded px-3 py-2 mt-1 mb-1 hover:bg-yellow-400 hover:text-black transition-colors whitespace-nowrap"
+            className="w-full text-sm font-semibold rounded px-3 py-2 mt-1 mb-1 whitespace-nowrap transition-colors"
+            style={{ border: '1px solid #373A40', color: '#F8F9FA', background: '#1A1B1E' }}
+            onMouseEnter={e => { e.currentTarget.style.background = '#12B886'; e.currentTarget.style.color = '#1A1B1E'; e.currentTarget.style.borderColor = '#12B886'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = '#1A1B1E'; e.currentTarget.style.color = '#F8F9FA'; e.currentTarget.style.borderColor = '#373A40'; }}
           >
             🔑 Set Gemini API Key
           </button>
@@ -139,7 +137,7 @@ export default function Sidebar() {
             {NAV.map((section) => (
               <div key={section.label ?? "main"}>
                 {section.label && (
-                  <h3 className="text-xs font-bold text-yellow-600 mb-2 uppercase tracking-wider whitespace-nowrap">
+                  <h3 className="text-xs font-bold mb-2 uppercase tracking-wider whitespace-nowrap" style={{ color: '#909296' }}>
                     {section.label}
                   </h3>
                 )}
@@ -149,11 +147,14 @@ export default function Sidebar() {
                       key={href}
                       href={href}
                       onClick={() => isMobile && setIsOpen(false)}
-                      className={`px-3 py-2 rounded whitespace-nowrap transition-colors font-medium text-sm ${
+                      className="px-3 py-2 rounded whitespace-nowrap transition-colors font-medium text-sm"
+                      style={
                         pathname === href
-                          ? "bg-yellow-400 text-black font-bold"
-                          : "text-yellow-400 hover:bg-yellow-400 hover:text-black"
-                      }`}
+                          ? { background: '#12B886', color: '#1A1B1E', fontWeight: 700, borderLeft: '2px solid #12B886', boxShadow: '0 0 10px #4C6EF533' }
+                          : { color: '#F8F9FA' }
+                      }
+                      onMouseEnter={e => { if (pathname !== href) { e.currentTarget.style.background = 'rgba(18,184,134,0.15)'; e.currentTarget.style.color = '#12B886'; }}}
+                      onMouseLeave={e => { if (pathname !== href) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#F8F9FA'; }}}
                     >
                       {text}
                     </Link>

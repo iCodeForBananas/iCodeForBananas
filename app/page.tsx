@@ -19,7 +19,6 @@ interface Module {
 }
 
 const MODULES: Module[] = [
-  // Flagships
   {
     slug: 'harmonic-flow',
     title: 'Harmonic Flow',
@@ -50,7 +49,6 @@ const MODULES: Module[] = [
     metric: 'AI cost analysis on demand',
     size: 'flagship',
   },
-  // Medium
   {
     slug: 'spd-crime-density',
     title: 'SPD Crime Density',
@@ -81,7 +79,6 @@ const MODULES: Module[] = [
     metric: 'Sub-second data refresh',
     size: 'medium',
   },
-  // Small
   {
     slug: 'fretboard',
     title: 'Fretboard Explorer',
@@ -129,15 +126,7 @@ const MODULES: Module[] = [
     metric: 'Real-time chord ID',
     size: 'small',
   },
-  {
-    slug: 'chord-practice',
-    title: 'Chord Practice',
-    category: 'Practice',
-    description: 'Randomized chord-change trainer with BPM control and streak counter.',
-    stack: ['React', 'Web Audio API'],
-    metric: 'BPM-synced prompts',
-    size: 'small',
-  },
+
   {
     slug: 'songwriter',
     title: 'Songwriter',
@@ -279,7 +268,6 @@ const NODES = [
 const SystemPulse = () => (
   <div className="animate-float-up w-full max-w-[420px] mx-auto pointer-events-none select-none">
     <svg viewBox="0 0 400 330" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-auto">
-      {/* Connection lines */}
       {NODES.map((n, i) => (
         <line
           key={i}
@@ -294,70 +282,42 @@ const SystemPulse = () => (
           style={{ animationDelay: n.delay, animationDuration: '3.2s' }}
         />
       ))}
-
-      {/* Central hub pulse ring */}
-      <circle cx={200} cy={165} r={34} fill="none" stroke="var(--accent)" strokeWidth="1" opacity="0.25" />
-      <circle
-        cx={200}
-        cy={165}
-        r={28}
-        fill="color-mix(in oklab, var(--accent) 14%, transparent)"
-        className="animate-hub-breathe"
-      />
-      <circle cx={200} cy={165} r={18} fill="color-mix(in oklab, var(--accent) 30%, transparent)" />
-      <text
-        x={200}
-        y={161}
-        textAnchor="middle"
-        fontSize="7"
-        fill="var(--accent)"
-        fontWeight="700"
-        fontFamily="monospace"
-      >
+      <circle cx={200} cy={165} r={34} fill="none" stroke="#12B886" strokeWidth="1" opacity="0.25" />
+      <circle cx={200} cy={165} r={28} fill="rgba(18,184,134,0.14)" className="animate-hub-breathe" />
+      <circle cx={200} cy={165} r={18} fill="rgba(18,184,134,0.3)" />
+      <text x={200} y={161} textAnchor="middle" fontSize="7" fill="#12B886" fontWeight="700" fontFamily="monospace">
         CORE
       </text>
-      <text x={200} y={172} textAnchor="middle" fontSize="6" fill="var(--text-secondary)" fontFamily="monospace">
+      <text x={200} y={172} textAnchor="middle" fontSize="6" fill="#909296" fontFamily="monospace">
         HUB
       </text>
-
-      {/* Satellite nodes */}
       {NODES.map((n, i) => (
         <g key={i} className="animate-node-blink" style={{ animationDelay: n.delay }}>
           <circle
             cx={n.cx}
             cy={n.cy}
             r={22}
-            fill="color-mix(in oklab, var(--accent) 8%, transparent)"
-            stroke="var(--accent)"
+            fill="rgba(18,184,134,0.08)"
+            stroke="#12B886"
             strokeWidth="1"
             opacity="0.6"
           />
-          <circle cx={n.cx} cy={n.cy} r={4} fill="var(--accent)" opacity="0.9" />
-          <text
-            x={n.cx}
-            y={n.cy + 33}
-            textAnchor="middle"
-            fontSize="8"
-            fill="var(--text-secondary)"
-            fontFamily="monospace"
-          >
+          <circle cx={n.cx} cy={n.cy} r={4} fill="#12B886" opacity="0.9" />
+          <text x={n.cx} y={n.cy + 33} textAnchor="middle" fontSize="8" fill="#909296" fontFamily="monospace">
             {n.label}
           </text>
         </g>
       ))}
-
-      {/* Grid lines (decorative) */}
       {[60, 120, 180, 240, 300].map((x) => (
-        <line key={x} x1={x} y1={0} x2={x} y2={330} stroke="var(--border-color)" strokeWidth="0.5" opacity="0.5" />
+        <line key={x} x1={x} y1={0} x2={x} y2={330} stroke="#373A40" strokeWidth="0.5" opacity="0.5" />
       ))}
       {[55, 110, 165, 220, 275].map((y) => (
-        <line key={y} x1={0} y1={y} x2={400} y2={y} stroke="var(--border-color)" strokeWidth="0.5" opacity="0.5" />
+        <line key={y} x1={0} y1={y} x2={400} y2={y} stroke="#373A40" strokeWidth="0.5" opacity="0.5" />
       ))}
-
       <defs>
         <linearGradient id="lineGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor="var(--accent)" stopOpacity="0.6" />
-          <stop offset="100%" stopColor="#ff9900" stopOpacity="0.6" />
+          <stop offset="0%" stopColor="#12B886" stopOpacity="0.6" />
+          <stop offset="100%" stopColor="#4C6EF5" stopOpacity="0.6" />
         </linearGradient>
       </defs>
     </svg>
@@ -369,98 +329,73 @@ const SystemPulse = () => (
 const BentoCard = ({ mod }: { mod: Module }) => {
   const isFlagship = mod.size === 'flagship';
   const isMedium = mod.size === 'medium';
-
   const colSpan = isFlagship ? 'col-span-2 row-span-2' : isMedium ? 'col-span-2 md:col-span-2' : 'col-span-1';
 
   return (
     <Link
       href={`/${mod.slug}`}
-      className={`group relative rounded-2xl border overflow-hidden flex flex-col justify-between transition-all duration-300 hover:-translate-y-1 hover:shadow-lg ${colSpan}`}
+      className={`group relative rounded-2xl overflow-hidden flex flex-col justify-between transition-all duration-300 hover:-translate-y-1 hover:shadow-lg ${colSpan}`}
       style={{
-        background: 'var(--bg-secondary)',
-        borderColor: 'var(--border-color)',
+        background: '#25262B',
+        border: '1px solid #373A40',
         minHeight: isFlagship ? '280px' : isMedium ? '140px' : '128px',
-        boxShadow: '0 2px 12px color-mix(in oklab, var(--accent) 5%, transparent)',
+        boxShadow: '0 2px 12px rgba(0,0,0,0.2)',
       }}
     >
-      {/* Hover gradient overlay */}
       <div
         className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
-        style={{
-          background:
-            'radial-gradient(ellipse 80% 60% at 50% 0%, color-mix(in oklab, var(--accent) 10%, transparent), transparent 70%)',
-        }}
+        style={{ background: 'radial-gradient(ellipse 80% 60% at 50% 0%, rgba(18,184,134,0.08), transparent 70%)' }}
       />
-
-      {/* Base content */}
       <div className="relative z-10 p-5 flex flex-col gap-2 h-full">
         <div className="flex items-start justify-between gap-2">
           <div>
-            <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--accent)' }}>
+            <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: '#12B886' }}>
               {mod.category}
             </span>
             <h3
-              className={`font-bold text-[var(--text-primary)] leading-tight ${isFlagship ? 'text-xl mt-0.5' : 'text-base mt-0.5'}`}
+              className={`font-bold leading-tight ${isFlagship ? 'text-xl mt-0.5' : 'text-base mt-0.5'}`}
+              style={{ color: '#F8F9FA' }}
             >
               {mod.title}
             </h3>
           </div>
           <span
-            className="shrink-0 text-xs px-2 py-0.5 rounded-full border font-medium"
-            style={{
-              color: 'var(--accent)',
-              borderColor: 'color-mix(in oklab, var(--accent) 30%, transparent)',
-              background: 'color-mix(in oklab, var(--accent) 8%, transparent)',
-            }}
+            className="shrink-0 text-xs px-2 py-0.5 rounded-full font-medium"
+            style={{ color: '#12B886', border: '1px solid rgba(18,184,134,0.3)', background: 'rgba(18,184,134,0.08)' }}
           >
             {mod.size === 'flagship' ? 'Flagship' : mod.size === 'medium' ? 'Core' : 'Module'}
           </span>
         </div>
-
         <p
-          className={`text-[var(--text-secondary)] leading-relaxed mt-1 ${
-            isFlagship ? 'text-sm' : isMedium ? 'text-xs' : 'text-[11px]'
-          }`}
+          className={`leading-relaxed mt-1 ${isFlagship ? 'text-sm' : isMedium ? 'text-xs' : 'text-[11px]'}`}
+          style={{ color: '#909296' }}
         >
           {mod.description}
         </p>
-
         <div className="mt-auto pt-3 flex flex-col gap-2">
-          {/* Metric bar */}
           <div
             className="text-[10px] font-mono px-2.5 py-1 rounded w-fit"
-            style={{
-              background: 'color-mix(in oklab, var(--accent) 8%, transparent)',
-              color: 'var(--accent)',
-            }}
+            style={{ background: 'rgba(18,184,134,0.08)', color: '#12B886' }}
           >
             ⬡ {mod.metric}
           </div>
-
-          {/* Stack pills — visible on flagship/medium, revealed on hover for small */}
           <div
             className={`flex flex-wrap gap-1.5 ${mod.size === 'small' ? 'opacity-0 group-hover:opacity-100 transition-opacity' : ''}`}
           >
             {mod.stack.map((t) => (
               <span
                 key={t}
-                className="text-[9px] px-2 py-0.5 rounded-full border font-medium"
-                style={{
-                  color: 'var(--text-secondary)',
-                  borderColor: 'var(--border-color)',
-                  background: 'var(--bg-primary)',
-                }}
+                className="text-[9px] px-2 py-0.5 rounded-full font-medium"
+                style={{ color: '#909296', border: '1px solid #373A40', background: '#1A1B1E' }}
               >
                 {t}
               </span>
             ))}
           </div>
         </div>
-
-        {/* "Open →" arrow on hover */}
         <div
           className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity text-xs font-semibold"
-          style={{ color: 'var(--accent)' }}
+          style={{ color: '#12B886' }}
         >
           Open →
         </div>
@@ -474,41 +409,26 @@ const BentoCard = ({ mod }: { mod: Module }) => {
 const SectionLabel = ({ children }: { children: React.ReactNode }) => (
   <span
     className="inline-block text-xs font-bold uppercase tracking-widest px-4 py-1.5 rounded-full mb-4"
-    style={{
-      background: 'color-mix(in oklab, var(--accent) 12%, transparent)',
-      color: 'var(--accent)',
-      border: '1px solid color-mix(in oklab, var(--accent) 30%, transparent)',
-    }}
+    style={{ background: 'rgba(18,184,134,0.1)', color: '#12B886', border: '1px solid rgba(18,184,134,0.3)' }}
   >
     {children}
   </span>
 );
 
 const GradientText = ({ children }: { children: React.ReactNode }) => (
-  <span
-    style={{
-      background: 'var(--seam-gradient)',
-      WebkitBackgroundClip: 'text',
-      WebkitTextFillColor: 'transparent',
-      backgroundClip: 'text',
-    }}
-  >
-    {children}
-  </span>
+  <span style={{ background: 'linear-gradient(90deg, #12B886, #4C6EF5)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>{children}</span>
 );
 
 // ─── KanbanCard ───────────────────────────────────────────────
 
 const KanbanCard = ({ title, note }: { title: string; note: string }) => (
-  <div
-    className="p-4 rounded-xl border flex flex-col gap-1.5"
-    style={{
-      background: 'var(--bg-primary)',
-      borderColor: 'var(--border-color)',
-    }}
-  >
-    <span className="text-sm font-semibold text-[var(--text-primary)]">{title}</span>
-    <span className="text-xs text-[var(--text-secondary)] leading-relaxed">{note}</span>
+  <div className="p-4 rounded-xl flex flex-col gap-1.5" style={{ background: '#1A1B1E', border: '1px solid #373A40' }}>
+    <span className="text-sm font-semibold" style={{ color: '#F8F9FA' }}>
+      {title}
+    </span>
+    <span className="text-xs leading-relaxed" style={{ color: '#909296' }}>
+      {note}
+    </span>
   </div>
 );
 
@@ -516,32 +436,22 @@ const KanbanCard = ({ title, note }: { title: string; note: string }) => (
 
 export default function Home() {
   return (
-    <main className="flex w-full flex-col h-full overflow-hidden" style={{ background: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
-      {/* ── MARQUEE ───────────────────────────────────────────── */}
-      <div className="bg-black text-yellow-400 py-2 overflow-hidden whitespace-nowrap border-b-2 border-black">
-        <motion.div
-          animate={{ x: [0, -1000] }}
-          transition={{ repeat: Infinity, duration: 20, ease: 'linear' }}
-          className="inline-block text-sm font-bold tracking-widest uppercase"
-        >
-          WILL CODE FOR BANANAS • POTASSIUM DRIVEN DEVELOPMENT • NO MONKEY BUSINESS • 100% ORGANIC CODE • PEELING BACK
-          THE LAYERS OF WEB DEV • WILL CODE FOR BANANAS • POTASSIUM DRIVEN DEVELOPMENT • NO MONKEY BUSINESS • 100%
-          ORGANIC CODE • PEELING BACK THE LAYERS OF WEB DEV •{' '}
-        </motion.div>
-      </div>
-
+    <main className="flex w-full flex-col h-full overflow-hidden" style={{ background: '#1A1B1E', color: '#F8F9FA' }}>
       {/* ── HERO ──────────────────────────────────────────────── */}
-      <section className="bg-yellow-400 text-black relative flex flex-col items-center justify-center flex-1 px-6 overflow-hidden">
+      <section
+        className="relative flex flex-col items-center justify-center flex-1 px-6 overflow-hidden"
+        style={{ background: '#1A1B1E' }}
+      >
         <div className="flex flex-col items-center text-center gap-16">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, ease: 'easeOut' }}
           >
-            <h1 className="text-7xl md:text-8xl font-black leading-none tracking-tighter uppercase mb-8 whitespace-nowrap">
+            <h1 className="text-7xl md:text-8xl font-black leading-none tracking-tighter uppercase mb-8 whitespace-nowrap" style={{ color: '#F8F9FA' }}>
               I Code For
               <br />
-              <span className="text-white drop-shadow-[4px_4px_0px_rgba(0,0,0,1)]">Bananas</span>
+              <GradientText>Bananas</GradientText>
             </h1>
           </motion.div>
 
@@ -556,13 +466,26 @@ export default function Home() {
                 animate={{ y: [0, -20, 0], rotate: [-5, 5, -5] }}
                 transition={{ repeat: Infinity, duration: 4, ease: 'easeInOut' }}
               >
-                <Banana className="w-64 h-64 md:w-96 md:h-96 text-black fill-yellow-300 drop-shadow-[10px_10px_0px_rgba(0,0,0,1)]" />
+                <Banana
+                  className="w-64 h-64 md:w-96 md:h-96"
+                  style={{
+                    color: '#12B886',
+                    fill: 'rgba(18,184,134,0.2)',
+                    filter: 'drop-shadow(10px 10px 0px rgba(0,0,0,0.5))',
+                  }}
+                />
               </motion.div>
 
-              {/* Floating Tech Tags */}
               {(
                 [
-                  { label: 'Harmonic Flow', href: '/harmonic-flow', pos: 'absolute -top-4 -right-4', anim: { y: [0, 15, 0] }, dur: 3, delay: 0.5 },
+                  {
+                    label: 'Harmonic Flow',
+                    href: '/harmonic-flow',
+                    pos: 'absolute -top-4 -right-4',
+                    anim: { y: [0, 15, 0] },
+                    dur: 3,
+                    delay: 0.5,
+                  },
                   {
                     label: 'Algo Backtest',
                     href: '/algo-backtest',
@@ -571,7 +494,14 @@ export default function Home() {
                     dur: 3.5,
                     delay: 1,
                   },
-                  { label: 'Cloud Architect', href: '/cloud-architect', pos: 'absolute top-1/2 -right-16', anim: { x: [0, 10, 0] }, dur: 4, delay: 0.2 },
+                  {
+                    label: 'Cloud Architect',
+                    href: '/cloud-architect',
+                    pos: 'absolute top-1/2 -right-16',
+                    anim: { x: [0, 10, 0] },
+                    dur: 4,
+                    delay: 0.2,
+                  },
                   {
                     label: 'Chord Finder',
                     href: '/chord-finder',
@@ -596,9 +526,30 @@ export default function Home() {
                     dur: 4.2,
                     delay: 0.4,
                   },
-                  { label: 'Workout Tracker', href: '/workout-tracker', pos: 'absolute top-0 -left-8', anim: { y: [0, 8, 0] }, dur: 3.2, delay: 1.5 },
-                  { label: 'Silent Metronome', href: '/silent-metronome', pos: 'absolute -bottom-12 left-1/4', anim: { x: [0, 8, 0] }, dur: 3.6, delay: 0.7 },
-                  { label: 'Circle of Fifths', href: '/circle-of-fifths', pos: 'absolute top-1/3 -right-24', anim: { y: [0, -12, 0] }, dur: 4.8, delay: 1.8 },
+                  {
+                    label: 'Workout Tracker',
+                    href: '/workout-tracker',
+                    pos: 'absolute top-0 -left-8',
+                    anim: { y: [0, 8, 0] },
+                    dur: 3.2,
+                    delay: 1.5,
+                  },
+                  {
+                    label: 'Silent Metronome',
+                    href: '/silent-metronome',
+                    pos: 'absolute -bottom-12 left-1/4',
+                    anim: { x: [0, 8, 0] },
+                    dur: 3.6,
+                    delay: 0.7,
+                  },
+                  {
+                    label: 'Circle of Fifths',
+                    href: '/circle-of-fifths',
+                    pos: 'absolute top-1/3 -right-24',
+                    anim: { y: [0, -12, 0] },
+                    dur: 4.8,
+                    delay: 1.8,
+                  },
                 ] as const
               ).map(({ label, href, pos, anim, dur, delay }) => (
                 <motion.div
@@ -607,15 +558,38 @@ export default function Home() {
                   transition={{ repeat: Infinity, duration: dur, delay }}
                   className={`${pos} z-20`}
                 >
-                  <Link href={href} className="block bg-white border-2 border-black p-3 font-bold text-sm shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:bg-yellow-400 transition-colors">
+                  <Link
+                    href={href}
+                    className="block p-3 font-bold text-sm transition-colors"
+                    style={{
+                      background: '#25262B',
+                      border: '1px solid #373A40',
+                      color: '#F8F9FA',
+                      boxShadow: '4px 4px 0px rgba(0,0,0,0.4)',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = '#12B886';
+                      e.currentTarget.style.color = '#12B886';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = '#373A40';
+                      e.currentTarget.style.color = '#F8F9FA';
+                    }}
+                  >
                     {label}
                   </Link>
                 </motion.div>
               ))}
             </div>
 
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] aspect-square border-2 border-black/20 rounded-full -z-0" />
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[100%] aspect-square border-2 border-black/10 rounded-full -z-0" />
+            <div
+              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] aspect-square rounded-full -z-0"
+              style={{ border: '1px solid rgba(55,58,64,0.5)' }}
+            />
+            <div
+              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[100%] aspect-square rounded-full -z-0"
+              style={{ border: '1px solid rgba(55,58,64,0.3)' }}
+            />
           </motion.div>
         </div>
       </section>

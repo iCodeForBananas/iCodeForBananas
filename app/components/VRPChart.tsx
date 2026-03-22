@@ -112,6 +112,12 @@ const VRPChart: React.FC<VRPChartProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
 
+  // Memoize expensive VRP calculation — only recompute when data/params change
+  const allVrpData = React.useMemo(
+    () => calculateVRPData(data, rvPeriod, ivMultiplier),
+    [data, rvPeriod, ivMultiplier]
+  );
+
   // Watch for container size changes
   useEffect(() => {
     const container = containerRef.current;
@@ -161,8 +167,7 @@ const VRPChart: React.FC<VRPChartProps> = ({
     const container = containerRef.current;
     if (!canvas || !container || !data || data.length === 0) return;
 
-    // Calculate VRP data for all points
-    const allVrpData = calculateVRPData(data, rvPeriod, ivMultiplier);
+    // Use memoized VRP data (computed outside this effect)
 
     // Determine the end index for visible data
     const endIndex = visibleIndex !== undefined ? Math.min(visibleIndex + 1, data.length) : data.length;
@@ -469,7 +474,7 @@ const VRPChart: React.FC<VRPChartProps> = ({
       const time = new Date(visibleData[index].time);
       ctx.fillText(time.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }), x, height - 5);
     }
-  }, [data, positions, currentPrice, visibleCandles, visibleIndex, containerSize, rvPeriod, ivMultiplier]);
+  }, [data, positions, currentPrice, visibleCandles, visibleIndex, containerSize, allVrpData]);
 
   if (!data || data.length === 0) {
     return (

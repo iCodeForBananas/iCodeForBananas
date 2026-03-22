@@ -1,12 +1,12 @@
 .fretboard {
   display: flex;
-  border-top: 2px solid var(--border-dark);
-  border-bottom: 2px solid var(--border-dark);
+  border-top: 1px solid #373A40;
+  border-bottom: 1px solid #373A40;
   transition: border-color 0.3s ease;
 }
 
 .fret {
-  border-left: 1px solid var(--fret-border);
+  border-left: 1px solid #373A40;
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -17,40 +17,40 @@
   padding: 4px;
   text-align: center;
   font-size: 0.8rem;
-  border-bottom: 1px solid var(--note-border);
-  color: var(--text-primary);
+  border-bottom: 1px solid #373A40;
+  color: #F8F9FA;
   transition: all 0.3s ease;
 }
 
 .note.open {
   font-weight: bold;
-  background-color: var(--note-open-bg);
+  background-color: #25262B;
 }
 
 .note.scale {
-  background-color: var(--accent-scale);
+  background-color: #1a3a2e;
 }
 
 .note.highlight {
-  background-color: var(--accent-chord);
-  color: var(--foreground);
+  background-color: #12B886;
+  color: #1A1B1E;
   font-weight: bold;
 }
 
 .note.highlight-p0 {
-  background-color: var(--highlight-p0);
+  background-color: #0d7a5a;
 }
 
 .note.highlight-p1 {
-  background-color: var(--highlight-p1);
+  background-color: #0a5e45;
 }
 
 .note.highlight-p2 {
-  background-color: var(--accent-scale);
+  background-color: #1a3a2e;
 }
 
 .note.highlight-p3 {
-  background-color: var(--highlight-p3);
+  background-color: #0b6b50;
 }
 
 .fretboard-wrapper {

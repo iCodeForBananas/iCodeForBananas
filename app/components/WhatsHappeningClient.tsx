@@ -11,23 +11,25 @@ export default function WhatsHappeningClient({ events }: { events: WhatsHappenin
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
 
-  const today = new Intl.DateTimeFormat('en-CA').format(new Date()); // YYYY-MM-DD in local time
+  const today = new Intl.DateTimeFormat('en-CA').format(new Date());
   const todayEvents = events.filter((e) => e.date?.startsWith(today) || e.date?.slice(0, 10) === today);
 
   return (
-    <div className="flex flex-col h-full bg-black text-yellow-400">
-      <div className="px-6 pt-6 pb-4 border-b-2 border-yellow-400">
-        <h1 className="text-2xl font-black uppercase tracking-widest text-yellow-400">What&apos;s Happening Today?</h1>
-        <div className="flex gap-1 mt-4 bg-yellow-400/10 border border-yellow-400/30 p-1 rounded-none w-fit">
+    <div className="flex flex-col h-full" style={{ background: '#1A1B1E', color: '#F8F9FA' }}>
+      <div className="px-6 pt-6 pb-4" style={{ borderBottom: '1px solid #373A40' }}>
+        <h1 className="text-2xl font-black uppercase tracking-widest" style={{ color: '#F8F9FA' }}>What&apos;s Happening Today?</h1>
+        <div className="flex gap-1 mt-4 p-1 w-fit" style={{ background: 'rgba(18,184,134,0.1)', border: '1px solid #373A40' }}>
           <button
             onClick={() => setViewMode('list')}
-            className={`px-4 py-1.5 text-sm font-bold uppercase tracking-widest transition-colors ${viewMode === 'list' ? 'bg-yellow-400 text-black' : 'text-yellow-400 hover:bg-yellow-400/20'}`}
+            className="px-4 py-1.5 text-sm font-bold uppercase tracking-widest transition-colors"
+            style={viewMode === 'list' ? { background: '#12B886', color: '#1A1B1E' } : { color: '#F8F9FA' }}
           >
             📋 List
           </button>
           <button
             onClick={() => setViewMode('map')}
-            className={`px-4 py-1.5 text-sm font-bold uppercase tracking-widest transition-colors ${viewMode === 'map' ? 'bg-yellow-400 text-black' : 'text-yellow-400 hover:bg-yellow-400/20'}`}
+            className="px-4 py-1.5 text-sm font-bold uppercase tracking-widest transition-colors"
+            style={viewMode === 'map' ? { background: '#12B886', color: '#1A1B1E' } : { color: '#F8F9FA' }}
           >
             🗺️ Map
           </button>
@@ -35,11 +37,7 @@ export default function WhatsHappeningClient({ events }: { events: WhatsHappenin
       </div>
       <div className="flex-1 min-h-0 overflow-hidden">
         {viewMode === 'list' ? (
-          <WhatsHappeningListView
-            events={todayEvents}
-            selectedEventId={selectedEventId}
-            onSelectEvent={setSelectedEventId}
-          />
+          <WhatsHappeningListView events={todayEvents} selectedEventId={selectedEventId} onSelectEvent={setSelectedEventId} />
         ) : (
           <div style={{ height: 'calc(100vh - 130px)' }}>
             <WhatsHappeningMapView events={todayEvents} />

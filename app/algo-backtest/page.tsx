@@ -1616,7 +1616,7 @@ export default function AlgoBacktestPage() {
                 <div className='bg-slate-900 rounded p-3'>
                   <div className='text-slate-400 text-xs mb-1'>Sharpe Ratio</div>
                   <div
-                    className={`text-lg font-bold ${activeResult.sharpeRatio >= 1 ? "text-green-400" : activeResult.sharpeRatio >= 0 ? "text-yellow-400" : "text-red-400"}`}
+                    className={`text-lg font-bold ${activeResult.sharpeRatio >= 1 ? "text-green-400" : activeResult.sharpeRatio >= 0 ? "text-[#F8F9FA]" : "text-red-400"}`}
                   >
                     {activeResult.sharpeRatio.toFixed(2)}
                   </div>

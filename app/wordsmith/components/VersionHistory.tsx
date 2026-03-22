@@ -21,7 +21,7 @@ export function VersionHistory({ isOpen, onClose, note, onRestoreVersion }: Vers
   );
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-end z-50">
+    <div className="fixed inset-0 bg-[#1A1B1E]/50 flex items-center justify-end z-50">
       <div className="bg-white dark:bg-slate-900 h-full w-full max-w-md shadow-xl flex flex-col border-l border-slate-200 dark:border-slate-700">
         <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/50">
           <div className="flex items-center gap-2">

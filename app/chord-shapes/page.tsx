@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import PinnedChordProgression from "../components/PinnedChordProgression";
 import {
   type ChordShape,
   sharpNotes,
@@ -62,7 +61,7 @@ const ChordDiagram = ({ chord, shape, useFlats }: ChordDiagramProps) => {
         {/* Starting fret indicator */}
         {startFret > 1 && (
           <span
-            className='absolute text-xs font-medium text-black/50'
+            className='absolute text-xs font-medium text-[#1A1B1E]/50'
             style={{ left: `${diagramWidth + 2}px`, top: "24px" }}
           >
             {startFret}fr
@@ -73,7 +72,7 @@ const ChordDiagram = ({ chord, shape, useFlats }: ChordDiagramProps) => {
         {[0, 1, 2, 3, 4, 5].map((stringIndex) => (
           <div
             key={stringIndex}
-            className='absolute bg-black/40'
+            className='absolute bg-[#1A1B1E]/40'
             style={{
               left: `${stringIndex * stringSpacing + 10}px`,
               top: "20px",
@@ -88,7 +87,7 @@ const ChordDiagram = ({ chord, shape, useFlats }: ChordDiagramProps) => {
         {Array.from({ length: displayFrets + 1 }, (_, i) => i).map((fret) => (
           <div
             key={fret}
-            className={`absolute ${fret === 0 && startFret <= 1 ? "bg-black" : "bg-black/40"}`}
+            className={`absolute ${fret === 0 && startFret <= 1 ? "bg-[#1A1B1E]" : "bg-[#1A1B1E]/40"}`}
             style={{
               left: "6px",
               top: `${20 + fret * fretSpacing}px`,
@@ -110,7 +109,7 @@ const ChordDiagram = ({ chord, shape, useFlats }: ChordDiagramProps) => {
             return (
               <div
                 key={stringIndex}
-                className='absolute rounded-full border-2 border-[#facc15] bg-black flex items-center justify-center font-bold'
+                className='absolute rounded-full border-2 border-[#12B886] bg-[#1A1B1E] flex items-center justify-center font-bold'
                 style={{
                   left: `${stringIndex * stringSpacing + 10 - dotSize / 2}px`,
                   top: `${20 - dotSize - 2}px`,
@@ -128,7 +127,7 @@ const ChordDiagram = ({ chord, shape, useFlats }: ChordDiagramProps) => {
             return (
               <div
                 key={stringIndex}
-                className='absolute bg-[#facc15] rounded-full text-black flex items-center justify-center font-bold'
+                className='absolute bg-[#12B886] rounded-full text-[#1A1B1E] flex items-center justify-center font-bold'
                 style={{
                   left: `${stringIndex * stringSpacing + 10 - dotSize / 2}px`,
                   top: `${20 + displayPos * fretSpacing + fretSpacing / 2 - dotSize / 2}px`,
@@ -168,7 +167,6 @@ export default function ChordShapesPage() {
 
   return (
     <div className='flex flex-col flex-1'>
-      <PinnedChordProgression />
       <main className='px-4 py-6 flex-1 metronome-static'>
         <div className='w-full lg:max-w-5xl lg:mx-auto'>
           <div className='rounded-lg p-6'>
@@ -198,7 +196,7 @@ export default function ChordShapesPage() {
                       </button>
                     );
                   })}
-                  <span className='mx-1 text-black/30'>|</span>
+                  <span className='mx-1 text-[#1A1B1E]/30'>|</span>
                   <button
                     type='button'
                     aria-pressed={useFlats}
@@ -227,7 +225,7 @@ export default function ChordShapesPage() {
                       ) : (
                         <div className='text-center'>
                           <h6 className='font-semibold text-sm'>{chordName}</h6>
-                           <p className='text-black/50 text-xs'>Shape not available</p>
+                           <p className='text-[#1A1B1E]/50 text-xs'>Shape not available</p>
                         </div>
                       )}
                     </div>
