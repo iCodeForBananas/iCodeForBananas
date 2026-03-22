@@ -97,7 +97,7 @@ export default function WorkoutTrackerPage() {
   return (
     <main className="px-4 py-6 flex-1 metronome-static">
       <div className="w-full lg:max-w-2xl lg:mx-auto">
-        <div className="rounded-lg p-6">
+        <div className="rounded-lg p-6 bg-white">
           <div className="text-center mb-10">
             <h1 className="text-5xl font-bold text-white drop-shadow-lg">Workout Tracker</h1>
             <p className="text-lg text-white/80 mt-3">Plan your workouts and track your progress</p>

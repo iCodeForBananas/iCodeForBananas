@@ -112,14 +112,14 @@ export default function FretboardQuiz() {
       {/* Controls */}
       <div className='flex flex-wrap items-center gap-4'>
         <div className='flex items-center gap-2'>
-          <label htmlFor='key-select' className='font-medium text-[#F8F9FA]'>
+          <label htmlFor='key-select' className='font-medium'>
             Key:
           </label>
           <select
             id='key-select'
             value={selectedKey}
             onChange={(e) => handleKeyChange(e.target.value)}
-            className='px-3 py-2 border border-[#373A40]/20 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-[#12B886] focus:border-[#12B886] bg-[#1A1B1E]/10'
+            className='px-3 py-2 border border-border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent bg-white'
           >
             {allNotes.map((note) => (
               <option key={note} value={note}>
@@ -130,14 +130,14 @@ export default function FretboardQuiz() {
         </div>
 
         <div className='flex items-center gap-2'>
-          <label htmlFor='scale-select' className='font-medium text-[#F8F9FA]'>
+          <label htmlFor='scale-select' className='font-medium'>
             Scale:
           </label>
           <select
             id='scale-select'
             value={selectedScaleType}
             onChange={(e) => handleScaleTypeChange(e.target.value)}
-            className='px-3 py-2 border border-[#373A40]/20 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-[#12B886] focus:border-[#12B886] bg-[#1A1B1E]/10'
+            className='px-3 py-2 border border-border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent bg-white'
           >
             {scaleTypes.map((type) => (
               <option key={type} value={type}>
@@ -149,7 +149,7 @@ export default function FretboardQuiz() {
 
         <button
           onClick={handleRestart}
-          className='px-4 py-2 bg-gradient-to-r from-[#4C6EF5] to-[#4C6EF5] text-[#1A1B1E] rounded-md hover:from-[#3b5de7] hover:to-[#3b5de7] transition-all shadow-sm font-medium'
+          className='px-4 py-2 bg-[#4C6EF5] text-white rounded-md hover:bg-[#3b5de7] transition-all shadow-sm font-medium'
         >
           Restart
         </button>
@@ -157,12 +157,12 @@ export default function FretboardQuiz() {
 
       {/* Progress */}
       <div className='flex items-center gap-4'>
-        <div className='text-lg font-medium text-[#F8F9FA]'>
-          Progress: <span className='text-[#F8F9FA]'>{foundCount}</span> / {totalNotesToFind} notes
+        <div className='text-lg font-medium'>
+          Progress: <span>{foundCount}</span> / {totalNotesToFind} notes
         </div>
         {totalAttempts > 0 && (
-          <div className='text-lg font-medium text-[#F8F9FA]'>
-            Score: <span className='text-[#F8F9FA]'>{scorePercent}%</span>
+          <div className='text-lg font-medium'>
+            Score: <span>{scorePercent}%</span>
           </div>
         )}
         {isComplete && (
@@ -173,8 +173,8 @@ export default function FretboardQuiz() {
       </div>
 
       {/* Scale info */}
-      <div className='text-sm text-[#909296]'>
-        Find all the <span className='font-semibold text-[#F8F9FA]'>{selectedKey} {selectedScaleType}</span> notes on the fretboard!
+      <div className='text-sm text-muted'>
+        Find all the <span className='font-semibold text-foreground'>{selectedKey} {selectedScaleType}</span> notes on the fretboard!
         Click on any fret position to guess if that note is in the scale.
       </div>
 
@@ -182,7 +182,7 @@ export default function FretboardQuiz() {
       <div className='fretboard-wrapper overflow-auto'>
         <div className='flex mb-1'>
           {[...Array(totalFrets + 1).keys()].map((fret) => (
-            <div key={fret} className='fret-number text-center flex-1 text-xs text-[#909296]'>
+            <div key={fret} className='fret-number text-center flex-1 text-xs text-muted'>
               {fret}
             </div>
           ))}
@@ -226,7 +226,7 @@ export default function FretboardQuiz() {
       </div>
 
       {/* Legend */}
-      <div className='flex flex-wrap gap-4 text-sm text-[#909296]'>
+      <div className='flex flex-wrap gap-4 text-sm text-muted'>
         <div className='flex items-center gap-2'>
           <div className='w-4 h-4 bg-green-300 rounded'></div>
           <span>Correct (in scale)</span>
@@ -236,7 +236,7 @@ export default function FretboardQuiz() {
           <span>Incorrect (not in scale)</span>
         </div>
         <div className='flex items-center gap-2'>
-          <div className='w-4 h-4 bg-[#1A1B1E]/20 rounded border border-[#373A40]/30'></div>
+          <div className='w-4 h-4 bg-gray-200 rounded border border-gray-300'></div>
           <span>Not guessed yet</span>
         </div>
       </div>

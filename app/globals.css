@@ -5,8 +5,8 @@
 :root {
   --bg-primary: #1A1B1E;
   --bg-secondary: #25262B;
-  --text-primary: #F8F9FA;
-  --text-secondary: #909296;
+  --text-primary: #111111;
+  --text-secondary: #555555;
   --accent: #12B886;
   --cta: #4C6EF5;
   --border-color: #373A40;
@@ -74,13 +74,11 @@ td, th, input[type="number"], .tabular-nums {
 }
 
 /* Micro-interactions: smooth lift on hover for interactive cards */
-a[class*="rounded"], button[class*="rounded"],
-div[class*="rounded-xl"], div[class*="rounded-2xl"], div[class*="rounded-lg"] {
+a[class*="rounded"], button[class*="rounded"] {
   transition: transform 200ms ease, border-color 200ms ease, box-shadow 200ms ease;
 }
 
-a[class*="rounded"]:hover, div[class*="rounded-xl"]:hover,
-div[class*="rounded-2xl"]:hover, div[class*="rounded-lg"]:hover {
+a[class*="rounded"]:hover {
   transform: translateY(-2px);
   border-color: #12B886 !important;
 }
