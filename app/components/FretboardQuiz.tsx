@@ -202,9 +202,9 @@ export default function FretboardQuiz() {
 
                   let bgClass = "";
                   if (isGuessed) {
-                    bgClass = "bg-green-300";
+                    bgClass = "bg-green-300 !text-black";
                   } else if (isIncorrect) {
-                    bgClass = "bg-red-300";
+                    bgClass = "bg-red-300 !text-black";
                   }
 
                   return (
