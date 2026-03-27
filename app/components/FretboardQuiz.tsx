@@ -202,9 +202,9 @@ export default function FretboardQuiz() {
 
                   let bgClass = "";
                   if (isGuessed) {
-                    bgClass = "bg-green-300 !text-black";
+                    bgClass = "bg-green-300";
                   } else if (isIncorrect) {
-                    bgClass = "bg-red-300 !text-black";
+                    bgClass = "bg-red-300";
                   }
 
                   return (
@@ -214,7 +214,7 @@ export default function FretboardQuiz() {
                       className={`note cursor-pointer hover:bg-[#12B886] transition-colors ${
                         fret === 0 ? "open" : ""
                       } ${bgClass}`}
-                      style={{ userSelect: "none" }}
+                      style={{ userSelect: "none", color: "inherit" }}
                     >
                       {isGuessed ? note : "?"}
                     </div>
