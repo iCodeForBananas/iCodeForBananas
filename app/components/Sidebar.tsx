@@ -48,7 +48,6 @@ const NAV = [
     links: [
       { href: "/aws-quiz", text: "AWS CCP Quiz" },
       { href: "/cloud-architect", text: "Cloud Architect" },
-      { href: "/ascii-player", text: "ASCII Player" },
       { href: "/spd-crime-density", text: "SPD Crime Density" },
     ],
   },
