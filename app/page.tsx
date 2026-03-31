@@ -71,16 +71,6 @@ const MODULES: Module[] = [
     metric: "All 12 keys · 7 modes",
     size: "medium",
   },
-  {
-    slug: "trading-chart",
-    title: "Momentum Chart",
-    category: "Live Market Analysis",
-    description:
-      "Candlestick chart with RSI, MACD, Bollinger Bands, and volume overlays. Multi-symbol switching with Yahoo Finance live data.",
-    stack: ["Recharts", "Yahoo Finance 2", "Next.js", "TypeScript"],
-    metric: "Sub-second data refresh",
-    size: "medium",
-  },
   // Small
   {
     slug: "fretboard",
