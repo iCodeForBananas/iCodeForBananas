@@ -1,272 +1,207 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 
-interface Workout {
+interface LogEntry {
   id: string;
-  name: string;
-  sets: number;
-  reps: number;
-  completed: boolean;
-  completedAt?: string;
+  exercise: string;
+  date: string;
+  weight?: number;
 }
 
-const STORAGE_KEY = 'workout-tracker-data';
-
-const defaultWorkouts: Workout[] = [
-  { id: '1', name: 'Push-ups', sets: 3, reps: 15, completed: false },
-  { id: '2', name: 'Squats', sets: 4, reps: 12, completed: false },
-  { id: '3', name: 'Pull-ups', sets: 3, reps: 8, completed: false },
-  { id: '4', name: 'Lunges', sets: 3, reps: 10, completed: false },
-  { id: '5', name: 'Plank', sets: 3, reps: 1, completed: false },
+const COMPOUND: { name: string; type: 'weighted' | 'bodyweight' }[] = [
+  { name: 'Bench Press', type: 'weighted' },
+  { name: 'Squat', type: 'weighted' },
+  { name: 'Deadlift', type: 'weighted' },
+  { name: 'Overhead Press', type: 'weighted' },
+  { name: 'Barbell Row', type: 'weighted' },
+  { name: 'Pull-ups', type: 'bodyweight' },
+  { name: 'Dips', type: 'bodyweight' },
+  { name: 'Chin-ups', type: 'bodyweight' },
+  { name: 'Bicep Curls', type: 'weighted' },
+  { name: 'Bent Over Rows', type: 'weighted' },
 ];
 
-function load(): Workout[] {
-  if (typeof window === 'undefined') return defaultWorkouts;
-  const raw = localStorage.getItem(STORAGE_KEY);
-  return raw ? JSON.parse(raw) : defaultWorkouts;
+const DB_NAME = 'workout-tracker-v2';
+const STORE = 'logs';
+
+function openDB(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, 1);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(STORE)) {
+        const s = db.createObjectStore(STORE, { keyPath: 'id' });
+        s.createIndex('exercise', 'exercise');
+        s.createIndex('date', 'date');
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
 }
 
-function save(w: Workout[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(w));
+function dbGetAll(): Promise<LogEntry[]> {
+  return openDB().then(db => new Promise((res, rej) => {
+    const r = db.transaction(STORE, 'readonly').objectStore(STORE).getAll();
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  }));
 }
+
+function dbPut(item: LogEntry): Promise<void> {
+  return openDB().then(db => new Promise((res, rej) => {
+    const tx = db.transaction(STORE, 'readwrite');
+    tx.objectStore(STORE).put(item);
+    tx.oncomplete = () => res();
+    tx.onerror = () => rej(tx.error);
+  }));
+}
+
+function dbDelete(id: string): Promise<void> {
+  return openDB().then(db => new Promise((res, rej) => {
+    const tx = db.transaction(STORE, 'readwrite');
+    tx.objectStore(STORE).delete(id);
+    tx.oncomplete = () => res();
+    tx.onerror = () => rej(tx.error);
+  }));
+}
+
+const today = () => new Date().toISOString().slice(0, 10);
+
+const COLORS = ['#facc15', '#f97316', '#ef4444', '#3b82f6', '#10b981', '#8b5cf6', '#ec4899', '#06b6d4'];
 
 export default function WorkoutTrackerPage() {
-  const [workouts, setWorkouts] = useState<Workout[]>(defaultWorkouts);
-  const [showForm, setShowForm] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState({ name: '', sets: 3, reps: 10 });
+  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [date, setDate] = useState(today);
+  const [selected, setSelected] = useState(COMPOUND[0].name);
+  const [weight, setWeight] = useState('');
+  const [page, setPage] = useState(0);
+  const PAGE_SIZE = 10;
+  const reload = useCallback(async () => setLogs(await dbGetAll()), []);
+  useEffect(() => { reload(); }, [reload]);
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect -- loading saved state from localStorage on mount
-  useEffect(() => { setWorkouts(load()); }, []);
+  const selectedType = COMPOUND.find(c => c.name === selected)?.type ?? 'weighted';
 
-  const persist = useCallback((next: Workout[]) => { setWorkouts(next); save(next); }, []);
+  const submit = async () => {
+    await dbPut({ id: crypto.randomUUID(), exercise: selected, date, weight: selectedType === 'weighted' ? (+weight || 0) : undefined });
+    setWeight('');
+    setPage(0);
+    reload();
+  };
 
-  const toggle = (id: string) => {
-    const next = workouts.map(w =>
-      w.id === id ? { ...w, completed: !w.completed, completedAt: !w.completed ? new Date().toISOString() : undefined } : w
+  const remove = async (id: string) => { await dbDelete(id); setPage(p => Math.max(0, p)); reload(); };
+
+  // chart data: for each weighted exercise that has logs, build date→weight series
+  const weightedWithLogs = useMemo(() => {
+    return COMPOUND.filter(c => c.type === 'weighted').filter(c =>
+      logs.some(l => l.exercise === c.name && l.weight && l.weight > 0)
     );
-    persist(next);
-  };
+  }, [logs]);
 
-  const addWorkout = () => {
-    if (!form.name.trim()) return;
-    persist([{ id: crypto.randomUUID(), ...form, completed: false }, ...workouts]);
-    setForm({ name: '', sets: 3, reps: 10 });
-    setShowForm(false);
-  };
-
-  const saveEdit = (id: string) => {
-    persist(workouts.map(w => w.id === id ? { ...w, ...form } : w));
-    setEditingId(null);
-  };
-
-  const restart = () => persist(workouts.map(w => ({ ...w, completed: false, completedAt: undefined })));
-
-  // progress chart data (last 14 days)
-  const progressData = (() => {
-    const counts: Record<string, number> = {};
-    workouts.filter(w => w.completedAt).forEach(w => {
-      const d = w.completedAt!.slice(0, 10);
-      counts[d] = (counts[d] || 0) + 1;
+  const chartData = useMemo(() => {
+    const dates = [...new Set(logs.filter(l => l.weight && l.weight > 0).map(l => l.date))].sort();
+    return dates.map(d => {
+      const row: Record<string, string | number> = { date: d };
+      for (const ex of weightedWithLogs) {
+        const entry = logs.find(l => l.exercise === ex.name && l.date === d && l.weight && l.weight > 0);
+        if (entry) row[ex.name] = entry.weight!;
+      }
+      return row;
     });
-    const days = [];
-    for (let i = 13; i >= 0; i--) {
-      const d = new Date(); d.setDate(d.getDate() - i);
-      const key = d.toISOString().slice(0, 10);
-      days.push({ date: `${d.getMonth() + 1}/${d.getDate()}`, count: counts[key] || 0 });
-    }
-    // cumulative
-    let cum = 0;
-    return days.map(d => ({ ...d, count: (cum += d.count) }));
-  })();
-
-  // day-of-week chart data
-  const dayData = (() => {
-    const names = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    const counts = Array(7).fill(0);
-    workouts.filter(w => w.completedAt).forEach(w => { counts[new Date(w.completedAt!).getDay()]++; });
-    return names.map((day, i) => ({ day: day.slice(0, 3), count: counts[i] }));
-  })();
-
-  const active = workouts.filter(w => !w.completed);
-  const completed = workouts.filter(w => w.completed);
-  const allDone = workouts.length > 0 && active.length === 0;
+  }, [logs, weightedWithLogs]);
 
   return (
-    <main className="px-4 py-6 flex-1 metronome-static">
-      <div className="w-full lg:max-w-2xl lg:mx-auto">
-        <div className="rounded-lg p-6 bg-white">
-          <div className="text-center mb-10">
-            <h1 className="text-5xl font-bold text-white drop-shadow-lg">Workout Tracker</h1>
-            <p className="text-lg text-white/80 mt-3">Plan your workouts and track your progress</p>
-          </div>
-
-        <div className="rounded-lg shadow-md p-6 bg-white">
-          {/* Header */}
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold text-gray-900">My Workouts</h2>
-            <button onClick={() => { setShowForm(!showForm); setForm({ name: '', sets: 3, reps: 10 }); }}
-              className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
-              {showForm ? 'Cancel' : 'Add Workout'}
-            </button>
-          </div>
-
-          {/* Add form */}
-          {showForm && (
-            <div className="bg-white p-4 rounded-lg shadow-sm border mb-6">
-              <h3 className="text-lg font-medium mb-4 text-gray-900">Add New Workout</h3>
-              <input type="text" placeholder="e.g., Push-ups" value={form.name}
-                onChange={e => setForm({ ...form, name: e.target.value })}
-                className="mb-3 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900" />
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div>
-                  <label className="block text-sm font-medium text-[#F8F9FA]">Sets</label>
-                  <input type="number" min={1} value={form.sets}
-                    onChange={e => setForm({ ...form, sets: +e.target.value })}
-                    className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-[#F8F9FA]">Reps</label>
-                  <input type="number" min={1} value={form.reps}
-                    onChange={e => setForm({ ...form, reps: +e.target.value })}
-                    className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900" />
-                </div>
-              </div>
-              <div className="flex justify-end">
-                <button onClick={addWorkout}
-                  className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
-                  Add Workout
-                </button>
-              </div>
+    <div className="flex flex-col flex-1">
+      <main className="px-4 py-6 flex-1 metronome-static">
+        <div className="w-full lg:max-w-5xl lg:mx-auto">
+          <div className="rounded-lg p-6 bg-white">
+            <div className="text-center mb-10">
+              <h1 className="text-5xl font-bold drop-shadow-lg">🏋️ 5×5 Tracker</h1>
+              <p className="text-lg text-muted mt-3">All exercises are 5 sets × 5 reps</p>
             </div>
-          )}
 
-          {/* All done banner */}
-          {allDone && (
-            <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-md flex items-center justify-between">
-              <div>
-                <p className="text-sm text-green-700 font-medium">All workouts completed! 🎉</p>
-                <p className="text-xs text-green-600 mt-1">Ready to start a new cycle?</p>
-              </div>
-              <button onClick={restart}
-                className="rounded-md bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-700">
-                Restart
+            {/* Log form */}
+            <div className="flex flex-wrap gap-2 items-end mb-8 max-w-3xl mx-auto">
+              <input type="date" value={date} onChange={e => setDate(e.target.value)}
+                className="border border-[#373A40]/30 rounded px-3 py-2 text-sm bg-white" />
+              <select value={selected} onChange={e => setSelected(e.target.value)}
+                className="border border-[#373A40]/30 rounded px-3 py-2 text-sm flex-1 min-w-[160px]">
+                {COMPOUND.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+              </select>
+              {selectedType === 'weighted' && (
+                <input type="number" min={0} step={5} value={weight} placeholder="lbs"
+                  onChange={e => setWeight(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && submit()}
+                  className="w-24 border border-[#373A40]/30 rounded px-3 py-2 text-sm" />
+              )}
+              <button onClick={submit}
+                className="rounded bg-black px-5 py-2 text-sm font-medium text-[#facc15] hover:bg-black/80">
+                Submit
               </button>
             </div>
-          )}
 
-          {/* Workout lists */}
-          {active.length > 0 && (
-            <div>
-              <h3 className="font-medium text-lg mb-3 text-gray-900">Active Workouts</h3>
-              {active.map(w => (
-                <WorkoutRow key={w.id} workout={w} onToggle={toggle} editingId={editingId}
-                  onEdit={(id) => { setEditingId(id); setForm({ name: w.name, sets: w.sets, reps: w.reps }); }}
-                  form={form} setForm={setForm} onSave={saveEdit} onCancel={() => setEditingId(null)} />
-              ))}
-            </div>
-          )}
+            {/* Weight progress chart */}
+            {weightedWithLogs.length > 0 && chartData.length > 0 && (
+              <div className="border-t border-[#373A40]/10 pt-6 mb-8">
+                <h2 className="font-semibold text-lg mb-4">Weight Progress</h2>
+                <div className="h-72">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={chartData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                      <XAxis dataKey="date" fontSize={11} tickFormatter={d => {
+                        const dt = new Date(d + 'T12:00:00');
+                        return `${dt.getMonth() + 1}/${dt.getDate()}`;
+                      }} />
+                      <YAxis fontSize={11} unit=" lbs" />
+                      <Tooltip labelFormatter={d => new Date(d + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} />
+                      {weightedWithLogs.map((ex, i) => (
+                        <Line key={ex.name} type="monotone" dataKey={ex.name} stroke={COLORS[i % COLORS.length]}
+                          strokeWidth={2} dot={{ r: 3 }} connectNulls />
+                      ))}
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            )}
 
-          {completed.length > 0 && (
-            <div className="mt-8">
-              <h3 className="font-medium text-lg mb-3 text-[#909296]">Completed Workouts</h3>
-              {completed.map(w => (
-                <WorkoutRow key={w.id} workout={w} onToggle={toggle} editingId={editingId}
-                  onEdit={(id) => { setEditingId(id); setForm({ name: w.name, sets: w.sets, reps: w.reps }); }}
-                  form={form} setForm={setForm} onSave={saveEdit} onCancel={() => setEditingId(null)} />
-              ))}
-            </div>
-          )}
+            {/* All entries */}
+            {logs.length > 0 && (() => {
+              const sorted = [...logs].sort((a, b) => b.date.localeCompare(a.date) || a.exercise.localeCompare(b.exercise));
+              const totalPages = Math.ceil(sorted.length / PAGE_SIZE);
+              const paged = sorted.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+              return (
+              <div className="border-t border-[#373A40]/10 pt-6">
+                <h2 className="font-semibold text-lg mb-3">All Entries <span className="text-sm font-normal text-[#000]/40">({sorted.length})</span></h2>
+                <div className="space-y-1">
+                  {paged.map(l => (
+                    <div key={l.id} className="flex items-center justify-between py-2 border-b border-[#373A40]/10 last:border-0">
+                      <div className="text-sm">
+                        <span className="text-[#000]/50 mr-2">{new Date(l.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                        <span className="font-medium">{l.exercise}</span>
+                        {l.weight != null && l.weight > 0 && <span className="text-[#000]/50 ml-1">@ {l.weight} lbs</span>}
+                      </div>
+                      <button onClick={() => remove(l.id)} className="text-[#373A40]/30 hover:text-red-500 text-lg px-1" aria-label="Delete">×</button>
+                    </div>
+                  ))}
+                </div>
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-center gap-3 mt-4">
+                    <button onClick={() => setPage(p => p - 1)} disabled={page === 0}
+                      className="text-sm px-3 py-1 rounded border border-[#373A40]/20 disabled:opacity-30">← Prev</button>
+                    <span className="text-sm text-[#000]/50">{page + 1} / {totalPages}</span>
+                    <button onClick={() => setPage(p => p + 1)} disabled={page >= totalPages - 1}
+                      className="text-sm px-3 py-1 rounded border border-[#373A40]/20 disabled:opacity-30">Next →</button>
+                  </div>
+                )}
+              </div>
+              );
+            })()}
 
-          {workouts.length === 0 && (
-            <p className="text-center text-gray-500 py-4">No workouts yet. Add one to get started!</p>
-          )}
-
-          {/* Progress Chart */}
-          <div className="mt-8 pt-6 border-t border-gray-200">
-            <h2 className="text-xl font-semibold mb-4 text-gray-900">Your Progress</h2>
-            <div className="bg-white p-4 rounded-lg shadow-sm border h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={progressData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" fontSize={12} />
-                  <YAxis allowDecimals={false} />
-                  <Tooltip />
-                  <Line type="monotone" dataKey="count" stroke="#3b82f6" fill="#3b82f680" strokeWidth={2} dot={false} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-            <p className="text-sm text-gray-500 mt-2 text-center">Cumulative completed workouts over the last 14 days</p>
-          </div>
-
-          {/* Day of Week Chart */}
-          <div className="mt-8 pt-6 border-t border-gray-200">
-            <h2 className="text-xl font-semibold mb-4 text-gray-900">Workout Distribution</h2>
-            <div className="bg-white p-4 rounded-lg shadow-sm border h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={dayData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="day" fontSize={12} />
-                  <YAxis allowDecimals={false} />
-                  <Tooltip />
-                  <Bar dataKey="count" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-            <p className="text-sm text-gray-500 mt-2 text-center">Which days you work out most frequently</p>
           </div>
         </div>
-      </div>
-      </div>
-    </main>
-  );
-}
-
-function WorkoutRow({ workout: w, onToggle, editingId, onEdit, form, setForm, onSave, onCancel }: {
-  workout: Workout; onToggle: (id: string) => void; editingId: string | null;
-  onEdit: (id: string) => void; form: { name: string; sets: number; reps: number };
-  setForm: (f: { name: string; sets: number; reps: number }) => void;
-  onSave: (id: string) => void; onCancel: () => void;
-}) {
-  if (editingId === w.id) {
-    return (
-      <div className="bg-white border rounded-lg p-4 mb-4 shadow-sm space-y-3">
-        <input type="text" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
-          className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900" />
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-[#F8F9FA]">Sets</label>
-            <input type="number" min={1} value={form.sets} onChange={e => setForm({ ...form, sets: +e.target.value })}
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-[#F8F9FA]">Reps</label>
-            <input type="number" min={1} value={form.reps} onChange={e => setForm({ ...form, reps: +e.target.value })}
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900" />
-          </div>
-        </div>
-        <div className="flex justify-end space-x-2">
-          <button onClick={onCancel} className="rounded-md bg-gray-200 px-3 py-1.5 text-sm font-medium text-[#F8F9FA] hover:bg-gray-300">Cancel</button>
-          <button onClick={() => onSave(w.id)} className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700">Save</button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="bg-white border rounded-lg p-4 mb-4 shadow-sm flex items-center justify-between">
-      <div className="flex items-center space-x-3">
-        <input type="checkbox" checked={w.completed} onChange={() => onToggle(w.id)}
-          className="h-5 w-5 rounded border-gray-300 text-blue-600" />
-        <div className={w.completed ? 'line-through text-gray-400' : ''}>
-          <h3 className="text-lg font-medium text-gray-900">{w.name}</h3>
-          <p className="text-sm text-[#909296]">{w.sets} sets × {w.reps} reps</p>
-        </div>
-      </div>
-      <button onClick={() => onEdit(w.id)}
-        className="rounded-md bg-gray-100 px-3 py-1.5 text-sm font-medium text-[#F8F9FA] hover:bg-gray-200">Edit</button>
+      </main>
     </div>
   );
 }
