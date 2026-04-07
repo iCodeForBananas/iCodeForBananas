@@ -158,10 +158,13 @@ export default function FireEstimatorPage() {
   );
 
   return (
-    <main className="metronome-static min-h-full">
-    <div className="p-6 max-w-5xl mx-auto">
-      <h1 className="text-3xl font-bold mb-2" title="Find out when you can retire early by saving aggressively and investing — the younger you start and the more you save, the sooner you can stop working">🔥 FIRE Estimator</h1>
-      <p className="text-[#000000]/70 mb-6">Rule of 25 · 4% Safe Withdrawal Rate · When can you reach financial independence?</p>
+    <main className="px-4 py-6 flex-1 metronome-static">
+    <div className="w-full lg:max-w-5xl lg:mx-auto">
+      <div className="rounded-lg p-6 bg-white">
+      <div className="text-center mb-10">
+        <h1 className="text-5xl font-bold drop-shadow-lg" style={{ color: "#000" }} title="Find out when you can retire early by saving aggressively and investing — the younger you start and the more you save, the sooner you can stop working">🔥 FIRE Estimator</h1>
+        <p className="text-lg mt-3" style={{ color: "#000" }}>Rule of 25 · 4% Safe Withdrawal Rate · When can you reach financial independence?</p>
+      </div>
 
       <div className="flex flex-wrap gap-6 mb-6">
         <label className="flex flex-col gap-1" title="Starting earlier means more years of compound growth — even a few years makes a big difference in when you can retire">
@@ -290,6 +293,7 @@ export default function FireEstimatorPage() {
           </AreaChart>
         </ResponsiveContainer>
       </div>
+    </div>
     </div>
     </main>
   );
