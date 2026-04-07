@@ -27,13 +27,13 @@
 
 .outer-ring {
   fill: none;
-  stroke: rgba(18, 184, 134, 0.1);
+  stroke: rgba(250, 204, 21, 0.1);
   stroke-width: 60;
 }
 
 .inner-ring {
   fill: none;
-  stroke: rgba(18, 184, 134, 0.06);
+  stroke: rgba(250, 204, 21, 0.06);
   stroke-width: 50;
 }
 
@@ -52,37 +52,37 @@
 }
 
 .major-key {
-  fill: #12B886;
-  stroke: #0d9e73;
+  fill: #facc15;
+  stroke: #a89a00;
   stroke-width: 2;
 }
 
 .major-key:hover,
 .major-key.active {
-  fill: #20c997;
-  stroke: #12B886;
+  fill: #fde047;
+  stroke: #facc15;
   stroke-width: 3;
-  filter: drop-shadow(0 0 12px rgba(18, 184, 134, 0.5));
+  filter: drop-shadow(0 0 12px rgba(250, 204, 21, 0.5));
 }
 
 .minor-key {
-  fill: #25262B;
-  stroke: #373A40;
+  fill: #1a1a1a;
+  stroke: #2a2a2a;
   stroke-width: 2;
 }
 
 .minor-key:hover,
 .minor-key.active {
-  fill: #2C2E33;
-  stroke: #12B886;
+  fill: #222;
+  stroke: #facc15;
   stroke-width: 3;
-  filter: drop-shadow(0 0 10px rgba(18, 184, 134, 0.3));
+  filter: drop-shadow(0 0 10px rgba(250, 204, 21, 0.3));
 }
 
 .key-text {
   font-size: 16px;
   font-weight: 700;
-  fill: #1A1B1E;
+  fill: #0a0a0a;
   cursor: pointer;
   user-select: none;
   letter-spacing: -0.02em;
@@ -101,14 +101,14 @@
 .center-text {
   font-size: 15px;
   font-weight: 700;
-  fill: rgba(248, 249, 250, 0.7);
+  fill: rgba(250, 204, 21, 0.7);
   letter-spacing: 0.05em;
   text-transform: uppercase;
 }
 
 .chord-display {
-  background: #25262B;
-  border: 1px solid #373A40;
+  background: #111111;
+  border: 1px solid #2a2a2a;
   border-radius: 20px;
   padding: 2rem;
   min-width: 230px;
@@ -119,8 +119,8 @@
 }
 
 .chord-placeholder {
-  background: #25262B;
-  border: 1px dashed #373A40;
+  background: #111111;
+  border: 1px dashed #2a2a2a;
   border-radius: 20px;
   padding: 2rem;
   min-width: 230px;
@@ -129,7 +129,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #909296;
+  color: #a89a00;
 }
 
 .chord-diagram {

@@ -48,8 +48,8 @@ export default function CircleOfFifths() {
   const getPosition = (index: number, radius: number) => {
     const angle = startAngle + index * angleStep;
     return {
-      x: centerX + radius * Math.cos(angle),
-      y: centerY + radius * Math.sin(angle),
+      x: Math.round((centerX + radius * Math.cos(angle)) * 100) / 100,
+      y: Math.round((centerY + radius * Math.sin(angle)) * 100) / 100,
     };
   };
 
