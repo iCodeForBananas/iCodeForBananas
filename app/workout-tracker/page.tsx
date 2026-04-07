@@ -118,8 +118,8 @@ export default function WorkoutTrackerPage() {
         <div className="w-full lg:max-w-5xl lg:mx-auto">
           <div className="rounded-lg p-6 bg-white">
             <div className="text-center mb-10">
-              <h1 className="text-5xl font-bold drop-shadow-lg">🏋️ 5×5 Tracker</h1>
-              <p className="text-lg text-muted mt-3">All exercises are 5 sets × 5 reps</p>
+              <h1 className="text-5xl font-bold drop-shadow-lg" style={{ color: "#000" }}>🏋️ 5×5 Tracker</h1>
+              <p className="text-lg mt-3" style={{ color: "#000" }}>All exercises are 5 sets × 5 reps</p>
             </div>
 
             {/* Log form */}

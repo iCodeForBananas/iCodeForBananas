@@ -10,8 +10,8 @@ export default function ChordFinderPage() {
         <div className='w-full lg:max-w-5xl lg:mx-auto'>
           <div className='rounded-lg p-6 bg-white'>
             <div className='text-center mb-10'>
-              <h1 className='text-5xl font-bold drop-shadow-lg'>Chord Finder</h1>
-              <p className='text-lg text-muted mt-3'>
+              <h1 className='text-5xl font-bold drop-shadow-lg' style={{ color: "#000" }}>Chord Finder</h1>
+              <p className='text-lg mt-3' style={{ color: "#000" }}>
                 Click notes on the fretboard and discover what chord you&apos;re playing
               </p>
             </div>
