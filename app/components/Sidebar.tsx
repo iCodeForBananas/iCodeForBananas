@@ -193,18 +193,18 @@ export default function Sidebar() {
                       style={
                         pathname === href
                           ? {
-                              background: "#12B886",
-                              color: "#1A1B1E",
+                              background: "#facc15",
+                              color: "#0a0a0a",
                               fontWeight: 700,
-                              borderLeft: "2px solid #12B886",
-                              boxShadow: "0 0 10px #4C6EF533",
+                              borderLeft: "2px solid #facc15",
+                              boxShadow: "0 0 10px rgba(250,204,21,0.2)",
                             }
                           : { color: "#F8F9FA" }
                       }
                       onMouseEnter={(e) => {
                         if (pathname !== href) {
-                          e.currentTarget.style.background = "rgba(18,184,134,0.15)";
-                          e.currentTarget.style.color = "#12B886";
+                          e.currentTarget.style.background = "rgba(250,204,21,0.15)";
+                          e.currentTarget.style.color = "#facc15";
                         }
                       }}
                       onMouseLeave={(e) => {
