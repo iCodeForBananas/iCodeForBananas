@@ -51,7 +51,7 @@ function TuningControl({ tuning, setTuning, theme }: TuningControlProps) {
         ))}
       </div>
       <button
-        className='px-4 py-2 rounded border border-[#373A40] text-[#1A1B1E] hover:bg-[#1A1B1E] hover:text-[#12B886]'
+        className='px-4 py-2 rounded border border-[#373A40] text-[#1A1B1E] hover:bg-[#1A1B1E] hover:text-[#FFD700]'
         onClick={resetTuning}
       >
         Reset Tuning
@@ -220,13 +220,13 @@ export default function ProgressionsView() {
 
           <div className='mt-3'>
             <button
-              className='bg-[#1A1B1E] text-[#12B886] px-4 py-2 rounded text-sm mr-2 hover:bg-[#1A1B1E]/80'
+              className='bg-[#1A1B1E] text-[#FFD700] px-4 py-2 rounded text-sm mr-2 hover:bg-[#1A1B1E]/80'
               onClick={generateProgression}
             >
               Generate Random Progression
             </button>
             <button
-              className='bg-[#12B886] text-[#1A1B1E] px-4 py-2 rounded text-sm mr-2 hover:bg-[#20c997]'
+              className='bg-[#FFD700] text-[#000000] px-4 py-2 rounded text-sm mr-2 hover:bg-[#e6c200]'
               onClick={() => {
                 const progressionData = {
                   chords: chordProgression.map((e) => e.name).filter(Boolean),

@@ -23,9 +23,9 @@
   --note-open-bg: #1a1a1a;
   --note-border: #2a2a2a;
   --fret-border: #2a2a2a;
-  --highlight-p0: #7a6200;
-  --highlight-p1: #5a4800;
-  --highlight-p3: #6a5500;
+  --highlight-p0: #e6c200;
+  --highlight-p1: #cca800;
+  --highlight-p3: #d4b800;
 
   /* Legacy variables for compatibility */
   --background: var(--bg-primary);
