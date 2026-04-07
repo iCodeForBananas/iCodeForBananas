@@ -18,7 +18,6 @@ const NAV = [
       { href: "/chord-shapes", text: "Chord Shapes" },
       { href: "/note-shapes", text: "Note Shapes" },
       { href: "/chord-finder", text: "Chord Finder" },
-      { href: "/songwriter", text: "Songwriter" },
     ],
   },
   {

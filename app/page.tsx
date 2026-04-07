@@ -129,15 +129,6 @@ const MODULES: Module[] = [
     size: "small",
   },
   {
-    slug: "songwriter",
-    title: "Songwriter",
-    category: "Creative Tools",
-    description: "Lyric and chord sheet editor with key transposition, capo calculator, and printable layout.",
-    stack: ["React", "Music Theory"],
-    metric: "Auto-transpose",
-    size: "small",
-  },
-  {
     slug: "fire-estimator",
     title: "FIRE Estimator",
     category: "Personal Finance",
@@ -218,10 +209,6 @@ const AI_STEPS = [
 const KANBAN = {
   now: [
     { title: "Bento Dashboard", note: "Portfolio landing page redesign — the meta-peel." },
-    {
-      title: "Gemini Songwriter",
-      note: "Real chord-progression suggestions via Gemini Flash 2.0. AI-assisted potassium.",
-    },
   ],
   next: [
     {
