@@ -90,7 +90,7 @@ export default function ProgressionNavigator({ startKey = "G", bpm = 80 }: Progr
   };
 
   return (
-    <div className='bg-[#1A1B1E]/10 backdrop-blur-sm text-[#1A1B1E] p-6 rounded-[20px] shadow-lg max-w-4xl'>
+    <div className='text-[#1A1B1E] max-w-4xl'>
       <div className='flex flex-wrap gap-3 items-center mb-4'>
         <label className='font-medium'>Key:</label>
         <select
@@ -99,7 +99,7 @@ export default function ProgressionNavigator({ startKey = "G", bpm = 80 }: Progr
             setKey(e.target.value);
             reset();
           }}
-          className='bg-[#1A1B1E]/20 text-[#1A1B1E] border border-[#373A40]/20 px-3 py-1.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#12B886]'
+          className='bg-[#1A1B1E]/20 text-[#1A1B1E] border border-[#373A40]/20 px-3 py-1.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#facc15]'
         >
           {KEYS.map((k) => (
             <option key={k} value={k}>
@@ -109,7 +109,7 @@ export default function ProgressionNavigator({ startKey = "G", bpm = 80 }: Progr
         </select>
         <button
           onClick={() => setPlaying((p) => !p)}
-          className='bg-[#1A1B1E] hover:bg-[#1A1B1E]/80 text-[#12B886] px-4 py-1.5 rounded-lg transition-colors font-medium'
+          className='bg-[#1A1B1E] hover:bg-[#1A1B1E]/80 text-[#facc15] px-4 py-1.5 rounded-lg transition-colors font-medium'
         >
           {playing ? "Stop" : "Play"}
         </button>
@@ -125,8 +125,8 @@ export default function ProgressionNavigator({ startKey = "G", bpm = 80 }: Progr
           const isMinor = f === "ii" || f === "iii" || f === "vi";
 
           let bgColor = "bg-[#1A1B1E]/70 hover:bg-[#1A1B1E]/90 text-white";
-          if (isCurrent) bgColor = "bg-red-600 hover:bg-red-700 text-white";
-          else if (isNext) bgColor = "bg-[#12B886] hover:bg-[#20c997] text-[#1A1B1E]";
+          if (isCurrent) bgColor = "bg-[#facc15] hover:bg-[#fde047] text-[#1A1B1E]";
+          else if (isNext) bgColor = "bg-[#facc15]/60 hover:bg-[#facc15]/80 text-[#1A1B1E]";
           else if (isMinor) bgColor = "bg-[#1A1B1E]/50 hover:bg-[#1A1B1E]/70 text-white";
 
           return (
@@ -155,7 +155,7 @@ export default function ProgressionNavigator({ startKey = "G", bpm = 80 }: Progr
             <div
               key={i}
               className={`px-3 py-2 rounded-lg font-bold transition-colors ${
-                active ? "bg-[#12B886] text-[#1A1B1E]" : "bg-[#1A1B1E]/20 text-[#1A1B1E]"
+                active ? "bg-[#facc15] text-[#1A1B1E]" : "bg-[#1A1B1E]/20 text-[#1A1B1E]"
               }`}
             >
               {s.label}
@@ -164,14 +164,14 @@ export default function ProgressionNavigator({ startKey = "G", bpm = 80 }: Progr
         })}
         <button
           onClick={reset}
-          className='ml-auto bg-[#1A1B1E] hover:bg-[#1A1B1E]/80 text-[#12B886] px-3 py-2 rounded-lg transition-colors text-sm font-medium'
+          className='ml-auto bg-[#1A1B1E] hover:bg-[#1A1B1E]/80 text-[#facc15] px-3 py-2 rounded-lg transition-colors text-sm font-medium'
         >
           Reset
         </button>
         <button
           onClick={() => setProg((p) => p.slice(0, -1))}
           disabled={prog.length <= 1}
-          className='bg-[#1A1B1E] hover:bg-[#1A1B1E]/80 text-[#12B886] px-3 py-2 rounded-lg transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed'
+          className='bg-[#1A1B1E] hover:bg-[#1A1B1E]/80 text-[#facc15] px-3 py-2 rounded-lg transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed'
         >
           Undo
         </button>
