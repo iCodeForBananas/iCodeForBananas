@@ -5,8 +5,6 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianG
 import { createClient } from '@/utils/supabase/client';
 import { useAuth } from '@/app/hooks/useAuth';
 
-const supabase = createClient();
-
 interface LogEntry {
   id: string;
   exercise: string;
@@ -35,6 +33,7 @@ const COLORS = ['#facc15', '#f97316', '#ef4444', '#3b82f6', '#10b981', '#8b5cf6'
 export default function WorkoutTrackerPage() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const { user } = useAuth();
+  const supabase = useMemo(() => createClient(), []);
   const [date, setDate] = useState(today);
   const [selected, setSelected] = useState(COMPOUND[0].name);
   const [weight, setWeight] = useState('');
