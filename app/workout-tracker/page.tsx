@@ -24,6 +24,7 @@ const COMPOUND: { name: string; type: 'weighted' | 'bodyweight' }[] = [
   { name: 'Bicep Curls', type: 'weighted' },
   { name: 'Bent Over Rows', type: 'weighted' },
   { name: 'Incline Press', type: 'weighted' },
+  { name: 'Crunches', type: 'bodyweight' },
 ];
 
 const today = () => new Date().toISOString().slice(0, 10);
