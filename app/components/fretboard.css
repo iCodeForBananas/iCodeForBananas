@@ -19,16 +19,19 @@
   font-size: 0.8rem;
   border-bottom: 1px solid #373A40;
   color: transparent;
+  background-color: #ffffff;
   transition: all 0.3s ease;
 }
 
 .note.open {
   font-weight: bold;
-  background-color: #25262B;
+  background-color: #303033;
+  color: #ffffff;
 }
 
 .note.scale {
-  background-color: #1a3a2e;
+  background-color: #303033;
+  color: #ffffff;
 }
 
 .note.highlight {
