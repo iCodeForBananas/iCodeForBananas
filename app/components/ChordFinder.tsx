@@ -116,12 +116,6 @@ export default function ChordFinder() {
 
   return (
     <div className='space-y-6'>
-      {/* Header / instructions */}
-      <div className='text-sm text-[#909296]'>
-        Click any fret position to select or deselect it. As you build up a set of notes the chord panel below will
-        identify what you&apos;re playing in real time. Click a chord result to preview all its notes on the fretboard.
-      </div>
-
       {/* Pinned chord banner */}
       {pinnedChord && (
         <div className='flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-gradient-to-r from-[#4C6EF5]/10 to-[#4C6EF5]/10 border border-[#373A40]/30 shadow-sm'>
