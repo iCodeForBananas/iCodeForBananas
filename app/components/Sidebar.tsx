@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
-import GeminiKeyModal from "./GeminiKeyModal";
+import { useAuth } from "@/app/hooks/useAuth";
 
 const MOBILE_BREAKPOINT = 1024;
 const isMobileDevice = () => window.innerWidth < MOBILE_BREAKPOINT;
@@ -58,7 +58,7 @@ export default function Sidebar() {
   const [isOpen, setIsOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const [hasMounted, setHasMounted] = useState(false);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const { user, signOut } = useAuth();
 
   useEffect(() => {
     const mobile = isMobileDevice();
@@ -154,23 +154,43 @@ export default function Sidebar() {
             iCodeForBananas
           </Link>
 
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className='w-full text-sm font-semibold rounded px-3 py-2 mt-1 mb-1 whitespace-nowrap transition-colors'
-            style={{ border: "1px solid #373A40", color: "#F8F9FA", background: "#1A1B1E" }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = "#12B886";
-              e.currentTarget.style.color = "#1A1B1E";
-              e.currentTarget.style.borderColor = "#12B886";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = "#1A1B1E";
-              e.currentTarget.style.color = "#F8F9FA";
-              e.currentTarget.style.borderColor = "#373A40";
-            }}
-          >
-            🔑 Set Gemini API Key
-          </button>
+          {user ? (
+            <button
+              onClick={signOut}
+              className='w-full text-sm font-semibold rounded px-3 py-2 mt-1 mb-1 whitespace-nowrap transition-colors'
+              style={{ border: "1px solid #373A40", color: "#F8F9FA", background: "#1A1B1E" }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "#facc15";
+                e.currentTarget.style.color = "#1A1B1E";
+                e.currentTarget.style.borderColor = "#facc15";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "#1A1B1E";
+                e.currentTarget.style.color = "#F8F9FA";
+                e.currentTarget.style.borderColor = "#373A40";
+              }}
+            >
+              Sign Out
+            </button>
+          ) : (
+            <Link
+              href='/login'
+              className='w-full text-sm font-semibold rounded px-3 py-2 mt-1 mb-1 whitespace-nowrap transition-colors block text-center'
+              style={{ border: "1px solid #373A40", color: "#F8F9FA", background: "#1A1B1E" }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "#facc15";
+                e.currentTarget.style.color = "#1A1B1E";
+                e.currentTarget.style.borderColor = "#facc15";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "#1A1B1E";
+                e.currentTarget.style.color = "#F8F9FA";
+                e.currentTarget.style.borderColor = "#373A40";
+              }}
+            >
+              Sign In
+            </Link>
+          )}
 
           <nav className='flex flex-col gap-4 mt-6'>
             {NAV.map((section) => (
@@ -223,7 +243,6 @@ export default function Sidebar() {
           </nav>
         </div>
       </aside>
-      <GeminiKeyModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
     </>
   );
 }

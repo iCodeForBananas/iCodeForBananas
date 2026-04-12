@@ -2,12 +2,16 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { createClient } from '@/utils/supabase/client';
+import { useAuth } from '@/app/hooks/useAuth';
+
+const supabase = createClient();
 
 interface LogEntry {
   id: string;
   exercise: string;
   date: string;
-  weight?: number;
+  weight?: number | null;
 }
 
 const COMPOUND: { name: string; type: 'weighted' | 'bodyweight' }[] = [
@@ -21,52 +25,8 @@ const COMPOUND: { name: string; type: 'weighted' | 'bodyweight' }[] = [
   { name: 'Chin-ups', type: 'bodyweight' },
   { name: 'Bicep Curls', type: 'weighted' },
   { name: 'Bent Over Rows', type: 'weighted' },
+  { name: 'Incline Press', type: 'weighted' },
 ];
-
-const DB_NAME = 'workout-tracker-v2';
-const STORE = 'logs';
-
-function openDB(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, 1);
-    req.onupgradeneeded = () => {
-      const db = req.result;
-      if (!db.objectStoreNames.contains(STORE)) {
-        const s = db.createObjectStore(STORE, { keyPath: 'id' });
-        s.createIndex('exercise', 'exercise');
-        s.createIndex('date', 'date');
-      }
-    };
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-  });
-}
-
-function dbGetAll(): Promise<LogEntry[]> {
-  return openDB().then(db => new Promise((res, rej) => {
-    const r = db.transaction(STORE, 'readonly').objectStore(STORE).getAll();
-    r.onsuccess = () => res(r.result);
-    r.onerror = () => rej(r.error);
-  }));
-}
-
-function dbPut(item: LogEntry): Promise<void> {
-  return openDB().then(db => new Promise((res, rej) => {
-    const tx = db.transaction(STORE, 'readwrite');
-    tx.objectStore(STORE).put(item);
-    tx.oncomplete = () => res();
-    tx.onerror = () => rej(tx.error);
-  }));
-}
-
-function dbDelete(id: string): Promise<void> {
-  return openDB().then(db => new Promise((res, rej) => {
-    const tx = db.transaction(STORE, 'readwrite');
-    tx.objectStore(STORE).delete(id);
-    tx.oncomplete = () => res();
-    tx.onerror = () => rej(tx.error);
-  }));
-}
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -74,24 +34,37 @@ const COLORS = ['#facc15', '#f97316', '#ef4444', '#3b82f6', '#10b981', '#8b5cf6'
 
 export default function WorkoutTrackerPage() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
+  const { user } = useAuth();
   const [date, setDate] = useState(today);
   const [selected, setSelected] = useState(COMPOUND[0].name);
   const [weight, setWeight] = useState('');
   const [page, setPage] = useState(0);
   const PAGE_SIZE = 10;
-  const reload = useCallback(async () => setLogs(await dbGetAll()), []);
+  const reload = useCallback(async () => {
+    const { data } = await supabase.from('workout_logs').select('id, exercise, date, weight');
+    setLogs((data as LogEntry[]) ?? []);
+  }, []);
   useEffect(() => { reload(); }, [reload]);
 
   const selectedType = COMPOUND.find(c => c.name === selected)?.type ?? 'weighted';
 
+  const sortedExercises = useMemo(() => {
+    const latest = new Map<string, string>();
+    for (const l of logs) {
+      const prev = latest.get(l.exercise);
+      if (!prev || l.date > prev) latest.set(l.exercise, l.date);
+    }
+    return [...COMPOUND].sort((a, b) => (latest.get(b.name) ?? '').localeCompare(latest.get(a.name) ?? ''));
+  }, [logs]);
+
   const submit = async () => {
-    await dbPut({ id: crypto.randomUUID(), exercise: selected, date, weight: selectedType === 'weighted' ? (+weight || 0) : undefined });
+    await supabase.from('workout_logs').insert({ exercise: selected, date, weight: selectedType === 'weighted' ? (+weight || 0) : null });
     setWeight('');
     setPage(0);
     reload();
   };
 
-  const remove = async (id: string) => { await dbDelete(id); setPage(p => Math.max(0, p)); reload(); };
+  const remove = async (id: string) => { await supabase.from('workout_logs').delete().eq('id', id); setPage(p => Math.max(0, p)); reload(); };
 
   // chart data: for each weighted exercise that has logs, build date→weight series
   const weightedWithLogs = useMemo(() => {
@@ -112,6 +85,36 @@ export default function WorkoutTrackerPage() {
     });
   }, [logs, weightedWithLogs]);
 
+  const [hovered, setHovered] = useState<{ date: string; exercises: string[]; x: number; y: number } | null>(null);
+
+  const contributionData = useMemo(() => {
+    const map = new Map<string, string[]>();
+    for (const l of logs) {
+      const arr = map.get(l.date) ?? [];
+      arr.push(l.exercise + (l.weight ? ` @ ${l.weight} lbs` : ''));
+      map.set(l.date, arr);
+    }
+
+    const end = new Date();
+    const start = new Date(end);
+    start.setDate(start.getDate() - 364); // 52 weeks
+    // align to Sunday
+    start.setDate(start.getDate() - start.getDay());
+
+    const weeks: { date: string; count: number; exercises: string[] }[][] = [];
+    let week: { date: string; count: number; exercises: string[] }[] = [];
+    const cur = new Date(start);
+    while (cur <= end) {
+      const key = cur.toISOString().slice(0, 10);
+      const exercises = map.get(key) ?? [];
+      week.push({ date: key, count: exercises.length, exercises });
+      if (week.length === 7) { weeks.push(week); week = []; }
+      cur.setDate(cur.getDate() + 1);
+    }
+    if (week.length) weeks.push(week);
+    return weeks;
+  }, [logs]);
+
   return (
     <div className="flex flex-col flex-1">
       <main className="px-4 py-6 flex-1 metronome-static">
@@ -123,12 +126,13 @@ export default function WorkoutTrackerPage() {
             </div>
 
             {/* Log form */}
+            {user && (
             <div className="flex flex-wrap gap-2 items-end mb-8 max-w-3xl mx-auto">
               <input type="date" value={date} onChange={e => setDate(e.target.value)}
                 className="border border-[#373A40]/30 rounded px-3 py-2 text-sm bg-white" />
               <select value={selected} onChange={e => setSelected(e.target.value)}
                 className="border border-[#373A40]/30 rounded px-3 py-2 text-sm flex-1 min-w-[160px]">
-                {COMPOUND.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+                {sortedExercises.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
               </select>
               {selectedType === 'weighted' && (
                 <input type="number" min={0} step={5} value={weight} placeholder="lbs"
@@ -141,6 +145,7 @@ export default function WorkoutTrackerPage() {
                 Submit
               </button>
             </div>
+            )}
 
             {/* Weight progress chart */}
             {weightedWithLogs.length > 0 && chartData.length > 0 && (
@@ -166,6 +171,56 @@ export default function WorkoutTrackerPage() {
               </div>
             )}
 
+            {/* Contribution graph */}
+            <div className="border-t border-[#373A40]/10 pt-6 mb-8 relative">
+              <h2 className="font-semibold text-lg mb-4">Activity</h2>
+              <div className="overflow-x-auto">
+                <div className="flex gap-[3px]">
+                  {contributionData.map((week, wi) => (
+                    <div key={wi} className="flex flex-col gap-[3px]">
+                      {week.map((day) => (
+                        <div
+                          key={day.date}
+                          className="w-[13px] h-[13px] rounded-sm cursor-default"
+                          style={{
+                            backgroundColor: day.count === 0 ? '#ebedf0'
+                              : day.count <= 1 ? '#fef3c7'
+                              : day.count <= 3 ? '#fcd34d'
+                              : '#facc15',
+                          }}
+                          onMouseEnter={(e) => {
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            const parent = e.currentTarget.closest('.relative')!.getBoundingClientRect();
+                            setHovered({
+                              date: day.date,
+                              exercises: day.exercises,
+                              x: rect.left - parent.left + rect.width / 2,
+                              y: rect.top - parent.top - 8,
+                            });
+                          }}
+                          onMouseLeave={() => setHovered(null)}
+                        />
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {hovered && (
+                <div
+                  className="absolute z-10 bg-[#1A1B1E] text-white text-xs rounded-lg px-3 py-2 pointer-events-none shadow-lg"
+                  style={{ left: hovered.x, top: hovered.y, transform: 'translate(-50%, -100%)' }}
+                >
+                  <div className="font-semibold mb-1">
+                    {new Date(hovered.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                  </div>
+                  {hovered.exercises.length === 0
+                    ? <div className="text-white/60">No workouts</div>
+                    : hovered.exercises.map((e, i) => <div key={i}>{e}</div>)
+                  }
+                </div>
+              )}
+            </div>
+
             {/* All entries */}
             {logs.length > 0 && (() => {
               const sorted = [...logs].sort((a, b) => b.date.localeCompare(a.date) || a.exercise.localeCompare(b.exercise));
@@ -182,7 +237,7 @@ export default function WorkoutTrackerPage() {
                         <span className="font-medium">{l.exercise}</span>
                         {l.weight != null && l.weight > 0 && <span className="text-[#000]/50 ml-1">@ {l.weight} lbs</span>}
                       </div>
-                      <button onClick={() => remove(l.id)} className="text-[#373A40]/30 hover:text-red-500 text-lg px-1" aria-label="Delete">×</button>
+                      <button onClick={() => remove(l.id)} className="text-[#373A40]/30 hover:text-red-500 text-lg px-1" aria-label="Delete" style={{ display: user ? undefined : 'none' }}>×</button>
                     </div>
                   ))}
                 </div>
