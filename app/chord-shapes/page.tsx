@@ -109,7 +109,7 @@ const ChordDiagram = ({ chord, shape, useFlats }: ChordDiagramProps) => {
             return (
               <div
                 key={stringIndex}
-                className='absolute rounded-full border-2 border-[#12B886] bg-[#1A1B1E] flex items-center justify-center font-bold'
+                className='absolute rounded-full border-2 border-[#facc15] bg-[#1A1B1E] flex items-center justify-center font-bold'
                 style={{
                   left: `${stringIndex * stringSpacing + 10 - dotSize / 2}px`,
                   top: `${20 - dotSize - 2}px`,
@@ -127,7 +127,7 @@ const ChordDiagram = ({ chord, shape, useFlats }: ChordDiagramProps) => {
             return (
               <div
                 key={stringIndex}
-                className='absolute bg-[#12B886] rounded-full text-[#1A1B1E] flex items-center justify-center font-bold'
+                className='absolute bg-[#facc15] rounded-full text-[#1A1B1E] flex items-center justify-center font-bold'
                 style={{
                   left: `${stringIndex * stringSpacing + 10 - dotSize / 2}px`,
                   top: `${20 + displayPos * fretSpacing + fretSpacing / 2 - dotSize / 2}px`,
