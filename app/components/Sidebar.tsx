@@ -49,7 +49,10 @@ const NAV = [
   },
   {
     label: "Misc",
-    links: [{ href: "/wordsmith", text: "Wordsmith" }],
+    links: [
+      { href: "/wordsmith", text: "Wordsmith" },
+      { href: "/polls", text: "Polls" },
+    ],
   },
 ];
 
