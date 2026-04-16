@@ -2,14 +2,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Ear, Heart, Trophy, Bug as Bee, ChevronRight, Star } from 'lucide-react';
+import { Trophy, Bug as Bee, ChevronRight } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 interface WordData {
   word: string;
+  emoji: string;
   boxes: string[][];
   phonemes: string[];
-  heart?: number[];
 }
 
 interface GameState {
@@ -25,39 +25,39 @@ interface GameState {
 
 const LEVELS: Record<number, WordData[]> = {
   1: [
-    { word: 'at', boxes: [['a'], ['t']], phonemes: ['a', 't'] },
-    { word: 'up', boxes: [['u'], ['p']], phonemes: ['u', 'p'] },
-    { word: 'cat', boxes: [['c'], ['a'], ['t']], phonemes: ['c', 'a', 't'] },
-    { word: 'dog', boxes: [['d'], ['o'], ['g']], phonemes: ['d', 'o', 'g'] },
-    { word: 'sun', boxes: [['s'], ['u'], ['n']], phonemes: ['s', 'u', 'n'] },
+    { word: 'at', emoji: '📍', boxes: [['a'], ['t']], phonemes: ['a', 't'] },
+    { word: 'up', emoji: '⬆️', boxes: [['u'], ['p']], phonemes: ['u', 'p'] },
+    { word: 'cat', emoji: '🐈', boxes: [['c'], ['a'], ['t']], phonemes: ['c', 'a', 't'] },
+    { word: 'dog', emoji: '🐕', boxes: [['d'], ['o'], ['g']], phonemes: ['d', 'o', 'g'] },
+    { word: 'sun', emoji: '☀️', boxes: [['s'], ['u'], ['n']], phonemes: ['s', 'u', 'n'] },
   ],
   2: [
-    { word: 'same', boxes: [['s'], ['a'], ['m'], ['e']], phonemes: ['s', 'a', 'm', 'e'] },
-    { word: 'make', boxes: [['m'], ['a'], ['k'], ['e']], phonemes: ['m', 'a', 'k', 'e'] },
-    { word: 'hide', boxes: [['h'], ['i'], ['d'], ['e']], phonemes: ['h', 'i', 'd', 'e'] },
-    { word: 'line', boxes: [['l'], ['i'], ['n'], ['e']], phonemes: ['l', 'i', 'n', 'e'] },
-    { word: 'frog', boxes: [['f'], ['r'], ['o'], ['g']], phonemes: ['f', 'r', 'o', 'g'] },
+    { word: 'same', emoji: '🟰', boxes: [['s'], ['a'], ['m'], ['e']], phonemes: ['s', 'a', 'm', 'e'] },
+    { word: 'make', emoji: '🔨', boxes: [['m'], ['a'], ['k'], ['e']], phonemes: ['m', 'a', 'k', 'e'] },
+    { word: 'hide', emoji: '🫣', boxes: [['h'], ['i'], ['d'], ['e']], phonemes: ['h', 'i', 'd', 'e'] },
+    { word: 'line', emoji: '📏', boxes: [['l'], ['i'], ['n'], ['e']], phonemes: ['l', 'i', 'n', 'e'] },
+    { word: 'frog', emoji: '🐸', boxes: [['f'], ['r'], ['o'], ['g']], phonemes: ['f', 'r', 'o', 'g'] },
   ],
   3: [
-    { word: 'green', boxes: [['g'], ['r'], ['e'], ['e'], ['n']], phonemes: ['g', 'r', 'e', 'e', 'n'] },
-    { word: 'stone', boxes: [['s'], ['t'], ['o'], ['n'], ['e']], phonemes: ['s', 't', 'o', 'n', 'e'] },
-    { word: 'seed', boxes: [['s'], ['e'], ['e'], ['d']], phonemes: ['s', 'e', 'e', 'd'] },
-    { word: 'clock', boxes: [['c'], ['l'], ['o'], ['c'], ['k']], phonemes: ['c', 'l', 'o', 'c', 'k'] },
-    { word: 'brush', boxes: [['b'], ['r'], ['u'], ['s'], ['h']], phonemes: ['b', 'r', 'u', 's', 'h'] },
+    { word: 'green', emoji: '💚', boxes: [['g'], ['r'], ['e'], ['e'], ['n']], phonemes: ['g', 'r', 'e', 'e', 'n'] },
+    { word: 'stone', emoji: '🪨', boxes: [['s'], ['t'], ['o'], ['n'], ['e']], phonemes: ['s', 't', 'o', 'n', 'e'] },
+    { word: 'seed', emoji: '🌱', boxes: [['s'], ['e'], ['e'], ['d']], phonemes: ['s', 'e', 'e', 'd'] },
+    { word: 'clock', emoji: '🕐', boxes: [['c'], ['l'], ['o'], ['c'], ['k']], phonemes: ['c', 'l', 'o', 'c', 'k'] },
+    { word: 'brush', emoji: '🖌️', boxes: [['b'], ['r'], ['u'], ['s'], ['h']], phonemes: ['b', 'r', 'u', 's', 'h'] },
   ],
   4: [
-    { word: 'bright', boxes: [['b'], ['r'], ['i'], ['g'], ['h'], ['t']], phonemes: ['b', 'r', 'i', 'g', 'h', 't'] },
-    { word: 'school', boxes: [['s'], ['c'], ['h'], ['o'], ['o'], ['l']], phonemes: ['s', 'c', 'h', 'o', 'o', 'l'] },
-    { word: 'friend', boxes: [['f'], ['r'], ['i'], ['e'], ['n'], ['d']], phonemes: ['f', 'r', 'i', 'e', 'n', 'd'] },
-    { word: 'please', boxes: [['p'], ['l'], ['e'], ['a'], ['s'], ['e']], phonemes: ['p', 'l', 'e', 'a', 's', 'e'] },
-    { word: 'around', boxes: [['a'], ['r'], ['o'], ['u'], ['n'], ['d']], phonemes: ['a', 'r', 'o', 'u', 'n', 'd'] },
+    { word: 'bright', emoji: '🌟', boxes: [['b'], ['r'], ['i'], ['g'], ['h'], ['t']], phonemes: ['b', 'r', 'i', 'g', 'h', 't'] },
+    { word: 'school', emoji: '🏫', boxes: [['s'], ['c'], ['h'], ['o'], ['o'], ['l']], phonemes: ['s', 'c', 'h', 'o', 'o', 'l'] },
+    { word: 'friend', emoji: '🤝', boxes: [['f'], ['r'], ['i'], ['e'], ['n'], ['d']], phonemes: ['f', 'r', 'i', 'e', 'n', 'd'] },
+    { word: 'please', emoji: '🙏', boxes: [['p'], ['l'], ['e'], ['a'], ['s'], ['e']], phonemes: ['p', 'l', 'e', 'a', 's', 'e'] },
+    { word: 'around', emoji: '🔄', boxes: [['a'], ['r'], ['o'], ['u'], ['n'], ['d']], phonemes: ['a', 'r', 'o', 'u', 'n', 'd'] },
   ],
   5: [
-    { word: 'brother', boxes: [['b'], ['r'], ['o'], ['t'], ['h'], ['e'], ['r']], phonemes: ['b', 'r', 'o', 't', 'h', 'e', 'r'] },
-    { word: 'morning', boxes: [['m'], ['o'], ['r'], ['n'], ['i'], ['n'], ['g']], phonemes: ['m', 'o', 'r', 'n', 'i', 'n', 'g'] },
-    { word: 'weather', boxes: [['w'], ['e'], ['a'], ['t'], ['h'], ['e'], ['r']], phonemes: ['w', 'e', 'a', 't', 'h', 'e', 'r'] },
-    { word: 'thought', boxes: [['t'], ['h'], ['o'], ['u'], ['g'], ['h'], ['t']], phonemes: ['t', 'h', 'o', 'u', 'g', 'h', 't'] },
-    { word: 'because', boxes: [['b'], ['e'], ['c'], ['a'], ['u'], ['s'], ['e']], phonemes: ['b', 'e', 'c', 'a', 'u', 's', 'e'] },
+    { word: 'brother', emoji: '👦', boxes: [['b'], ['r'], ['o'], ['t'], ['h'], ['e'], ['r']], phonemes: ['b', 'r', 'o', 't', 'h', 'e', 'r'] },
+    { word: 'morning', emoji: '🌅', boxes: [['m'], ['o'], ['r'], ['n'], ['i'], ['n'], ['g']], phonemes: ['m', 'o', 'r', 'n', 'i', 'n', 'g'] },
+    { word: 'weather', emoji: '🌤️', boxes: [['w'], ['e'], ['a'], ['t'], ['h'], ['e'], ['r']], phonemes: ['w', 'e', 'a', 't', 'h', 'e', 'r'] },
+    { word: 'thought', emoji: '💭', boxes: [['t'], ['h'], ['o'], ['u'], ['g'], ['h'], ['t']], phonemes: ['t', 'h', 'o', 'u', 'g', 'h', 't'] },
+    { word: 'because', emoji: '💡', boxes: [['b'], ['e'], ['c'], ['a'], ['u'], ['s'], ['e']], phonemes: ['b', 'e', 'c', 'a', 'u', 's', 'e'] },
   ],
 };
 
@@ -88,12 +88,6 @@ const playSound = (type: 'xp' | 'thud' | 'click' | 'levelup' | 'star') => {
   osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + 0.5);
 };
 
-const speak = (text: string, rate = 0.8) => {
-  const u = new SpeechSynthesisUtterance(text);
-  u.rate = rate; u.pitch = 1.2;
-  window.speechSynthesis.speak(u);
-};
-
 const INITIAL_STATE: GameState = {
   currentLevel: 1, currentWordIndex: 0, currentBoxIndex: 0, currentLetterIndex: 0,
   wordsCompleted: 0, isComplete: false, shrugging: false, showHeart: false,
@@ -119,7 +113,6 @@ export default function SpellingBeePage() {
       decoys.push(decoyPool.splice(idx, 1)[0]);
     }
     setLetterChoices([...wordLetters, ...decoys].sort(() => Math.random() - 0.5));
-    speak(currentWord.word);
   }, [state.currentWordIndex, state.currentLevel, showLevelUp, state.isComplete]);
 
   const handleLetterClick = (letter: string) => {
@@ -141,7 +134,6 @@ export default function SpellingBeePage() {
     } else {
       playSound('thud');
       setState(s => ({ ...s, shrugging: true }));
-      speak(currentWord.phonemes[state.currentBoxIndex]);
       setTimeout(() => setState(s => ({ ...s, shrugging: false })), 500);
     }
   };
@@ -271,11 +263,9 @@ export default function SpellingBeePage() {
               <div className={`mt-1 md:mt-3 w-2 h-2 md:w-3 md:h-3 rounded-full ${state.currentBoxIndex === i ? 'bg-orange-500 animate-bounce' : 'bg-slate-700'}`} />
             </div>
           ))}
-          <button onClick={() => { playSound('click'); speak(currentWord.word); }}
-            className="ml-2 md:ml-4 p-3 md:p-5 bg-orange-600 hover:bg-orange-500 text-white rounded-xl md:rounded-2xl shadow-[0_2px_0_rgb(154,52,18)] md:shadow-[0_4px_0_rgb(154,52,18)] transition-all active:shadow-none active:translate-y-1"
-            title="Listen to word">
-            <Ear className="w-5 h-5 md:w-8 md:h-8" />
-          </button>
+          <div className="ml-2 md:ml-4 p-3 md:p-5 bg-slate-800 rounded-xl md:rounded-2xl border-2 md:border-4 border-slate-700 flex items-center justify-center">
+            <span className="text-4xl md:text-6xl">{currentWord.emoji}</span>
+          </div>
         </div>
 
         {/* Letter Bank */}
