@@ -268,7 +268,7 @@ export default function SpaceMathPage() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white selection:bg-blue-500/30 relative flex flex-col">
+    <div className="min-h-screen bg-black text-white selection:bg-blue-500/30 relative flex flex-col overflow-x-hidden">
       <div className="absolute inset-0 pointer-events-none">
         {Array.from({ length: 50 }).map((_, i) => (
           <div key={i} className="absolute bg-white rounded-full animate-pulse" style={{ width: Math.random() * 3 + 'px', height: Math.random() * 3 + 'px', top: Math.random() * 100 + '%', left: Math.random() * 100 + '%', opacity: Math.random() * 0.7 + 0.3, animationDelay: Math.random() * 5 + 's' }} />
