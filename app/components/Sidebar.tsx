@@ -43,7 +43,6 @@ const NAV = [
     label: "Labs",
     links: [
       { href: "/aws-quiz", text: "AWS CCP Quiz" },
-      { href: "/cloud-architect", text: "Cloud Architect" },
     ],
   },
   {
