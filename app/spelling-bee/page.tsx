@@ -119,9 +119,21 @@ export default function SpellingBeePage() {
   const currentLevelWords = LEVELS[state.currentLevel];
   const currentWord = currentLevelWords[state.currentWordIndex];
 
+  const [letterChoices, setLetterChoices] = useState<string[]>([]);
+
   useEffect(() => {
     setFilledBoxes(currentWord.boxes.map(() => []));
     setState(s => ({ ...s, currentBoxIndex: 0, currentLetterIndex: 0, showHeart: false }));
+    // Build letter choices: unique word letters + 3 decoys, shuffled
+    const wordLetters = [...new Set(currentWord.word.split(''))];
+    const allLetters = 'abcdefghijklmnopqrstuvwxyz'.split('');
+    const decoyPool = allLetters.filter(l => !wordLetters.includes(l));
+    const decoys: string[] = [];
+    while (decoys.length < 3 && decoyPool.length > 0) {
+      const idx = Math.floor(Math.random() * decoyPool.length);
+      decoys.push(decoyPool.splice(idx, 1)[0]);
+    }
+    setLetterChoices([...wordLetters, ...decoys].sort(() => Math.random() - 0.5));
     speak(currentWord.word);
   }, [state.currentWordIndex, state.currentLevel]);
 
@@ -174,8 +186,6 @@ export default function SpellingBeePage() {
       }
     }, 2000);
   };
-
-  const alphabet = 'abcdefghijklmnopqrstuvwxyz'.split('');
 
   if (state.isComplete) {
     return (
@@ -306,10 +316,10 @@ export default function SpellingBeePage() {
         </div>
 
         <div className="w-full bg-slate-800 p-2 md:p-6 rounded-2xl md:rounded-3xl border-2 md:border-4 border-slate-700 shadow-xl shrink-0">
-          <div className="grid grid-cols-7 gap-1 md:gap-2 justify-items-center">
-            {alphabet.map((letter) => (
+          <div className="flex flex-wrap gap-2 md:gap-3 justify-center">
+            {letterChoices.map((letter) => (
               <motion.button key={letter} whileHover={{ scale: 1.1, y: -2 }} whileTap={{ scale: 0.9 }} onClick={() => handleLetterClick(letter)}
-                className="w-full aspect-square max-w-[3rem] max-h-[3rem] md:max-w-[4rem] md:max-h-[4rem] bg-slate-700 hover:bg-orange-500 text-slate-100 font-black text-sm md:text-2xl uppercase rounded-lg md:rounded-xl border-b-2 md:border-b-4 border-slate-900 hover:border-orange-700 flex items-center justify-center transition-all">
+                className="w-12 h-12 md:w-16 md:h-16 bg-slate-700 hover:bg-orange-500 text-slate-100 font-black text-lg md:text-3xl uppercase rounded-lg md:rounded-xl border-b-2 md:border-b-4 border-slate-900 hover:border-orange-700 flex items-center justify-center transition-all">
                 {letter}
               </motion.button>
             ))}
