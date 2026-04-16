@@ -26,7 +26,6 @@ const NAV = [
     links: [
       { href: "/fretboard", text: "Fretboard Explorer" },
       { href: "/fretboard-quiz", text: "Fretboard Quiz" },
-      { href: "/silent-metronome", text: "Silent Metronome" },
     ],
   },
   {

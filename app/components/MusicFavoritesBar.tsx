@@ -6,7 +6,7 @@ import FavoriteChordsBar from "./FavoriteChordsBar";
 const MUSIC_ROUTES = [
   "/circle-of-fifths", "/harmonic-flow", "/chord-progressions", "/chord-shapes",
   "/chord-voicings", "/chord-finder", "/chord-inversions", "/fretboard",
-  "/fretboard-quiz", "/silent-metronome", "/blues-practice",
+  "/fretboard-quiz", "/blues-practice",
 ];
 
 export default function MusicFavoritesBar() {
