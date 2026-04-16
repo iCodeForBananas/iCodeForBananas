@@ -25,43 +25,43 @@ interface GameState {
 
 const LEVELS: Record<number, WordData[]> = {
   1: [
-    { word: 'at', emoji: '📍', boxes: [['a'], ['t']], phonemes: ['a', 't'] },
-    { word: 'up', emoji: '⬆️', boxes: [['u'], ['p']], phonemes: ['u', 'p'] },
     { word: 'cat', emoji: '🐈', boxes: [['c'], ['a'], ['t']], phonemes: ['c', 'a', 't'] },
     { word: 'dog', emoji: '🐕', boxes: [['d'], ['o'], ['g']], phonemes: ['d', 'o', 'g'] },
     { word: 'sun', emoji: '☀️', boxes: [['s'], ['u'], ['n']], phonemes: ['s', 'u', 'n'] },
+    { word: 'hat', emoji: '🎩', boxes: [['h'], ['a'], ['t']], phonemes: ['h', 'a', 't'] },
+    { word: 'bug', emoji: '🐛', boxes: [['b'], ['u'], ['g']], phonemes: ['b', 'u', 'g'] },
   ],
   2: [
-    { word: 'same', emoji: '🟰', boxes: [['s'], ['a'], ['m'], ['e']], phonemes: ['s', 'a', 'm', 'e'] },
-    { word: 'make', emoji: '🔨', boxes: [['m'], ['a'], ['k'], ['e']], phonemes: ['m', 'a', 'k', 'e'] },
-    { word: 'hide', emoji: '🫣', boxes: [['h'], ['i'], ['d'], ['e']], phonemes: ['h', 'i', 'd', 'e'] },
-    { word: 'line', emoji: '📏', boxes: [['l'], ['i'], ['n'], ['e']], phonemes: ['l', 'i', 'n', 'e'] },
+    { word: 'cake', emoji: '🎂', boxes: [['c'], ['a'], ['k'], ['e']], phonemes: ['c', 'a', 'k', 'e'] },
+    { word: 'bone', emoji: '🦴', boxes: [['b'], ['o'], ['n'], ['e']], phonemes: ['b', 'o', 'n', 'e'] },
+    { word: 'kite', emoji: '🪁', boxes: [['k'], ['i'], ['t'], ['e']], phonemes: ['k', 'i', 't', 'e'] },
     { word: 'frog', emoji: '🐸', boxes: [['f'], ['r'], ['o'], ['g']], phonemes: ['f', 'r', 'o', 'g'] },
+    { word: 'tree', emoji: '🌳', boxes: [['t'], ['r'], ['e'], ['e']], phonemes: ['t', 'r', 'e', 'e'] },
   ],
   3: [
-    { word: 'green', emoji: '💚', boxes: [['g'], ['r'], ['e'], ['e'], ['n']], phonemes: ['g', 'r', 'e', 'e', 'n'] },
     { word: 'stone', emoji: '🪨', boxes: [['s'], ['t'], ['o'], ['n'], ['e']], phonemes: ['s', 't', 'o', 'n', 'e'] },
-    { word: 'seed', emoji: '🌱', boxes: [['s'], ['e'], ['e'], ['d']], phonemes: ['s', 'e', 'e', 'd'] },
     { word: 'clock', emoji: '🕐', boxes: [['c'], ['l'], ['o'], ['c'], ['k']], phonemes: ['c', 'l', 'o', 'c', 'k'] },
     { word: 'brush', emoji: '🖌️', boxes: [['b'], ['r'], ['u'], ['s'], ['h']], phonemes: ['b', 'r', 'u', 's', 'h'] },
+    { word: 'snail', emoji: '🐌', boxes: [['s'], ['n'], ['a'], ['i'], ['l']], phonemes: ['s', 'n', 'a', 'i', 'l'] },
+    { word: 'plant', emoji: '🌱', boxes: [['p'], ['l'], ['a'], ['n'], ['t']], phonemes: ['p', 'l', 'a', 'n', 't'] },
   ],
   4: [
-    { word: 'bright', emoji: '🌟', boxes: [['b'], ['r'], ['i'], ['g'], ['h'], ['t']], phonemes: ['b', 'r', 'i', 'g', 'h', 't'] },
     { word: 'school', emoji: '🏫', boxes: [['s'], ['c'], ['h'], ['o'], ['o'], ['l']], phonemes: ['s', 'c', 'h', 'o', 'o', 'l'] },
     { word: 'friend', emoji: '🤝', boxes: [['f'], ['r'], ['i'], ['e'], ['n'], ['d']], phonemes: ['f', 'r', 'i', 'e', 'n', 'd'] },
-    { word: 'please', emoji: '🙏', boxes: [['p'], ['l'], ['e'], ['a'], ['s'], ['e']], phonemes: ['p', 'l', 'e', 'a', 's', 'e'] },
-    { word: 'around', emoji: '🔄', boxes: [['a'], ['r'], ['o'], ['u'], ['n'], ['d']], phonemes: ['a', 'r', 'o', 'u', 'n', 'd'] },
+    { word: 'rocket', emoji: '🚀', boxes: [['r'], ['o'], ['c'], ['k'], ['e'], ['t']], phonemes: ['r', 'o', 'c', 'k', 'e', 't'] },
+    { word: 'spider', emoji: '🕷️', boxes: [['s'], ['p'], ['i'], ['d'], ['e'], ['r']], phonemes: ['s', 'p', 'i', 'd', 'e', 'r'] },
+    { word: 'flower', emoji: '🌸', boxes: [['f'], ['l'], ['o'], ['w'], ['e'], ['r']], phonemes: ['f', 'l', 'o', 'w', 'e', 'r'] },
   ],
   5: [
     { word: 'brother', emoji: '👦', boxes: [['b'], ['r'], ['o'], ['t'], ['h'], ['e'], ['r']], phonemes: ['b', 'r', 'o', 't', 'h', 'e', 'r'] },
     { word: 'morning', emoji: '🌅', boxes: [['m'], ['o'], ['r'], ['n'], ['i'], ['n'], ['g']], phonemes: ['m', 'o', 'r', 'n', 'i', 'n', 'g'] },
     { word: 'weather', emoji: '🌤️', boxes: [['w'], ['e'], ['a'], ['t'], ['h'], ['e'], ['r']], phonemes: ['w', 'e', 'a', 't', 'h', 'e', 'r'] },
-    { word: 'thought', emoji: '💭', boxes: [['t'], ['h'], ['o'], ['u'], ['g'], ['h'], ['t']], phonemes: ['t', 'h', 'o', 'u', 'g', 'h', 't'] },
-    { word: 'because', emoji: '💡', boxes: [['b'], ['e'], ['c'], ['a'], ['u'], ['s'], ['e']], phonemes: ['b', 'e', 'c', 'a', 'u', 's', 'e'] },
+    { word: 'monster', emoji: '👾', boxes: [['m'], ['o'], ['n'], ['s'], ['t'], ['e'], ['r']], phonemes: ['m', 'o', 'n', 's', 't', 'e', 'r'] },
+    { word: 'rainbow', emoji: '🌈', boxes: [['r'], ['a'], ['i'], ['n'], ['b'], ['o'], ['w']], phonemes: ['r', 'a', 'i', 'n', 'b', 'o', 'w'] },
   ],
 };
 
-const LEVEL_NAMES = ['Tiny Words', 'Magic E', 'Blends', 'Big Words', 'Boss Words'];
+const LEVEL_NAMES = ['Simple Things', 'Nature & Fun', 'Around Us', 'Big World', 'Boss Words'];
 
 const playSound = (type: 'xp' | 'thud' | 'click' | 'levelup' | 'star') => {
   const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
