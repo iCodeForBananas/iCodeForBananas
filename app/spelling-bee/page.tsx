@@ -97,6 +97,7 @@ export default function SpellingBeePage() {
   const [state, setState] = useState<GameState>(INITIAL_STATE);
   const [filledBoxes, setFilledBoxes] = useState<string[][]>([]);
   const [letterChoices, setLetterChoices] = useState<string[]>([]);
+  const [usedIndices, setUsedIndices] = useState<Set<number>>(new Set());
   const [showLevelUp, setShowLevelUp] = useState(false);
   const currentWord = LEVELS[state.currentLevel][state.currentWordIndex];
 
@@ -104,9 +105,11 @@ export default function SpellingBeePage() {
     if (showLevelUp || state.isComplete) return;
     setFilledBoxes(currentWord.boxes.map(() => []));
     setState(s => ({ ...s, currentBoxIndex: 0, currentLetterIndex: 0, showHeart: false }));
-    const wordLetters = [...new Set(currentWord.word.split(''))];
-    const allLetters = 'abcdefghijklmnopqrstuvwxyz'.split('');
-    const decoyPool = allLetters.filter(l => !wordLetters.includes(l));
+    setUsedIndices(new Set());
+    // Include every letter in the word (preserving duplicates) + 3 decoys
+    const wordLetters = currentWord.word.split('');
+    const uniqueInWord = new Set(wordLetters);
+    const decoyPool = 'abcdefghijklmnopqrstuvwxyz'.split('').filter(l => !uniqueInWord.has(l));
     const decoys: string[] = [];
     while (decoys.length < 3 && decoyPool.length > 0) {
       const idx = Math.floor(Math.random() * decoyPool.length);
@@ -115,12 +118,13 @@ export default function SpellingBeePage() {
     setLetterChoices([...wordLetters, ...decoys].sort(() => Math.random() - 0.5));
   }, [state.currentWordIndex, state.currentLevel, showLevelUp, state.isComplete]);
 
-  const handleLetterClick = (letter: string) => {
+  const handleLetterClick = (letter: string, idx: number) => {
     if (state.isComplete || showLevelUp) return;
     playSound('click');
     const expected = currentWord.boxes[state.currentBoxIndex][state.currentLetterIndex];
     if (letter === expected) {
       playSound('xp');
+      setUsedIndices(prev => new Set(prev).add(idx));
       const newFilled = [...filledBoxes];
       newFilled[state.currentBoxIndex] = [...newFilled[state.currentBoxIndex], letter];
       setFilledBoxes(newFilled);
@@ -271,12 +275,14 @@ export default function SpellingBeePage() {
         {/* Letter Bank */}
         <div className="w-full bg-slate-800 p-2 md:p-6 rounded-2xl md:rounded-3xl border-2 md:border-4 border-slate-700 shadow-xl shrink-0">
           <div className="flex flex-wrap gap-2 md:gap-3 justify-center">
-            {letterChoices.map((letter) => (
-              <motion.button key={letter} whileHover={{ scale: 1.1, y: -2 }} whileTap={{ scale: 0.9 }} onClick={() => handleLetterClick(letter)}
-                className="w-12 h-12 md:w-16 md:h-16 bg-slate-700 hover:bg-orange-500 text-slate-100 font-black text-lg md:text-3xl uppercase rounded-lg md:rounded-xl border-b-2 md:border-b-4 border-slate-900 hover:border-orange-700 flex items-center justify-center transition-all">
+            <AnimatePresence>
+            {letterChoices.map((letter, idx) => !usedIndices.has(idx) && (
+              <motion.button key={idx} layout initial={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0 }} whileHover={{ scale: 1.1, y: -2 }} whileTap={{ scale: 0.9 }} onClick={() => handleLetterClick(letter, idx)}
+                className="w-12 h-12 md:w-16 md:h-16 bg-slate-700 hover:bg-orange-500 text-slate-100 font-black text-lg md:text-3xl uppercase rounded-lg md:rounded-xl border-b-2 md:border-b-4 border-slate-900 hover:border-orange-700 flex items-center justify-center transition-colors">
                 {letter}
               </motion.button>
             ))}
+            </AnimatePresence>
           </div>
         </div>
       </div>
