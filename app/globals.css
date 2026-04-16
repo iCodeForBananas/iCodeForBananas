@@ -49,6 +49,14 @@
   --color-accent: var(--accent);
   --color-scale: var(--accent-scale);
 
+  /* Brainy Bloom game colors */
+  --color-bb-bg: #121212;
+  --color-bb-surface: #1E1E1E;
+  --color-bb-card: #2C2C2C;
+  --color-bb-text: #E0E0E0;
+  --color-bb-muted: #A0A0A0;
+  --color-bb-accent: #BB86FC;
+
   /* Fonts from next/font */
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
@@ -252,4 +260,12 @@ body {
 }
 .animate-grid-fade-in {
   animation: grid-fade-in 0.6s ease-out both;
+}
+
+@keyframes wiggle {
+  0%, 100% { transform: rotate(-3deg); }
+  50% { transform: rotate(3deg); }
+}
+.animate-wiggle {
+  animation: wiggle 0.3s ease-in-out infinite;
 }
