@@ -7,7 +7,9 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 import "./components/fretboard.css";
 import { ThemeProvider } from "./lib/ThemeContext";
+import { FavoriteChordsProvider } from "./lib/FavoriteChordsContext";
 import Sidebar from "./components/Sidebar";
+import MusicFavoritesBar from "./components/MusicFavoritesBar";
 
 export const metadata: Metadata = {
   title: "iCodeForBananas - Music Theory Tools",
@@ -34,10 +36,15 @@ export default function RootLayout({
       </head>
       <body className={`${GeistSans.variable} ${GeistMono.variable} antialiased`}>
         <ThemeProvider>
-          <div className='flex h-screen font-sans overflow-hidden'>
-            <Sidebar />
-            <div className='flex-1 min-w-0 overflow-auto'>{children}</div>
-          </div>
+          <FavoriteChordsProvider>
+            <div className='flex h-screen font-sans overflow-hidden'>
+              <Sidebar />
+              <div className='flex-1 min-w-0 overflow-auto'>
+                <MusicFavoritesBar />
+                {children}
+              </div>
+            </div>
+          </FavoriteChordsProvider>
         </ThemeProvider>
         <Analytics />
         <SpeedInsights />

@@ -1,4 +1,7 @@
+"use client";
+
 import { sharpNotes, flatNotes, stringNotes, type ChordShape } from "../lib/chordShapes";
+import { useFavoriteChords, type FavoriteChord } from "../lib/FavoriteChordsContext";
 
 interface ChordDiagramProps {
   shape: ChordShape;
@@ -8,10 +11,19 @@ interface ChordDiagramProps {
 }
 
 export default function ChordDiagram({ shape, label, useFlats = false, dotColor = "#facc15" }: ChordDiagramProps) {
+  const { toggle, isFavorite } = useFavoriteChords();
   const noteNames = useFlats ? flatNotes : sharpNotes;
   const getNoteAtFret = (openNote: string, fret: number) => {
     const idx = sharpNotes.indexOf(openNote);
     return noteNames[(idx + fret) % 12];
+  };
+
+  const id = `${label || "chord"}-${shape.frets.join(",")}`;
+  const favorited = isFavorite(id);
+
+  const handleClick = () => {
+    const chord: FavoriteChord = { id, label: label || "Chord", shape };
+    toggle(chord);
   };
 
   const playedFrets = shape.frets.filter((f) => f > 0);
@@ -25,9 +37,14 @@ export default function ChordDiagram({ shape, label, useFlats = false, dotColor 
   const diagramHeight = fretSpacing * displayFrets + 40;
 
   return (
-    <div className="flex flex-col items-center">
-      {label && <h6 className="text-center mb-1 font-semibold text-sm">{label}</h6>}
+    <div className="flex flex-col items-center cursor-pointer group" onClick={handleClick}>
+      {label && (
+        <h6 className="text-center mb-1 font-semibold text-sm flex items-center gap-1">
+          {label} <span className={`text-xs ${favorited ? "text-red-500" : "text-transparent group-hover:text-red-300"}`}>♥</span>
+        </h6>
+      )}
       <div className="relative" style={{ width: `${diagramWidth}px`, height: `${diagramHeight}px` }}>
+        {favorited && <div className="absolute -top-1 -right-1 w-4 h-4 text-red-500 text-xs z-10">♥</div>}
         <div className="relative" style={{ height: "16px", marginBottom: "2px" }}>
           {shape.frets.map((fret, i) => (
             <span key={i} className="absolute text-center text-xs font-medium"
