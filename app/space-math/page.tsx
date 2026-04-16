@@ -153,7 +153,7 @@ const playSound = (type: 'correct' | 'incorrect' | 'badge') => {
 };
 
 const StarBank = ({ score, onClear }: { score: number; onClear: () => void }) => (
-  <div className="w-full bg-slate-900/80 border-b border-white/10 p-3 flex items-start sm:items-center gap-4 z-50 relative min-h-[60px]">
+  <div className="w-full bg-slate-900/80 border-b border-white/10 p-3 pl-14 flex items-start sm:items-center gap-4 z-50 relative min-h-[60px]">
     <button onClick={onClear} className="text-[10px] font-bold text-rose-400 hover:text-rose-300 hover:bg-rose-400/20 uppercase bg-rose-400/10 px-2 py-1 rounded transition-colors shrink-0">Clear</button>
     <div className="flex flex-wrap gap-1.5 flex-1 content-start">
       <AnimatePresence>
@@ -210,6 +210,7 @@ export default function SpaceMathPage() {
   const [score, setScore] = useState(0);
   const [badges, setBadges] = useState<string[]>([]);
   const [gameState, setGameState] = useState<'start' | 'playing' | 'level-up' | 'finale'>('start');
+  const [stars] = useState(() => Array.from({ length: 50 }, () => ({ w: Math.random() * 3, h: Math.random() * 3, t: Math.random() * 100, l: Math.random() * 100, o: Math.random() * 0.7 + 0.3, d: Math.random() * 5 })));
 
   useEffect(() => {
     try {
@@ -270,8 +271,8 @@ export default function SpaceMathPage() {
   return (
     <div className="min-h-screen bg-black text-white selection:bg-blue-500/30 relative flex flex-col overflow-x-hidden">
       <div className="absolute inset-0 pointer-events-none">
-        {Array.from({ length: 50 }).map((_, i) => (
-          <div key={i} className="absolute bg-white rounded-full animate-pulse" style={{ width: Math.random() * 3 + 'px', height: Math.random() * 3 + 'px', top: Math.random() * 100 + '%', left: Math.random() * 100 + '%', opacity: Math.random() * 0.7 + 0.3, animationDelay: Math.random() * 5 + 's' }} />
+        {stars.map((s, i) => (
+          <div key={i} className="absolute bg-white rounded-full animate-pulse" style={{ width: s.w + 'px', height: s.h + 'px', top: s.t + '%', left: s.l + '%', opacity: s.o, animationDelay: s.d + 's' }} />
         ))}
       </div>
       <StarBank score={score} onClear={clearStars} />

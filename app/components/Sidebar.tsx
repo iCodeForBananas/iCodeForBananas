@@ -85,7 +85,7 @@ export default function Sidebar() {
       {!isOpen && (
         <button
           onClick={toggle}
-          className='fixed top-0 left-0 z-50 px-3 flex items-center'
+          className='fixed top-0 left-0 z-[60] px-3 flex items-center'
           style={{
             height: "42px",
             background: "rgba(37, 38, 43, 0.8)",

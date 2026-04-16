@@ -327,8 +327,14 @@ export default function BrainyBloomPage() {
       }, 1500);
     } else {
       setFeedback("incorrect"); playSound("bonk");
-      setTimeout(() => { setFeedback(null); setSelectedOption(null); }, 1000);
     }
+  };
+
+  const handleContinue = () => {
+    if (currentQuestionIdx < questions.length - 1) {
+      setCurrentQuestionIdx((p) => p + 1);
+      setSelectedOption(null); setFeedback(null); setStartTime(Date.now());
+    } else { completeLevel(); }
   };
 
   const handleLongPressStart = () => { longPressTimer.current = setTimeout(() => setGameState("parent_dashboard"), 3000); };
@@ -412,14 +418,21 @@ export default function BrainyBloomPage() {
                   )}
                   <div className="grid grid-cols-2 gap-6">
                     {q.options.map((option, idx) => (
-                      <button key={idx} onClick={() => handleOptionClick(option)}
+                      <button key={idx} onClick={() => handleOptionClick(option)} disabled={feedback !== null}
                         className={`h-32 text-4xl font-bold rounded-3xl transition-all shadow-xl border-2 ${
-                          selectedOption === option
-                            ? feedback === "correct" ? "bg-green-500 border-green-400 text-white scale-105" : "bg-red-500 border-red-400 text-white animate-wiggle"
-                            : "bg-bb-surface hover:bg-bb-card border-bb-card text-bb-text active:border-bb-accent"
+                          feedback === "incorrect" && option === q.correctAnswer ? "bg-green-500 border-green-400 text-white scale-105 ring-4 ring-green-300"
+                            : selectedOption === option
+                              ? feedback === "correct" ? "bg-green-500 border-green-400 text-white scale-105" : "bg-red-500 border-red-400 text-white animate-wiggle"
+                              : feedback ? "bg-bb-surface border-bb-card text-bb-muted opacity-50 cursor-not-allowed" : "bg-bb-surface hover:bg-bb-card border-bb-card text-bb-text active:border-bb-accent"
                         }`}>{option}</button>
                     ))}
                   </div>
+                  {feedback === "incorrect" && (
+                    <motion.button initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} onClick={handleContinue}
+                      className="mt-8 w-full py-6 bg-bb-accent text-bb-bg font-bold text-2xl rounded-3xl shadow-lg flex items-center justify-center gap-3 hover:scale-105 transition-transform">
+                      Continue to Next Question <ChevronRight className="w-8 h-8" />
+                    </motion.button>
+                  )}
                 </motion.div>
               </div>
               <AnimatePresence>
