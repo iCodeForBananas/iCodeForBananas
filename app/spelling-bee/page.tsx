@@ -98,6 +98,7 @@ export default function SpellingBeePage() {
   const [filledBoxes, setFilledBoxes] = useState<string[][]>([]);
   const [letterChoices, setLetterChoices] = useState<string[]>([]);
   const [usedIndices, setUsedIndices] = useState<Set<number>>(new Set());
+  const [wrongIdx, setWrongIdx] = useState<number | null>(null);
   const [showLevelUp, setShowLevelUp] = useState(false);
   const currentWord = LEVELS[state.currentLevel][state.currentWordIndex];
 
@@ -119,7 +120,7 @@ export default function SpellingBeePage() {
   }, [state.currentWordIndex, state.currentLevel, showLevelUp, state.isComplete]);
 
   const handleLetterClick = (letter: string, idx: number) => {
-    if (state.isComplete || showLevelUp) return;
+    if (state.isComplete || showLevelUp || wrongIdx !== null) return;
     playSound('click');
     const expected = currentWord.boxes[state.currentBoxIndex][state.currentLetterIndex];
     if (letter === expected) {
@@ -137,8 +138,9 @@ export default function SpellingBeePage() {
       }
     } else {
       playSound('thud');
+      setWrongIdx(idx);
       setState(s => ({ ...s, shrugging: true }));
-      setTimeout(() => setState(s => ({ ...s, shrugging: false })), 500);
+      setTimeout(() => { setWrongIdx(null); setState(s => ({ ...s, shrugging: false })); }, 600);
     }
   };
 
@@ -277,8 +279,18 @@ export default function SpellingBeePage() {
           <div className="flex flex-wrap gap-2 md:gap-3 justify-center">
             <AnimatePresence>
             {letterChoices.map((letter, idx) => !usedIndices.has(idx) && (
-              <motion.button key={idx} layout initial={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0 }} whileHover={{ scale: 1.1, y: -2 }} whileTap={{ scale: 0.9 }} onClick={() => handleLetterClick(letter, idx)}
-                className="w-12 h-12 md:w-16 md:h-16 bg-slate-700 hover:bg-orange-500 text-slate-100 font-black text-lg md:text-3xl uppercase rounded-lg md:rounded-xl border-b-2 md:border-b-4 border-slate-900 hover:border-orange-700 flex items-center justify-center transition-colors">
+              <motion.button key={idx} layout
+                initial={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0 }}
+                animate={wrongIdx === idx ? { x: [-8, 8, -8, 8, 0], scale: [1, 1.2, 1] } : {}}
+                whileHover={wrongIdx === null ? { scale: 1.1, y: -2 } : {}}
+                whileTap={{ scale: 0.9 }}
+                onClick={() => handleLetterClick(letter, idx)}
+                className={`w-12 h-12 md:w-16 md:h-16 font-black text-lg md:text-3xl uppercase rounded-lg md:rounded-xl border-b-2 md:border-b-4 flex items-center justify-center transition-colors ${
+                  wrongIdx === idx
+                    ? 'bg-red-500 border-red-700 text-white ring-4 ring-red-400/50'
+                    : 'bg-slate-700 hover:bg-orange-500 text-slate-100 border-slate-900 hover:border-orange-700'
+                }`}>
                 {letter}
               </motion.button>
             ))}
