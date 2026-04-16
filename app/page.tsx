@@ -52,16 +52,6 @@ const MODULES: Module[] = [
   },
   // Medium
   {
-    slug: "spd-crime-density",
-    title: "SPD Crime Density",
-    category: "Geospatial Data Viz",
-    description:
-      "Leaflet heat-map rendering 10,000+ SPD incident records with density clustering and neighborhood drill-down.",
-    stack: ["Leaflet", "leaflet.heat", "React-Leaflet", "CSV Pipeline"],
-    metric: "10k+ data points",
-    size: "medium",
-  },
-  {
     slug: "chord-progressions",
     title: "Chord Progressions",
     category: "Music Theory Generator",
