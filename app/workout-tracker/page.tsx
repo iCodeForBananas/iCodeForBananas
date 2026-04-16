@@ -27,7 +27,8 @@ const COMPOUND: { name: string; type: 'weighted' | 'bodyweight' }[] = [
   { name: 'Crunches', type: 'bodyweight' },
 ];
 
-const today = () => new Date().toISOString().slice(0, 10);
+const localDateStr = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const today = () => localDateStr(new Date());
 
 const COLORS = ['#facc15', '#f97316', '#ef4444', '#3b82f6', '#10b981', '#8b5cf6', '#ec4899', '#06b6d4'];
 
@@ -105,7 +106,7 @@ export default function WorkoutTrackerPage() {
     let week: { date: string; count: number; exercises: string[] }[] = [];
     const cur = new Date(start);
     while (cur <= end) {
-      const key = cur.toISOString().slice(0, 10);
+      const key = localDateStr(cur);
       const exercises = map.get(key) ?? [];
       week.push({ date: key, count: exercises.length, exercises });
       if (week.length === 7) { weeks.push(week); week = []; }
