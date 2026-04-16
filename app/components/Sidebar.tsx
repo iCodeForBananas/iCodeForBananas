@@ -41,12 +41,6 @@ const NAV = [
     ],
   },
   {
-    label: "Labs",
-    links: [
-      { href: "/aws-quiz", text: "AWS CCP Quiz" },
-    ],
-  },
-  {
     label: "Misc",
     links: [
       { href: "/wordsmith", text: "Wordsmith" },
