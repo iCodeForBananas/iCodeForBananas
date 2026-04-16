@@ -35,7 +35,7 @@ interface UserState {
   history: UserHistory[];
 }
 
-type GameState = "home" | "playing" | "level_complete" | "parent_dashboard";
+type GameState = "home" | "playing" | "level_complete" | "game_complete" | "parent_dashboard";
 
 const LEVELS = [
   { id: 1, title: "Level 1: Recall", description: "Identity & Matching", dok: 1 },
@@ -101,6 +101,16 @@ const QUESTION_POOL: Record<number, Omit<Question, "id" | "level">[]> = {
     { type: "verbal", prompt: 'Match the word: "BALL"', options: ["FALL", "CALL", "BALL", "TALL"], correctAnswer: "BALL" },
     { type: "verbal", prompt: 'Find the word: "FISH"', options: ["DISH", "WISH", "FISH", "BASH"], correctAnswer: "FISH" },
     { type: "verbal", prompt: 'Which one says: "BLUE"?', options: ["BLUE", "BLUR", "BULL", "BELL"], correctAnswer: "BLUE" },
+    { type: "spatial", prompt: "Which flower matches?", options: ["🌻", "🌹", "🌷", "🌺"], correctAnswer: "🌻", visualData: { target: "🌻" } },
+    { type: "spatial", prompt: "Find the same bug!", options: ["🐛", "🦋", "🐞", "🐜"], correctAnswer: "🐛", visualData: { target: "🐛" } },
+    { type: "quantitative", prompt: "Count the hearts: ❤️❤️❤️❤️❤️❤️", options: ["4", "5", "6", "7"], correctAnswer: "6" },
+    { type: "quantitative", prompt: "How many trees? 🌲🌲🌲", options: ["2", "3", "4", "5"], correctAnswer: "3" },
+    { type: "verbal", prompt: 'Match the word: "TREE"', options: ["FREE", "TREE", "THREE", "TRAY"], correctAnswer: "TREE" },
+    { type: "spatial", prompt: "Which one matches?", options: ["🎸", "🥁", "🎺", "🎹"], correctAnswer: "🎸", visualData: { target: "🎸" } },
+    { type: "spatial", prompt: "Find the same one!", options: ["🦁", "🐯", "🐻", "🐼"], correctAnswer: "🦁", visualData: { target: "🦁" } },
+    { type: "quantitative", prompt: "How many moons? 🌙🌙🌙🌙", options: ["2", "3", "4", "5"], correctAnswer: "4" },
+    { type: "quantitative", prompt: "Count the fish: 🐟🐟🐟🐟🐟🐟🐟", options: ["5", "6", "7", "8"], correctAnswer: "7" },
+    { type: "verbal", prompt: 'Which one says: "STAR"?', options: ["STAR", "STIR", "SCAR", "STAY"], correctAnswer: "STAR" },
   ],
   2: [
     { type: "spatial", prompt: "What comes next in the pattern? 🔴 🟦 🔴 🟦 ...", options: ["🔴", "🟦", "🟡", "🔺"], correctAnswer: "🔴" },
@@ -121,6 +131,16 @@ const QUESTION_POOL: Record<number, Omit<Question, "id" | "level">[]> = {
     { type: "verbal", prompt: "Which is not a color?", options: ["Red", "Green", "Yellow", "Square"], correctAnswer: "Square" },
     { type: "verbal", prompt: "Odd one out:", options: ["Milk", "Juice", "Water", "Bread"], correctAnswer: "Bread" },
     { type: "verbal", prompt: "Which is different?", options: ["Circle", "Square", "Triangle", "Yellow"], correctAnswer: "Yellow" },
+    { type: "spatial", prompt: "What comes next? 🐶 🐱 🐶 🐱 ...", options: ["🐶", "🐱", "🐭", "🐹"], correctAnswer: "🐶" },
+    { type: "spatial", prompt: "Continue: 🌻 🌹 🌻 🌹 ...", options: ["🌻", "🌹", "🌷", "🌺"], correctAnswer: "🌻" },
+    { type: "quantitative", prompt: "What comes next? 3, 6, 9, ...", options: ["10", "11", "12", "13"], correctAnswer: "12" },
+    { type: "quantitative", prompt: "Count by twos: 2, 4, 6, 8, ...", options: ["9", "10", "11", "12"], correctAnswer: "10" },
+    { type: "verbal", prompt: "Which does not belong?", options: ["Shirt", "Pants", "Hat", "Pizza"], correctAnswer: "Pizza" },
+    { type: "spatial", prompt: "What comes next? 🎈 🎁 🎈 🎁 ...", options: ["🎈", "🎁", "🎉", "🎊"], correctAnswer: "🎈" },
+    { type: "spatial", prompt: "Continue: 🐸 🐛 🐸 🐛 ...", options: ["🐸", "🐛", "🐝", "🦋"], correctAnswer: "🐸" },
+    { type: "quantitative", prompt: "What comes next? 1, 2, 3, 4, ...", options: ["4", "5", "6", "7"], correctAnswer: "5" },
+    { type: "quantitative", prompt: "Count backwards: 20, 18, 16, ...", options: ["12", "13", "14", "15"], correctAnswer: "14" },
+    { type: "verbal", prompt: "Which one is not a fruit?", options: ["Grape", "Lemon", "Potato", "Peach"], correctAnswer: "Potato" },
   ],
   3: [
     { type: "spatial", prompt: "Bird is to Nest as Bee is to ...", options: ["Hive", "Tree", "Flower", "Honey"], correctAnswer: "Hive" },
@@ -140,7 +160,17 @@ const QUESTION_POOL: Record<number, Omit<Question, "id" | "level">[]> = {
     { type: "verbal", prompt: 'A "Hammer" is a type of ...', options: ["Food", "Tool", "Toy", "Animal"], correctAnswer: "Tool" },
     { type: "verbal", prompt: 'A "Piano" is a ...', options: ["Sport", "Instrument", "Vehicle", "Fruit"], correctAnswer: "Instrument" },
     { type: "verbal", prompt: 'Which group does "Broccoli" belong to?', options: ["Fruits", "Vegetables", "Meats", "Sweets"], correctAnswer: "Vegetables" },
-    { type: "verbal", prompt: 'A "Bicycle" is a ...', options: ["Tool", "Vehicle", "Animal", "Plant"], correctAnswer: "Vehicle" },
+    { type: "verbal", prompt: "A dolphin lives in the ocean. It is a type of ...", options: ["Bird", "Fish", "Mammal", "Insect"], correctAnswer: "Mammal" },
+    { type: "spatial", prompt: "Pen is to Write as Scissors is to ...", options: ["Cut", "Draw", "Glue", "Tape"], correctAnswer: "Cut" },
+    { type: "spatial", prompt: "Eye is to See as Ear is to ...", options: ["Hear", "Smell", "Taste", "Touch"], correctAnswer: "Hear" },
+    { type: "quantitative", prompt: "If 3 + ? = 9, what is ?", options: ["4", "5", "6", "7"], correctAnswer: "6" },
+    { type: "quantitative", prompt: "If 12 - ? = 7, what is ?", options: ["3", "4", "5", "6"], correctAnswer: "5" },
+    { type: "verbal", prompt: 'Which group does "Eagle" belong to?', options: ["Fish", "Birds", "Reptiles", "Mammals"], correctAnswer: "Birds" },
+    { type: "spatial", prompt: "Pillow is to Bed as Tire is to ...", options: ["Car", "Bike", "Road", "Shoe"], correctAnswer: "Car" },
+    { type: "spatial", prompt: "Kitten is to Cat as Puppy is to ...", options: ["Dog", "Fox", "Wolf", "Bear"], correctAnswer: "Dog" },
+    { type: "quantitative", prompt: "If 8 + ? = 14, what is ?", options: ["4", "5", "6", "7"], correctAnswer: "6" },
+    { type: "quantitative", prompt: "If 15 - ? = 9, what is ?", options: ["4", "5", "6", "7"], correctAnswer: "6" },
+    { type: "verbal", prompt: "A guitar makes music. It is a type of ...", options: ["Toy", "Instrument", "Tool", "Furniture"], correctAnswer: "Instrument" },
   ],
   4: [
     { type: "spatial", prompt: "Look at the 2x2 grid. Which shape completes the pattern?", options: ["🔺", "🟦", "🟡", "🔴"], correctAnswer: "🔺", visualData: { matrix: [["🔴", "🔴"], ["🔺", "?"]] } },
@@ -153,13 +183,23 @@ const QUESTION_POOL: Record<number, Omit<Question, "id" | "level">[]> = {
     { type: "spatial", prompt: "Logic Grid:", options: ["🐶", "🐱", "🐭", "🐹"], correctAnswer: "🐱", visualData: { matrix: [["🐶", "🐱"], ["🐶", "?"]] } },
     { type: "spatial", prompt: "Complete the set:", options: ["⚽", "🏀", "🏈", "🎾"], correctAnswer: "🏀", visualData: { matrix: [["⚽", "🏀"], ["⚽", "?"]] } },
     { type: "spatial", prompt: "Matrix Fun:", options: ["🎈", "🎆", "🎇", "🧨"], correctAnswer: "🎆", visualData: { matrix: [["🎈", "🎆"], ["🎈", "?"]] } },
+    { type: "spatial", prompt: "What goes here?", options: ["🌻", "🌹", "🌷", "🌺"], correctAnswer: "🌹", visualData: { matrix: [["🌻", "🌹"], ["🌻", "?"]] } },
+    { type: "spatial", prompt: "Finish the grid:", options: ["🍕", "🍔", "🌮", "🍟"], correctAnswer: "🍔", visualData: { matrix: [["🍕", "🍔"], ["🍕", "?"]] } },
+    { type: "spatial", prompt: "Pattern grid:", options: ["🐸", "🐢", "🐍", "🦎"], correctAnswer: "🐢", visualData: { matrix: [["🐸", "🐸"], ["🐢", "?"]] } },
+    { type: "spatial", prompt: "Which completes it?", options: ["🎵", "🎶", "🎸", "🥁"], correctAnswer: "🎶", visualData: { matrix: [["🎵", "🎶"], ["🎵", "?"]] } },
+    { type: "spatial", prompt: "Grid logic:", options: ["🌈", "⛅", "🌧️", "❄️"], correctAnswer: "⛅", visualData: { matrix: [["🌈", "⛅"], ["🌈", "?"]] } },
+    { type: "spatial", prompt: "What belongs here?", options: ["🍕", "🍔", "🌮", "🍟"], correctAnswer: "🌮", visualData: { matrix: [["🍕", "🌮"], ["🍕", "?"]] } },
+    { type: "spatial", prompt: "Solve the grid:", options: ["🦊", "🐺", "🐻", "🐰"], correctAnswer: "🐺", visualData: { matrix: [["🦊", "🐺"], ["🦊", "?"]] } },
+    { type: "spatial", prompt: "Complete the puzzle:", options: ["✏️", "📏", "📎", "✂️"], correctAnswer: "📏", visualData: { matrix: [["✏️", "📏"], ["✏️", "?"]] } },
+    { type: "spatial", prompt: "Find the match:", options: ["🧢", "👟", "🧤", "🧣"], correctAnswer: "👟", visualData: { matrix: [["🧢", "👟"], ["🧢", "?"]] } },
+    { type: "spatial", prompt: "Emoji logic:", options: ["🍓", "🫐", "🍋", "🍑"], correctAnswer: "🫐", visualData: { matrix: [["🍓", "🫐"], ["🍓", "?"]] } },
   ],
   5: [
     { type: "spatial", prompt: "If I rotate this shape, which one could it be?", options: ["L", "⅃", "7", "Γ"], correctAnswer: "⅃", visualData: { rotation: "L" } },
     { type: "spatial", prompt: "Mental rotation: Which is the same?", options: ["T", "⟂", "⊢", "⊣"], correctAnswer: "⟂", visualData: { rotation: "T" } },
     { type: "spatial", prompt: "Find the rotated version:", options: ["F", "Ⅎ", "⊲", "⊳"], correctAnswer: "Ⅎ", visualData: { rotation: "F" } },
     { type: "spatial", prompt: "Rotate the shape:", options: ["V", "Λ", ">", "<"], correctAnswer: "Λ", visualData: { rotation: "V" } },
-    { type: "spatial", prompt: "Which one is rotated?", options: ["H", "I", "Z", "N"], correctAnswer: "I", visualData: { rotation: "H" } },
+    { type: "spatial", prompt: "Which one is rotated?", options: ["N", "Z", "S", "M"], correctAnswer: "Z", visualData: { rotation: "N" } },
     { type: "spatial", prompt: "Mental Flip:", options: ["E", "Ǝ", "M", "W"], correctAnswer: "Ǝ", visualData: { rotation: "E" } },
     { type: "quantitative", prompt: "If ? + 7 = 15, what is ?", options: ["6", "7", "8", "9"], correctAnswer: "8" },
     { type: "quantitative", prompt: "If ? - 5 = 10, what is ?", options: ["12", "13", "14", "15"], correctAnswer: "15" },
@@ -167,6 +207,16 @@ const QUESTION_POOL: Record<number, Omit<Question, "id" | "level">[]> = {
     { type: "quantitative", prompt: "If ? + 10 = 25, what is ?", options: ["10", "15", "20", "25"], correctAnswer: "15" },
     { type: "quantitative", prompt: "If ? - 8 = 2, what is ?", options: ["6", "8", "10", "12"], correctAnswer: "10" },
     { type: "quantitative", prompt: "Double of 15 is ...", options: ["20", "25", "30", "35"], correctAnswer: "30" },
+    { type: "spatial", prompt: "Which is the flipped version?", options: ["P", "q", "d", "b"], correctAnswer: "q", visualData: { rotation: "P" } },
+    { type: "spatial", prompt: "Rotate this letter:", options: ["R", "Я", "K", "X"], correctAnswer: "Я", visualData: { rotation: "R" } },
+    { type: "quantitative", prompt: "If ? × 2 = 12, what is ?", options: ["4", "5", "6", "7"], correctAnswer: "6" },
+    { type: "quantitative", prompt: "If ? + 9 = 20, what is ?", options: ["9", "10", "11", "12"], correctAnswer: "11" },
+    { type: "quantitative", prompt: "Half of 16 is ...", options: ["6", "7", "8", "9"], correctAnswer: "8" },
+    { type: "spatial", prompt: "Which is the mirror image?", options: ["W", "M", "E", "S"], correctAnswer: "M", visualData: { rotation: "W" } },
+    { type: "spatial", prompt: "Flip this letter:", options: ["d", "b", "p", "q"], correctAnswer: "b", visualData: { rotation: "d" } },
+    { type: "quantitative", prompt: "If ? × 3 = 18, what is ?", options: ["4", "5", "6", "7"], correctAnswer: "6" },
+    { type: "quantitative", prompt: "If ? + 13 = 20, what is ?", options: ["5", "6", "7", "8"], correctAnswer: "7" },
+    { type: "quantitative", prompt: "A quarter of 20 is ...", options: ["4", "5", "6", "10"], correctAnswer: "5" },
   ],
 };
 
@@ -228,15 +278,6 @@ export default function BrainyBloomPage() {
   const [sessionTimes, setSessionTimes] = useState<number[]>([]);
   const [startTime, setStartTime] = useState(0);
   const longPressTimer = useRef<NodeJS.Timeout | null>(null);
-
-  useEffect(() => {
-    const saved = localStorage.getItem("brainy_bloom_user");
-    if (saved) setUserState(JSON.parse(saved));
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem("brainy_bloom_user", JSON.stringify(userState));
-  }, [userState]);
 
   const resetAndGoHome = () => {
     setUserState({ currentLevel: 1, totalScore: 0, history: [] });
@@ -325,7 +366,10 @@ export default function BrainyBloomPage() {
           <motion.div key="playing" exit={{ opacity: 0 }}>
             <div className="min-h-screen flex flex-col bg-bb-bg">
               <div className="p-6 flex justify-between items-center bg-bb-surface border-b-4 border-bb-card">
-                <button onClick={resetAndGoHome} className="p-4 bg-bb-card rounded-2xl shadow-md text-bb-text border border-white/5"><Home className="w-8 h-8" /></button>
+                <div className="flex items-center gap-4">
+                  <button onClick={resetAndGoHome} className="p-4 bg-bb-card rounded-2xl shadow-md text-bb-text border border-white/5"><Home className="w-8 h-8" /></button>
+                  <div className="text-bb-accent font-bold text-lg">Level {currentLevel}/5 <span className="text-bb-muted font-normal text-sm">— {LEVELS[currentLevel - 1]?.description}</span></div>
+                </div>
                 <div className="flex-1 px-8">
                   <div className="h-4 bg-bb-card rounded-full overflow-hidden">
                     <motion.div initial={{ width: 0 }} animate={{ width: `${((currentQuestionIdx + 1) / questions.length) * 100}%` }} className="h-full bg-bb-accent shadow-[0_0_10px_rgba(187,134,252,0.5)]" />
@@ -399,22 +443,52 @@ export default function BrainyBloomPage() {
                 className="bg-bb-surface p-12 rounded-[3rem] shadow-2xl text-center max-w-lg w-full border border-bb-card">
                 <div className="text-8xl mb-6">🎉</div>
                 <h2 className="text-5xl font-black mb-4 text-bb-text">Amazing Job!</h2>
-                <p className="text-xl text-bb-muted mb-8">You finished Level {currentLevel}!</p>
+                <p className="text-xl text-bb-muted mb-8">You finished Level {currentLevel} of 5!</p>
+                <div className="flex justify-center gap-3 mb-8">
+                  {LEVELS.map((l) => (
+                    <div key={l.id} className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold border-2 ${
+                      l.id < currentLevel ? "bg-green-500 border-green-400 text-white"
+                        : l.id === currentLevel ? "bg-bb-accent border-bb-accent text-bb-bg"
+                        : "bg-bb-card border-bb-card text-bb-muted"
+                    }`}>{l.id}</div>
+                  ))}
+                </div>
                 <div className="bg-bb-card p-6 rounded-3xl mb-8 border border-bb-accent/10">
-                  <div className="text-sm font-bold uppercase tracking-widest text-bb-muted mb-2">Session Score</div>
+                  <div className="text-sm font-bold uppercase tracking-widest text-bb-muted mb-2">Level Score</div>
                   <div className="text-6xl font-black text-bb-text">{sessionScore}/5</div>
                 </div>
                 {currentLevel < 5 ? (
                   <button onClick={() => startLevel(currentLevel + 1)}
                     className="w-full py-6 bg-bb-accent text-bb-bg font-bold text-2xl rounded-3xl shadow-lg flex items-center justify-center gap-3 hover:scale-105 transition-transform">
-                    Next Level <ChevronRight className="w-8 h-8" />
+                    Level {currentLevel + 1} <ChevronRight className="w-8 h-8" />
                   </button>
                 ) : (
-                  <button onClick={resetAndGoHome}
-                    className="w-full py-6 bg-bb-card text-bb-text font-bold text-2xl rounded-3xl shadow-lg flex items-center justify-center gap-3 border border-white/5 hover:bg-bb-surface transition-colors">
-                    <Home className="w-8 h-8" /> Back to Start
+                  <button onClick={() => { playSound("success"); setGameState("game_complete"); }}
+                    className="w-full py-6 bg-bb-accent text-bb-bg font-bold text-2xl rounded-3xl shadow-lg flex items-center justify-center gap-3 hover:scale-105 transition-transform">
+                    See Results <ChevronRight className="w-8 h-8" />
                   </button>
                 )}
+              </motion.div>
+            </div>
+          </motion.div>
+        )}
+
+        {gameState === "game_complete" && (
+          <motion.div key="game_complete" exit={{ opacity: 0 }}>
+            <div className="min-h-screen flex flex-col items-center justify-center bg-bb-bg p-8">
+              <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+                className="bg-bb-surface p-12 rounded-[3rem] shadow-2xl text-center max-w-lg w-full border border-bb-card">
+                <div className="text-8xl mb-6">🏆</div>
+                <h2 className="text-5xl font-black mb-4 text-bb-text">All Done!</h2>
+                <p className="text-xl text-bb-muted mb-8">You completed all 5 levels!</p>
+                <div className="bg-bb-card p-6 rounded-3xl mb-8 border border-bb-accent/10">
+                  <div className="text-sm font-bold uppercase tracking-widest text-bb-muted mb-2">Total Score</div>
+                  <div className="text-6xl font-black text-bb-text">{userState.totalScore}/25</div>
+                </div>
+                <button onClick={resetAndGoHome}
+                  className="w-full py-6 bg-bb-accent text-bb-bg font-bold text-2xl rounded-3xl shadow-lg flex items-center justify-center gap-3 hover:scale-105 transition-transform">
+                  <Home className="w-8 h-8" /> Play Again
+                </button>
               </motion.div>
             </div>
           </motion.div>
