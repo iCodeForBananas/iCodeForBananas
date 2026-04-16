@@ -50,6 +50,7 @@ const NAV = [
     links: [
       { href: "/space-math", text: "Space Math" },
       { href: "/brainy-bloom", text: "Brainy Bloom" },
+      { href: "/spelling-bee", text: "Spelling Bee" },
     ],
   },
 ];
