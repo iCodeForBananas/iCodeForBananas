@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from 'recharts';
 import { createClient } from '@/utils/supabase/client';
 import { useAuth } from '@/app/hooks/useAuth';
 
@@ -13,24 +13,25 @@ interface LogEntry {
 }
 
 const COMPOUND: { name: string; type: 'weighted' | 'bodyweight' }[] = [
-  { name: 'Bench Press', type: 'weighted' },
-  { name: 'Squat', type: 'weighted' },
-  { name: 'Deadlift', type: 'weighted' },
-  { name: 'Overhead Press', type: 'weighted' },
   { name: 'Barbell Row', type: 'weighted' },
-  { name: 'Pull-ups', type: 'bodyweight' },
-  { name: 'Dips', type: 'bodyweight' },
-  { name: 'Chin-ups', type: 'bodyweight' },
-  { name: 'Bicep Curls', type: 'weighted' },
+  { name: 'Bench Press', type: 'weighted' },
   { name: 'Bent Over Rows', type: 'weighted' },
-  { name: 'Incline Press', type: 'weighted' },
+  { name: 'Bicep Curls', type: 'weighted' },
+  { name: 'Chin-ups', type: 'bodyweight' },
   { name: 'Crunches', type: 'bodyweight' },
+  { name: 'Deadlift', type: 'weighted' },
+  { name: 'Dips', type: 'bodyweight' },
+  { name: 'Incline Press', type: 'weighted' },
+  { name: 'Overhead Press', type: 'weighted' },
+  { name: 'Pull-ups', type: 'bodyweight' },
+  { name: 'Squat', type: 'weighted' },
+  { name: 'Upright Rows', type: 'weighted' },
 ];
 
 const localDateStr = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const today = () => localDateStr(new Date());
 
-const COLORS = ['#facc15', '#f97316', '#ef4444', '#3b82f6', '#10b981', '#8b5cf6', '#ec4899', '#06b6d4'];
+const COLORS = ['#ef4444', '#3b82f6', '#22c55e', '#f59e0b', '#8b5cf6', '#06b6d4', '#ec4899', '#f97316'];
 
 export default function WorkoutTrackerPage() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
@@ -55,7 +56,7 @@ export default function WorkoutTrackerPage() {
       const prev = latest.get(l.exercise);
       if (!prev || l.date > prev) latest.set(l.exercise, l.date);
     }
-    return [...COMPOUND].sort((a, b) => (latest.get(b.name) ?? '').localeCompare(latest.get(a.name) ?? ''));
+    return [...COMPOUND].sort((a, b) => a.name.localeCompare(b.name));
   }, [logs]);
 
   const submit = async () => {
@@ -162,6 +163,7 @@ export default function WorkoutTrackerPage() {
                       }} />
                       <YAxis fontSize={11} unit=" lbs" />
                       <Tooltip labelFormatter={d => new Date(d + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} />
+                      <Legend wrapperStyle={{ fontSize: '12px' }} />
                       {weightedWithLogs.map((ex, i) => (
                         <Line key={ex.name} type="monotone" dataKey={ex.name} stroke={COLORS[i % COLORS.length]}
                           strokeWidth={2} dot={{ r: 3 }} connectNulls />
