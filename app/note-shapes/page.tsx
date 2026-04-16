@@ -6,7 +6,6 @@ import {
   sharpNotes,
   flatNotes,
   chordTypes,
-  stringNotes,
   sharpToFlat,
   flatToSharp,
   chordShapes,
@@ -17,6 +16,7 @@ import {
   semitoneFromE,
   semitoneFromA,
 } from "../lib/chordShapes";
+import ChordDiagram from "../components/ChordDiagram";
 
 interface LabeledShape {
   shape: ChordShape;
@@ -79,134 +79,6 @@ const getAllVoicings = (note: string, type: string): LabeledShape[] => {
   }
 
   return voicings;
-};
-
-interface ChordDiagramProps {
-  shape: ChordShape;
-  useFlats: boolean;
-}
-
-const ChordDiagram = ({ shape, useFlats }: ChordDiagramProps) => {
-  const noteNames = useFlats ? flatNotes : sharpNotes;
-
-  const getNoteAtFret = (openNote: string, fret: number) => {
-    const noteIndex = sharpNotes.indexOf(openNote);
-    return noteNames[(noteIndex + fret) % 12];
-  };
-
-  const playedFrets = shape.frets.filter((f) => f > 0);
-  const minFret = playedFrets.length > 0 ? Math.min(...playedFrets) : 1;
-  const maxFret = playedFrets.length > 0 ? Math.max(...playedFrets) : 1;
-  const startFret = minFret > 2 || maxFret > 5 ? minFret : 1;
-  const displayFrets = 5;
-
-  const stringSpacing = 22;
-  const fretSpacing = 24;
-  const diagramWidth = stringSpacing * 5 + 20;
-  const diagramHeight = fretSpacing * displayFrets + 40;
-
-  return (
-    <div className='relative' style={{ width: `${diagramWidth}px`, height: `${diagramHeight}px` }}>
-      {/* Muted / Open string indicators */}
-      <div className='flex' style={{ paddingLeft: "10px", marginBottom: "2px" }}>
-        {shape.frets.map((fret, i) => (
-          <span
-            key={i}
-            className='text-center text-xs font-medium'
-            style={{ width: `${stringSpacing}px`, color: fret === -1 ? "#000000" : "transparent" }}
-          >
-            {fret === -1 ? "✕" : ""}
-          </span>
-        ))}
-      </div>
-
-      {/* Starting fret indicator */}
-      {startFret > 1 && (
-        <span
-          className='absolute text-xs font-medium text-[#1A1B1E]/50'
-          style={{ left: `${diagramWidth + 2}px`, top: "24px" }}
-        >
-          {startFret}fr
-        </span>
-      )}
-
-      {/* Strings (vertical lines) */}
-      {[0, 1, 2, 3, 4, 5].map((stringIndex) => (
-        <div
-          key={stringIndex}
-          className='absolute bg-[#1A1B1E]/40'
-          style={{
-            left: `${stringIndex * stringSpacing + 10}px`,
-            top: "20px",
-            width: "1px",
-            height: `${fretSpacing * displayFrets}px`,
-            zIndex: 1,
-          }}
-        />
-      ))}
-
-      {/* Frets (horizontal lines) */}
-      {Array.from({ length: displayFrets + 1 }, (_, i) => i).map((fret) => (
-        <div
-          key={fret}
-          className={`absolute ${fret === 0 && startFret <= 1 ? "bg-[#1A1B1E]" : "bg-[#1A1B1E]/40"}`}
-          style={{
-            left: "6px",
-            top: `${20 + fret * fretSpacing}px`,
-            width: `${stringSpacing * 5 + 8}px`,
-            height: fret === 0 && startFret <= 1 ? "3px" : "1px",
-            zIndex: 1,
-          }}
-        />
-      ))}
-
-      {/* Finger dots */}
-      {shape.frets.map((fretNum, stringIndex) => {
-        if (fretNum === -1) return null;
-
-        const note = getNoteAtFret(stringNotes[stringIndex], fretNum);
-        const dotSize = 18;
-
-        if (fretNum === 0) {
-          return (
-            <div
-              key={stringIndex}
-              className='absolute rounded-full border-2 border-[#12B886] bg-[#1A1B1E] flex items-center justify-center font-bold'
-              style={{
-                left: `${stringIndex * stringSpacing + 10 - dotSize / 2}px`,
-                top: `${20 - dotSize - 2}px`,
-                width: `${dotSize}px`,
-                height: `${dotSize}px`,
-                fontSize: "9px",
-                zIndex: 2,
-              }}
-            >
-              {note}
-            </div>
-          );
-        } else if (fretNum > 0) {
-          const displayPos = fretNum - startFret;
-          return (
-            <div
-              key={stringIndex}
-              className='absolute bg-[#12B886] rounded-full text-[#1A1B1E] flex items-center justify-center font-bold'
-              style={{
-                left: `${stringIndex * stringSpacing + 10 - dotSize / 2}px`,
-                top: `${20 + displayPos * fretSpacing + fretSpacing / 2 - dotSize / 2}px`,
-                width: `${dotSize}px`,
-                height: `${dotSize}px`,
-                fontSize: "9px",
-                zIndex: 2,
-              }}
-            >
-              {note}
-            </div>
-          );
-        }
-        return null;
-      })}
-    </div>
-  );
 };
 
 const POSITION_TYPES = ["Standard", "A-Shape", "E-Shape"] as const;
