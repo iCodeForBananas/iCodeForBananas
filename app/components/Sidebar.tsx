@@ -52,6 +52,11 @@ const NAV = [
     links: [
       { href: "/wordsmith", text: "Wordsmith" },
       { href: "/polls", text: "Polls" },
+    ],
+  },
+  {
+    label: "Learning Games",
+    links: [
       { href: "/space-math", text: "Space Math" },
     ],
   },
