@@ -63,7 +63,7 @@ const MODULES: Module[] = [
   },
   // Small
   {
-    slug: "fretboard",
+    slug: "fretboard-explorer",
     title: "Fretboard Explorer",
     category: "Practice",
     description:

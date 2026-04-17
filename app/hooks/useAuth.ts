@@ -10,12 +10,13 @@ export function useAuth() {
 
   useEffect(() => {
     const supabase = createClient();
+    if (!supabase) { setLoading(false); return; }
     supabase.auth.getUser().then(({ data }) => { setUser(data.user); setLoading(false); });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => setUser(session?.user ?? null));
     return () => subscription.unsubscribe();
   }, []);
 
-  const signOut = () => createClient().auth.signOut();
+  const signOut = () => { const sb = createClient(); return sb ? sb.auth.signOut() : Promise.resolve({ error: null }); };
 
   return { user, loading, signOut };
 }

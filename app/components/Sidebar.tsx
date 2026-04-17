@@ -24,7 +24,7 @@ const NAV = [
   {
     label: "Practice",
     links: [
-      { href: "/fretboard", text: "Fretboard Explorer" },
+      { href: "/fretboard-explorer", text: "Fretboard Explorer" },
       { href: "/fretboard-quiz", text: "Fretboard Quiz" },
     ],
   },
