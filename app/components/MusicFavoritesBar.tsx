@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import FavoriteChordsBar from "./FavoriteChordsBar";
 
 const MUSIC_ROUTES = [
-  "/circle-of-fifths", "/harmonic-flow", "/chord-progressions", "/chord-shapes",
+  "/circle-of-fifths", "/harmonic-flow", "/chord-progressions", "/chord-diagrams",
   "/chord-voicings", "/chord-finder", "/chord-inversions", "/fretboard-explorer",
   "/fretboard-quiz", "/blues-practice",
 ];

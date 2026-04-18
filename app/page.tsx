@@ -91,10 +91,10 @@ const MODULES: Module[] = [
     size: "small",
   },
   {
-    slug: "chord-shapes",
-    title: "Chord Shapes",
+    slug: "chord-diagrams",
+    title: "Chord Diagrams",
     category: "Music Theory",
-    description: "CAGED system chord voicing library rendered as interactive fretboard diagrams.",
+    description: "Guitar chord fingering diagrams for every chord type across all 12 keys.",
     stack: ["React", "SVG"],
     metric: "CAGED system",
     size: "small",

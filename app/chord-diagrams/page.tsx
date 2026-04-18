@@ -20,14 +20,14 @@ const formatChordLabel = (note: string, type: string) => {
 export default function ChordShapesPage() {
   const [selectedType, setSelectedType] = useState(() => {
     if (typeof window !== "undefined") {
-      return localStorage.getItem("chord-shapes-selectedType") || "Major";
+      return localStorage.getItem("chord-diagrams-selectedType") || "Major";
     }
     return "Major";
   });
 
   const [useFlats, setUseFlats] = useState(() => {
     if (typeof window !== "undefined") {
-      return localStorage.getItem("chord-shapes-useFlats") === "true";
+      return localStorage.getItem("chord-diagrams-useFlats") === "true";
     }
     return false;
   });
@@ -40,8 +40,8 @@ export default function ChordShapesPage() {
         <div className='w-full lg:max-w-5xl lg:mx-auto'>
           <div className='rounded-lg p-6 bg-white'>
             <div className='text-center mb-10'>
-              <h1 className='text-5xl font-bold drop-shadow-lg' style={{ color: "#000" }}>Chord Shapes</h1>
-              <p className='text-lg mt-3' style={{ color: "#000" }}>Browse chord diagrams for every key</p>
+              <h1 className='text-5xl font-bold drop-shadow-lg' style={{ color: "#000" }}>Chord Diagrams</h1>
+              <p className='text-lg mt-3' style={{ color: "#000" }}>Fingering diagrams for every chord type across all 12 keys</p>
             </div>
             <div className='p-6'>
               <div className='mb-6'>
@@ -55,7 +55,7 @@ export default function ChordShapesPage() {
                         aria-pressed={active}
                         onClick={() => {
                           setSelectedType(type);
-                          localStorage.setItem("chord-shapes-selectedType", type);
+                          localStorage.setItem("chord-diagrams-selectedType", type);
                         }}
                         className={`px-3 py-1 rounded border text-sm transition-colors ${
                           active ? "bg-accent/20 border-accent font-medium" : "border-border hover:bg-foreground/10"
@@ -71,7 +71,7 @@ export default function ChordShapesPage() {
                     aria-pressed={useFlats}
                     onClick={() => {
                       setUseFlats(!useFlats);
-                      localStorage.setItem("chord-shapes-useFlats", String(!useFlats));
+                      localStorage.setItem("chord-diagrams-useFlats", String(!useFlats));
                     }}
                     className={`px-3 py-1 rounded border text-sm transition-colors ${
                       useFlats ? "bg-accent/20 border-accent font-medium" : "border-border hover:bg-foreground/10"

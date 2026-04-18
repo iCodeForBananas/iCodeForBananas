@@ -15,7 +15,7 @@ const NAV = [
       { href: "/circle-of-fifths", text: "Circle of Fifths" },
       { href: "/harmonic-flow", text: "Harmonic Flow" },
       { href: "/chord-progressions", text: "Chord Progressions" },
-      { href: "/chord-shapes", text: "Chord Shapes" },
+      { href: "/chord-diagrams", text: "Chord Diagrams" },
       { href: "/chord-voicings", text: "Chord Voicings" },
       { href: "/chord-finder", text: "Chord Finder" },
       { href: "/chord-inversions", text: "Chord Inversions" },
