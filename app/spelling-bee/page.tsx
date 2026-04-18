@@ -63,6 +63,34 @@ const LEVELS: Record<number, WordData[]> = {
 
 const LEVEL_NAMES = ['Simple Things', 'Nature & Fun', 'Around Us', 'Big World', 'Boss Words'];
 
+function BeeCharacter({ shrugging = false }: { shrugging?: boolean }) {
+  return (
+    <div className="relative shrink-0">
+      <motion.div animate={{ y: shrugging ? [0, -20, 0] : [0, -10, 0], x: shrugging ? [0, -10, 10, -10, 10, 0] : 0 }}
+        transition={{ y: { repeat: Infinity, duration: 2, ease: "easeInOut" }, x: { duration: 0.5 } }}
+        className="w-20 h-20 md:w-28 md:h-28 relative">
+        <motion.div animate={{ rotate: [0, 30, 0] }} transition={{ repeat: Infinity, duration: 0.1 }}
+          className="absolute -left-8 top-4 w-16 h-12 bg-white/60 rounded-full border-2 border-sky-200 origin-right" />
+        <motion.div animate={{ rotate: [0, -30, 0] }} transition={{ repeat: Infinity, duration: 0.1 }}
+          className="absolute -right-8 top-4 w-16 h-12 bg-white/60 rounded-full border-2 border-sky-200 origin-left" />
+        <div className="w-full h-full bg-orange-500 rounded-full border-2 md:border-4 border-slate-900 flex flex-col overflow-hidden relative shadow-lg">
+          <div className="h-1/4 w-full bg-slate-900/40" /><div className="h-1/4 w-full bg-slate-900/90" />
+          <div className="h-1/4 w-full bg-slate-900/40" /><div className="h-1/4 w-full bg-slate-900/90" />
+          <div className="absolute top-1/4 left-1/4 w-2 h-2 md:w-4 md:h-4 bg-slate-900 rounded-full"><div className="absolute top-0.5 left-0.5 w-0.5 h-0.5 md:w-1.5 md:h-1.5 bg-white rounded-full" /></div>
+          <div className="absolute top-1/4 right-1/4 w-2 h-2 md:w-4 md:h-4 bg-slate-900 rounded-full"><div className="absolute top-0.5 left-0.5 w-0.5 h-0.5 md:w-1.5 md:h-1.5 bg-white rounded-full" /></div>
+          {shrugging && <>
+            <div className="absolute top-[18%] left-[18%] w-3 h-0.5 md:w-5 md:h-1 bg-slate-900 rotate-[25deg] rounded-full" />
+            <div className="absolute top-[18%] right-[18%] w-3 h-0.5 md:w-5 md:h-1 bg-slate-900 -rotate-[25deg] rounded-full" />
+          </>}
+          <div className={`absolute bottom-1/4 left-1/2 -translate-x-1/2 w-4 h-2 md:w-8 md:h-4 ${shrugging ? 'border-t-2 md:border-t-4 border-b-0' : 'border-b-2 md:border-b-4'} border-slate-900 rounded-full`} />
+        </div>
+        <div className="absolute -top-4 left-1/3 w-1 h-6 bg-slate-900 -rotate-12"><div className="absolute -top-2 -left-1 w-3 h-3 bg-slate-900 rounded-full" /></div>
+        <div className="absolute -top-4 right-1/3 w-1 h-6 bg-slate-900 rotate-12"><div className="absolute -top-2 -left-1 w-3 h-3 bg-slate-900 rounded-full" /></div>
+      </motion.div>
+    </div>
+  );
+}
+
 const playSound = (type: 'xp' | 'thud' | 'click' | 'levelup' | 'star') => {
   const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
   const osc = ctx.createOscillator();
@@ -94,12 +122,18 @@ const INITIAL_STATE: GameState = {
 };
 
 export default function SpellingBeePage() {
+  const [showStart, setShowStart] = useState(true);
   const [state, setState] = useState<GameState>(INITIAL_STATE);
   const [filledBoxes, setFilledBoxes] = useState<string[][]>([]);
   const [letterChoices, setLetterChoices] = useState<string[]>([]);
   const [usedIndices, setUsedIndices] = useState<Set<number>>(new Set());
   const [wrongIdx, setWrongIdx] = useState<number | null>(null);
   const [showLevelUp, setShowLevelUp] = useState(false);
+
+  const startGame = (level: number) => {
+    setState({ ...INITIAL_STATE, currentLevel: level });
+    setShowStart(false);
+  };
   const currentWord = LEVELS[state.currentLevel][state.currentWordIndex];
 
   useEffect(() => {
@@ -180,6 +214,23 @@ export default function SpellingBeePage() {
     setState(s => ({ ...s, currentLevel: s.currentLevel + 1, currentWordIndex: 0 }));
   };
 
+  if (showStart) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-6 font-sans">
+        <div className="fixed inset-0 pointer-events-none opacity-[0.05]" style={{ backgroundImage: 'radial-gradient(#f97316 2px, transparent 2px)', backgroundSize: '40px 40px' }} />
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col items-center gap-8 z-10">
+          <BeeCharacter />
+          <h1 className="text-5xl font-black uppercase tracking-widest text-slate-100">Spelling Bee</h1>
+          <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+            onClick={() => startGame(1)}
+            className="bg-orange-500 hover:bg-orange-400 text-white px-16 py-6 rounded-full text-3xl font-black uppercase tracking-wider transition-colors shadow-[0_6px_0_rgb(154,52,18)] active:shadow-none active:translate-y-1">
+            Start!
+          </motion.button>
+        </motion.div>
+      </div>
+    );
+  }
+
   if (state.isComplete) {
     return (
       <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-8 text-white font-sans">
@@ -189,7 +240,7 @@ export default function SpellingBeePage() {
           <h1 className="text-5xl font-black mb-4 uppercase tracking-widest text-orange-500">Queen Bee!</h1>
           <p className="text-2xl mb-4 font-bold text-slate-300">You spelled all 25 words!</p>
           <p className="text-6xl font-black text-orange-400 mb-8">{state.wordsCompleted}/25</p>
-          <button onClick={() => setState(INITIAL_STATE)}
+          <button onClick={() => setShowStart(true)}
             className="bg-orange-500 hover:bg-orange-400 text-white px-10 py-5 rounded-full text-2xl font-black uppercase tracking-wider transition-all shadow-[0_6px_0_rgb(154,52,18)] active:shadow-none active:translate-y-1">
             Buzz Again!
           </button>
@@ -250,29 +301,7 @@ export default function SpellingBeePage() {
 
       <div className="flex-1 w-full max-w-4xl flex flex-col items-center justify-center gap-4 md:gap-10 z-10 min-h-0 py-2">
         {/* Bee */}
-        <div className="relative shrink-0">
-          <motion.div animate={{ y: state.shrugging ? [0, -20, 0] : [0, -10, 0], x: state.shrugging ? [0, -10, 10, -10, 10, 0] : 0 }}
-            transition={{ y: { repeat: Infinity, duration: 2, ease: "easeInOut" }, x: { duration: 0.5 } }}
-            className="w-20 h-20 md:w-28 md:h-28 relative">
-            <motion.div animate={{ rotate: [0, 30, 0] }} transition={{ repeat: Infinity, duration: 0.1 }}
-              className="absolute -left-8 top-4 w-16 h-12 bg-white/60 rounded-full border-2 border-sky-200 origin-right" />
-            <motion.div animate={{ rotate: [0, -30, 0] }} transition={{ repeat: Infinity, duration: 0.1 }}
-              className="absolute -right-8 top-4 w-16 h-12 bg-white/60 rounded-full border-2 border-sky-200 origin-left" />
-            <div className="w-full h-full bg-orange-500 rounded-full border-2 md:border-4 border-slate-900 flex flex-col overflow-hidden relative shadow-lg">
-              <div className="h-1/4 w-full bg-slate-900/40" /><div className="h-1/4 w-full bg-slate-900/90" />
-              <div className="h-1/4 w-full bg-slate-900/40" /><div className="h-1/4 w-full bg-slate-900/90" />
-              <div className="absolute top-1/4 left-1/4 w-2 h-2 md:w-4 md:h-4 bg-slate-900 rounded-full"><div className="absolute top-0.5 left-0.5 w-0.5 h-0.5 md:w-1.5 md:h-1.5 bg-white rounded-full" /></div>
-              <div className="absolute top-1/4 right-1/4 w-2 h-2 md:w-4 md:h-4 bg-slate-900 rounded-full"><div className="absolute top-0.5 left-0.5 w-0.5 h-0.5 md:w-1.5 md:h-1.5 bg-white rounded-full" /></div>
-              {state.shrugging && <>
-                <div className="absolute top-[18%] left-[18%] w-3 h-0.5 md:w-5 md:h-1 bg-slate-900 rotate-[25deg] rounded-full" />
-                <div className="absolute top-[18%] right-[18%] w-3 h-0.5 md:w-5 md:h-1 bg-slate-900 -rotate-[25deg] rounded-full" />
-              </>}
-              <div className={`absolute bottom-1/4 left-1/2 -translate-x-1/2 w-4 h-2 md:w-8 md:h-4 ${state.shrugging ? 'border-t-2 md:border-t-4 border-b-0' : 'border-b-2 md:border-b-4'} border-slate-900 rounded-full`} />
-            </div>
-            <div className="absolute -top-4 left-1/3 w-1 h-6 bg-slate-900 -rotate-12"><div className="absolute -top-2 -left-1 w-3 h-3 bg-slate-900 rounded-full" /></div>
-            <div className="absolute -top-4 right-1/3 w-1 h-6 bg-slate-900 rotate-12"><div className="absolute -top-2 -left-1 w-3 h-3 bg-slate-900 rounded-full" /></div>
-          </motion.div>
-        </div>
+        <BeeCharacter shrugging={state.shrugging} />
 
         {/* Elkonin Boxes */}
         <div className="flex gap-1 md:gap-4 items-end shrink-0">
