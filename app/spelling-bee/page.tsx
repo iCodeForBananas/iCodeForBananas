@@ -116,7 +116,18 @@ export default function SpellingBeePage() {
       const idx = Math.floor(Math.random() * decoyPool.length);
       decoys.push(decoyPool.splice(idx, 1)[0]);
     }
-    setLetterChoices([...wordLetters, ...decoys].sort(() => Math.random() - 0.5));
+    // Word letters stay in left-to-right order; decoys are inserted at random positions
+    const totalLen = wordLetters.length + decoys.length;
+    const decoyPositions = new Set<number>();
+    while (decoyPositions.size < decoys.length) {
+      decoyPositions.add(Math.floor(Math.random() * totalLen));
+    }
+    const ordered: string[] = new Array(totalLen);
+    let wi = 0, di = 0;
+    for (let i = 0; i < totalLen; i++) {
+      ordered[i] = decoyPositions.has(i) ? decoys[di++] : wordLetters[wi++];
+    }
+    setLetterChoices(ordered);
   }, [state.currentWordIndex, state.currentLevel, showLevelUp, state.isComplete]);
 
   const handleLetterClick = (letter: string, idx: number) => {
@@ -303,9 +314,6 @@ export default function SpellingBeePage() {
         </div>
       </div>
 
-      <div className="mt-1 md:mt-4 text-slate-400 text-[10px] md:text-sm font-black uppercase tracking-widest text-center shrink-0">
-        Buzz the letters to build the word!
-      </div>
     </div>
   );
 }
