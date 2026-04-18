@@ -65,7 +65,7 @@ const MODULES: Module[] = [
   {
     slug: "fretboard-explorer",
     title: "Fretboard Explorer",
-    category: "Practice",
+    category: "Music Theory",
     description:
       "Interactive 6-string fretboard with note highlighting by scale, chord, or interval across all positions.",
     stack: ["React", "SVG", "Music Theory"],
@@ -75,7 +75,7 @@ const MODULES: Module[] = [
   {
     slug: "fretboard-quiz",
     title: "Fretboard Quiz",
-    category: "Practice",
+    category: "Music Theory",
     description: "Timed note-identification quiz with accuracy tracking and adaptive difficulty.",
     stack: ["React", "SVG"],
     metric: "Adaptive difficulty",

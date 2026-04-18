@@ -10,7 +10,7 @@ const isMobileDevice = () => window.innerWidth < MOBILE_BREAKPOINT;
 
 const NAV = [
   {
-    label: "Music Theory",
+    label: "Music",
     links: [
       { href: "/circle-of-fifths", text: "Circle of Fifths" },
       { href: "/harmonic-flow", text: "Harmonic Flow" },
@@ -19,30 +19,8 @@ const NAV = [
       { href: "/chord-voicings", text: "Chord Voicings" },
       { href: "/chord-finder", text: "Chord Finder" },
       { href: "/chord-inversions", text: "Chord Inversions" },
-    ],
-  },
-  {
-    label: "Practice",
-    links: [
       { href: "/fretboard-explorer", text: "Fretboard Explorer" },
       { href: "/fretboard-quiz", text: "Fretboard Quiz" },
-    ],
-  },
-  {
-    label: "Trading",
-    links: [{ href: "/algo-backtest", text: "Algo Backtest" }],
-  },
-  {
-    label: "Personal",
-    links: [
-      { href: "/fire-estimator", text: "FIRE Estimator" },
-      { href: "/workout-tracker", text: "Workout Tracker" },
-    ],
-  },
-  {
-    label: "Misc",
-    links: [
-      { href: "/wordsmith", text: "Wordsmith" },
     ],
   },
   {
@@ -51,6 +29,15 @@ const NAV = [
       { href: "/space-math", text: "Space Math" },
       { href: "/brainy-bloom", text: "Brainy Bloom" },
       { href: "/spelling-bee", text: "Spelling Bee" },
+    ],
+  },
+  {
+    label: "Misc",
+    links: [
+      { href: "/workout-tracker", text: "Workout Tracker" },
+      { href: "/wordsmith", text: "Wordsmith" },
+      { href: "/algo-backtest", text: "Algo Backtest" },
+      { href: "/fire-estimator", text: "FIRE Estimator" },
     ],
   },
 ];
