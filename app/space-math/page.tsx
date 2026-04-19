@@ -496,7 +496,6 @@ export default function SpaceMathPage() {
   const [selectedAnswer, setSelectedAnswer] = useState<number | string | null>(null);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
   const [score, setScore] = useState(0);
-  const [badges, setBadges] = useState<string[]>([]);
   const [gameState, setGameState] = useState<'start' | 'playing' | 'level-up' | 'finale'>('start');
   const [stars, setStars] = useState<{ w: number; h: number; t: number; l: number; o: number; d: number }[]>([]);
   useEffect(() => {
@@ -506,13 +505,13 @@ export default function SpaceMathPage() {
   useEffect(() => {
     try {
       const saved = localStorage.getItem('space-math-save');
-      if (saved) { const d = JSON.parse(saved); setScore(d.score || 0); setBadges(d.badges || []); setStageIndex(d.stageIndex || 0); setCompletedStages(d.completedStages || []); }
+      if (saved) { const d = JSON.parse(saved); setScore(d.score || 0); setStageIndex(d.stageIndex || 0); setCompletedStages(d.completedStages || []); }
     } catch {}
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('space-math-save', JSON.stringify({ score, badges, stageIndex, completedStages }));
-  }, [score, badges, stageIndex, completedStages]);
+    localStorage.setItem('space-math-save', JSON.stringify({ score, stageIndex, completedStages }));
+  }, [score, stageIndex, completedStages]);
 
   useEffect(() => {
     if (gameState === 'playing' && !problem) {
@@ -538,8 +537,8 @@ export default function SpaceMathPage() {
         playSound('badge');
         const nextIdx = capturedStage + 1;
         setCompletedStages(prev => Array.from(new Set([...prev, capturedStage])));
-        if (nextIdx < STAGES.length) { setStageIndex(nextIdx); setGameState('level-up'); setBadges(b => [...b, STAGES[capturedStage].label + ' Badge']); }
-        else { setGameState('finale'); setBadges(b => [...b, 'Galactic Master']); }
+        if (nextIdx < STAGES.length) { setStageIndex(nextIdx); setGameState('level-up'); }
+        else { setGameState('finale'); }
         setMasteryCount(0); setRecentSignatures([]);
       } else {
         const p = generateProblem(capturedStage, difficulty, capturedSigs);
@@ -556,13 +555,13 @@ export default function SpaceMathPage() {
   };
 
   const resetGame = () => {
-    localStorage.setItem('space-math-save', JSON.stringify({ score, badges, stageIndex: 0, completedStages: [] }));
+    localStorage.setItem('space-math-save', JSON.stringify({ score, stageIndex: 0, completedStages: [] }));
     setStageIndex(0); setCompletedStages([]); setMasteryCount(0); setGameState('start');
   };
 
   const clearStars = () => {
-    setScore(0); setBadges([]);
-    localStorage.setItem('space-math-save', JSON.stringify({ score: 0, badges: [], stageIndex, completedStages }));
+    setScore(0);
+    localStorage.setItem('space-math-save', JSON.stringify({ score: 0, stageIndex, completedStages }));
   };
 
   const isWordProblem = problem?.type === 'word-problem';
@@ -587,18 +586,7 @@ export default function SpaceMathPage() {
               <p className="text-xs text-blue-400 uppercase tracking-widest font-bold">Mission: {STAGES[stageIndex].label}</p>
             </div>
           </div>
-          <div className="flex flex-col items-end gap-2">
-            <button onClick={resetGame} className="text-[10px] font-bold text-slate-400 hover:text-white hover:bg-white/10 uppercase bg-white/5 px-2.5 py-1 rounded-lg transition-colors border border-white/10">Reset</button>
-            <div className="flex gap-1 flex-wrap max-w-[120px] justify-end">
-              <AnimatePresence>
-                {badges.map((b, i) => (
-                  <motion.div key={i} title={b} initial={{ scale: 0, rotate: -180, opacity: 0 }} animate={{ scale: 1, rotate: 0, opacity: 1 }} transition={{ type: 'spring', stiffness: 260, damping: 20 }} className="w-7 h-7 sm:w-8 sm:h-8 bg-indigo-600 rounded-full flex items-center justify-center shadow-lg shadow-indigo-600/20">
-                    <Trophy className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-            </div>
-          </div>
+          <button onClick={resetGame} className="text-[10px] font-bold text-slate-400 hover:text-white hover:bg-white/10 uppercase bg-white/5 px-2.5 py-1 rounded-lg transition-colors border border-white/10">Reset</button>
         </div>
 
         <AnimatePresence mode="wait">
