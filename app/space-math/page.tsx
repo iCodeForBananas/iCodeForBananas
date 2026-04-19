@@ -571,14 +571,14 @@ export default function SpaceMathPage() {
   const isThreeOptions = problem && problem.options.length === 3;
 
   return (
-    <div className="h-full bg-black text-white selection:bg-blue-500/30 relative flex flex-col overflow-hidden">
+    <div className="flex-1 bg-black text-white selection:bg-blue-500/30 relative flex flex-col overflow-hidden">
       <div className="absolute inset-0 pointer-events-none">
         {stars.map((s, i) => (
           <div key={i} className="absolute bg-white rounded-full animate-pulse" style={{ width: s.w + 'px', height: s.h + 'px', top: s.t + '%', left: s.l + '%', opacity: s.o, animationDelay: s.d + 's' }} />
         ))}
       </div>
       <StarBank score={score} onClear={clearStars} />
-      <main className="relative z-10 w-full px-2 sm:px-4 lg:px-6 py-3 sm:py-4 flex flex-col items-center flex-1 min-h-0">
+      <main className="relative z-10 w-full p-4 sm:p-6 flex flex-col items-center flex-1 min-h-0 overflow-hidden">
         <div className="w-full flex justify-between items-center mb-3 sm:mb-4 shrink-0">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-blue-600 rounded-xl shadow-lg shadow-blue-600/20"><Rocket className="w-5 h-5 sm:w-6 sm:h-6 text-white" /></div>
@@ -587,14 +587,17 @@ export default function SpaceMathPage() {
               <p className="text-xs text-blue-400 uppercase tracking-widest font-bold">Mission: {STAGES[stageIndex].label}</p>
             </div>
           </div>
-          <div className="flex gap-1 flex-wrap max-w-[120px] justify-end">
-            <AnimatePresence>
-              {badges.map((b, i) => (
-                <motion.div key={i} title={b} initial={{ scale: 0, rotate: -180, opacity: 0 }} animate={{ scale: 1, rotate: 0, opacity: 1 }} transition={{ type: 'spring', stiffness: 260, damping: 20 }} className="w-7 h-7 sm:w-8 sm:h-8 bg-indigo-600 rounded-full flex items-center justify-center shadow-lg shadow-indigo-600/20">
-                  <Trophy className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />
-                </motion.div>
-              ))}
-            </AnimatePresence>
+          <div className="flex flex-col items-end gap-2">
+            <button onClick={resetGame} className="text-[10px] font-bold text-slate-400 hover:text-white hover:bg-white/10 uppercase bg-white/5 px-2.5 py-1 rounded-lg transition-colors border border-white/10">Reset</button>
+            <div className="flex gap-1 flex-wrap max-w-[120px] justify-end">
+              <AnimatePresence>
+                {badges.map((b, i) => (
+                  <motion.div key={i} title={b} initial={{ scale: 0, rotate: -180, opacity: 0 }} animate={{ scale: 1, rotate: 0, opacity: 1 }} transition={{ type: 'spring', stiffness: 260, damping: 20 }} className="w-7 h-7 sm:w-8 sm:h-8 bg-indigo-600 rounded-full flex items-center justify-center shadow-lg shadow-indigo-600/20">
+                    <Trophy className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </div>
           </div>
         </div>
 
