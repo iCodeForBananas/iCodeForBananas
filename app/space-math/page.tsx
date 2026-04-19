@@ -1,97 +1,279 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Rocket, Star, Trophy, ChevronRight, HelpCircle, Sparkles } from 'lucide-react';
 
-type ProblemType = 'addition' | 'subtraction' | 'place-value';
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+type ProblemType =
+  | 'addition' | 'subtraction' | 'place-value'
+  | 'mental-ten' | 'add-100' | 'word-problem'
+  | 'comparison' | 'time' | 'shapes' | 'fractions';
+
+type HintOp =
+  | '+' | '-' | 'tens-ones'
+  | 'mental-add' | 'mental-sub'
+  | 'add-100' | 'word-add' | 'word-sub'
+  | 'comparison' | 'time' | 'shape' | 'fraction';
 
 interface Problem {
   id: string;
   type: ProblemType;
   question: string;
-  answer: number;
-  options: number[];
-  visualHint: { left: number; right: number; operator: '+' | '-' | 'tens-ones' };
+  answer: number | string;
+  options: (number | string)[];
+  visualHint: { left: number; right: number; operator: HintOp; extra?: string };
   signature: string;
 }
 
 type Difficulty = 'easy' | 'medium' | 'hard';
 
+interface Stage {
+  id: number;
+  label: string;
+  types: ProblemType[];
+  min: number;
+  max: number;
+  icon: string;
+}
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
 const DIFFICULTY_LEVELS: { id: Difficulty; label: string; description: string; color: string }[] = [
-  { id: 'easy', label: 'Cadet', description: 'Numbers up to 10', color: 'bg-emerald-500' },
-  { id: 'medium', label: 'Pilot', description: 'Numbers up to 30', color: 'bg-blue-500' },
-  { id: 'hard', label: 'Commander', description: 'Numbers up to 50+', color: 'bg-rose-500' },
+  { id: 'easy', label: 'Cadet', description: 'Numbers up to 10', color: 'bg-blue-600' },
 ];
 
 const MASTERY_THRESHOLD = 5;
-const STAGES = [
-  { id: 1, label: 'Moon Base', type: 'addition', min: 1, max: 5, icon: '🌙' },
-  { id: 2, label: 'Star Station', type: 'subtraction', min: 1, max: 5, icon: '⭐' },
-  { id: 3, label: 'Mars Outpost', type: 'addition', min: 6, max: 10, icon: '🔴' },
-  { id: 4, label: 'Jupiter Ring', type: 'subtraction', min: 6, max: 10, icon: '🪐' },
-  { id: 5, label: 'Deep Space', type: 'mixed', min: 11, max: 20, icon: '🌌' },
+
+const STAGES: Stage[] = [
+  { id: 1, label: 'Add to 5',       types: ['addition'],                        min: 1,  max: 5,  icon: '➕' },
+  { id: 2, label: 'Subtract to 5',  types: ['subtraction'],                     min: 1,  max: 5,  icon: '➖' },
+  { id: 3, label: 'Add to 20',      types: ['addition', 'subtraction'],         min: 6,  max: 10, icon: '🔢' },
+  { id: 4, label: 'Subtract to 20', types: ['addition', 'subtraction'],         min: 6,  max: 20, icon: '🔢' },
+  { id: 5, label: 'Place Value',     types: ['place-value', 'mental-ten'],       min: 1,  max: 9,  icon: '🧮' },
+  { id: 6, label: 'Add to 100',      types: ['add-100', 'word-problem'],         min: 10, max: 90, icon: '💯' },
+  { id: 7, label: 'Compare Numbers', types: ['comparison', 'mental-ten'],        min: 10, max: 99, icon: '⚖️' },
+  { id: 8, label: 'Time & Shapes',   types: ['time', 'shapes'],                  min: 1,  max: 12, icon: '🕐' },
+  { id: 9, label: 'Fractions',       types: ['fractions', 'shapes'],             min: 1,  max: 4,  icon: '½' },
 ];
+
 const COLORS_HEX: Record<Difficulty, string> = { easy: '#10B981', medium: '#3B82F6', hard: '#F43F5E' };
+
+const WP_SUBJECTS = ['rockets', 'aliens', 'stars', 'moons', 'comets', 'astronauts'];
+const WP_ADD_VERBS = ['land at', 'join', 'appear at', 'launch from'];
+const WP_SUB_VERBS = ['fly away from', 'leave', 'blast off from', 'depart from'];
+
+const SHAPE_QS: { q: string; a: number; hint: string }[] = [
+  { q: 'How many sides does a triangle have?',      a: 3, hint: '△' },
+  { q: 'How many corners does a triangle have?',    a: 3, hint: '△' },
+  { q: 'How many sides does a square have?',        a: 4, hint: '□' },
+  { q: 'How many corners does a square have?',      a: 4, hint: '□' },
+  { q: 'How many sides does a rectangle have?',     a: 4, hint: '▭' },
+  { q: 'How many sides does a pentagon have?',      a: 5, hint: '⬠' },
+  { q: 'How many sides does a hexagon have?',       a: 6, hint: '⬡' },
+  { q: 'How many vertices does a hexagon have?',    a: 6, hint: '⬡' },
+  { q: 'A circle has how many sides?',              a: 0, hint: '○' },
+  { q: 'How many faces does a cube have?',          a: 6, hint: '🧊' },
+  { q: 'How many flat faces does a cone have?',     a: 1, hint: '🔺' },
+  { q: 'How many flat faces does a cylinder have?', a: 2, hint: '🥫' },
+  { q: 'How many sides does a trapezoid have?',     a: 4, hint: '⏢' },
+];
+
+const FRACTION_QS: { q: string; a: string; opts: string[]; hint: string }[] = [
+  { q: 'A pizza cut into 2 equal pieces — one piece is:', a: '1/2', opts: ['1/2','1/3','1/4','2/3'], hint: '1/2' },
+  { q: 'A pizza cut into 4 equal pieces — one piece is:', a: '1/4', opts: ['1/2','1/4','1/3','1/8'], hint: '1/4' },
+  { q: 'A shape split into 2 equal parts — each part is:', a: '1/2', opts: ['1/2','1/3','1/4','1/5'], hint: '1/2' },
+  { q: 'A rectangle divided into 4 equal parts — one part is:', a: '1/4', opts: ['1/2','1/3','1/4','2/4'], hint: '1/4' },
+  { q: 'How many halves make a whole?',  a: '2', opts: ['2','3','4','8'], hint: '1/2' },
+  { q: 'How many quarters make a whole?', a: '4', opts: ['2','3','4','6'], hint: '1/4' },
+  { q: 'How many fourths make one whole?', a: '4', opts: ['2','3','4','8'], hint: '1/4' },
+  { q: 'A circle is cut into 4 equal parts. One shaded part equals:', a: '1/4', opts: ['1/4','1/2','3/4','1/3'], hint: '1/4' },
+  { q: '1/2 of a shape is shaded. What fraction is NOT shaded?', a: '1/2', opts: ['1/2','1/3','1/4','2/3'], hint: '1/2' },
+];
+
+// ─── Problem Generator ────────────────────────────────────────────────────────
+
+function numOpts(answer: number): number[] {
+  const s = new Set<number>([answer]);
+  let attempts = 0;
+  while (s.size < 4 && attempts < 100) {
+    attempts++;
+    const off = Math.floor(Math.random() * 5) + 1;
+    s.add(Math.random() > 0.5 ? answer + off : Math.max(0, answer - off));
+  }
+  return Array.from(s).sort((a, b) => a - b);
+}
+
+function buildProblem(type: ProblemType, min: number, max: number): Problem {
+  const id = Math.random().toString(36).substr(2, 9);
+
+  if (type === 'addition') {
+    const left = Math.floor(Math.random() * (max - min + 1)) + min;
+    const right = Math.floor(Math.random() * (max - min + 1)) + 1;
+    const answer = left + right;
+    return { id, type, question: `${left} + ${right} = ?`, answer, options: numOpts(answer), visualHint: { left, right, operator: '+' }, signature: `add:${Math.min(left,right)},${Math.max(left,right)}` };
+  }
+
+  if (type === 'subtraction') {
+    const answer = Math.floor(Math.random() * (max - min + 1)) + min;
+    const right = Math.floor(Math.random() * (max - min + 1)) + 1;
+    const left = answer + right;
+    return { id, type, question: `${left} - ${right} = ?`, answer, options: numOpts(answer), visualHint: { left, right, operator: '-' }, signature: `sub:${left},${right}` };
+  }
+
+  if (type === 'place-value') {
+    const tens = Math.floor(Math.random() * Math.min(max, 9) + 1);
+    const ones = Math.floor(Math.random() * 10);
+    const answer = tens * 10 + ones;
+    return { id, type, question: `${tens} tens and ${ones} ones = ?`, answer, options: numOpts(answer), visualHint: { left: tens, right: ones, operator: 'tens-ones' }, signature: `place:${tens},${ones}` };
+  }
+
+  if (type === 'mental-ten') {
+    const base = Math.floor(Math.random() * (max - min - 10)) + min + 10;
+    const isAdd = base <= 109;
+    const answer = isAdd ? base + 10 : base - 10;
+    return {
+      id, type,
+      question: isAdd ? `${base} + 10 = ?` : `${base} - 10 = ?`,
+      answer, options: numOpts(answer),
+      visualHint: { left: base, right: 10, operator: isAdd ? 'mental-add' : 'mental-sub' },
+      signature: `mental${isAdd?'+':'-'}:${base}`,
+    };
+  }
+
+  if (type === 'add-100') {
+    // 1st grade patterns: round tens + single digit (20+7) OR round tens + round tens (20+30)
+    const useTens = Math.random() > 0.5;
+    let left: number, right: number;
+    if (useTens) {
+      // e.g. 20 + 30 = 50
+      const t1 = Math.floor(Math.random() * 4) + 1; // 10–40
+      const t2 = Math.floor(Math.random() * (5 - t1)) + 1;
+      left = t1 * 10; right = t2 * 10;
+    } else {
+      // e.g. 30 + 6 = 36
+      const tens = Math.floor(Math.random() * 4) + 1; // 1–4 tens
+      const ones = Math.floor(Math.random() * 8) + 1; // 1–8
+      left = tens * 10; right = ones;
+    }
+    const answer = left + right;
+    return { id, type, question: `${left} + ${right} = ?`, answer, options: numOpts(answer), visualHint: { left, right, operator: 'add-100' }, signature: `add100:${left},${right}` };
+  }
+
+  if (type === 'word-problem') {
+    const subj = WP_SUBJECTS[Math.floor(Math.random() * WP_SUBJECTS.length)];
+    const isAdd = Math.random() > 0.4;
+    // Word problems stay within 20 per 1st grade curriculum
+    const a = Math.floor(Math.random() * 10) + 1;  // 1–10
+    const b = Math.floor(Math.random() * 10) + 1;  // 1–10
+    let question: string, answer: number;
+    if (isAdd) {
+      const verb = WP_ADD_VERBS[Math.floor(Math.random() * WP_ADD_VERBS.length)];
+      question = `There are ${a} ${subj}. ${b} more ${verb} the station. How many total?`;
+      answer = a + b;
+    } else {
+      const verb = WP_SUB_VERBS[Math.floor(Math.random() * WP_SUB_VERBS.length)];
+      question = `There are ${a + b} ${subj}. ${b} ${verb} the station. How many are left?`;
+      answer = a;
+    }
+    return { id, type, question, answer, options: numOpts(answer), visualHint: { left: a, right: b, operator: isAdd ? 'word-add' : 'word-sub' }, signature: `wp-${isAdd?'add':'sub'}:${a},${b}` };
+  }
+
+  if (type === 'comparison') {
+    const a = Math.floor(Math.random() * (max - min + 1)) + min;
+    const b = Math.floor(Math.random() * (max - min + 1)) + min;
+    const answer = a < b ? '<' : a > b ? '>' : '=';
+    return { id, type, question: `${a}   ○   ${b}`, answer, options: ['<', '=', '>'], visualHint: { left: a, right: b, operator: 'comparison' }, signature: `cmp:${a},${b}` };
+  }
+
+  if (type === 'time') {
+    const hour = Math.floor(Math.random() * 12) + 1;
+    const isHalf = Math.random() > 0.5;
+    const minutes = isHalf ? 30 : 0;
+    const timeStr = `${hour}:${minutes === 0 ? '00' : '30'}`;
+    const wrongHour1 = ((hour % 12) + 1) + 1 > 12 ? 1 : ((hour % 12) + 1) + 1;
+    const wrongHour2 = hour - 1 < 1 ? 12 : hour - 1;
+    const opts = [
+      timeStr,
+      `${wrongHour1}:${minutes === 0 ? '00' : '30'}`,
+      `${wrongHour2}:${minutes === 0 ? '00' : '30'}`,
+      `${hour}:${minutes === 0 ? '30' : '00'}`,
+    ];
+    opts.sort(() => Math.random() - 0.5);
+    const q = isHalf
+      ? `The clock shows half past ${hour}. What time is it?`
+      : `The clock shows ${hour} o'clock. What time is it?`;
+    return { id, type, question: q, answer: timeStr, options: opts, visualHint: { left: hour, right: minutes, operator: 'time' }, signature: `time:${timeStr}` };
+  }
+
+  if (type === 'shapes') {
+    const sq = SHAPE_QS[Math.floor(Math.random() * SHAPE_QS.length)];
+    return { id, type, question: sq.q, answer: sq.a, options: numOpts(sq.a), visualHint: { left: sq.a, right: 0, operator: 'shape', extra: sq.hint }, signature: `shape:${sq.q.slice(0,25)}` };
+  }
+
+  if (type === 'fractions') {
+    const fq = FRACTION_QS[Math.floor(Math.random() * FRACTION_QS.length)];
+    return { id, type, question: fq.q, answer: fq.a, options: fq.opts, visualHint: { left: 0, right: 0, operator: 'fraction', extra: fq.hint }, signature: `frac:${fq.q.slice(0,25)}` };
+  }
+
+  return buildProblem('addition', min, max);
+}
 
 const generateProblem = (stageIndex: number, difficulty: Difficulty, recentSignatures: string[] = []): Problem => {
   const stage = STAGES[stageIndex];
   let { min, max } = stage;
-  if (difficulty === 'medium') { max = Math.floor(max * 1.8); min = Math.max(min, 2); }
-  else if (difficulty === 'hard') { max = Math.floor(max * 3); min = Math.max(min, 5); }
-
-  let problem: Problem | null = null;
-  let attempts = 0;
-  let signature = '';
-
-  while (!problem || (recentSignatures.includes(signature) && attempts < 100)) {
-    attempts++;
-    let type: ProblemType;
-    if (stage.type === 'mixed') {
-      const types: ProblemType[] = ['addition', 'subtraction', 'place-value'];
-      type = types[Math.floor(Math.random() * types.length)];
-    } else { type = stage.type as ProblemType; }
-
-    let left = 0, right = 0, answer = 0, question = '', operator: '+' | '-' | 'tens-ones' = '+';
-
-    if (type === 'addition') {
-      left = Math.floor(Math.random() * (max - min + 1)) + min;
-      right = Math.floor(Math.random() * (max - min + 1)) + 1;
-      answer = left + right; question = `${left} + ${right} = ?`; operator = '+';
-      signature = `+:${Math.min(left, right)},${Math.max(left, right)}`;
-    } else if (type === 'subtraction') {
-      answer = Math.floor(Math.random() * (max - min + 1)) + min;
-      right = Math.floor(Math.random() * (max - min + 1)) + 1;
-      left = answer + right; question = `${left} - ${right} = ?`; operator = '-';
-      signature = `-:${left},${right}`;
-    } else {
-      const tens = Math.floor(Math.random() * (max >= 10 ? 2 : 1));
-      const ones = Math.floor(Math.random() * 10);
-      answer = tens * 10 + ones; question = `${tens} tens and ${ones} ones is?`;
-      left = tens; right = ones; operator = 'tens-ones';
-      signature = `tens-ones:${left},${right}`;
-    }
-
-    const options = new Set<number>([answer]);
-    while (options.size < 4) {
-      const offset = Math.floor(Math.random() * 5) + 1;
-      options.add(Math.random() > 0.5 ? answer + offset : Math.max(0, answer - offset));
-    }
-    problem = { id: Math.random().toString(36).substr(2, 9), type, question, answer, options: Array.from(options).sort((a, b) => a - b), visualHint: { left, right, operator }, signature };
+  if (stageIndex < 7) {
+    if (difficulty === 'medium') { max = Math.floor(max * 1.8); min = Math.max(min, 2); }
+    else if (difficulty === 'hard') { max = Math.floor(max * 3); min = Math.max(min, 5); }
   }
-
-  if (recentSignatures.length > 0 && signature === recentSignatures[recentSignatures.length - 1]) {
-    let { left, right, operator } = problem.visualHint;
-    if (operator === '+') { left++; problem.answer = left + right; problem.question = `${left} + ${right} = ?`; problem.signature = `+:${Math.min(left, right)},${Math.max(left, right)}`; }
-    else if (operator === '-') { left++; problem.answer = left - right; problem.question = `${left} - ${right} = ?`; problem.signature = `-:${left},${right}`; }
-    else { left = left === 1 ? 0 : 1; problem.answer = left * 10 + right; problem.question = `${left} tens and ${right} ones is?`; problem.signature = `tens-ones:${left},${right}`; }
-    const opts = new Set<number>([problem.answer]);
-    while (opts.size < 4) { const o = Math.floor(Math.random() * 5) + 1; opts.add(Math.random() > 0.5 ? problem.answer + o : Math.max(0, problem.answer - o)); }
-    problem.options = Array.from(opts).sort((a, b) => a - b);
-    problem.visualHint.left = left;
+  const type = stage.types[Math.floor(Math.random() * stage.types.length)];
+  let problem = buildProblem(type, min, max);
+  let attempts = 0;
+  while (recentSignatures.includes(problem.signature) && attempts < 20) {
+    problem = buildProblem(type, min, max);
+    attempts++;
   }
   return problem;
 };
+
+// ─── Visual Scaffolding ───────────────────────────────────────────────────────
+
+function ClockFace({ hours, minutes }: { hours: number; minutes: number }) {
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const cx = 50, cy = 50;
+  const hourDeg = ((hours % 12) + minutes / 60) * 30 - 90;
+  const minDeg = minutes * 6 - 90;
+  return (
+    <svg width="200" height="200" viewBox="0 0 100 100">
+      <circle cx={cx} cy={cy} r={45} fill="#1e293b" stroke="#94a3b8" strokeWidth="2" />
+      {Array.from({ length: 12 }, (_, i) => {
+        const a = i * 30 - 90;
+        return <line key={i} x1={cx + 36 * Math.cos(toRad(a))} y1={cy + 36 * Math.sin(toRad(a))} x2={cx + 43 * Math.cos(toRad(a))} y2={cy + 43 * Math.sin(toRad(a))} stroke="#94a3b8" strokeWidth={i % 3 === 0 ? 2 : 1} />;
+      })}
+      {[12,3,6,9].map((n, i) => {
+        const a = i * 90 - 90;
+        return <text key={n} x={cx + 28 * Math.cos(toRad(a))} y={cy + 28 * Math.sin(toRad(a))} textAnchor="middle" dominantBaseline="middle" fill="#e2e8f0" fontSize="10">{n}</text>;
+      })}
+      <line x1={cx} y1={cy} x2={cx + 24 * Math.cos(toRad(hourDeg))} y2={cy + 24 * Math.sin(toRad(hourDeg))} stroke="#facc15" strokeWidth="4" strokeLinecap="round" />
+      <line x1={cx} y1={cy} x2={cx + 36 * Math.cos(toRad(minDeg))} y2={cy + 36 * Math.sin(toRad(minDeg))} stroke="#60a5fa" strokeWidth="2.5" strokeLinecap="round" />
+      <circle cx={cx} cy={cy} r={3} fill="#fff" />
+    </svg>
+  );
+}
+
+function FractionBar({ hint }: { hint: string }) {
+  const parts = hint === '1/4' ? 4 : 2;
+  const w = 140, h = 40, gap = 3;
+  const pw = (w - gap * (parts - 1)) / parts;
+  return (
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`}>
+      {Array.from({ length: parts }, (_, i) => (
+        <rect key={i} x={i * (pw + gap)} y={0} width={pw} height={h} fill={i === 0 ? '#a855f7' : '#334155'} rx={4} />
+      ))}
+    </svg>
+  );
+}
 
 const VisualScaffolding = ({ hint }: { hint: Problem['visualHint'] }) => {
   if (hint.operator === 'tens-ones') {
@@ -99,36 +281,130 @@ const VisualScaffolding = ({ hint }: { hint: Problem['visualHint'] }) => {
       <div className="flex flex-col items-center gap-2 p-3 bg-white/10 rounded-2xl border border-white/20">
         <div className="flex gap-3">
           {Array.from({ length: hint.left }).map((_, i) => (
-            <div key={`tens-${i}`} className="flex flex-col gap-0.5">
+            <div key={i} className="flex flex-col gap-0.5">
               <span className="text-[8px] text-blue-300 text-center">Ten</span>
               <div className="grid grid-cols-1 gap-0.5 bg-blue-500/30 p-0.5 rounded border border-blue-400">
-                {Array.from({ length: 10 }).map((_, j) => (<div key={j} className="w-2.5 h-2.5 bg-blue-400 rounded-sm" />))}
+                {Array.from({ length: 10 }).map((_, j) => <div key={j} className="w-2.5 h-2.5 bg-blue-400 rounded-sm" />)}
               </div>
             </div>
           ))}
           <div className="flex flex-wrap gap-0.5 max-w-[80px] items-center">
-            {Array.from({ length: hint.right }).map((_, i) => (<div key={`ones-${i}`} className="w-2.5 h-2.5 bg-emerald-400 rounded-sm" />))}
+            {Array.from({ length: hint.right }).map((_, i) => <div key={i} className="w-2.5 h-2.5 bg-emerald-400 rounded-sm" />)}
           </div>
         </div>
-        <p className="text-[10px] text-blue-200">Count the blocks! Blue stacks are 10, green blocks are 1.</p>
+        <p className="text-[10px] text-blue-200">Blue stacks = 10, green blocks = 1</p>
       </div>
     );
   }
+
+  if (hint.operator === 'mental-add' || hint.operator === 'mental-sub') {
+    const isAdd = hint.operator === 'mental-add';
+    const result = isAdd ? hint.left + 10 : hint.left - 10;
+    return (
+      <div className="flex flex-col items-center gap-2 p-3 bg-white/10 rounded-2xl border border-white/20">
+        <div className="flex items-center gap-3 text-2xl font-black">
+          <span className="text-white">{hint.left}</span>
+          <span className={isAdd ? 'text-emerald-400' : 'text-rose-400'}>{isAdd ? '+10' : '−10'}</span>
+          <span className="text-white/40">=</span>
+          <span className="text-yellow-400">{result}</span>
+        </div>
+        <p className="text-[10px] text-blue-200">{isAdd ? 'The tens digit goes up by 1!' : 'The tens digit goes down by 1!'}</p>
+      </div>
+    );
+  }
+
+  if (hint.operator === 'add-100') {
+    return (
+      <div className="flex flex-col items-center gap-2 p-3 bg-white/10 rounded-2xl border border-white/20">
+        <div className="flex items-center gap-3 text-2xl font-black">
+          <span className="text-blue-300">{hint.left}</span>
+          <span className="text-white">+</span>
+          <span className="text-emerald-300">{hint.right}</span>
+        </div>
+        <p className="text-[10px] text-blue-200">Think about the tens and ones separately!</p>
+      </div>
+    );
+  }
+
+  if (hint.operator === 'word-add' || hint.operator === 'word-sub') {
+    const isAdd = hint.operator === 'word-add';
+    return (
+      <div className="flex flex-col items-center gap-2 p-3 bg-white/10 rounded-2xl border border-white/20">
+        <div className="flex items-center gap-3 flex-wrap justify-center">
+          <div className="flex flex-wrap gap-1 max-w-[100px] justify-center">
+            {Array.from({ length: hint.left }).map((_, i) => <div key={i} className="w-3 h-3 bg-orange-400 rounded-full" />)}
+          </div>
+          <span className="text-xl font-bold text-white">{isAdd ? '+' : '−'}</span>
+          <div className="flex flex-wrap gap-1 max-w-[100px] justify-center">
+            {Array.from({ length: hint.right }).map((_, i) => <div key={i} className="w-3 h-3 bg-purple-400 rounded-full" />)}
+          </div>
+        </div>
+        <p className="text-[10px] text-blue-200">{isAdd ? 'Count all the dots together!' : 'Start with the first group and take away!'}</p>
+      </div>
+    );
+  }
+
+  if (hint.operator === 'comparison') {
+    return (
+      <div className="flex flex-col items-center gap-2 p-3 bg-white/10 rounded-2xl border border-white/20">
+        <div className="flex items-center gap-4 text-3xl font-black">
+          <span className="text-blue-300">{hint.left}</span>
+          <div className="flex flex-col items-center text-sm text-slate-400 gap-0.5">
+            <span>{'>'} = greater than</span>
+            <span>{'<'} = less than</span>
+            <span>= means equal</span>
+          </div>
+          <span className="text-emerald-300">{hint.right}</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (hint.operator === 'time') {
+    return (
+      <div className="flex flex-col items-center gap-2 p-3 bg-white/10 rounded-2xl border border-white/20">
+        <ClockFace hours={hint.left} minutes={hint.right} />
+        <p className="text-[10px] text-blue-200">Yellow hand = hour · Blue hand = minutes</p>
+      </div>
+    );
+  }
+
+  if (hint.operator === 'shape') {
+    return (
+      <div className="flex flex-col items-center gap-2 p-3 bg-white/10 rounded-2xl border border-white/20">
+        <span className="text-5xl">{hint.extra}</span>
+        <p className="text-[10px] text-blue-200">Count the sides or corners carefully!</p>
+      </div>
+    );
+  }
+
+  if (hint.operator === 'fraction') {
+    return (
+      <div className="flex flex-col items-center gap-2 p-3 bg-white/10 rounded-2xl border border-white/20">
+        <FractionBar hint={hint.extra ?? '1/2'} />
+        <p className="text-[10px] text-blue-200">Purple = one equal part of the whole</p>
+      </div>
+    );
+  }
+
+  // Default: addition / subtraction dots
   return (
     <div className="flex flex-col items-center gap-2 p-3 bg-white/10 rounded-2xl border border-white/20">
       <div className="flex items-center gap-3 flex-wrap justify-center">
         <div className="flex flex-wrap gap-1 max-w-[100px] justify-center">
-          {Array.from({ length: hint.left }).map((_, i) => (<div key={`l-${i}`} className="w-3 h-3 bg-orange-400 rounded-full shadow-lg shadow-orange-500/20" />))}
+          {Array.from({ length: hint.left }).map((_, i) => <div key={i} className="w-3 h-3 bg-orange-400 rounded-full shadow-lg shadow-orange-500/20" />)}
         </div>
-        <span className="text-xl font-bold text-white">{hint.operator === '+' ? '+' : '-'}</span>
+        <span className="text-xl font-bold text-white">{hint.operator === '+' ? '+' : '−'}</span>
         <div className="flex flex-wrap gap-1 max-w-[100px] justify-center">
-          {Array.from({ length: hint.right }).map((_, i) => (<div key={`r-${i}`} className="w-3 h-3 bg-purple-400 rounded-full shadow-lg shadow-purple-500/20" />))}
+          {Array.from({ length: hint.right }).map((_, i) => <div key={i} className="w-3 h-3 bg-purple-400 rounded-full shadow-lg shadow-purple-500/20" />)}
         </div>
       </div>
-      <p className="text-[10px] text-blue-200">{hint.operator === '+' ? "Count all the dots together!" : "Start with the first group and take away the second group!"}</p>
+      <p className="text-[10px] text-blue-200">{hint.operator === '+' ? 'Count all the dots together!' : 'Start with the first group and take away!'}</p>
     </div>
   );
 };
+
+// ─── Audio ────────────────────────────────────────────────────────────────────
 
 const playSound = (type: 'correct' | 'incorrect' | 'badge') => {
   try {
@@ -149,8 +425,10 @@ const playSound = (type: 'correct' | 'incorrect' | 'badge') => {
       gain.gain.setValueAtTime(0, now); gain.gain.linearRampToValueAtTime(0.1, now + 0.05); gain.gain.setValueAtTime(0.1, now + 0.45); gain.gain.exponentialRampToValueAtTime(0.01, now + 1);
       osc.start(now); osc.stop(now + 1);
     }
-  } catch (e) { console.error("Audio playback failed", e); }
+  } catch (e) { console.error('Audio error', e); }
 };
+
+// ─── StarBank ─────────────────────────────────────────────────────────────────
 
 const StarBank = ({ score, onClear }: { score: number; onClear: () => void }) => (
   <div className="w-full bg-slate-900/80 border-b border-white/10 p-3 pl-14 flex items-start sm:items-center gap-4 z-50 relative min-h-[60px]">
@@ -167,44 +445,55 @@ const StarBank = ({ score, onClear }: { score: number; onClear: () => void }) =>
   </div>
 );
 
+// ─── MasteryPath ──────────────────────────────────────────────────────────────
+
 const MasteryPath = ({ currentStage, completedStages, masteryCount, isWrong, difficulty }: { currentStage: number; completedStages: number[]; masteryCount: number; isWrong: boolean; difficulty: Difficulty }) => {
   const colorHex = COLORS_HEX[difficulty];
   const level = DIFFICULTY_LEVELS.find(d => d.id === difficulty);
   return (
-    <div className="w-full max-w-xl flex justify-between items-center px-4 py-6 bg-slate-900/40 rounded-3xl border border-white/5 mb-4 relative">
-      <div className="absolute left-10 right-10 h-1 bg-slate-800 top-1/2 -translate-y-1/2 z-0" />
-      {STAGES.map((stage, idx) => {
-        const isCurrent = idx === currentStage;
-        const isCompleted = completedStages.includes(idx);
-        const progress = isCurrent ? (masteryCount / MASTERY_THRESHOLD) * 100 : isCompleted ? 100 : 0;
-        return (
-          <div key={stage.id} className="relative z-10 flex flex-col items-center gap-2">
-            <motion.div animate={isCurrent && isWrong ? { x: [-5, 5, -5, 5, 0] } : {}} transition={{ duration: 0.4 }}
-              className={`relative w-12 h-12 rounded-full flex items-center justify-center text-xl border-2 transition-all ${isCompleted ? 'bg-emerald-500 border-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.4)]' : isCurrent ? `${level?.color || 'bg-blue-600'} border-white shadow-[0_0_15px_rgba(255,255,255,0.2)]` : 'bg-slate-800 border-slate-700 text-slate-500'}`}>
-              {isCompleted ? <Trophy className="w-6 h-6 text-white" /> : stage.icon}
-              {isCurrent && (
-                <svg className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-90 w-[56px] h-[56px] pointer-events-none" viewBox="0 0 56 56">
-                  <circle cx="28" cy="28" r="26" fill="transparent" stroke="rgba(255,255,255,0.2)" strokeWidth="4" />
-                  <motion.circle cx="28" cy="28" r="26" fill="transparent" stroke={colorHex} strokeWidth="4" strokeDasharray="163.36" initial={{ strokeDashoffset: 163.36 }} animate={{ strokeDashoffset: 163.36 - (163.36 * progress) / 100 }} transition={{ type: 'spring', stiffness: 50 }} />
-                </svg>
-              )}
-            </motion.div>
-            <span className={`text-[10px] font-bold uppercase tracking-wider ${isCurrent ? 'text-blue-400' : 'text-slate-500'}`}>{stage.label}</span>
-          </div>
-        );
-      })}
+    <div className="w-full max-w-xl overflow-x-auto mb-4">
+      <div className="flex justify-between items-center px-3 py-4 bg-slate-900/40 rounded-3xl border border-white/5 relative" style={{ minWidth: 560 }}>
+        <div className="absolute left-8 right-8 h-0.5 bg-slate-800 top-1/2 -translate-y-1/2 z-0" />
+        {STAGES.map((stage, idx) => {
+          const isCurrent = idx === currentStage;
+          const isCompleted = completedStages.includes(idx);
+          const progress = isCurrent ? (masteryCount / MASTERY_THRESHOLD) * 100 : isCompleted ? 100 : 0;
+          const dotSize = 'w-9 h-9';
+          const svgSize = 'w-[44px] h-[44px]';
+          return (
+            <div key={stage.id} className="relative z-10 flex flex-col items-center gap-1">
+              <motion.div
+                animate={isCurrent && isWrong ? { x: [-4,4,-4,4,0] } : {}}
+                transition={{ duration: 0.4 }}
+                className={`relative ${dotSize} rounded-full flex items-center justify-center text-base border-2 transition-all ${isCompleted ? 'bg-emerald-500 border-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.4)]' : isCurrent ? `${level?.color || 'bg-blue-600'} border-white shadow-[0_0_12px_rgba(255,255,255,0.2)]` : 'bg-slate-800 border-slate-700 text-slate-500'}`}
+              >
+                {isCompleted ? <Trophy className="w-4 h-4 text-white" /> : stage.icon}
+                {isCurrent && (
+                  <svg className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-90 ${svgSize} pointer-events-none`} viewBox="0 0 44 44">
+                    <circle cx="22" cy="22" r="20" fill="transparent" stroke="rgba(255,255,255,0.2)" strokeWidth="3" />
+                    <motion.circle cx="22" cy="22" r="20" fill="transparent" stroke={colorHex} strokeWidth="3" strokeDasharray="125.66" initial={{ strokeDashoffset: 125.66 }} animate={{ strokeDashoffset: 125.66 - (125.66 * progress) / 100 }} transition={{ type: 'spring', stiffness: 50 }} />
+                  </svg>
+                )}
+              </motion.div>
+              <span className={`text-[8px] font-bold uppercase tracking-wider whitespace-nowrap ${isCurrent ? 'text-blue-400' : 'text-slate-500'}`}>{stage.label}</span>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 };
 
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
 export default function SpaceMathPage() {
-  const [difficulty, setDifficulty] = useState<Difficulty>('easy');
+  const difficulty: Difficulty = 'easy';
   const [stageIndex, setStageIndex] = useState(0);
   const [completedStages, setCompletedStages] = useState<number[]>([]);
   const [masteryCount, setMasteryCount] = useState(0);
   const [recentSignatures, setRecentSignatures] = useState<string[]>([]);
   const [problem, setProblem] = useState<Problem | null>(null);
-  const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
+  const [selectedAnswer, setSelectedAnswer] = useState<number | string | null>(null);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
   const [showHint, setShowHint] = useState(false);
   const [score, setScore] = useState(0);
@@ -215,11 +504,13 @@ export default function SpaceMathPage() {
   useEffect(() => {
     try {
       const saved = localStorage.getItem('space-math-save');
-      if (saved) { const d = JSON.parse(saved); setScore(d.score || 0); setBadges(d.badges || []); setStageIndex(d.stageIndex || 0); setCompletedStages(d.completedStages || []); if (d.difficulty) setDifficulty(d.difficulty); }
+      if (saved) { const d = JSON.parse(saved); setScore(d.score || 0); setBadges(d.badges || []); setStageIndex(d.stageIndex || 0); setCompletedStages(d.completedStages || []); }
     } catch {}
   }, []);
 
-  useEffect(() => { localStorage.setItem('space-math-save', JSON.stringify({ score, badges, stageIndex, completedStages, difficulty })); }, [score, badges, stageIndex, completedStages, difficulty]);
+  useEffect(() => {
+    localStorage.setItem('space-math-save', JSON.stringify({ score, badges, stageIndex, completedStages }));
+  }, [score, badges, stageIndex, completedStages]);
 
   useEffect(() => {
     if (gameState === 'playing' && !problem) {
@@ -228,28 +519,32 @@ export default function SpaceMathPage() {
     }
   }, [gameState, problem, stageIndex, difficulty, recentSignatures]);
 
-  const handleAnswer = (answer: number) => {
+  const handleAnswer = (answer: number | string) => {
     if (selectedAnswer !== null) return;
     setSelectedAnswer(answer);
     const correct = answer === problem?.answer;
     setIsCorrect(correct);
-    if (correct) { playSound('correct'); setScore(s => s + 10); setMasteryCount(c => c + 1); setShowHint(false); }
+    const newMastery = correct ? masteryCount + 1 : masteryCount;
+    if (correct) { playSound('correct'); setScore(s => s + 10); setMasteryCount(newMastery); }
     else { playSound('incorrect'); setShowHint(true); }
-  };
 
-  const nextProblem = () => {
-    if (masteryCount >= MASTERY_THRESHOLD) {
-      playSound('badge');
-      const nextIdx = stageIndex + 1;
-      setCompletedStages(prev => Array.from(new Set([...prev, stageIndex])));
-      if (nextIdx < STAGES.length) { setStageIndex(nextIdx); setGameState('level-up'); setBadges(b => [...b, STAGES[stageIndex].label + ' Badge']); }
-      else { setGameState('finale'); setBadges(b => [...b, 'Galactic Master']); }
-      setMasteryCount(0); setRecentSignatures([]);
-    } else {
-      const p = generateProblem(stageIndex, difficulty, recentSignatures);
-      setProblem(p); setRecentSignatures(prev => [...prev.slice(-9), p.signature]);
-    }
-    setSelectedAnswer(null); setIsCorrect(null); setShowHint(false);
+    // Capture closure values now so the timeout uses the right state
+    const capturedStage = stageIndex;
+    const capturedSigs = recentSignatures;
+    setTimeout(() => {
+      if (newMastery >= MASTERY_THRESHOLD) {
+        playSound('badge');
+        const nextIdx = capturedStage + 1;
+        setCompletedStages(prev => Array.from(new Set([...prev, capturedStage])));
+        if (nextIdx < STAGES.length) { setStageIndex(nextIdx); setGameState('level-up'); setBadges(b => [...b, STAGES[capturedStage].label + ' Badge']); }
+        else { setGameState('finale'); setBadges(b => [...b, 'Galactic Master']); }
+        setMasteryCount(0); setRecentSignatures([]);
+      } else {
+        const p = generateProblem(capturedStage, difficulty, capturedSigs);
+        setProblem(p); setRecentSignatures(prev => [...prev.slice(-9), p.signature]);
+      }
+      setSelectedAnswer(null); setIsCorrect(null); setShowHint(false);
+    }, 2000);
   };
 
   const startLevel = () => {
@@ -268,6 +563,11 @@ export default function SpaceMathPage() {
     localStorage.setItem('space-math-save', JSON.stringify({ score: 0, badges: [], stageIndex, completedStages }));
   };
 
+  const isWordProblem = problem?.type === 'word-problem';
+  const isFraction = problem?.type === 'fractions';
+  const isLongQuestion = problem && !isWordProblem && !isFraction && problem.question.length > 40;
+  const isThreeOptions = problem && problem.options.length === 3;
+
   return (
     <div className="min-h-screen bg-black text-white selection:bg-blue-500/30 relative flex flex-col overflow-x-hidden">
       <div className="absolute inset-0 pointer-events-none">
@@ -282,10 +582,7 @@ export default function SpaceMathPage() {
             <div className="p-2 bg-blue-600 rounded-xl shadow-lg shadow-blue-600/20"><Rocket className="w-6 h-6 text-white" /></div>
             <div>
               <h1 className="text-xl font-bold tracking-tight">Space Math</h1>
-              <div className="flex items-center gap-2">
-                <p className="text-xs text-blue-400 uppercase tracking-widest font-bold">Mission: {STAGES[stageIndex].label}</p>
-                <span className={`text-[8px] px-1.5 py-0.5 rounded-full font-black uppercase text-white ${DIFFICULTY_LEVELS.find(d => d.id === difficulty)?.color}`}>{DIFFICULTY_LEVELS.find(d => d.id === difficulty)?.label}</span>
-              </div>
+              <p className="text-xs text-blue-400 uppercase tracking-widest font-bold">Mission: {STAGES[stageIndex].label}</p>
             </div>
           </div>
           <div className="flex gap-1 flex-wrap max-w-[120px] justify-end">
@@ -314,15 +611,6 @@ export default function SpaceMathPage() {
                 <h2 className="text-4xl font-black mb-4 bg-gradient-to-b from-white to-blue-300 bg-clip-text text-transparent">Ready for Launch?</h2>
                 <p className="text-blue-200 text-lg max-w-sm">Choose your rank and help the rocket reach new planets!</p>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full max-w-md">
-                {DIFFICULTY_LEVELS.map((level) => (
-                  <button key={level.id} onClick={() => setDifficulty(level.id)}
-                    className={`p-4 rounded-2xl border-2 transition-all text-left flex flex-col gap-1 ${difficulty === level.id ? `${level.color} border-white shadow-[0_0_15px_rgba(255,255,255,0.3)] scale-105` : 'bg-slate-900/60 border-white/10 hover:border-white/30'}`}>
-                    <span className="text-sm font-black uppercase tracking-wider">{level.label}</span>
-                    <span className="text-[10px] opacity-80 leading-tight">{level.description}</span>
-                  </button>
-                ))}
-              </div>
               <button onClick={startLevel} className="group relative px-12 py-6 bg-blue-600 rounded-3xl text-2xl font-bold shadow-[0_10px_0_rgb(37,99,235)] active:shadow-none active:translate-y-[10px] transition-all hover:bg-blue-500">
                 <span className="flex items-center gap-3">START MISSION <ChevronRight className="w-8 h-8" /></span>
               </button>
@@ -334,7 +622,7 @@ export default function SpaceMathPage() {
               <MasteryPath currentStage={stageIndex} completedStages={completedStages} masteryCount={masteryCount} isWrong={isCorrect === false} difficulty={difficulty} />
               <div className="w-full bg-slate-900/80 backdrop-blur-xl border border-white/10 rounded-[40px] p-4 sm:p-6 shadow-2xl relative overflow-hidden flex flex-col">
                 <div className="text-center mb-2 sm:mb-4">
-                  <h2 className="text-3xl sm:text-4xl font-black mb-1 tracking-tight">{problem.question}</h2>
+                  <h2 className={`font-black mb-1 tracking-tight leading-snug ${isWordProblem ? 'text-2xl sm:text-3xl' : isFraction ? 'text-4xl sm:text-5xl' : isLongQuestion ? 'text-lg sm:text-xl' : 'text-3xl sm:text-4xl'}`}>{problem.question}</h2>
                   <p className="text-blue-400 font-bold uppercase tracking-widest text-[10px]">Solve to Continue</p>
                 </div>
                 <AnimatePresence>
@@ -344,23 +632,20 @@ export default function SpaceMathPage() {
                     </motion.div>
                   )}
                 </AnimatePresence>
-                <div className="grid grid-cols-2 gap-2 sm:gap-3 flex-1">
-                  {problem.options.map((opt) => (
-                    <button key={opt} disabled={selectedAnswer !== null} onClick={() => handleAnswer(opt)}
-                      className={`py-2 sm:py-4 rounded-3xl text-2xl sm:text-3xl font-black transition-all border-b-[6px] sm:border-b-8 ${selectedAnswer === opt ? (isCorrect ? 'bg-emerald-500 border-emerald-700 text-white' : 'bg-rose-500 border-rose-700 text-white') : 'bg-slate-800 border-slate-950 hover:bg-slate-700 text-white active:border-b-0 active:translate-y-[6px] sm:active:translate-y-[8px]'} ${selectedAnswer !== null && opt === problem.answer && !isCorrect ? 'bg-emerald-500/50 border-emerald-700/50' : ''}`}>
+                <div className={`grid gap-2 sm:gap-3 flex-1 ${isThreeOptions ? 'grid-cols-3' : 'grid-cols-2'}`}>
+                  {problem.options.map((opt, i) => (
+                    <button key={i} disabled={selectedAnswer !== null} onClick={() => handleAnswer(opt)}
+                      className={`py-2 sm:py-4 rounded-3xl text-2xl sm:text-3xl font-black transition-all border-b-[6px] sm:border-b-8 ${selectedAnswer === opt ? (isCorrect ? 'bg-emerald-500 border-emerald-700 text-white' : 'bg-rose-500 border-rose-700 text-white') : 'bg-slate-800 border-slate-950 hover:bg-slate-700 text-white active:border-b-0 active:translate-y-[6px] sm:active:translate-y-[8px]'} ${selectedAnswer !== null && opt === problem.answer && selectedAnswer !== opt ? 'bg-emerald-500/50 border-emerald-700/50' : ''}`}>
                       {opt}
                     </button>
                   ))}
                 </div>
                 <AnimatePresence>
                   {selectedAnswer !== null && (
-                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mt-2 sm:mt-4 flex flex-col items-center gap-2 sm:gap-3">
+                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mt-2 sm:mt-4 flex justify-center">
                       <div className={`flex items-center gap-2 sm:gap-3 text-lg sm:text-xl font-bold ${isCorrect ? 'text-emerald-400' : 'text-rose-400'}`}>
-                        {isCorrect ? <><Sparkles className="w-5 h-5 sm:w-6 sm:h-6" /> GREAT JOB! <Sparkles className="w-5 h-5 sm:w-6 sm:h-6" /></> : <><HelpCircle className="w-5 h-5 sm:w-6 sm:h-6" /> TRY AGAIN! <HelpCircle className="w-5 h-5 sm:w-6 sm:h-6" /></>}
+                        {isCorrect ? <><Sparkles className="w-5 h-5 sm:w-6 sm:h-6" />GREAT JOB!<Sparkles className="w-5 h-5 sm:w-6 sm:h-6" /></> : <><HelpCircle className="w-5 h-5 sm:w-6 sm:h-6" />TRY AGAIN!<HelpCircle className="w-5 h-5 sm:w-6 sm:h-6" /></>}
                       </div>
-                      <button onClick={nextProblem} className="w-full py-2 sm:py-3 bg-white text-slate-900 rounded-2xl font-black text-base sm:text-lg flex items-center justify-center gap-2 hover:bg-blue-50 shadow-lg">
-                        {isCorrect ? 'NEXT PROBLEM' : 'I UNDERSTAND'} <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" />
-                      </button>
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -395,7 +680,7 @@ export default function SpaceMathPage() {
               <div>
                 <h2 className="text-6xl font-black mb-4 bg-gradient-to-r from-yellow-400 via-white to-yellow-400 bg-clip-text text-transparent animate-pulse">MISSION COMPLETE!</h2>
                 <p className="text-3xl text-blue-200">You are a <span className="text-white font-bold">Math Master</span>!</p>
-                <p className="text-xl text-blue-400 mt-2">You finished today&apos;s mission!</p>
+                <p className="text-xl text-blue-400 mt-2">All 9 missions complete!</p>
               </div>
               <button onClick={resetGame} className="px-8 py-4 bg-slate-800 rounded-2xl text-xl font-bold border border-white/10 hover:bg-slate-700 transition-colors">PLAY AGAIN</button>
             </motion.div>
