@@ -76,13 +76,9 @@ export default function Sidebar() {
           className='fixed top-0 left-0 z-[60] px-3 flex items-center'
           style={{
             height: "42px",
-            background: "rgba(37, 38, 43, 0.8)",
-            backdropFilter: "blur(8px)",
-            WebkitBackdropFilter: "blur(8px)",
-            color: "#F8F9FA",
+            background: "#facc15",
+            color: "#000000",
             border: "none",
-            borderBottom: "1px solid #373A40",
-            borderRight: "1px solid #373A40",
           }}
           aria-label='Open sidebar'
         >
@@ -103,21 +99,17 @@ export default function Sidebar() {
       <aside
         className={`fixed lg:relative h-screen flex flex-col z-40 ${hasMounted ? "transition-all duration-300" : ""} ${isOpen ? "w-64 translate-x-0" : "w-0 -translate-x-full lg:w-0 overflow-hidden"}`}
         style={{
-          background: "rgba(37, 38, 43, 0.8)",
-          backdropFilter: "blur(8px)",
-          WebkitBackdropFilter: "blur(8px)",
-          borderRight: "1px solid #373A40",
+          background: "#000000",
         }}
       >
         <button
           onClick={toggle}
-          className={`w-full flex items-center justify-center py-2 shrink-0 ${hasMounted ? "transition-opacity duration-200" : ""} ${isOpen ? "opacity-100" : "opacity-0"}`}
+          className={`w-full flex items-center justify-center shrink-0 ${hasMounted ? "transition-opacity duration-200" : ""} ${isOpen ? "opacity-100" : "opacity-0"}`}
           style={{
-            background: "rgba(37, 38, 43, 0.8)",
-            backdropFilter: "blur(8px)",
-            WebkitBackdropFilter: "blur(8px)",
-            color: "#F8F9FA",
-            borderBottom: "1px solid #373A40",
+            height: "42px",
+            background: "#facc15",
+            color: "#000000",
+            border: "none",
           }}
           aria-label='Close sidebar'
         >
@@ -137,8 +129,8 @@ export default function Sidebar() {
         >
           <Link
             href='/'
-            className='text-xl font-black uppercase tracking-widest mb-3 overflow-hidden text-ellipsis whitespace-nowrap block'
-            style={{ color: "#F8F9FA" }}
+            className='font-black uppercase mb-3 block w-full'
+            style={{ color: "#F8F9FA", fontSize: "1rem", letterSpacing: "0.18em" }}
           >
             iCodeForBananas
           </Link>
