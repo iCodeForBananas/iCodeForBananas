@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Rocket, Star, Trophy, ChevronRight, HelpCircle, Sparkles } from 'lucide-react';
+import { Rocket, Star, Trophy, ChevronRight, Sparkles, CheckCircle2, XCircle } from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -475,7 +475,7 @@ const MasteryPath = ({ currentStage, completedStages, masteryCount, isWrong, dif
                   </svg>
                 )}
               </motion.div>
-              <span className={`text-[8px] font-bold uppercase tracking-wider whitespace-nowrap ${isCurrent ? 'text-blue-400' : 'text-slate-500'}`}>{stage.label}</span>
+              <span className={`text-[10px] font-bold uppercase tracking-wider whitespace-nowrap ${isCurrent ? 'text-blue-400' : 'text-slate-500'}`}>{stage.label}</span>
             </div>
           );
         })}
@@ -571,14 +571,14 @@ export default function SpaceMathPage() {
   const isThreeOptions = problem && problem.options.length === 3;
 
   return (
-    <div className="h-screen bg-black text-white selection:bg-blue-500/30 relative flex flex-col overflow-hidden">
+    <div className="h-full bg-black text-white selection:bg-blue-500/30 relative flex flex-col overflow-hidden">
       <div className="absolute inset-0 pointer-events-none">
         {stars.map((s, i) => (
           <div key={i} className="absolute bg-white rounded-full animate-pulse" style={{ width: s.w + 'px', height: s.h + 'px', top: s.t + '%', left: s.l + '%', opacity: s.o, animationDelay: s.d + 's' }} />
         ))}
       </div>
       <StarBank score={score} onClear={clearStars} />
-      <main className="relative z-10 w-full max-w-lg md:max-w-2xl lg:max-w-3xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex flex-col items-center flex-1 min-h-0">
+      <main className="relative z-10 w-full px-2 sm:px-4 lg:px-6 py-3 sm:py-4 flex flex-col items-center flex-1 min-h-0">
         <div className="w-full flex justify-between items-center mb-3 sm:mb-4 shrink-0">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-blue-600 rounded-xl shadow-lg shadow-blue-600/20"><Rocket className="w-5 h-5 sm:w-6 sm:h-6 text-white" /></div>
@@ -624,36 +624,42 @@ export default function SpaceMathPage() {
               <div className="w-full shrink-0">
                 <MasteryPath currentStage={stageIndex} completedStages={completedStages} masteryCount={masteryCount} isWrong={isCorrect === false} difficulty={difficulty} />
               </div>
+              <AnimatePresence>
+                {selectedAnswer !== null && (
+                  <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="w-full shrink-0">
+                    <div className="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
+                      <motion.div
+                        className={`h-full rounded-full ${isCorrect ? 'bg-emerald-400' : 'bg-rose-400'}`}
+                        initial={{ width: '0%' }}
+                        animate={{ width: '100%' }}
+                        transition={{ duration: 2, ease: 'linear' }}
+                      />
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+              <AnimatePresence>
+                {selectedAnswer !== null && (
+                  <motion.div initial={{ opacity: 0, scale: 0.5 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.5 }}
+                    className="fixed inset-0 flex items-center justify-center pointer-events-none z-50">
+                    <div className={`p-12 rounded-full shadow-2xl ${isCorrect ? 'bg-green-500' : 'bg-red-500'}`}>
+                      {isCorrect ? <CheckCircle2 className="w-32 h-32 text-white" /> : <XCircle className="w-32 h-32 text-white" />}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
               <div className="w-full flex-1 min-h-0 bg-slate-900/80 backdrop-blur-xl border border-white/10 rounded-[32px] sm:rounded-[40px] p-4 sm:p-6 shadow-2xl relative overflow-hidden flex flex-col">
                 <div className="text-center mb-2 sm:mb-3 shrink-0">
-                  <h2 className={`font-black mb-1 tracking-tight leading-snug ${isWordProblem ? 'text-3xl sm:text-4xl md:text-5xl' : isFraction ? 'text-5xl sm:text-6xl md:text-7xl' : isLongQuestion ? 'text-xl sm:text-2xl md:text-3xl' : 'text-4xl sm:text-5xl md:text-6xl'}`}>{problem.question}</h2>
+                  <h2 className={`font-black mb-1 tracking-tight leading-snug ${isWordProblem ? 'text-4xl sm:text-5xl md:text-6xl' : isFraction ? 'text-6xl sm:text-7xl md:text-8xl' : isLongQuestion ? 'text-2xl sm:text-3xl md:text-4xl' : 'text-5xl sm:text-6xl md:text-7xl'}`}>{problem.question}</h2>
                 </div>
-
                 <div className={`grid gap-2 sm:gap-3 flex-1 min-h-0 ${isThreeOptions ? 'grid-cols-3' : 'grid-cols-2'}`}>
                   {problem.options.map((opt, i) => (
                     <button key={i} disabled={selectedAnswer !== null} onClick={() => handleAnswer(opt)}
-                      className={`flex items-center justify-center rounded-3xl text-2xl sm:text-3xl md:text-4xl font-black transition-all border-b-[6px] sm:border-b-8 ${selectedAnswer === opt ? (isCorrect ? 'bg-emerald-500 border-emerald-700 text-white' : 'bg-rose-500 border-rose-700 text-white') : 'bg-slate-800 border-slate-950 hover:bg-slate-700 text-white active:border-b-0 active:translate-y-[6px] sm:active:translate-y-[8px]'} ${selectedAnswer !== null && opt === problem.answer && selectedAnswer !== opt ? 'bg-emerald-500/50 border-emerald-700/50' : ''}`}>
+                      className={`flex items-center justify-center rounded-3xl text-4xl sm:text-6xl md:text-8xl font-black transition-all border-b-[6px] sm:border-b-8 ${selectedAnswer === opt ? (isCorrect ? 'bg-emerald-500 border-emerald-700 text-white' : 'bg-rose-500 border-rose-700 text-white') : 'bg-slate-800 border-slate-950 hover:bg-slate-700 text-white active:border-b-0 active:translate-y-[6px] sm:active:translate-y-[8px]'} ${selectedAnswer !== null && opt === problem.answer && selectedAnswer !== opt ? 'bg-emerald-500/50 border-emerald-700/50' : ''}`}>
                       {opt}
                     </button>
                   ))}
                 </div>
-                <AnimatePresence>
-                  {selectedAnswer !== null && (
-                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mt-2 sm:mt-3 flex flex-col items-center gap-2 shrink-0">
-                      <div className={`flex items-center gap-2 sm:gap-3 text-lg sm:text-xl font-bold ${isCorrect ? 'text-emerald-400' : 'text-rose-400'}`}>
-                        {isCorrect ? <><Sparkles className="w-5 h-5 sm:w-6 sm:h-6" />GREAT JOB!<Sparkles className="w-5 h-5 sm:w-6 sm:h-6" /></> : <><HelpCircle className="w-5 h-5 sm:w-6 sm:h-6" />TRY AGAIN!<HelpCircle className="w-5 h-5 sm:w-6 sm:h-6" /></>}
-                      </div>
-                      <div className="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
-                        <motion.div
-                          className={`h-full rounded-full ${isCorrect ? 'bg-emerald-400' : 'bg-rose-400'}`}
-                          initial={{ width: '0%' }}
-                          animate={{ width: '100%' }}
-                          transition={{ duration: 2, ease: 'linear' }}
-                        />
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
               </div>
             </motion.div>
           )}
