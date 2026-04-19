@@ -642,9 +642,19 @@ export default function SpaceMathPage() {
                 </div>
                 <AnimatePresence>
                   {selectedAnswer !== null && (
-                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mt-2 sm:mt-4 flex justify-center">
+                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mt-2 sm:mt-4 flex flex-col items-center gap-2 sm:gap-3">
                       <div className={`flex items-center gap-2 sm:gap-3 text-lg sm:text-xl font-bold ${isCorrect ? 'text-emerald-400' : 'text-rose-400'}`}>
                         {isCorrect ? <><Sparkles className="w-5 h-5 sm:w-6 sm:h-6" />GREAT JOB!<Sparkles className="w-5 h-5 sm:w-6 sm:h-6" /></> : <><HelpCircle className="w-5 h-5 sm:w-6 sm:h-6" />TRY AGAIN!<HelpCircle className="w-5 h-5 sm:w-6 sm:h-6" /></>}
+                      </div>
+                      <div className="w-full flex flex-col items-center gap-1">
+<div className="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
+                          <motion.div
+                            className={`h-full rounded-full ${isCorrect ? 'bg-emerald-400' : 'bg-rose-400'}`}
+                            initial={{ width: '0%' }}
+                            animate={{ width: '100%' }}
+                            transition={{ duration: 2, ease: 'linear' }}
+                          />
+                        </div>
                       </div>
                     </motion.div>
                   )}
