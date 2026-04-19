@@ -20,6 +20,7 @@ const NAV = [
       { href: "/chord-voicings", text: "Chord Voicings" },
       { href: "/chord-finder", text: "Chord Finder" },
       { href: "/chord-inversions", text: "Chord Inversions" },
+      { href: "/fretboard-architect", text: "Fretboard Architect" },
       { href: "/fretboard-explorer", text: "Fretboard Explorer" },
       { href: "/fretboard-quiz", text: "Fretboard Quiz" },
     ],
