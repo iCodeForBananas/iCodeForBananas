@@ -451,7 +451,7 @@ const MasteryPath = ({ currentStage, completedStages, masteryCount, isWrong, dif
   const colorHex = COLORS_HEX[difficulty];
   const level = DIFFICULTY_LEVELS.find(d => d.id === difficulty);
   return (
-    <div className="w-full max-w-xl overflow-x-auto mb-4">
+    <div className="w-full overflow-x-auto mb-4">
       <div className="flex justify-between items-center px-3 py-4 bg-slate-900/40 rounded-3xl border border-white/5 relative" style={{ minWidth: 560 }}>
         <div className="absolute left-8 right-8 h-0.5 bg-slate-800 top-1/2 -translate-y-1/2 z-0" />
         {STAGES.map((stage, idx) => {
@@ -495,11 +495,13 @@ export default function SpaceMathPage() {
   const [problem, setProblem] = useState<Problem | null>(null);
   const [selectedAnswer, setSelectedAnswer] = useState<number | string | null>(null);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
-  const [showHint, setShowHint] = useState(false);
   const [score, setScore] = useState(0);
   const [badges, setBadges] = useState<string[]>([]);
   const [gameState, setGameState] = useState<'start' | 'playing' | 'level-up' | 'finale'>('start');
-  const [stars] = useState(() => Array.from({ length: 50 }, () => ({ w: Math.random() * 3, h: Math.random() * 3, t: Math.random() * 100, l: Math.random() * 100, o: Math.random() * 0.7 + 0.3, d: Math.random() * 5 })));
+  const [stars, setStars] = useState<{ w: number; h: number; t: number; l: number; o: number; d: number }[]>([]);
+  useEffect(() => {
+    setStars(Array.from({ length: 50 }, () => ({ w: Math.random() * 3, h: Math.random() * 3, t: Math.random() * 100, l: Math.random() * 100, o: Math.random() * 0.7 + 0.3, d: Math.random() * 5 })));
+  }, []);
 
   useEffect(() => {
     try {
@@ -526,7 +528,7 @@ export default function SpaceMathPage() {
     setIsCorrect(correct);
     const newMastery = correct ? masteryCount + 1 : masteryCount;
     if (correct) { playSound('correct'); setScore(s => s + 10); setMasteryCount(newMastery); }
-    else { playSound('incorrect'); setShowHint(true); }
+    else { playSound('incorrect'); }
 
     // Capture closure values now so the timeout uses the right state
     const capturedStage = stageIndex;
@@ -543,7 +545,7 @@ export default function SpaceMathPage() {
         const p = generateProblem(capturedStage, difficulty, capturedSigs);
         setProblem(p); setRecentSignatures(prev => [...prev.slice(-9), p.signature]);
       }
-      setSelectedAnswer(null); setIsCorrect(null); setShowHint(false);
+      setSelectedAnswer(null); setIsCorrect(null);
     }, 2000);
   };
 
@@ -569,27 +571,27 @@ export default function SpaceMathPage() {
   const isThreeOptions = problem && problem.options.length === 3;
 
   return (
-    <div className="min-h-screen bg-black text-white selection:bg-blue-500/30 relative flex flex-col overflow-x-hidden">
+    <div className="h-screen bg-black text-white selection:bg-blue-500/30 relative flex flex-col overflow-hidden">
       <div className="absolute inset-0 pointer-events-none">
         {stars.map((s, i) => (
           <div key={i} className="absolute bg-white rounded-full animate-pulse" style={{ width: s.w + 'px', height: s.h + 'px', top: s.t + '%', left: s.l + '%', opacity: s.o, animationDelay: s.d + 's' }} />
         ))}
       </div>
       <StarBank score={score} onClear={clearStars} />
-      <main className="relative z-10 w-full max-w-2xl mx-auto px-6 py-4 flex flex-col items-center flex-1 justify-center">
-        <div className="w-full flex justify-between items-center mb-4">
+      <main className="relative z-10 w-full max-w-lg md:max-w-2xl lg:max-w-3xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex flex-col items-center flex-1 min-h-0">
+        <div className="w-full flex justify-between items-center mb-3 sm:mb-4 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-600 rounded-xl shadow-lg shadow-blue-600/20"><Rocket className="w-6 h-6 text-white" /></div>
+            <div className="p-2 bg-blue-600 rounded-xl shadow-lg shadow-blue-600/20"><Rocket className="w-5 h-5 sm:w-6 sm:h-6 text-white" /></div>
             <div>
-              <h1 className="text-xl font-bold tracking-tight">Space Math</h1>
+              <h1 className="text-lg sm:text-xl font-bold tracking-tight">Space Math</h1>
               <p className="text-xs text-blue-400 uppercase tracking-widest font-bold">Mission: {STAGES[stageIndex].label}</p>
             </div>
           </div>
           <div className="flex gap-1 flex-wrap max-w-[120px] justify-end">
             <AnimatePresence>
               {badges.map((b, i) => (
-                <motion.div key={i} title={b} initial={{ scale: 0, rotate: -180, opacity: 0 }} animate={{ scale: 1, rotate: 0, opacity: 1 }} transition={{ type: 'spring', stiffness: 260, damping: 20 }} className="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center shadow-lg shadow-indigo-600/20">
-                  <Trophy className="w-4 h-4 text-white" />
+                <motion.div key={i} title={b} initial={{ scale: 0, rotate: -180, opacity: 0 }} animate={{ scale: 1, rotate: 0, opacity: 1 }} transition={{ type: 'spring', stiffness: 260, damping: 20 }} className="w-7 h-7 sm:w-8 sm:h-8 bg-indigo-600 rounded-full flex items-center justify-center shadow-lg shadow-indigo-600/20">
+                  <Trophy className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />
                 </motion.div>
               ))}
             </AnimatePresence>
@@ -598,63 +600,56 @@ export default function SpaceMathPage() {
 
         <AnimatePresence mode="wait">
           {gameState === 'start' && (
-            <motion.div key="start" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 1.1 }} className="flex-1 flex flex-col items-center justify-center text-center gap-8">
+            <motion.div key="start" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 1.1 }} className="flex-1 min-h-0 flex flex-col items-center justify-center text-center gap-6 sm:gap-8">
               <div className="relative">
                 <motion.div animate={{ y: [0, -20, 0], rotate: [0, 5, 0] }} transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}>
-                  <Rocket className="w-32 h-32 text-blue-500 drop-shadow-[0_0_30px_rgba(59,130,246,0.5)]" />
+                  <Rocket className="w-24 h-24 sm:w-28 sm:h-28 md:w-36 md:h-36 text-blue-500 drop-shadow-[0_0_30px_rgba(59,130,246,0.5)]" />
                 </motion.div>
                 <motion.div className="absolute -bottom-4 -right-4" animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 2 }}>
-                  <Sparkles className="w-12 h-12 text-yellow-400" />
+                  <Sparkles className="w-10 h-10 sm:w-12 sm:h-12 text-yellow-400" />
                 </motion.div>
               </div>
               <div>
-                <h2 className="text-4xl font-black mb-4 bg-gradient-to-b from-white to-blue-300 bg-clip-text text-transparent">Ready for Launch?</h2>
-                <p className="text-blue-200 text-lg max-w-sm">Choose your rank and help the rocket reach new planets!</p>
+                <h2 className="text-3xl sm:text-4xl md:text-5xl font-black mb-3 sm:mb-4 bg-gradient-to-b from-white to-blue-300 bg-clip-text text-transparent">Ready for Launch?</h2>
+                <p className="text-blue-200 text-base sm:text-lg max-w-sm">Choose your rank and help the rocket reach new planets!</p>
               </div>
-              <button onClick={startLevel} className="group relative px-12 py-6 bg-blue-600 rounded-3xl text-2xl font-bold shadow-[0_10px_0_rgb(37,99,235)] active:shadow-none active:translate-y-[10px] transition-all hover:bg-blue-500">
-                <span className="flex items-center gap-3">START MISSION <ChevronRight className="w-8 h-8" /></span>
+              <button onClick={startLevel} className="group relative px-10 sm:px-12 py-5 sm:py-6 bg-blue-600 rounded-3xl text-xl sm:text-2xl font-bold shadow-[0_10px_0_rgb(37,99,235)] active:shadow-none active:translate-y-[10px] transition-all hover:bg-blue-500">
+                <span className="flex items-center gap-3">START MISSION <ChevronRight className="w-7 h-7 sm:w-8 sm:h-8" /></span>
               </button>
             </motion.div>
           )}
 
           {gameState === 'playing' && problem && (
-            <motion.div key="playing" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="w-full flex-1 flex flex-col items-center gap-4">
-              <MasteryPath currentStage={stageIndex} completedStages={completedStages} masteryCount={masteryCount} isWrong={isCorrect === false} difficulty={difficulty} />
-              <div className="w-full bg-slate-900/80 backdrop-blur-xl border border-white/10 rounded-[40px] p-4 sm:p-6 shadow-2xl relative overflow-hidden flex flex-col">
-                <div className="text-center mb-2 sm:mb-4">
-                  <h2 className={`font-black mb-1 tracking-tight leading-snug ${isWordProblem ? 'text-2xl sm:text-3xl' : isFraction ? 'text-4xl sm:text-5xl' : isLongQuestion ? 'text-lg sm:text-xl' : 'text-3xl sm:text-4xl'}`}>{problem.question}</h2>
-                  <p className="text-blue-400 font-bold uppercase tracking-widest text-[10px]">Solve to Continue</p>
+            <motion.div key="playing" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="w-full flex-1 min-h-0 flex flex-col items-center gap-3 sm:gap-4">
+              <div className="w-full shrink-0">
+                <MasteryPath currentStage={stageIndex} completedStages={completedStages} masteryCount={masteryCount} isWrong={isCorrect === false} difficulty={difficulty} />
+              </div>
+              <div className="w-full flex-1 min-h-0 bg-slate-900/80 backdrop-blur-xl border border-white/10 rounded-[32px] sm:rounded-[40px] p-4 sm:p-6 shadow-2xl relative overflow-hidden flex flex-col">
+                <div className="text-center mb-2 sm:mb-3 shrink-0">
+                  <h2 className={`font-black mb-1 tracking-tight leading-snug ${isWordProblem ? 'text-3xl sm:text-4xl md:text-5xl' : isFraction ? 'text-5xl sm:text-6xl md:text-7xl' : isLongQuestion ? 'text-xl sm:text-2xl md:text-3xl' : 'text-4xl sm:text-5xl md:text-6xl'}`}>{problem.question}</h2>
                 </div>
-                <AnimatePresence>
-                  {showHint && (
-                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="mb-2 sm:mb-4 overflow-hidden">
-                      <VisualScaffolding hint={problem.visualHint} />
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-                <div className={`grid gap-2 sm:gap-3 flex-1 ${isThreeOptions ? 'grid-cols-3' : 'grid-cols-2'}`}>
+
+                <div className={`grid gap-2 sm:gap-3 flex-1 min-h-0 ${isThreeOptions ? 'grid-cols-3' : 'grid-cols-2'}`}>
                   {problem.options.map((opt, i) => (
                     <button key={i} disabled={selectedAnswer !== null} onClick={() => handleAnswer(opt)}
-                      className={`py-2 sm:py-4 rounded-3xl text-2xl sm:text-3xl font-black transition-all border-b-[6px] sm:border-b-8 ${selectedAnswer === opt ? (isCorrect ? 'bg-emerald-500 border-emerald-700 text-white' : 'bg-rose-500 border-rose-700 text-white') : 'bg-slate-800 border-slate-950 hover:bg-slate-700 text-white active:border-b-0 active:translate-y-[6px] sm:active:translate-y-[8px]'} ${selectedAnswer !== null && opt === problem.answer && selectedAnswer !== opt ? 'bg-emerald-500/50 border-emerald-700/50' : ''}`}>
+                      className={`flex items-center justify-center rounded-3xl text-2xl sm:text-3xl md:text-4xl font-black transition-all border-b-[6px] sm:border-b-8 ${selectedAnswer === opt ? (isCorrect ? 'bg-emerald-500 border-emerald-700 text-white' : 'bg-rose-500 border-rose-700 text-white') : 'bg-slate-800 border-slate-950 hover:bg-slate-700 text-white active:border-b-0 active:translate-y-[6px] sm:active:translate-y-[8px]'} ${selectedAnswer !== null && opt === problem.answer && selectedAnswer !== opt ? 'bg-emerald-500/50 border-emerald-700/50' : ''}`}>
                       {opt}
                     </button>
                   ))}
                 </div>
                 <AnimatePresence>
                   {selectedAnswer !== null && (
-                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mt-2 sm:mt-4 flex flex-col items-center gap-2 sm:gap-3">
+                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mt-2 sm:mt-3 flex flex-col items-center gap-2 shrink-0">
                       <div className={`flex items-center gap-2 sm:gap-3 text-lg sm:text-xl font-bold ${isCorrect ? 'text-emerald-400' : 'text-rose-400'}`}>
                         {isCorrect ? <><Sparkles className="w-5 h-5 sm:w-6 sm:h-6" />GREAT JOB!<Sparkles className="w-5 h-5 sm:w-6 sm:h-6" /></> : <><HelpCircle className="w-5 h-5 sm:w-6 sm:h-6" />TRY AGAIN!<HelpCircle className="w-5 h-5 sm:w-6 sm:h-6" /></>}
                       </div>
-                      <div className="w-full flex flex-col items-center gap-1">
-<div className="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
-                          <motion.div
-                            className={`h-full rounded-full ${isCorrect ? 'bg-emerald-400' : 'bg-rose-400'}`}
-                            initial={{ width: '0%' }}
-                            animate={{ width: '100%' }}
-                            transition={{ duration: 2, ease: 'linear' }}
-                          />
-                        </div>
+                      <div className="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
+                        <motion.div
+                          className={`h-full rounded-full ${isCorrect ? 'bg-emerald-400' : 'bg-rose-400'}`}
+                          initial={{ width: '0%' }}
+                          animate={{ width: '100%' }}
+                          transition={{ duration: 2, ease: 'linear' }}
+                        />
                       </div>
                     </motion.div>
                   )}
@@ -664,35 +659,35 @@ export default function SpaceMathPage() {
           )}
 
           {gameState === 'level-up' && (
-            <motion.div key="level-up" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 1.2 }} className="flex-1 flex flex-col items-center justify-center text-center gap-8">
+            <motion.div key="level-up" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 1.2 }} className="flex-1 min-h-0 flex flex-col items-center justify-center text-center gap-6 sm:gap-8">
               <div className="relative">
                 <motion.div animate={{ rotate: 360 }} transition={{ duration: 10, repeat: Infinity, ease: "linear" }} className="absolute inset-0 bg-blue-500/20 blur-3xl rounded-full" />
-                <Trophy className="w-32 h-32 text-yellow-400 drop-shadow-[0_0_20px_rgba(250,204,21,0.5)]" />
+                <Trophy className="w-24 h-24 sm:w-32 sm:h-32 md:w-40 md:h-40 text-yellow-400 drop-shadow-[0_0_20px_rgba(250,204,21,0.5)]" />
               </div>
               <div>
-                <h2 className="text-5xl font-black mb-4">LEVEL UP!</h2>
-                <p className="text-2xl text-blue-200">You&apos;ve reached the <span className="text-white font-bold">{STAGES[stageIndex].label}</span>!</p>
+                <h2 className="text-4xl sm:text-5xl md:text-6xl font-black mb-3 sm:mb-4">LEVEL UP!</h2>
+                <p className="text-xl sm:text-2xl md:text-3xl text-blue-200">You&apos;ve reached the <span className="text-white font-bold">{STAGES[stageIndex].label}</span>!</p>
               </div>
-              <button onClick={startLevel} className="px-12 py-6 bg-emerald-600 rounded-3xl text-2xl font-bold shadow-[0_10px_0_rgb(5,150,105)] active:shadow-none active:translate-y-[10px] transition-all hover:bg-emerald-500">CONTINUE MISSION</button>
+              <button onClick={startLevel} className="px-10 sm:px-12 py-5 sm:py-6 bg-emerald-600 rounded-3xl text-xl sm:text-2xl font-bold shadow-[0_10px_0_rgb(5,150,105)] active:shadow-none active:translate-y-[10px] transition-all hover:bg-emerald-500">CONTINUE MISSION</button>
             </motion.div>
           )}
 
           {gameState === 'finale' && (
-            <motion.div key="finale" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} className="flex-1 flex flex-col items-center justify-center text-center gap-8">
+            <motion.div key="finale" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} className="flex-1 min-h-0 flex flex-col items-center justify-center text-center gap-6 sm:gap-8">
               <div className="relative">
                 <motion.div animate={{ scale: [1, 1.2, 1], rotate: [0, 10, -10, 0] }} transition={{ duration: 2, repeat: Infinity }}>
-                  <Trophy className="w-48 h-48 text-yellow-400 drop-shadow-[0_0_40px_rgba(250,204,21,0.6)]" />
+                  <Trophy className="w-36 h-36 sm:w-44 sm:h-44 md:w-56 md:h-56 text-yellow-400 drop-shadow-[0_0_40px_rgba(250,204,21,0.6)]" />
                 </motion.div>
                 {Array.from({ length: 20 }).map((_, i) => (
                   <motion.div key={i} className="absolute top-1/2 left-1/2 w-2 h-2 bg-yellow-400 rounded-full" initial={{ x: 0, y: 0 }} animate={{ x: (Math.random() - 0.5) * 400, y: (Math.random() - 0.5) * 400, opacity: 0, scale: 0 }} transition={{ duration: 2, repeat: Infinity, delay: Math.random() * 2 }} />
                 ))}
               </div>
               <div>
-                <h2 className="text-6xl font-black mb-4 bg-gradient-to-r from-yellow-400 via-white to-yellow-400 bg-clip-text text-transparent animate-pulse">MISSION COMPLETE!</h2>
-                <p className="text-3xl text-blue-200">You are a <span className="text-white font-bold">Math Master</span>!</p>
-                <p className="text-xl text-blue-400 mt-2">All 9 missions complete!</p>
+                <h2 className="text-4xl sm:text-5xl md:text-6xl font-black mb-3 sm:mb-4 bg-gradient-to-r from-yellow-400 via-white to-yellow-400 bg-clip-text text-transparent animate-pulse">MISSION COMPLETE!</h2>
+                <p className="text-2xl sm:text-3xl text-blue-200">You are a <span className="text-white font-bold">Math Master</span>!</p>
+                <p className="text-lg sm:text-xl text-blue-400 mt-2">All 9 missions complete!</p>
               </div>
-              <button onClick={resetGame} className="px-8 py-4 bg-slate-800 rounded-2xl text-xl font-bold border border-white/10 hover:bg-slate-700 transition-colors">PLAY AGAIN</button>
+              <button onClick={resetGame} className="px-8 py-4 bg-slate-800 rounded-2xl text-lg sm:text-xl font-bold border border-white/10 hover:bg-slate-700 transition-colors">PLAY AGAIN</button>
             </motion.div>
           )}
         </AnimatePresence>
