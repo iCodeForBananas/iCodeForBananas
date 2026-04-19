@@ -623,12 +623,12 @@ export default function SpaceMathPage() {
                     <div className="relative flex items-center justify-center">
                       {/* radial countdown ring */}
                       <svg className="absolute" width="224" height="224" viewBox="0 0 224 224" style={{ transform: 'rotate(-90deg)' }}>
-                        <circle cx="112" cy="112" r="104" fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="12" />
+                        <circle cx="112" cy="112" r="104" fill="none" stroke="rgba(255,255,255,0.55)" strokeWidth="14" />
                         <motion.circle
                           cx="112" cy="112" r="104"
                           fill="none"
-                          stroke={isCorrect ? '#6ee7b7' : '#fca5a5'}
-                          strokeWidth="12"
+                          stroke={isCorrect ? '#ffffff' : '#fde68a'}
+                          strokeWidth="14"
                           strokeLinecap="round"
                           strokeDasharray={2 * Math.PI * 104}
                           initial={{ strokeDashoffset: 0 }}
