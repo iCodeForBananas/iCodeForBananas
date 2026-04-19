@@ -37,7 +37,7 @@ export default function RootLayout({
       <body className={`${GeistSans.variable} ${GeistMono.variable} antialiased`}>
         <ThemeProvider>
           <FavoriteChordsProvider>
-            <div className='flex h-screen font-sans overflow-hidden'>
+            <div className='flex h-dvh font-sans overflow-hidden'>
               <Sidebar />
               <div className='flex-1 min-w-0 overflow-auto flex flex-col'>
                 <MusicFavoritesBar />
