@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Rocket, Star, Trophy, ChevronRight, Sparkles, CheckCircle2, XCircle } from 'lucide-react';
+import { Rocket, Star, Trophy, ChevronRight, Sparkles, CheckCircle2, XCircle, Volume2 } from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -49,8 +49,8 @@ const MASTERY_THRESHOLD = 5;
 const STAGES: Stage[] = [
   { id: 1, label: 'Add to 5',       types: ['addition'],                        min: 1,  max: 5,  icon: '➕' },
   { id: 2, label: 'Subtract to 5',  types: ['subtraction'],                     min: 1,  max: 5,  icon: '➖' },
-  { id: 3, label: 'Add to 20',      types: ['addition', 'subtraction'],         min: 6,  max: 10, icon: '🔢' },
-  { id: 4, label: 'Subtract to 20', types: ['addition', 'subtraction'],         min: 6,  max: 20, icon: '🔢' },
+  { id: 3, label: 'Add to 10',      types: ['addition', 'subtraction'],         min: 6,  max: 10, icon: '🔢' },
+  { id: 4, label: 'Subtract to 10', types: ['addition', 'subtraction'],         min: 6,  max: 10, icon: '🔢' },
   { id: 5, label: 'Place Value',     types: ['place-value', 'mental-ten'],       min: 1,  max: 9,  icon: '🧮' },
   { id: 6, label: 'Add to 100',      types: ['add-100', 'word-problem'],         min: 10, max: 90, icon: '💯' },
   { id: 7, label: 'Compare Numbers', types: ['comparison', 'mental-ten'],        min: 10, max: 99, icon: '⚖️' },
@@ -109,8 +109,8 @@ function buildProblem(type: ProblemType, min: number, max: number): Problem {
   const id = Math.random().toString(36).substr(2, 9);
 
   if (type === 'addition') {
-    const left = Math.floor(Math.random() * (max - min + 1)) + min;
-    const right = Math.floor(Math.random() * (max - min + 1)) + 1;
+    const left = Math.floor(Math.random() * (max - min)) + min; // min to max-1, leaving room for right
+    const right = Math.floor(Math.random() * (max - left)) + 1; // 1 to (max - left), so left+right <= max
     const answer = left + right;
     return { id, type, question: `${left} + ${right} = ?`, answer, options: numOpts(answer), visualHint: { left, right, operator: '+' }, signature: `add:${Math.min(left,right)},${Math.max(left,right)}` };
   }
@@ -565,6 +565,7 @@ export default function SpaceMathPage() {
   };
 
   const isWordProblem = problem?.type === 'word-problem';
+  const isReadAloud = problem?.type === 'word-problem' || problem?.type === 'time' || problem?.type === 'shapes' || problem?.type === 'fractions';
   const isFraction = problem?.type === 'fractions';
   const isLongQuestion = problem && !isWordProblem && !isFraction && problem.question.length > 40;
   const isThreeOptions = problem && problem.options.length === 3;
@@ -617,31 +618,42 @@ export default function SpaceMathPage() {
               </div>
               <AnimatePresence>
                 {selectedAnswer !== null && (
-                  <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="w-full shrink-0">
-                    <div className="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
-                      <motion.div
-                        className={`h-full rounded-full ${isCorrect ? 'bg-emerald-400' : 'bg-rose-400'}`}
-                        initial={{ width: '0%' }}
-                        animate={{ width: '100%' }}
-                        transition={{ duration: 2, ease: 'linear' }}
-                      />
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-              <AnimatePresence>
-                {selectedAnswer !== null && (
                   <motion.div initial={{ opacity: 0, scale: 0.5 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.5 }}
                     className="fixed inset-0 flex items-center justify-center pointer-events-none z-50">
-                    <div className={`p-12 rounded-full shadow-2xl ${isCorrect ? 'bg-green-500' : 'bg-red-500'}`}>
-                      {isCorrect ? <CheckCircle2 className="w-32 h-32 text-white" /> : <XCircle className="w-32 h-32 text-white" />}
+                    <div className="relative flex items-center justify-center">
+                      {/* radial countdown ring */}
+                      <svg className="absolute" width="224" height="224" viewBox="0 0 224 224" style={{ transform: 'rotate(-90deg)' }}>
+                        <circle cx="112" cy="112" r="104" fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="12" />
+                        <motion.circle
+                          cx="112" cy="112" r="104"
+                          fill="none"
+                          stroke={isCorrect ? '#6ee7b7' : '#fca5a5'}
+                          strokeWidth="12"
+                          strokeLinecap="round"
+                          strokeDasharray={2 * Math.PI * 104}
+                          initial={{ strokeDashoffset: 0 }}
+                          animate={{ strokeDashoffset: 2 * Math.PI * 104 }}
+                          transition={{ duration: 2, ease: 'linear' }}
+                        />
+                      </svg>
+                      <div className={`p-12 rounded-full shadow-2xl ${isCorrect ? 'bg-green-500' : 'bg-red-500'}`}>
+                        {isCorrect ? <CheckCircle2 className="w-32 h-32 text-white" /> : <XCircle className="w-32 h-32 text-white" />}
+                      </div>
                     </div>
                   </motion.div>
                 )}
               </AnimatePresence>
               <div className="w-full flex-1 min-h-0 bg-slate-900/80 backdrop-blur-xl border border-white/10 rounded-[32px] sm:rounded-[40px] p-4 sm:p-6 shadow-2xl relative overflow-hidden flex flex-col">
                 <div className="text-center mb-2 sm:mb-3 shrink-0">
-                  <h2 className={`font-black mb-1 tracking-tight leading-snug ${isWordProblem ? 'text-4xl sm:text-5xl md:text-6xl' : isFraction ? 'text-6xl sm:text-7xl md:text-8xl' : isLongQuestion ? 'text-2xl sm:text-3xl md:text-4xl' : 'text-5xl sm:text-6xl md:text-7xl'}`}>{problem.question}</h2>
+                  <h2 className={`font-black mb-1 tracking-tight leading-snug ${isReadAloud ? 'text-4xl sm:text-5xl md:text-6xl' : isLongQuestion ? 'text-2xl sm:text-3xl md:text-4xl' : 'text-5xl sm:text-6xl md:text-7xl'}`}>{problem.question}</h2>
+                  {isReadAloud && (
+                    <button
+                      onClick={() => { window.speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(problem.question); u.rate = 0.85; window.speechSynthesis.speak(u); }}
+                      className="mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-slate-700 hover:bg-slate-600 text-blue-300 hover:text-blue-200 transition-colors text-sm font-semibold"
+                    >
+                      <Volume2 className="w-5 h-5" /> Read aloud
+                    </button>
+                  )}
                 </div>
                 <div className={`grid gap-2 sm:gap-3 flex-1 min-h-0 ${isThreeOptions ? 'grid-cols-3' : 'grid-cols-2'}`}>
                   {problem.options.map((opt, i) => (
