@@ -23,6 +23,7 @@ const NAV = [
       { href: "/fretboard-architect", text: "Fretboard Architect" },
       { href: "/fretboard-explorer", text: "Fretboard Explorer" },
       { href: "/fretboard-quiz", text: "Fretboard Quiz" },
+      { href: "/lead-sheet-editor", text: "Lead Sheet Editor" },
     ],
   },
   {
