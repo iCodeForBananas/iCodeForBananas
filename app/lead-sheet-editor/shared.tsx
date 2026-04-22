@@ -114,30 +114,20 @@ export function ChordLyricLine({
   }
 
   return (
-    <div className={`font-mono leading-none mb-1 ${large ? "text-xl" : "text-sm"}`}>
-      <div
-        className={`font-bold ${large ? "text-lg" : "text-xs"}`}
-        style={{ color: "#ca8a04" }}
-      >
-        {segments.map((seg, i) => {
-          const w = Math.max(seg.chord.length, seg.lyric.length) + 1;
-          return (
-            <span key={i} style={{ display: "inline-block", minWidth: `${w}ch` }}>
-              {seg.chord}
+    <p className={`font-mono whitespace-pre-wrap ${large ? "text-2xl" : "text-base"} leading-relaxed`}>
+      {segments.map((seg, i) => (
+        <span key={i}>
+          {seg.chord && (
+            <span
+              className="font-bold"
+              style={{ color: "#ca8a04" }}
+            >
+              [{seg.chord}]
             </span>
-          );
-        })}
-      </div>
-      <div style={{ color: "#000" }}>
-        {segments.map((seg, i) => {
-          const w = Math.max(seg.chord.length, seg.lyric.length) + 1;
-          return (
-            <span key={i} style={{ display: "inline-block", minWidth: `${w}ch` }}>
-              {seg.lyric}
-            </span>
-          );
-        })}
-      </div>
-    </div>
+          )}
+          <span style={{ color: "#000" }}>{seg.lyric}</span>
+        </span>
+      ))}
+    </p>
   );
 }

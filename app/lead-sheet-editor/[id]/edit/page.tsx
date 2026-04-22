@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, use } from "react";
+import TextareaAutosize from "react-textarea-autosize";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/app/hooks/useAuth";
@@ -100,13 +101,13 @@ function SectionBlock({ section, isFirst, isLast, onChange, onMove, onDelete }: 
               </div>
             )}
 
-            <textarea
+            <TextareaAutosize
               value={section.content}
               onChange={(e) => onChange({ content: e.target.value })}
               placeholder={"[G]Here I [D]am, [Em]Lord, is it [C]I, Lord?\n[G]I have heard you [D]calling in the [Em]night"}
-              rows={4}
+              minRows={4}
               spellCheck={false}
-              className="w-full font-mono text-sm border border-[#373A40]/30 rounded px-3 py-2 outline-none resize-y bg-white leading-relaxed"
+              className="w-full font-mono text-sm border border-[#373A40]/30 rounded px-3 py-2 outline-none resize-none bg-white leading-relaxed"
             />
           </div>
 
@@ -114,11 +115,11 @@ function SectionBlock({ section, isFirst, isLast, onChange, onMove, onDelete }: 
             <label className="block text-xs font-semibold uppercase tracking-wider text-[#373A40]/50 mb-1">
               Notes
             </label>
-            <textarea
+            <TextareaAutosize
               value={section.notes}
               onChange={(e) => onChange({ notes: e.target.value })}
               placeholder="Strum pattern, dynamics, capo position for this section..."
-              rows={2}
+              minRows={2}
               className="w-full text-sm border border-[#373A40]/30 rounded px-3 py-2 outline-none resize-none bg-white italic text-[#373A40]/70"
             />
           </div>
@@ -358,11 +359,11 @@ export default function EditLeadSheet({
             <label className="block text-xs font-semibold uppercase tracking-wider text-[#373A40]/50 mb-1">
               Performance Notes
             </label>
-            <textarea
+            <TextareaAutosize
               value={current.general_notes}
               onChange={(e) => patch({ general_notes: e.target.value })}
               placeholder="Capo 3, fingerpicking pattern, dynamics, overall feel..."
-              rows={2}
+              minRows={2}
               className="w-full border border-[#373A40]/30 rounded px-3 py-2 outline-none resize-none text-sm bg-white"
             />
           </div>
