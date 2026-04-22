@@ -14,6 +14,7 @@ interface LogEntry {
 
 const COMPOUND: { name: string; type: 'weighted' | 'bodyweight' }[] = [
   { name: 'Barbell Row', type: 'weighted' },
+  { name: 'Bulgarian Split Squats', type: 'weighted' },
   { name: 'Bench Press', type: 'weighted' },
   { name: 'Bent Over Rows', type: 'weighted' },
   { name: 'Bicep Curls', type: 'weighted' },
@@ -26,6 +27,7 @@ const COMPOUND: { name: string; type: 'weighted' | 'bodyweight' }[] = [
   { name: 'Pull-ups', type: 'bodyweight' },
   { name: 'Squat', type: 'weighted' },
   { name: 'Upright Rows', type: 'weighted' },
+  { name: 'Weighted Push-ups', type: 'weighted' },
 ];
 
 const localDateStr = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
