@@ -115,24 +115,22 @@ export default function WorkoutTrackerContent() {
     reload();
   };
 
-  // chart data: for each weighted exercise that has logs, build date→weight series
-  const weightedWithLogs = useMemo(() => {
-    return COMPOUND.filter((c) =>
-      logs.some((l) => l.exercise === c.name && l.weight && l.weight > 0),
-    );
+  // chart data: all logged exercises over time (weight defaults to 0)
+  const exercisesWithLogs = useMemo(() => {
+    return COMPOUND.filter((c) => logs.some((l) => l.exercise === c.name));
   }, [logs]);
 
   const chartData = useMemo(() => {
-    const dates = [...new Set(logs.filter((l) => l.weight && l.weight > 0).map((l) => l.date))].sort();
+    const dates = [...new Set(logs.map((l) => l.date))].sort();
     return dates.map((d) => {
       const row: Record<string, string | number> = { date: d };
-      for (const ex of weightedWithLogs) {
-        const entry = logs.find((l) => l.exercise === ex.name && l.date === d && l.weight && l.weight > 0);
-        if (entry) row[ex.name] = entry.weight!;
+      for (const ex of exercisesWithLogs) {
+        const entry = logs.find((l) => l.exercise === ex.name && l.date === d);
+        if (entry) row[ex.name] = entry.weight ?? 0;
       }
       return row;
     });
-  }, [logs, weightedWithLogs]);
+  }, [logs, exercisesWithLogs]);
 
   const [hovered, setHovered] = useState<{ date: string; exercises: string[]; x: number; y: number } | null>(null);
 
@@ -235,7 +233,7 @@ export default function WorkoutTrackerContent() {
             )}
 
             {/* Weight progress chart */}
-            {weightedWithLogs.length > 0 && chartData.length > 0 && (
+            {exercisesWithLogs.length > 0 && chartData.length > 0 && (
               <div className='border-t border-[#373A40]/10 pt-6 mb-8'>
                 <h2 className='font-semibold text-lg mb-4'>Weight Progress</h2>
                 <div className='h-72'>
@@ -261,7 +259,7 @@ export default function WorkoutTrackerContent() {
                         }
                       />
                       <Legend wrapperStyle={{ fontSize: "12px" }} />
-                      {weightedWithLogs.map((ex, i) => (
+                      {exercisesWithLogs.map((ex, i) => (
                         <Line
                           key={ex.name}
                           type='monotone'
