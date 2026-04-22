@@ -87,8 +87,6 @@ export default function WorkoutTrackerContent() {
     reload();
   }, [reload]);
 
-  const selectedType = COMPOUND.find((c) => c.name === selected)?.type ?? "weighted";
-
   const sortedExercises = useMemo(() => {
     const latest = new Map<string, string>();
     for (const l of logs) {
@@ -103,7 +101,7 @@ export default function WorkoutTrackerContent() {
     if (!sb) return;
     await sb
       .from("workout_logs")
-      .insert({ exercise: selected, date, weight: selectedType === "weighted" ? +weight || 0 : null });
+      .insert({ exercise: selected, date, weight: +weight || 0 });
     setWeight("");
     setPage(0);
     reload();
@@ -119,7 +117,7 @@ export default function WorkoutTrackerContent() {
 
   // chart data: for each weighted exercise that has logs, build date→weight series
   const weightedWithLogs = useMemo(() => {
-    return COMPOUND.filter((c) => c.type === "weighted").filter((c) =>
+    return COMPOUND.filter((c) =>
       logs.some((l) => l.exercise === c.name && l.weight && l.weight > 0),
     );
   }, [logs]);
@@ -217,18 +215,16 @@ export default function WorkoutTrackerContent() {
                     </option>
                   ))}
                 </select>
-                {selectedType === "weighted" && (
-                  <input
-                    type='number'
-                    min={0}
-                    step={5}
-                    value={weight}
-                    placeholder='lbs'
-                    onChange={(e) => setWeight(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && submit()}
-                    className='w-24 border border-[#373A40]/30 rounded px-3 py-2 text-sm'
-                  />
-                )}
+                <input
+                  type='number'
+                  min={0}
+                  step={5}
+                  value={weight}
+                  placeholder='lbs'
+                  onChange={(e) => setWeight(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && submit()}
+                  className='w-24 border border-[#373A40]/30 rounded px-3 py-2 text-sm'
+                />
                 <button
                   onClick={submit}
                   className='rounded bg-black px-5 py-2 text-sm font-medium text-[#facc15] hover:bg-black/80'
