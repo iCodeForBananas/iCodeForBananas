@@ -496,6 +496,7 @@ export default function SpaceMathPage() {
   const [selectedAnswer, setSelectedAnswer] = useState<number | string | null>(null);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
   const [score, setScore] = useState(0);
+  const [attemptsUsed, setAttemptsUsed] = useState(0);
   const [gameState, setGameState] = useState<'start' | 'playing' | 'level-up' | 'finale'>('start');
   const [stars, setStars] = useState<{ w: number; h: number; t: number; l: number; o: number; d: number }[]>([]);
   useEffect(() => {
@@ -525,38 +526,55 @@ export default function SpaceMathPage() {
     setSelectedAnswer(answer);
     const correct = answer === problem?.answer;
     setIsCorrect(correct);
-    const newMastery = correct ? masteryCount + 1 : masteryCount;
-    if (correct) { playSound('correct'); setScore(s => s + 10); setMasteryCount(newMastery); }
-    else { playSound('incorrect'); }
 
     // Capture closure values now so the timeout uses the right state
     const capturedStage = stageIndex;
     const capturedSigs = recentSignatures;
-    setTimeout(() => {
-      if (newMastery >= MASTERY_THRESHOLD) {
-        playSound('badge');
-        const nextIdx = capturedStage + 1;
-        setCompletedStages(prev => Array.from(new Set([...prev, capturedStage])));
-        if (nextIdx < STAGES.length) { setStageIndex(nextIdx); setGameState('level-up'); }
-        else { setGameState('finale'); }
-        setMasteryCount(0); setRecentSignatures([]);
-      } else {
-        const p = generateProblem(capturedStage, difficulty, capturedSigs);
-        setProblem(p); setRecentSignatures(prev => [...prev.slice(-9), p.signature]);
-      }
-      setSelectedAnswer(null); setIsCorrect(null);
-    }, 2000);
+
+    if (correct) {
+      playSound('correct');
+      setScore(s => s + 10);
+      const newMastery = masteryCount + 1;
+      setMasteryCount(newMastery);
+      setTimeout(() => {
+        if (newMastery >= MASTERY_THRESHOLD) {
+          playSound('badge');
+          const nextIdx = capturedStage + 1;
+          setCompletedStages(prev => Array.from(new Set([...prev, capturedStage])));
+          if (nextIdx < STAGES.length) { setStageIndex(nextIdx); setGameState('level-up'); }
+          else { setGameState('finale'); }
+          setMasteryCount(0); setRecentSignatures([]);
+        } else {
+          const p = generateProblem(capturedStage, difficulty, capturedSigs);
+          setProblem(p); setRecentSignatures(prev => [...prev.slice(-9), p.signature]);
+        }
+        setSelectedAnswer(null); setIsCorrect(null); setAttemptsUsed(0);
+      }, 2000);
+    } else {
+      playSound('incorrect');
+      const isLastAttempt = attemptsUsed >= 1;
+      setTimeout(() => {
+        if (isLastAttempt) {
+          const p = generateProblem(capturedStage, difficulty, capturedSigs);
+          setProblem(p); setRecentSignatures(prev => [...prev.slice(-9), p.signature]);
+          setAttemptsUsed(0);
+        } else {
+          setAttemptsUsed(1);
+        }
+        setSelectedAnswer(null); setIsCorrect(null);
+      }, 2000);
+    }
   };
 
   const startLevel = () => {
-    setGameState('playing'); setRecentSignatures([]);
+    setGameState('playing'); setRecentSignatures([]); setAttemptsUsed(0);
     const p = generateProblem(stageIndex, difficulty, []);
     setProblem(p); setRecentSignatures([p.signature]);
   };
 
   const resetGame = () => {
     localStorage.setItem('space-math-save', JSON.stringify({ score, stageIndex: 0, completedStages: [] }));
-    setStageIndex(0); setCompletedStages([]); setMasteryCount(0); setGameState('start');
+    setStageIndex(0); setCompletedStages([]); setMasteryCount(0); setAttemptsUsed(0); setGameState('start');
   };
 
   const clearStars = () => {
