@@ -8,56 +8,56 @@ import confetti from 'canvas-confetti';
 interface WordData {
   word: string;
   emoji: string;
-  boxes: string[][];
-  phonemes: string[];
+  decoys: [string, string];
 }
 
 interface GameState {
   currentLevel: number;
   currentWordIndex: number;
-  currentBoxIndex: number;
-  currentLetterIndex: number;
   wordsCompleted: number;
+  attemptsLeft: number;
   isComplete: boolean;
   shrugging: boolean;
-  showHeart: boolean;
+  wrongGuesses: string[];
+  revealed: boolean;
+  gotItRight: boolean;
 }
 
 const LEVELS: Record<number, WordData[]> = {
   1: [
-    { word: 'cat', emoji: '🐈', boxes: [['c'], ['a'], ['t']], phonemes: ['c', 'a', 't'] },
-    { word: 'dog', emoji: '🐕', boxes: [['d'], ['o'], ['g']], phonemes: ['d', 'o', 'g'] },
-    { word: 'sun', emoji: '☀️', boxes: [['s'], ['u'], ['n']], phonemes: ['s', 'u', 'n'] },
-    { word: 'hat', emoji: '🎩', boxes: [['h'], ['a'], ['t']], phonemes: ['h', 'a', 't'] },
-    { word: 'bug', emoji: '🐛', boxes: [['b'], ['u'], ['g']], phonemes: ['b', 'u', 'g'] },
+    { word: 'cat', emoji: '🐈', decoys: ['hat', 'bat'] },
+    { word: 'dog', emoji: '🐕', decoys: ['fog', 'log'] },
+    { word: 'sun', emoji: '☀️', decoys: ['bun', 'run'] },
+    { word: 'hat', emoji: '🎩', decoys: ['mat', 'rat'] },
+    { word: 'bug', emoji: '🐛', decoys: ['mug', 'rug'] },
   ],
   2: [
-    { word: 'cake', emoji: '🎂', boxes: [['c'], ['a'], ['k'], ['e']], phonemes: ['c', 'a', 'k', 'e'] },
-    { word: 'bone', emoji: '🦴', boxes: [['b'], ['o'], ['n'], ['e']], phonemes: ['b', 'o', 'n', 'e'] },
-    { word: 'kite', emoji: '🪁', boxes: [['k'], ['i'], ['t'], ['e']], phonemes: ['k', 'i', 't', 'e'] },
-    { word: 'frog', emoji: '🐸', boxes: [['f'], ['r'], ['o'], ['g']], phonemes: ['f', 'r', 'o', 'g'] },
-    { word: 'tree', emoji: '🌳', boxes: [['t'], ['r'], ['e'], ['e']], phonemes: ['t', 'r', 'e', 'e'] },
+    { word: 'cake', emoji: '🎂', decoys: ['rake', 'lake'] },
+    { word: 'bone', emoji: '🦴', decoys: ['cone', 'zone'] },
+    { word: 'kite', emoji: '🪁', decoys: ['bite', 'site'] },
+    { word: 'frog', emoji: '🐸', decoys: ['flag', 'drop'] },
+    { word: 'tree', emoji: '🌳', decoys: ['bee', 'knee'] },
   ],
   3: [
-    { word: 'stone', emoji: '🪨', boxes: [['s'], ['t'], ['o'], ['n'], ['e']], phonemes: ['s', 't', 'o', 'n', 'e'] },
-    { word: 'clock', emoji: '🕐', boxes: [['c'], ['l'], ['o'], ['c'], ['k']], phonemes: ['c', 'l', 'o', 'c', 'k'] },
-    { word: 'brush', emoji: '🖌️', boxes: [['b'], ['r'], ['u'], ['s'], ['h']], phonemes: ['b', 'r', 'u', 's', 'h'] },
-    { word: 'snail', emoji: '🐌', boxes: [['s'], ['n'], ['a'], ['i'], ['l']], phonemes: ['s', 'n', 'a', 'i', 'l'] },
-    { word: 'plant', emoji: '🌱', boxes: [['p'], ['l'], ['a'], ['n'], ['t']], phonemes: ['p', 'l', 'a', 'n', 't'] },
+    { word: 'stone', emoji: '🪨', decoys: ['phone', 'alone'] },
+    { word: 'clock', emoji: '🕐', decoys: ['block', 'flock'] },
+    { word: 'brush', emoji: '🖌️', decoys: ['crush', 'flush'] },
+    { word: 'snail', emoji: '🐌', decoys: ['trail', 'nail'] },
+    { word: 'plant', emoji: '🌱', decoys: ['plane', 'grant'] },
   ],
   4: [
-    { word: 'school', emoji: '🏫', boxes: [['s'], ['c'], ['h'], ['o'], ['o'], ['l']], phonemes: ['s', 'c', 'h', 'o', 'o', 'l'] },
-    { word: 'friend', emoji: '🤝', boxes: [['f'], ['r'], ['i'], ['e'], ['n'], ['d']], phonemes: ['f', 'r', 'i', 'e', 'n', 'd'] },
-    { word: 'rocket', emoji: '🚀', boxes: [['r'], ['o'], ['c'], ['k'], ['e'], ['t']], phonemes: ['r', 'o', 'c', 'k', 'e', 't'] },
-    { word: 'spider', emoji: '🕷️', boxes: [['s'], ['p'], ['i'], ['d'], ['e'], ['r']], phonemes: ['s', 'p', 'i', 'd', 'e', 'r'] },
-    { word: 'flower', emoji: '🌸', boxes: [['f'], ['l'], ['o'], ['w'], ['e'], ['r']], phonemes: ['f', 'l', 'o', 'w', 'e', 'r'] },
+    { word: 'school', emoji: '🏫', decoys: ['stool', 'spool'] },
+    { word: 'friend', emoji: '🤝', decoys: ['fright', 'fiend'] },
+    { word: 'rocket', emoji: '🚀', decoys: ['pocket', 'locket'] },
+    { word: 'spider', emoji: '🕷️', decoys: ['slider', 'rider'] },
+    { word: 'flower', emoji: '🌸', decoys: ['tower', 'power'] },
   ],
   5: [
-    { word: 'brother', emoji: '👦', boxes: [['b'], ['r'], ['o'], ['t'], ['h'], ['e'], ['r']], phonemes: ['b', 'r', 'o', 't', 'h', 'e', 'r'] },
-    { word: 'morning', emoji: '🌅', boxes: [['m'], ['o'], ['r'], ['n'], ['i'], ['n'], ['g']], phonemes: ['m', 'o', 'r', 'n', 'i', 'n', 'g'] },
-    { word: 'weather', emoji: '🌤️', boxes: [['w'], ['e'], ['a'], ['t'], ['h'], ['e'], ['r']], phonemes: ['w', 'e', 'a', 't', 'h', 'e', 'r'] },
-    { word: 'monster', emoji: '👾', boxes: [['m'], ['o'], ['n'], ['s'], ['t'], ['e'], ['r']], phonemes: ['m', 'o', 'n', 's', 't', 'e', 'r'] },
-    { word: 'rainbow', emoji: '🌈', boxes: [['r'], ['a'], ['i'], ['n'], ['b'], ['o'], ['w']], phonemes: ['r', 'a', 'i', 'n', 'b', 'o', 'w'] },
+    { word: 'brother', emoji: '👦', decoys: ['bother', 'mother'] },
+    { word: 'morning', emoji: '🌅', decoys: ['warning', 'meaning'] },
+    { word: 'weather', emoji: '🌤️', decoys: ['feather', 'leather'] },
+    { word: 'monster', emoji: '👾', decoys: ['hamster', 'rooster'] },
+    { word: 'rainbow', emoji: '🌈', decoys: ['window', 'rainfall'] },
   ],
 };
 
@@ -117,17 +117,14 @@ const playSound = (type: 'xp' | 'thud' | 'click' | 'levelup' | 'star') => {
 };
 
 const INITIAL_STATE: GameState = {
-  currentLevel: 1, currentWordIndex: 0, currentBoxIndex: 0, currentLetterIndex: 0,
-  wordsCompleted: 0, isComplete: false, shrugging: false, showHeart: false,
+  currentLevel: 1, currentWordIndex: 0, wordsCompleted: 0, attemptsLeft: 2,
+  isComplete: false, shrugging: false, wrongGuesses: [], revealed: false, gotItRight: false,
 };
 
 export default function SpellingBeePage() {
   const [showStart, setShowStart] = useState(true);
   const [state, setState] = useState<GameState>(INITIAL_STATE);
-  const [filledBoxes, setFilledBoxes] = useState<string[][]>([]);
-  const [letterChoices, setLetterChoices] = useState<string[]>([]);
-  const [usedIndices, setUsedIndices] = useState<Set<number>>(new Set());
-  const [wrongIdx, setWrongIdx] = useState<number | null>(null);
+  const [wordOptions, setWordOptions] = useState<string[]>([]);
   const [showLevelUp, setShowLevelUp] = useState(false);
 
   const startGame = (level: number) => {
@@ -138,75 +135,58 @@ export default function SpellingBeePage() {
 
   useEffect(() => {
     if (showLevelUp || state.isComplete) return;
-    setFilledBoxes(currentWord.boxes.map(() => []));
-    setState(s => ({ ...s, currentBoxIndex: 0, currentLetterIndex: 0, showHeart: false }));
-    setUsedIndices(new Set());
-    // Include every letter in the word (preserving duplicates) + 3 decoys
-    const wordLetters = currentWord.word.split('');
-    const uniqueInWord = new Set(wordLetters);
-    const decoyPool = 'abcdefghijklmnopqrstuvwxyz'.split('').filter(l => !uniqueInWord.has(l));
-    const decoys: string[] = [];
-    while (decoys.length < 3 && decoyPool.length > 0) {
-      const idx = Math.floor(Math.random() * decoyPool.length);
-      decoys.push(decoyPool.splice(idx, 1)[0]);
+    const options = [currentWord.word, ...currentWord.decoys];
+    for (let i = options.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [options[i], options[j]] = [options[j], options[i]];
     }
-    // Word letters stay in left-to-right order; decoys are inserted at random positions
-    const totalLen = wordLetters.length + decoys.length;
-    const decoyPositions = new Set<number>();
-    while (decoyPositions.size < decoys.length) {
-      decoyPositions.add(Math.floor(Math.random() * totalLen));
-    }
-    const ordered: string[] = new Array(totalLen);
-    let wi = 0, di = 0;
-    for (let i = 0; i < totalLen; i++) {
-      ordered[i] = decoyPositions.has(i) ? decoys[di++] : wordLetters[wi++];
-    }
-    setLetterChoices(ordered);
+    setWordOptions(options);
+    setState(s => ({ ...s, attemptsLeft: 2, wrongGuesses: [], revealed: false, gotItRight: false }));
   }, [state.currentWordIndex, state.currentLevel, showLevelUp, state.isComplete]);
 
-  const handleLetterClick = (letter: string, idx: number) => {
-    if (state.isComplete || showLevelUp || wrongIdx !== null) return;
-    playSound('click');
-    const expected = currentWord.boxes[state.currentBoxIndex][state.currentLetterIndex];
-    if (letter === expected) {
-      playSound('xp');
-      setUsedIndices(prev => new Set(prev).add(idx));
-      const newFilled = [...filledBoxes];
-      newFilled[state.currentBoxIndex] = [...newFilled[state.currentBoxIndex], letter];
-      setFilledBoxes(newFilled);
-      const isBoxComplete = state.currentLetterIndex + 1 === currentWord.boxes[state.currentBoxIndex].length;
-      if (isBoxComplete) {
-        if (state.currentBoxIndex + 1 === currentWord.boxes.length) handleWordCompletion();
-        else setState(s => ({ ...s, currentBoxIndex: s.currentBoxIndex + 1, currentLetterIndex: 0 }));
+  const advanceAfterAnswer = (gotItRight: boolean) => {
+    const newCompleted = state.wordsCompleted + (gotItRight ? 1 : 0);
+    const isLastWordInLevel = state.currentWordIndex + 1 === 5;
+    if (isLastWordInLevel) {
+      if (state.currentLevel === 5) {
+        setState(s => ({ ...s, wordsCompleted: newCompleted, isComplete: true }));
+        confetti({ particleCount: 200, spread: 90, origin: { y: 0.6 } });
       } else {
-        setState(s => ({ ...s, currentLetterIndex: s.currentLetterIndex + 1 }));
+        setState(s => ({ ...s, wordsCompleted: newCompleted }));
+        setShowLevelUp(true);
+        confetti({ particleCount: 100, spread: 50, origin: { y: 0.8 } });
       }
     } else {
-      playSound('thud');
-      setWrongIdx(idx);
-      setState(s => ({ ...s, shrugging: true }));
-      setTimeout(() => { setWrongIdx(null); setState(s => ({ ...s, shrugging: false })); }, 600);
+      setState(s => ({ ...s, wordsCompleted: newCompleted, currentWordIndex: s.currentWordIndex + 1 }));
     }
   };
 
-  const handleWordCompletion = () => {
-    playSound('levelup');
-    const newCompleted = state.wordsCompleted + 1;
-    const isLastWordInLevel = state.currentWordIndex + 1 === 5;
-    setTimeout(() => {
-      if (isLastWordInLevel) {
-        if (state.currentLevel === 5) {
-          setState(s => ({ ...s, wordsCompleted: newCompleted, isComplete: true }));
-          confetti({ particleCount: 200, spread: 90, origin: { y: 0.6 } });
-        } else {
-          setState(s => ({ ...s, wordsCompleted: newCompleted }));
-          setShowLevelUp(true);
-          confetti({ particleCount: 100, spread: 50, origin: { y: 0.8 } });
-        }
-      } else {
-        setState(s => ({ ...s, wordsCompleted: newCompleted, currentWordIndex: s.currentWordIndex + 1 }));
+  const handleWordClick = (chosenWord: string) => {
+    if (state.revealed || state.gotItRight) return;
+    if (state.wrongGuesses.includes(chosenWord)) return;
+    playSound('click');
+    if (chosenWord === currentWord.word) {
+      playSound('xp');
+      setState(s => ({ ...s, gotItRight: true }));
+      if (state.currentWordIndex + 1 === 5 || state.currentLevel === 5) playSound('levelup');
+      setTimeout(() => advanceAfterAnswer(true), 1400);
+    } else {
+      playSound('thud');
+      const newAttempts = state.attemptsLeft - 1;
+      setState(s => ({
+        ...s,
+        wrongGuesses: [...s.wrongGuesses, chosenWord],
+        attemptsLeft: newAttempts,
+        shrugging: true,
+      }));
+      setTimeout(() => setState(s => ({ ...s, shrugging: false })), 600);
+      if (newAttempts === 0) {
+        setTimeout(() => {
+          setState(s => ({ ...s, revealed: true }));
+          setTimeout(() => advanceAfterAnswer(false), 1600);
+        }, 700);
       }
-    }, 1500);
+    }
   };
 
   const advanceLevel = () => {
@@ -221,6 +201,7 @@ export default function SpellingBeePage() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col items-center gap-8 z-10">
           <BeeCharacter />
           <h1 className="text-5xl font-black uppercase tracking-widest text-slate-100">Spelling Bee</h1>
+          <p className="text-slate-300 text-lg md:text-xl text-center max-w-md -mt-4">Pick the word that matches the emoji. You get two tries!</p>
           <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
             onClick={() => startGame(1)}
             className="bg-orange-500 hover:bg-orange-400 text-white px-16 py-6 rounded-full text-3xl font-black uppercase tracking-wider transition-colors shadow-[0_6px_0_rgb(154,52,18)] active:shadow-none active:translate-y-1">
@@ -238,7 +219,7 @@ export default function SpellingBeePage() {
           className="bg-slate-800 border-8 border-orange-500 p-12 rounded-3xl shadow-2xl text-center max-w-lg w-full">
           <Trophy className="w-32 h-32 text-orange-400 mx-auto mb-6" />
           <h1 className="text-5xl font-black mb-4 uppercase tracking-widest text-orange-500">Queen Bee!</h1>
-          <p className="text-2xl mb-4 font-bold text-slate-300">You spelled all 25 words!</p>
+          <p className="text-2xl mb-4 font-bold text-slate-300">You guessed {state.wordsCompleted} of 25 words!</p>
           <p className="text-6xl font-black text-orange-400 mb-8">{state.wordsCompleted}/25</p>
           <button onClick={() => setShowStart(true)}
             className="bg-orange-500 hover:bg-orange-400 text-white px-10 py-5 rounded-full text-2xl font-black uppercase tracking-wider transition-all shadow-[0_6px_0_rgb(154,52,18)] active:shadow-none active:translate-y-1">
@@ -257,7 +238,7 @@ export default function SpellingBeePage() {
           <div className="text-8xl mb-6">🎉</div>
           <h2 className="text-4xl font-black mb-2 text-orange-500">Level {state.currentLevel} Complete!</h2>
           <p className="text-xl text-slate-300 mb-2">{LEVEL_NAMES[state.currentLevel - 1]}</p>
-          <p className="text-slate-400 mb-8">Words spelled: {state.wordsCompleted}/25</p>
+          <p className="text-slate-400 mb-8">Words guessed: {state.wordsCompleted}/25</p>
           <button onClick={advanceLevel}
             className="bg-orange-500 hover:bg-orange-400 text-white px-10 py-5 rounded-full text-2xl font-black uppercase tracking-wider transition-all shadow-[0_6px_0_rgb(154,52,18)] active:shadow-none active:translate-y-1 flex items-center gap-3 mx-auto">
             Level {state.currentLevel + 1} <ChevronRight className="w-8 h-8" />
@@ -303,41 +284,66 @@ export default function SpellingBeePage() {
         {/* Bee */}
         <BeeCharacter shrugging={state.shrugging} />
 
-        {/* Elkonin Boxes */}
-        <div className="flex gap-1 md:gap-4 items-end shrink-0">
-          {currentWord.boxes.map((box, i) => (
-            <div key={i} className="relative flex flex-col items-center">
-              <div className={`w-10 h-10 md:w-20 md:h-20 bg-slate-800 border-2 md:border-4 rounded-xl md:rounded-2xl flex items-center justify-center text-xl md:text-4xl font-black uppercase text-slate-100 ${state.currentBoxIndex === i ? 'border-orange-500 shadow-[0_0_20px_rgba(249,115,22,0.5)] ring-2 md:ring-4 ring-orange-900' : 'border-slate-600'} transition-all duration-300`}>
-                {filledBoxes[i]?.join('')}
-              </div>
-              <div className={`mt-1 md:mt-3 w-2 h-2 md:w-3 md:h-3 rounded-full ${state.currentBoxIndex === i ? 'bg-orange-500 animate-bounce' : 'bg-slate-700'}`} />
-            </div>
-          ))}
-          <div className="ml-2 md:ml-4 p-3 md:p-5 bg-slate-800 rounded-xl md:rounded-2xl border-2 md:border-4 border-slate-700 flex items-center justify-center">
-            <span className="text-4xl md:text-6xl">{currentWord.emoji}</span>
+        {/* Emoji card */}
+        <div className="flex flex-col items-center gap-2 md:gap-4 shrink-0">
+          <p className="text-slate-400 text-xs md:text-sm font-black uppercase tracking-widest">What is this?</p>
+          <motion.div
+            key={`${state.currentLevel}-${state.currentWordIndex}`}
+            initial={{ scale: 0.5, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: 'spring', stiffness: 200, damping: 15 }}
+            className="p-6 md:p-10 bg-slate-800 rounded-3xl md:rounded-[2rem] border-4 md:border-8 border-slate-700 shadow-2xl"
+          >
+            <span className="text-7xl md:text-9xl leading-none block">{currentWord.emoji}</span>
+          </motion.div>
+          <div className="flex gap-1.5 md:gap-2 items-center mt-1">
+            {[0, 1].map(i => (
+              <div key={i} className={`w-4 h-4 md:w-5 md:h-5 rounded-full border-2 transition-colors ${
+                i < state.attemptsLeft ? 'bg-orange-500 border-orange-300 shadow-[0_0_10px_rgba(249,115,22,0.6)]' : 'bg-slate-700 border-slate-600'
+              }`} />
+            ))}
+            <span className="ml-2 text-slate-400 text-xs md:text-sm font-black uppercase tracking-widest">{state.attemptsLeft} {state.attemptsLeft === 1 ? 'try' : 'tries'}</span>
           </div>
         </div>
 
-        {/* Letter Bank */}
-        <div className="w-full bg-slate-800 p-2 md:p-6 rounded-2xl md:rounded-3xl border-2 md:border-4 border-slate-700 shadow-xl shrink-0">
-          <div className="flex flex-wrap gap-2 md:gap-3 justify-center">
-            <AnimatePresence>
-            {letterChoices.map((letter, idx) => !usedIndices.has(idx) && (
-              <motion.button key={idx} layout
-                initial={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0 }}
-                animate={wrongIdx === idx ? { x: [-8, 8, -8, 8, 0], scale: [1, 1.2, 1] } : {}}
-                whileHover={wrongIdx === null ? { scale: 1.1, y: -2 } : {}}
-                whileTap={{ scale: 0.9 }}
-                onClick={() => handleLetterClick(letter, idx)}
-                className={`w-12 h-12 md:w-16 md:h-16 font-black text-lg md:text-3xl uppercase rounded-lg md:rounded-xl border-b-2 md:border-b-4 flex items-center justify-center transition-colors ${
-                  wrongIdx === idx
-                    ? 'bg-red-500 border-red-700 text-white ring-4 ring-red-400/50'
-                    : 'bg-slate-700 hover:bg-orange-500 text-slate-100 border-slate-900 hover:border-orange-700'
-                }`}>
-                {letter}
-              </motion.button>
-            ))}
+        {/* Word choices */}
+        <div className="w-full bg-slate-800 p-3 md:p-6 rounded-2xl md:rounded-3xl border-2 md:border-4 border-slate-700 shadow-xl shrink-0">
+          <div className="flex flex-wrap gap-3 md:gap-4 justify-center">
+            <AnimatePresence mode="popLayout">
+            {wordOptions.map((word) => {
+              const isWrong = state.wrongGuesses.includes(word);
+              const isCorrect = state.gotItRight && word === currentWord.word;
+              const isRevealed = state.revealed && word === currentWord.word;
+              const disabled = isWrong || state.gotItRight || state.revealed;
+              return (
+                <motion.button
+                  key={`${state.currentLevel}-${state.currentWordIndex}-${word}`}
+                  layout
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={
+                    isWrong
+                      ? { opacity: 0.6, y: 0, x: [-8, 8, -8, 8, 0] }
+                      : isCorrect || isRevealed
+                      ? { opacity: 1, y: 0, scale: [1, 1.15, 1] }
+                      : { opacity: 1, y: 0 }
+                  }
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  whileHover={!disabled ? { scale: 1.05, y: -3 } : {}}
+                  whileTap={!disabled ? { scale: 0.95 } : {}}
+                  onClick={() => handleWordClick(word)}
+                  disabled={disabled}
+                  className={`px-6 py-4 md:px-10 md:py-6 font-black text-2xl md:text-4xl lowercase rounded-xl md:rounded-2xl border-b-2 md:border-b-4 flex items-center justify-center transition-colors min-w-[7rem] md:min-w-[11rem] ${
+                    isCorrect || isRevealed
+                      ? 'bg-green-500 border-green-700 text-white ring-4 ring-green-400/50'
+                      : isWrong
+                      ? 'bg-red-500 border-red-700 text-white line-through'
+                      : 'bg-slate-700 hover:bg-orange-500 text-slate-100 border-slate-900 hover:border-orange-700'
+                  }`}
+                >
+                  {word}
+                </motion.button>
+              );
+            })}
             </AnimatePresence>
           </div>
         </div>
