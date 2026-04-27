@@ -1,67 +1,98 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Trophy, Bug as Bee, ChevronRight } from 'lucide-react';
+import { Crown, Bug as Bee, Sparkles, ChevronUp, ChevronDown, GraduationCap } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import {
+  Question,
+  GRADES,
+  INITIAL_LEVEL,
+  MAX_LEVEL,
+  FIRST_TRY_BONUS,
+  SECOND_TRY_BONUS,
+  WRONG_PENALTY,
+  MASTERY_STREAK,
+  MASTERY_BONUS,
+  pickQuestion,
+  gradeNameFromLevel,
+  gradeIndexFromLevel,
+  gradeProgress,
+  clampLevel,
+  answerOf,
+} from './questions';
 
-interface WordData {
-  word: string;
-  emoji: string;
-  decoys: [string, string];
+function shuffleInPlace<T>(arr: T[]): T[] {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
 }
 
-interface GameState {
-  currentLevel: number;
-  currentWordIndex: number;
-  wordsCompleted: number;
+interface Progress {
+  level: number;
+  totalCorrect: number;
+  totalAnswered: number;
+  highestLevel: number;
+  reachedGraduation: boolean;
+}
+
+interface Transient {
   attemptsLeft: number;
-  isComplete: boolean;
   shrugging: boolean;
   wrongGuesses: string[];
   revealed: boolean;
   gotItRight: boolean;
+  streak: number;
 }
 
-const LEVELS: Record<number, WordData[]> = {
-  1: [
-    { word: 'cat', emoji: '🐈', decoys: ['hat', 'bat'] },
-    { word: 'dog', emoji: '🐕', decoys: ['fog', 'log'] },
-    { word: 'sun', emoji: '☀️', decoys: ['bun', 'run'] },
-    { word: 'hat', emoji: '🎩', decoys: ['mat', 'rat'] },
-    { word: 'bug', emoji: '🐛', decoys: ['mug', 'rug'] },
-  ],
-  2: [
-    { word: 'cake', emoji: '🎂', decoys: ['rake', 'lake'] },
-    { word: 'bone', emoji: '🦴', decoys: ['cone', 'zone'] },
-    { word: 'kite', emoji: '🪁', decoys: ['bite', 'site'] },
-    { word: 'frog', emoji: '🐸', decoys: ['flag', 'drop'] },
-    { word: 'tree', emoji: '🌳', decoys: ['bee', 'knee'] },
-  ],
-  3: [
-    { word: 'stone', emoji: '🪨', decoys: ['phone', 'alone'] },
-    { word: 'clock', emoji: '🕐', decoys: ['block', 'flock'] },
-    { word: 'brush', emoji: '🖌️', decoys: ['crush', 'flush'] },
-    { word: 'snail', emoji: '🐌', decoys: ['trail', 'nail'] },
-    { word: 'plant', emoji: '🌱', decoys: ['plane', 'grant'] },
-  ],
-  4: [
-    { word: 'school', emoji: '🏫', decoys: ['stool', 'spool'] },
-    { word: 'friend', emoji: '🤝', decoys: ['fright', 'fiend'] },
-    { word: 'rocket', emoji: '🚀', decoys: ['pocket', 'locket'] },
-    { word: 'spider', emoji: '🕷️', decoys: ['slider', 'rider'] },
-    { word: 'flower', emoji: '🌸', decoys: ['tower', 'power'] },
-  ],
-  5: [
-    { word: 'brother', emoji: '👦', decoys: ['bother', 'mother'] },
-    { word: 'morning', emoji: '🌅', decoys: ['warning', 'meaning'] },
-    { word: 'weather', emoji: '🌤️', decoys: ['feather', 'leather'] },
-    { word: 'monster', emoji: '👾', decoys: ['hamster', 'rooster'] },
-    { word: 'rainbow', emoji: '🌈', decoys: ['window', 'rainfall'] },
-  ],
+const STORAGE_KEY = 'spelling-bee-progress';
+const RECENT_MEMORY = 8;
+
+const INITIAL_PROGRESS: Progress = {
+  level: INITIAL_LEVEL,
+  totalCorrect: 0,
+  totalAnswered: 0,
+  highestLevel: INITIAL_LEVEL,
+  reachedGraduation: false,
 };
 
-const LEVEL_NAMES = ['Simple Things', 'Nature & Fun', 'Around Us', 'Big World', 'Boss Words'];
+const INITIAL_TRANSIENT: Transient = {
+  attemptsLeft: 2,
+  shrugging: false,
+  wrongGuesses: [],
+  revealed: false,
+  gotItRight: false,
+  streak: 0,
+};
+
+function loadProgress(): Progress {
+  if (typeof window === 'undefined') return INITIAL_PROGRESS;
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return INITIAL_PROGRESS;
+    const parsed = JSON.parse(raw) as Partial<Progress>;
+    return {
+      level: clampLevel(parsed.level ?? INITIAL_LEVEL),
+      totalCorrect: parsed.totalCorrect ?? 0,
+      totalAnswered: parsed.totalAnswered ?? 0,
+      highestLevel: clampLevel(parsed.highestLevel ?? INITIAL_LEVEL),
+      reachedGraduation: parsed.reachedGraduation ?? false,
+    };
+  } catch {
+    return INITIAL_PROGRESS;
+  }
+}
+
+function saveProgress(p: Progress) {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(p));
+  } catch {
+    // ignore
+  }
+}
 
 function BeeCharacter({ shrugging = false }: { shrugging?: boolean }) {
   return (
@@ -116,137 +147,211 @@ const playSound = (type: 'xp' | 'thud' | 'click' | 'levelup' | 'star') => {
   osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + 0.5);
 };
 
-const INITIAL_STATE: GameState = {
-  currentLevel: 1, currentWordIndex: 0, wordsCompleted: 0, attemptsLeft: 2,
-  isComplete: false, shrugging: false, wrongGuesses: [], revealed: false, gotItRight: false,
-};
-
 export default function SpellingBeePage() {
   const [showStart, setShowStart] = useState(true);
-  const [state, setState] = useState<GameState>(INITIAL_STATE);
-  const [wordOptions, setWordOptions] = useState<string[]>([]);
-  const [showLevelUp, setShowLevelUp] = useState(false);
+  const [progress, setProgress] = useState<Progress>(INITIAL_PROGRESS);
+  const [transient, setTransient] = useState<Transient>(INITIAL_TRANSIENT);
+  const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
+  const [options, setOptions] = useState<string[]>([]);
+  const [recentIds, setRecentIds] = useState<string[]>([]);
+  const [showGraduation, setShowGraduation] = useState(false);
+  const [toast, setToast] = useState<{ kind: 'gradeUp' | 'gradeDown' | 'mastery'; text: string } | null>(null);
+  const [hydrated, setHydrated] = useState(false);
 
-  const startGame = (level: number) => {
-    setState({ ...INITIAL_STATE, currentLevel: level });
-    setShowStart(false);
-  };
-  const currentWord = LEVELS[state.currentLevel][state.currentWordIndex];
-
+  // Load saved progress on mount (window not available during SSR).
   useEffect(() => {
-    if (showLevelUp || state.isComplete) return;
-    const options = [currentWord.word, ...currentWord.decoys];
-    for (let i = options.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [options[i], options[j]] = [options[j], options[i]];
-    }
-    setWordOptions(options);
-    setState(s => ({ ...s, attemptsLeft: 2, wrongGuesses: [], revealed: false, gotItRight: false }));
-  }, [state.currentWordIndex, state.currentLevel, showLevelUp, state.isComplete]);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setProgress(loadProgress());
+    setHydrated(true);
+  }, []);
 
-  const advanceAfterAnswer = (gotItRight: boolean) => {
-    const newCompleted = state.wordsCompleted + (gotItRight ? 1 : 0);
-    const isLastWordInLevel = state.currentWordIndex + 1 === 5;
-    if (isLastWordInLevel) {
-      if (state.currentLevel === 5) {
-        setState(s => ({ ...s, wordsCompleted: newCompleted, isComplete: true }));
-        confetti({ particleCount: 200, spread: 90, origin: { y: 0.6 } });
-      } else {
-        setState(s => ({ ...s, wordsCompleted: newCompleted }));
-        setShowLevelUp(true);
-        confetti({ particleCount: 100, spread: 50, origin: { y: 0.8 } });
-      }
-    } else {
-      setState(s => ({ ...s, wordsCompleted: newCompleted, currentWordIndex: s.currentWordIndex + 1 }));
-    }
+  // Persist progress whenever it changes
+  useEffect(() => {
+    if (!hydrated) return;
+    saveProgress(progress);
+  }, [progress, hydrated]);
+
+  const pickAndSet = (level: number, recent: string[]) => {
+    const next = pickQuestion(level, recent);
+    const opts = shuffleInPlace([next.answer, ...next.decoys]);
+    setCurrentQuestion(next);
+    setOptions(opts);
+    setTransient(t => ({ ...t, attemptsLeft: 2, wrongGuesses: [], revealed: false, gotItRight: false }));
   };
 
-  const handleWordClick = (chosenWord: string) => {
-    if (state.revealed || state.gotItRight) return;
-    if (state.wrongGuesses.includes(chosenWord)) return;
+  const startGame = () => {
+    setTransient(INITIAL_TRANSIENT);
+    setRecentIds([]);
+    setShowGraduation(false);
+    setToast(null);
+    setShowStart(false);
+    pickAndSet(progress.level, []);
+  };
+
+  const resetProgress = () => {
+    const fresh = { ...INITIAL_PROGRESS };
+    setProgress(fresh);
+    saveProgress(fresh);
+    setRecentIds([]);
+    setShowGraduation(false);
+    setToast(null);
+    pickAndSet(fresh.level, []);
+  };
+
+  const finishQuestion = (outcome: 'first-try' | 'second-try' | 'failed') => {
+    if (!currentQuestion) return;
+
+    let delta = 0;
+    let newStreak = transient.streak;
+    let masteryHit = false;
+
+    if (outcome === 'first-try') {
+      delta = FIRST_TRY_BONUS;
+      newStreak += 1;
+      if (newStreak >= MASTERY_STREAK) {
+        delta += MASTERY_BONUS;
+        masteryHit = true;
+        newStreak = 0;
+      }
+    } else if (outcome === 'second-try') {
+      delta = SECOND_TRY_BONUS;
+      newStreak = 0;
+    } else {
+      delta = -WRONG_PENALTY;
+      newStreak = 0;
+    }
+
+    const oldLevel = progress.level;
+    const newLevel = clampLevel(oldLevel + delta);
+    const oldGrade = gradeIndexFromLevel(oldLevel);
+    const newGrade = gradeIndexFromLevel(newLevel);
+    const correctIncrement = outcome === 'failed' ? 0 : 1;
+    const newHighest = Math.max(progress.highestLevel, newLevel);
+    const reachedGraduation = !progress.reachedGraduation && newLevel >= MAX_LEVEL - 0.001;
+
+    setProgress(p => ({
+      ...p,
+      level: newLevel,
+      totalCorrect: p.totalCorrect + correctIncrement,
+      totalAnswered: p.totalAnswered + 1,
+      highestLevel: newHighest,
+      reachedGraduation: p.reachedGraduation || reachedGraduation,
+    }));
+    setTransient(t => ({ ...t, streak: newStreak }));
+
+    const newRecent = [currentQuestion.id, ...recentIds].slice(0, RECENT_MEMORY);
+    setRecentIds(newRecent);
+
+    // Celebrations / toasts
+    if (reachedGraduation) {
+      playSound('levelup');
+      setShowGraduation(true);
+      confetti({ particleCount: 250, spread: 100, origin: { y: 0.6 } });
+      return;
+    }
+    if (newGrade > oldGrade) {
+      playSound('levelup');
+      confetti({ particleCount: 80, spread: 60, origin: { y: 0.7 } });
+      setToast({ kind: 'gradeUp', text: `Welcome to ${GRADES[newGrade]}!` });
+      setTimeout(() => setToast(null), 2200);
+    } else if (newGrade < oldGrade) {
+      setToast({ kind: 'gradeDown', text: `Sliding back to ${GRADES[newGrade]}` });
+      setTimeout(() => setToast(null), 2000);
+    } else if (masteryHit) {
+      playSound('star');
+      confetti({ particleCount: 40, spread: 40, origin: { y: 0.7 } });
+      setToast({ kind: 'mastery', text: `Mastery! +${MASTERY_BONUS.toFixed(2)}` });
+      setTimeout(() => setToast(null), 1600);
+    }
+
+    pickAndSet(newLevel, newRecent);
+  };
+
+  const handleAnswerClick = (chosen: string) => {
+    if (!currentQuestion) return;
+    if (transient.revealed || transient.gotItRight) return;
+    if (transient.wrongGuesses.includes(chosen)) return;
     playSound('click');
-    if (chosenWord === currentWord.word) {
+
+    if (chosen === answerOf(currentQuestion)) {
       playSound('xp');
-      setState(s => ({ ...s, gotItRight: true }));
-      if (state.currentWordIndex + 1 === 5 || state.currentLevel === 5) playSound('levelup');
-      setTimeout(() => advanceAfterAnswer(true), 1400);
+      const firstTry = transient.wrongGuesses.length === 0;
+      setTransient(t => ({ ...t, gotItRight: true }));
+      setTimeout(() => finishQuestion(firstTry ? 'first-try' : 'second-try'), 1300);
     } else {
       playSound('thud');
-      const newAttempts = state.attemptsLeft - 1;
-      setState(s => ({
-        ...s,
-        wrongGuesses: [...s.wrongGuesses, chosenWord],
+      const newAttempts = transient.attemptsLeft - 1;
+      setTransient(t => ({
+        ...t,
+        wrongGuesses: [...t.wrongGuesses, chosen],
         attemptsLeft: newAttempts,
         shrugging: true,
       }));
-      setTimeout(() => setState(s => ({ ...s, shrugging: false })), 600);
+      setTimeout(() => setTransient(t => ({ ...t, shrugging: false })), 600);
       if (newAttempts === 0) {
         setTimeout(() => {
-          setState(s => ({ ...s, revealed: true }));
-          setTimeout(() => advanceAfterAnswer(false), 1600);
+          setTransient(t => ({ ...t, revealed: true }));
+          setTimeout(() => finishQuestion('failed'), 1500);
         }, 700);
       }
     }
   };
 
-  const advanceLevel = () => {
-    setShowLevelUp(false);
-    setState(s => ({ ...s, currentLevel: s.currentLevel + 1, currentWordIndex: 0 }));
+  const dismissGraduation = () => {
+    setShowGraduation(false);
+    pickAndSet(progress.level, recentIds);
   };
 
+  // ==================== Start screen ====================
   if (showStart) {
+    const grade = gradeNameFromLevel(progress.level);
+    const hasProgress = progress.totalAnswered > 0;
     return (
       <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-6 font-sans">
         <div className="fixed inset-0 pointer-events-none opacity-[0.05]" style={{ backgroundImage: 'radial-gradient(#f97316 2px, transparent 2px)', backgroundSize: '40px 40px' }} />
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col items-center gap-8 z-10">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col items-center gap-6 z-10 max-w-xl">
           <BeeCharacter />
           <h1 className="text-5xl font-black uppercase tracking-widest text-slate-100">Spelling Bee</h1>
-          <p className="text-slate-300 text-lg md:text-xl text-center max-w-md -mt-4">Pick the word that matches the emoji. You get two tries!</p>
+          <p className="text-slate-300 text-lg md:text-xl text-center">An adaptive learning hive — questions get harder when you nail them and easier when you stumble.</p>
+          {hasProgress && (
+            <div className="bg-slate-800 border-2 border-orange-500 rounded-2xl px-6 py-4 text-center">
+              <div className="text-orange-400 text-xs font-black uppercase tracking-widest mb-1">Saved Progress</div>
+              <div className="text-slate-100 text-2xl font-black">{grade}</div>
+              <div className="text-slate-400 text-sm mt-1">Level {progress.level.toFixed(2)} · {progress.totalCorrect}/{progress.totalAnswered} answered</div>
+            </div>
+          )}
           <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-            onClick={() => startGame(1)}
+            onClick={startGame}
             className="bg-orange-500 hover:bg-orange-400 text-white px-16 py-6 rounded-full text-3xl font-black uppercase tracking-wider transition-colors shadow-[0_6px_0_rgb(154,52,18)] active:shadow-none active:translate-y-1">
-            Start!
+            {hasProgress ? 'Continue' : 'Start!'}
           </motion.button>
+          {hasProgress && (
+            <button onClick={resetProgress} className="text-slate-500 text-sm font-bold uppercase tracking-widest hover:text-orange-400 transition-colors">
+              Reset progress
+            </button>
+          )}
         </motion.div>
       </div>
     );
   }
 
-  if (state.isComplete) {
-    return (
-      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-8 text-white font-sans">
-        <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}
-          className="bg-slate-800 border-8 border-orange-500 p-12 rounded-3xl shadow-2xl text-center max-w-lg w-full">
-          <Trophy className="w-32 h-32 text-orange-400 mx-auto mb-6" />
-          <h1 className="text-5xl font-black mb-4 uppercase tracking-widest text-orange-500">Queen Bee!</h1>
-          <p className="text-2xl mb-4 font-bold text-slate-300">You guessed {state.wordsCompleted} of 25 words!</p>
-          <p className="text-6xl font-black text-orange-400 mb-8">{state.wordsCompleted}/25</p>
-          <button onClick={() => setShowStart(true)}
-            className="bg-orange-500 hover:bg-orange-400 text-white px-10 py-5 rounded-full text-2xl font-black uppercase tracking-wider transition-all shadow-[0_6px_0_rgb(154,52,18)] active:shadow-none active:translate-y-1">
-            Buzz Again!
-          </button>
-        </motion.div>
-      </div>
-    );
-  }
+  if (!currentQuestion) return null;
 
-  if (showLevelUp) {
-    return (
-      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-8 text-white font-sans">
-        <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-          className="bg-slate-800 border-8 border-orange-500 p-12 rounded-3xl shadow-2xl text-center max-w-lg w-full">
-          <div className="text-8xl mb-6">🎉</div>
-          <h2 className="text-4xl font-black mb-2 text-orange-500">Level {state.currentLevel} Complete!</h2>
-          <p className="text-xl text-slate-300 mb-2">{LEVEL_NAMES[state.currentLevel - 1]}</p>
-          <p className="text-slate-400 mb-8">Words guessed: {state.wordsCompleted}/25</p>
-          <button onClick={advanceLevel}
-            className="bg-orange-500 hover:bg-orange-400 text-white px-10 py-5 rounded-full text-2xl font-black uppercase tracking-wider transition-all shadow-[0_6px_0_rgb(154,52,18)] active:shadow-none active:translate-y-1 flex items-center gap-3 mx-auto">
-            Level {state.currentLevel + 1} <ChevronRight className="w-8 h-8" />
-          </button>
-        </motion.div>
-      </div>
-    );
-  }
+  const correctAnswer = answerOf(currentQuestion);
+  const accuracy = progress.totalAnswered > 0 ? Math.round((progress.totalCorrect / progress.totalAnswered) * 100) : 0;
+  const grade = gradeNameFromLevel(progress.level);
+  const gradeIdx = gradeIndexFromLevel(progress.level);
+  const gradeProg = gradeProgress(progress.level);
+
+  const promptHeader =
+    currentQuestion.kind === 'emoji'
+      ? currentQuestion.instruction
+      : currentQuestion.kind === 'letter'
+      ? `This is the ${currentQuestion.case === 'upper' ? 'uppercase' : 'lowercase'} ${currentQuestion.letter}.`
+      : currentQuestion.instruction;
+
+  const promptCta =
+    currentQuestion.kind === 'letter' ? `Find the ${currentQuestion.letter}` : null;
 
   return (
     <div className="h-screen h-[100dvh] bg-slate-900 flex flex-col items-center p-2 md:p-8 font-sans overflow-hidden selection:bg-orange-500/30 relative">
@@ -259,96 +364,179 @@ export default function SpellingBeePage() {
         <div className="absolute inset-0 opacity-[0.05]" style={{ backgroundImage: 'radial-gradient(#f97316 2px, transparent 2px)', backgroundSize: '40px 40px' }} />
       </div>
 
+      {/* Toast */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className={`fixed top-4 left-1/2 -translate-x-1/2 z-40 px-5 py-3 rounded-full font-black uppercase tracking-wider text-sm md:text-base flex items-center gap-2 shadow-2xl border-2 ${
+              toast.kind === 'gradeUp'
+                ? 'bg-emerald-500 border-emerald-300 text-white'
+                : toast.kind === 'mastery'
+                ? 'bg-yellow-400 border-yellow-200 text-slate-900'
+                : 'bg-slate-700 border-slate-500 text-slate-100'
+            }`}
+          >
+            {toast.kind === 'gradeUp' && <ChevronUp className="w-5 h-5" />}
+            {toast.kind === 'gradeDown' && <ChevronDown className="w-5 h-5" />}
+            {toast.kind === 'mastery' && <Sparkles className="w-5 h-5" />}
+            {toast.text}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Header */}
       <div className="w-full max-w-4xl mb-2 md:mb-6 z-10 shrink-0">
-        <div className="flex justify-between items-center mb-2">
-          <h2 className="text-slate-100 text-lg md:text-2xl font-black uppercase tracking-widest flex items-center gap-2">
-            <Bee className="w-6 h-6 md:w-8 md:h-8 text-orange-500" /> Level {state.currentLevel}
-            <span className="text-sm md:text-base text-slate-400 font-bold normal-case tracking-normal">— {LEVEL_NAMES[state.currentLevel - 1]}</span>
+        <div className="flex justify-between items-center mb-2 gap-2">
+          <h2 className="text-slate-100 text-base md:text-2xl font-black uppercase tracking-widest flex items-center gap-2 min-w-0">
+            <Bee className="w-6 h-6 md:w-8 md:h-8 text-orange-500 shrink-0" />
+            <span className="truncate">{grade}</span>
+            <span className="hidden md:inline text-base text-slate-400 font-bold normal-case tracking-normal">· {currentQuestion.subject} / {currentQuestion.skill}</span>
           </h2>
-          <div className="bg-slate-800 px-3 py-0.5 md:px-4 md:py-1 rounded-full border-2 border-slate-700 text-slate-300 text-[10px] md:text-sm font-black uppercase shadow-sm">
-            Word {state.currentWordIndex + 1} / 5
+          <div className="bg-slate-800 px-3 py-0.5 md:px-4 md:py-1 rounded-full border-2 border-slate-700 text-slate-300 text-[10px] md:text-sm font-black uppercase shadow-sm shrink-0">
+            Lvl {progress.level.toFixed(2)} · {progress.totalCorrect}/{progress.totalAnswered}{progress.totalAnswered > 0 && ` · ${accuracy}%`}
           </div>
         </div>
-        {/* Progress stars for current level */}
-        <div className="flex gap-2 items-center">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="flex-1 h-2 md:h-3 rounded-full overflow-hidden bg-slate-800 border border-slate-700">
-              <div className={`h-full rounded-full transition-all duration-500 ${i < state.currentWordIndex ? 'bg-orange-500 w-full' : i === state.currentWordIndex ? 'bg-orange-500/50 w-1/2' : 'w-0'}`} />
-            </div>
-          ))}
+        {/* Grade pips: Pre-K → 5th */}
+        <div className="flex gap-1 md:gap-1.5 items-center">
+          {GRADES.map((_g, i) => {
+            const isPast = i < gradeIdx;
+            const isCurrent = i === gradeIdx;
+            return (
+              <div key={i} className={`flex-1 h-2 md:h-3 rounded-full overflow-hidden border ${isPast ? 'bg-orange-500 border-orange-300' : 'bg-slate-800 border-slate-700'}`}>
+                {isCurrent && (
+                  <div className="h-full bg-orange-500 transition-all duration-500" style={{ width: `${gradeProg * 100}%` }} />
+                )}
+              </div>
+            );
+          })}
         </div>
+        {/* Mastery streak indicator */}
+        {transient.streak > 0 && (
+          <div className="mt-1 flex items-center gap-1.5">
+            {Array.from({ length: MASTERY_STREAK }).map((_, i) => (
+              <div key={i} className={`w-1.5 h-1.5 md:w-2 md:h-2 rounded-full ${i < transient.streak ? 'bg-yellow-400 shadow-[0_0_6px_rgba(250,204,21,0.8)]' : 'bg-slate-700'}`} />
+            ))}
+            <span className="text-[10px] md:text-xs text-slate-500 font-black uppercase tracking-widest ml-1">streak</span>
+          </div>
+        )}
       </div>
 
-      <div className="flex-1 w-full max-w-4xl flex flex-col items-center justify-center gap-4 md:gap-10 z-10 min-h-0 py-2">
-        {/* Bee */}
-        <BeeCharacter shrugging={state.shrugging} />
+      <div className="flex-1 w-full max-w-4xl flex flex-col items-center justify-center gap-3 md:gap-8 z-10 min-h-0 py-2">
+        <BeeCharacter shrugging={transient.shrugging} />
 
-        {/* Emoji card */}
-        <div className="flex flex-col items-center gap-2 md:gap-4 shrink-0">
-          <p className="text-slate-400 text-xs md:text-sm font-black uppercase tracking-widest">What is this?</p>
+        {/* Prompt card */}
+        <div className="flex flex-col items-center gap-2 md:gap-3 shrink-0 px-4">
+          <p className="text-slate-400 text-xs md:text-sm font-black uppercase tracking-widest text-center">{promptHeader}</p>
           <motion.div
-            key={`${state.currentLevel}-${state.currentWordIndex}`}
+            key={`${currentQuestion.id}-${progress.totalAnswered}`}
             initial={{ scale: 0.5, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ type: 'spring', stiffness: 200, damping: 15 }}
-            className="p-6 md:p-10 bg-slate-800 rounded-3xl md:rounded-[2rem] border-4 md:border-8 border-slate-700 shadow-2xl"
+            className="px-6 py-5 md:px-10 md:py-8 bg-slate-800 rounded-3xl md:rounded-[2rem] border-4 md:border-8 border-slate-700 shadow-2xl min-w-[8rem] md:min-w-[12rem] text-center"
           >
-            <span className="text-7xl md:text-9xl leading-none block">{currentWord.emoji}</span>
+            {currentQuestion.kind === 'emoji' && (
+              <span className="text-5xl md:text-8xl leading-tight block">{currentQuestion.emoji}</span>
+            )}
+            {currentQuestion.kind === 'letter' && (
+              <span className="text-7xl md:text-9xl leading-none block font-black text-orange-400 font-serif">{currentQuestion.letter}</span>
+            )}
+            {currentQuestion.kind === 'text' && (
+              <span className="text-2xl md:text-4xl leading-snug block text-slate-100 font-black">{currentQuestion.text}</span>
+            )}
           </motion.div>
+          {promptCta && (
+            <p className="text-slate-300 text-sm md:text-base font-black uppercase tracking-widest text-center">{promptCta}</p>
+          )}
           <div className="flex gap-1.5 md:gap-2 items-center mt-1">
             {[0, 1].map(i => (
-              <div key={i} className={`w-4 h-4 md:w-5 md:h-5 rounded-full border-2 transition-colors ${
-                i < state.attemptsLeft ? 'bg-orange-500 border-orange-300 shadow-[0_0_10px_rgba(249,115,22,0.6)]' : 'bg-slate-700 border-slate-600'
+              <div key={i} className={`w-3.5 h-3.5 md:w-5 md:h-5 rounded-full border-2 transition-colors ${
+                i < transient.attemptsLeft ? 'bg-orange-500 border-orange-300 shadow-[0_0_10px_rgba(249,115,22,0.6)]' : 'bg-slate-700 border-slate-600'
               }`} />
             ))}
-            <span className="ml-2 text-slate-400 text-xs md:text-sm font-black uppercase tracking-widest">{state.attemptsLeft} {state.attemptsLeft === 1 ? 'try' : 'tries'}</span>
+            <span className="ml-2 text-slate-400 text-[10px] md:text-sm font-black uppercase tracking-widest">{transient.attemptsLeft} {transient.attemptsLeft === 1 ? 'try' : 'tries'}</span>
           </div>
         </div>
 
-        {/* Word choices */}
+        {/* Answer choices */}
         <div className="w-full bg-slate-800 p-3 md:p-6 rounded-2xl md:rounded-3xl border-2 md:border-4 border-slate-700 shadow-xl shrink-0">
-          <div className="flex flex-wrap gap-3 md:gap-4 justify-center">
+          <div className="flex flex-wrap gap-2 md:gap-4 justify-center">
             <AnimatePresence mode="popLayout">
-            {wordOptions.map((word) => {
-              const isWrong = state.wrongGuesses.includes(word);
-              const isCorrect = state.gotItRight && word === currentWord.word;
-              const isRevealed = state.revealed && word === currentWord.word;
-              const disabled = isWrong || state.gotItRight || state.revealed;
-              return (
-                <motion.button
-                  key={`${state.currentLevel}-${state.currentWordIndex}-${word}`}
-                  layout
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={
-                    isWrong
-                      ? { opacity: 0.6, y: 0, x: [-8, 8, -8, 8, 0] }
-                      : isCorrect || isRevealed
-                      ? { opacity: 1, y: 0, scale: [1, 1.15, 1] }
-                      : { opacity: 1, y: 0 }
-                  }
-                  exit={{ opacity: 0, scale: 0.8 }}
-                  whileHover={!disabled ? { scale: 1.05, y: -3 } : {}}
-                  whileTap={!disabled ? { scale: 0.95 } : {}}
-                  onClick={() => handleWordClick(word)}
-                  disabled={disabled}
-                  className={`px-6 py-4 md:px-10 md:py-6 font-black text-2xl md:text-4xl lowercase rounded-xl md:rounded-2xl border-b-2 md:border-b-4 flex items-center justify-center transition-colors min-w-[7rem] md:min-w-[11rem] ${
-                    isCorrect || isRevealed
-                      ? 'bg-green-500 border-green-700 text-white ring-4 ring-green-400/50'
-                      : isWrong
-                      ? 'bg-red-500 border-red-700 text-white line-through'
-                      : 'bg-slate-700 hover:bg-orange-500 text-slate-100 border-slate-900 hover:border-orange-700'
-                  }`}
-                >
-                  {word}
-                </motion.button>
-              );
-            })}
+              {options.map((opt) => {
+                const isWrong = transient.wrongGuesses.includes(opt);
+                const isCorrect = transient.gotItRight && opt === correctAnswer;
+                const isRevealed = transient.revealed && opt === correctAnswer;
+                const disabled = isWrong || transient.gotItRight || transient.revealed;
+                const isLetter = currentQuestion.kind === 'letter';
+                return (
+                  <motion.button
+                    key={`${currentQuestion.id}-${progress.totalAnswered}-${opt}`}
+                    layout
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={
+                      isWrong
+                        ? { opacity: 0.6, y: 0, x: [-8, 8, -8, 8, 0] }
+                        : isCorrect || isRevealed
+                          ? { opacity: 1, y: 0, scale: [1, 1.15, 1] }
+                          : { opacity: 1, y: 0 }
+                    }
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    whileHover={!disabled ? { scale: 1.05, y: -3 } : {}}
+                    whileTap={!disabled ? { scale: 0.95 } : {}}
+                    onClick={() => handleAnswerClick(opt)}
+                    disabled={disabled}
+                    className={`px-4 py-3 md:px-8 md:py-5 font-black rounded-xl md:rounded-2xl border-b-2 md:border-b-4 flex items-center justify-center transition-colors ${
+                      isLetter
+                        ? 'text-3xl md:text-5xl font-serif min-w-[4rem] md:min-w-[6rem]'
+                        : 'text-lg md:text-2xl min-w-[5rem] md:min-w-[8rem]'
+                    } ${
+                      isCorrect || isRevealed
+                        ? 'bg-green-500 border-green-700 text-white ring-4 ring-green-400/50'
+                        : isWrong
+                          ? 'bg-red-500 border-red-700 text-white line-through'
+                          : 'bg-slate-700 hover:bg-orange-500 text-slate-100 border-slate-900 hover:border-orange-700'
+                    }`}
+                  >
+                    {opt}
+                  </motion.button>
+                );
+              })}
             </AnimatePresence>
           </div>
         </div>
       </div>
 
+      {/* Graduation overlay */}
+      <AnimatePresence>
+        {showGraduation && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-slate-900/85 backdrop-blur-sm flex items-center justify-center p-6 z-50">
+            <motion.div initial={{ scale: 0.7, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+              className="bg-slate-800 border-8 border-orange-500 p-10 md:p-12 rounded-3xl shadow-2xl text-center max-w-lg w-full">
+              <GraduationCap className="w-28 h-28 md:w-32 md:h-32 text-orange-400 mx-auto mb-4" />
+              <h1 className="text-4xl md:text-5xl font-black mb-3 uppercase tracking-widest text-orange-500">Graduated!</h1>
+              <p className="text-lg md:text-xl mb-6 font-bold text-slate-300">You climbed all the way through 5th grade!</p>
+              <div className="flex justify-center gap-6 mb-8 text-slate-200">
+                <div>
+                  <div className="text-3xl md:text-4xl font-black text-orange-400">{progress.totalCorrect}</div>
+                  <div className="text-xs md:text-sm uppercase tracking-widest text-slate-400">Correct</div>
+                </div>
+                <div>
+                  <div className="text-3xl md:text-4xl font-black text-orange-400">{accuracy}%</div>
+                  <div className="text-xs md:text-sm uppercase tracking-widest text-slate-400">Accuracy</div>
+                </div>
+              </div>
+              <button onClick={dismissGraduation}
+                className="bg-orange-500 hover:bg-orange-400 text-white px-10 py-4 rounded-full text-xl md:text-2xl font-black uppercase tracking-wider transition-all shadow-[0_6px_0_rgb(154,52,18)] active:shadow-none active:translate-y-1 inline-flex items-center gap-2 mx-auto">
+                <Crown className="w-6 h-6" /> Keep Buzzing!
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
