@@ -23,9 +23,7 @@ const COMPOUND: { name: string; type: "weighted" | "bodyweight" }[] = [
   { name: "Crunches", type: "bodyweight" },
   { name: "Deadlift", type: "weighted" },
   { name: "Dips", type: "bodyweight" },
-  { name: "EZ Bar OHP", type: "weighted" },
   { name: "EZ Bar RDL", type: "weighted" },
-  { name: "EZ Bar Row", type: "weighted" },
   { name: "Incline Press", type: "weighted" },
   { name: "Overhead Press", type: "weighted" },
   { name: "Pull-ups", type: "bodyweight" },
@@ -46,21 +44,19 @@ const COLORS = ["#ef4444", "#3b82f6", "#22c55e", "#f59e0b", "#8b5cf6", "#06b6d4"
 // Required sessions per 2-week cycle for each program exercise
 // W1-SessA (Mon+Fri=×2): Bench Press, Squat, Barbell Row, Pull-ups
 // W1-SessB (Wed=×1): Overhead Press, Deadlift, Dips, Core Work
-// W2-SessA (Wed=×1): Weighted Push-ups, Bulgarian Split Squats, EZ Bar Row, Pull-ups
-// W2-SessB (Mon+Fri=×2): EZ Bar OHP, EZ Bar RDL, Dips, Bulgarian Split Squats
+// W2-SessA (Wed=×1): Weighted Push-ups, Bulgarian Split Squats, Barbell Row, Pull-ups
+// W2-SessB (Mon+Fri=×2): Overhead Press, EZ Bar RDL, Dips, Bulgarian Split Squats
 const PROGRAM_EXERCISES: { name: string; required: number }[] = [
   { name: "Bench Press", required: 2 },
   { name: "Squat", required: 2 },
-  { name: "Barbell Row", required: 2 },
+  { name: "Barbell Row", required: 3 },
   { name: "Pull-ups", required: 3 },
-  { name: "Overhead Press", required: 1 },
+  { name: "Overhead Press", required: 3 },
   { name: "Deadlift", required: 1 },
   { name: "Dips", required: 3 },
   { name: "Core Work", required: 1 },
   { name: "Weighted Push-ups", required: 1 },
   { name: "Bulgarian Split Squats", required: 3 },
-  { name: "EZ Bar Row", required: 1 },
-  { name: "EZ Bar OHP", required: 2 },
   { name: "EZ Bar RDL", required: 2 },
 ];
 
