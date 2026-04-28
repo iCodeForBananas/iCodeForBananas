@@ -129,6 +129,7 @@ export default function WorkoutTrackerContent() {
   }, [logs, exercisesWithLogs]);
 
   const [hovered, setHovered] = useState<{ date: string; exercises: string[]; x: number; y: number } | null>(null);
+  const [focusedExercise, setFocusedExercise] = useState<string | null>(null);
 
   const contributionData = useMemo(() => {
     const map = new Map<string, string[]>();
@@ -254,7 +255,10 @@ export default function WorkoutTrackerContent() {
                           })
                         }
                       />
-                      <Legend wrapperStyle={{ fontSize: "12px" }} />
+                      <Legend
+                        wrapperStyle={{ fontSize: "12px", cursor: "pointer" }}
+                        onClick={(e) => setFocusedExercise((prev) => (prev === e.value ? null : (e.value as string)))}
+                      />
                       {exercisesWithLogs.map((ex, i) => (
                         <Line
                           key={ex.name}
@@ -264,6 +268,7 @@ export default function WorkoutTrackerContent() {
                           strokeWidth={2}
                           dot={{ r: 3 }}
                           connectNulls
+                          hide={focusedExercise != null && focusedExercise !== ex.name}
                         />
                       ))}
                     </LineChart>
