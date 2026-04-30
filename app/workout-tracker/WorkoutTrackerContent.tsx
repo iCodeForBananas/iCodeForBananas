@@ -13,7 +13,6 @@ interface LogEntry {
 }
 
 const COMPOUND: { name: string; type: "weighted" | "bodyweight" }[] = [
-  { name: "Barbell Row", type: "weighted" },
   { name: "Bulgarian Split Squats", type: "weighted" },
   { name: "Bench Press", type: "weighted" },
   { name: "Bent Over Rows", type: "weighted" },
@@ -23,10 +22,10 @@ const COMPOUND: { name: string; type: "weighted" | "bodyweight" }[] = [
   { name: "Crunches", type: "bodyweight" },
   { name: "Deadlift", type: "weighted" },
   { name: "Dips", type: "bodyweight" },
-  { name: "EZ Bar RDL", type: "weighted" },
   { name: "Incline Press", type: "weighted" },
   { name: "Overhead Press", type: "weighted" },
   { name: "Pull-ups", type: "bodyweight" },
+  { name: "Push-ups", type: "bodyweight" },
   { name: "Squat", type: "weighted" },
   { name: "Upright Rows", type: "weighted" },
   { name: "Weighted Push-ups", type: "weighted" },
@@ -42,22 +41,21 @@ const COLORS = ["#ef4444", "#3b82f6", "#22c55e", "#f59e0b", "#8b5cf6", "#06b6d4"
 // Week 1 = Gym, Week 2 = Home. Mon/Wed/Fri only.
 // Week 1: Mon=A, Wed=B, Fri=A  |  Week 2: Mon=B, Wed=A, Fri=B
 // Required sessions per 2-week cycle for each program exercise
-// W1-SessA (Mon+Fri=×2): Bench Press, Squat, Barbell Row, Pull-ups
+// W1-SessA (Mon+Fri=×2): Bench Press, Squat, Bent Over Rows, Pull-ups
 // W1-SessB (Wed=×1): Overhead Press, Deadlift, Dips, Core Work
-// W2-SessA (Wed=×1): Weighted Push-ups, Bulgarian Split Squats, Barbell Row, Pull-ups
-// W2-SessB (Mon+Fri=×2): Overhead Press, EZ Bar RDL, Dips, Bulgarian Split Squats
+// W2-SessA (Wed=×1): Weighted Push-ups, Bulgarian Split Squats, Bent Over Rows, Pull-ups
+// W2-SessB (Mon+Fri=×2): Overhead Press, Deadlift, Dips, Bulgarian Split Squats
 const PROGRAM_EXERCISES: { name: string; required: number }[] = [
   { name: "Bench Press", required: 2 },
   { name: "Squat", required: 2 },
-  { name: "Barbell Row", required: 3 },
+  { name: "Bent Over Rows", required: 3 },
   { name: "Pull-ups", required: 3 },
   { name: "Overhead Press", required: 3 },
-  { name: "Deadlift", required: 1 },
+  { name: "Deadlift", required: 3 },
   { name: "Dips", required: 3 },
   { name: "Core Work", required: 1 },
   { name: "Weighted Push-ups", required: 1 },
   { name: "Bulgarian Split Squats", required: 3 },
-  { name: "EZ Bar RDL", required: 2 },
 ];
 
 export default function WorkoutTrackerContent() {
@@ -95,9 +93,7 @@ export default function WorkoutTrackerContent() {
   const submit = async () => {
     const sb = getSupabase();
     if (!sb) return;
-    await sb
-      .from("workout_logs")
-      .insert({ exercise: selected, date, weight: +weight || 0 });
+    await sb.from("workout_logs").insert({ exercise: selected, date, weight: +weight || 0 });
     setWeight("");
     setPage(0);
     reload();
@@ -339,17 +335,24 @@ export default function WorkoutTrackerContent() {
             {/* Program checklist */}
             <div className='border-t border-[#373A40]/10 pt-6 mb-8'>
               <h2 className='font-semibold text-lg mb-1'>Program Checklist</h2>
-              <p className='text-xs text-[#000]/40 mb-4'>Unique days logged in the last 14 days · dots = required sessions per 2-week cycle</p>
+              <p className='text-xs text-[#000]/40 mb-4'>
+                Unique days logged in the last 14 days · dots = required sessions per 2-week cycle
+              </p>
               <div className='space-y-1 max-w-sm'>
                 {programChecklist.map(({ name, required, done, complete }) => (
-                  <div key={name} className={`flex items-center gap-3 py-2 px-3 rounded-lg transition-colors ${complete ? "bg-green-50" : ""}`}>
+                  <div
+                    key={name}
+                    className={`flex items-center gap-3 py-2 px-3 rounded-lg transition-colors ${complete ? "bg-green-50" : ""}`}
+                  >
                     <div className='flex-1 text-sm'>{name}</div>
                     <div className='flex gap-1'>
                       {Array.from({ length: required }, (_, i) => (
                         <span key={i} className={`w-4 h-4 rounded-sm ${i < done ? "bg-green-500" : "bg-gray-200"}`} />
                       ))}
                     </div>
-                    <div className='text-xs text-[#000]/35 w-8 text-right'>{done}/{required}</div>
+                    <div className='text-xs text-[#000]/35 w-8 text-right'>
+                      {done}/{required}
+                    </div>
                   </div>
                 ))}
               </div>
