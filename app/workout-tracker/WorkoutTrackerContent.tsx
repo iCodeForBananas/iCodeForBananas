@@ -7,6 +7,7 @@ import { useAuth } from "@/app/hooks/useAuth";
 
 interface LogEntry {
   id: string;
+  user_id: string;
   exercise: string;
   date: string;
   weight?: number | null;
@@ -121,7 +122,7 @@ export default function WorkoutTrackerContent() {
   const reload = useCallback(async () => {
     const sb = getSupabase();
     if (!sb) return;
-    const { data } = await sb.from("workout_logs").select("id, exercise, date, weight");
+    const { data } = await sb.from("workout_logs").select("id, user_id, exercise, date, weight");
     setLogs((data as LogEntry[]) ?? []);
   }, []);
   useEffect(() => {
@@ -140,7 +141,7 @@ export default function WorkoutTrackerContent() {
   const submit = async () => {
     const sb = getSupabase();
     if (!sb) return;
-    await sb.from("workout_logs").insert({ exercise: selected, date, weight: +weight || 0 });
+    await sb.from("workout_logs").insert({ user_id: user!.id, exercise: selected, date, weight: +weight || 0 });
     setWeight("");
     setPage(0);
     reload();
