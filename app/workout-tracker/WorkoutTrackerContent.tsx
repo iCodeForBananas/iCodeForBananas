@@ -18,17 +18,20 @@ const COMPOUND: { name: string; type: "weighted" | "bodyweight" }[] = [
   { name: "Bent Over Rows", type: "weighted" },
   { name: "Bicep Curls", type: "weighted" },
   { name: "Chin-ups", type: "bodyweight" },
+  { name: "Ab Wheel Rollout", type: "bodyweight" },
+  { name: "Cable Crunch", type: "weighted" },
   { name: "Core Work", type: "bodyweight" },
+  { name: "Dragon Flag", type: "bodyweight" },
+  { name: "Leg Raises", type: "bodyweight" },
   { name: "Crunches", type: "bodyweight" },
   { name: "Deadlift", type: "weighted" },
   { name: "Dips", type: "bodyweight" },
   { name: "Incline Press", type: "weighted" },
   { name: "Overhead Press", type: "weighted" },
   { name: "Pull-ups", type: "bodyweight" },
-  { name: "Push-ups", type: "bodyweight" },
+  { name: "Push-ups", type: "weighted" },
   { name: "Squat", type: "weighted" },
   { name: "Upright Rows", type: "weighted" },
-  { name: "Weighted Push-ups", type: "weighted" },
 ];
 
 const localDateStr = (d: Date) =>
@@ -43,20 +46,64 @@ const COLORS = ["#ef4444", "#3b82f6", "#22c55e", "#f59e0b", "#8b5cf6", "#06b6d4"
 // Required sessions per 2-week cycle for each program exercise
 // W1-SessA (Mon+Fri=×2): Bench Press, Squat, Bent Over Rows, Pull-ups
 // W1-SessB (Wed=×1): Overhead Press, Deadlift, Dips, Core Work
-// W2-SessA (Wed=×1): Weighted Push-ups, Bulgarian Split Squats, Bent Over Rows, Pull-ups
+// W2-SessA (Wed=×1): Push-ups, Bulgarian Split Squats, Bent Over Rows, Pull-ups
 // W2-SessB (Mon+Fri=×2): Overhead Press, Deadlift, Dips, Bulgarian Split Squats
 const PROGRAM_EXERCISES: { name: string; required: number }[] = [
-  { name: "Bench Press", required: 2 },
-  { name: "Squat", required: 2 },
+  { name: "Bench Press", required: 3 },
+  { name: "Squat", required: 3 },
   { name: "Bent Over Rows", required: 3 },
   { name: "Pull-ups", required: 3 },
   { name: "Overhead Press", required: 3 },
   { name: "Deadlift", required: 3 },
   { name: "Dips", required: 3 },
-  { name: "Core Work", required: 1 },
-  { name: "Weighted Push-ups", required: 1 },
+  { name: "Leg Raises", required: 3 },
+  { name: "Push-ups", required: 3 },
   { name: "Bulgarian Split Squats", required: 3 },
 ];
+
+const BODY_PART_MAP: Partial<Record<string, string[]>> = {
+  "Bulgarian Split Squats": ["legs"],
+  "Bench Press": ["chest"],
+  "Bent Over Rows": ["back"],
+  "Chin-ups": ["back"],
+  "Ab Wheel Rollout": ["core"],
+  "Cable Crunch": ["core"],
+  "Core Work": ["core"],
+  "Dragon Flag": ["core"],
+  "Leg Raises": ["core"],
+  "Crunches": ["core"],
+  "Deadlift": ["back", "legs"],
+  "Dips": ["chest"],
+  "Incline Press": ["chest"],
+  "Overhead Press": ["shoulders"],
+  "Pull-ups": ["back"],
+  "Push-ups": ["chest"],
+  "Squat": ["legs"],
+  "Upright Rows": ["shoulders"],
+};
+
+const BODY_PARTS = ["chest", "back", "shoulders", "legs", "core"] as const;
+type BodyPart = (typeof BODY_PARTS)[number];
+
+const BODY_PART_COLORS: Record<BodyPart, string> = {
+  chest: "#ef4444",
+  back: "#22c55e",
+  shoulders: "#8b5cf6",
+  legs: "#3b82f6",
+  core: "#f59e0b",
+};
+
+const MAX_BODY_PART_SESSIONS = 6;
+
+const BODY_PART_EXERCISES = (Object.entries(BODY_PART_MAP) as [string, string[]][]).reduce(
+  (acc, [exercise, parts]) => {
+    parts.forEach((part) => {
+      if (part in acc) acc[part as BodyPart].push(exercise);
+    });
+    return acc;
+  },
+  { chest: [], back: [], shoulders: [], legs: [], core: [] } as Record<BodyPart, string[]>,
+);
 
 export default function WorkoutTrackerContent() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
@@ -126,6 +173,7 @@ export default function WorkoutTrackerContent() {
 
   const [hovered, setHovered] = useState<{ date: string; exercises: string[]; x: number; y: number } | null>(null);
   const [focusedExercise, setFocusedExercise] = useState<string | null>(null);
+  const [hoveredBodyPart, setHoveredBodyPart] = useState<BodyPart | null>(null);
 
   const contributionData = useMemo(() => {
     const map = new Map<string, string[]>();
@@ -170,6 +218,20 @@ export default function WorkoutTrackerContent() {
       ).size;
       return { name, required, done: Math.min(done, required), complete: done >= required };
     });
+  }, [logs]);
+
+  const bodyPartCoverage = useMemo(() => {
+    const todayStr = localDateStr(new Date());
+    const cutoff = new Date(todayStr + "T12:00:00");
+    cutoff.setDate(cutoff.getDate() - 13);
+    const cutoffStr = localDateStr(cutoff);
+    const recentLogs = logs.filter((l) => l.date >= cutoffStr && l.date <= todayStr);
+    return BODY_PARTS.map((part) => ({
+      part,
+      days: new Set(
+        recentLogs.filter((l) => (BODY_PART_MAP[l.exercise] ?? []).includes(part)).map((l) => l.date),
+      ).size,
+    }));
   }, [logs]);
 
   return (
@@ -332,29 +394,67 @@ export default function WorkoutTrackerContent() {
               )}
             </div>
 
-            {/* Program checklist */}
+            {/* Program checklist + Body part coverage */}
             <div className='border-t border-[#373A40]/10 pt-6 mb-8'>
-              <h2 className='font-semibold text-lg mb-1'>Program Checklist</h2>
-              <p className='text-xs text-[#000]/40 mb-4'>
-                Unique days logged in the last 14 days · dots = required sessions per 2-week cycle
-              </p>
-              <div className='space-y-1 max-w-sm'>
-                {programChecklist.map(({ name, required, done, complete }) => (
-                  <div
-                    key={name}
-                    className={`flex items-center gap-3 py-2 px-3 rounded-lg transition-colors ${complete ? "bg-green-50" : ""}`}
-                  >
-                    <div className='flex-1 text-sm'>{name}</div>
-                    <div className='flex gap-1'>
-                      {Array.from({ length: required }, (_, i) => (
-                        <span key={i} className={`w-4 h-4 rounded-sm ${i < done ? "bg-green-500" : "bg-gray-200"}`} />
-                      ))}
+              <div className='grid grid-cols-2 gap-6'>
+                <div>
+                  <h2 className='font-semibold text-lg mb-1'>Program Checklist</h2>
+                  <p className='text-xs text-[#000]/40 mb-4'>
+                    Unique days logged in the last 14 days · dots = required sessions per 2-week cycle
+                  </p>
+                  <div className='space-y-1'>
+                  {programChecklist.map(({ name, required, done, complete }) => (
+                    <div
+                      key={name}
+                      className={`flex items-center gap-3 py-2 px-3 rounded-lg transition-colors ${complete ? "bg-green-50" : ""}`}
+                    >
+                      <div className='flex-1 text-sm'>{name}</div>
+                      <div className='flex gap-1'>
+                        {Array.from({ length: required }, (_, i) => (
+                          <span key={i} className={`w-4 h-4 rounded-sm ${i < done ? "bg-green-500" : "bg-gray-200"}`} />
+                        ))}
+                      </div>
+                      <div className='text-xs text-[#000]/35 w-8 text-right'>
+                        {done}/{required}
+                      </div>
                     </div>
-                    <div className='text-xs text-[#000]/35 w-8 text-right'>
-                      {done}/{required}
-                    </div>
+                  ))}
                   </div>
-                ))}
+                </div>
+                <div>
+                  <h2 className='font-semibold text-lg mb-1'>Body Part Coverage</h2>
+                  <p className='text-xs text-[#000]/40 mb-4'>sessions in last 14 days</p>
+                  <div className='space-y-1'>
+                    {bodyPartCoverage.map(({ part, days }) => (
+                      <div
+                        key={part}
+                        className='relative flex items-center gap-3 py-2 px-3 rounded-lg cursor-default'
+                        onMouseEnter={() => setHoveredBodyPart(part as BodyPart)}
+                        onMouseLeave={() => setHoveredBodyPart(null)}
+                      >
+                        <div className='capitalize text-sm w-20'>{part}</div>
+                        <div className='flex gap-1'>
+                          {Array.from({ length: days }, (_, i) => (
+                            <span
+                              key={i}
+                              className='w-4 h-4 rounded-sm'
+                              style={{ backgroundColor: BODY_PART_COLORS[part as BodyPart] }}
+                            />
+                          ))}
+                        </div>
+                        <div className='text-xs text-[#000]/35 w-8 text-right'>{days}x</div>
+                        {hoveredBodyPart === part && (
+                          <div className='absolute top-full left-0 mt-1 z-20 bg-[#1A1B1E] text-white text-xs rounded-lg px-3 py-2 shadow-lg pointer-events-none whitespace-nowrap'>
+                            <div className='font-semibold mb-1 capitalize'>{part} exercises</div>
+                            {BODY_PART_EXERCISES[part as BodyPart].map((ex) => (
+                              <div key={ex} className='text-white/75'>{ex}</div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
 
