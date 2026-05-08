@@ -10,16 +10,32 @@ import macdCrossover from './macd-crossover';
 import rsiMeanReversion from './rsi-mean-reversion';
 import smaCrossover from './sma-crossover';
 import donchianChannel from './donchian-channel';
+import rsi2 from './rsi2';
+import supertrend from './supertrend';
+import tripleEma from './triple-ema';
+import keltnerChannel from './keltner-channel';
+import chandelierExit from './chandelier-exit';
+import momentumRoc from './momentum-roc';
+import stochastic from './stochastic';
 
 export const AVAILABLE_STRATEGIES: Record<string, StrategyDefinition> = {
-  'bollinger-bands': bollingerBands,
-  'breakout': breakout,
+  // Trend Following
   'ema-crossover': emaCrossover,
+  'triple-ema': tripleEma,
+  'sma-crossover': smaCrossover,
   'ema-price-cross': emaPriceCross,
   'macd-crossover': macdCrossover,
-  'rsi-mean-reversion': rsiMeanReversion,
-  'sma-crossover': smaCrossover,
+  'supertrend': supertrend,
+  'chandelier-exit': chandelierExit,
   'donchian-channel': donchianChannel,
+  'breakout': breakout,
+  'momentum-roc': momentumRoc,
+  // Mean Reversion
+  'bollinger-bands': bollingerBands,
+  'keltner-channel': keltnerChannel,
+  'rsi-mean-reversion': rsiMeanReversion,
+  'rsi2': rsi2,
+  'stochastic': stochastic,
 };
 
 export * from './types';

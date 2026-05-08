@@ -1020,7 +1020,7 @@ export default function AlgoBacktestPage() {
           }
         }
         // Add based on param key naming
-        if (key === "fastPeriod" || key === "slowPeriod") {
+        if (key === "fastPeriod" || key === "slowPeriod" || key === "midPeriod") {
           if (selectedStrategyId.includes("ema")) {
             requiredEMAs.add(value);
           } else if (!selectedStrategyId.includes("macd")) {
@@ -1095,7 +1095,7 @@ export default function AlgoBacktestPage() {
           // Add EMA periods from any param key containing "ema" (case insensitive)
           if (key.toLowerCase().includes("ema")) {
             requiredEMAs.add(value);
-          } else if (key === "fastPeriod" || key === "slowPeriod") {
+          } else if (key === "fastPeriod" || key === "slowPeriod" || key === "midPeriod") {
             if (selectedStrategyId.includes("ema")) {
               requiredEMAs.add(value);
             } else if (!selectedStrategyId.includes("macd")) {
@@ -1819,7 +1819,7 @@ export default function AlgoBacktestPage() {
             <div className={showEquityCurve ? 'flex-1 min-h-0' : 'flex-1 overflow-hidden'}>
               <BacktestChart
                 data={indicatorData}
-                trades={
+                trades={
                   activeResult?.trades.map((t) => ({
                     ...t,
                     side: t.side === "LONG" ? PositionSide.LONG : PositionSide.SHORT,
