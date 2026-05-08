@@ -666,6 +666,127 @@ function generateCombinations(
   return combinations.slice(0, MAX_BATCH_RUNS);
 }
 
+// ── Lambda Readiness Panel ────────────────────────────────────────────────────
+interface BacktestResultLike {
+  winRate: number;
+  profitFactor: number;
+  sharpeRatio: number;
+  totalTrades: number;
+  maxDrawdownPercent: number;
+  totalPnlPercent: number;
+  buyAndHoldPnlPercent: number;
+}
+
+const LAMBDA_CRITERIA = [
+  {
+    key: "winRate",
+    label: "Win Rate ≥ 50%",
+    pass: (r: BacktestResultLike) => r.winRate >= 50,
+    value: (r: BacktestResultLike) => `${r.winRate.toFixed(1)}%`,
+  },
+  {
+    key: "profitFactor",
+    label: "Profit Factor ≥ 1.5",
+    pass: (r: BacktestResultLike) => r.profitFactor >= 1.5,
+    value: (r: BacktestResultLike) => r.profitFactor === Infinity ? "∞" : r.profitFactor.toFixed(2),
+  },
+  {
+    key: "sharpe",
+    label: "Sharpe Ratio ≥ 0.5",
+    pass: (r: BacktestResultLike) => r.sharpeRatio >= 0.5,
+    value: (r: BacktestResultLike) => r.sharpeRatio.toFixed(2),
+  },
+  {
+    key: "trades",
+    label: "≥ 10 Trades",
+    pass: (r: BacktestResultLike) => r.totalTrades >= 10,
+    value: (r: BacktestResultLike) => String(r.totalTrades),
+  },
+  {
+    key: "drawdown",
+    label: "Max Drawdown ≤ 25%",
+    pass: (r: BacktestResultLike) => r.maxDrawdownPercent <= 25,
+    value: (r: BacktestResultLike) => `${r.maxDrawdownPercent.toFixed(1)}%`,
+  },
+  {
+    key: "alpha",
+    label: "Beats Buy & Hold",
+    pass: (r: BacktestResultLike) => r.totalPnlPercent > r.buyAndHoldPnlPercent,
+    value: (r: BacktestResultLike) => {
+      const alpha = r.totalPnlPercent - r.buyAndHoldPnlPercent;
+      return `${alpha >= 0 ? "+" : ""}${alpha.toFixed(1)}%`;
+    },
+  },
+];
+
+function LambdaReadinessPanel({
+  result,
+  onExport,
+}: {
+  result: BacktestResultLike;
+  onExport: () => void;
+}) {
+  const results = LAMBDA_CRITERIA.map((c) => ({ ...c, passing: c.pass(result) }));
+  const passCount = results.filter((r) => r.passing).length;
+  const allPass = passCount === results.length;
+  const mostPass = passCount >= 5;
+
+  return (
+    <div
+      className={`mx-4 my-3 rounded-lg border p-3 ${
+        allPass
+          ? "border-green-500/40 bg-green-950/30"
+          : mostPass
+          ? "border-amber-500/40 bg-amber-950/20"
+          : "border-slate-600/50 bg-slate-800/50"
+      }`}
+    >
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <span
+            className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+              allPass
+                ? "bg-green-500/20 text-green-400"
+                : mostPass
+                ? "bg-amber-500/20 text-amber-400"
+                : "bg-slate-700 text-slate-400"
+            }`}
+          >
+            {allPass ? "✓ DEPLOY READY" : mostPass ? "⚠ ALMOST READY" : "✗ NOT READY"}
+          </span>
+          <span className="text-xs text-slate-400">{passCount}/{results.length} criteria met</span>
+        </div>
+
+        <div className="flex items-center gap-3 flex-1 flex-wrap">
+          {results.map((c) => (
+            <div key={c.key} className="flex items-center gap-1 text-xs">
+              <span className={c.passing ? "text-green-400" : "text-red-400"}>
+                {c.passing ? "✓" : "✗"}
+              </span>
+              <span className={c.passing ? "text-slate-300" : "text-slate-500"}>
+                {c.label}
+              </span>
+              <span className={`font-mono font-bold ${c.passing ? "text-green-400" : "text-red-400"}`}>
+                ({c.value(result)})
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {allPass && (
+          <button
+            onClick={onExport}
+            className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-500 text-white text-xs font-bold rounded transition-colors"
+          >
+            🚀 Export Lambda
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function AlgoBacktestPage() {
   const [rawData, setRawData] = useState<PricePoint[]>([]);
   const [indicatorData, setIndicatorData] = useState<IndicatorData[]>([]);
@@ -1684,13 +1805,21 @@ export default function AlgoBacktestPage() {
             </div>
           )}
 
+          {/* Lambda Readiness Panel */}
+          {activeResult && (
+            <LambdaReadinessPanel
+              result={activeResult}
+              onExport={() => setShowLambdaExport(true)}
+            />
+          )}
+
           {/* Charts Container */}
           <div className='flex-1 flex flex-col overflow-hidden'>
             {/* Price Chart */}
             <div className={showEquityCurve ? 'flex-1 min-h-0' : 'flex-1 overflow-hidden'}>
               <BacktestChart
                 data={indicatorData}
-                trades={
+                trades={
                   activeResult?.trades.map((t) => ({
                     ...t,
                     side: t.side === "LONG" ? PositionSide.LONG : PositionSide.SHORT,
@@ -1702,7 +1831,7 @@ export default function AlgoBacktestPage() {
                 selectedTradeId={selectedTradeId}
               />
             </div>
-            
+
             {/* Equity Curve Chart (Separate) */}
             {showEquityCurve && activeResult && (
               <div className='h-40 border-t border-slate-700'>
@@ -1729,15 +1858,15 @@ export default function AlgoBacktestPage() {
                       <th className='px-3 py-2 text-right'>Entry Price</th>
                       <th className='px-3 py-2 text-left'>Exit Time</th>
                       <th className='px-3 py-2 text-right'>Exit Price</th>
-                      <th className='px-3 py-2 text-right'>P&L</th>
-                      <th className='px-3 py-2 text-right'>P&L %</th>
+                      <th className='px-3 py-2 text-right'>P&amp;L</th>
+                      <th className='px-3 py-2 text-right'>P&amp;L %</th>
                       <th className='px-3 py-2 text-left'>Reason</th>
                     </tr>
                   </thead>
                   <tbody>
                     {activeResult.trades.map((trade) => (
-                      <tr 
-                        key={trade.id} 
+                      <tr
+                        key={trade.id}
                         className={`border-b border-slate-800 hover:bg-slate-800/50 cursor-pointer transition-colors ${selectedTradeId === trade.id ? 'bg-blue-900/40 ring-1 ring-blue-500' : ''}`}
                         onClick={() => setSelectedTradeId(selectedTradeId === trade.id ? null : trade.id)}
                       >
