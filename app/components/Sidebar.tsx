@@ -41,6 +41,7 @@ const NAV = [
       { href: "/workout-tracker", text: "Workout Tracker" },
       { href: "/wordsmith", text: "Wordsmith" },
       { href: "/algo-backtest", text: "Algo Backtest" },
+      { href: "/paper-trading", text: "🤖 Paper Trading" },
       { href: "/leaderboard", text: "📈 Trading Leaderboard" },
       { href: "/fire-estimator", text: "FIRE Estimator" },
     ],
@@ -225,8 +226,8 @@ export default function Sidebar() {
                   ))}
                 </div>
               </div>
-            ))}
-          </nav>
+            ))}
+                </nav>
         </div>
       </aside>
     </>
