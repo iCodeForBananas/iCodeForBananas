@@ -40,6 +40,7 @@ const NAV = [
       { href: "/workout-tracker", text: "Workout Tracker" },
       { href: "/wordsmith", text: "Wordsmith" },
       { href: "/algo-backtest", text: "Algo Backtest" },
+      { href: "/leaderboard", text: "📈 Trading Leaderboard" },
       { href: "/fire-estimator", text: "FIRE Estimator" },
     ],
   },

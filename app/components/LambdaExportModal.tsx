@@ -10,7 +10,7 @@ interface LambdaExportModalProps {
   params: Record<string, number | boolean | string>;
 }
 
-// Generate Lambda code for a given strategy with Tradier API
+// Generate Lambda code for a given strategy with Tradier API + Supabase logging
 function generateLambdaCode(
   strategyId: string,
   strategyName: string,
@@ -22,28 +22,113 @@ function generateLambdaCode(
   const strategyLogic = getStrategyLogic(strategyId);
 
   return `// AWS Lambda Function for ${strategyName} Trading Strategy
-// Uses Tradier API for market data and order execution
+// Uses Tradier API for market data + order execution
+// Logs all trades to Supabase for the public leaderboard
 // Auto-generated from iCodeForBananas Algo Backtest
 
 const https = require('https');
 
-// Strategy Parameters
+// ─── Strategy Parameters ────────────────────────────────────────────────────
 const STRATEGY_PARAMS = ${paramsJson};
 
-// Tradier API Configuration (set these in Lambda environment variables)
-const TRADIER_API_KEY = process.env.TRADIER_API_KEY;
+// ─── Environment Variables (configure in Lambda console) ────────────────────
+const TRADIER_API_KEY    = process.env.TRADIER_API_KEY;
 const TRADIER_ACCOUNT_ID = process.env.TRADIER_ACCOUNT_ID;
-const TRADIER_BASE_URL = process.env.TRADIER_SANDBOX === 'true' 
-  ? 'sandbox.tradier.com' 
+const TRADIER_BASE_URL   = process.env.TRADIER_SANDBOX === 'true'
+  ? 'sandbox.tradier.com'
   : 'api.tradier.com';
 
-// Trading Configuration
+// Supabase – for leaderboard logging
+const SUPABASE_URL        = process.env.SUPABASE_URL;        // https://xxx.supabase.co
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY; // service_role key (secret)
+const LAMBDA_ID           = process.env.LAMBDA_ID;           // UUID from trading_lambdas table
+
+// ─── Trading Configuration ──────────────────────────────────────────────────
 const SYMBOL = process.env.SYMBOL || 'SPY';
 const POSITION_SIZE = parseInt(process.env.POSITION_SIZE || '100'); // Number of shares
 
-// State tracking (use DynamoDB for persistence in production)
+// ─── State (persisted via Supabase open-trade check each run) ───────────────
 let lastSignal = 'hold';
-let inPosition = false;
+
+// ─── Supabase Helpers ────────────────────────────────────────────────────────
+function supabaseRequest(method, path, body = null) {
+  return new Promise((resolve, reject) => {
+    const url = new URL(SUPABASE_URL + path);
+    const options = {
+      hostname: url.hostname,
+      port: 443,
+      path: url.pathname + url.search,
+      method,
+      headers: {
+        'apikey': SUPABASE_SERVICE_KEY,
+        'Authorization': \`Bearer \${SUPABASE_SERVICE_KEY}\`,
+        'Content-Type': 'application/json',
+        'Prefer': method === 'POST' ? 'return=representation' : 'return=minimal',
+      },
+    };
+    const req = https.request(options, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try { resolve(JSON.parse(data)); } catch { resolve(data); }
+      });
+    });
+    req.on('error', reject);
+    if (body) req.write(JSON.stringify(body));
+    req.end();
+  });
+}
+
+async function logTradeOpen(symbol, side, entryPrice, quantity, entryTime) {
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY || !LAMBDA_ID) return null;
+  try {
+    const result = await supabaseRequest('POST', '/rest/v1/lambda_trades', {
+      lambda_id: LAMBDA_ID,
+      symbol,
+      side,
+      entry_price: entryPrice,
+      quantity,
+      entry_time: entryTime,
+      status: 'open',
+    });
+    return Array.isArray(result) ? result[0] : result;
+  } catch (e) {
+    console.error('Supabase logTradeOpen error:', e.message);
+    return null;
+  }
+}
+
+async function logTradeClose(tradeId, exitPrice, exitTime, pnl, pnlPercent, exitReason, orderId = null) {
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY || !tradeId) return;
+  try {
+    await supabaseRequest('PATCH', \`/rest/v1/lambda_trades?id=eq.\${tradeId}\`, {
+      exit_price: exitPrice,
+      exit_time: exitTime,
+      pnl,
+      pnl_percent: pnlPercent,
+      status: 'closed',
+      exit_reason: exitReason,
+      order_id: orderId,
+      updated_at: new Date().toISOString(),
+    });
+  } catch (e) {
+    console.error('Supabase logTradeClose error:', e.message);
+  }
+}
+
+async function getOpenTrade() {
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY || !LAMBDA_ID) return null;
+  try {
+    const result = await supabaseRequest(
+      'GET',
+      \`/rest/v1/lambda_trades?lambda_id=eq.\${LAMBDA_ID}&status=eq.open&limit=1\`
+    );
+    return Array.isArray(result) && result.length > 0 ? result[0] : null;
+  } catch (e) {
+    console.error('Supabase getOpenTrade error:', e.message);
+    return null;
+  }
+}
 
 // Helper function to make Tradier API requests
 function tradierRequest(method, path, data = null) {
@@ -159,47 +244,76 @@ ${strategyLogic.indicatorCode}
 // Strategy signal logic
 ${strategyLogic.signalCode}
 
-// Main Lambda handler
+// ─── Main Lambda Handler ─────────────────────────────────────────────────────
 exports.handler = async (event) => {
   console.log('Strategy: ${strategyName}');
   console.log('Parameters:', JSON.stringify(STRATEGY_PARAMS));
-  
+
   try {
     // Get historical data for indicator calculation
     const historicalData = await getHistoricalData(SYMBOL, 250);
-    
+
     if (historicalData.length < 50) {
       return {
         statusCode: 400,
         body: JSON.stringify({ error: 'Insufficient historical data' })
       };
     }
-    
+
     // Calculate indicators
     const dataWithIndicators = calculateIndicators(historicalData);
-    
+
     // Get current bar and previous bar
     const currentBar = dataWithIndicators[dataWithIndicators.length - 1];
     const previousBar = dataWithIndicators[dataWithIndicators.length - 2];
-    
+
     // Generate signal
     const signal = getSignal(currentBar, previousBar, STRATEGY_PARAMS);
     console.log('Signal:', signal.action, '-', signal.reason);
-    
-    // Check current position
-    const position = await getPosition(SYMBOL);
-    inPosition = position && position.quantity > 0;
-    
+
+    // Check actual brokerage position + any open Supabase trade record
+    const [position, openTrade] = await Promise.all([getPosition(SYMBOL), getOpenTrade()]);
+    const inPosition = !!(position && position.quantity > 0);
+
     let orderResult = null;
-    
-    // Execute trades based on signal
+    let tradeAction = 'none';
+
+    // ── BUY ──────────────────────────────────────────────────────────────────
     if (signal.action === 'buy' && !inPosition) {
       orderResult = await placeOrder(SYMBOL, 'buy', POSITION_SIZE);
       lastSignal = 'buy';
+      tradeAction = 'opened';
+
+      // Log trade open to Supabase leaderboard
+      await logTradeOpen(
+        SYMBOL,
+        'LONG',
+        currentBar.close,
+        POSITION_SIZE,
+        new Date().toISOString()
+      );
+
+    // ── SELL ─────────────────────────────────────────────────────────────────
     } else if (signal.action === 'sell' && inPosition) {
       const qty = position ? position.quantity : POSITION_SIZE;
       orderResult = await placeOrder(SYMBOL, 'sell', qty);
       lastSignal = 'sell';
+      tradeAction = 'closed';
+
+      // Log trade close to Supabase leaderboard
+      if (openTrade) {
+        const pnl = (currentBar.close - openTrade.entry_price) * qty;
+        const pnlPercent = ((currentBar.close - openTrade.entry_price) / openTrade.entry_price) * 100;
+        await logTradeClose(
+          openTrade.id,
+          currentBar.close,
+          new Date().toISOString(),
+          pnl,
+          pnlPercent,
+          signal.reason,
+          orderResult?.order?.id ? String(orderResult.order.id) : null
+        );
+      }
     }
     
     return {
@@ -207,12 +321,14 @@ exports.handler = async (event) => {
       body: JSON.stringify({
         strategy: '${strategyName}',
         symbol: SYMBOL,
-        signal: signal,
-        inPosition: inPosition,
+        signal,
+        inPosition,
+        tradeAction,
         orderPlaced: orderResult !== null,
-        orderResult: orderResult,
+        orderResult,
         currentPrice: currentBar.close,
-        timestamp: new Date().toISOString()
+        leaderboardLogged: !!(SUPABASE_URL && LAMBDA_ID),
+        timestamp: new Date().toISOString(),
       })
     };
     
@@ -661,6 +777,17 @@ Handler: index.handler
 | TRADIER_SANDBOX | Use sandbox environment | true (for testing) |
 | SYMBOL | Symbol to trade | SPY |
 | POSITION_SIZE | Number of shares per trade | 100 |
+| SUPABASE_URL | Your Supabase project URL | https://xxx.supabase.co |
+| SUPABASE_SERVICE_KEY | Supabase service_role key | eyJhb... |
+| LAMBDA_ID | UUID from trading_lambdas table | uuid-here |
+
+## Leaderboard Setup
+
+1. Run the Supabase migration: supabase/migrations/20260506_trading_schema.sql
+2. Insert a row into trading_lambdas and copy the generated UUID
+3. Set LAMBDA_ID in your Lambda environment variables
+4. Your trades will appear on /leaderboard automatically
+
 
 ## EventBridge (CloudWatch Events) Schedule
 
@@ -785,137 +912,83 @@ export default function LambdaExportModal({
     URL.revokeObjectURL(url);
   };
 
+
   return (
     <div className="fixed inset-0 bg-[#1A1B1E]/70 flex items-center justify-center z-50 p-4">
       <div className="bg-slate-800 rounded-lg shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-slate-700">
           <div>
-            <h2 className="text-xl font-bold text-white">
-              Export AWS Lambda Code
-            </h2>
+            <h2 className="text-xl font-bold text-white">Export AWS Lambda Code</h2>
             <p className="text-sm text-slate-400 mt-1">
-              {strategyName} with Tradier API Integration
+              {strategyName} · Tradier + Supabase Leaderboard
             </p>
           </div>
-          <button
-            onClick={onClose}
-            className="text-slate-400 hover:text-white p-2 rounded-lg hover:bg-slate-700"
-          >
-            <svg
-              className="w-6 h-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
+          <button onClick={onClose} className="text-slate-400 hover:text-white p-2 rounded-lg hover:bg-slate-700">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
 
         {/* Tabs */}
         <div className="flex border-b border-slate-700">
-          <button
-            onClick={() => setActiveTab("code")}
-            className={`px-6 py-3 text-sm font-medium transition-colors ${
-              activeTab === "code"
-                ? "text-blue-400 border-b-2 border-blue-400 bg-slate-900"
-                : "text-slate-400 hover:text-white"
-            }`}
-          >
-            Lambda Code
-          </button>
-          <button
-            onClick={() => setActiveTab("settings")}
-            className={`px-6 py-3 text-sm font-medium transition-colors ${
-              activeTab === "settings"
-                ? "text-blue-400 border-b-2 border-blue-400 bg-slate-900"
-                : "text-slate-400 hover:text-white"
-            }`}
-          >
-            AWS Settings
-          </button>
+          {(["code", "settings"] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`px-6 py-3 text-sm font-medium transition-colors ${
+                activeTab === tab
+                  ? "text-blue-400 border-b-2 border-blue-400 bg-slate-900"
+                  : "text-slate-400 hover:text-white"
+              }`}
+            >
+              {tab === "code" ? "Lambda Code" : "AWS Settings"}
+            </button>
+          ))}
+        </div>
+
+        {/* Leaderboard note */}
+        <div className="mx-4 mt-3 px-3 py-2 bg-blue-900/40 border border-blue-700/40 rounded-lg text-xs text-blue-300">
+          {"💡 This Lambda logs every trade to Supabase automatically. Set "}
+          <code className="text-blue-200">SUPABASE_URL</code>
+          {", "}
+          <code className="text-blue-200">SUPABASE_SERVICE_KEY</code>
+          {", and "}
+          <code className="text-blue-200">LAMBDA_ID</code>
+          {" env vars to see results on the "}
+          <a href="/leaderboard" target="_blank" rel="noreferrer" className="underline text-blue-200 hover:text-white">
+            Trading Leaderboard
+          </a>
+          {"."}
         </div>
 
         {/* Content */}
         <div className="flex-1 overflow-auto p-4">
-          <div className="h-full bg-slate-900 rounded-lg overflow-hidden flex flex-col">
-            {/* Code/Settings Display */}
-            <pre className="flex-1 overflow-auto p-4 text-sm text-slate-300 font-mono whitespace-pre">
+          <div className="h-full bg-slate-900 rounded-lg overflow-hidden">
+            <pre className="overflow-auto p-4 text-sm text-slate-300 font-mono whitespace-pre h-full">
               {activeTab === "code" ? lambdaCode : awsSettings}
             </pre>
           </div>
         </div>
 
-        {/* Footer Actions */}
-        <div className="flex items-center justify-between p-4 border-t border-slate-700 bg-slate-850">
+        {/* Footer */}
+        <div className="flex items-center justify-between p-4 border-t border-slate-700">
           <div className="text-xs text-slate-500">
-            Parameters: {JSON.stringify(params)}
+            Params: {JSON.stringify(params)}
           </div>
           <div className="flex gap-3">
             <button
               onClick={handleCopy}
-              className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg flex items-center gap-2 transition-colors"
+              className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm transition-colors"
             >
-              {copied ? (
-                <>
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                  Copied!
-                </>
-              ) : (
-                <>
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"
-                    />
-                  </svg>
-                  Copy
-                </>
-              )}
+              {copied ? "✓ Copied!" : "Copy"}
             </button>
             <button
               onClick={handleDownload}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg flex items-center gap-2 transition-colors"
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm transition-colors"
             >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-                />
-              </svg>
-              Download {activeTab === "code" ? ".js" : ".txt"}
+              ↓ Download {activeTab === "code" ? ".js" : ".txt"}
             </button>
           </div>
         </div>
