@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Rocket, Star, Trophy, ChevronRight, Sparkles, CheckCircle2, XCircle, Volume2 } from "lucide-react";
+import { Rocket, Star, Trophy, ChevronRight, Sparkles, Check, X, Volume2 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -731,6 +731,33 @@ export default function SpaceMathPage() {
   const [stageIndex, setStageIndex] = useState(0);
   const [completedStages, setCompletedStages] = useState<number[]>([]);
   const [masteryCount, setMasteryCount] = useState(0);
+
+  // Progress tracking
+  const sessionId = useRef<string>(crypto.randomUUID());
+  const stageCorrect = useRef(0);
+  const stageTotal = useRef(0);
+
+  const saveStageProgress = useCallback(async (stageIdx: number, correct: number, total: number, mastered: boolean) => {
+    const stage = STAGES[stageIdx];
+    if (!stage) return;
+    try {
+      await fetch("/api/space-math/progress", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          player_name: "cai",
+          session_id: sessionId.current,
+          stage_id: stage.id,
+          stage_label: stage.label,
+          correct,
+          total,
+          mastered,
+        }),
+      });
+    } catch {
+      // Silently fail — never block gameplay
+    }
+  }, []);
   const [recentSignatures, setRecentSignatures] = useState<string[]>([]);
   const [problem, setProblem] = useState<Problem | null>(null);
   const [selectedAnswer, setSelectedAnswer] = useState<number | string | null>(null);
@@ -789,11 +816,17 @@ export default function SpaceMathPage() {
     if (correct) {
       playSound("correct");
       setScore((s) => s + 10);
+      stageCorrect.current += 1;
+      stageTotal.current += 1;
       const newMastery = masteryCount + 1;
       setMasteryCount(newMastery);
       setTimeout(() => {
         if (newMastery >= MASTERY_THRESHOLD) {
           playSound("badge");
+          // Save mastered stage progress
+          saveStageProgress(capturedStage, stageCorrect.current, stageTotal.current, true);
+          stageCorrect.current = 0;
+          stageTotal.current = 0;
           const nextIdx = capturedStage + 1;
           setCompletedStages((prev) => Array.from(new Set([...prev, capturedStage])));
           if (nextIdx < STAGES.length) {
@@ -815,6 +848,7 @@ export default function SpaceMathPage() {
       }, 2000);
     } else {
       playSound("incorrect");
+      stageTotal.current += 1;
       const isLastAttempt = attemptsUsed >= 1;
       setTimeout(() => {
         if (isLastAttempt) {
@@ -1002,9 +1036,9 @@ export default function SpaceMathPage() {
                       </svg>
                       <div className={`p-12 rounded-full shadow-2xl ${isCorrect ? "bg-green-500" : "bg-red-500"}`}>
                         {isCorrect ? (
-                          <CheckCircle2 className='w-32 h-32 text-white' />
+                          <Check className='w-32 h-32 text-white' />
                         ) : (
-                          <XCircle className='w-32 h-32 text-white' />
+                          <X className='w-32 h-32 text-white' />
                         )}
                       </div>
                     </div>

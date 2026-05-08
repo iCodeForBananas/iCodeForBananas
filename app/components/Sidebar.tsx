@@ -32,6 +32,7 @@ const NAV = [
       { href: "/space-math", text: "Space Math" },
       { href: "/brainy-bloom", text: "Brainy Bloom" },
       { href: "/spelling-bee", text: "Spelling Bee" },
+      { href: "/learning-progress", text: "📊 Cai's Progress" },
     ],
   },
   {
@@ -224,7 +225,7 @@ export default function Sidebar() {
                   ))}
                 </div>
               </div>
-            ))}
+            ))}
           </nav>
         </div>
       </aside>
