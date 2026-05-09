@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useEffect, useState, useCallback } from "react";
+import React, { useRef, useEffect, useState, useCallback, useMemo } from "react";
 import { IndicatorData, BacktestTrade, PositionSide } from "@/app/types";
 
 interface BacktestChartProps {
@@ -10,53 +10,274 @@ interface BacktestChartProps {
   onVisibleCandlesChange: (candles: number) => void;
   selectedStrategyId?: string;
   selectedTradeId?: string | null;
+  currentParams?: Record<string, number | boolean | string>;
 }
 
 const MIN_CANDLES = 50;
 const MAX_CANDLES = 1000;
 
-// Strategy indicator configuration - defines which indicators to show for each strategy
-interface IndicatorConfig {
-  key: string;
-  label: string;
+// Strategies that show an oscillator sub-panel instead of price overlays
+const OSCILLATOR_STRATEGIES = new Set([
+  "macd-crossover",
+  "rsi-mean-reversion",
+  "rsi2",
+  "stochastic",
+  "momentum-roc",
+]);
+
+// ── Indicator helpers ────────────────────────────────────────────────────────
+
+function calcEMA(closes: number[], period: number): (number | undefined)[] {
+  const mult = 2 / (period + 1);
+  let ema: number | undefined;
+  return closes.map((c, i) => {
+    ema = i === 0 ? c : (c - ema!) * mult + ema!;
+    return i >= period - 1 ? ema : undefined;
+  });
+}
+
+function calcSMA(closes: number[], period: number): (number | undefined)[] {
+  return closes.map((_, i) => {
+    if (i < period - 1) return undefined;
+    return closes.slice(i - period + 1, i + 1).reduce((a, b) => a + b, 0) / period;
+  });
+}
+
+function calcStdDev(closes: number[], period: number): (number | undefined)[] {
+  return closes.map((_, i) => {
+    if (i < period - 1) return undefined;
+    const slice = closes.slice(i - period + 1, i + 1);
+    const mean = slice.reduce((a, b) => a + b, 0) / period;
+    return Math.sqrt(slice.reduce((s, v) => s + (v - mean) ** 2, 0) / period);
+  });
+}
+
+function calcATR(data: IndicatorData[], period: number): (number | undefined)[] {
+  let atr: number | undefined;
+  return data.map((d, i) => {
+    const tr =
+      i === 0
+        ? d.high - d.low
+        : Math.max(d.high - d.low, Math.abs(d.high - data[i - 1].close), Math.abs(d.low - data[i - 1].close));
+    atr = i === 0 ? tr : (atr! * (period - 1) + tr) / period;
+    return i >= period - 1 ? atr : undefined;
+  });
+}
+
+type PriceLine = {
+  values: (number | undefined)[];
   color: string;
+  label: string;
   lineWidth?: number;
-  lineDash?: number[];
-}
-
-interface StrategyIndicatorConfig {
-  indicators: IndicatorConfig[];
-}
-
-const STRATEGY_INDICATORS: Record<string, StrategyIndicatorConfig> = {
-  'ema-crossover': {
-    indicators: [
-      { key: 'ema9', label: 'EMA 9', color: '#fbbf24', lineWidth: 1 },
-      { key: 'ema21', label: 'EMA 21', color: '#a855f7', lineWidth: 1 },
-    ],
-  },
-  'sma-crossover': {
-    indicators: [
-      { key: 'sma50', label: 'SMA 50', color: '#3b82f6', lineWidth: 1 },
-      { key: 'sma200', label: 'SMA 200', color: '#f97316', lineWidth: 1 },
-    ],
-  },
-  'bollinger-bands': {
-    indicators: [
-      { key: 'sma20', label: 'SMA 20', color: '#3b82f6', lineWidth: 1 },
-    ],
-  },
-  'donchian-channel': {
-    indicators: [
-      { key: 'upperBand', label: 'Donchian', color: '#06b6d4', lineWidth: 1, lineDash: [4, 4] },
-      { key: 'lowerBand', label: '', color: '#06b6d4', lineWidth: 1, lineDash: [4, 4] },
-      { key: 'midLine', label: '', color: '#22d3ee', lineWidth: 0.8, lineDash: [2, 2] },
-    ],
-  },
-  // MACD and RSI don't have price chart overlays (they're oscillators)
-  'macd-crossover': { indicators: [] },
-  'rsi-mean-reversion': { indicators: [] },
+  dash?: number[];
 };
+
+type OscillatorData = {
+  type: "rsi" | "macd" | "stochastic" | "roc";
+  values: (number | undefined)[];
+  values2?: (number | undefined)[];
+  values3?: (number | undefined)[];
+  label: string;
+  level1?: number;
+  level2?: number;
+};
+
+// ── Compute indicators per strategy ─────────────────────────────────────────
+
+function computeIndicators(
+  data: IndicatorData[],
+  strategyId: string,
+  params: Record<string, number | boolean | string>
+): { priceLines: PriceLine[]; oscillator?: OscillatorData } {
+  const closes = data.map((d) => d.close);
+  const priceLines: PriceLine[] = [];
+  let oscillator: OscillatorData | undefined;
+
+  const num = (key: string, fallback: number) => ((params[key] as number) ?? fallback);
+
+  switch (strategyId) {
+    case "ema-crossover": {
+      const fast = num("fastPeriod", 9);
+      const slow = num("slowPeriod", 21);
+      priceLines.push({ values: data.map((d) => d[`ema${fast}` as keyof IndicatorData] as number | undefined), color: "#fbbf24", label: `EMA ${fast}` });
+      priceLines.push({ values: data.map((d) => d[`ema${slow}` as keyof IndicatorData] as number | undefined), color: "#a855f7", label: `EMA ${slow}` });
+      break;
+    }
+    case "triple-ema": {
+      const fast = num("fastPeriod", 4);
+      const mid = num("midPeriod", 9);
+      const slow = num("slowPeriod", 18);
+      priceLines.push({ values: data.map((d) => d[`ema${fast}` as keyof IndicatorData] as number | undefined), color: "#fbbf24", label: `EMA ${fast}` });
+      priceLines.push({ values: data.map((d) => d[`ema${mid}` as keyof IndicatorData] as number | undefined), color: "#22d3ee", label: `EMA ${mid}` });
+      priceLines.push({ values: data.map((d) => d[`ema${slow}` as keyof IndicatorData] as number | undefined), color: "#a855f7", label: `EMA ${slow}` });
+      break;
+    }
+    case "sma-crossover": {
+      const fast = num("fastPeriod", 50);
+      const slow = num("slowPeriod", 200);
+      priceLines.push({ values: data.map((d) => d[`sma${fast}` as keyof IndicatorData] as number | undefined), color: "#3b82f6", label: `SMA ${fast}` });
+      priceLines.push({ values: data.map((d) => d[`sma${slow}` as keyof IndicatorData] as number | undefined), color: "#f97316", label: `SMA ${slow}` });
+      break;
+    }
+    case "ema-price-cross": {
+      const period = num("emaPeriod", 20);
+      priceLines.push({ values: data.map((d) => d[`ema${period}` as keyof IndicatorData] as number | undefined), color: "#fbbf24", label: `EMA ${period}` });
+      break;
+    }
+    case "donchian-channel": {
+      const period = num("period", 20);
+      priceLines.push({ values: data.map((d) => d[`donchian_${period}_upperBand` as keyof IndicatorData] as number | undefined), color: "#06b6d4", label: `DC ${period}`, dash: [4, 4] });
+      priceLines.push({ values: data.map((d) => d[`donchian_${period}_lowerBand` as keyof IndicatorData] as number | undefined), color: "#06b6d4", label: "", dash: [4, 4] });
+      priceLines.push({ values: data.map((d) => d[`donchian_${period}_midLine` as keyof IndicatorData] as number | undefined), color: "#22d3ee", label: "", lineWidth: 0.8, dash: [2, 2] });
+      break;
+    }
+    case "breakout": {
+      const period = num("period", 20);
+      priceLines.push({ values: data.map((d) => d[`donchian_${period}_upperBand` as keyof IndicatorData] as number | undefined), color: "#06b6d4", label: `Chan ${period}`, dash: [4, 4] });
+      priceLines.push({ values: data.map((d) => d[`donchian_${period}_lowerBand` as keyof IndicatorData] as number | undefined), color: "#06b6d4", label: "", dash: [4, 4] });
+      const trail = num("trailStopEMAPeriod", 0);
+      if (trail > 0) {
+        priceLines.push({ values: data.map((d) => d[`ema${trail}` as keyof IndicatorData] as number | undefined), color: "#f97316", label: `Trail EMA ${trail}`, dash: [3, 3] });
+      }
+      break;
+    }
+    case "bollinger-bands": {
+      const period = num("period", 20);
+      const mult = num("stdDev", 2);
+      const sma = calcSMA(closes, period);
+      const std = calcStdDev(closes, period);
+      priceLines.push({ values: sma.map((s, i) => s !== undefined && std[i] !== undefined ? s + mult * std[i]! : undefined), color: "#a855f7", label: `BB±${mult}σ`, dash: [3, 3] });
+      priceLines.push({ values: sma, color: "#3b82f6", label: `SMA ${period}`, lineWidth: 1 });
+      priceLines.push({ values: sma.map((s, i) => s !== undefined && std[i] !== undefined ? s - mult * std[i]! : undefined), color: "#a855f7", label: "", dash: [3, 3] });
+      break;
+    }
+    case "keltner-channel": {
+      const emaPeriod = num("emaPeriod", 20);
+      const atrPeriod = num("atrPeriod", 10);
+      const mult = num("multiplier", 2);
+      const ema = calcEMA(closes, emaPeriod);
+      const atr = calcATR(data, atrPeriod);
+      priceLines.push({ values: ema.map((e, i) => e !== undefined && atr[i] !== undefined ? e + mult * atr[i]! : undefined), color: "#06b6d4", label: `KC±${mult}ATR`, dash: [3, 3] });
+      priceLines.push({ values: ema, color: "#3b82f6", label: `EMA ${emaPeriod}` });
+      priceLines.push({ values: ema.map((e, i) => e !== undefined && atr[i] !== undefined ? e - mult * atr[i]! : undefined), color: "#06b6d4", label: "", dash: [3, 3] });
+      break;
+    }
+    case "supertrend": {
+      const atrPeriod = num("atrPeriod", 10);
+      const mult = num("multiplier", 3);
+      const atr = calcATR(data, atrPeriod);
+      const bullLine: (number | undefined)[] = new Array(data.length).fill(undefined);
+      const bearLine: (number | undefined)[] = new Array(data.length).fill(undefined);
+      let prevUp = 0, prevDn = 0, prevST = 0, dir = 1;
+      for (let i = 0; i < data.length; i++) {
+        const a = atr[i];
+        if (a === undefined) continue;
+        const hl2 = (data[i].high + data[i].low) / 2;
+        let up = hl2 + mult * a;
+        let dn = hl2 - mult * a;
+        if (i > 0) {
+          up = (up < prevUp || data[i - 1].close > prevUp) ? up : prevUp;
+          dn = (dn > prevDn || data[i - 1].close < prevDn) ? dn : prevDn;
+          dir = prevST === prevUp ? (data[i].close > up ? 1 : -1) : (data[i].close < dn ? -1 : 1);
+        }
+        const st = dir === 1 ? dn : up;
+        if (dir === 1) bullLine[i] = st; else bearLine[i] = st;
+        prevUp = up; prevDn = dn; prevST = st;
+      }
+      priceLines.push({ values: bullLine, color: "#22c55e", label: "Supertrend ↑", lineWidth: 2 });
+      priceLines.push({ values: bearLine, color: "#ef4444", label: "", lineWidth: 2 });
+      break;
+    }
+    case "chandelier-exit": {
+      const period = num("period", 22);
+      const atrPeriod = num("atrPeriod", 22);
+      const mult = num("multiplier", 3);
+      const atr = calcATR(data, atrPeriod);
+      const chandLong: (number | undefined)[] = [];
+      for (let i = 0; i < data.length; i++) {
+        if (i < period - 1 || atr[i] === undefined) { chandLong.push(undefined); continue; }
+        const hh = Math.max(...data.slice(i - period + 1, i + 1).map((d) => d.high));
+        chandLong.push(hh - mult * atr[i]!);
+      }
+      priceLines.push({ values: chandLong, color: "#f97316", label: "Chandelier Long", lineWidth: 1.5, dash: [4, 3] });
+      break;
+    }
+    // Oscillator strategies
+    case "macd-crossover": {
+      oscillator = {
+        type: "macd",
+        values: data.map((d) => d.macd),
+        values2: data.map((d) => d.macdSignal),
+        values3: data.map((d) => d.macdHistogram),
+        label: "MACD",
+      };
+      break;
+    }
+    case "rsi-mean-reversion": {
+      oscillator = {
+        type: "rsi",
+        values: data.map((d) => d.rsi),
+        label: "RSI 14",
+        level1: num("overbought", 70),
+        level2: num("oversold", 30),
+      };
+      break;
+    }
+    case "rsi2": {
+      const period = 2;
+      const rsiVals: (number | undefined)[] = new Array(data.length).fill(undefined);
+      let ag = 0, al = 0;
+      for (let i = 1; i < data.length; i++) {
+        const ch = data[i].close - data[i - 1].close;
+        const g = ch > 0 ? ch : 0, l = ch < 0 ? -ch : 0;
+        if (i < period) { ag += g; al += l; }
+        else if (i === period) { ag = (ag + g) / period; al = (al + l) / period; }
+        else { ag = (ag * (period - 1) + g) / period; al = (al * (period - 1) + l) / period; }
+        if (i >= period) rsiVals[i] = 100 - 100 / (1 + (al === 0 ? 100 : ag / al));
+      }
+      oscillator = { type: "rsi", values: rsiVals, label: "RSI 2", level1: num("overbought", 90), level2: num("oversold", 10) };
+      break;
+    }
+    case "stochastic": {
+      const kPeriod = num("kPeriod", 14);
+      const dPeriod = num("dPeriod", 3);
+      const kVals: (number | undefined)[] = [];
+      for (let i = 0; i < data.length; i++) {
+        if (i < kPeriod - 1) { kVals.push(undefined); continue; }
+        const sl = data.slice(i - kPeriod + 1, i + 1);
+        const hh = Math.max(...sl.map((d) => d.high));
+        const ll = Math.min(...sl.map((d) => d.low));
+        const rng = hh - ll;
+        kVals.push(rng === 0 ? 50 : ((data[i].close - ll) / rng) * 100);
+      }
+      const dVals: (number | undefined)[] = kVals.map((_, i) => {
+        if (i < kPeriod - 1 + dPeriod - 1) return undefined;
+        const sl = kVals.slice(i - dPeriod + 1, i + 1).filter((v): v is number => v !== undefined);
+        return sl.length === dPeriod ? sl.reduce((a, b) => a + b, 0) / dPeriod : undefined;
+      });
+      oscillator = { type: "stochastic", values: kVals, values2: dVals, label: "Stochastic", level1: num("overbought", 80), level2: num("oversold", 20) };
+      break;
+    }
+    case "momentum-roc": {
+      const rocPeriod = num("rocPeriod", 20);
+      const smoothing = num("smoothing", 5);
+      const raw: (number | undefined)[] = closes.map((c, i) =>
+        i < rocPeriod ? undefined : ((c - closes[i - rocPeriod]) / closes[i - rocPeriod]) * 100
+      );
+      const smoothed: (number | undefined)[] = raw.map((_, i) => {
+        if (raw[i] === undefined) return undefined;
+        const sl = raw.slice(Math.max(0, i - smoothing + 1), i + 1).filter((v): v is number => v !== undefined);
+        return sl.length < smoothing ? undefined : sl.reduce((a, b) => a + b, 0) / sl.length;
+      });
+      oscillator = { type: "roc", values: smoothed, label: `ROC(${rocPeriod})` };
+      break;
+    }
+  }
+
+  return { priceLines, oscillator };
+}
+
+// ── Component ────────────────────────────────────────────────────────────────
 
 const BacktestChart: React.FC<BacktestChartProps> = ({
   data,
@@ -65,6 +286,7 @@ const BacktestChart: React.FC<BacktestChartProps> = ({
   onVisibleCandlesChange,
   selectedStrategyId,
   selectedTradeId,
+  currentParams = {},
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -75,75 +297,61 @@ const BacktestChart: React.FC<BacktestChartProps> = ({
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
-
-    const resizeObserver = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        const { width, height } = entry.contentRect;
+    const ro = new ResizeObserver((entries) => {
+      for (const e of entries) {
+        const { width, height } = e.contentRect;
         setContainerSize({ width, height });
       }
     });
-
-    resizeObserver.observe(container);
-    return () => resizeObserver.disconnect();
+    ro.observe(container);
+    return () => ro.disconnect();
   }, []);
 
-  // Scroll to selected trade when selectedTradeId changes
+  // Scroll to selected trade
   const prevSelectedTradeIdRef = useRef<string | null | undefined>(selectedTradeId);
   useEffect(() => {
-    // Skip if selectedTradeId hasn't actually changed
     if (prevSelectedTradeIdRef.current === selectedTradeId) return;
     prevSelectedTradeIdRef.current = selectedTradeId;
-    
     if (!selectedTradeId || !data || data.length === 0) return;
-    
-    const selectedTrade = trades.find(t => t.id === selectedTradeId);
-    if (!selectedTrade) return;
-    
-    // Find the data index for the entry time of the selected trade
-    const entryDataIdx = data.findIndex((d) => d.time >= selectedTrade.entryTime);
-    if (entryDataIdx === -1) return;
-    
-    // Calculate the scroll offset to center the trade in the view
-    const halfVisibleCandles = Math.floor(visibleCandles / 2);
-    const scrollOffsetToCenterTrade = Math.max(0, data.length - entryDataIdx - halfVisibleCandles);
-    const maxScrollOffset = Math.max(0, data.length - visibleCandles);
-    
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- syncing scroll position to external trade selection
-    setScrollOffset(Math.max(0, Math.min(maxScrollOffset, scrollOffsetToCenterTrade)));
+    const trade = trades.find((t) => t.id === selectedTradeId);
+    if (!trade) return;
+    const idx = data.findIndex((d) => d.time >= trade.entryTime);
+    if (idx === -1) return;
+    const half = Math.floor(visibleCandles / 2);
+    const target = Math.max(0, data.length - idx - half);
+    const max = Math.max(0, data.length - visibleCandles);
+    setScrollOffset(Math.max(0, Math.min(max, target)));
   }, [selectedTradeId, trades, data, visibleCandles]);
 
-  const zoomIn = useCallback(() => {
-    onVisibleCandlesChange(Math.max(MIN_CANDLES, Math.floor(visibleCandles * 0.8)));
-  }, [visibleCandles, onVisibleCandlesChange]);
-
-  const zoomOut = useCallback(() => {
-    onVisibleCandlesChange(Math.min(MAX_CANDLES, Math.floor(visibleCandles * 1.25)));
-  }, [visibleCandles, onVisibleCandlesChange]);
+  const zoomIn = useCallback(() => onVisibleCandlesChange(Math.max(MIN_CANDLES, Math.floor(visibleCandles * 0.8))), [visibleCandles, onVisibleCandlesChange]);
+  const zoomOut = useCallback(() => onVisibleCandlesChange(Math.min(MAX_CANDLES, Math.floor(visibleCandles * 1.25))), [visibleCandles, onVisibleCandlesChange]);
 
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
-
     const handleWheel = (e: WheelEvent) => {
       if (e.ctrlKey || e.metaKey) {
         e.preventDefault();
-        if (e.deltaY < 0) {
-          zoomIn();
-        } else {
-          zoomOut();
-        }
+        e.deltaY < 0 ? zoomIn() : zoomOut();
       } else {
-        // Horizontal scroll
         e.preventDefault();
-        const maxOffset = Math.max(0, data.length - visibleCandles);
-        setScrollOffset((prev) => Math.max(0, Math.min(maxOffset, prev + Math.sign(e.deltaY) * 10)));
+        const max = Math.max(0, data.length - visibleCandles);
+        setScrollOffset((prev) => Math.max(0, Math.min(max, prev + Math.sign(e.deltaY) * 10)));
       }
     };
-
     container.addEventListener("wheel", handleWheel, { passive: false });
     return () => container.removeEventListener("wheel", handleWheel);
   }, [zoomIn, zoomOut, data.length, visibleCandles]);
 
+  // Compute display indicators
+  const { priceLines, oscillator } = useMemo(() => {
+    if (!data || data.length === 0 || !selectedStrategyId) return { priceLines: [] };
+    return computeIndicators(data, selectedStrategyId, currentParams);
+  }, [data, selectedStrategyId, currentParams]);
+
+  const hasOscillator = !!oscillator;
+
+  // Draw
   useEffect(() => {
     const canvas = canvasRef.current;
     const container = containerRef.current;
@@ -164,51 +372,53 @@ const BacktestChart: React.FC<BacktestChartProps> = ({
     canvas.style.height = `${rect.height}px`;
     ctx.scale(dpr, dpr);
 
-    const width = rect.width;
-    const height = rect.height;
-    const padding = { top: 30, right: 80, bottom: 40, left: 10 };
-    const chartHeight = height - padding.top - padding.bottom;
-    const chartWidth = width - padding.left - padding.right;
+    const W = rect.width;
+    const H = rect.height;
+    const pad = { top: 30, right: 80, bottom: 40, left: 10 };
 
-    // Background
+    // Split height if oscillator
+    const oscHeight = hasOscillator ? Math.floor(H * 0.28) : 0;
+    const gap = hasOscillator ? 4 : 0;
+    const priceH = H - oscHeight - gap - pad.bottom;
+
     ctx.fillStyle = "#0f172a";
-    ctx.fillRect(0, 0, width, height);
+    ctx.fillRect(0, 0, W, H);
 
-    // Calculate price range
+    // ── Price chart area ──────────────────────────────────────────────────
+    const chartWidth = W - pad.left - pad.right;
+    const chartHeight = priceH - pad.top;
+
     const allPrices = visibleData.flatMap((d) => [d.high, d.low]);
-    const minPrice = Math.min(...allPrices);
-    const maxPrice = Math.max(...allPrices);
-    const priceRange = maxPrice - minPrice;
-    const pricePadding = priceRange * 0.1;
-    const domainMin = minPrice - pricePadding;
-    const domainMax = maxPrice + pricePadding;
+    const minP = Math.min(...allPrices);
+    const maxP = Math.max(...allPrices);
+    const pRange = maxP - minP;
+    const domainMin = minP - pRange * 0.1;
+    const domainMax = maxP + pRange * 0.1;
 
-    const xScale = (index: number) => padding.left + (index / (visibleData.length - 1 || 1)) * chartWidth;
-    const yScale = (price: number) =>
-      padding.top + chartHeight - ((price - domainMin) / (domainMax - domainMin)) * chartHeight;
+    const xScale = (i: number) => pad.left + (i / Math.max(visibleData.length - 1, 1)) * chartWidth;
+    const yScale = (p: number) => pad.top + chartHeight - ((p - domainMin) / (domainMax - domainMin)) * chartHeight;
 
-    // Draw grid lines
+    // Grid
     ctx.strokeStyle = "#1e293b";
     ctx.lineWidth = 1;
-    const gridLines = 5;
-    for (let i = 0; i <= gridLines; i++) {
-      const y = padding.top + (i / gridLines) * chartHeight;
+    for (let i = 0; i <= 5; i++) {
+      const y = pad.top + (i / 5) * chartHeight;
       ctx.beginPath();
-      ctx.moveTo(padding.left, y);
-      ctx.lineTo(width - padding.right, y);
+      ctx.moveTo(pad.left, y);
+      ctx.lineTo(W - pad.right, y);
       ctx.stroke();
-
-      const price = domainMax - (i / gridLines) * (domainMax - domainMin);
+      const price = domainMax - (i / 5) * (domainMax - domainMin);
       ctx.fillStyle = "#64748b";
       ctx.font = "11px monospace";
       ctx.textAlign = "left";
-      ctx.fillText(`$${price.toFixed(2)}`, width - padding.right + 5, y + 4);
+      ctx.fillText(`$${price.toFixed(2)}`, W - pad.right + 5, y + 4);
     }
 
-    // Draw SMA lines
-    const drawIndicatorLine = (values: (number | undefined)[], color: string, lineWidth: number = 1.5) => {
+    // Price overlay lines
+    const drawLine = (values: (number | undefined)[], color: string, lw = 1, dash?: number[]) => {
       ctx.strokeStyle = color;
-      ctx.lineWidth = lineWidth;
+      ctx.lineWidth = lw;
+      if (dash) ctx.setLineDash(dash);
       ctx.beginPath();
       let started = false;
       visibleData.forEach((_, i) => {
@@ -216,208 +426,112 @@ const BacktestChart: React.FC<BacktestChartProps> = ({
         if (val !== undefined && val > 0) {
           const x = xScale(i);
           const y = yScale(val);
-          if (!started) {
-            ctx.moveTo(x, y);
-            started = true;
-          } else {
-            ctx.lineTo(x, y);
-          }
-        }
+          if (!started) { ctx.moveTo(x, y); started = true; } else ctx.lineTo(x, y);
+        } else { started = false; }
       });
       ctx.stroke();
+      if (dash) ctx.setLineDash([]);
     };
 
-    // Draw indicators based on strategy configuration
-    const strategyConfig = selectedStrategyId ? STRATEGY_INDICATORS[selectedStrategyId] : undefined;
-    if (strategyConfig) {
-      for (const indicator of strategyConfig.indicators) {
-        const indicatorKey = indicator.key as keyof IndicatorData;
-        if (visibleData.some((d) => d[indicatorKey] !== undefined)) {
-          if (indicator.lineDash) {
-            ctx.setLineDash(indicator.lineDash);
-          }
-          drawIndicatorLine(
-            data.map((d) => d[indicatorKey] as number | undefined),
-            indicator.color,
-            indicator.lineWidth ?? 1,
-          );
-          if (indicator.lineDash) {
-            ctx.setLineDash([]);
-          }
-        }
-      }
+    for (const line of priceLines) {
+      drawLine(line.values, line.color, line.lineWidth ?? 1, line.dash);
     }
 
-    // Draw candlesticks
+    // Candlesticks
     const candleWidth = Math.max(2, (chartWidth / visibleData.length) * 0.7);
     visibleData.forEach((candle, i) => {
       const x = xScale(i);
       const isGreen = candle.close >= candle.open;
       const color = isGreen ? "#10b981" : "#ef4444";
-
       ctx.strokeStyle = color;
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.moveTo(x, yScale(candle.high));
       ctx.lineTo(x, yScale(candle.low));
       ctx.stroke();
-
       const bodyTop = yScale(Math.max(candle.open, candle.close));
-      const bodyBottom = yScale(Math.min(candle.open, candle.close));
-      const bodyHeight = Math.max(bodyBottom - bodyTop, 1);
-
+      const bodyH = Math.max(yScale(Math.min(candle.open, candle.close)) - bodyTop, 1);
       ctx.fillStyle = isGreen ? color : "#1e293b";
       ctx.strokeStyle = color;
-      ctx.lineWidth = 1;
-      ctx.fillRect(x - candleWidth / 2, bodyTop, candleWidth, bodyHeight);
-      ctx.strokeRect(x - candleWidth / 2, bodyTop, candleWidth, bodyHeight);
+      ctx.fillRect(x - candleWidth / 2, bodyTop, candleWidth, bodyH);
+      ctx.strokeRect(x - candleWidth / 2, bodyTop, candleWidth, bodyH);
     });
 
-    // Draw trade markers
-    const visibleTrades = trades.filter((trade) => {
-      const entryIdx = data.findIndex((d) => d.time >= trade.entryTime);
-      const exitIdx = data.findIndex((d) => d.time >= trade.exitTime);
-      return (entryIdx >= startIndex && entryIdx < endIndex) || (exitIdx >= startIndex && exitIdx < endIndex);
+    // Trade markers
+    const visibleTrades = trades.filter((t) => {
+      const ei = data.findIndex((d) => d.time >= t.entryTime);
+      const xi = data.findIndex((d) => d.time >= t.exitTime);
+      return (ei >= startIndex && ei < endIndex) || (xi >= startIndex && xi < endIndex);
     });
 
     visibleTrades.forEach((trade) => {
-      const entryDataIdx = data.findIndex((d) => d.time >= trade.entryTime);
-      const exitDataIdx = data.findIndex((d) => d.time >= trade.exitTime);
-      const isSelected = trade.id === selectedTradeId;
+      const entryIdx = data.findIndex((d) => d.time >= trade.entryTime);
+      const exitIdx = data.findIndex((d) => d.time >= trade.exitTime);
+      const isSel = trade.id === selectedTradeId;
 
-      // Draw highlight background for selected trade
-      if (isSelected && entryDataIdx >= startIndex && exitDataIdx >= startIndex) {
-        const entryLocalIdx = Math.max(0, entryDataIdx - startIndex);
-        const exitLocalIdx = Math.min(visibleData.length - 1, exitDataIdx - startIndex);
-        const x1 = xScale(entryLocalIdx);
-        const x2 = xScale(exitLocalIdx);
-        const highlightPadding = 20;
-        
-        // Draw a semi-transparent highlight box around the selected trade
-        ctx.fillStyle = "rgba(59, 130, 246, 0.15)";
-        ctx.fillRect(
-          x1 - highlightPadding,
-          padding.top,
-          (x2 - x1) + (highlightPadding * 2),
-          chartHeight
-        );
-        
-        // Draw vertical lines at entry and exit
-        ctx.strokeStyle = "rgba(59, 130, 246, 0.6)";
+      if (isSel && entryIdx >= startIndex && exitIdx >= startIndex) {
+        const x1 = xScale(Math.max(0, entryIdx - startIndex));
+        const x2 = xScale(Math.min(visibleData.length - 1, exitIdx - startIndex));
+        ctx.fillStyle = "rgba(59,130,246,0.15)";
+        ctx.fillRect(x1 - 20, pad.top, x2 - x1 + 40, chartHeight);
+        ctx.strokeStyle = "rgba(59,130,246,0.6)";
         ctx.lineWidth = 2;
         ctx.setLineDash([5, 5]);
         ctx.beginPath();
-        ctx.moveTo(x1, padding.top);
-        ctx.lineTo(x1, padding.top + chartHeight);
-        ctx.moveTo(x2, padding.top);
-        ctx.lineTo(x2, padding.top + chartHeight);
+        ctx.moveTo(x1, pad.top); ctx.lineTo(x1, pad.top + chartHeight);
+        ctx.moveTo(x2, pad.top); ctx.lineTo(x2, pad.top + chartHeight);
         ctx.stroke();
         ctx.setLineDash([]);
       }
 
-      // Draw entry marker
-      if (entryDataIdx >= startIndex && entryDataIdx < endIndex) {
-        const localIdx = entryDataIdx - startIndex;
-        const x = xScale(localIdx);
+      if (entryIdx >= startIndex && entryIdx < endIndex) {
+        const li = entryIdx - startIndex;
+        const x = xScale(li);
         const y = yScale(trade.entryPrice);
         const isLong = trade.side === PositionSide.LONG;
-
-        // Draw larger triangle marker for selected trade
-        const markerScale = isSelected ? 1.4 : 1;
-        const baseOffset = 15 * markerScale;
-        const tipOffset = 25 * markerScale;
-        const width = 8 * markerScale;
-
-        // Draw triangle marker
+        const ms = isSel ? 1.4 : 1;
+        const bo = 15 * ms, to = 25 * ms, w = 8 * ms;
         ctx.beginPath();
-        if (isLong) {
-          ctx.moveTo(x, y + baseOffset);
-          ctx.lineTo(x - width, y + tipOffset);
-          ctx.lineTo(x + width, y + tipOffset);
-        } else {
-          ctx.moveTo(x, y - baseOffset);
-          ctx.lineTo(x - width, y - tipOffset);
-          ctx.lineTo(x + width, y - tipOffset);
-        }
+        if (isLong) { ctx.moveTo(x, y + bo); ctx.lineTo(x - w, y + to); ctx.lineTo(x + w, y + to); }
+        else { ctx.moveTo(x, y - bo); ctx.lineTo(x - w, y - to); ctx.lineTo(x + w, y - to); }
         ctx.closePath();
         ctx.fillStyle = isLong ? "#22c55e" : "#ef4444";
         ctx.fill();
-        
-        // Draw outline ring for selected trade marker
-        if (isSelected) {
-          ctx.strokeStyle = "#3b82f6";
-          ctx.lineWidth = 3;
-          ctx.stroke();
-        }
-
-        // Entry label
-        ctx.fillStyle = "#ffffff";
-        ctx.font = isSelected ? "bold 11px sans-serif" : "bold 9px sans-serif";
+        if (isSel) { ctx.strokeStyle = "#3b82f6"; ctx.lineWidth = 3; ctx.stroke(); }
+        ctx.fillStyle = "#fff";
+        ctx.font = isSel ? "bold 11px sans-serif" : "bold 9px sans-serif";
         ctx.textAlign = "center";
-        ctx.fillText(isLong ? "BUY" : "SELL", x, isLong ? y + tipOffset + 13 : y - tipOffset - 5);
+        ctx.fillText(isLong ? "BUY" : "SELL", x, isLong ? y + to + 13 : y - to - 5);
       }
 
-      // Draw exit marker
-      if (exitDataIdx >= startIndex && exitDataIdx < endIndex) {
-        const localIdx = exitDataIdx - startIndex;
-        const x = xScale(localIdx);
+      if (exitIdx >= startIndex && exitIdx < endIndex) {
+        const li = exitIdx - startIndex;
+        const x = xScale(li);
         const y = yScale(trade.exitPrice);
         const isProfit = trade.pnl > 0;
-        const markerSize = isSelected ? 8 : 6;
-
-        // Draw X marker for exit
+        const ms = isSel ? 8 : 6;
         ctx.strokeStyle = isProfit ? "#22c55e" : "#ef4444";
-        ctx.lineWidth = isSelected ? 4 : 3;
+        ctx.lineWidth = isSel ? 4 : 3;
         ctx.beginPath();
-        ctx.moveTo(x - markerSize, y - markerSize);
-        ctx.lineTo(x + markerSize, y + markerSize);
-        ctx.moveTo(x + markerSize, y - markerSize);
-        ctx.lineTo(x - markerSize, y + markerSize);
+        ctx.moveTo(x - ms, y - ms); ctx.lineTo(x + ms, y + ms);
+        ctx.moveTo(x + ms, y - ms); ctx.lineTo(x - ms, y + ms);
         ctx.stroke();
-        
-        // Draw circle around exit marker for selected trade
-        if (isSelected) {
-          ctx.strokeStyle = "#3b82f6";
-          ctx.lineWidth = 2;
-          ctx.beginPath();
-          ctx.arc(x, y, markerSize + 5, 0, Math.PI * 2);
-          ctx.stroke();
-        }
-
-        // Exit label with P&L
+        if (isSel) { ctx.strokeStyle = "#3b82f6"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, ms + 5, 0, Math.PI * 2); ctx.stroke(); }
         ctx.fillStyle = isProfit ? "#22c55e" : "#ef4444";
-        ctx.font = isSelected ? "bold 11px sans-serif" : "bold 9px sans-serif";
+        ctx.font = isSel ? "bold 11px sans-serif" : "bold 9px sans-serif";
         ctx.textAlign = "center";
-        const pnlText = `${isProfit ? "+" : ""}${trade.pnlPercent.toFixed(2)}%`;
-        ctx.fillText(pnlText, x, y - (isSelected ? 20 : 15));
+        ctx.fillText(`${isProfit ? "+" : ""}${trade.pnlPercent.toFixed(2)}%`, x, y - (isSel ? 20 : 15));
       }
 
-      // Draw connection line between entry and exit
-      if (
-        entryDataIdx >= startIndex &&
-        entryDataIdx < endIndex &&
-        exitDataIdx >= startIndex &&
-        exitDataIdx < endIndex
-      ) {
-        const entryLocalIdx = entryDataIdx - startIndex;
-        const exitLocalIdx = exitDataIdx - startIndex;
-        const x1 = xScale(entryLocalIdx);
-        const x2 = xScale(exitLocalIdx);
-        const y1 = yScale(trade.entryPrice);
-        const y2 = yScale(trade.exitPrice);
-
-        // Use more prominent line for selected trade
-        if (isSelected) {
-          ctx.strokeStyle = trade.pnl > 0 ? "rgba(34, 197, 94, 0.6)" : "rgba(239, 68, 68, 0.6)";
-          ctx.lineWidth = 3;
-        } else {
-          ctx.strokeStyle = trade.pnl > 0 ? "rgba(34, 197, 94, 0.3)" : "rgba(239, 68, 68, 0.3)";
-          ctx.lineWidth = 2;
-        }
+      if (entryIdx >= startIndex && entryIdx < endIndex && exitIdx >= startIndex && exitIdx < endIndex) {
+        const x1 = xScale(entryIdx - startIndex);
+        const x2 = xScale(exitIdx - startIndex);
+        ctx.strokeStyle = trade.pnl > 0 ? `rgba(34,197,94,${isSel ? 0.6 : 0.3})` : `rgba(239,68,68,${isSel ? 0.6 : 0.3})`;
+        ctx.lineWidth = isSel ? 3 : 2;
         ctx.setLineDash([4, 4]);
         ctx.beginPath();
-        ctx.moveTo(x1, y1);
-        ctx.lineTo(x2, y2);
+        ctx.moveTo(x1, yScale(trade.entryPrice));
+        ctx.lineTo(x2, yScale(trade.exitPrice));
         ctx.stroke();
         ctx.setLineDash([]);
       }
@@ -427,79 +541,159 @@ const BacktestChart: React.FC<BacktestChartProps> = ({
     ctx.fillStyle = "#64748b";
     ctx.font = "9px monospace";
     ctx.textAlign = "center";
-    const timeLabels = 6;
-    for (let i = 0; i <= timeLabels; i++) {
-      const index = Math.floor((i / timeLabels) * (visibleData.length - 1));
-      if (index >= 0 && index < visibleData.length) {
-        const x = xScale(index);
-        const time = new Date(visibleData[index].time);
-        ctx.fillText(time.toLocaleDateString([], { month: "short", day: "numeric" }), x, height - 10);
+    for (let i = 0; i <= 6; i++) {
+      const idx = Math.floor((i / 6) * (visibleData.length - 1));
+      if (idx >= 0 && idx < visibleData.length) {
+        const x = xScale(idx);
+        const t = new Date(visibleData[idx].time);
+        ctx.fillText(t.toLocaleDateString([], { month: "short", day: "numeric" }), x, H - oscHeight - gap - 10);
       }
     }
 
-    // Title and legend
+    // Price chart title + legend
     ctx.fillStyle = "#f8fafc";
     ctx.font = "bold 12px sans-serif";
     ctx.textAlign = "left";
-    ctx.fillText("Price Chart", padding.left + 5, 18);
+    ctx.fillText("Price Chart", pad.left + 5, 18);
 
-    // Legend - derive from strategy configuration (only show indicators with labels)
+    const legendItems = priceLines.filter((l) => l.label);
+    let legendX = pad.left + 95;
     ctx.font = "9px sans-serif";
-    let legendX = padding.left + 100;
-    const legendItems = strategyConfig?.indicators
-      .filter((ind) => ind.label) // Only show indicators with labels
-      .map((ind) => ({ label: ind.label, color: ind.color })) ?? [];
-
     legendItems.forEach((item) => {
       ctx.fillStyle = item.color;
       ctx.fillRect(legendX, 10, 12, 3);
       ctx.fillStyle = "#94a3b8";
       ctx.fillText(item.label, legendX + 16, 15);
-      legendX += 60;
+      legendX += item.label.length * 6 + 24;
     });
-  }, [data, trades, visibleCandles, scrollOffset, containerSize, selectedStrategyId, selectedTradeId]);
+
+    // ── Oscillator sub-panel ──────────────────────────────────────────────
+    if (hasOscillator && oscillator) {
+      const oscTop = priceH + gap;
+      const oscInnerH = oscHeight - 20; // room for label
+      const oscBottom = oscTop + oscInnerH;
+
+      // Panel background
+      ctx.fillStyle = "#0d1929";
+      ctx.fillRect(pad.left, oscTop, chartWidth, oscHeight);
+      ctx.strokeStyle = "#1e293b";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(pad.left, oscTop, chartWidth, oscHeight);
+
+      // Label
+      ctx.fillStyle = "#64748b";
+      ctx.font = "9px monospace";
+      ctx.textAlign = "left";
+      ctx.fillText(oscillator.label, pad.left + 4, oscTop + 10);
+
+      // Slice visible values
+      const oVals = oscillator.values.slice(startIndex, endIndex);
+      const oVals2 = oscillator.values2?.slice(startIndex, endIndex);
+      const oVals3 = oscillator.values3?.slice(startIndex, endIndex);
+
+      // Compute domain
+      const allOsc = [...oVals, ...(oVals2 ?? []), ...(oVals3 ?? [])].filter((v): v is number => v !== undefined);
+      if (allOsc.length === 0) return;
+
+      let oscMin = Math.min(...allOsc);
+      let oscMax = Math.max(...allOsc);
+
+      // For RSI/Stochastic, fix domain 0-100
+      if (oscillator.type === "rsi" || oscillator.type === "stochastic") {
+        oscMin = 0; oscMax = 100;
+      } else {
+        const r = oscMax - oscMin || 1;
+        oscMin -= r * 0.1; oscMax += r * 0.1;
+      }
+
+      const oscXScale = (i: number) => pad.left + (i / Math.max(oVals.length - 1, 1)) * chartWidth;
+      const oscYScale = (v: number) => oscTop + 14 + (oscInnerH - 14) - ((v - oscMin) / (oscMax - oscMin)) * (oscInnerH - 14);
+
+      // Zero/level reference lines
+      const drawOscRef = (level: number, color: string, dash?: number[]) => {
+        if (level < oscMin || level > oscMax) return;
+        const y = oscYScale(level);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 0.8;
+        if (dash) ctx.setLineDash(dash);
+        ctx.beginPath();
+        ctx.moveTo(pad.left, y); ctx.lineTo(pad.left + chartWidth, y);
+        ctx.stroke();
+        if (dash) ctx.setLineDash([]);
+        ctx.fillStyle = color;
+        ctx.font = "8px monospace";
+        ctx.textAlign = "left";
+        ctx.fillText(String(level), W - pad.right + 4, y + 3);
+      };
+
+      if (oscillator.level1 !== undefined) drawOscRef(oscillator.level1, "rgba(239,68,68,0.5)", [3, 3]);
+      if (oscillator.level2 !== undefined) drawOscRef(oscillator.level2, "rgba(34,197,94,0.5)", [3, 3]);
+      if (oscillator.type === "roc" || oscillator.type === "macd") drawOscRef(0, "rgba(148,163,184,0.4)", [2, 2]);
+
+      const drawOscLine = (vals: (number | undefined)[], color: string, lw = 1) => {
+        ctx.strokeStyle = color;
+        ctx.lineWidth = lw;
+        ctx.beginPath();
+        let started = false;
+        vals.forEach((v, i) => {
+          if (v === undefined) { started = false; return; }
+          const x = oscXScale(i);
+          const y = oscYScale(v);
+          if (!started) { ctx.moveTo(x, y); started = true; } else ctx.lineTo(x, y);
+        });
+        ctx.stroke();
+      };
+
+      if (oscillator.type === "macd") {
+        // Histogram bars
+        oVals3?.forEach((v, i) => {
+          if (v === undefined) return;
+          const x = oscXScale(i);
+          const zero = oscYScale(0);
+          const y = oscYScale(v);
+          const bw = Math.max(1, (chartWidth / oVals.length) * 0.6);
+          ctx.fillStyle = v >= 0 ? "rgba(34,197,94,0.5)" : "rgba(239,68,68,0.5)";
+          ctx.fillRect(x - bw / 2, Math.min(y, zero), bw, Math.abs(zero - y));
+        });
+        drawOscLine(oVals, "#3b82f6", 1.5);          // MACD line
+        drawOscLine(oVals2 ?? [], "#f97316", 1);      // Signal line
+      } else if (oscillator.type === "stochastic") {
+        drawOscLine(oVals, "#fbbf24", 1.5);           // %K
+        drawOscLine(oVals2 ?? [], "#a855f7", 1);      // %D
+        // Legend
+        ctx.font = "8px sans-serif";
+        ctx.fillStyle = "#fbbf24"; ctx.fillText("%K", pad.left + chartWidth - 35, oscTop + 10);
+        ctx.fillStyle = "#a855f7"; ctx.fillText("%D", pad.left + chartWidth - 20, oscTop + 10);
+      } else {
+        // RSI or ROC
+        const color = oscillator.type === "rsi" ? "#22d3ee" : "#a855f7";
+        drawOscLine(oVals, color, 1.5);
+      }
+    }
+  }, [data, trades, visibleCandles, scrollOffset, containerSize, selectedStrategyId, selectedTradeId, priceLines, oscillator, hasOscillator]);
 
   if (!data || data.length === 0) {
     return (
-      <div className='w-full h-full flex items-center justify-center bg-slate-900 text-slate-400'>
+      <div className="w-full h-full flex items-center justify-center bg-slate-900 text-slate-400">
         No data to display
       </div>
     );
   }
 
   return (
-    <div ref={containerRef} className='w-full h-full relative'>
-      <canvas ref={canvasRef} className='w-full h-full' />
-      <div className='absolute top-2 right-20 flex items-center gap-2 bg-slate-800/80 rounded-lg px-2 py-1 z-10'>
-        <button
-          type='button'
-          onClick={zoomIn}
-          className='w-7 h-7 flex items-center justify-center text-slate-300 hover:text-white hover:bg-slate-700 rounded transition-colors text-lg font-bold'
-          title='Zoom In'
-        >
-          +
-        </button>
-        <span className='text-slate-400 text-xs font-mono min-w-[60px] text-center'>
-          {Math.min(visibleCandles, data.length)} bars
-        </span>
-        <button
-          type='button'
-          onClick={zoomOut}
-          className='w-7 h-7 flex items-center justify-center text-slate-300 hover:text-white hover:bg-slate-700 rounded transition-colors text-lg font-bold'
-          title='Zoom Out'
-        >
-          −
-        </button>
+    <div ref={containerRef} className="w-full h-full relative">
+      <canvas ref={canvasRef} className="w-full h-full" />
+      <div className="absolute top-2 right-20 flex items-center gap-2 bg-slate-800/80 rounded-lg px-2 py-1 z-10">
+        <button type="button" onClick={zoomIn} className="w-7 h-7 flex items-center justify-center text-slate-300 hover:text-white hover:bg-slate-700 rounded transition-colors text-lg font-bold" title="Zoom In">+</button>
+        <span className="text-slate-400 text-xs font-mono min-w-[60px] text-center">{Math.min(visibleCandles, data.length)} bars</span>
+        <button type="button" onClick={zoomOut} className="w-7 h-7 flex items-center justify-center text-slate-300 hover:text-white hover:bg-slate-700 rounded transition-colors text-lg font-bold" title="Zoom Out">−</button>
       </div>
       {hoveredTrade && (
-        <div
-          className='absolute bg-slate-800 border border-slate-600 rounded-lg p-3 text-xs shadow-lg z-20'
-          style={{ top: 50, left: 50 }}
-        >
-          <div className='font-bold text-white mb-1'>Trade Details</div>
-          <div className='text-slate-300'>Side: {hoveredTrade.side}</div>
-          <div className='text-slate-300'>Entry: ${hoveredTrade.entryPrice.toFixed(2)}</div>
-          <div className='text-slate-300'>Exit: ${hoveredTrade.exitPrice.toFixed(2)}</div>
+        <div className="absolute bg-slate-800 border border-slate-600 rounded-lg p-3 text-xs shadow-lg z-20" style={{ top: 50, left: 50 }}>
+          <div className="font-bold text-white mb-1">Trade Details</div>
+          <div className="text-slate-300">Side: {hoveredTrade.side}</div>
+          <div className="text-slate-300">Entry: ${hoveredTrade.entryPrice.toFixed(2)}</div>
+          <div className="text-slate-300">Exit: ${hoveredTrade.exitPrice.toFixed(2)}</div>
           <div className={hoveredTrade.pnl > 0 ? "text-green-400" : "text-red-400"}>
             P&L: {hoveredTrade.pnl > 0 ? "+" : ""}${hoveredTrade.pnl.toFixed(2)} ({hoveredTrade.pnlPercent.toFixed(2)}%)
           </div>

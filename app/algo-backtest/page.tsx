@@ -327,6 +327,9 @@ function runBacktestWithParams(
     const current = data[i];
     const previous = data[i - 1];
 
+    // Guard against re-entering on the same bar that hit SL/TP
+    let exitedViaRiskThisBar = false;
+
     // Check for stop loss / take profit hit within bar's high-low range
     // This happens BEFORE checking strategy signals for this bar
     if (position && riskSettings) {
@@ -384,6 +387,9 @@ function runBacktestWithParams(
 
       // Exit trade if SL/TP was hit
       if (exitPrice !== null && exitReason !== null) {
+        // Position sizing: uses full equity (all-in) for strategy comparison purposes.
+        // In Lambda / live trading, replace (equity / position.entryPrice) with actual
+        // share quantity based on account balance and your risk-per-trade fraction.
         const pnl =
           position.side === PositionSide.LONG
             ? (exitPrice - position.entryPrice) * (equity / position.entryPrice)
@@ -408,6 +414,7 @@ function runBacktestWithParams(
         });
 
         position = null;
+        exitedViaRiskThisBar = true;
       }
     }
 
@@ -422,6 +429,7 @@ function runBacktestWithParams(
     // Helper to close current position
     const closePosition = (exitPrice: number, exitReason: string) => {
       if (!position) return;
+      // See note above: all-in sizing for backtest; Lambda should use actual share quantity.
       const pnl =
         position.side === PositionSide.LONG
           ? (exitPrice - position.entryPrice) * (equity / position.entryPrice)
@@ -448,7 +456,7 @@ function runBacktestWithParams(
       position = null;
     };
 
-    if (signal.action === "buy" && !position) {
+    if (signal.action === "buy" && !position && !exitedViaRiskThisBar) {
       // Entry on the close price of the bar
       const entryPrice = current.close;
       
@@ -511,7 +519,7 @@ function runBacktestWithParams(
       }
 
       closePosition(exitPrice, exitReason);
-    } else if (signal.action === "sell" && !position && enableShorts) {
+    } else if (signal.action === "sell" && !position && enableShorts && !exitedViaRiskThisBar) {
       // Short entry: sell signal with no open position and shorts enabled
       const entryPrice = current.close;
 
@@ -1060,9 +1068,10 @@ export default function AlgoBacktestPage() {
     );
     setIndicatorData(dataWithIndicators);
 
-    // Create risk settings only if SL or TP is configured
-    const riskSettings: RiskSettings | undefined = 
-      (stopLossPercent > 0 || takeProfitPercent > 0)
+    // Create risk settings only if SL is configured
+    // Note: takeProfitPercent is kept in state for Lambda export but is strategy-controlled via exit signals
+    const riskSettings: RiskSettings | undefined =
+      stopLossPercent > 0
         ? { stopLossPercent, takeProfitPercent }
         : undefined;
 
@@ -1460,39 +1469,21 @@ export default function AlgoBacktestPage() {
           {/* Risk Management Settings */}
           <div className='p-4 border-b border-slate-700'>
             <label className='text-sm text-slate-400 mb-3 block'>Risk Management</label>
-            <div className='grid grid-cols-2 gap-3'>
-              <div>
-                <label className='block text-xs text-slate-400 mb-1'>Stop Loss %</label>
-                <input
-                  type='number'
-                  value={stopLossPercent}
-                  min={0}
-                  max={100}
-                  step={0.5}
-                  onChange={(e) => {
-                    const value = parseFloat(e.target.value);
-                    setStopLossPercent(isNaN(value) ? 0 : Math.max(0, value));
-                  }}
-                  placeholder='0 = disabled'
-                  className='w-full bg-slate-800 border border-slate-600 rounded px-2 py-1.5 text-sm text-white'
-                />
-              </div>
-              <div>
-                <label className='block text-xs text-slate-400 mb-1'>Take Profit %</label>
-                <input
-                  type='number'
-                  value={takeProfitPercent}
-                  min={0}
-                  max={1000}
-                  step={0.5}
-                  onChange={(e) => {
-                    const value = parseFloat(e.target.value);
-                    setTakeProfitPercent(isNaN(value) ? 0 : Math.max(0, value));
-                  }}
-                  placeholder='0 = disabled'
-                  className='w-full bg-slate-800 border border-slate-600 rounded px-2 py-1.5 text-sm text-white'
-                />
-              </div>
+            <div>
+              <label className='block text-xs text-slate-400 mb-1'>Stop Loss %</label>
+              <input
+                type='number'
+                value={stopLossPercent}
+                min={0}
+                max={100}
+                step={0.5}
+                onChange={(e) => {
+                  const value = parseFloat(e.target.value);
+                  setStopLossPercent(isNaN(value) ? 0 : Math.max(0, value));
+                }}
+                placeholder='0 = disabled'
+                className='w-full bg-slate-800 border border-slate-600 rounded px-2 py-1.5 text-sm text-white'
+              />
             </div>
             <div className='mt-3'>
               <label className='flex items-center gap-2 cursor-pointer'>
@@ -1510,7 +1501,7 @@ export default function AlgoBacktestPage() {
                 </p>
               )}
             </div>
-            {(stopLossPercent > 0 || takeProfitPercent > 0) && (
+            {stopLossPercent > 0 && (
               <p className='text-xs text-blue-400 mt-2'>
                 ✓ Entry on bar close, exit at SL/TP if hit within bar range
               </p>
@@ -1828,6 +1819,7 @@ export default function AlgoBacktestPage() {
                 visibleCandles={visibleCandles}
                 onVisibleCandlesChange={setVisibleCandles}
                 selectedStrategyId={selectedStrategyId}
+                currentParams={currentParams}
                 selectedTradeId={selectedTradeId}
               />
             </div>
