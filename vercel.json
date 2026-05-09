@@ -2,7 +2,7 @@
   "crons": [
     {
       "path": "/api/trading/run-all",
-      "schedule": "*/5 14-21 * * 1-5"
+      "schedule": "0 14 * * 1-5"
     }
   ]
 }
