@@ -1,23 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { supabaseAnon } from "../../lib/executor";
 
 export const dynamic = "force-dynamic";
 
-function supabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
-  );
-}
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  // Verify auth
+  const authHeader = req.headers.get("Authorization");
+  const token = authHeader?.replace("Bearer ", "");
+  if (!token) {
+    return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+  }
+  const db = supabaseAnon();
+  const { data: { user }, error: authError } = await db.auth.getUser(token);
+  if (authError || !user) {
+    return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+  }
 
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   try {
+    const { id } = await params;
     const body = await req.json();
-    const db = supabase();
     const { error } = await db
       .from("trading_lambdas")
       .update({ ...body, updated_at: new Date().toISOString() })
-      .eq("id", params.id);
+      .eq("id", id);
     if (error) throw error;
     return NextResponse.json({ success: true });
   } catch (e) {

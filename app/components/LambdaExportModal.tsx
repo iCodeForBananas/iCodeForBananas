@@ -2,23 +2,36 @@
 
 import React, { useState } from "react";
 
-interface LambdaExportModalProps {
+const TIMEFRAMES = [
+  { value: "5m",    label: "5 minutes" },
+  { value: "15m",   label: "15 minutes" },
+  { value: "1h",    label: "1 hour" },
+  { value: "4h",    label: "4 hours" },
+  { value: "daily", label: "Daily (end of day)" },
+];
+
+interface DeployStrategyModalProps {
   isOpen: boolean;
   onClose: () => void;
   strategyId: string;
   strategyName: string;
   params: Record<string, number | boolean | string>;
+  authToken: string | null;
 }
 
 export default function LambdaExportModal({
-  isOpen, onClose, strategyId, strategyName, params,
-}: LambdaExportModalProps) {
+  isOpen,
+  onClose,
+  strategyId,
+  strategyName,
+  params,
+  authToken,
+}: DeployStrategyModalProps) {
   const [symbol, setSymbol] = useState("SPY");
   const [positionSize, setPositionSize] = useState(100);
   const [initialCapital, setInitialCapital] = useState(10000);
-  const [lambdaName, setLambdaName] = useState(`${strategyName} on SPY`);
-  const [tradierApiKey, setTradierApiKey] = useState("");
-  const [tradierAccountId, setTradierAccountId] = useState("");
+  const [strategyDisplayName, setStrategyDisplayName] = useState(`${strategyName} on SPY`);
+  const [timeframe, setTimeframe] = useState("daily");
   const [isSandbox, setIsSandbox] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
@@ -27,14 +40,21 @@ export default function LambdaExportModal({
   if (!isOpen) return null;
 
   const handleDeploy = async () => {
+    if (!authToken) {
+      setSaveError("You must be signed in to deploy a strategy.");
+      return;
+    }
     setSaving(true);
     setSaveError("");
     try {
       const resp = await fetch("/api/trading/lambdas", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${authToken}`,
+        },
         body: JSON.stringify({
-          name: lambdaName,
+          name: strategyDisplayName,
           strategy_id: strategyId,
           strategy_name: strategyName,
           symbol: symbol.toUpperCase(),
@@ -42,12 +62,11 @@ export default function LambdaExportModal({
           position_size: positionSize,
           initial_capital: initialCapital,
           is_sandbox: isSandbox,
-          tradier_api_key: tradierApiKey || null,
-          tradier_account_id: tradierAccountId || null,
+          timeframe,
         }),
       });
       const json = await resp.json();
-      if (!json.success) throw new Error(json.error || "Save failed");
+      if (!json.success) throw new Error(json.error || "Deploy failed");
       setDeployed({ id: json.lambda.id, name: json.lambda.name });
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : "Failed to deploy");
@@ -78,7 +97,6 @@ export default function LambdaExportModal({
           </button>
         </div>
 
-        {/* ── Success state ─────────────────────────────────────────────────── */}
         {deployed ? (
           <div className="p-6 flex flex-col items-center gap-4 text-center">
             <div className="w-14 h-14 rounded-full bg-green-500/20 flex items-center justify-center">
@@ -97,16 +115,23 @@ export default function LambdaExportModal({
             >
               View Running Strategies →
             </a>
-            <button onClick={handleClose} className="text-sm text-slate-400 hover:text-white">Close</button>
+            <button onClick={handleClose} className="text-sm text-slate-400 hover:text-white">
+              Close
+            </button>
           </div>
         ) : (
-          /* ── Configure form ─────────────────────────────────────────────── */
           <div className="p-5 space-y-4">
+            {!authToken && (
+              <div className="bg-yellow-900/40 border border-yellow-700/50 rounded-lg px-3 py-2 text-sm text-yellow-300">
+                Sign in to deploy strategies.
+              </div>
+            )}
+
             <div>
               <label className="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wider">Name</label>
               <input
-                value={lambdaName}
-                onChange={e => setLambdaName(e.target.value)}
+                value={strategyDisplayName}
+                onChange={(e) => setStrategyDisplayName(e.target.value)}
                 className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:border-yellow-400 focus:outline-none"
               />
             </div>
@@ -116,7 +141,11 @@ export default function LambdaExportModal({
                 <label className="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wider">Symbol</label>
                 <input
                   value={symbol}
-                  onChange={e => { const s = e.target.value.toUpperCase(); setSymbol(s); setLambdaName(`${strategyName} on ${s}`); }}
+                  onChange={(e) => {
+                    const s = e.target.value.toUpperCase();
+                    setSymbol(s);
+                    setStrategyDisplayName(`${strategyName} on ${s}`);
+                  }}
                   className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:border-yellow-400 focus:outline-none"
                   placeholder="SPY"
                 />
@@ -124,37 +153,39 @@ export default function LambdaExportModal({
               <div>
                 <label className="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wider">Shares</label>
                 <input
-                  type="number" min={1} value={positionSize}
-                  onChange={e => setPositionSize(+e.target.value)}
+                  type="number"
+                  min={1}
+                  value={positionSize}
+                  onChange={(e) => setPositionSize(+e.target.value)}
                   className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:border-yellow-400 focus:outline-none"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wider">Tradier API Key <span className="normal-case text-slate-500">(sandbox token)</span></label>
-              <input
-                type="password" value={tradierApiKey}
-                onChange={e => setTradierApiKey(e.target.value)}
-                placeholder="Get from developer.tradier.com"
+              <label className="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wider">Run frequency</label>
+              <select
+                value={timeframe}
+                onChange={(e) => setTimeframe(e.target.value)}
                 className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:border-yellow-400 focus:outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wider">Tradier Account ID</label>
-              <input
-                value={tradierAccountId}
-                onChange={e => setTradierAccountId(e.target.value)}
-                placeholder="e.g. VA12345678"
-                className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:border-yellow-400 focus:outline-none"
-              />
+              >
+                {TIMEFRAMES.map((tf) => (
+                  <option key={tf.value} value={tf.value}>{tf.label}</option>
+                ))}
+              </select>
             </div>
 
             <div className="flex items-center gap-2.5">
-              <input type="checkbox" id="sbx" checked={isSandbox} onChange={e => setIsSandbox(e.target.checked)} className="w-4 h-4 accent-yellow-400" />
+              <input
+                type="checkbox"
+                id="sbx"
+                checked={isSandbox}
+                onChange={(e) => setIsSandbox(e.target.checked)}
+                className="w-4 h-4 accent-yellow-400"
+              />
               <label htmlFor="sbx" className="text-sm text-slate-300 cursor-pointer">
-                Paper trading mode <span className="text-green-400 text-xs font-semibold">(recommended)</span>
+                Paper trading mode{" "}
+                <span className="text-green-400 text-xs font-semibold">(recommended)</span>
               </label>
             </div>
 
@@ -168,15 +199,17 @@ export default function LambdaExportModal({
             </div>
 
             {saveError && (
-              <div className="bg-red-900/40 border border-red-700/50 rounded-lg px-3 py-2 text-sm text-red-300">{saveError}</div>
+              <div className="bg-red-900/40 border border-red-700/50 rounded-lg px-3 py-2 text-sm text-red-300">
+                {saveError}
+              </div>
             )}
 
             <button
               onClick={handleDeploy}
-              disabled={saving || !symbol || !lambdaName}
+              disabled={saving || !symbol || !strategyDisplayName || !authToken}
               className="w-full py-3 bg-yellow-400 hover:bg-yellow-300 disabled:bg-slate-600 disabled:cursor-not-allowed text-black font-bold rounded-lg transition-colors text-sm"
             >
-              {saving ? "Deploying…" : "🚀 Save & Deploy Strategy"}
+              {saving ? "Deploying…" : "🚀 Deploy Strategy"}
             </button>
           </div>
         )}

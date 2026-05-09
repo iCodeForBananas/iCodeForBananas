@@ -1,26 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { supabaseAnon } from "../lib/executor";
 
 export const dynamic = "force-dynamic";
 
-function supabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
-  );
-}
-
-// POST: save a new paper-trading lambda config, returns the generated UUID
+// POST: deploy a new strategy
 export async function POST(req: NextRequest) {
+  // Verify auth
+  const authHeader = req.headers.get("Authorization");
+  const token = authHeader?.replace("Bearer ", "");
+  if (!token) {
+    return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+  }
+  const db = supabaseAnon();
+  const { data: { user }, error: authError } = await db.auth.getUser(token);
+  if (authError || !user) {
+    return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const body = await req.json();
-    const { name, strategy_id, strategy_name, symbol, params, position_size, initial_capital, is_sandbox, tradier_api_key, tradier_account_id } = body;
+    const { name, strategy_id, strategy_name, symbol, params, position_size, initial_capital, is_sandbox, timeframe } = body;
 
     if (!strategy_id || !strategy_name || !symbol) {
       return NextResponse.json({ success: false, error: "Missing required fields" }, { status: 400 });
     }
 
-    const db = supabase();
     const { data, error } = await db
       .from("trading_lambdas")
       .insert({
@@ -32,15 +36,14 @@ export async function POST(req: NextRequest) {
         position_size: position_size ?? 100,
         initial_capital: initial_capital ?? 10000,
         is_sandbox: is_sandbox ?? true,
-        tradier_api_key: tradier_api_key ?? null,
-        tradier_account_id: tradier_account_id ?? null,
+        timeframe: timeframe ?? "daily",
         status: "active",
+        user_id: user.id,
       })
       .select("id, name, created_at")
       .single();
 
     if (error) throw error;
-
     return NextResponse.json({ success: true, lambda: data });
   } catch (e) {
     return NextResponse.json(
@@ -50,10 +53,20 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// GET: list saved lambdas
-export async function GET() {
+// GET: list deployed strategies (auth required)
+export async function GET(req: NextRequest) {
+  const authHeader = req.headers.get("Authorization");
+  const token = authHeader?.replace("Bearer ", "");
+  if (!token) {
+    return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+  }
+  const db = supabaseAnon();
+  const { data: { user }, error: authError } = await db.auth.getUser(token);
+  if (authError || !user) {
+    return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
-    const db = supabase();
     const { data, error } = await db
       .from("trading_lambdas")
       .select("*")

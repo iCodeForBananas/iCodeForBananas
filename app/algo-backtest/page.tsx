@@ -12,6 +12,7 @@ import {
   ParameterizedResult,
 } from "@/app/strategies";
 import LambdaExportModal from "../components/LambdaExportModal";
+import { createClient } from "@supabase/supabase-js";
 
 const DEFAULT_VISIBLE_CANDLES = 300;
 const INITIAL_CAPITAL = 100000;
@@ -786,7 +787,7 @@ function LambdaReadinessPanel({
             onClick={onExport}
             className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-500 text-white text-xs font-bold rounded transition-colors"
           >
-            🚀 Export Lambda
+            🚀 Deploy Strategy
           </button>
         )}
       </div>
@@ -828,6 +829,17 @@ export default function AlgoBacktestPage() {
 
   // Lambda export modal state
   const [showLambdaExport, setShowLambdaExport] = useState(false);
+  const [authToken, setAuthToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    const sb = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
+    );
+    sb.auth.getSession().then(({ data }) => {
+      setAuthToken(data.session?.access_token ?? null);
+    });
+  }, []);
 
   // Copy report state
   const [copied, setCopied] = useState(false);
@@ -1444,12 +1456,12 @@ export default function AlgoBacktestPage() {
               <button
                 onClick={() => setShowLambdaExport(true)}
                 className='flex items-center gap-1.5 px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white text-xs font-medium rounded transition-colors'
-                title='Export as AWS Lambda with Tradier API'
+                title='Deploy this strategy to run automatically'
               >
                 <svg className='w-3.5 h-3.5' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
                   <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12' />
                 </svg>
-                Export Lambda
+                Deploy Strategy
               </button>
             </div>
             <select
@@ -1895,14 +1907,38 @@ export default function AlgoBacktestPage() {
         </div>
       </div>
 
-      {/* Lambda Export Modal */}
+      {/* Deploy Strategy Modal */}
       <LambdaExportModal
         isOpen={showLambdaExport}
         onClose={() => setShowLambdaExport(false)}
         strategyId={selectedStrategyId}
         strategyName={strategy?.name || selectedStrategyId}
         params={currentParams}
+        authToken={authToken}
       />
     </div>
   );
+}
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Deploy Strategy Modal */}
+      <LambdaExportModal
+        isOpen={showLambdaExport}
+        onClose={() => setShowLambdaExport(false)}
+        strategyId={selectedStrategyId}
+        strategyName={strategy?.name || selectedStrategyId}
+        params={currentParams}
+        authToken={authToken}
+      />
+    </div>
+  );
+}
+
+  );
+}
 }
