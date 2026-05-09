@@ -1919,26 +1919,3 @@ export default function AlgoBacktestPage() {
     </div>
   );
 }
-                </table>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Deploy Strategy Modal */}
-      <LambdaExportModal
-        isOpen={showLambdaExport}
-        onClose={() => setShowLambdaExport(false)}
-        strategyId={selectedStrategyId}
-        strategyName={strategy?.name || selectedStrategyId}
-        params={currentParams}
-        authToken={authToken}
-      />
-    </div>
-  );
-}
-
-  );
-}
-}
