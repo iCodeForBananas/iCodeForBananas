@@ -873,6 +873,8 @@ export default function AlgoBacktestPage() {
     });
   }, [availableDatasets]);
 
+  const combinationCount = useMemo(() => generateCombinations(paramVariations).length, [paramVariations]);
+
   // Toggle selection of all datasets with a given timeframe
   const toggleTimeframe = useCallback(
     (timeframe: string) => {
@@ -1019,7 +1021,7 @@ export default function AlgoBacktestPage() {
     }
 
     loadData();
-  }, [selectedFiles]);
+  }, [selectedFiles[0]]);
 
   // Run single backtest
   const runSingleBacktest = useCallback(() => {
@@ -1534,7 +1536,7 @@ export default function AlgoBacktestPage() {
               <div className='flex items-center justify-between mb-3'>
                 <label className='text-sm text-slate-400'>Parameters</label>
                 <span className='text-xs text-slate-500'>
-                  {`${generateCombinations(paramVariations).length} combinations × ${selectedFiles.length} datasets`}
+                  {`${combinationCount} combinations × ${selectedFiles.length} datasets`}
                 </span>
               </div>
 
@@ -1600,7 +1602,7 @@ export default function AlgoBacktestPage() {
               >
                 {isRunningBatch
                   ? "Running..."
-                  : `Run ${generateCombinations(paramVariations).length * selectedFiles.length} Variations`}
+                  : `Run ${combinationCount * selectedFiles.length} Variations`}
               </button>
             </div>
           )}
