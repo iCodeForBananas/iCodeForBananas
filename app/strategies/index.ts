@@ -2,6 +2,7 @@
 // Export all available strategies for the algo-backtest feature
 
 import { StrategyDefinition } from './types';
+import alligator from './alligator';
 import bollingerBands from './bollinger-bands';
 import breakout from './breakout';
 import emaCrossover from './ema-crossover';
@@ -20,6 +21,7 @@ import stochastic from './stochastic';
 
 export const AVAILABLE_STRATEGIES: Record<string, StrategyDefinition> = {
   // Trend Following
+  'alligator': alligator,
   'ema-crossover': emaCrossover,
   'triple-ema': tripleEma,
   'sma-crossover': smaCrossover,
