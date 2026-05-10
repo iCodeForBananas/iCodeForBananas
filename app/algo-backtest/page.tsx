@@ -133,9 +133,10 @@ function calculateIndicatorsWithParams(
     macdState.set(key, { fastEma: undefined, slowEma: undefined, signalEma: undefined });
   }
 
-  // For ATR
+  // For ATR (Wilder's smoothing)
   const trValues: number[] = [];
   const atrPeriod = 14;
+  let atrValue: number | undefined = undefined;
 
   // For Donchian (dynamic periods)
   // Always include default period 20 for backward compatibility
@@ -192,8 +193,8 @@ function calculateIndicatorsWithParams(
         avgGain += gain;
         avgLoss += loss;
       } else if (i === rsiPeriod) {
-        avgGain = avgGain / rsiPeriod;
-        avgLoss = avgLoss / rsiPeriod;
+        avgGain = (avgGain + gain) / rsiPeriod;
+        avgLoss = (avgLoss + loss) / rsiPeriod;
       } else {
         avgGain = (avgGain * (rsiPeriod - 1) + gain) / rsiPeriod;
         avgLoss = (avgLoss * (rsiPeriod - 1) + loss) / rsiPeriod;
@@ -251,7 +252,7 @@ function calculateIndicatorsWithParams(
       }
     }
 
-    // ATR
+    // ATR (Wilder's smoothing: seed with SMA of first N TRs, then smooth)
     if (i > 0) {
       const tr = Math.max(
         candle.high - candle.low,
@@ -259,8 +260,13 @@ function calculateIndicatorsWithParams(
         Math.abs(candle.low - data[i - 1].close)
       );
       trValues.push(tr);
-      if (trValues.length >= atrPeriod) {
-        indicatorData.atr = trValues.slice(-atrPeriod).reduce((a, b) => a + b, 0) / atrPeriod;
+      if (trValues.length === atrPeriod) {
+        atrValue = trValues.reduce((a, b) => a + b, 0) / atrPeriod;
+      } else if (trValues.length > atrPeriod) {
+        atrValue = (atrValue! * (atrPeriod - 1) + tr) / atrPeriod;
+      }
+      if (atrValue !== undefined) {
+        indicatorData.atr = atrValue;
       }
     }
 
@@ -573,6 +579,8 @@ function runBacktestWithParams(
       pnlPercent,
       reason: "End of data",
     });
+
+    equityCurve.push({ time: lastCandle.time, equity });
   }
 
   // Calculate statistics

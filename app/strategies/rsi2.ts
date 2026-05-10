@@ -43,7 +43,7 @@ const handler: StrategyHandler = ({ current, series, index, params }) => {
   // Compute 2-period RSI manually from series
   if (index < 3) return { action: 'hold', reason: 'Warming up' };
 
-  const closes = series.slice(Math.max(0, index - 10), index + 1).map((b) => b.close);
+  const closes = series.slice(Math.max(0, index - 2), index + 1).map((b) => b.close);
   let avgGain = 0;
   let avgLoss = 0;
   for (let i = 1; i < closes.length; i++) {
