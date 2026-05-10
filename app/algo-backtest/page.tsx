@@ -1839,7 +1839,7 @@ export default function AlgoBacktestPage() {
                 visibleCandles={visibleCandles}
                 onVisibleCandlesChange={setVisibleCandles}
                 selectedStrategyId={selectedStrategyId}
-                currentParams={currentParams}
+                currentParams={activeResult?.params ?? currentParams}
                 selectedTradeId={selectedTradeId}
               />
             </div>
