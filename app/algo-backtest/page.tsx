@@ -586,6 +586,15 @@ export default function AlgoBacktestPage() {
   const activeResult = results[activeResultTab];
   const strategy = AVAILABLE_STRATEGIES[selectedStrategyId];
 
+  const chartTrades = useMemo(
+    () =>
+      activeResult?.trades.map((t) => ({
+        ...t,
+        side: t.side === "LONG" ? PositionSide.LONG : PositionSide.SHORT,
+      })) ?? [],
+    [activeResult]
+  );
+
   if (error) {
     return (
       <div className='flex flex-col h-screen bg-slate-900'>
@@ -1049,12 +1058,7 @@ export default function AlgoBacktestPage() {
             <div className={showEquityCurve ? 'flex-1 min-h-0' : 'flex-1 overflow-hidden'}>
               <BacktestChart
                 data={indicatorData}
-                trades={
-                  activeResult?.trades.map((t) => ({
-                    ...t,
-                    side: t.side === "LONG" ? PositionSide.LONG : PositionSide.SHORT,
-                  })) || []
-                }
+                trades={chartTrades}
                 visibleCandles={visibleCandles}
                 onVisibleCandlesChange={setVisibleCandles}
                 selectedStrategyId={selectedStrategyId}

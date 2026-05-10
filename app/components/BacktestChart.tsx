@@ -277,6 +277,16 @@ function computeIndicators(
   return { priceLines, oscillator };
 }
 
+function bisectTime(data: IndicatorData[], time: number): number {
+  let lo = 0, hi = data.length - 1, result = -1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    if (data[mid].time >= time) { result = mid; hi = mid - 1; }
+    else lo = mid + 1;
+  }
+  return result;
+}
+
 // ── Component ────────────────────────────────────────────────────────────────
 
 const BacktestChart: React.FC<BacktestChartProps> = ({
@@ -315,7 +325,7 @@ const BacktestChart: React.FC<BacktestChartProps> = ({
     if (!selectedTradeId || !data || data.length === 0) return;
     const trade = trades.find((t) => t.id === selectedTradeId);
     if (!trade) return;
-    const idx = data.findIndex((d) => d.time >= trade.entryTime);
+    const idx = bisectTime(data, trade.entryTime);
     if (idx === -1) return;
     const half = Math.floor(visibleCandles / 2);
     const target = Math.max(0, data.length - idx - half);
@@ -458,15 +468,17 @@ const BacktestChart: React.FC<BacktestChartProps> = ({
     });
 
     // Trade markers
+    const tradeIndexCache = new Map(
+      trades.map((t) => [t.id, { ei: bisectTime(data, t.entryTime), xi: bisectTime(data, t.exitTime) }])
+    );
+
     const visibleTrades = trades.filter((t) => {
-      const ei = data.findIndex((d) => d.time >= t.entryTime);
-      const xi = data.findIndex((d) => d.time >= t.exitTime);
+      const { ei, xi } = tradeIndexCache.get(t.id)!;
       return (ei >= startIndex && ei < endIndex) || (xi >= startIndex && xi < endIndex);
     });
 
     visibleTrades.forEach((trade) => {
-      const entryIdx = data.findIndex((d) => d.time >= trade.entryTime);
-      const exitIdx = data.findIndex((d) => d.time >= trade.exitTime);
+      const { ei: entryIdx, xi: exitIdx } = tradeIndexCache.get(trade.id)!;
       const isSel = trade.id === selectedTradeId;
 
       if (isSel && entryIdx >= startIndex && exitIdx >= startIndex) {
