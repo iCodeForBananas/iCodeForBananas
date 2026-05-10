@@ -11,10 +11,11 @@ import {
   ParameterVariationConfig,
   RiskSettings,
   INITIAL_CAPITAL,
-  MAX_BATCH_RUNS,
 } from "@/app/lib/backtest-engine";
 
 export const dynamic = "force-dynamic";
+
+const TOP_RESULTS_WITH_FULL_DATA = 10;
 
 interface BacktestRequest {
   strategyId: string;
@@ -29,7 +30,7 @@ interface BacktestRequest {
 function parseCSV(filePath: string): PricePoint[] {
   const csvText = fs.readFileSync(filePath, "utf-8");
   const lines = csvText.trim().split("\n");
-  lines.shift(); // remove header
+  lines.shift();
   return lines
     .map((line) => {
       const values = line.split(",");
@@ -76,7 +77,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "Data directory not found" }, { status: 500 });
     }
 
-    // Build combinations — if no variations, use currentParams as the single run
     const combinations = paramVariations.length > 0
       ? generateCombinations(paramVariations).map((combo) => ({ ...currentParams, ...combo }))
       : [currentParams];
@@ -90,9 +90,10 @@ export async function POST(request: NextRequest) {
         : undefined;
 
     const batchResults: ParameterizedResult[] = [];
-    const indicatorDataByDataset: Record<string, ReturnType<typeof calculateIndicatorsWithParams>> = {};
     const failedDatasets: string[] = [];
 
+    // Process one dataset at a time — indicator data is discarded after each dataset's
+    // combinations are run, keeping peak memory to O(1 dataset) instead of O(all datasets).
     for (const datasetFile of selectedFiles) {
       const filePath = path.join(dataDir, datasetFile);
       if (!fs.existsSync(filePath)) {
@@ -121,9 +122,6 @@ export async function POST(request: NextRequest) {
         requiredDonchianPeriods
       );
 
-      // Store indicator data — trimmed to top 10 datasets later
-      indicatorDataByDataset[datasetFile] = dataWithIndicators;
-
       for (const params of combinations) {
         const result = runBacktestWithParams(
           dataWithIndicators,
@@ -135,30 +133,47 @@ export async function POST(request: NextRequest) {
         );
         batchResults.push({ ...result, dataset: datasetFile, datasetLabel: datasetFile });
       }
+
+      // dataWithIndicators goes out of scope here — eligible for GC before next dataset loads
     }
 
-    // Sort by P&L descending
     batchResults.sort((a, b) => b.totalPnlPercent - a.totalPnlPercent);
 
-    // Strip heavy arrays from results beyond the top 10 (those tabs are never shown)
-    for (let i = MAX_BATCH_RUNS > 10 ? 10 : MAX_BATCH_RUNS; i < batchResults.length; i++) {
+    for (let i = TOP_RESULTS_WITH_FULL_DATA; i < batchResults.length; i++) {
       batchResults[i].equityCurve = [];
       batchResults[i].trades = [];
     }
 
-    // Only return indicator data for datasets that appear in the top 10 results
-    const top10Datasets = new Set(batchResults.slice(0, 10).map((r) => r.dataset).filter(Boolean) as string[]);
-    const filteredIndicatorData: Record<string, ReturnType<typeof calculateIndicatorsWithParams>> = {};
-    for (const ds of top10Datasets) {
-      if (indicatorDataByDataset[ds]) {
-        filteredIndicatorData[ds] = indicatorDataByDataset[ds];
+    // Re-load indicator data only for the unique datasets that appear in the top results.
+    // We do this after sorting so we only pay the cost for datasets users will actually see.
+    const top10Datasets = [...new Set(
+      batchResults.slice(0, TOP_RESULTS_WITH_FULL_DATA)
+        .map((r) => r.dataset)
+        .filter((d): d is string => !!d)
+    )];
+
+    const indicatorDataByDataset: Record<string, ReturnType<typeof calculateIndicatorsWithParams>> = {};
+    for (const datasetFile of top10Datasets) {
+      const filePath = path.join(dataDir, datasetFile);
+      if (!fs.existsSync(filePath)) continue;
+      try {
+        const rawData = parseCSV(filePath);
+        indicatorDataByDataset[datasetFile] = calculateIndicatorsWithParams(
+          rawData,
+          requiredEMAs,
+          requiredSMAs,
+          requiredMACDs,
+          requiredDonchianPeriods
+        );
+      } catch {
+        // if re-read fails, chart just won't update for this tab
       }
     }
 
     return NextResponse.json({
       success: true,
       results: batchResults,
-      indicatorDataByDataset: filteredIndicatorData,
+      indicatorDataByDataset,
       failedDatasets,
     });
   } catch (error) {

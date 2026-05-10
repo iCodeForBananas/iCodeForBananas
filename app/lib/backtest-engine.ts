@@ -355,7 +355,7 @@ export function runBacktestWithParams(
       current,
       previous,
       index: i,
-      series: data.slice(0, i + 1),
+      series: data, // full array — strategies use absolute `index`, not series.length
       params,
     });
 

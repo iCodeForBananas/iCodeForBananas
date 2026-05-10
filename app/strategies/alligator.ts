@@ -16,6 +16,10 @@ function calculateSMMA(closes: number[], period: number): number[] {
   return result;
 }
 
+// Cache SMMA results per (series reference × params) so we only compute once per backtest run
+// The backtest engine now passes the full data array as `series`, so the reference is stable.
+const smmaCache = new WeakMap<object, Map<string, { jaw: number[]; teeth: number[]; lips: number[] }>>();
+
 const parameters: StrategyParameter[] = [
   {
     key: 'jawPeriod',
@@ -93,11 +97,25 @@ const handler: StrategyHandler = ({ index, series, params }) => {
     return { action: 'hold', reason: 'Waiting for Alligator indicators' };
   }
 
-  const closes = series.map((bar) => bar.close);
+  // Compute SMMA once per (series, params) combination — cached by series reference
+  const paramKey = `${jawPeriod}_${teethPeriod}_${lipsPeriod}`;
+  let seriesCache = smmaCache.get(series as unknown as object);
+  if (!seriesCache) {
+    seriesCache = new Map();
+    smmaCache.set(series as unknown as object, seriesCache);
+  }
+  let smma = seriesCache.get(paramKey);
+  if (!smma) {
+    const closes = series.map((bar) => bar.close);
+    smma = {
+      jaw: calculateSMMA(closes, jawPeriod),
+      teeth: calculateSMMA(closes, teethPeriod),
+      lips: calculateSMMA(closes, lipsPeriod),
+    };
+    seriesCache.set(paramKey, smma);
+  }
 
-  const jawSmma = calculateSMMA(closes, jawPeriod);
-  const teethSmma = calculateSMMA(closes, teethPeriod);
-  const lipsSmma = calculateSMMA(closes, lipsPeriod);
+  const { jaw: jawSmma, teeth: teethSmma, lips: lipsSmma } = smma;
 
   // In backtesting the forward shift is simulated by reading 'shift' bars in the past
   const jaw = jawSmma[index - jawShift];
