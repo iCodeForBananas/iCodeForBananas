@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import BacktestChart from "../components/BacktestChart";
 import EquityCurveChart from "../components/EquityCurveChart";
 import { PricePoint, IndicatorData, BacktestTrade, PositionSide } from "@/app/types";
@@ -107,12 +107,12 @@ function calculateIndicatorsWithParams(
 ): IndicatorData[] {
   const result: IndicatorData[] = [];
 
-  const calcSMA = (values: number[], period: number): number | undefined => {
-    if (values.length < period) return undefined;
-    return values.slice(-period).reduce((a, b) => a + b, 0) / period;
-  };
-
   const closePrices: number[] = [];
+
+  // Running sums for SMAs — avoids slice() allocations on every candle
+  const allSMAPeriods = new Set([20, 50, 200, ...requiredSMAs]);
+  const smaSums: Record<number, number> = {};
+  for (const period of allSMAPeriods) smaSums[period] = 0;
 
   // Track EMA values for each required period
   const emaState: Record<number, number | undefined> = {};
@@ -133,8 +133,9 @@ function calculateIndicatorsWithParams(
     macdState.set(key, { fastEma: undefined, slowEma: undefined, signalEma: undefined });
   }
 
-  // For ATR (Wilder's smoothing)
-  const trValues: number[] = [];
+  // For ATR (Wilder's smoothing) — only store first atrPeriod TRs to seed the average
+  let trSum = 0;
+  let trCount = 0;
   const atrPeriod = 14;
   let atrValue: number | undefined = undefined;
 
@@ -155,14 +156,11 @@ function calculateIndicatorsWithParams(
       indicatorData.prevLow = data[i - 1].low;
     }
 
-    // Standard SMAs (always computed)
-    indicatorData.sma20 = calcSMA(closePrices, 20);
-    indicatorData.sma50 = calcSMA(closePrices, 50);
-    indicatorData.sma200 = calcSMA(closePrices, 200);
-
-    // Dynamic SMAs based on required periods
-    for (const period of requiredSMAs) {
-      indicatorData[`sma${period}`] = calcSMA(closePrices, period);
+    // Running-sum SMAs — O(1) per period, no slice allocations
+    for (const period of allSMAPeriods) {
+      smaSums[period] += candle.close;
+      if (i >= period) smaSums[period] -= closePrices[i - period];
+      if (i >= period - 1) indicatorData[`sma${period}`] = smaSums[period] / period;
     }
 
     // Dynamic EMAs for all required periods
@@ -252,17 +250,18 @@ function calculateIndicatorsWithParams(
       }
     }
 
-    // ATR (Wilder's smoothing: seed with SMA of first N TRs, then smooth)
+    // ATR (Wilder's smoothing: seed with sum of first N TRs, then smooth)
     if (i > 0) {
       const tr = Math.max(
         candle.high - candle.low,
         Math.abs(candle.high - data[i - 1].close),
         Math.abs(candle.low - data[i - 1].close)
       );
-      trValues.push(tr);
-      if (trValues.length === atrPeriod) {
-        atrValue = trValues.reduce((a, b) => a + b, 0) / atrPeriod;
-      } else if (trValues.length > atrPeriod) {
+      if (trCount < atrPeriod) {
+        trSum += tr;
+        trCount++;
+        if (trCount === atrPeriod) atrValue = trSum / atrPeriod;
+      } else {
         atrValue = (atrValue! * (atrPeriod - 1) + tr) / atrPeriod;
       }
       if (atrValue !== undefined) {
@@ -270,12 +269,15 @@ function calculateIndicatorsWithParams(
       }
     }
 
-    // Donchian Channels (dynamic periods)
+    // Donchian Channels (dynamic periods) — inline loop avoids slice/map/spread allocations
     for (const donchianPeriod of donchianPeriods) {
       if (i >= donchianPeriod - 1) {
-        const slice = data.slice(i - donchianPeriod + 1, i + 1);
-        const upperBand = Math.max(...slice.map((d) => d.high));
-        const lowerBand = Math.min(...slice.map((d) => d.low));
+        let upperBand = -Infinity;
+        let lowerBand = Infinity;
+        for (let j = i - donchianPeriod + 1; j <= i; j++) {
+          if (data[j].high > upperBand) upperBand = data[j].high;
+          if (data[j].low < lowerBand) lowerBand = data[j].low;
+        }
         const midLine = (upperBand + lowerBand) / 2;
 
         // Store with dynamic keys
@@ -830,7 +832,8 @@ export default function AlgoBacktestPage() {
   const [activeResultTab, setActiveResultTab] = useState<number>(0);
 
   // Per-dataset indicator data cache for batch mode (maps dataset file -> IndicatorData[])
-  const [datasetIndicatorCache, setDatasetIndicatorCache] = useState<Record<string, IndicatorData[]>>({});
+  // useRef instead of useState to avoid React holding old+new copies simultaneously
+  const datasetIndicatorCache = useRef<Record<string, IndicatorData[]>>({});
   
   // Selected trade for chart highlighting
   const [selectedTradeId, setSelectedTradeId] = useState<string | null>(null);
@@ -1234,13 +1237,19 @@ export default function AlgoBacktestPage() {
     // Sort by total P&L descending
     batchResults.sort((a, b) => b.totalPnlPercent - a.totalPnlPercent);
 
+    // Free memory: only top 10 results are shown in tabs — strip heavy arrays from the rest
+    for (let i = 10; i < batchResults.length; i++) {
+      batchResults[i].equityCurve = [];
+      batchResults[i].trades = [];
+    }
+
     // Show error if some datasets failed
     if (failedDatasets.length > 0) {
       setError(`Failed to load ${failedDatasets.length} dataset(s): ${failedDatasets.join("; ")}`);
     }
 
-    // Store the indicator cache and set initial chart data from the top result's dataset
-    setDatasetIndicatorCache(indicatorCache);
+    // Store indicator cache in ref (avoids React holding old+new copies) and set results
+    datasetIndicatorCache.current = indicatorCache;
     setResults(batchResults);
     setActiveResultTab(0);
     if (batchResults.length > 0 && batchResults[0].dataset && indicatorCache[batchResults[0].dataset]) {
@@ -1348,10 +1357,10 @@ export default function AlgoBacktestPage() {
   // Update chart data when switching between result tabs with different datasets
   useEffect(() => {
     const activeResult = results[activeResultTab];
-    if (activeResult?.dataset && datasetIndicatorCache[activeResult.dataset]) {
-      setIndicatorData(datasetIndicatorCache[activeResult.dataset]);
+    if (activeResult?.dataset && datasetIndicatorCache.current[activeResult.dataset]) {
+      setIndicatorData(datasetIndicatorCache.current[activeResult.dataset]);
     }
-  }, [activeResultTab, results, datasetIndicatorCache]);
+  }, [activeResultTab, results]);
 
   const activeResult = results[activeResultTab];
   const strategy = AVAILABLE_STRATEGIES[selectedStrategyId];
