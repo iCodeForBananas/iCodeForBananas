@@ -23,9 +23,11 @@ export interface ParameterVariationConfig {
 }
 
 export function generateRangeValues(min: number, max: number, step: number): number[] {
+  if (step <= 0) return [min];
   const values: number[] = [];
-  for (let v = min; v <= max; v += step) {
-    values.push(v);
+  for (let v = min; v <= max + step * 1e-9; v += step) {
+    values.push(Math.round(v / step) * step);
+    if (values.length >= MAX_BATCH_RUNS) break;
   }
   return values;
 }
@@ -42,15 +44,16 @@ export function generateCombinations(
     if (values.length === 0) continue;
 
     const newCombinations: Record<string, number | boolean | string>[] = [];
-    for (const combo of combinations) {
+    outer: for (const combo of combinations) {
       for (const value of values) {
         newCombinations.push({ ...combo, [variation.key]: value });
+        if (newCombinations.length >= MAX_BATCH_RUNS) break outer;
       }
     }
     combinations = newCombinations;
   }
 
-  return combinations.slice(0, MAX_BATCH_RUNS);
+  return combinations;
 }
 
 export function calculateIndicatorsWithParams(

@@ -217,13 +217,8 @@ export default function AlgoBacktestPage() {
   const [visibleCandles, setVisibleCandles] = useState<number>(DEFAULT_VISIBLE_CANDLES);
   const [showEquityCurve, setShowEquityCurve] = useState(true);
 
-  // Strategy state - initialize from localStorage if available
-  const [selectedStrategyId, setSelectedStrategyId] = useState<string>(() => {
-    const saved = loadGlobalSettings();
-    return saved?.selectedStrategyId && AVAILABLE_STRATEGIES[saved.selectedStrategyId]
-      ? saved.selectedStrategyId
-      : "ema-crossover";
-  });
+  // Strategy state - default on server, restored from localStorage after mount
+  const [selectedStrategyId, setSelectedStrategyId] = useState<string>("ema-crossover");
   const [currentParams, setCurrentParams] = useState<Record<string, number | boolean | string>>({});
   const [paramVariations, setParamVariations] = useState<ParameterVariationConfig[]>([]);
 
@@ -352,6 +347,13 @@ export default function AlgoBacktestPage() {
   }, [selectedStrategyId]);
 
   // Fetch available datasets on mount
+  useEffect(() => {
+    const saved = loadGlobalSettings();
+    if (saved?.selectedStrategyId && AVAILABLE_STRATEGIES[saved.selectedStrategyId]) {
+      setSelectedStrategyId(saved.selectedStrategyId);
+    }
+  }, []);
+
   useEffect(() => {
     async function fetchDatasets() {
       try {
