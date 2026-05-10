@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import BacktestChart from "../components/BacktestChart";
 import EquityCurveChart from "../components/EquityCurveChart";
-import { PricePoint, IndicatorData, PositionSide } from "@/app/types";
+import { IndicatorData, PositionSide } from "@/app/types";
 import {
   AVAILABLE_STRATEGIES,
   getDefaultParams,
@@ -13,11 +13,7 @@ import {
 import LambdaExportModal from "../components/LambdaExportModal";
 import { createClient } from "@supabase/supabase-js";
 import {
-  calculateIndicatorsWithParams,
-  runBacktestWithParams,
   generateCombinations,
-  MACDConfig,
-  RiskSettings,
   ParameterVariationConfig,
   INITIAL_CAPITAL,
   MAX_BATCH_RUNS,
@@ -213,9 +209,7 @@ function LambdaReadinessPanel({
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function AlgoBacktestPage() {
-  const [rawData, setRawData] = useState<PricePoint[]>([]);
   const [indicatorData, setIndicatorData] = useState<IndicatorData[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [isRunningBatch, setIsRunningBatch] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [availableDatasets, setAvailableDatasets] = useState<DatasetInfo[]>([]);
@@ -402,114 +396,40 @@ export default function AlgoBacktestPage() {
     });
   }, [selectedStrategyId, currentParams, paramVariations, stopLossPercent, takeProfitPercent, enableShorts]);
 
-  // Load raw data when file changes (load first selected file for preview)
-  useEffect(() => {
+  // Run single backtest for the first selected file via API (used for preview on file change)
+  const runSingleBacktest = useCallback(async () => {
     if (selectedFiles.length === 0) return;
-    const selectedFile = selectedFiles[0];
-
-    async function loadData() {
-      try {
-        setIsLoading(true);
-        setError(null);
-
-        const response = await fetch(`/api/spy-data?file=${encodeURIComponent(selectedFile)}`);
-        const result = await response.json();
-
-        if (!result.success || !result.data || result.data.length === 0) {
-          throw new Error(result.error || "No data received from API");
-        }
-
-        console.log("Loaded", result.data.length, "candles from", selectedFile);
-        setRawData(result.data);
-      } catch (err) {
-        console.error("Error loading data:", err);
-        setError(err instanceof Error ? err.message : "Failed to load data");
-      } finally {
-        setIsLoading(false);
+    setIsRunningBatch(true);
+    setError(null);
+    try {
+      const response = await fetch("/api/backtest", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          strategyId: selectedStrategyId,
+          selectedFiles: [selectedFiles[0]],
+          paramVariations: [],
+          currentParams,
+          stopLossPercent,
+          takeProfitPercent,
+          enableShorts,
+        }),
+      });
+      const data = await response.json();
+      if (!data.success) { setError(data.error || "Backtest failed"); return; }
+      datasetIndicatorCache.current = data.indicatorDataByDataset ?? {};
+      setResults(data.results ?? []);
+      setActiveResultTab(0);
+      const first = data.results?.[0];
+      if (first?.dataset && data.indicatorDataByDataset?.[first.dataset]) {
+        setIndicatorData(data.indicatorDataByDataset[first.dataset]);
       }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Backtest failed");
+    } finally {
+      setIsRunningBatch(false);
     }
-
-    loadData();
-  }, [selectedFiles[0]]);
-
-  // Run single backtest
-  const runSingleBacktest = useCallback(() => {
-    if (rawData.length === 0) return;
-
-    const strategy = AVAILABLE_STRATEGIES[selectedStrategyId];
-    if (!strategy) return;
-
-    // Determine required indicator periods from current params
-    const requiredEMAs = new Set<number>([9, 21]); // Always include defaults
-    const requiredSMAs = new Set<number>([20, 50, 200]); // Always include defaults
-    const requiredMACDs: MACDConfig[] = [];
-
-    // Add periods from params
-    for (const [key, value] of Object.entries(currentParams)) {
-      if (typeof value === "number") {
-        // Add EMA periods from any param key containing "ema" (case insensitive)
-        if (key.toLowerCase().includes("ema")) {
-          requiredEMAs.add(value);
-        } else if (key.includes("fast") || key.includes("slow")) {
-          // Assume EMA periods for crossover strategies
-          if (selectedStrategyId.includes("ema")) {
-            requiredEMAs.add(value);
-          } else if (selectedStrategyId.includes("sma")) {
-            requiredSMAs.add(value);
-          }
-        }
-        // Add based on param key naming
-        if (key === "fastPeriod" || key === "slowPeriod" || key === "midPeriod") {
-          if (selectedStrategyId.includes("ema")) {
-            requiredEMAs.add(value);
-          } else if (!selectedStrategyId.includes("macd")) {
-            requiredSMAs.add(value);
-          }
-        }
-      }
-    }
-
-    // Add MACD configuration if MACD strategy is selected
-    if (selectedStrategyId.includes("macd")) {
-      const fastPeriod = (currentParams.fastPeriod as number) || 12;
-      const slowPeriod = (currentParams.slowPeriod as number) || 26;
-      const signalPeriod = (currentParams.signalPeriod as number) || 9;
-      requiredMACDs.push({ fastPeriod, slowPeriod, signalPeriod });
-    }
-    // Always include default MACD for backward compatibility
-    if (!requiredMACDs.some(m => m.fastPeriod === 12 && m.slowPeriod === 26 && m.signalPeriod === 9)) {
-      requiredMACDs.push({ fastPeriod: 12, slowPeriod: 26, signalPeriod: 9 });
-    }
-
-    // Add Donchian period if Donchian strategy is selected
-    const requiredDonchianPeriods = new Set<number>([20]); // Always include default
-    if (selectedStrategyId.includes("donchian")) {
-      const period = (currentParams.period as number) || 20;
-      const centerLinePeriod = (currentParams.centerLinePeriod as number) || 10;
-      requiredDonchianPeriods.add(period);
-      requiredDonchianPeriods.add(centerLinePeriod);
-    }
-
-    const dataWithIndicators = calculateIndicatorsWithParams(
-      rawData,
-      Array.from(requiredEMAs),
-      Array.from(requiredSMAs),
-      requiredMACDs,
-      Array.from(requiredDonchianPeriods)
-    );
-    setIndicatorData(dataWithIndicators);
-
-    // Create risk settings only if SL is configured
-    // Note: takeProfitPercent is kept in state for Lambda export but is strategy-controlled via exit signals
-    const riskSettings: RiskSettings | undefined =
-      stopLossPercent > 0
-        ? { stopLossPercent, takeProfitPercent }
-        : undefined;
-
-    const result = runBacktestWithParams(dataWithIndicators, strategy, currentParams, INITIAL_CAPITAL, riskSettings, enableShorts);
-    setResults([result]);
-    setActiveResultTab(0);
-  }, [rawData, selectedStrategyId, currentParams, stopLossPercent, takeProfitPercent, enableShorts]);
+  }, [selectedFiles, selectedStrategyId, currentParams, stopLossPercent, takeProfitPercent, enableShorts]);
 
   // Run batch backtest with parameter variations against all selected datasets
   const runBatchBacktest = useCallback(async () => {
@@ -647,12 +567,13 @@ export default function AlgoBacktestPage() {
     }
   }, [generateMarkdownReport]);
 
-  // Auto-run single backtest when data or params change
+  // Auto-run preview when the selected file changes
   useEffect(() => {
-    if (rawData.length > 0 && Object.keys(currentParams).length > 0) {
+    if (selectedFiles.length > 0 && Object.keys(currentParams).length > 0) {
       runSingleBacktest();
     }
-  }, [rawData, currentParams, runSingleBacktest]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedFiles[0]]);
 
   // Update chart data when switching between result tabs with different datasets
   useEffect(() => {
@@ -664,19 +585,6 @@ export default function AlgoBacktestPage() {
 
   const activeResult = results[activeResultTab];
   const strategy = AVAILABLE_STRATEGIES[selectedStrategyId];
-
-  if (isLoading) {
-    return (
-      <div className='flex flex-col h-screen bg-slate-900'>
-        <div className='flex-1 flex items-center justify-center text-white'>
-          <div className='flex items-center gap-3'>
-            <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400'></div>
-            <span>Loading data...</span>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   if (error) {
     return (
