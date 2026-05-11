@@ -161,7 +161,7 @@ export default function SeattleConcretePage() {
         <span style={{ color: B.white, fontSize: "0.875rem", fontWeight: 500 }}>
           🏗️ Free estimates · Asphalt, concrete & hauling · Washington & Oregon · 48-hour bid turnaround
         </span>
-        <a href="#quote"
+        <a href="/websites/seattle-concrete/estimate"
           style={{ display: "inline-flex", alignItems: "center", gap: 5, background: B.white,
             color: B.accent, fontWeight: 700, fontSize: "0.8rem", padding: "5px 14px",
             borderRadius: 9999, textDecoration: "none", whiteSpace: "nowrap", transition: "opacity 0.15s" }}
@@ -201,7 +201,7 @@ export default function SeattleConcretePage() {
           </p>
 
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 40 }}>
-            <a href="#quote"
+            <a href="/websites/seattle-concrete/estimate"
               style={{ display: "inline-flex", alignItems: "center", gap: 8, background: B.accent,
                 color: B.white, fontWeight: 700, fontSize: "0.9375rem", padding: "14px 30px",
                 borderRadius: 6, textDecoration: "none", boxShadow: `0 4px 20px ${B.accentGlow}`,

@@ -60,6 +60,11 @@
   /* Fonts from next/font */
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  /* PavePlan Pro brand tokens */
+  --color-brand-primary: #141414;
+  --color-brand-accent:  #F27D26;
+  --color-brand-bg:      #E4E3E0;
 }
 
 body {
@@ -385,3 +390,26 @@ body {
   pointer-events: none;
   height: 0;
 }
+
+/* ── PavePlan Pro component classes ──────────────────────────────────────── */
+.ppp-card {
+  @apply bg-white border border-brand-primary/10 rounded-xl shadow-sm overflow-hidden;
+}
+.ppp-input-label {
+  @apply text-[10px] uppercase tracking-wider font-semibold text-brand-primary/50 mb-1 block;
+}
+.ppp-input-field {
+  @apply w-full px-3 py-2 bg-brand-bg/30 border border-brand-primary/10 rounded-lg
+         focus:outline-none focus:ring-1 focus:ring-brand-accent transition-all;
+}
+.ppp-btn-primary {
+  @apply px-4 py-2 bg-brand-primary text-white rounded-lg font-medium
+         hover:bg-brand-primary/90 transition-colors disabled:opacity-50;
+}
+.ppp-btn-accent {
+  @apply px-4 py-2 bg-brand-accent text-white rounded-lg font-medium
+         hover:bg-brand-accent/90 transition-colors;
+}
+.ppp-scrollbar::-webkit-scrollbar { width: 4px; }
+.ppp-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.ppp-scrollbar::-webkit-scrollbar-thumb { background: rgba(20,20,20,0.15); border-radius: 2px; }
