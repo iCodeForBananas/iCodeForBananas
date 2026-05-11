@@ -269,3 +269,119 @@ body {
 .animate-wiggle {
   animation: wiggle 0.3s ease-in-out infinite;
 }
+
+/* ── Task Board — TipTap WYSIWYG editor ─────────────────── */
+.task-board-editor .ProseMirror {
+  outline: none;
+  min-height: 12rem;
+  color: #e5e7eb;
+  font-size: 0.9375rem;
+  line-height: 1.7;
+}
+
+.task-board-editor .ProseMirror > * + * {
+  margin-top: 0.625rem;
+}
+
+.task-board-editor .ProseMirror p {
+  margin: 0;
+}
+
+.task-board-editor .ProseMirror h1 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-top: 1.25rem;
+  line-height: 1.25;
+}
+
+.task-board-editor .ProseMirror h2 {
+  font-size: 1.375rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-top: 1rem;
+  line-height: 1.3;
+}
+
+.task-board-editor .ProseMirror h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-top: 0.875rem;
+}
+
+.task-board-editor .ProseMirror strong {
+  font-weight: 700;
+  color: #f3f4f6;
+}
+
+.task-board-editor .ProseMirror em {
+  font-style: italic;
+}
+
+.task-board-editor .ProseMirror s {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+
+.task-board-editor .ProseMirror ul {
+  list-style-type: disc;
+  padding-left: 1.5rem;
+}
+
+.task-board-editor .ProseMirror ol {
+  list-style-type: decimal;
+  padding-left: 1.5rem;
+}
+
+.task-board-editor .ProseMirror li > p {
+  margin: 0;
+}
+
+.task-board-editor .ProseMirror blockquote {
+  border-left: 3px solid #facc15;
+  padding-left: 1rem;
+  color: #a89a00;
+  font-style: italic;
+}
+
+.task-board-editor .ProseMirror code {
+  background: #1a1a1a;
+  color: #facc15;
+  padding: 0.1em 0.35em;
+  border-radius: 0.25rem;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.875em;
+}
+
+.task-board-editor .ProseMirror pre {
+  background: #141414;
+  border: 1px solid var(--border-dark);
+  border-radius: 0.5rem;
+  padding: 1rem 1.25rem;
+  overflow-x: auto;
+}
+
+.task-board-editor .ProseMirror pre code {
+  background: transparent;
+  color: #d1fae5;
+  padding: 0;
+  font-size: 0.875rem;
+}
+
+.task-board-editor .ProseMirror img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+  display: block;
+  margin: 0.75rem 0;
+}
+
+/* Placeholder */
+.task-board-editor .ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: var(--border-dark);
+  pointer-events: none;
+  height: 0;
+}

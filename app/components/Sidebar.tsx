@@ -38,6 +38,7 @@ const NAV = [
   {
     label: "Misc",
     links: [
+      { href: "/task-board", text: "Task Board" },
       { href: "/workout-tracker", text: "Workout Tracker" },
       { href: "/wordsmith", text: "Wordsmith" },
       { href: "/algo-backtest", text: "Algo Backtest" },
