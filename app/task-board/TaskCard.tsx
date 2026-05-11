@@ -27,13 +27,13 @@ export default function TaskCard({ task, onClick }: TaskCardProps) {
       className="w-full text-left rounded-lg p-3 transition-all"
       style={{
         background: "var(--bg-primary)",
-        border: "1px solid var(--border-color)",
+        border: "1px solid #404040",
       }}
       onMouseEnter={(e) => {
         e.currentTarget.style.borderColor = "#facc15";
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.borderColor = "var(--border-color)";
+        e.currentTarget.style.borderColor = "#404040";
       }}
     >
       {thumbnail && (

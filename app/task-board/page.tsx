@@ -256,13 +256,13 @@ export default function TaskBoardPage() {
                 className="flex flex-col rounded-lg min-h-0"
                 style={{
                   background: "var(--bg-secondary)",
-                  border: "1px solid var(--border-color)",
+                  border: "1px solid #404040",
                 }}
               >
                 {/* Column header */}
                 <div
                   className="px-4 py-3 flex items-center justify-between shrink-0 border-b"
-                  style={{ borderColor: "var(--border-color)" }}
+                  style={{ borderColor: "#404040" }}
                 >
                   <div className="flex items-center gap-2">
                     <span className="font-semibold text-sm" style={{ color: "var(--text-primary)" }}>
