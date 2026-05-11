@@ -49,75 +49,75 @@ const GRAIN = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'
 
 // ── Data ──────────────────────────────────────────────────────────────────────
 const SERVICES = [
-  { icon: Layers,    title: "Custom Form Work",              desc: "Walls, columns, footings, complex architectural pours. Any geometry, in-house crew." },
-  { icon: Truck,     title: "Concrete Delivery Coordination", desc: "We coordinate with every major ready-mix supplier in Puget Sound. Your pour starts on time." },
-  { icon: Building2, title: "Commercial Foundation Work",    desc: "Deep footings, grade beams, stem walls, slabs-on-grade. Commercial and light industrial." },
-  { icon: HardHat,   title: "Commercial Flatwork",           desc: "Parking lots, warehouse floors, loading docks, sidewalks. Finished to spec." },
-  { icon: Home,      title: "Residential Concrete",          desc: "Driveways, patios, walkways, retaining walls, garage slabs. Exposed aggregate, broom, and stamped finishes available." },
-  { icon: Wrench,    title: "Site Preparation",              desc: "Sub-base, form layout, rebar, and curing. We're there before the truck and after it leaves." },
+  { icon: HardHat,   title: "Asphalt Repair & Patching",      desc: "Hot mix patching, pothole repair, crack sealing, and preventive maintenance. Stop damage before it spreads." },
+  { icon: Layers,    title: "Asphalt Overlays & Resurfacing",  desc: "Full surface overlays, resurfacing, and new asphalt installation. Driveways, parking lots, access roads." },
+  { icon: Home,      title: "Concrete Flatwork",               desc: "Sidewalks, walkways, driveways, and slabs. Properly formed and properly placed." },
+  { icon: Building2, title: "Curb & Gutter",                   desc: "New curb and gutter installation and replacement for residential and commercial properties." },
+  { icon: Truck,     title: "Bulk Material Hauling",           desc: "Gravel, aggregate, soil, fill, asphalt, and debris. CDL-operated trucks, DOT-compliant." },
+  { icon: Wrench,    title: "Site Prep & Excavation",          desc: "Grading, excavation, and subgrade preparation for asphalt and concrete work." },
 ];
 
 const PORTFOLIO = [
-  { img: "https://picsum.photos/seed/ccf-feature/900/560", caption: "Bellevue Logistics Center", sub: "Commercial Flatwork · 2023", featured: true },
-  { img: "https://picsum.photos/seed/ccf-2/600/380",       caption: "Shoreline Residences",     sub: "Foundation & Flatwork · 2022" },
-  { img: "https://picsum.photos/seed/ccf-3/600/380",       caption: "Renton Industrial Park",   sub: "Tilt-up Form Work · 2022" },
-  { img: "https://picsum.photos/seed/ccf-4/600/380",       caption: "Issaquah Town Square",     sub: "Architectural Concrete · 2021" },
-  { img: "https://picsum.photos/seed/ccf-5/600/380",       caption: "Redmond Tech Campus",      sub: "Parking Structure · 2020" },
+  { img: "https://picsum.photos/seed/ccf-feature/900/560", caption: "Fife Industrial Park",      sub: "Asphalt Overlay · 2024", featured: true },
+  { img: "https://picsum.photos/seed/ccf-2/600/380",       caption: "Tacoma Apartment Complex",  sub: "Asphalt Resurfacing · 2023" },
+  { img: "https://picsum.photos/seed/ccf-3/600/380",       caption: "Auburn Retail Strip",        sub: "Curb, Gutter & Flatwork · 2022" },
+  { img: "https://picsum.photos/seed/ccf-4/600/380",       caption: "Federal Way Commercial",     sub: "Driveway & Site Prep · 2021" },
+  { img: "https://picsum.photos/seed/ccf-5/600/380",       caption: "Puyallup Subdivision",       sub: "Concrete Flatwork · 2020" },
 ];
 
 const TEAM = [
   {
-    photo: "https://i.pravatar.cc/160?img=53",
-    name:  "Mike Hargrove",
+    photo: "https://i.pravatar.cc/160?img=47",
+    name:  "Lisa Hargrove",
     title: "Owner & Founder",
-    bio:   "Journeyman form setter in 1990. Founded Cascade in 1998. Still walks every site before the pour.",
+    bio:   "Started Cascade after years running crews for larger contractors who didn't respect the work or the client. Runs every estimate personally. Woman-owned, locally rooted, bilingual.",
   },
   {
-    photo: "https://i.pravatar.cc/160?img=47",
-    name:  "Sarah Delgado",
-    title: "Project Manager",
-    bio:   "12 years running commercial pours from SeaTac to Everett. Fast-track GC coordination, WSDOT documentation — she keeps the schedule honest.",
+    photo: "https://i.pravatar.cc/160?img=26",
+    name:  "Marco Delgado",
+    title: "Field Supervisor",
+    bio:   "10 years operating equipment and managing asphalt and concrete crews across Pierce and King counties. Fluent in English and Spanish — coordinates seamlessly across mixed crews.",
   },
   {
     photo: "https://i.pravatar.cc/160?img=67",
     name:  "Dave Kowalski",
-    title: "Lead Foreman",
-    bio:   "22 years on the forms — residential footings to post-tension decks. OSHA-30, ACI Level I.",
+    title: "Lead Equipment Operator",
+    bio:   "CDL and DOT-certified. Runs the dump trucks and heavy equipment. If it hauls, grades, or excavates, Dave's on it.",
   },
 ];
 
 const PROJECTS = [
-  { year: "2023", name: "Amazon HQ2 Westside Parking Structure",        loc: "Bellevue, WA",     scope: "85,000 sq ft post-tension deck forms and flatwork for 6-level structure" },
-  { year: "2022", name: "Northgate Link Light Rail Station Concourse",   loc: "Seattle, WA",      scope: "Foundation and slab work under Sound Transit specifications" },
-  { year: "2021", name: "Seattle Children's Hospital — North Wing",      loc: "Laurelhurst, WA",  scope: "Complex architectural form panels and seismic-grade footings" },
-  { year: "2020", name: "I-405 Tukwila Interchange Improvements",        loc: "Tukwila, WA",      scope: "WSDOT approach slabs, barrier concrete, and drainage structures" },
-  { year: "2019", name: "MOHAI Waterfront Renovation",                   loc: "South Lake Union",  scope: "Exposed aggregate flatwork and architectural accent walls" },
-  { year: "2017", name: "Bellevue Square Retail Expansion",              loc: "Bellevue, WA",     scope: "40,000 sq ft commercial flatwork and loading dock slabs" },
-  { year: "2014", name: "Rainier Square Tower — Early Foundation Work",  loc: "Downtown Seattle", scope: "Caisson cap forming for 58-story mixed-use tower" },
+  { year: "2024", name: "Fife Industrial Park — Parking Lot Overlay",      loc: "Fife, WA",          scope: "Full asphalt overlay, 22,000 sq ft, drainage repairs and line striping" },
+  { year: "2023", name: "Tacoma Apartment Complex Resurfacing",             loc: "Tacoma, WA",        scope: "Asphalt resurfacing and hot-mix patching across a 3-building residential complex" },
+  { year: "2023", name: "Pierce County Road Maintenance Contract",          loc: "Pierce County, WA", scope: "Ongoing hot-mix patching and pothole repair for county right-of-way maintenance" },
+  { year: "2022", name: "Auburn Retail Strip — Curb & Flatwork",            loc: "Auburn, WA",        scope: "Curb and gutter replacement, ADA-compliant sidewalk installation, concrete slab work" },
+  { year: "2022", name: "Base Aggregate Hauling — WSDOT Road Project",     loc: "King County, WA",   scope: "Bulk gravel and crushed base delivery for state highway improvement project" },
+  { year: "2021", name: "Federal Way Commercial Driveway & Approach",       loc: "Federal Way, WA",   scope: "New asphalt driveway, concrete apron, and site grading for commercial property" },
+  { year: "2020", name: "Puyallup Subdivision — Concrete Flatwork",         loc: "Puyallup, WA",      scope: "Driveways, walkways, and site prep concrete for 14-home residential development" },
 ];
 
 const CERTS = [
-  { icon: BadgeCheck, name: "WA General Contractor",          detail: "License #CASCACF921BQ · Active" },
-  { icon: Shield,     name: "OSHA 30-Hour Certified",         detail: "All crew members, renewed annually" },
-  { icon: Award,      name: "ACI Level I — Flatwork Finisher",detail: "American Concrete Institute" },
-  { icon: Hammer,     name: "WSDOT Pre-Qualified",            detail: "Concrete contractor · Category C" },
-  { icon: Users,      name: "AGC of Washington Member",       detail: "Associated General Contractors" },
-  { icon: CheckCircle,name: "IUOE Local 302 Affiliated",      detail: "Int'l Union of Operating Engineers" },
+  { icon: BadgeCheck, name: "WA Licensed Contractor",        detail: "License #CASCACF921BQ · Active" },
+  { icon: BadgeCheck, name: "OR Licensed Contractor",        detail: "Oregon CCB License · Active" },
+  { icon: Truck,      name: "CDL-Operated Equipment",        detail: "Commercial Driver's License · DOT compliant" },
+  { icon: Shield,     name: "DOT Compliant Operations",      detail: "Federal & state transportation standards" },
+  { icon: Award,      name: "Woman Minority-Owned Business", detail: "WMBE certified" },
+  { icon: Users,      name: "Bilingual Crew",                detail: "English & Spanish · Se habla español" },
 ];
 
 const STATS = [
-  { value: "25+",    label: "Years in Business",    sub: "Founded 1998" },
-  { value: "1,400+", label: "Projects Completed",   sub: "Residential to commercial" },
-  { value: "$2M",    label: "Liability Coverage",   sub: "Fully insured" },
-  { value: "48 hr",  label: "Bid Turnaround",       sub: "Plans or scope description" },
+  { value: "10+",   label: "Years in the Field",  sub: "Hands-on since day one" },
+  { value: "WA·OR", label: "States Served",       sub: "Washington and Oregon" },
+  { value: "200+",  label: "Projects Completed",  sub: "Asphalt, concrete & hauling" },
+  { value: "48hr",  label: "Bid Turnaround",      sub: "Residential & commercial" },
 ];
 
 const AREAS = [
-  "Seattle", "Bellevue", "Redmond", "Kirkland", "Bothell",
-  "Kenmore", "Shoreline", "Renton", "Tukwila", "Burien",
-  "Kent", "Auburn", "Federal Way", "Issaquah", "Sammamish",
-  "Mercer Island", "Newcastle", "Lynnwood", "Everett", "Edmonds",
-  "Tacoma", "Puyallup", "Bremerton (ferry zones)",
+  "Tacoma", "Lakewood", "Puyallup", "Federal Way", "Auburn",
+  "Kent", "Renton", "Tukwila", "SeaTac", "Burien",
+  "Fife", "Milton", "Sumner", "Bonney Lake", "Gig Harbor",
+  "DuPont", "Olympia", "Covington", "Seattle", "Bellevue",
+  "Portland, OR", "Vancouver, WA", "Salem, OR",
 ];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -159,7 +159,7 @@ export default function SeattleConcretePage() {
       <div style={{ background: B.accent, padding: "9px 24px", display: "flex", alignItems: "center",
         justifyContent: "center", gap: 16, flexWrap: "wrap" }}>
         <span style={{ color: B.white, fontSize: "0.875rem", fontWeight: 500 }}>
-          🏗️ Free estimates · Seattle-area projects · Bids returned within 48 hours
+          🏗️ Free estimates · Asphalt, concrete & hauling · Washington & Oregon · 48-hour bid turnaround
         </span>
         <a href="#quote"
           style={{ display: "inline-flex", alignItems: "center", gap: 5, background: B.white,
@@ -185,19 +185,19 @@ export default function SeattleConcretePage() {
             borderRadius: 9999, padding: "4px 14px", marginBottom: 28 }}>
             <MapPin size={11} color={B.textMuted} />
             <span style={{ fontSize: 11, fontWeight: 600, color: B.textMuted, letterSpacing: "0.08em", textTransform: "uppercase" }}>
-              Tukwila, WA · Est. 1998
+              Pierce County, WA · Washington & Oregon
             </span>
           </div>
 
           <h1 style={{ fontFamily: B.headFont, fontSize: "clamp(3rem, 7vw, 5.5rem)", fontWeight: 800,
             color: B.textWhite, lineHeight: 0.95, letterSpacing: "0.01em", maxWidth: 780, marginBottom: 28 }}>
-            SEATTLE&rsquo;S CONCRETE<br />
-            <span style={{ color: B.accent }}>FORM WORK</span> SPECIALISTS
+            REAL WORK. REAL LOADS.<br />
+            <span style={{ color: B.accent }}>REAL RESULTS.</span>
           </h1>
 
           <p style={{ fontSize: "1.125rem", color: B.textMuted, maxWidth: 560, lineHeight: 1.75, marginBottom: 40 }}>
-            Setting forms and placing concrete in Seattle since 1998.
-            Complex pours, tight schedules, clean finishes.
+            Asphalt, concrete, and bulk material hauling across Washington and Oregon.
+            Locally owned, DOT-compliant, bilingual crew. We show up and get it done.
           </p>
 
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 40 }}>
@@ -251,8 +251,8 @@ export default function SeattleConcretePage() {
       <section style={{ background: B.bg, padding: "88px 32px", position: "relative" }}>
         <div style={{ position: "absolute", inset: 0, backgroundImage: GRAIN, pointerEvents: "none", opacity: 0.6 }} />
         <div style={{ maxWidth: 1140, margin: "0 auto", position: "relative", zIndex: 1 }}>
-          <SectionHead label="What We Do" heading="Full-Spectrum Concrete Services"
-            sub="We own every phase of your concrete scope." />
+          <SectionHead label="What We Do" heading="Asphalt, Concrete & Hauling"
+            sub="Three services, one crew. We handle the work from subgrade to final surface." />
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 2 }}>
             {SERVICES.map((svc, i) => {
               const Icon = svc.icon;
@@ -329,8 +329,8 @@ export default function SeattleConcretePage() {
               />
               <div style={{ background: B.bgRaised, padding: "10px 16px", borderTop: `1px solid ${B.borderDark}` }}>
                 <div style={{ fontFamily: B.headFont, fontSize: "1rem", fontWeight: 700, color: B.textWhite, letterSpacing: "0.02em" }}>
-                  Foundation Pour — Bellevue Tech Campus</div>
-                <div style={{ fontSize: "0.75rem", color: B.textMuted, marginTop: 2 }}>Time-lapse · Commercial Foundation · 2023</div>
+                  Parking Lot Overlay — Pierce County</div>
+                <div style={{ fontSize: "0.75rem", color: B.textMuted, marginTop: 2 }}>Time-lapse · Asphalt Overlay · 2024</div>
               </div>
             </div>
             {/* Two more images */}
@@ -354,7 +354,7 @@ export default function SeattleConcretePage() {
       <section style={{ background: B.bgWarm, padding: "88px 32px" }}>
         <div style={{ maxWidth: 1140, margin: "0 auto" }}>
           <SectionHead label="The People" heading="Meet the Crew" light
-            sub="The same crew on every job. No revolving-door labor." />
+            sub="Woman-owned, locally operated, bilingual. The same people on every job." />
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 28 }}>
             {TEAM.map((member, i) => (
               <div key={i} style={{ background: B.white, borderRadius: 10,
@@ -385,7 +385,7 @@ export default function SeattleConcretePage() {
         <div style={{ position: "absolute", inset: 0, backgroundImage: GRAIN, pointerEvents: "none", opacity: 0.5 }} />
         <div style={{ maxWidth: 900, margin: "0 auto", position: "relative", zIndex: 1 }}>
           <SectionHead label="Track Record" heading="Notable Projects"
-            sub="Commercial and institutional highlights from 25 years." />
+            sub="A sample of recent asphalt, concrete, and hauling work across the region." />
           <div style={{ position: "relative" }}>
             {/* Vertical line */}
             <div style={{ position: "absolute", left: 56, top: 0, bottom: 0, width: 1,
@@ -454,16 +454,16 @@ export default function SeattleConcretePage() {
             <Label>Service Area</Label>
             <h2 style={{ fontFamily: B.headFont, fontSize: "clamp(2rem, 3.5vw, 2.6rem)", fontWeight: 700,
               color: B.textDark, letterSpacing: "0.01em", lineHeight: 1.1, marginBottom: 16 }}>
-              Serving the Puget Sound Region
+              Serving Washington & Oregon
             </h2>
             <p style={{ color: B.textLite, lineHeight: 1.75, fontSize: "0.9375rem", marginBottom: 28 }}>
-              King, Snohomish, and Pierce counties. Not sure if we cover your site? Call — we&rsquo;ll tell you straight.
+              Based in Pierce County and working throughout the Puget Sound, South King County, and into Oregon. Not sure if we cover your site? Call — we&rsquo;ll tell you straight.
             </p>
             <div style={{ display: "flex", alignItems: "center", gap: 12, background: B.white,
               border: `1px solid ${B.borderLight}`, borderRadius: 8, padding: "14px 18px" }}>
               <MapPin size={18} color={B.accent} style={{ flexShrink: 0 }} />
               <span style={{ fontSize: "0.875rem", color: B.textMid, fontWeight: 500 }}>
-                Tukwila, WA — central to the metro
+                Pierce County, WA — centrally located for South Sound and beyond
               </span>
             </div>
           </div>
@@ -556,7 +556,7 @@ export default function SeattleConcretePage() {
             <div style={{ fontFamily: B.headFont, fontWeight: 700, fontSize: "1.1rem",
               color: B.textWhite, letterSpacing: "0.04em" }}>CASCADE CONCRETE &amp; FORMWORK, INC.</div>
             <div style={{ fontSize: "0.8rem", color: B.textMuted, marginTop: 4 }}>
-              Tukwila, WA · Serving Greater Seattle since 1998
+              Pierce County, WA · Serving Washington & Oregon
             </div>
           </div>
           <div style={{ fontSize: "0.78rem", color: B.textFaint, textAlign: "right" }}>
