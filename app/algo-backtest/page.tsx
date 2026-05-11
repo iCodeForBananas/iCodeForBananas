@@ -108,8 +108,8 @@ const LAMBDA_CRITERIA = [
   {
     key: "profitFactor",
     label: "Profit Factor ≥ 1.5",
-    pass: (r: BacktestResultLike) => r.profitFactor >= 1.5,
-    value: (r: BacktestResultLike) => r.profitFactor === Infinity ? "∞" : r.profitFactor.toFixed(2),
+    pass: (r: BacktestResultLike) => (r.profitFactor ?? 0) >= 1.5,
+    value: (r: BacktestResultLike) => r.profitFactor == null ? "N/A" : r.profitFactor === Infinity ? "∞" : r.profitFactor.toFixed(2),
   },
   {
     key: "sharpe",
@@ -532,7 +532,7 @@ export default function AlgoBacktestPage() {
       `| Win Rate | ${result.winRate.toFixed(1)}% (${result.winningTrades}W / ${result.losingTrades}L) |`,
       `| Avg Win | $${result.averageWin.toFixed(2)} |`,
       `| Avg Loss | $${result.averageLoss.toFixed(2)} |`,
-      `| Profit Factor | ${result.profitFactor === Infinity ? 'Infinite' : result.profitFactor.toFixed(2)} |`,
+      `| Profit Factor | ${result.profitFactor == null ? 'N/A' : result.profitFactor === Infinity ? 'Infinite' : result.profitFactor.toFixed(2)} |`,
       `| Max Drawdown | -${result.maxDrawdownPercent.toFixed(2)}% ($${result.maxDrawdown.toFixed(2)}) |`,
       `| Sharpe Ratio | ${result.sharpeRatio.toFixed(2)} |`,
     );
@@ -964,9 +964,9 @@ export default function AlgoBacktestPage() {
                 <div className='bg-slate-900 rounded p-3'>
                   <div className='text-slate-400 text-xs mb-1'>Profit Factor</div>
                   <div
-                    className={`text-lg font-bold ${activeResult.profitFactor >= 1 ? "text-green-400" : "text-red-400"}`}
+                    className={`text-lg font-bold ${(activeResult.profitFactor ?? 0) >= 1 ? "text-green-400" : "text-red-400"}`}
                   >
-                    {activeResult.profitFactor === Infinity ? "∞" : activeResult.profitFactor.toFixed(2)}
+                    {activeResult.profitFactor == null ? "N/A" : activeResult.profitFactor === Infinity ? "∞" : activeResult.profitFactor.toFixed(2)}
                   </div>
                 </div>
                 <div className='bg-slate-900 rounded p-3'>

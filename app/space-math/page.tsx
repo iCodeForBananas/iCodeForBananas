@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Rocket, Star, Trophy, ChevronRight, Sparkles, Check, X, Volume2 } from "lucide-react";
 
@@ -42,38 +42,95 @@ interface Problem {
   signature: string;
 }
 
-type Difficulty = "easy" | "medium" | "hard";
+interface TopicRecord {
+  correct: number;
+  attempts: number;
+  interval: number; // target questions between reviews
+  dueIn: number;    // countdown to next review
+}
 
-interface Stage {
-  id: number;
-  label: string;
-  types: ProblemType[];
+interface TopicDef {
+  key: string;
+  type: ProblemType;
   min: number;
   max: number;
-  icon: string;
+  unlockAt: number; // overall level required
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const DIFFICULTY_LEVELS: { id: Difficulty; label: string; description: string; color: string }[] = [
-  { id: "easy", label: "Cadet", description: "Numbers up to 10", color: "bg-blue-600" },
+// Topics ordered from easiest to hardest; unlockAt is the overall level (0-100) needed
+const TOPIC_PROGRESSION: TopicDef[] = [
+  { key: "add-1-5",      type: "addition",      min: 1,  max: 5,  unlockAt: 0  },
+  { key: "sub-1-5",      type: "subtraction",   min: 1,  max: 5,  unlockAt: 10 },
+  { key: "add-1-10",     type: "addition",      min: 1,  max: 10, unlockAt: 20 },
+  { key: "sub-1-10",     type: "subtraction",   min: 1,  max: 10, unlockAt: 30 },
+  { key: "compare-20",   type: "comparison",    min: 1,  max: 20, unlockAt: 38 },
+  { key: "shapes",       type: "shapes",        min: 1,  max: 6,  unlockAt: 42 },
+  { key: "place-value",  type: "place-value",   min: 1,  max: 9,  unlockAt: 50 },
+  { key: "mental-ten",   type: "mental-ten",    min: 10, max: 90, unlockAt: 55 },
+  { key: "time",         type: "time",          min: 1,  max: 12, unlockAt: 62 },
+  { key: "add-100",      type: "add-100",       min: 10, max: 90, unlockAt: 68 },
+  { key: "word-problem", type: "word-problem",  min: 1,  max: 10, unlockAt: 72 },
+  { key: "compare-99",   type: "comparison",    min: 10, max: 99, unlockAt: 78 },
+  { key: "fractions",    type: "fractions",     min: 1,  max: 4,  unlockAt: 85 },
 ];
 
-const MASTERY_THRESHOLD = 5;
-
-const STAGES: Stage[] = [
-  { id: 1, label: "Add to 5", types: ["addition"], min: 1, max: 5, icon: "➕" },
-  { id: 2, label: "Subtract to 5", types: ["subtraction"], min: 1, max: 5, icon: "➖" },
-  { id: 3, label: "Add to 10", types: ["addition", "subtraction"], min: 6, max: 10, icon: "🔢" },
-  { id: 4, label: "Subtract to 10", types: ["addition", "subtraction"], min: 6, max: 10, icon: "🔢" },
-  { id: 5, label: "Place Value", types: ["place-value", "mental-ten"], min: 1, max: 9, icon: "🧮" },
-  { id: 6, label: "Add to 100", types: ["add-100", "word-problem"], min: 10, max: 90, icon: "💯" },
-  { id: 7, label: "Compare Numbers", types: ["comparison", "mental-ten"], min: 10, max: 99, icon: "⚖️" },
-  { id: 8, label: "Time & Shapes", types: ["time", "shapes"], min: 1, max: 12, icon: "🕐" },
-  { id: 9, label: "Fractions", types: ["fractions", "shapes"], min: 1, max: 4, icon: "½" },
+const LEVEL_LABELS = [
+  { max: 19,  label: "Cadet"     },
+  { max: 39,  label: "Recruit"   },
+  { max: 59,  label: "Explorer"  },
+  { max: 79,  label: "Navigator" },
+  { max: 100, label: "Commander" },
 ];
 
-const COLORS_HEX: Record<Difficulty, string> = { easy: "#10B981", medium: "#3B82F6", hard: "#F43F5E" };
+function getLevelLabel(level: number): string {
+  return LEVEL_LABELS.find((l) => level <= l.max)?.label ?? "Commander";
+}
+
+const DEFAULT_RECORD: TopicRecord = { correct: 0, attempts: 0, interval: 1, dueIn: 0 };
+
+// Pick the topic most in need of practice from all unlocked topics
+function selectTopic(level: number, records: Record<string, TopicRecord>, lastKey: string | null): TopicDef {
+  const unlocked = TOPIC_PROGRESSION.filter((t) => t.unlockAt <= level);
+  const due = unlocked.filter((t) => (records[t.key]?.dueIn ?? 0) <= 0);
+  const pool = due.length > 0 ? due : unlocked;
+
+  // Weight: low-accuracy and short-interval topics surface more; penalize last topic to avoid back-to-back
+  const weights = pool.map((t) => {
+    const r = records[t.key] ?? DEFAULT_RECORD;
+    const accuracy = r.attempts > 0 ? r.correct / r.attempts : 0.5;
+    const base = (1 - accuracy * 0.8) / Math.max(r.interval, 1);
+    return t.key === lastKey ? base * 0.25 : base;
+  });
+
+  const total = weights.reduce((a, b) => a + b, 0);
+  let rand = Math.random() * total;
+  for (let i = 0; i < pool.length; i++) {
+    rand -= weights[i];
+    if (rand <= 0) return pool[i];
+  }
+  return pool[pool.length - 1];
+}
+
+// Spaced repetition: correct doubles the interval (cap 30), wrong resets to 1
+function advanceRecord(record: TopicRecord, correct: boolean): TopicRecord {
+  if (correct) {
+    const newInterval = Math.min(record.interval * 2, 30);
+    return { correct: record.correct + 1, attempts: record.attempts + 1, interval: newInterval, dueIn: newInterval };
+  }
+  return { ...record, attempts: record.attempts + 1, interval: 1, dueIn: 1 };
+}
+
+// Tick down dueIn for every topic except the one just answered
+function tickTopics(records: Record<string, TopicRecord>, exceptKey: string): Record<string, TopicRecord> {
+  const out: Record<string, TopicRecord> = {};
+  for (const [k, v] of Object.entries(records)) {
+    out[k] = k === exceptKey ? v : { ...v, dueIn: Math.max(0, v.dueIn - 1) };
+  }
+  return out;
+}
+
 
 const WP_SUBJECTS = ["rockets", "aliens", "stars", "moons", "comets", "astronauts"];
 const WP_ADD_VERBS = ["land at", "join", "appear at", "launch from"];
@@ -326,27 +383,15 @@ function buildProblem(type: ProblemType, min: number, max: number): Problem {
   return buildProblem("addition", min, max);
 }
 
-const generateProblem = (stageIndex: number, difficulty: Difficulty, recentSignatures: string[] = []): Problem => {
-  const stage = STAGES[stageIndex];
-  let { min, max } = stage;
-  if (stageIndex < 7) {
-    if (difficulty === "medium") {
-      max = Math.floor(max * 1.8);
-      min = Math.max(min, 2);
-    } else if (difficulty === "hard") {
-      max = Math.floor(max * 3);
-      min = Math.max(min, 5);
-    }
-  }
-  const type = stage.types[Math.floor(Math.random() * stage.types.length)];
-  let problem = buildProblem(type, min, max);
+function generateForTopic(topic: TopicDef, recentSignatures: string[] = []): Problem {
+  let problem = buildProblem(topic.type, topic.min, topic.max);
   let attempts = 0;
   while (recentSignatures.includes(problem.signature) && attempts < 20) {
-    problem = buildProblem(type, min, max);
+    problem = buildProblem(topic.type, topic.min, topic.max);
     attempts++;
   }
   return problem;
-};
+}
 
 // ─── Visual Scaffolding ───────────────────────────────────────────────────────
 
@@ -652,73 +697,32 @@ const StarBank = ({ score, onClear }: { score: number; onClear: () => void }) =>
   </div>
 );
 
-// ─── MasteryPath ──────────────────────────────────────────────────────────────
 
-const MasteryPath = ({
-  currentStage,
-  completedStages,
-  masteryCount,
-  isWrong,
-  difficulty,
-}: {
-  currentStage: number;
-  completedStages: number[];
-  masteryCount: number;
-  isWrong: boolean;
-  difficulty: Difficulty;
-}) => {
-  const colorHex = COLORS_HEX[difficulty];
-  const level = DIFFICULTY_LEVELS.find((d) => d.id === difficulty);
+// ─── SessionProgressBar ───────────────────────────────────────────────────────
+
+const SESSION_GOAL = 25;
+
+const SessionProgressBar = ({ correct }: { correct: number }) => {
+  const pct = Math.min((correct / SESSION_GOAL) * 100, 100);
+  const isDone = correct >= SESSION_GOAL;
   return (
-    <div className='w-full overflow-x-auto mb-4'>
-      <div
-        className='flex justify-between items-center px-3 py-4 bg-slate-900/40 rounded-3xl border border-white/5 relative'
-        style={{ minWidth: 560 }}
-      >
-        <div className='absolute left-8 right-8 h-0.5 bg-slate-800 top-1/2 -translate-y-1/2 z-0' />
-        {STAGES.map((stage, idx) => {
-          const isCurrent = idx === currentStage;
-          const isCompleted = completedStages.includes(idx);
-          const progress = isCurrent ? (masteryCount / MASTERY_THRESHOLD) * 100 : isCompleted ? 100 : 0;
-          const dotSize = "w-9 h-9";
-          const svgSize = "w-[44px] h-[44px]";
-          return (
-            <div key={stage.id} className='relative z-10 flex flex-col items-center gap-1'>
-              <motion.div
-                animate={isCurrent && isWrong ? { x: [-4, 4, -4, 4, 0] } : {}}
-                transition={{ duration: 0.4 }}
-                className={`relative ${dotSize} rounded-full flex items-center justify-center text-base border-2 transition-all ${isCompleted ? "bg-emerald-500 border-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.4)]" : isCurrent ? `${level?.color || "bg-blue-600"} border-white shadow-[0_0_12px_rgba(255,255,255,0.2)]` : "bg-slate-800 border-slate-700 text-slate-500"}`}
-              >
-                {isCompleted ? <Trophy className='w-4 h-4 text-white' /> : stage.icon}
-                {isCurrent && (
-                  <svg
-                    className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-90 ${svgSize} pointer-events-none`}
-                    viewBox='0 0 44 44'
-                  >
-                    <circle cx='22' cy='22' r='20' fill='transparent' stroke='rgba(255,255,255,0.2)' strokeWidth='3' />
-                    <motion.circle
-                      cx='22'
-                      cy='22'
-                      r='20'
-                      fill='transparent'
-                      stroke={colorHex}
-                      strokeWidth='3'
-                      strokeDasharray='125.66'
-                      initial={{ strokeDashoffset: 125.66 }}
-                      animate={{ strokeDashoffset: 125.66 - (125.66 * progress) / 100 }}
-                      transition={{ type: "spring", stiffness: 50 }}
-                    />
-                  </svg>
-                )}
-              </motion.div>
-              <span
-                className={`text-[10px] font-bold uppercase tracking-wider whitespace-nowrap ${isCurrent ? "text-blue-400" : "text-slate-500"}`}
-              >
-                {stage.label}
-              </span>
-            </div>
-          );
-        })}
+    <div className='w-full mb-2 shrink-0'>
+      <div className='flex justify-between items-center mb-1.5 px-1'>
+        <div className='flex items-center gap-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider'>
+          <Star className='w-3 h-3 text-yellow-400 fill-yellow-400' />
+          Session
+        </div>
+        <span className={`text-xs font-bold ${isDone ? "text-yellow-400" : "text-slate-400"}`}>
+          {correct} / {SESSION_GOAL} correct
+        </span>
+      </div>
+      <div className='w-full h-2.5 bg-slate-800/80 rounded-full overflow-hidden border border-white/5'>
+        <motion.div
+          className={`h-full rounded-full ${isDone ? "bg-gradient-to-r from-yellow-400 to-amber-500" : "bg-gradient-to-r from-blue-500 via-violet-500 to-emerald-500"}`}
+          initial={{ width: 0 }}
+          animate={{ width: `${pct}%` }}
+          transition={{ type: "spring", stiffness: 80, damping: 15 }}
+        />
       </div>
     </div>
   );
@@ -727,44 +731,18 @@ const MasteryPath = ({
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function SpaceMathPage() {
-  const difficulty: Difficulty = "easy";
-  const [stageIndex, setStageIndex] = useState(0);
-  const [completedStages, setCompletedStages] = useState<number[]>([]);
-  const [masteryCount, setMasteryCount] = useState(0);
-
-  // Progress tracking
-  const sessionId = useRef<string>(crypto.randomUUID());
-  const stageCorrect = useRef(0);
-  const stageTotal = useRef(0);
-
-  const saveStageProgress = useCallback(async (stageIdx: number, correct: number, total: number, mastered: boolean) => {
-    const stage = STAGES[stageIdx];
-    if (!stage) return;
-    try {
-      await fetch("/api/space-math/progress", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          player_name: "cai",
-          session_id: sessionId.current,
-          stage_id: stage.id,
-          stage_label: stage.label,
-          correct,
-          total,
-          mastered,
-        }),
-      });
-    } catch {
-      // Silently fail — never block gameplay
-    }
-  }, []);
+  const [overallLevel, setOverallLevel] = useState(0);
+  const [topicRecords, setTopicRecords] = useState<Record<string, TopicRecord>>({});
+  const [currentTopic, setCurrentTopic] = useState<TopicDef | null>(null);
+  const [lastTopicKey, setLastTopicKey] = useState<string | null>(null);
+  const [sessionCorrect, setSessionCorrect] = useState(0);
   const [recentSignatures, setRecentSignatures] = useState<string[]>([]);
   const [problem, setProblem] = useState<Problem | null>(null);
   const [selectedAnswer, setSelectedAnswer] = useState<number | string | null>(null);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
   const [score, setScore] = useState(0);
   const [attemptsUsed, setAttemptsUsed] = useState(0);
-  const [gameState, setGameState] = useState<"start" | "playing" | "level-up" | "finale">("start");
+  const [gameState, setGameState] = useState<"start" | "playing" | "finale">("start");
   const [stars, setStars] = useState<{ w: number; h: number; t: number; l: number; o: number; d: number }[]>([]);
   useEffect(() => {
     setStars(
@@ -784,61 +762,53 @@ export default function SpaceMathPage() {
       const saved = localStorage.getItem("space-math-save");
       if (saved) {
         const d = JSON.parse(saved);
-        setScore(d.score || 0);
-        setStageIndex(d.stageIndex || 0);
-        setCompletedStages(d.completedStages || []);
+        if (d.score) setScore(d.score);
+        if (typeof d.overallLevel === "number") setOverallLevel(d.overallLevel);
+        if (d.topicRecords) setTopicRecords(d.topicRecords);
       }
     } catch {}
   }, []);
 
   useEffect(() => {
-    localStorage.setItem("space-math-save", JSON.stringify({ score, stageIndex, completedStages }));
-  }, [score, stageIndex, completedStages]);
-
-  useEffect(() => {
-    if (gameState === "playing" && !problem) {
-      const p = generateProblem(stageIndex, difficulty, recentSignatures);
-      setProblem(p);
-      setRecentSignatures((prev) => [...prev.slice(-9), p.signature]);
-    }
-  }, [gameState, problem, stageIndex, difficulty, recentSignatures]);
+    localStorage.setItem("space-math-save", JSON.stringify({ score, overallLevel, topicRecords }));
+  }, [score, overallLevel, topicRecords]);
 
   const handleAnswer = (answer: number | string) => {
-    if (selectedAnswer !== null) return;
+    if (selectedAnswer !== null || !problem || !currentTopic) return;
     setSelectedAnswer(answer);
-    const correct = answer === problem?.answer;
+    const correct = answer === problem.answer;
     setIsCorrect(correct);
 
-    // Capture closure values now so the timeout uses the right state
-    const capturedStage = stageIndex;
+    // Capture closure values for the timeout
     const capturedSigs = recentSignatures;
+    const capturedTopic = currentTopic;
+    const capturedRecords = topicRecords;
+    const capturedLevel = overallLevel;
 
     if (correct) {
       playSound("correct");
       setScore((s) => s + 10);
-      stageCorrect.current += 1;
-      stageTotal.current += 1;
-      const newMastery = masteryCount + 1;
-      setMasteryCount(newMastery);
+      const nextSessionCorrect = sessionCorrect + 1;
+      setSessionCorrect(nextSessionCorrect);
+
+      // Level increases with diminishing returns (faster early, slower as you improve)
+      const newLevel = Math.min(100, capturedLevel + (100 - capturedLevel) * 0.05);
+      setOverallLevel(newLevel);
+
+      // Update spaced rep for answered topic, tick down all others
+      const updated = advanceRecord(capturedRecords[capturedTopic.key] ?? DEFAULT_RECORD, true);
+      const ticked = tickTopics({ ...capturedRecords, [capturedTopic.key]: updated }, capturedTopic.key);
+      setTopicRecords(ticked);
+      setLastTopicKey(capturedTopic.key);
+
       setTimeout(() => {
-        if (newMastery >= MASTERY_THRESHOLD) {
+        if (nextSessionCorrect >= SESSION_GOAL) {
           playSound("badge");
-          // Save mastered stage progress
-          saveStageProgress(capturedStage, stageCorrect.current, stageTotal.current, true);
-          stageCorrect.current = 0;
-          stageTotal.current = 0;
-          const nextIdx = capturedStage + 1;
-          setCompletedStages((prev) => Array.from(new Set([...prev, capturedStage])));
-          if (nextIdx < STAGES.length) {
-            setStageIndex(nextIdx);
-            setGameState("level-up");
-          } else {
-            setGameState("finale");
-          }
-          setMasteryCount(0);
-          setRecentSignatures([]);
+          setGameState("finale");
         } else {
-          const p = generateProblem(capturedStage, difficulty, capturedSigs);
+          const next = selectTopic(newLevel, ticked, capturedTopic.key);
+          setCurrentTopic(next);
+          const p = generateForTopic(next, capturedSigs);
           setProblem(p);
           setRecentSignatures((prev) => [...prev.slice(-9), p.signature]);
         }
@@ -848,11 +818,20 @@ export default function SpaceMathPage() {
       }, 2000);
     } else {
       playSound("incorrect");
-      stageTotal.current += 1;
       const isLastAttempt = attemptsUsed >= 1;
       setTimeout(() => {
         if (isLastAttempt) {
-          const p = generateProblem(capturedStage, difficulty, capturedSigs);
+          // Final wrong attempt: penalise level slightly, reset topic interval
+          const newLevel = Math.max(0, capturedLevel - 2);
+          setOverallLevel(newLevel);
+          const updated = advanceRecord(capturedRecords[capturedTopic.key] ?? DEFAULT_RECORD, false);
+          const ticked = tickTopics({ ...capturedRecords, [capturedTopic.key]: updated }, capturedTopic.key);
+          setTopicRecords(ticked);
+          setLastTopicKey(capturedTopic.key);
+
+          const next = selectTopic(newLevel, ticked, capturedTopic.key);
+          setCurrentTopic(next);
+          const p = generateForTopic(next, capturedSigs);
           setProblem(p);
           setRecentSignatures((prev) => [...prev.slice(-9), p.signature]);
           setAttemptsUsed(0);
@@ -865,27 +844,29 @@ export default function SpaceMathPage() {
     }
   };
 
-  const startLevel = () => {
-    setGameState("playing");
-    setRecentSignatures([]);
-    setAttemptsUsed(0);
-    const p = generateProblem(stageIndex, difficulty, []);
+  const startGame = () => {
+    const topic = selectTopic(overallLevel, topicRecords, lastTopicKey);
+    setCurrentTopic(topic);
+    const p = generateForTopic(topic, []);
     setProblem(p);
     setRecentSignatures([p.signature]);
+    setAttemptsUsed(0);
+    setGameState("playing");
   };
 
   const resetGame = () => {
-    localStorage.setItem("space-math-save", JSON.stringify({ score, stageIndex: 0, completedStages: [] }));
-    setStageIndex(0);
-    setCompletedStages([]);
-    setMasteryCount(0);
+    setOverallLevel(0);
+    setTopicRecords({});
+    setCurrentTopic(null);
+    setLastTopicKey(null);
+    setSessionCorrect(0);
     setAttemptsUsed(0);
+    setProblem(null);
     setGameState("start");
   };
 
   const clearStars = () => {
     setScore(0);
-    localStorage.setItem("space-math-save", JSON.stringify({ score: 0, stageIndex, completedStages }));
   };
 
   const isWordProblem = problem?.type === "word-problem";
@@ -926,7 +907,7 @@ export default function SpaceMathPage() {
             <div>
               <h1 className='text-lg sm:text-xl font-bold tracking-tight'>Space Math</h1>
               <p className='text-xs text-blue-400 uppercase tracking-widest font-bold'>
-                Mission: {STAGES[stageIndex].label}
+                {getLevelLabel(overallLevel)} · {Math.round(overallLevel)}
               </p>
             </div>
           </div>
@@ -968,7 +949,7 @@ export default function SpaceMathPage() {
                 </h2>
               </div>
               <button
-                onClick={startLevel}
+                onClick={startGame}
                 className='group relative px-10 sm:px-12 py-5 sm:py-6 bg-blue-600 rounded-3xl text-xl sm:text-2xl font-bold shadow-[0_10px_0_rgb(37,99,235)] active:shadow-none active:translate-y-[10px] transition-all hover:bg-blue-500'
               >
                 <span className='flex items-center gap-3'>
@@ -986,15 +967,7 @@ export default function SpaceMathPage() {
               exit={{ opacity: 0, x: -20 }}
               className='w-full flex-1 min-h-0 flex flex-col items-center gap-3 sm:gap-4'
             >
-              <div className='w-full shrink-0'>
-                <MasteryPath
-                  currentStage={stageIndex}
-                  completedStages={completedStages}
-                  masteryCount={masteryCount}
-                  isWrong={isCorrect === false}
-                  difficulty={difficulty}
-                />
-              </div>
+              <SessionProgressBar correct={sessionCorrect} />
               <AnimatePresence>
                 {selectedAnswer !== null && (
                   <motion.div
@@ -1082,37 +1055,6 @@ export default function SpaceMathPage() {
             </motion.div>
           )}
 
-          {gameState === "level-up" && (
-            <motion.div
-              key='level-up'
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 1.2 }}
-              className='flex-1 min-h-0 flex flex-col items-center justify-center text-center gap-6 sm:gap-8'
-            >
-              <div className='relative'>
-                <motion.div
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
-                  className='absolute inset-0 bg-blue-500/20 blur-3xl rounded-full'
-                />
-                <Trophy className='w-24 h-24 sm:w-32 sm:h-32 md:w-40 md:h-40 text-yellow-400 drop-shadow-[0_0_20px_rgba(250,204,21,0.5)]' />
-              </div>
-              <div>
-                <h2 className='text-4xl sm:text-5xl md:text-6xl font-black mb-3 sm:mb-4'>LEVEL UP!</h2>
-                <p className='text-xl sm:text-2xl md:text-3xl text-blue-200'>
-                  You&apos;ve reached the <span className='text-white font-bold'>{STAGES[stageIndex].label}</span>!
-                </p>
-              </div>
-              <button
-                onClick={startLevel}
-                className='px-10 sm:px-12 py-5 sm:py-6 bg-emerald-600 rounded-3xl text-xl sm:text-2xl font-bold shadow-[0_10px_0_rgb(5,150,105)] active:shadow-none active:translate-y-[10px] transition-all hover:bg-emerald-500'
-              >
-                CONTINUE MISSION
-              </button>
-            </motion.div>
-          )}
-
           {gameState === "finale" && (
             <motion.div
               key='finale'
@@ -1139,19 +1081,37 @@ export default function SpaceMathPage() {
               </div>
               <div>
                 <h2 className='text-4xl sm:text-5xl md:text-6xl font-black mb-3 sm:mb-4 bg-gradient-to-r from-yellow-400 via-white to-yellow-400 bg-clip-text text-transparent animate-pulse'>
-                  MISSION COMPLETE!
+                  SESSION COMPLETE!
                 </h2>
                 <p className='text-2xl sm:text-3xl text-blue-200'>
-                  You are a <span className='text-white font-bold'>Math Master</span>!
+                  You answered <span className='text-white font-bold'>25</span> questions correctly!
                 </p>
-                <p className='text-lg sm:text-xl text-blue-400 mt-2'>All 9 missions complete!</p>
+                <p className='text-lg sm:text-xl text-blue-400 mt-2'>
+                  {getLevelLabel(overallLevel)} · Level {Math.round(overallLevel)}
+                </p>
               </div>
-              <button
-                onClick={resetGame}
-                className='px-8 py-4 bg-slate-800 rounded-2xl text-lg sm:text-xl font-bold border border-white/10 hover:bg-slate-700 transition-colors'
-              >
-                PLAY AGAIN
-              </button>
+              <div className='flex flex-col gap-4 items-center'>
+                <button
+                  onClick={() => {
+                    setSessionCorrect(0);
+                    const next = selectTopic(overallLevel, topicRecords, lastTopicKey);
+                    setCurrentTopic(next);
+                    const p = generateForTopic(next, []);
+                    setProblem(p);
+                    setRecentSignatures([p.signature]);
+                    setGameState("playing");
+                  }}
+                  className='px-10 sm:px-12 py-5 sm:py-6 bg-emerald-600 rounded-3xl text-xl sm:text-2xl font-bold shadow-[0_10px_0_rgb(5,150,105)] active:shadow-none active:translate-y-[10px] transition-all hover:bg-emerald-500'
+                >
+                  KEEP GOING
+                </button>
+                <button
+                  onClick={resetGame}
+                  className='px-8 py-4 bg-slate-800 rounded-2xl text-lg sm:text-xl font-bold border border-white/10 hover:bg-slate-700 transition-colors'
+                >
+                  START OVER
+                </button>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
