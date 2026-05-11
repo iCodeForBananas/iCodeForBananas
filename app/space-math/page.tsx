@@ -16,7 +16,11 @@ type ProblemType =
   | "comparison"
   | "time"
   | "shapes"
-  | "fractions";
+  | "fractions"
+  | "three-addend"
+  | "fact-family"
+  | "length"
+  | "count-120";
 
 type HintOp =
   | "+"
@@ -30,7 +34,12 @@ type HintOp =
   | "comparison"
   | "time"
   | "shape"
-  | "fraction";
+  | "fraction"
+  | "three-add"
+  | "fact-family"
+  | "length"
+  | "count-next"
+  | "count-prev";
 
 interface Problem {
   id: string;
@@ -46,7 +55,7 @@ interface TopicRecord {
   correct: number;
   attempts: number;
   interval: number; // target questions between reviews
-  dueIn: number;    // countdown to next review
+  dueIn: number; // countdown to next review
 }
 
 interface TopicDef {
@@ -61,32 +70,47 @@ interface TopicDef {
 
 // Topics ordered from easiest to hardest; unlockAt is the overall level (0-100) needed
 const TOPIC_PROGRESSION: TopicDef[] = [
-  { key: "add-1-5",      type: "addition",      min: 1,  max: 5,  unlockAt: 0  },
-  { key: "sub-1-5",      type: "subtraction",   min: 1,  max: 5,  unlockAt: 10 },
-  { key: "add-1-10",     type: "addition",      min: 1,  max: 10, unlockAt: 20 },
-  { key: "sub-1-10",     type: "subtraction",   min: 1,  max: 10, unlockAt: 30 },
-  { key: "compare-20",   type: "comparison",    min: 1,  max: 20, unlockAt: 38 },
-  { key: "shapes",       type: "shapes",        min: 1,  max: 6,  unlockAt: 42 },
-  { key: "place-value",  type: "place-value",   min: 1,  max: 9,  unlockAt: 50 },
-  { key: "mental-ten",   type: "mental-ten",    min: 10, max: 90, unlockAt: 55 },
-  { key: "time",         type: "time",          min: 1,  max: 12, unlockAt: 62 },
-  { key: "add-100",      type: "add-100",       min: 10, max: 90, unlockAt: 68 },
-  { key: "word-problem", type: "word-problem",  min: 1,  max: 10, unlockAt: 72 },
-  { key: "compare-99",   type: "comparison",    min: 10, max: 99, unlockAt: 78 },
-  { key: "fractions",    type: "fractions",     min: 1,  max: 4,  unlockAt: 85 },
+  { key: "add-1-5",      type: "addition",      min: 1,  max: 5,   unlockAt: 0  },
+  { key: "sub-1-5",      type: "subtraction",   min: 1,  max: 5,   unlockAt: 10 },
+  { key: "add-1-10",     type: "addition",      min: 1,  max: 10,  unlockAt: 20 },
+  { key: "sub-1-10",     type: "subtraction",   min: 1,  max: 10,  unlockAt: 30 },
+  { key: "add-1-20",     type: "addition",      min: 1,  max: 20,  unlockAt: 34 },
+  { key: "three-addend", type: "three-addend",  min: 1,  max: 6,   unlockAt: 37 },
+  { key: "fact-family",  type: "fact-family",   min: 1,  max: 10,  unlockAt: 40 },
+  { key: "compare-20",   type: "comparison",    min: 1,  max: 20,  unlockAt: 43 },
+  { key: "shapes",       type: "shapes",        min: 1,  max: 6,   unlockAt: 48 },
+  { key: "place-value",  type: "place-value",   min: 1,  max: 9,   unlockAt: 52 },
+  { key: "mental-ten",   type: "mental-ten",    min: 10, max: 90,  unlockAt: 56 },
+  { key: "length",       type: "length",        min: 2,  max: 20,  unlockAt: 60 },
+  { key: "time",         type: "time",          min: 1,  max: 12,  unlockAt: 63 },
+  { key: "add-100",      type: "add-100",       min: 10, max: 90,  unlockAt: 67 },
+  { key: "word-problem", type: "word-problem",  min: 1,  max: 10,  unlockAt: 71 },
+  { key: "count-120",    type: "count-120",     min: 1,  max: 120, unlockAt: 74 },
+  { key: "compare-99",   type: "comparison",    min: 10, max: 99,  unlockAt: 78 },
+  { key: "fractions",    type: "fractions",     min: 1,  max: 4,   unlockAt: 84 },
 ];
 
-const LEVEL_LABELS = [
-  { max: 19,  label: "Cadet"     },
-  { max: 39,  label: "Recruit"   },
-  { max: 59,  label: "Explorer"  },
-  { max: 79,  label: "Navigator" },
-  { max: 100, label: "Commander" },
-];
-
-function getLevelLabel(level: number): string {
-  return LEVEL_LABELS.find((l) => level <= l.max)?.label ?? "Commander";
-}
+// Maps each topic key to its API stage
+const TOPIC_STAGE: Record<string, { id: number; label: string }> = {
+  "add-1-5":      { id: 1,  label: "Add to 5" },
+  "sub-1-5":      { id: 2,  label: "Subtract to 5" },
+  "add-1-10":     { id: 3,  label: "Add to 10" },
+  "sub-1-10":     { id: 4,  label: "Subtract to 10" },
+  "add-1-20":     { id: 5,  label: "Add to 20 & Fact Families" },
+  "three-addend": { id: 5,  label: "Add to 20 & Fact Families" },
+  "fact-family":  { id: 5,  label: "Add to 20 & Fact Families" },
+  "compare-20":   { id: 6,  label: "Compare Numbers" },
+  "compare-99":   { id: 6,  label: "Compare Numbers" },
+  "place-value":  { id: 7,  label: "Place Value & Mental Math" },
+  "mental-ten":   { id: 7,  label: "Place Value & Mental Math" },
+  "add-100":      { id: 8,  label: "Add to 100 & Word Problems" },
+  "word-problem": { id: 8,  label: "Add to 100 & Word Problems" },
+  "count-120":    { id: 8,  label: "Add to 100 & Word Problems" },
+  "time":         { id: 9,  label: "Time, Shapes & Length" },
+  "shapes":       { id: 9,  label: "Time, Shapes & Length" },
+  "length":       { id: 9,  label: "Time, Shapes & Length" },
+  "fractions":    { id: 10, label: "Fractions" },
+};
 
 const DEFAULT_RECORD: TopicRecord = { correct: 0, attempts: 0, interval: 1, dueIn: 0 };
 
@@ -131,10 +155,18 @@ function tickTopics(records: Record<string, TopicRecord>, exceptKey: string): Re
   return out;
 }
 
-
 const WP_SUBJECTS = ["rockets", "aliens", "stars", "moons", "comets", "astronauts"];
 const WP_ADD_VERBS = ["land at", "join", "appear at", "launch from"];
 const WP_SUB_VERBS = ["fly away from", "leave", "blast off from", "depart from"];
+
+const LENGTH_PAIRS: [string, string][] = [
+  ["pencil", "crayon"],
+  ["book", "ruler"],
+  ["bat", "straw"],
+  ["worm", "snake"],
+  ["brush", "pen"],
+  ["ribbon", "rope"],
+];
 
 const SHAPE_QS: { q: string; a: number; hint: string }[] = [
   { q: "How many sides does a triangle have?", a: 3, hint: "△" },
@@ -318,7 +350,7 @@ function buildProblem(type: ProblemType, min: number, max: number): Problem {
     return {
       id,
       type,
-      question: `${a}   ○   ${b}`,
+      question: `${a}   ?   ${b}`,
       answer,
       options: ["<", "=", ">"],
       visualHint: { left: a, right: b, operator: "comparison" },
@@ -380,6 +412,78 @@ function buildProblem(type: ProblemType, min: number, max: number): Problem {
     };
   }
 
+  if (type === "three-addend") {
+    const a = Math.floor(Math.random() * max) + min;
+    const b = Math.floor(Math.random() * max) + min;
+    const c = Math.floor(Math.random() * max) + min;
+    const answer = a + b + c;
+    return {
+      id,
+      type,
+      question: `${a} + ${b} + ${c} = ?`,
+      answer,
+      options: numOpts(answer),
+      visualHint: { left: a, right: b, operator: "three-add", extra: String(c) },
+      signature: `3add:${[a, b, c].sort().join(",")}`,
+    };
+  }
+
+  if (type === "fact-family") {
+    const a = Math.floor(Math.random() * (max - 1)) + min;
+    const b = Math.floor(Math.random() * (max - a)) + 1;
+    const sum = a + b;
+    const askB = Math.random() > 0.5;
+    const knownSubtract = askB ? a : b;
+    const answer = askB ? b : a;
+    return {
+      id,
+      type,
+      question: `${a} + ${b} = ${sum}. So ${sum} − ${knownSubtract} = ?`,
+      answer,
+      options: numOpts(answer),
+      visualHint: { left: a, right: b, operator: "fact-family" },
+      signature: `ff:${Math.min(a, b)},${Math.max(a, b)}`,
+    };
+  }
+
+  if (type === "length") {
+    const pair = LENGTH_PAIRS[Math.floor(Math.random() * LENGTH_PAIRS.length)];
+    const len1 = Math.floor(Math.random() * (max - min)) + min;
+    let len2 = Math.floor(Math.random() * (max - min)) + min;
+    while (len2 === len1) len2 = Math.floor(Math.random() * (max - min)) + min;
+    const isLongerQ = Math.random() > 0.5;
+    const longer = len1 > len2 ? pair[0] : pair[1];
+    const shorter = len1 > len2 ? pair[1] : pair[0];
+    const answer = isLongerQ ? longer : shorter;
+    return {
+      id,
+      type,
+      question: `A ${pair[0]} is ${len1} cm long. A ${pair[1]} is ${len2} cm long. Which is ${isLongerQ ? "longer" : "shorter"}?`,
+      answer,
+      options: [pair[0], pair[1]],
+      visualHint: { left: len1, right: len2, operator: "length", extra: `${pair[0]},${pair[1]}` },
+      signature: `len:${pair[0]},${isLongerQ ? "longer" : "shorter"}`,
+    };
+  }
+
+  if (type === "count-120") {
+    const useHigh = Math.random() > 0.4;
+    const start = useHigh
+      ? Math.floor(Math.random() * 18) + 102
+      : Math.floor(Math.random() * (max - 2)) + 2;
+    const isNext = Math.random() > 0.5;
+    const answer = isNext ? start + 1 : start - 1;
+    return {
+      id,
+      type,
+      question: isNext ? `What number comes after ${start}?` : `What number comes before ${start}?`,
+      answer,
+      options: numOpts(answer),
+      visualHint: { left: start, right: 0, operator: isNext ? "count-next" : "count-prev" },
+      signature: `count:${isNext ? "next" : "prev"}-${start}`,
+    };
+  }
+
   return buildProblem("addition", min, max);
 }
 
@@ -391,6 +495,27 @@ function generateForTopic(topic: TopicDef, recentSignatures: string[] = []): Pro
     attempts++;
   }
   return problem;
+}
+
+async function postQuestionProgress(
+  topicKey: string,
+  wasCorrect: boolean,
+  records: Record<string, TopicRecord>,
+  sessionId: string,
+) {
+  const stage = TOPIC_STAGE[topicKey];
+  if (!stage) return;
+  const topicsInStage = Object.entries(TOPIC_STAGE).filter(([, s]) => s.id === stage.id).map(([k]) => k);
+  const mastered = topicsInStage.every((k) => (records[k]?.interval ?? 1) >= 8);
+  try {
+    await fetch("/api/space-math/progress", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ player_name: "cai", session_id: sessionId, stage_id: stage.id, stage_label: stage.label, correct: wasCorrect ? 1 : 0, total: 1, mastered }),
+    });
+  } catch (e) {
+    console.error("Failed to save progress", e);
+  }
 }
 
 // ─── Visual Scaffolding ───────────────────────────────────────────────────────
@@ -596,6 +721,103 @@ const VisualScaffolding = ({ hint }: { hint: Problem["visualHint"] }) => {
     );
   }
 
+  if (hint.operator === "three-add") {
+    const c = parseInt(hint.extra ?? "0", 10);
+    return (
+      <div className='flex flex-col items-center gap-2 p-3 bg-white/10 rounded-2xl border border-white/20'>
+        <div className='flex items-center gap-2 flex-wrap justify-center'>
+          <div className='flex flex-wrap gap-1 max-w-[60px] justify-center'>
+            {Array.from({ length: hint.left }).map((_, i) => (
+              <div key={i} className='w-3 h-3 bg-orange-400 rounded-full' />
+            ))}
+          </div>
+          <span className='text-lg font-bold text-white'>+</span>
+          <div className='flex flex-wrap gap-1 max-w-[60px] justify-center'>
+            {Array.from({ length: hint.right }).map((_, i) => (
+              <div key={i} className='w-3 h-3 bg-purple-400 rounded-full' />
+            ))}
+          </div>
+          <span className='text-lg font-bold text-white'>+</span>
+          <div className='flex flex-wrap gap-1 max-w-[60px] justify-center'>
+            {Array.from({ length: c }).map((_, i) => (
+              <div key={i} className='w-3 h-3 bg-emerald-400 rounded-full' />
+            ))}
+          </div>
+        </div>
+        <p className='text-[10px] text-blue-200'>Count all three groups together!</p>
+      </div>
+    );
+  }
+
+  if (hint.operator === "fact-family") {
+    const sum = hint.left + hint.right;
+    return (
+      <div className='flex flex-col items-center gap-2 p-3 bg-white/10 rounded-2xl border border-white/20'>
+        <div className='text-xl font-bold text-center space-y-1'>
+          <div>
+            <span className='text-emerald-300'>{hint.left}</span>
+            <span className='text-white'> + </span>
+            <span className='text-purple-300'>{hint.right}</span>
+            <span className='text-white'> = </span>
+            <span className='text-yellow-300'>{sum}</span>
+          </div>
+          <div className='text-slate-400 text-sm'>↕ flip it!</div>
+          <div>
+            <span className='text-yellow-300'>{sum}</span>
+            <span className='text-white'> − </span>
+            <span className='text-purple-300'>{hint.right}</span>
+            <span className='text-white'> = </span>
+            <span className='text-emerald-300'>{hint.left}</span>
+          </div>
+        </div>
+        <p className='text-[10px] text-blue-200'>Addition and subtraction are opposites!</p>
+      </div>
+    );
+  }
+
+  if (hint.operator === "length") {
+    const [obj1, obj2] = (hint.extra ?? ",").split(",");
+    const maxLen = Math.max(hint.left, hint.right);
+    return (
+      <div className='flex flex-col items-center gap-2 p-3 bg-white/10 rounded-2xl border border-white/20'>
+        <div className='flex flex-col gap-2 w-full max-w-[220px]'>
+          <div className='flex items-center gap-2'>
+            <span className='text-[10px] text-blue-300 w-14 text-right shrink-0'>{obj1}</span>
+            <div className='h-4 bg-orange-400 rounded' style={{ width: `${(hint.left / maxLen) * 120}px` }} />
+            <span className='text-[10px] text-slate-300'>{hint.left} cm</span>
+          </div>
+          <div className='flex items-center gap-2'>
+            <span className='text-[10px] text-blue-300 w-14 text-right shrink-0'>{obj2}</span>
+            <div className='h-4 bg-purple-400 rounded' style={{ width: `${(hint.right / maxLen) * 120}px` }} />
+            <span className='text-[10px] text-slate-300'>{hint.right} cm</span>
+          </div>
+        </div>
+        <p className='text-[10px] text-blue-200'>Longer bar = longer object!</p>
+      </div>
+    );
+  }
+
+  if (hint.operator === "count-next" || hint.operator === "count-prev") {
+    const isNext = hint.operator === "count-next";
+    const n = hint.left;
+    const nums: (number | string)[] = isNext ? [n - 1, n, "?"] : ["?", n, n + 1];
+    return (
+      <div className='flex flex-col items-center gap-2 p-3 bg-white/10 rounded-2xl border border-white/20'>
+        <div className='flex items-center gap-2'>
+          {nums.map((num, i) => (
+            <div
+              key={i}
+              className={`w-14 h-12 rounded-lg flex items-center justify-center text-lg font-bold ${num === "?" ? "bg-yellow-500/30 border-2 border-yellow-400 text-yellow-400" : "bg-white/10 text-white"}`}
+            >
+              {num}
+            </div>
+          ))}
+        </div>
+        <p className='text-[10px] text-blue-200'>{isNext ? "Count up — what comes next?" : "Count back — what comes before?"}</p>
+      </div>
+    );
+  }
+
   // Default: addition / subtraction dots
   return (
     <div className='flex flex-col items-center gap-2 p-3 bg-white/10 rounded-2xl border border-white/20'>
@@ -697,7 +919,6 @@ const StarBank = ({ score, onClear }: { score: number; onClear: () => void }) =>
   </div>
 );
 
-
 // ─── SessionProgressBar ───────────────────────────────────────────────────────
 
 const SESSION_GOAL = 25;
@@ -728,11 +949,33 @@ const SessionProgressBar = ({ correct }: { correct: number }) => {
   );
 };
 
+// ─── Static decorations (module-level so Math.random never runs during render) ─
+
+const STARS = Array.from({ length: 50 }, () => ({
+  w: Math.random() * 3,
+  h: Math.random() * 3,
+  t: Math.random() * 100,
+  l: Math.random() * 100,
+  o: Math.random() * 0.7 + 0.3,
+  d: Math.random() * 5,
+}));
+
+const CONFETTI = Array.from({ length: 20 }, () => ({
+  x: (Math.random() - 0.5) * 400,
+  y: (Math.random() - 0.5) * 400,
+  delay: Math.random() * 2,
+}));
+
+function readSave() {
+  if (typeof window === "undefined") return null;
+  try { return JSON.parse(localStorage.getItem("space-math-save") ?? "null"); } catch { return null; }
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function SpaceMathPage() {
-  const [overallLevel, setOverallLevel] = useState(0);
-  const [topicRecords, setTopicRecords] = useState<Record<string, TopicRecord>>({});
+  const [overallLevel, setOverallLevel] = useState<number>(() => { const d = readSave(); return typeof d?.overallLevel === "number" ? d.overallLevel : 0; });
+  const [topicRecords, setTopicRecords] = useState<Record<string, TopicRecord>>(() => readSave()?.topicRecords ?? {});
   const [currentTopic, setCurrentTopic] = useState<TopicDef | null>(null);
   const [lastTopicKey, setLastTopicKey] = useState<string | null>(null);
   const [sessionCorrect, setSessionCorrect] = useState(0);
@@ -740,34 +983,11 @@ export default function SpaceMathPage() {
   const [problem, setProblem] = useState<Problem | null>(null);
   const [selectedAnswer, setSelectedAnswer] = useState<number | string | null>(null);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
-  const [score, setScore] = useState(0);
+  const [score, setScore] = useState<number>(() => readSave()?.score ?? 0);
   const [attemptsUsed, setAttemptsUsed] = useState(0);
   const [gameState, setGameState] = useState<"start" | "playing" | "finale">("start");
-  const [stars, setStars] = useState<{ w: number; h: number; t: number; l: number; o: number; d: number }[]>([]);
-  useEffect(() => {
-    setStars(
-      Array.from({ length: 50 }, () => ({
-        w: Math.random() * 3,
-        h: Math.random() * 3,
-        t: Math.random() * 100,
-        l: Math.random() * 100,
-        o: Math.random() * 0.7 + 0.3,
-        d: Math.random() * 5,
-      })),
-    );
-  }, []);
-
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem("space-math-save");
-      if (saved) {
-        const d = JSON.parse(saved);
-        if (d.score) setScore(d.score);
-        if (typeof d.overallLevel === "number") setOverallLevel(d.overallLevel);
-        if (d.topicRecords) setTopicRecords(d.topicRecords);
-      }
-    } catch {}
-  }, []);
+  const [sessionId, setSessionId] = useState<string>(() => crypto.randomUUID());
+  const [sessionTopicStats, setSessionTopicStats] = useState<Record<string, { correct: number; total: number }>>({});
 
   useEffect(() => {
     localStorage.setItem("space-math-save", JSON.stringify({ score, overallLevel, topicRecords }));
@@ -784,6 +1004,8 @@ export default function SpaceMathPage() {
     const capturedTopic = currentTopic;
     const capturedRecords = topicRecords;
     const capturedLevel = overallLevel;
+    const capturedTopicStats = sessionTopicStats;
+    const capturedSessionId = sessionId;
 
     if (correct) {
       playSound("correct");
@@ -791,15 +1013,23 @@ export default function SpaceMathPage() {
       const nextSessionCorrect = sessionCorrect + 1;
       setSessionCorrect(nextSessionCorrect);
 
-      // Level increases with diminishing returns (faster early, slower as you improve)
       const newLevel = Math.min(100, capturedLevel + (100 - capturedLevel) * 0.05);
       setOverallLevel(newLevel);
 
-      // Update spaced rep for answered topic, tick down all others
       const updated = advanceRecord(capturedRecords[capturedTopic.key] ?? DEFAULT_RECORD, true);
       const ticked = tickTopics({ ...capturedRecords, [capturedTopic.key]: updated }, capturedTopic.key);
       setTopicRecords(ticked);
       setLastTopicKey(capturedTopic.key);
+
+      setSessionTopicStats({
+        ...capturedTopicStats,
+        [capturedTopic.key]: {
+          correct: (capturedTopicStats[capturedTopic.key]?.correct ?? 0) + 1,
+          total: (capturedTopicStats[capturedTopic.key]?.total ?? 0) + 1,
+        },
+      });
+
+      postQuestionProgress(capturedTopic.key, true, ticked, capturedSessionId);
 
       setTimeout(() => {
         if (nextSessionCorrect >= SESSION_GOAL) {
@@ -819,28 +1049,41 @@ export default function SpaceMathPage() {
     } else {
       playSound("incorrect");
       const isLastAttempt = attemptsUsed >= 1;
-      setTimeout(() => {
-        if (isLastAttempt) {
-          // Final wrong attempt: penalise level slightly, reset topic interval
-          const newLevel = Math.max(0, capturedLevel - 2);
-          setOverallLevel(newLevel);
-          const updated = advanceRecord(capturedRecords[capturedTopic.key] ?? DEFAULT_RECORD, false);
-          const ticked = tickTopics({ ...capturedRecords, [capturedTopic.key]: updated }, capturedTopic.key);
-          setTopicRecords(ticked);
-          setLastTopicKey(capturedTopic.key);
 
+      if (isLastAttempt) {
+        // Final wrong attempt: update records immediately so the POST has accurate mastery state
+        const newLevel = Math.max(0, capturedLevel - 2);
+        const updated = advanceRecord(capturedRecords[capturedTopic.key] ?? DEFAULT_RECORD, false);
+        const ticked = tickTopics({ ...capturedRecords, [capturedTopic.key]: updated }, capturedTopic.key);
+        setOverallLevel(newLevel);
+        setTopicRecords(ticked);
+        setLastTopicKey(capturedTopic.key);
+        setSessionTopicStats({
+          ...capturedTopicStats,
+          [capturedTopic.key]: {
+            correct: capturedTopicStats[capturedTopic.key]?.correct ?? 0,
+            total: (capturedTopicStats[capturedTopic.key]?.total ?? 0) + 1,
+          },
+        });
+        postQuestionProgress(capturedTopic.key, false, ticked, capturedSessionId);
+
+        setTimeout(() => {
           const next = selectTopic(newLevel, ticked, capturedTopic.key);
           setCurrentTopic(next);
           const p = generateForTopic(next, capturedSigs);
           setProblem(p);
           setRecentSignatures((prev) => [...prev.slice(-9), p.signature]);
           setAttemptsUsed(0);
-        } else {
+          setSelectedAnswer(null);
+          setIsCorrect(null);
+        }, 2000);
+      } else {
+        setTimeout(() => {
           setAttemptsUsed(1);
-        }
-        setSelectedAnswer(null);
-        setIsCorrect(null);
-      }, 2000);
+          setSelectedAnswer(null);
+          setIsCorrect(null);
+        }, 2000);
+      }
     }
   };
 
@@ -862,6 +1105,8 @@ export default function SpaceMathPage() {
     setSessionCorrect(0);
     setAttemptsUsed(0);
     setProblem(null);
+    setSessionTopicStats({});
+    setSessionId(crypto.randomUUID());
     setGameState("start");
   };
 
@@ -874,7 +1119,10 @@ export default function SpaceMathPage() {
     problem?.type === "word-problem" ||
     problem?.type === "time" ||
     problem?.type === "shapes" ||
-    problem?.type === "fractions";
+    problem?.type === "fractions" ||
+    problem?.type === "fact-family" ||
+    problem?.type === "length" ||
+    problem?.type === "count-120";
   const isFraction = problem?.type === "fractions";
   const isLongQuestion = problem && !isWordProblem && !isFraction && problem.question.length > 40;
   const isThreeOptions = problem && problem.options.length === 3;
@@ -882,7 +1130,7 @@ export default function SpaceMathPage() {
   return (
     <div className='flex-1 bg-black text-white selection:bg-blue-500/30 relative flex flex-col overflow-hidden'>
       <div className='absolute inset-0 pointer-events-none'>
-        {stars.map((s, i) => (
+        {STARS.map((s, i) => (
           <div
             key={i}
             className='absolute bg-white rounded-full animate-pulse'
@@ -907,7 +1155,7 @@ export default function SpaceMathPage() {
             <div>
               <h1 className='text-lg sm:text-xl font-bold tracking-tight'>Space Math</h1>
               <p className='text-xs text-blue-400 uppercase tracking-widest font-bold'>
-                {getLevelLabel(overallLevel)} · {Math.round(overallLevel)}
+                {currentTopic ? `Stage ${TOPIC_STAGE[currentTopic.key]?.id}/10 · ${TOPIC_STAGE[currentTopic.key]?.label}` : "1st Grade Math"}
               </p>
             </div>
           </div>
@@ -1069,13 +1317,13 @@ export default function SpaceMathPage() {
                 >
                   <Trophy className='w-36 h-36 sm:w-44 sm:h-44 md:w-56 md:h-56 text-yellow-400 drop-shadow-[0_0_40px_rgba(250,204,21,0.6)]' />
                 </motion.div>
-                {Array.from({ length: 20 }).map((_, i) => (
+                {CONFETTI.map((p, i) => (
                   <motion.div
                     key={i}
                     className='absolute top-1/2 left-1/2 w-2 h-2 bg-yellow-400 rounded-full'
                     initial={{ x: 0, y: 0 }}
-                    animate={{ x: (Math.random() - 0.5) * 400, y: (Math.random() - 0.5) * 400, opacity: 0, scale: 0 }}
-                    transition={{ duration: 2, repeat: Infinity, delay: Math.random() * 2 }}
+                    animate={{ x: p.x, y: p.y, opacity: 0, scale: 0 }}
+                    transition={{ duration: 2, repeat: Infinity, delay: p.delay }}
                   />
                 ))}
               </div>
@@ -1087,13 +1335,15 @@ export default function SpaceMathPage() {
                   You answered <span className='text-white font-bold'>25</span> questions correctly!
                 </p>
                 <p className='text-lg sm:text-xl text-blue-400 mt-2'>
-                  {getLevelLabel(overallLevel)} · Level {Math.round(overallLevel)}
+                  {lastTopicKey ? `${TOPIC_STAGE[lastTopicKey]?.label ?? "1st Grade Math"} · Stage ${TOPIC_STAGE[lastTopicKey]?.id}/10` : "1st Grade Math"}
                 </p>
               </div>
               <div className='flex flex-col gap-4 items-center'>
                 <button
                   onClick={() => {
                     setSessionCorrect(0);
+                    setSessionTopicStats({});
+                    setSessionId(crypto.randomUUID());
                     const next = selectTopic(overallLevel, topicRecords, lastTopicKey);
                     setCurrentTopic(next);
                     const p = generateForTopic(next, []);
