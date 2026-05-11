@@ -100,8 +100,47 @@ export default function SeattleConcretePage() {
   return (
     <main
       className="flex-1 overflow-y-auto"
-      style={{ background: B.white, color: B.dark, fontFamily: "'Segoe UI', system-ui, sans-serif" }}
+      style={{ background: B.white, color: B.dark, fontFamily: "'Segoe UI', system-ui, sans-serif", scrollBehavior: "smooth" }}
     >
+
+      {/* ── ANNOUNCEMENT BAR ─────────────────────────────────────────────── */}
+      <div
+        style={{
+          background: B.accent,
+          padding: "10px 24px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 16,
+          flexWrap: "wrap",
+        }}
+      >
+        <span style={{ color: B.white, fontSize: "0.9rem", fontWeight: 500 }}>
+          🏗️ Free estimates for Seattle-area projects — bids returned within 48 hours.
+        </span>
+        <a
+          href="#quote"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            background: B.white,
+            color: B.accent,
+            fontWeight: 700,
+            fontSize: "0.8125rem",
+            padding: "6px 16px",
+            borderRadius: 9999,
+            textDecoration: "none",
+            whiteSpace: "nowrap",
+            boxShadow: "0 1px 4px rgba(0,0,0,0.15)",
+            transition: "opacity 0.15s",
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.88")}
+          onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+        >
+          Get a Free Estimate <ChevronRight size={13} />
+        </a>
+      </div>
 
       {/* ── HERO ──────────────────────────────────────────────────────────── */}
       <section
