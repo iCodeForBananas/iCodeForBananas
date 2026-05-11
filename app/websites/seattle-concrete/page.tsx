@@ -49,12 +49,12 @@ const GRAIN = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'
 
 // ── Data ──────────────────────────────────────────────────────────────────────
 const SERVICES = [
-  { icon: Layers,    title: "Custom Form Work",              desc: "Architectural and structural forms for walls, columns, footings, and complex pours. Our in-house crew handles any geometry." },
-  { icon: Truck,     title: "Concrete Delivery Coordination", desc: "We manage scheduling with all major ready-mix suppliers in Puget Sound — your pour starts on time, every time." },
-  { icon: Building2, title: "Commercial Foundation Work",    desc: "Deep footings, grade beams, stem walls, and slabs-on-grade for commercial and light industrial projects." },
-  { icon: HardHat,   title: "Commercial Flatwork",           desc: "Parking lots, warehouse floors, loading docks, and sidewalks — finished to spec and built for Pacific Northwest conditions." },
-  { icon: Home,      title: "Residential Concrete",          desc: "Driveways, patios, walkways, retaining walls, and garage slabs. Decorative finishes: exposed aggregate, broom, and stamped." },
-  { icon: Wrench,    title: "Site Preparation",              desc: "Sub-base grading, form layout, rebar placement, and curing — everything before and after the truck rolls in." },
+  { icon: Layers,    title: "Custom Form Work",              desc: "Walls, columns, footings, complex architectural pours. Any geometry, in-house crew." },
+  { icon: Truck,     title: "Concrete Delivery Coordination", desc: "We coordinate with every major ready-mix supplier in Puget Sound. Your pour starts on time." },
+  { icon: Building2, title: "Commercial Foundation Work",    desc: "Deep footings, grade beams, stem walls, slabs-on-grade. Commercial and light industrial." },
+  { icon: HardHat,   title: "Commercial Flatwork",           desc: "Parking lots, warehouse floors, loading docks, sidewalks. Finished to spec." },
+  { icon: Home,      title: "Residential Concrete",          desc: "Driveways, patios, walkways, retaining walls, garage slabs. Exposed aggregate, broom, and stamped finishes available." },
+  { icon: Wrench,    title: "Site Preparation",              desc: "Sub-base, form layout, rebar, and curing. We're there before the truck and after it leaves." },
 ];
 
 const PORTFOLIO = [
@@ -70,19 +70,19 @@ const TEAM = [
     photo: "https://i.pravatar.cc/160?img=53",
     name:  "Mike Hargrove",
     title: "Owner & Founder",
-    bio:   "30+ years in the trade. Started as a journeyman form setter in 1990 and founded Cascade in 1998. Mike still walks every job site before the pour.",
+    bio:   "Journeyman form setter in 1990. Founded Cascade in 1998. Still walks every site before the pour.",
   },
   {
     photo: "https://i.pravatar.cc/160?img=47",
     name:  "Sarah Delgado",
     title: "Project Manager",
-    bio:   "12 years managing commercial concrete schedules from SeaTac to Everett. Specializes in fast-track GC coordination and WSDOT-standard documentation.",
+    bio:   "12 years running commercial pours from SeaTac to Everett. Fast-track GC coordination, WSDOT documentation — she keeps the schedule honest.",
   },
   {
     photo: "https://i.pravatar.cc/160?img=67",
     name:  "Dave Kowalski",
     title: "Lead Foreman",
-    bio:   "22 years setting forms on everything from residential footings to multi-story post-tension decks. OSHA-30 and ACI Level I certified.",
+    bio:   "22 years on the forms — residential footings to post-tension decks. OSHA-30, ACI Level I.",
   },
 ];
 
@@ -196,8 +196,8 @@ export default function SeattleConcretePage() {
           </h1>
 
           <p style={{ fontSize: "1.125rem", color: B.textMuted, maxWidth: 560, lineHeight: 1.75, marginBottom: 40 }}>
-            Cascade Concrete &amp; Formwork, Inc. has been setting forms and placing concrete
-            across the greater Seattle area since 1998. Complex pours, tight schedules, clean finishes.
+            Setting forms and placing concrete in Seattle since 1998.
+            Complex pours, tight schedules, clean finishes.
           </p>
 
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 40 }}>
@@ -252,7 +252,7 @@ export default function SeattleConcretePage() {
         <div style={{ position: "absolute", inset: 0, backgroundImage: GRAIN, pointerEvents: "none", opacity: 0.6 }} />
         <div style={{ maxWidth: 1140, margin: "0 auto", position: "relative", zIndex: 1 }}>
           <SectionHead label="What We Do" heading="Full-Spectrum Concrete Services"
-            sub="From the first stake in the ground to the final broom finish, we own every phase of the concrete scope." />
+            sub="We own every phase of your concrete scope." />
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 2 }}>
             {SERVICES.map((svc, i) => {
               const Icon = svc.icon;
@@ -282,7 +282,7 @@ export default function SeattleConcretePage() {
       {/* ── OUR WORK / PORTFOLIO ──────────────────────────────────────────── */}
       <section style={{ background: B.bgCard, padding: "88px 32px" }}>
         <div style={{ maxWidth: 1140, margin: "0 auto" }}>
-          <SectionHead label="Portfolio" heading="Our Work" sub="A selection of recent projects across the greater Seattle area." />
+          <SectionHead label="Portfolio" heading="Our Work" sub="Recent work across the greater Seattle area." />
 
           {/* Top row: featured + 2 stacked */}
           <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 4, marginBottom: 4 }}>
@@ -354,7 +354,7 @@ export default function SeattleConcretePage() {
       <section style={{ background: B.bgWarm, padding: "88px 32px" }}>
         <div style={{ maxWidth: 1140, margin: "0 auto" }}>
           <SectionHead label="The People" heading="Meet the Crew" light
-            sub="Cascade is built on experienced tradespeople, not revolving-door labor. The same faces show up on every job." />
+            sub="The same crew on every job. No revolving-door labor." />
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 28 }}>
             {TEAM.map((member, i) => (
               <div key={i} style={{ background: B.white, borderRadius: 10,
@@ -385,7 +385,7 @@ export default function SeattleConcretePage() {
         <div style={{ position: "absolute", inset: 0, backgroundImage: GRAIN, pointerEvents: "none", opacity: 0.5 }} />
         <div style={{ maxWidth: 900, margin: "0 auto", position: "relative", zIndex: 1 }}>
           <SectionHead label="Track Record" heading="Notable Projects"
-            sub="Selected commercial and institutional work from 25 years of operations." />
+            sub="Commercial and institutional highlights from 25 years." />
           <div style={{ position: "relative" }}>
             {/* Vertical line */}
             <div style={{ position: "absolute", left: 56, top: 0, bottom: 0, width: 1,
@@ -426,7 +426,7 @@ export default function SeattleConcretePage() {
       <section style={{ background: B.bgCard, padding: "80px 32px", borderTop: `1px solid ${B.borderDark}` }}>
         <div style={{ maxWidth: 1140, margin: "0 auto" }}>
           <SectionHead label="Credentials" heading="Licenses &amp; Certifications"
-            sub="Every credential we carry is active, verified, and renewed on schedule." />
+            sub="All current. All verified." />
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 2 }}>
             {CERTS.map((c, i) => {
               const Icon = c.icon;
@@ -457,14 +457,13 @@ export default function SeattleConcretePage() {
               Serving the Puget Sound Region
             </h2>
             <p style={{ color: B.textLite, lineHeight: 1.75, fontSize: "0.9375rem", marginBottom: 28 }}>
-              Our crews work throughout King, Snohomish, and Pierce counties. If you&rsquo;re not sure
-              whether we cover your site, call us — we&rsquo;ll tell you straight.
+              King, Snohomish, and Pierce counties. Not sure if we cover your site? Call — we&rsquo;ll tell you straight.
             </p>
             <div style={{ display: "flex", alignItems: "center", gap: 12, background: B.white,
               border: `1px solid ${B.borderLight}`, borderRadius: 8, padding: "14px 18px" }}>
               <MapPin size={18} color={B.accent} style={{ flexShrink: 0 }} />
               <span style={{ fontSize: "0.875rem", color: B.textMid, fontWeight: 500 }}>
-                Headquartered in Tukwila, WA — central for rapid metro deployment
+                Tukwila, WA — central to the metro
               </span>
             </div>
           </div>
@@ -496,8 +495,7 @@ export default function SeattleConcretePage() {
               READY TO POUR?<br />LET&rsquo;S TALK.
             </h2>
             <p style={{ color: B.textMuted, fontSize: "1rem", lineHeight: 1.75, maxWidth: 480, marginBottom: 36 }}>
-              Send us your plans or describe the scope — we&rsquo;ll have a bid back to you within 48 hours.
-              No project too large or too small for a conversation.
+              Plans or a quick scope description. Bid back in 48 hours.
             </p>
             {[
               { icon: Phone, href: "tel:+12065478293",           label: "(206) 547-8293" },
@@ -519,7 +517,7 @@ export default function SeattleConcretePage() {
             border: `1px solid ${B.borderMid}`, boxShadow: "0 24px 64px rgba(0,0,0,0.5)" }}>
             <h3 style={{ fontFamily: B.headFont, fontSize: "1.35rem", fontWeight: 700,
               color: B.textWhite, marginBottom: 6, letterSpacing: "0.03em" }}>Request a Free Estimate</h3>
-            <p style={{ fontSize: "0.8rem", color: B.textMuted, marginBottom: 22 }}>We&rsquo;ll follow up within one business day.</p>
+            <p style={{ fontSize: "0.8rem", color: B.textMuted, marginBottom: 22 }}>Response within one business day.</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {["Full Name", "Phone Number", "Project Address"].map(ph => (
                 <input key={ph} type="text" placeholder={ph}
