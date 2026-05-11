@@ -19,7 +19,7 @@ interface TaskCardProps {
 
 export default function TaskCard({ task, onClick }: TaskCardProps) {
   const excerpt = stripHtml(task.body).slice(0, 100);
-  const thumbnail = task.coverImage || extractFirstImage(task.body);
+  const thumbnail = extractFirstImage(task.body);
 
   return (
     <button

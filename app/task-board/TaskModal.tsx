@@ -22,17 +22,18 @@ interface TaskModalProps {
 
 export default function TaskModal({ task, onUpdate, onDelete, onClose }: TaskModalProps) {
   const [title, setTitle] = useState(task.title);
-  const [column, setColumn] = useState<Column>(task.column);
+  const [boardColumn, setBoardColumn] = useState<Column>(task.board_column);
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Refs so the editor's onUpdate closure always sees current values
   const titleRef = useRef(title);
-  const columnRef = useRef(column);
+  const boardColumnRef = useRef(boardColumn);
   const taskRef = useRef(task);
   const onUpdateRef = useRef(onUpdate);
 
   useEffect(() => { titleRef.current = title; }, [title]);
-  useEffect(() => { columnRef.current = column; }, [column]);
+  useEffect(() => { boardColumnRef.current = boardColumn; }, [boardColumn]);
   useEffect(() => { taskRef.current = task; }, [task]);
   useEffect(() => { onUpdateRef.current = onUpdate; }, [onUpdate]);
 
@@ -41,10 +42,16 @@ export default function TaskModal({ task, onUpdate, onDelete, onClose }: TaskMod
       ...taskRef.current,
       title: titleRef.current || "Untitled",
       body: html ?? editor?.getHTML() ?? taskRef.current.body,
-      column: columnRef.current,
-      updatedAt: new Date().toISOString(),
+      board_column: boardColumnRef.current,
+      updated_at: new Date().toISOString(),
     });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Debounced version for continuous typing in the editor
+  const debouncedFlush = useCallback((html: string) => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => flush(html), 500);
+  }, [flush]);
 
   const editor = useEditor({
     extensions: [
@@ -54,17 +61,19 @@ export default function TaskModal({ task, onUpdate, onDelete, onClose }: TaskMod
     ],
     content: task.body || "",
     onUpdate: ({ editor }) => {
-      flush(editor.getHTML());
+      debouncedFlush(editor.getHTML());
     },
   });
 
   function handleTitleBlur() {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
     flush();
   }
 
   function handleColumnChange(newCol: Column) {
-    setColumn(newCol);
-    columnRef.current = newCol;
+    setBoardColumn(newCol);
+    boardColumnRef.current = newCol;
+    if (debounceRef.current) clearTimeout(debounceRef.current);
     flush();
   }
 
@@ -76,7 +85,6 @@ export default function TaskModal({ task, onUpdate, onDelete, onClose }: TaskMod
       editor.chain().focus().setImage({ src: reader.result as string }).run();
     };
     reader.readAsDataURL(file);
-    // Reset input so the same file can be re-selected
     e.target.value = "";
   }
 
@@ -84,13 +92,15 @@ export default function TaskModal({ task, onUpdate, onDelete, onClose }: TaskMod
     if (confirm(`Delete "${task.title || "this task"}"?`)) onDelete(task.id);
   }
 
-  // Close on Escape
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
     }
     document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
   }, [onClose]);
 
   function ToolbarBtn({
@@ -153,8 +163,8 @@ export default function TaskModal({ task, onUpdate, onDelete, onClose }: TaskMod
                 onClick={() => handleColumnChange(opt.value)}
                 className="text-xs px-2 py-1 rounded transition-all font-medium"
                 style={{
-                  background: column === opt.value ? "#facc15" : "var(--border-color)",
-                  color: column === opt.value ? "#0a0a0a" : "#a89a00",
+                  background: boardColumn === opt.value ? "#facc15" : "var(--border-color)",
+                  color: boardColumn === opt.value ? "#0a0a0a" : "#a89a00",
                 }}
               >
                 {opt.label}
@@ -285,10 +295,7 @@ export default function TaskModal({ task, onUpdate, onDelete, onClose }: TaskMod
 
           <div className="w-px h-4 mx-1 shrink-0" style={{ background: "var(--border-dark)" }} />
 
-          <ToolbarBtn
-            onClick={() => imageInputRef.current?.click()}
-            title="Insert image"
-          >
+          <ToolbarBtn onClick={() => imageInputRef.current?.click()} title="Insert image">
             ＋ Image
           </ToolbarBtn>
           <input

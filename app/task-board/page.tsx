@@ -1,12 +1,11 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
-import { v4 as uuidv4 } from "uuid";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { createClient } from "@/utils/supabase/client";
+import { useAuth } from "@/app/hooks/useAuth";
 import TaskCard from "./TaskCard";
 import TaskModal from "./TaskModal";
 import { Task, Column } from "./types";
-
-const STORAGE_KEY = "icfb-task-board";
 
 const COLUMNS: { id: Column; label: string; hint: string }[] = [
   { id: "backlog", label: "Backlog", hint: "Priority-ordered to-do" },
@@ -15,60 +14,126 @@ const COLUMNS: { id: Column; label: string; hint: string }[] = [
 ];
 
 export default function TaskBoardPage() {
+  const supabase = useMemo(() => createClient(), []);
+  const { user, loading: authLoading } = useAuth();
+
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [loadingTasks, setLoadingTasks] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [addingTo, setAddingTo] = useState<Column | null>(null);
   const [newTitle, setNewTitle] = useState("");
 
+  // Load tasks when user becomes available
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) setTasks(JSON.parse(raw));
-    } catch {
-      // ignore
+    if (!supabase || !user) {
+      setTasks([]);
+      return;
     }
-  }, []);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
-    } catch {
-      // ignore
-    }
-  }, [tasks]);
+    setLoadingTasks(true);
+    supabase
+      .from("tasks")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("sort_order", { ascending: true })
+      .then(({ data, error }) => {
+        if (!error && data) setTasks(data as Task[]);
+        setLoadingTasks(false);
+      });
+  }, [supabase, user]);
 
   const selectedTask = tasks.find((t) => t.id === selectedTaskId) ?? null;
 
-  function addTask(column: Column) {
-    if (!newTitle.trim()) return;
-    const task: Task = {
-      id: uuidv4(),
-      title: newTitle.trim(),
-      body: "",
-      column,
-      order: tasks.filter((t) => t.column === column).length,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    setTasks((prev) => [...prev, task]);
+  async function addTask(column: Column) {
+    if (!newTitle.trim() || !supabase || !user) return;
+
+    const { data, error } = await supabase
+      .from("tasks")
+      .insert({
+        user_id: user.id,
+        title: newTitle.trim(),
+        body: "",
+        board_column: column,
+        sort_order: tasks.filter((t) => t.board_column === column).length,
+      })
+      .select()
+      .single();
+
+    if (error || !data) {
+      console.error("Failed to add task:", error);
+      return;
+    }
+
+    setTasks((prev) => [...prev, data as Task]);
     setNewTitle("");
     setAddingTo(null);
-    setSelectedTaskId(task.id);
+    setSelectedTaskId(data.id);
   }
 
-  const updateTask = useCallback((updated: Task) => {
-    setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
-  }, []);
+  const updateTask = useCallback(
+    async (updated: Task) => {
+      // Optimistic update
+      setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
 
-  const deleteTask = useCallback((id: string) => {
-    setTasks((prev) => prev.filter((t) => t.id !== id));
-    setSelectedTaskId(null);
-  }, []);
+      if (!supabase) return;
+      const { error } = await supabase
+        .from("tasks")
+        .update({
+          title: updated.title,
+          body: updated.body,
+          board_column: updated.board_column,
+          sort_order: updated.sort_order,
+          updated_at: updated.updated_at,
+        })
+        .eq("id", updated.id);
+
+      if (error) console.error("Failed to update task:", error);
+    },
+    [supabase],
+  );
+
+  const deleteTask = useCallback(
+    async (id: string) => {
+      setTasks((prev) => prev.filter((t) => t.id !== id));
+      setSelectedTaskId(null);
+
+      if (!supabase) return;
+      const { error } = await supabase.from("tasks").delete().eq("id", id);
+      if (error) console.error("Failed to delete task:", error);
+    },
+    [supabase],
+  );
 
   function cancelAdd() {
     setAddingTo(null);
     setNewTitle("");
   }
+
+  // ── Auth / loading states ──────────────────────────────────
+
+  if (authLoading) {
+    return (
+      <main className="flex-1 flex items-center justify-center" style={{ background: "var(--bg-primary)" }}>
+        <span className="text-sm" style={{ color: "var(--text-secondary)" }}>Loading…</span>
+      </main>
+    );
+  }
+
+  if (!user) {
+    return (
+      <main className="flex-1 flex flex-col items-center justify-center gap-3" style={{ background: "var(--bg-primary)" }}>
+        <p className="text-sm" style={{ color: "var(--text-secondary)" }}>Sign in to use the Task Board.</p>
+        <a
+          href="/login"
+          className="text-sm font-semibold px-4 py-2 rounded"
+          style={{ background: "#facc15", color: "#0a0a0a" }}
+        >
+          Sign In
+        </a>
+      </main>
+    );
+  }
+
+  // ── Board ──────────────────────────────────────────────────
 
   return (
     <main
@@ -87,7 +152,7 @@ export default function TaskBoardPage() {
           Task Board
         </h1>
         <span className="text-xs" style={{ color: "var(--text-secondary)" }}>
-          {tasks.length} task{tasks.length !== 1 ? "s" : ""}
+          {loadingTasks ? "Loading…" : `${tasks.length} task${tasks.length !== 1 ? "s" : ""}`}
         </span>
       </div>
 
@@ -95,8 +160,8 @@ export default function TaskBoardPage() {
       <div className="flex-1 flex gap-4 p-4 overflow-x-auto min-h-0">
         {COLUMNS.map((col) => {
           const colTasks = tasks
-            .filter((t) => t.column === col.id)
-            .sort((a, b) => a.order - b.order);
+            .filter((t) => t.board_column === col.id)
+            .sort((a, b) => a.sort_order - b.sort_order);
           const isAdding = addingTo === col.id;
 
           return (
@@ -133,10 +198,7 @@ export default function TaskBoardPage() {
                   </span>
                 </div>
                 <button
-                  onClick={() => {
-                    setAddingTo(col.id);
-                    setNewTitle("");
-                  }}
+                  onClick={() => { setAddingTo(col.id); setNewTitle(""); }}
                   className="text-xs px-2 py-1 rounded font-semibold transition-opacity hover:opacity-80"
                   style={{ background: "#facc15", color: "#0a0a0a" }}
                 >
@@ -208,7 +270,7 @@ export default function TaskBoardPage() {
         })}
       </div>
 
-      {/* Task detail modal — keyed by id so it remounts on task switch */}
+      {/* Task detail modal */}
       {selectedTask && (
         <TaskModal
           key={selectedTask.id}
