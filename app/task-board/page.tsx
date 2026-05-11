@@ -243,7 +243,7 @@ export default function TaskBoardPage() {
         onDragEnd={handleDragEnd}
         onDragCancel={handleDragCancel}
       >
-        <div className="flex-1 flex gap-4 p-4 overflow-x-auto min-h-0">
+        <div className="flex-1 grid grid-cols-3 gap-4 p-4 min-h-0 overflow-y-auto">
           {COLUMNS.map((col) => {
             const colTasks = tasks
               .filter((t) => t.board_column === col.id)
@@ -253,10 +253,8 @@ export default function TaskBoardPage() {
             return (
               <div
                 key={col.id}
-                className="flex flex-col rounded-lg shrink-0"
+                className="flex flex-col rounded-lg min-h-0"
                 style={{
-                  width: "300px",
-                  minWidth: "260px",
                   background: "var(--bg-secondary)",
                   border: "1px solid var(--border-color)",
                 }}
