@@ -36,6 +36,12 @@ const NAV = [
     ],
   },
   {
+    label: "Websites",
+    links: [
+      { href: "/websites/seattle-concrete", text: "Seattle Concrete Co." },
+    ],
+  },
+  {
     label: "Misc",
     links: [
       { href: "/task-board", text: "Task Board" },
