@@ -1154,9 +1154,6 @@ export default function SpaceMathPage() {
             </div>
             <div>
               <h1 className='text-lg sm:text-xl font-bold tracking-tight'>Space Math</h1>
-              <p className='text-xs text-blue-400 uppercase tracking-widest font-bold'>
-                {currentTopic ? `Stage ${TOPIC_STAGE[currentTopic.key]?.id}/10 · ${TOPIC_STAGE[currentTopic.key]?.label}` : "1st Grade Math"}
-              </p>
             </div>
           </div>
           <button
@@ -1333,9 +1330,6 @@ export default function SpaceMathPage() {
                 </h2>
                 <p className='text-2xl sm:text-3xl text-blue-200'>
                   You answered <span className='text-white font-bold'>25</span> questions correctly!
-                </p>
-                <p className='text-lg sm:text-xl text-blue-400 mt-2'>
-                  {lastTopicKey ? `${TOPIC_STAGE[lastTopicKey]?.label ?? "1st Grade Math"} · Stage ${TOPIC_STAGE[lastTopicKey]?.id}/10` : "1st Grade Math"}
                 </p>
               </div>
               <div className='flex flex-col gap-4 items-center'>
