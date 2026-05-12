@@ -1,13 +1,14 @@
 import { NextResponse, NextRequest } from "next/server";
 import fs from "fs";
 import path from "path";
-import { PricePoint } from "@/app/types";
+import { IndicatorData, PricePoint } from "@/app/types";
 import { AVAILABLE_STRATEGIES, ParameterizedResult } from "@/app/strategies";
 import {
   calculateIndicatorsWithParams,
   runBacktestWithParams,
   generateCombinations,
   deriveRequiredIndicators,
+  MACDConfig,
   ParameterVariationConfig,
   RiskSettings,
   INITIAL_CAPITAL,
@@ -33,6 +34,51 @@ interface BacktestRequest {
   stopLossPercent: number;
   takeProfitPercent: number;
   enableShorts: boolean;
+}
+
+// Base PricePoint fields the chart always needs (price action + prev-bar context).
+const BASE_CHART_KEYS: ReadonlyArray<keyof IndicatorData> = [
+  "time", "open", "high", "low", "close",
+  "prevClose", "prevHigh", "prevLow",
+];
+
+// Indicator keys the chart consumes regardless of strategy params.
+// `rsi` is needed for the RSI tab; ATR is used by the supertrend/keltner clients.
+const ALWAYS_CHART_KEYS: ReadonlyArray<keyof IndicatorData> = [
+  "ema9", "ema21", "sma20", "sma50", "sma200",
+  "macd", "macdSignal", "macdHistogram",
+  "rsi", "atr",
+  "upperBand", "lowerBand", "midLine",
+];
+
+function buildChartKeySet(req: ReturnType<typeof deriveRequiredIndicators>): Set<string> {
+  const keys = new Set<string>([...BASE_CHART_KEYS, ...ALWAYS_CHART_KEYS]);
+  for (const period of req.requiredEMAs) keys.add(`ema${period}`);
+  for (const period of req.requiredSMAs) keys.add(`sma${period}`);
+  for (const config of req.requiredMACDs as MACDConfig[]) {
+    const k = `${config.fastPeriod}_${config.slowPeriod}_${config.signalPeriod}`;
+    keys.add(`macd_${k}`);
+    keys.add(`macdSignal_${k}`);
+    keys.add(`macdHistogram_${k}`);
+  }
+  for (const period of req.requiredDonchianPeriods) {
+    keys.add(`donchian_${period}_upperBand`);
+    keys.add(`donchian_${period}_lowerBand`);
+    keys.add(`donchian_${period}_midLine`);
+  }
+  return keys;
+}
+
+function projectChartRows(rows: IndicatorData[], keys: Set<string>): IndicatorData[] {
+  return rows.map((row) => {
+    const src = row as unknown as Record<string, number | undefined>;
+    const out: Record<string, number | undefined> = {};
+    for (const key of keys) {
+      const v = src[key];
+      if (v !== undefined) out[key] = v;
+    }
+    return out as unknown as IndicatorData;
+  });
 }
 
 // Async so the event loop isn't blocked reading ~1MB CSV files.
@@ -101,9 +147,10 @@ export async function POST(request: NextRequest) {
     const batchResults: ParameterizedResult[] = [];
     const failedDatasets: string[] = [];
 
-    // Cache raw price data from the first pass so the second pass (for chart
-    // indicator data) can skip re-reading the CSV files.
-    const rawDataCache = new Map<string, PricePoint[]>();
+    // Cache the trimmed indicator slice (last MAX_CHART_BARS bars) per dataset
+    // during the first pass — avoids a second calculateIndicatorsWithParams
+    // call after sorting. Stored wide; narrow projection happens at response build.
+    const chartSliceCache = new Map<string, ReturnType<typeof calculateIndicatorsWithParams>>();
 
     // Process one dataset at a time to keep peak memory bounded.
     for (const datasetFile of selectedFiles) {
@@ -126,8 +173,6 @@ export async function POST(request: NextRequest) {
         continue;
       }
 
-      rawDataCache.set(datasetFile, rawData);
-
       const dataWithIndicators = calculateIndicatorsWithParams(
         rawData,
         requiredEMAs,
@@ -147,6 +192,13 @@ export async function POST(request: NextRequest) {
         );
         batchResults.push({ ...result, dataset: datasetFile, datasetLabel: datasetFile });
       }
+
+      chartSliceCache.set(
+        datasetFile,
+        dataWithIndicators.length > MAX_CHART_BARS
+          ? dataWithIndicators.slice(-MAX_CHART_BARS)
+          : dataWithIndicators
+      );
     }
 
     batchResults.sort((a, b) => b.totalPnlPercent - a.totalPnlPercent);
@@ -156,33 +208,23 @@ export async function POST(request: NextRequest) {
       batchResults[i].trades = [];
     }
 
-    // Build chart indicator data only for datasets that appear in the top results.
-    // Reuse cached raw data to skip the second CSV read — only recalculate indicators.
+    // Build the narrow set of indicator keys the chart actually renders for the
+    // top-10 results. With wide param sweeps (50 EMAs etc.) this reduces the
+    // payload by 5-10× since most computed EMAs are never plotted.
+    const topResults = batchResults.slice(0, TOP_RESULTS_WITH_FULL_DATA);
     const top10Datasets = [...new Set(
-      batchResults.slice(0, TOP_RESULTS_WITH_FULL_DATA)
-        .map((r) => r.dataset)
-        .filter((d): d is string => !!d)
+      topResults.map((r) => r.dataset).filter((d): d is string => !!d)
     )];
+
+    const topCombos = topResults.map((r) => r.params);
+    const topIndicators = deriveRequiredIndicators(strategyId, topCombos);
+    const chartKeys = buildChartKeySet(topIndicators);
 
     const indicatorDataByDataset: Record<string, ReturnType<typeof calculateIndicatorsWithParams>> = {};
     for (const datasetFile of top10Datasets) {
-      const rawData = rawDataCache.get(datasetFile);
-      if (!rawData) continue; // shouldn't happen — already validated above
-      try {
-        const allBars = calculateIndicatorsWithParams(
-          rawData,
-          requiredEMAs,
-          requiredSMAs,
-          requiredMACDs,
-          requiredDonchianPeriods
-        );
-        // Cap chart data to the last MAX_CHART_BARS to keep the JSON response
-        // lean on large intraday datasets (14k+ bars for 2-minute data).
-        indicatorDataByDataset[datasetFile] =
-          allBars.length > MAX_CHART_BARS ? allBars.slice(-MAX_CHART_BARS) : allBars;
-      } catch {
-        // if calculation fails, chart just won't update for this tab
-      }
+      const slice = chartSliceCache.get(datasetFile);
+      if (!slice) continue;
+      indicatorDataByDataset[datasetFile] = projectChartRows(slice, chartKeys);
     }
 
     return NextResponse.json({

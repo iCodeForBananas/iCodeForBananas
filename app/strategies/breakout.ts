@@ -49,19 +49,18 @@ const handler: StrategyHandler = ({ current, index, series, params }) => {
     return { action: 'hold', reason: 'Waiting for sufficient data' };
   }
 
-  // Get the lookback range (excluding current bar)
-  const lookbackBars = series.slice(index - lookbackPeriod, index);
-
-  // Calculate highest high and lowest low in the lookback period
-  // When useClose is true, use close prices for breakout levels
-  // When useClose is false, use high/low prices for breakout levels
-  const highestHigh = useClose
-    ? Math.max(...lookbackBars.map(bar => bar.close))
-    : Math.max(...lookbackBars.map(bar => bar.high));
-
-  const lowestLow = useClose
-    ? Math.min(...lookbackBars.map(bar => bar.close))
-    : Math.min(...lookbackBars.map(bar => bar.low));
+  // Inline scan over [index - lookbackPeriod, index) — avoids slice/map allocations
+  // on every bar (matters when this runs ~5M times during a wide param sweep).
+  let highestHigh = -Infinity;
+  let lowestLow = Infinity;
+  const start = index - lookbackPeriod;
+  for (let j = start; j < index; j++) {
+    const bar = series[j];
+    const hi = useClose ? bar.close : bar.high;
+    const lo = useClose ? bar.close : bar.low;
+    if (hi > highestHigh) highestHigh = hi;
+    if (lo < lowestLow) lowestLow = lo;
+  }
 
   // Use consistent price comparison based on useClose setting
   const priceForBuySignal = useClose ? current.close : current.high;
