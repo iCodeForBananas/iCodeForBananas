@@ -28,6 +28,8 @@ const STORAGE_KEY_STRATEGY_PREFIX = "algo-backtest-strategy-";
 interface GlobalSettings {
   selectedStrategyId: string;
   selectedFiles: string[];
+  showEquityCurve: boolean;
+  visibleCandles: number;
 }
 
 interface StrategySettings {
@@ -352,6 +354,8 @@ export default function AlgoBacktestPage() {
     if (saved?.selectedStrategyId && AVAILABLE_STRATEGIES[saved.selectedStrategyId]) {
       setSelectedStrategyId(saved.selectedStrategyId);
     }
+    if (saved?.showEquityCurve !== undefined) setShowEquityCurve(saved.showEquityCurve);
+    if (saved?.visibleCandles !== undefined) setVisibleCandles(saved.visibleCandles);
   }, []);
 
   useEffect(() => {
@@ -381,10 +385,10 @@ export default function AlgoBacktestPage() {
     fetchDatasets();
   }, []);
 
-  // Save global settings when strategy or selected files change
+  // Save global settings when any global preference changes
   useEffect(() => {
-    saveGlobalSettings({ selectedStrategyId, selectedFiles });
-  }, [selectedStrategyId, selectedFiles]);
+    saveGlobalSettings({ selectedStrategyId, selectedFiles, showEquityCurve, visibleCandles });
+  }, [selectedStrategyId, selectedFiles, showEquityCurve, visibleCandles]);
 
   // Save per-strategy settings when any strategy-specific setting changes
   useEffect(() => {
