@@ -1,7 +1,11 @@
 // Breakout Strategy
-// Long: Buy when price breaks above the highest high of the lookback period
-// Short: Sell when price breaks below the lowest low of the lookback period
+// Long: Buy when CLOSE breaks above the highest close of the lookback period
+// Short: Sell when CLOSE breaks below the lowest close of the lookback period
 // Exit using a trailing stop EMA or opposite breakout
+//
+// Close-based by design: signal price equals fill price (fills execute at the
+// bar close in both the backtester and the lambda executor), so the strategy
+// only ever trades on confirmed candle closes — intrabar wicks do not trigger.
 
 import { StrategyDefinition, StrategyHandler, StrategyParameter } from './types';
 
@@ -21,13 +25,6 @@ const parameters: StrategyParameter[] = [
     step: 1,
   },
   {
-    key: 'useClose',
-    name: 'Use Close Price',
-    description: 'Use close price instead of high/low for breakout detection. Aligns signal price with fill price (fills execute at close) and reduces intrabar wick false signals.',
-    type: 'boolean',
-    default: true,
-  },
-  {
     key: 'trailingStopEmaPeriod',
     name: 'Trailing Stop EMA Period',
     description: `EMA period for trailing stop exit (default: ${DEFAULT_TRAILING_STOP_EMA_PERIOD}). Set to 0 to use opposite breakout exit.`,
@@ -41,7 +38,6 @@ const parameters: StrategyParameter[] = [
 
 const handler: StrategyHandler = ({ current, index, series, params }) => {
   const lookbackPeriod = (params.lookbackPeriod as number) || DEFAULT_LOOKBACK_PERIOD;
-  const useClose = params.useClose as boolean;
   const trailingStopEmaPeriod = (params.trailingStopEmaPeriod as number) ?? DEFAULT_TRAILING_STOP_EMA_PERIOD;
 
   // Need enough data for lookback period
@@ -51,22 +47,21 @@ const handler: StrategyHandler = ({ current, index, series, params }) => {
 
   // Inline scan over [index - lookbackPeriod, index) — avoids slice/map allocations
   // on every bar (matters when this runs ~5M times during a wide param sweep).
-  let highestHigh = -Infinity;
-  let lowestLow = Infinity;
+  let highestClose = -Infinity;
+  let lowestClose = Infinity;
   const start = index - lookbackPeriod;
   for (let j = start; j < index; j++) {
-    const bar = series[j];
-    const hi = useClose ? bar.close : bar.high;
-    const lo = useClose ? bar.close : bar.low;
-    if (hi > highestHigh) highestHigh = hi;
-    if (lo < lowestLow) lowestLow = lo;
+    const c = series[j].close;
+    if (c > highestClose) highestClose = c;
+    if (c < lowestClose) lowestClose = c;
   }
 
-  // Use consistent price comparison based on useClose setting
-  const priceForBuySignal = useClose ? current.close : current.high;
-  const priceForSellSignal = useClose ? current.close : current.low;
+  const priceForBuySignal = current.close;
+  const priceForSellSignal = current.close;
+  const highestHigh = highestClose;
+  const lowestLow = lowestClose;
 
-  // Breakout above the highest high - BUY signal (long entry / short exit)
+  // Breakout above the highest close - BUY signal (long entry / short exit)
   if (priceForBuySignal > highestHigh) {
     return {
       action: 'buy',
