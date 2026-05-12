@@ -108,5 +108,6 @@ export interface ParameterizedResult {
     pnl: number;
     pnlPercent: number;
     reason: string;
+    trailingSeries?: { time: number; price: number }[];
   }[];
 }

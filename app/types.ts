@@ -55,6 +55,9 @@ export interface BacktestTrade {
   pnl: number;
   pnlPercent: number;
   reason: string;
+  /** Per-bar trailing stop prices, recorded from entry to exit. Only present when
+   *  a stop was active (EMA-based or fixed percentage). Used for chart visualization. */
+  trailingSeries?: { time: number; price: number }[];
 }
 
 export interface BacktestResult {

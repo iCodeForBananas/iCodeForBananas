@@ -467,6 +467,44 @@ const BacktestChart: React.FC<BacktestChartProps> = ({
       ctx.strokeRect(x - candleWidth / 2, bodyTop, candleWidth, bodyH);
     });
 
+    // ── Trailing stop lines ───────────────────────────────────────────────
+    // Build a time→index map so trail series lookups are O(1)
+    const timeToDataIdx = new Map(data.map((d, i) => [d.time, i]));
+
+    const tradesWithStop = trades.filter(
+      (t) => t.trailingSeries && t.trailingSeries.length > 0
+    );
+
+    if (tradesWithStop.length > 0) {
+      for (const trade of tradesWithStop) {
+        const ts = trade.trailingSeries!;
+        // Check if this trade overlaps the visible window at all
+        const entryDataIdx = bisectTime(data, trade.entryTime);
+        const exitDataIdx  = bisectTime(data, trade.exitTime);
+        if (entryDataIdx >= endIndex || exitDataIdx < startIndex) continue;
+
+        ctx.strokeStyle = "#ef4444";
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([]);
+        ctx.beginPath();
+        let pathStarted = false;
+
+        for (const pt of ts) {
+          const idx = timeToDataIdx.get(pt.time);
+          if (idx === undefined || idx < startIndex || idx >= endIndex) {
+            // Gap in visibility — lift the pen so the line doesn't bridge skipped bars
+            pathStarted = false;
+            continue;
+          }
+          const x = xScale(idx - startIndex);
+          const y = yScale(pt.price);
+          if (!pathStarted) { ctx.moveTo(x, y); pathStarted = true; }
+          else ctx.lineTo(x, y);
+        }
+        if (pathStarted) ctx.stroke();
+      }
+    }
+
     // Trade markers
     const tradeIndexCache = new Map(
       trades.map((t) => [t.id, { ei: bisectTime(data, t.entryTime), xi: bisectTime(data, t.exitTime) }])
@@ -578,6 +616,12 @@ const BacktestChart: React.FC<BacktestChartProps> = ({
       ctx.fillText(item.label, legendX + 16, 15);
       legendX += item.label.length * 6 + 24;
     });
+    if (tradesWithStop.length > 0) {
+      ctx.fillStyle = "#ef4444";
+      ctx.fillRect(legendX, 10, 12, 3);
+      ctx.fillStyle = "#94a3b8";
+      ctx.fillText("Trail Stop", legendX + 16, 15);
+    }
 
     // ── Oscillator sub-panel ──────────────────────────────────────────────
     if (hasOscillator && oscillator) {

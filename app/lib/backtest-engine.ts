@@ -271,13 +271,30 @@ export function runBacktestWithParams(
     takeProfit?: number;
   } | null = null;
   let tradeId = 1;
+  // Accumulates the stop level at each bar while a position is open.
+  // Flushed (with a copy) into each trade when it closes; reset between trades.
+  let trailSeries: { time: number; price: number }[] = [];
 
   const trailingStopEmaPeriod = (params.trailingStopEmaPeriod as number) ?? 0;
+  // True when any stop is active — avoids building an unused array
+  const hasStopMechanism = trailingStopEmaPeriod > 0 || (riskSettings?.stopLossPercent ?? 0) > 0;
 
   for (let i = 1; i < data.length; i++) {
     const current = data[i];
     const previous = data[i - 1];
     let exitedViaRiskThisBar = false;
+
+    // Record the effective stop level at the start of this bar before any exit checks.
+    // For EMA-based trailing stops the level ratchets with price; for fixed SL it is flat.
+    if (position && hasStopMechanism) {
+      let stopLevel: number | undefined;
+      if (trailingStopEmaPeriod > 0) {
+        stopLevel = current[`ema${trailingStopEmaPeriod}` as keyof typeof current] as number | undefined;
+      } else if (position.stopLoss !== undefined) {
+        stopLevel = position.stopLoss;
+      }
+      if (stopLevel !== undefined) trailSeries.push({ time: current.time, price: stopLevel });
+    }
 
     if (position && riskSettings) {
       let exitPrice: number | null = null;
@@ -348,8 +365,10 @@ export function runBacktestWithParams(
           pnl,
           pnlPercent,
           reason: exitReason,
+          trailingSeries: trailSeries.length > 0 ? [...trailSeries] : undefined,
         });
         position = null;
+        trailSeries = [];
         exitedViaRiskThisBar = true;
       }
     }
@@ -384,8 +403,10 @@ export function runBacktestWithParams(
         pnl,
         pnlPercent,
         reason: exitReason,
+        trailingSeries: trailSeries.length > 0 ? [...trailSeries] : undefined,
       });
       position = null;
+      trailSeries = [];
     };
 
     if (signal.action === "buy" && !position && !exitedViaRiskThisBar) {
@@ -462,6 +483,7 @@ export function runBacktestWithParams(
       pnl,
       pnlPercent,
       reason: "End of data",
+      trailingSeries: trailSeries.length > 0 ? [...trailSeries] : undefined,
     });
     equityCurve.push({ time: lastCandle.time, equity });
   }
