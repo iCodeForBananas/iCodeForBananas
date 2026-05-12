@@ -1,7 +1,8 @@
 // Breakout Strategy
 // Long: Buy when CLOSE breaks above the highest close of the lookback period
 // Short: Sell when CLOSE breaks below the lowest close of the lookback period
-// Exit using a trailing stop EMA or opposite breakout
+// Exit on opposite-direction breakout (engine optionally tightens the exit
+// price to the trailing-stop EMA if crossed during that bar).
 //
 // Close-based by design: signal price equals fill price (fills execute at the
 // bar close in both the backtester and the lambda executor), so the strategy
@@ -38,7 +39,9 @@ const parameters: StrategyParameter[] = [
 
 const handler: StrategyHandler = ({ current, index, series, params }) => {
   const lookbackPeriod = (params.lookbackPeriod as number) || DEFAULT_LOOKBACK_PERIOD;
-  const trailingStopEmaPeriod = (params.trailingStopEmaPeriod as number) ?? DEFAULT_TRAILING_STOP_EMA_PERIOD;
+  // trailingStopEmaPeriod is consumed by the engine (not the handler) — it
+  // reads `params.trailingStopEmaPeriod` directly to apply a trailing stop on
+  // bar exits. Keep it as a declared parameter so the UI can configure it.
 
   // Need enough data for lookback period
   if (index < lookbackPeriod) {
@@ -77,35 +80,14 @@ const handler: StrategyHandler = ({ current, index, series, params }) => {
     };
   }
 
-  // Trailing stop EMA exit logic
-  // Use a crossover-based approach: only trigger when close crosses through the EMA
-  // This prevents spurious entries by only firing on actual EMA crossover events
-  if (trailingStopEmaPeriod > 0 && index > 0) {
-    const emaKey = `ema${trailingStopEmaPeriod}` as keyof typeof current;
-    const trailingStopEma = current[emaKey] as number | undefined;
-    const prevBar = series[index - 1];
-    const prevTrailingStopEma = prevBar[emaKey] as number | undefined;
-
-    if (trailingStopEma !== undefined && prevTrailingStopEma !== undefined) {
-      // Long exit: close crosses below the trailing stop EMA
-      // Previous close was above EMA, current close is below
-      if (prevBar.close > prevTrailingStopEma && current.close <= trailingStopEma) {
-        return {
-          action: 'sell',
-          reason: `Trailing stop EMA ${trailingStopEmaPeriod} hit (close ${current.close.toFixed(2)} crossed below EMA ${trailingStopEma.toFixed(2)})`,
-        };
-      }
-
-      // Short exit: close crosses above the trailing stop EMA
-      // Previous close was below EMA, current close is above
-      if (prevBar.close < prevTrailingStopEma && current.close >= trailingStopEma) {
-        return {
-          action: 'buy',
-          reason: `Trailing stop EMA ${trailingStopEmaPeriod} hit (close ${current.close.toFixed(2)} crossed above EMA ${trailingStopEma.toFixed(2)})`,
-        };
-      }
-    }
-  }
+  // NOTE on exits: prior versions of this handler returned buy/sell here on
+  // EMA crossover events to act as a trailing-stop "close". That was wrong —
+  // the strategy handler has no position context, so the engine treated those
+  // signals as fresh entries when flat (it opened longs after EMA crossovers
+  // even though no breakout had occurred). The engine has built-in trailing-
+  // stop-EMA support that runs only when an opposite-direction breakout fires
+  // while a position is open (see backtest-engine.ts), so the right behavior
+  // here is simply to hold until the next genuine breakout.
 
   return { action: 'hold', reason: 'Within range' };
 };
