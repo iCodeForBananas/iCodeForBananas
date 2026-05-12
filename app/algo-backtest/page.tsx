@@ -226,6 +226,10 @@ export default function AlgoBacktestPage() {
   // drives the parameter editor; other selected strategies use their saved
   // per-strategy settings at run time.
   const [selectedStrategyIds, setSelectedStrategyIds] = useState<string[]>(["ema-crossover"]);
+  // Mounted flag — gates render branches that read localStorage to avoid
+  // SSR/CSR hydration mismatches (React #418).
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
   const [currentParams, setCurrentParams] = useState<Record<string, number | boolean | string>>({});
   const [paramVariations, setParamVariations] = useState<ParameterVariationConfig[]>([]);
 
@@ -453,15 +457,22 @@ export default function AlgoBacktestPage() {
     };
   }, []);
 
-  // Run batch backtest with parameter variations against all selected datasets
+  // Run batch backtest with parameter variations against all selected datasets.
+  //
+  // Multi-strategy runs fan out as one HTTP request *per strategy* in parallel.
+  // Vercel caps each invocation at 60s, so a single combined request blew the
+  // budget once you select more than a couple of strategies. Splitting keeps
+  // each call small and lets results stream back as they finish.
   const runBatchBacktest = useCallback(async () => {
     if (selectedFiles.length === 0 || selectedStrategyIds.length === 0) return;
     setIsRunningBatch(true);
     setError(null);
+    // Reset prior results so the UI reflects only the current run.
+    setResults([]);
+    datasetIndicatorCache.current = {};
 
-    // Build run configs. The active strategy uses live editor state so unsaved
-    // edits are honoured; other selected strategies use their saved settings.
-    const runs = selectedStrategyIds
+    // Build per-strategy run configs. Active strategy uses live editor state.
+    const perStrategyRuns = selectedStrategyIds
       .map((sid) => {
         if (sid === selectedStrategyId) {
           return {
@@ -478,34 +489,66 @@ export default function AlgoBacktestPage() {
       .filter((r): r is NonNullable<typeof r> => r !== null);
 
     try {
-      const response = await fetch("/api/backtest", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          selectedFiles,
-          runs,
-        }),
-      });
+      const responses = await Promise.all(
+        perStrategyRuns.map((run) =>
+          fetch("/api/backtest", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ selectedFiles, runs: [run] }),
+          })
+            .then(async (res) => ({ run, ok: res.ok, status: res.status, body: await res.json().catch(() => null) }))
+            .catch((err) => ({
+              run,
+              ok: false,
+              status: 0,
+              body: { error: err instanceof Error ? err.message : "Network error" },
+            }))
+        )
+      );
 
-      const data = await response.json();
+      // Aggregate results + indicator caches across all strategies.
+      const aggregatedResults: ParameterizedResult[] = [];
+      const aggregatedIndicators: Record<string, IndicatorData[]> = {};
+      const failureMessages: string[] = [];
+      const allFailedDatasets: string[] = [];
 
-      if (!data.success) {
-        setError(data.error || "Backtest failed");
-        return;
+      for (const r of responses) {
+        if (!r.ok || !r.body?.success) {
+          const msg = r.body?.error ?? `HTTP ${r.status}`;
+          failureMessages.push(`${r.run.strategyId}: ${msg}`);
+          continue;
+        }
+        if (Array.isArray(r.body.results)) aggregatedResults.push(...r.body.results);
+        if (r.body.indicatorDataByDataset) {
+          // First writer wins — datasets appear in every response identically.
+          for (const [k, v] of Object.entries(r.body.indicatorDataByDataset)) {
+            if (!aggregatedIndicators[k]) aggregatedIndicators[k] = v as IndicatorData[];
+          }
+        }
+        if (Array.isArray(r.body.failedDatasets)) allFailedDatasets.push(...r.body.failedDatasets);
       }
 
-      if (data.failedDatasets?.length > 0) {
-        setError(`Failed to load ${data.failedDatasets.length} dataset(s): ${data.failedDatasets.join("; ")}`);
-      }
+      // Sort by P&L so the top results bubble to tab #1 across strategies.
+      aggregatedResults.sort((a, b) => b.totalPnlPercent - a.totalPnlPercent);
 
-      datasetIndicatorCache.current = data.indicatorDataByDataset ?? {};
-      setResults(data.results ?? []);
+      datasetIndicatorCache.current = aggregatedIndicators;
+      setResults(aggregatedResults);
       setActiveResultTab(0);
 
-      const first = data.results?.[0];
-      if (first?.dataset && data.indicatorDataByDataset?.[first.dataset]) {
-        setIndicatorData(data.indicatorDataByDataset[first.dataset]);
+      const first = aggregatedResults[0];
+      if (first?.dataset && aggregatedIndicators[first.dataset]) {
+        setIndicatorData(aggregatedIndicators[first.dataset]);
       }
+
+      const errs: string[] = [];
+      if (failureMessages.length > 0) {
+        errs.push(`${failureMessages.length} strategy run(s) failed: ${failureMessages.join("; ")}`);
+      }
+      if (allFailedDatasets.length > 0) {
+        const unique = [...new Set(allFailedDatasets)];
+        errs.push(`Failed to load ${unique.length} dataset(s): ${unique.join("; ")}`);
+      }
+      if (errs.length > 0) setError(errs.join(" | "));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Backtest request failed");
     } finally {
@@ -930,8 +973,10 @@ export default function AlgoBacktestPage() {
                 </div>
               )}
 
-              {/* Other selected strategies — read-only summary cards (click to edit) */}
-              {selectedStrategyIds
+              {/* Other selected strategies — read-only summary cards (click to edit).
+                  Gated on `mounted` because buildSavedRun reads localStorage, which
+                  SSR can't see; rendering the cards on the server would mismatch hydration. */}
+              {mounted && selectedStrategyIds
                 .filter((sid) => sid !== selectedStrategyId)
                 .map((sid) => {
                   const otherStrat = AVAILABLE_STRATEGIES[sid];
@@ -996,6 +1041,8 @@ export default function AlgoBacktestPage() {
               >
                 {isRunningBatch
                   ? "Running..."
+                  : !mounted
+                  ? `Run ${combinationCount * selectedFiles.length} Variations`
                   : (() => {
                       // Active strategy uses the live editor; other strategies use their saved combos.
                       let totalRuns = combinationCount;
