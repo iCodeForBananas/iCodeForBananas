@@ -23,9 +23,9 @@ const parameters: StrategyParameter[] = [
   {
     key: 'useClose',
     name: 'Use Close Price',
-    description: 'Use close price instead of high/low for breakout detection',
+    description: 'Use close price instead of high/low for breakout detection. Aligns signal price with fill price (fills execute at close) and reduces intrabar wick false signals.',
     type: 'boolean',
-    default: false,
+    default: true,
   },
   {
     key: 'trailingStopEmaPeriod',

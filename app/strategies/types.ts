@@ -83,6 +83,8 @@ export interface ParameterizedResult {
   label: string;
   dataset?: string; // Dataset file name for multi-dataset runs
   datasetLabel?: string; // Human-readable dataset label
+  strategyId?: string; // Strategy id for multi-strategy runs
+  strategyName?: string; // Human-readable strategy name
   totalPnl: number;
   totalPnlPercent: number;
   winRate: number;

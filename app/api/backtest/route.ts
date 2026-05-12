@@ -26,14 +26,26 @@ const MAX_CHART_BARS = 2000;
 
 const TOP_RESULTS_WITH_FULL_DATA = 10;
 
-interface BacktestRequest {
+interface StrategyRun {
   strategyId: string;
-  selectedFiles: string[];
   paramVariations: ParameterVariationConfig[];
   currentParams: Record<string, number | boolean | string>;
   stopLossPercent: number;
   takeProfitPercent: number;
   enableShorts: boolean;
+}
+
+interface BacktestRequest {
+  selectedFiles: string[];
+  // Multi-strategy form (preferred). Each entry runs against every selected dataset.
+  runs?: StrategyRun[];
+  // Single-strategy form (legacy — still accepted for backward compat).
+  strategyId?: string;
+  paramVariations?: ParameterVariationConfig[];
+  currentParams?: Record<string, number | boolean | string>;
+  stopLossPercent?: number;
+  takeProfitPercent?: number;
+  enableShorts?: boolean;
 }
 
 // Base PricePoint fields the chart always needs (price action + prev-bar context).
@@ -108,23 +120,34 @@ async function parseCSV(filePath: string): Promise<PricePoint[]> {
 export async function POST(request: NextRequest) {
   try {
     const body: BacktestRequest = await request.json();
-    const {
-      strategyId,
-      selectedFiles,
-      paramVariations,
-      currentParams,
-      stopLossPercent,
-      takeProfitPercent,
-      enableShorts,
-    } = body;
+    const { selectedFiles } = body;
 
-    if (!strategyId || !selectedFiles?.length) {
+    if (!selectedFiles?.length) {
       return NextResponse.json({ success: false, error: "Missing required fields" }, { status: 400 });
     }
 
-    const strategy = AVAILABLE_STRATEGIES[strategyId];
-    if (!strategy) {
-      return NextResponse.json({ success: false, error: `Unknown strategy: ${strategyId}` }, { status: 400 });
+    // Normalize legacy single-strategy form into the array form.
+    const runs: StrategyRun[] = body.runs?.length
+      ? body.runs
+      : body.strategyId
+      ? [{
+          strategyId: body.strategyId,
+          paramVariations: body.paramVariations ?? [],
+          currentParams: body.currentParams ?? {},
+          stopLossPercent: body.stopLossPercent ?? 0,
+          takeProfitPercent: body.takeProfitPercent ?? 0,
+          enableShorts: body.enableShorts ?? false,
+        }]
+      : [];
+
+    if (runs.length === 0) {
+      return NextResponse.json({ success: false, error: "No strategies selected" }, { status: 400 });
+    }
+
+    for (const run of runs) {
+      if (!AVAILABLE_STRATEGIES[run.strategyId]) {
+        return NextResponse.json({ success: false, error: `Unknown strategy: ${run.strategyId}` }, { status: 400 });
+      }
     }
 
     const dataDir = path.join(process.cwd(), "data");
@@ -132,17 +155,42 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "Data directory not found" }, { status: 500 });
     }
 
-    const combinations = paramVariations.length > 0
-      ? generateCombinations(paramVariations).map((combo) => ({ ...currentParams, ...combo }))
-      : [currentParams];
+    // Per-strategy combinations + risk settings, computed once.
+    const runConfigs = runs.map((run) => {
+      const combinations = run.paramVariations.length > 0
+        ? generateCombinations(run.paramVariations).map((combo) => ({ ...run.currentParams, ...combo }))
+        : [run.currentParams];
+      const riskSettings: RiskSettings | undefined =
+        run.stopLossPercent > 0 || run.takeProfitPercent > 0
+          ? { stopLossPercent: run.stopLossPercent, takeProfitPercent: run.takeProfitPercent }
+          : undefined;
+      return { run, combinations, riskSettings };
+    });
 
-    const { requiredEMAs, requiredSMAs, requiredMACDs, requiredDonchianPeriods } =
-      deriveRequiredIndicators(strategyId, combinations);
-
-    const riskSettings: RiskSettings | undefined =
-      stopLossPercent > 0 || takeProfitPercent > 0
-        ? { stopLossPercent, takeProfitPercent }
-        : undefined;
+    // Union of indicator requirements across all selected strategies — one
+    // calculateIndicatorsWithParams pass per dataset covers every run.
+    // Compute per-strategy then merge so deriveRequiredIndicators routes
+    // params (e.g. fastPeriod) to the right bucket for each strategy id.
+    const emaSet = new Set<number>();
+    const smaSet = new Set<number>();
+    const donchianSet = new Set<number>();
+    const macdKeySet = new Set<string>();
+    for (const { run, combinations } of runConfigs) {
+      const reqs = deriveRequiredIndicators(run.strategyId, combinations);
+      reqs.requiredEMAs.forEach((v) => emaSet.add(v));
+      reqs.requiredSMAs.forEach((v) => smaSet.add(v));
+      reqs.requiredDonchianPeriods.forEach((v) => donchianSet.add(v));
+      for (const m of reqs.requiredMACDs) {
+        macdKeySet.add(`${m.fastPeriod}_${m.slowPeriod}_${m.signalPeriod}`);
+      }
+    }
+    const requiredEMAs = Array.from(emaSet);
+    const requiredSMAs = Array.from(smaSet);
+    const requiredDonchianPeriods = Array.from(donchianSet);
+    const requiredMACDs: MACDConfig[] = Array.from(macdKeySet).map((k) => {
+      const [fast, slow, signal] = k.split("_").map(Number);
+      return { fastPeriod: fast, slowPeriod: slow, signalPeriod: signal };
+    });
 
     const batchResults: ParameterizedResult[] = [];
     const failedDatasets: string[] = [];
@@ -181,16 +229,25 @@ export async function POST(request: NextRequest) {
         requiredDonchianPeriods
       );
 
-      for (const params of combinations) {
-        const result = runBacktestWithParams(
-          dataWithIndicators,
-          strategy,
-          params,
-          INITIAL_CAPITAL,
-          riskSettings,
-          enableShorts
-        );
-        batchResults.push({ ...result, dataset: datasetFile, datasetLabel: datasetFile });
+      for (const { run, combinations, riskSettings } of runConfigs) {
+        const strategy = AVAILABLE_STRATEGIES[run.strategyId];
+        for (const params of combinations) {
+          const result = runBacktestWithParams(
+            dataWithIndicators,
+            strategy,
+            params,
+            INITIAL_CAPITAL,
+            riskSettings,
+            run.enableShorts
+          );
+          batchResults.push({
+            ...result,
+            dataset: datasetFile,
+            datasetLabel: datasetFile,
+            strategyId: run.strategyId,
+            strategyName: strategy.name,
+          });
+        }
       }
 
       chartSliceCache.set(
@@ -216,9 +273,38 @@ export async function POST(request: NextRequest) {
       topResults.map((r) => r.dataset).filter((d): d is string => !!d)
     )];
 
-    const topCombos = topResults.map((r) => r.params);
-    const topIndicators = deriveRequiredIndicators(strategyId, topCombos);
-    const chartKeys = buildChartKeySet(topIndicators);
+    // Per-strategy chart-key derivation, then merge — same reason as the
+    // run-time indicator union: deriveRequiredIndicators routes ambiguous
+    // param keys (fastPeriod, slowPeriod) using strategy id heuristics.
+    const topByStrategy = new Map<string, Record<string, number | boolean | string>[]>();
+    for (const r of topResults) {
+      if (!r.strategyId) continue;
+      const list = topByStrategy.get(r.strategyId) ?? [];
+      list.push(r.params);
+      topByStrategy.set(r.strategyId, list);
+    }
+    const topEmaSet = new Set<number>();
+    const topSmaSet = new Set<number>();
+    const topDonchianSet = new Set<number>();
+    const topMacdKeySet = new Set<string>();
+    for (const [sid, combos] of topByStrategy) {
+      const reqs = deriveRequiredIndicators(sid, combos);
+      reqs.requiredEMAs.forEach((v) => topEmaSet.add(v));
+      reqs.requiredSMAs.forEach((v) => topSmaSet.add(v));
+      reqs.requiredDonchianPeriods.forEach((v) => topDonchianSet.add(v));
+      for (const m of reqs.requiredMACDs) {
+        topMacdKeySet.add(`${m.fastPeriod}_${m.slowPeriod}_${m.signalPeriod}`);
+      }
+    }
+    const chartKeys = buildChartKeySet({
+      requiredEMAs: Array.from(topEmaSet),
+      requiredSMAs: Array.from(topSmaSet),
+      requiredDonchianPeriods: Array.from(topDonchianSet),
+      requiredMACDs: Array.from(topMacdKeySet).map((k) => {
+        const [fast, slow, signal] = k.split("_").map(Number);
+        return { fastPeriod: fast, slowPeriod: slow, signalPeriod: signal };
+      }),
+    });
 
     const indicatorDataByDataset: Record<string, ReturnType<typeof calculateIndicatorsWithParams>> = {};
     for (const datasetFile of top10Datasets) {

@@ -1,4 +1,10 @@
 import { createClient } from "@supabase/supabase-js";
+import { AVAILABLE_STRATEGIES, getDefaultParams } from "@/app/strategies";
+import {
+  calculateIndicatorsWithParams,
+  deriveRequiredIndicators,
+} from "@/app/lib/backtest-engine";
+import { PricePoint } from "@/app/types";
 
 // ── Supabase ───────────────────────────────────────────────────────────────
 export function supabaseAnon() {
@@ -132,164 +138,49 @@ export async function placeOrder(
   });
 }
 
-// ── Indicator helpers ──────────────────────────────────────────────────────
-export function calcEMA(data: number[], period: number): number[] {
-  const mult = 2 / (period + 1);
-  const result: number[] = [];
-  let ema = data[0];
-  for (const v of data) {
-    ema = (v - ema) * mult + ema;
-    result.push(ema);
-  }
-  return result;
-}
-
-export function calcSMA(data: number[], period: number): (number | null)[] {
-  return data.map((_, i) =>
-    i < period - 1
-      ? null
-      : data.slice(i - period + 1, i + 1).reduce((a, b) => a + b, 0) / period
-  );
-}
-
-export function calcRSI(closes: number[], period = 14): (number | null)[] {
-  const result: (number | null)[] = [];
-  let ag = 0,
-    al = 0;
-  for (let i = 0; i < closes.length; i++) {
-    if (i === 0) {
-      result.push(null);
-      continue;
-    }
-    const d = closes[i] - closes[i - 1],
-      g = d > 0 ? d : 0,
-      l = d < 0 ? -d : 0;
-    if (i < period) {
-      ag += g;
-      al += l;
-      result.push(null);
-    } else if (i === period) {
-      ag = (ag + g) / period;
-      al = (al + l) / period;
-      result.push(al === 0 ? 100 : 100 - 100 / (1 + ag / al));
-    } else {
-      ag = (ag * (period - 1) + g) / period;
-      al = (al * (period - 1) + l) / period;
-      result.push(al === 0 ? 100 : 100 - 100 / (1 + ag / al));
-    }
-  }
-  return result;
-}
-
 // ── Strategy signal engine ─────────────────────────────────────────────────
+// Routes through the canonical StrategyDefinition registry (app/strategies),
+// the same code path the backtester uses. This keeps live execution and
+// backtest results consistent and means new strategies don't need to be
+// re-implemented here.
 export function runStrategy(
   strategyId: string,
   params: Record<string, number | boolean | string>,
   bars: Bar[]
 ): "buy" | "sell" | "hold" {
-  const closes = bars.map((b) => b.close);
-  const n = bars.length;
+  const strategy = AVAILABLE_STRATEGIES[strategyId];
+  if (!strategy || bars.length < 2) return "hold";
 
-  switch (strategyId) {
-    case "ema-crossover":
-    case "triple-ema": {
-      const fp = Number(params.fastPeriod ?? 9),
-        sp = Number(params.slowPeriod ?? 21);
-      const mp = Number(params.midPeriod ?? 0);
-      const fast = calcEMA(closes, fp),
-        slow = calcEMA(closes, sp);
-      if (mp) {
-        const mid = calcEMA(closes, mp);
-        const bullNow =
-          fast[n - 1] > mid[n - 1] && mid[n - 1] > slow[n - 1];
-        const bullPrev =
-          fast[n - 2] > mid[n - 2] && mid[n - 2] > slow[n - 2];
-        const bearNow =
-          fast[n - 1] < mid[n - 1] && mid[n - 1] < slow[n - 1];
-        const bearPrev =
-          fast[n - 2] < mid[n - 2] && mid[n - 2] < slow[n - 2];
-        if (bullNow && !bullPrev) return "buy";
-        if (bearNow && !bearPrev) return "sell";
-        return "hold";
-      }
-      if (fast[n - 2] <= slow[n - 2] && fast[n - 1] > slow[n - 1])
-        return "buy";
-      if (fast[n - 2] >= slow[n - 2] && fast[n - 1] < slow[n - 1])
-        return "sell";
-      return "hold";
-    }
-    case "sma-crossover": {
-      const fp = Number(params.fastPeriod ?? 50),
-        sp = Number(params.slowPeriod ?? 200);
-      const fast = calcSMA(closes, fp),
-        slow = calcSMA(closes, sp);
-      const cf = fast[n - 1],
-        cs = slow[n - 1],
-        pf = fast[n - 2],
-        ps = slow[n - 2];
-      if (!cf || !cs || !pf || !ps) return "hold";
-      if (pf <= ps && cf > cs) return "buy";
-      if (pf >= ps && cf < cs) return "sell";
-      return "hold";
-    }
-    case "rsi-mean-reversion":
-    case "rsi2": {
-      const period = strategyId === "rsi2" ? 2 : 14;
-      const os = Number(
-        params.oversold ?? (strategyId === "rsi2" ? 10 : 30)
-      );
-      const ob = Number(
-        params.overbought ?? (strategyId === "rsi2" ? 90 : 70)
-      );
-      const rsi = calcRSI(closes, period);
-      const r = rsi[n - 1];
-      if (r == null) return "hold";
-      if (r < os) return "buy";
-      if (r > ob) return "sell";
-      return "hold";
-    }
-    case "macd-crossover": {
-      const fp = Number(params.fastPeriod ?? 12),
-        sp2 = Number(params.slowPeriod ?? 26),
-        sig = Number(params.signalPeriod ?? 9);
-      const fast = calcEMA(closes, fp),
-        slow2 = calcEMA(closes, sp2);
-      const macd = fast.map((v, i) => v - slow2[i]);
-      const signal = calcEMA(macd, sig);
-      if (macd[n - 2] <= signal[n - 2] && macd[n - 1] > signal[n - 1])
-        return "buy";
-      if (macd[n - 2] >= signal[n - 2] && macd[n - 1] < signal[n - 1])
-        return "sell";
-      return "hold";
-    }
-    case "bollinger-bands": {
-      const period = Number(params.period ?? 20),
-        mult = Number(params.stdDev ?? 2);
-      const sma = calcSMA(closes, period);
-      const band = (side: 1 | -1) =>
-        closes.map((_, i) => {
-          if (i < period - 1) return null;
-          const sl = closes.slice(i - period + 1, i + 1);
-          const m = sma[i]!;
-          const std = Math.sqrt(
-            sl.reduce((s, v) => s + (v - m) ** 2, 0) / period
-          );
-          return m + side * mult * std;
-        });
-      const upper = band(1),
-        lower = band(-1);
-      const cu = upper[n - 1],
-        cl = lower[n - 1],
-        pu = upper[n - 2],
-        pl = lower[n - 2];
-      if (!cu || !cl || !pu || !pl) return "hold";
-      if (closes[n - 2] > pl && closes[n - 1] < cl) return "buy";
-      if (closes[n - 2] < pu && closes[n - 1] > cu) return "sell";
-      return "hold";
-    }
-    default:
-      return "hold";
-  }
+  // Merge defaults so any missing param keys are populated (matches backtest).
+  const mergedParams = { ...getDefaultParams(strategyId), ...params };
+
+  // Build the indicator series the strategy handler expects.
+  const pricePoints: PricePoint[] = bars.map((b) => ({
+    time: b.time,
+    open: b.open,
+    high: b.high,
+    low: b.low,
+    close: b.close,
+  }));
+  const { requiredEMAs, requiredSMAs, requiredMACDs, requiredDonchianPeriods } =
+    deriveRequiredIndicators(strategyId, [mergedParams]);
+  const series = calculateIndicatorsWithParams(
+    pricePoints,
+    requiredEMAs,
+    requiredSMAs,
+    requiredMACDs,
+    requiredDonchianPeriods
+  );
+
+  const lastIdx = series.length - 1;
+  const signal = strategy.handler({
+    current: series[lastIdx],
+    previous: series[lastIdx - 1] ?? null,
+    index: lastIdx,
+    series,
+    params: mergedParams,
+  });
+  return signal.action;
 }
 
 // ── Scheduling helpers ─────────────────────────────────────────────────────

@@ -27,6 +27,7 @@ const STORAGE_KEY_STRATEGY_PREFIX = "algo-backtest-strategy-";
 
 interface GlobalSettings {
   selectedStrategyId: string;
+  selectedStrategyIds: string[];
   selectedFiles: string[];
   showEquityCurve: boolean;
   visibleCandles: number;
@@ -221,6 +222,10 @@ export default function AlgoBacktestPage() {
 
   // Strategy state - default on server, restored from localStorage after mount
   const [selectedStrategyId, setSelectedStrategyId] = useState<string>("ema-crossover");
+  // Multi-select: which strategies to run. The "active" one (selectedStrategyId)
+  // drives the parameter editor; other selected strategies use their saved
+  // per-strategy settings at run time.
+  const [selectedStrategyIds, setSelectedStrategyIds] = useState<string[]>(["ema-crossover"]);
   const [currentParams, setCurrentParams] = useState<Record<string, number | boolean | string>>({});
   const [paramVariations, setParamVariations] = useState<ParameterVariationConfig[]>([]);
 
@@ -354,6 +359,12 @@ export default function AlgoBacktestPage() {
     if (saved?.selectedStrategyId && AVAILABLE_STRATEGIES[saved.selectedStrategyId]) {
       setSelectedStrategyId(saved.selectedStrategyId);
     }
+    if (saved?.selectedStrategyIds && saved.selectedStrategyIds.length > 0) {
+      const valid = saved.selectedStrategyIds.filter((id) => AVAILABLE_STRATEGIES[id]);
+      if (valid.length > 0) setSelectedStrategyIds(valid);
+    } else if (saved?.selectedStrategyId && AVAILABLE_STRATEGIES[saved.selectedStrategyId]) {
+      setSelectedStrategyIds([saved.selectedStrategyId]);
+    }
     if (saved?.showEquityCurve !== undefined) setShowEquityCurve(saved.showEquityCurve);
     if (saved?.visibleCandles !== undefined) setVisibleCandles(saved.visibleCandles);
   }, []);
@@ -387,8 +398,8 @@ export default function AlgoBacktestPage() {
 
   // Save global settings when any global preference changes
   useEffect(() => {
-    saveGlobalSettings({ selectedStrategyId, selectedFiles, showEquityCurve, visibleCandles });
-  }, [selectedStrategyId, selectedFiles, showEquityCurve, visibleCandles]);
+    saveGlobalSettings({ selectedStrategyId, selectedStrategyIds, selectedFiles, showEquityCurve, visibleCandles });
+  }, [selectedStrategyId, selectedStrategyIds, selectedFiles, showEquityCurve, visibleCandles]);
 
   // Save per-strategy settings when any strategy-specific setting changes
   useEffect(() => {
@@ -402,24 +413,77 @@ export default function AlgoBacktestPage() {
     });
   }, [selectedStrategyId, currentParams, paramVariations, stopLossPercent, takeProfitPercent, enableShorts]);
 
+  // Build a StrategyRun for one strategy from saved per-strategy settings,
+  // falling back to defaults if it has never been edited.
+  const buildSavedRun = useCallback((strategyId: string) => {
+    const strat = AVAILABLE_STRATEGIES[strategyId];
+    if (!strat) return null;
+    const saved = loadStrategySettings(strategyId);
+    const defaults = getDefaultParams(strategyId);
+    const params = saved?.currentParams ? { ...defaults, ...saved.currentParams } : defaults;
+
+    let variations: ParameterVariationConfig[] = [];
+    if (strat.parameters) {
+      const numericDefaults = strat.parameters
+        .filter((p) => p.type === 'number')
+        .map((p) => ({
+          key: p.key,
+          min: p.min ?? Number(p.default),
+          max: p.max ?? Number(p.default),
+          step: p.step ?? 1,
+        }));
+      if (saved?.paramVariations && saved.paramVariations.length > 0) {
+        const savedKeys = new Set(saved.paramVariations.map((v) => v.key));
+        variations = [
+          ...saved.paramVariations.filter((v) => strat.parameters!.some((p) => p.key === v.key)),
+          ...numericDefaults.filter((v) => !savedKeys.has(v.key)),
+        ];
+      } else {
+        variations = numericDefaults;
+      }
+    }
+
+    return {
+      strategyId,
+      currentParams: params,
+      paramVariations: variations,
+      stopLossPercent: saved?.stopLossPercent ?? 1,
+      takeProfitPercent: saved?.takeProfitPercent ?? 0,
+      enableShorts: saved?.enableShorts ?? false,
+    };
+  }, []);
+
   // Run batch backtest with parameter variations against all selected datasets
   const runBatchBacktest = useCallback(async () => {
-    if (selectedFiles.length === 0) return;
+    if (selectedFiles.length === 0 || selectedStrategyIds.length === 0) return;
     setIsRunningBatch(true);
     setError(null);
+
+    // Build run configs. The active strategy uses live editor state so unsaved
+    // edits are honoured; other selected strategies use their saved settings.
+    const runs = selectedStrategyIds
+      .map((sid) => {
+        if (sid === selectedStrategyId) {
+          return {
+            strategyId: sid,
+            currentParams,
+            paramVariations,
+            stopLossPercent,
+            takeProfitPercent,
+            enableShorts,
+          };
+        }
+        return buildSavedRun(sid);
+      })
+      .filter((r): r is NonNullable<typeof r> => r !== null);
 
     try {
       const response = await fetch("/api/backtest", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          strategyId: selectedStrategyId,
           selectedFiles,
-          paramVariations,
-          currentParams,
-          stopLossPercent,
-          takeProfitPercent,
-          enableShorts,
+          runs,
         }),
       });
 
@@ -447,14 +511,24 @@ export default function AlgoBacktestPage() {
     } finally {
       setIsRunningBatch(false);
     }
-  }, [selectedFiles, selectedStrategyId, paramVariations, currentParams, stopLossPercent, takeProfitPercent, enableShorts]);
+  }, [selectedFiles, selectedStrategyIds, selectedStrategyId, paramVariations, currentParams, stopLossPercent, takeProfitPercent, enableShorts, buildSavedRun]);
 
   // Generate markdown report for clipboard
   const generateMarkdownReport = useCallback(() => {
     const result = results[activeResultTab];
     if (!result) return '';
-    const strat = AVAILABLE_STRATEGIES[selectedStrategyId];
+    // Prefer the strategy this result was actually generated from. Falls back
+    // to the active editor when the API did not tag the result (legacy runs).
+    const resultStrategyId = result.strategyId ?? selectedStrategyId;
+    const strat = AVAILABLE_STRATEGIES[resultStrategyId];
     if (!strat) return '';
+
+    // Risk settings + shorts also depend on which strategy produced this result.
+    const isActiveEditorStrategy = resultStrategyId === selectedStrategyId;
+    const savedForResult = isActiveEditorStrategy ? null : loadStrategySettings(resultStrategyId);
+    const reportSL = isActiveEditorStrategy ? stopLossPercent : (savedForResult?.stopLossPercent ?? 1);
+    const reportTP = isActiveEditorStrategy ? takeProfitPercent : (savedForResult?.takeProfitPercent ?? 0);
+    const reportShorts = isActiveEditorStrategy ? enableShorts : (savedForResult?.enableShorts ?? false);
 
     const datasetLabels = selectedFiles.map(f => {
       const ds = availableDatasets.find(d => d.file === f);
@@ -472,10 +546,11 @@ export default function AlgoBacktestPage() {
       '## Inputs',
       '',
       `- **Dataset(s):** ${datasetLabels.join(', ')}`,
+      `- **Active Dataset:** ${result.datasetLabel ?? 'n/a'}`,
       `- **Initial Capital:** $${INITIAL_CAPITAL.toLocaleString()}`,
-      `- **Stop Loss:** ${stopLossPercent > 0 ? `${stopLossPercent}%` : 'Disabled'}`,
-      `- **Take Profit:** ${takeProfitPercent > 0 ? `${takeProfitPercent}%` : 'Disabled'}`,
-      `- **Short Selling:** ${enableShorts ? 'Enabled' : 'Disabled'}`,
+      `- **Stop Loss:** ${reportSL > 0 ? `${reportSL}%` : 'Disabled'}`,
+      `- **Take Profit:** ${reportTP > 0 ? `${reportTP}%` : 'Disabled'}`,
+      `- **Short Selling:** ${reportShorts ? 'Enabled' : 'Disabled'}`,
     ];
 
     if (strat.parameters && strat.parameters.length > 0) {
@@ -650,33 +725,90 @@ export default function AlgoBacktestPage() {
             )}
           </div>
 
-          {/* Strategy Selector */}
+          {/* Strategy Selector — multi-select with an "active" editor target */}
           <div className='p-4 border-b border-slate-700'>
             <div className='flex items-center justify-between mb-2'>
-              <label className='text-sm text-slate-400'>Strategy</label>
-              <button
-                onClick={() => setShowLambdaExport(true)}
-                className='flex items-center gap-1.5 px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white text-xs font-medium rounded transition-colors'
-                title='Deploy this strategy to run automatically'
-              >
-                <svg className='w-3.5 h-3.5' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                  <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12' />
-                </svg>
-                Deploy Strategy
-              </button>
+              <label className='text-sm text-slate-400'>Strategies</label>
+              <div className='flex items-center gap-2'>
+                <button
+                  onClick={() => {
+                    const allIds = Object.keys(AVAILABLE_STRATEGIES);
+                    if (selectedStrategyIds.length === allIds.length) {
+                      // Clear all but keep the active one selected so the editor stays valid
+                      setSelectedStrategyIds([selectedStrategyId]);
+                    } else {
+                      setSelectedStrategyIds(allIds);
+                    }
+                  }}
+                  className='text-xs text-blue-400 hover:text-blue-300 transition-colors'
+                >
+                  {selectedStrategyIds.length === Object.keys(AVAILABLE_STRATEGIES).length ? 'Clear All' : 'Select All'}
+                </button>
+                <span className='text-xs text-slate-500'>{selectedStrategyIds.length} selected</span>
+                <button
+                  onClick={() => setShowLambdaExport(true)}
+                  className='flex items-center gap-1.5 px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white text-xs font-medium rounded transition-colors'
+                  title='Deploy this strategy to run automatically'
+                >
+                  <svg className='w-3.5 h-3.5' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                    <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12' />
+                  </svg>
+                  Deploy
+                </button>
+              </div>
             </div>
-            <select
-              value={selectedStrategyId}
-              onChange={(e) => setSelectedStrategyId(e.target.value)}
-              className='w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white'
-            >
-              {Object.values(AVAILABLE_STRATEGIES).map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
-            <p className='text-xs text-slate-500 mt-1'>{strategy?.description}</p>
+            <div className='max-h-56 overflow-y-auto bg-slate-800 border border-slate-600 rounded p-2 space-y-1'>
+              {Object.values(AVAILABLE_STRATEGIES).map((s) => {
+                const isChecked = selectedStrategyIds.includes(s.id);
+                const isActive = s.id === selectedStrategyId;
+                return (
+                  <div
+                    key={s.id}
+                    className={`flex items-center gap-2 px-2 py-1 rounded cursor-pointer ${
+                      isActive ? 'bg-blue-900/40 ring-1 ring-blue-500' : 'hover:bg-slate-700'
+                    }`}
+                    onClick={() => {
+                      // Clicking the row makes it the active editor. If it isn't
+                      // already selected for the run, also include it.
+                      setSelectedStrategyId(s.id);
+                      setSelectedStrategyIds((prev) => prev.includes(s.id) ? prev : [...prev, s.id]);
+                    }}
+                  >
+                    <input
+                      type='checkbox'
+                      checked={isChecked}
+                      onChange={(e) => {
+                        e.stopPropagation();
+                        setSelectedStrategyIds((prev) => {
+                          if (e.target.checked) return prev.includes(s.id) ? prev : [...prev, s.id];
+                          // Don't allow unchecking the active editor — switch
+                          // active to the first remaining selection if needed.
+                          const next = prev.filter((id) => id !== s.id);
+                          if (s.id === selectedStrategyId && next.length > 0) {
+                            setSelectedStrategyId(next[0]);
+                          }
+                          return next.length > 0 ? next : prev;
+                        });
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                      className='rounded border-slate-500 bg-slate-700 text-blue-500'
+                    />
+                    <span className={`text-sm ${isActive ? 'text-blue-300 font-medium' : 'text-white'}`}>
+                      {s.name}
+                    </span>
+                    {isActive && (
+                      <span className='ml-auto text-[10px] uppercase tracking-wide text-blue-400'>editing</span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            <p className='text-xs text-slate-500 mt-2'>{strategy?.description}</p>
+            {selectedStrategyIds.length > 1 && (
+              <p className='text-xs text-amber-400 mt-1'>
+                Editing parameters for <span className='font-semibold'>{strategy?.name}</span>. Other selected strategies use their saved settings.
+              </p>
+            )}
           </div>
 
           {/* Risk Management Settings */}
@@ -725,7 +857,9 @@ export default function AlgoBacktestPage() {
           {strategy?.parameters && strategy.parameters.length > 0 && (
             <div className='p-4 border-b border-slate-700 overflow-y-auto flex-shrink-0'>
               <div className='flex items-center justify-between mb-3'>
-                <label className='text-sm text-slate-400'>Parameters</label>
+                <label className='text-sm text-slate-400'>
+                  Parameters{selectedStrategyIds.length > 1 ? ` — ${strategy?.name}` : ''}
+                </label>
                 <span className='text-xs text-slate-500'>
                   {`${combinationCount} combinations × ${selectedFiles.length} datasets`}
                 </span>
@@ -785,15 +919,29 @@ export default function AlgoBacktestPage() {
                   );
                 })}
 
-              {/* Run Batch Button */}
+              {/* Run Batch Button — totals across every selected strategy */}
               <button
                 onClick={runBatchBacktest}
-                disabled={isRunningBatch || selectedFiles.length === 0}
+                disabled={isRunningBatch || selectedFiles.length === 0 || selectedStrategyIds.length === 0}
                 className='w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:cursor-not-allowed text-white font-medium py-2 px-4 rounded transition-colors'
               >
                 {isRunningBatch
                   ? "Running..."
-                  : `Run ${combinationCount * selectedFiles.length} Variations`}
+                  : (() => {
+                      // Active strategy uses the live editor; other strategies use their saved combos.
+                      let totalRuns = combinationCount;
+                      for (const sid of selectedStrategyIds) {
+                        if (sid === selectedStrategyId) continue;
+                        const saved = buildSavedRun(sid);
+                        if (!saved) continue;
+                        totalRuns += generateCombinations(saved.paramVariations).length;
+                      }
+                      const totalRunsAcrossDatasets = totalRuns * selectedFiles.length;
+                      const stratLabel = selectedStrategyIds.length > 1
+                        ? ` across ${selectedStrategyIds.length} strategies`
+                        : '';
+                      return `Run ${totalRunsAcrossDatasets} Variations${stratLabel}`;
+                    })()}
               </button>
             </div>
           )}
@@ -813,6 +961,9 @@ export default function AlgoBacktestPage() {
                         : "bg-slate-800 hover:bg-slate-750 border border-transparent"
                     }`}
                   >
+                    {result.strategyName && (
+                      <div className='text-xs text-purple-400 mb-1 truncate font-medium'>{result.strategyName}</div>
+                    )}
                     {result.datasetLabel && (
                       <div className='text-xs text-blue-400 mb-1 truncate'>{result.datasetLabel}</div>
                     )}
@@ -858,23 +1009,31 @@ export default function AlgoBacktestPage() {
           {/* Tabs for Multiple Results */}
           {results.length > 1 && (
             <div className='flex border-b border-slate-700 bg-slate-800 overflow-x-auto'>
-              {results.slice(0, 10).map((result, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => setActiveResultTab(idx)}
-                  className={`px-4 py-2 text-xs font-medium whitespace-nowrap border-b-2 transition-colors ${
-                    activeResultTab === idx
-                      ? "border-blue-500 text-blue-400 bg-slate-900"
-                      : "border-transparent text-slate-400 hover:text-white hover:bg-slate-750"
-                  }`}
-                >
-                  #{idx + 1}{" "}
-                  <span className={result.totalPnlPercent >= 0 ? "text-green-400" : "text-red-400"}>
-                    {result.totalPnlPercent >= 0 ? "+" : ""}
-                    {result.totalPnlPercent.toFixed(1)}%
-                  </span>
-                </button>
-              ))}
+              {results.slice(0, 10).map((result, idx) => {
+                const uniqueStrategies = new Set(results.map((r) => r.strategyId).filter(Boolean));
+                const showStrategy = uniqueStrategies.size > 1 && result.strategyName;
+                return (
+                  <button
+                    key={idx}
+                    onClick={() => setActiveResultTab(idx)}
+                    title={`${result.strategyName ?? ''} ${result.datasetLabel ?? ''} ${result.label}`.trim()}
+                    className={`px-4 py-2 text-xs font-medium whitespace-nowrap border-b-2 transition-colors ${
+                      activeResultTab === idx
+                        ? "border-blue-500 text-blue-400 bg-slate-900"
+                        : "border-transparent text-slate-400 hover:text-white hover:bg-slate-750"
+                    }`}
+                  >
+                    #{idx + 1}{" "}
+                    {showStrategy && (
+                      <span className='text-purple-400 mr-1'>{result.strategyName}</span>
+                    )}
+                    <span className={result.totalPnlPercent >= 0 ? "text-green-400" : "text-red-400"}>
+                      {result.totalPnlPercent >= 0 ? "+" : ""}
+                      {result.totalPnlPercent.toFixed(1)}%
+                    </span>
+                  </button>
+                );
+              })}
               {results.length > 10 && (
                 <span className='px-4 py-2 text-xs text-slate-500'>+{results.length - 10} more</span>
               )}
@@ -884,6 +1043,12 @@ export default function AlgoBacktestPage() {
           {/* Active Result Label */}
           {activeResult && results.length > 1 && (
             <div className='px-4 py-2 bg-slate-850 border-b border-slate-700 text-xs'>
+              {activeResult.strategyName && (
+                <>
+                  <span className='text-slate-400'>Strategy: </span>
+                  <span className='text-purple-400 mr-3 font-medium'>{activeResult.strategyName}</span>
+                </>
+              )}
               {activeResult.datasetLabel && (
                 <>
                   <span className='text-slate-400'>Dataset: </span>
@@ -1026,7 +1191,7 @@ export default function AlgoBacktestPage() {
                 trades={chartTrades}
                 visibleCandles={visibleCandles}
                 onVisibleCandlesChange={setVisibleCandles}
-                selectedStrategyId={selectedStrategyId}
+                selectedStrategyId={activeResult?.strategyId ?? selectedStrategyId}
                 currentParams={activeResult?.params ?? currentParams}
                 selectedTradeId={selectedTradeId}
               />
@@ -1103,13 +1268,17 @@ export default function AlgoBacktestPage() {
         </div>
       </div>
 
-      {/* Deploy Strategy Modal */}
+      {/* Deploy Strategy Modal — deploys whichever strategy/params the user is currently viewing */}
       <LambdaExportModal
         isOpen={showLambdaExport}
         onClose={() => setShowLambdaExport(false)}
-        strategyId={selectedStrategyId}
-        strategyName={strategy?.name || selectedStrategyId}
-        params={currentParams}
+        strategyId={activeResult?.strategyId ?? selectedStrategyId}
+        strategyName={
+          activeResult?.strategyName
+            ?? AVAILABLE_STRATEGIES[activeResult?.strategyId ?? selectedStrategyId]?.name
+            ?? selectedStrategyId
+        }
+        params={activeResult?.params ?? currentParams}
         authToken={authToken}
       />
     </div>
