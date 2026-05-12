@@ -854,66 +854,135 @@ export default function AlgoBacktestPage() {
           </div>
 
           {/* Parameter Configuration */}
-          {strategy?.parameters && strategy.parameters.length > 0 && (
+          {selectedStrategyIds.length > 0 && (
             <div className='p-4 border-b border-slate-700 overflow-y-auto flex-shrink-0'>
               <div className='flex items-center justify-between mb-3'>
-                <label className='text-sm text-slate-400'>
-                  Parameters{selectedStrategyIds.length > 1 ? ` — ${strategy?.name}` : ''}
-                </label>
+                <label className='text-sm text-slate-400'>Parameters</label>
                 <span className='text-xs text-slate-500'>
-                  {`${combinationCount} combinations × ${selectedFiles.length} datasets`}
+                  {`${selectedStrategyIds.length} ${selectedStrategyIds.length === 1 ? 'strategy' : 'strategies'} × ${selectedFiles.length} datasets`}
                 </span>
               </div>
 
-              {strategy.parameters
-                .filter((param) => param.type === 'number')
-                .map((param) => {
-                  const variation = paramVariations.find((v) => v.key === param.key);
+              {/* Active strategy — full editable block */}
+              {strategy?.parameters && strategy.parameters.length > 0 && (
+                <div className='mb-4 border border-blue-500/40 bg-blue-950/20 rounded p-3'>
+                  <div className='flex items-center justify-between mb-3'>
+                    <div>
+                      <span className='text-sm text-blue-300 font-semibold'>{strategy.name}</span>
+                      <span className='ml-2 text-[10px] uppercase tracking-wide text-blue-400'>editing</span>
+                    </div>
+                    <span className='text-xs text-slate-500'>{combinationCount} combinations</span>
+                  </div>
+
+                  {strategy.parameters
+                    .filter((param) => param.type === 'number')
+                    .map((param) => {
+                      const variation = paramVariations.find((v) => v.key === param.key);
+
+                      return (
+                        <div key={param.key} className='mb-3 bg-slate-800 rounded p-3'>
+                          <div className='mb-2'>
+                            <span className='text-sm text-white font-medium'>{param.name}</span>
+                            <p className='text-xs text-slate-500'>{param.description}</p>
+                          </div>
+
+                          <div className='grid grid-cols-2 gap-2'>
+                            <div>
+                              <label className='block text-xs text-slate-400 mb-1'>Min</label>
+                              <input
+                                type='number'
+                                value={variation?.min ?? param.min ?? Number(param.default)}
+                                min={param.min}
+                                max={param.max}
+                                step={param.step}
+                                onChange={(e) => {
+                                  const parsed = parseFloat(e.target.value);
+                                  const newMin = isNaN(parsed) ? Number(param.min ?? param.default) : parsed;
+                                  setParamVariations((prev) =>
+                                    prev.map((v) => (v.key === param.key ? { ...v, min: newMin } : v))
+                                  );
+                                }}
+                                className='w-full bg-slate-900 border border-slate-600 rounded px-2 py-1 text-sm text-white'
+                              />
+                            </div>
+                            <div>
+                              <label className='block text-xs text-slate-400 mb-1'>Max</label>
+                              <input
+                                type='number'
+                                value={variation?.max ?? param.max ?? Number(param.default)}
+                                min={param.min}
+                                max={param.max}
+                                step={param.step}
+                                onChange={(e) => {
+                                  const parsed = parseFloat(e.target.value);
+                                  const newMax = isNaN(parsed) ? Number(param.max ?? param.default) : parsed;
+                                  setParamVariations((prev) =>
+                                    prev.map((v) => (v.key === param.key ? { ...v, max: newMax } : v))
+                                  );
+                                }}
+                                className='w-full bg-slate-900 border border-slate-600 rounded px-2 py-1 text-sm text-white'
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              )}
+
+              {/* Other selected strategies — read-only summary cards (click to edit) */}
+              {selectedStrategyIds
+                .filter((sid) => sid !== selectedStrategyId)
+                .map((sid) => {
+                  const otherStrat = AVAILABLE_STRATEGIES[sid];
+                  if (!otherStrat) return null;
+                  const savedRun = buildSavedRun(sid);
+                  if (!savedRun) return null;
+                  const numericParams = otherStrat.parameters?.filter((p) => p.type === 'number') ?? [];
+                  const otherCombos = generateCombinations(savedRun.paramVariations).length;
 
                   return (
-                    <div key={param.key} className='mb-4 bg-slate-800 rounded p-3'>
-                      <div className='mb-2'>
-                        <span className='text-sm text-white font-medium'>{param.name}</span>
-                        <p className='text-xs text-slate-500'>{param.description}</p>
+                    <div
+                      key={sid}
+                      onClick={() => setSelectedStrategyId(sid)}
+                      className='mb-3 border border-slate-700 hover:border-blue-500/60 bg-slate-800/50 rounded p-3 cursor-pointer transition-colors'
+                      title='Click to edit this strategy'
+                    >
+                      <div className='flex items-center justify-between mb-2'>
+                        <div>
+                          <span className='text-sm text-white font-semibold'>{otherStrat.name}</span>
+                          <span className='ml-2 text-[10px] uppercase tracking-wide text-slate-500'>saved</span>
+                        </div>
+                        <span className='text-xs text-slate-500'>{otherCombos} combinations</span>
                       </div>
-
-                      <div className='grid grid-cols-2 gap-2'>
-                        <div>
-                          <label className='block text-xs text-slate-400 mb-1'>Min</label>
-                          <input
-                            type='number'
-                            value={variation?.min ?? param.min ?? Number(param.default)}
-                            min={param.min}
-                            max={param.max}
-                            step={param.step}
-                            onChange={(e) => {
-                              const parsed = parseFloat(e.target.value);
-                              const newMin = isNaN(parsed) ? Number(param.min ?? param.default) : parsed;
-                              setParamVariations((prev) =>
-                                prev.map((v) => (v.key === param.key ? { ...v, min: newMin } : v))
-                              );
-                            }}
-                            className='w-full bg-slate-900 border border-slate-600 rounded px-2 py-1 text-sm text-white'
-                          />
+                      {numericParams.length === 0 ? (
+                        <p className='text-xs text-slate-500'>No tunable parameters</p>
+                      ) : (
+                        <div className='space-y-1'>
+                          {numericParams.map((param) => {
+                            const variation = savedRun.paramVariations.find((v) => v.key === param.key);
+                            const min = variation?.min ?? param.min ?? Number(param.default);
+                            const max = variation?.max ?? param.max ?? Number(param.default);
+                            const isRange = min !== max;
+                            return (
+                              <div key={param.key} className='flex items-center justify-between text-xs'>
+                                <span className='text-slate-400'>{param.name}</span>
+                                <span className='font-mono text-slate-300'>
+                                  {isRange ? `${min} → ${max}` : String(min)}
+                                </span>
+                              </div>
+                            );
+                          })}
                         </div>
-                        <div>
-                          <label className='block text-xs text-slate-400 mb-1'>Max</label>
-                          <input
-                            type='number'
-                            value={variation?.max ?? param.max ?? Number(param.default)}
-                            min={param.min}
-                            max={param.max}
-                            step={param.step}
-                            onChange={(e) => {
-                              const parsed = parseFloat(e.target.value);
-                              const newMax = isNaN(parsed) ? Number(param.max ?? param.default) : parsed;
-                              setParamVariations((prev) =>
-                                prev.map((v) => (v.key === param.key ? { ...v, max: newMax } : v))
-                              );
-                            }}
-                            className='w-full bg-slate-900 border border-slate-600 rounded px-2 py-1 text-sm text-white'
-                          />
-                        </div>
+                      )}
+                      <div className='mt-2 pt-2 border-t border-slate-700/60 flex items-center justify-between text-[11px] text-slate-500'>
+                        <span>
+                          SL {savedRun.stopLossPercent > 0 ? `${savedRun.stopLossPercent}%` : 'off'}
+                          {' · '}
+                          TP {savedRun.takeProfitPercent > 0 ? `${savedRun.takeProfitPercent}%` : 'off'}
+                          {savedRun.enableShorts ? ' · shorts on' : ''}
+                        </span>
+                        <span className='text-blue-400'>Click to edit →</span>
                       </div>
                     </div>
                   );
