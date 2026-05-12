@@ -14,6 +14,14 @@ import {
 } from "@/app/lib/backtest-engine";
 
 export const dynamic = "force-dynamic";
+// Extend beyond Vercel's 10s default — intraday data can have 10k–15k bars.
+// Hobby tier caps at 60s; Pro/Enterprise can set up to 300s.
+export const maxDuration = 60;
+
+// Maximum bars of indicator data sent back for the chart.
+// The chart's MAX_CANDLES is 1000; 2000 gives comfortable scrollback without
+// bloating responses with weeks of 2-minute bars.
+const MAX_CHART_BARS = 2000;
 
 const TOP_RESULTS_WITH_FULL_DATA = 10;
 
@@ -27,10 +35,11 @@ interface BacktestRequest {
   enableShorts: boolean;
 }
 
-function parseCSV(filePath: string): PricePoint[] {
-  const csvText = fs.readFileSync(filePath, "utf-8");
+// Async so the event loop isn't blocked reading ~1MB CSV files.
+async function parseCSV(filePath: string): Promise<PricePoint[]> {
+  const csvText = await fs.promises.readFile(filePath, "utf-8");
   const lines = csvText.trim().split("\n");
-  lines.shift();
+  lines.shift(); // header
   return lines
     .map((line) => {
       const values = line.split(",");
@@ -92,8 +101,11 @@ export async function POST(request: NextRequest) {
     const batchResults: ParameterizedResult[] = [];
     const failedDatasets: string[] = [];
 
-    // Process one dataset at a time — indicator data is discarded after each dataset's
-    // combinations are run, keeping peak memory to O(1 dataset) instead of O(all datasets).
+    // Cache raw price data from the first pass so the second pass (for chart
+    // indicator data) can skip re-reading the CSV files.
+    const rawDataCache = new Map<string, PricePoint[]>();
+
+    // Process one dataset at a time to keep peak memory bounded.
     for (const datasetFile of selectedFiles) {
       const filePath = path.join(dataDir, datasetFile);
       if (!fs.existsSync(filePath)) {
@@ -103,7 +115,7 @@ export async function POST(request: NextRequest) {
 
       let rawData: PricePoint[];
       try {
-        rawData = parseCSV(filePath);
+        rawData = await parseCSV(filePath);
       } catch (err) {
         failedDatasets.push(`${datasetFile}: ${err instanceof Error ? err.message : "parse error"}`);
         continue;
@@ -113,6 +125,8 @@ export async function POST(request: NextRequest) {
         failedDatasets.push(`${datasetFile}: no data`);
         continue;
       }
+
+      rawDataCache.set(datasetFile, rawData);
 
       const dataWithIndicators = calculateIndicatorsWithParams(
         rawData,
@@ -133,8 +147,6 @@ export async function POST(request: NextRequest) {
         );
         batchResults.push({ ...result, dataset: datasetFile, datasetLabel: datasetFile });
       }
-
-      // dataWithIndicators goes out of scope here — eligible for GC before next dataset loads
     }
 
     batchResults.sort((a, b) => b.totalPnlPercent - a.totalPnlPercent);
@@ -144,8 +156,8 @@ export async function POST(request: NextRequest) {
       batchResults[i].trades = [];
     }
 
-    // Re-load indicator data only for the unique datasets that appear in the top results.
-    // We do this after sorting so we only pay the cost for datasets users will actually see.
+    // Build chart indicator data only for datasets that appear in the top results.
+    // Reuse cached raw data to skip the second CSV read — only recalculate indicators.
     const top10Datasets = [...new Set(
       batchResults.slice(0, TOP_RESULTS_WITH_FULL_DATA)
         .map((r) => r.dataset)
@@ -154,19 +166,22 @@ export async function POST(request: NextRequest) {
 
     const indicatorDataByDataset: Record<string, ReturnType<typeof calculateIndicatorsWithParams>> = {};
     for (const datasetFile of top10Datasets) {
-      const filePath = path.join(dataDir, datasetFile);
-      if (!fs.existsSync(filePath)) continue;
+      const rawData = rawDataCache.get(datasetFile);
+      if (!rawData) continue; // shouldn't happen — already validated above
       try {
-        const rawData = parseCSV(filePath);
-        indicatorDataByDataset[datasetFile] = calculateIndicatorsWithParams(
+        const allBars = calculateIndicatorsWithParams(
           rawData,
           requiredEMAs,
           requiredSMAs,
           requiredMACDs,
           requiredDonchianPeriods
         );
+        // Cap chart data to the last MAX_CHART_BARS to keep the JSON response
+        // lean on large intraday datasets (14k+ bars for 2-minute data).
+        indicatorDataByDataset[datasetFile] =
+          allBars.length > MAX_CHART_BARS ? allBars.slice(-MAX_CHART_BARS) : allBars;
       } catch {
-        // if re-read fails, chart just won't update for this tab
+        // if calculation fails, chart just won't update for this tab
       }
     }
 

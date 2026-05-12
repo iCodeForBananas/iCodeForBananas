@@ -272,8 +272,11 @@ export function runBacktestWithParams(
   } | null = null;
   let tradeId = 1;
   // Accumulates the stop level at each bar while a position is open.
-  // Flushed (with a copy) into each trade when it closes; reset between trades.
+  // Uses inflection-only storage: skips duplicate consecutive values (a fixed
+  // SL never changes → stored as a single point; an EMA-based stop changes
+  // every bar → all points stored, but capped at MAX_TRAIL_POINTS_PER_TRADE).
   let trailSeries: { time: number; price: number }[] = [];
+  const MAX_TRAIL_POINTS_PER_TRADE = 500;
 
   const trailingStopEmaPeriod = (params.trailingStopEmaPeriod as number) ?? 0;
   // True when any stop is active — avoids building an unused array
@@ -286,14 +289,20 @@ export function runBacktestWithParams(
 
     // Record the effective stop level at the start of this bar before any exit checks.
     // For EMA-based trailing stops the level ratchets with price; for fixed SL it is flat.
-    if (position && hasStopMechanism) {
+    if (position && hasStopMechanism && trailSeries.length < MAX_TRAIL_POINTS_PER_TRADE) {
       let stopLevel: number | undefined;
       if (trailingStopEmaPeriod > 0) {
         stopLevel = current[`ema${trailingStopEmaPeriod}` as keyof typeof current] as number | undefined;
       } else if (position.stopLoss !== undefined) {
         stopLevel = position.stopLoss;
       }
-      if (stopLevel !== undefined) trailSeries.push({ time: current.time, price: stopLevel });
+      // Inflection-only: skip if the stop level hasn't changed since last recorded point
+      if (
+        stopLevel !== undefined &&
+        (trailSeries.length === 0 || trailSeries[trailSeries.length - 1].price !== stopLevel)
+      ) {
+        trailSeries.push({ time: current.time, price: stopLevel });
+      }
     }
 
     if (position && riskSettings) {
