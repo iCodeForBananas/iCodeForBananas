@@ -398,41 +398,6 @@ export default function AlgoBacktestPage() {
     });
   }, [selectedStrategyId, currentParams, paramVariations, stopLossPercent, takeProfitPercent, enableShorts]);
 
-  // Run single backtest for the first selected file via API (used for preview on file change)
-  const runSingleBacktest = useCallback(async () => {
-    if (selectedFiles.length === 0) return;
-    setIsRunningBatch(true);
-    setError(null);
-    try {
-      const response = await fetch("/api/backtest", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          strategyId: selectedStrategyId,
-          selectedFiles: [selectedFiles[0]],
-          paramVariations: [],
-          currentParams,
-          stopLossPercent,
-          takeProfitPercent,
-          enableShorts,
-        }),
-      });
-      const data = await response.json();
-      if (!data.success) { setError(data.error || "Backtest failed"); return; }
-      datasetIndicatorCache.current = data.indicatorDataByDataset ?? {};
-      setResults(data.results ?? []);
-      setActiveResultTab(0);
-      const first = data.results?.[0];
-      if (first?.dataset && data.indicatorDataByDataset?.[first.dataset]) {
-        setIndicatorData(data.indicatorDataByDataset[first.dataset]);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Backtest failed");
-    } finally {
-      setIsRunningBatch(false);
-    }
-  }, [selectedFiles, selectedStrategyId, currentParams, stopLossPercent, takeProfitPercent, enableShorts]);
-
   // Run batch backtest with parameter variations against all selected datasets
   const runBatchBacktest = useCallback(async () => {
     if (selectedFiles.length === 0) return;
@@ -569,13 +534,7 @@ export default function AlgoBacktestPage() {
     }
   }, [generateMarkdownReport]);
 
-  // Auto-run preview when the selected file changes
-  useEffect(() => {
-    if (selectedFiles.length > 0 && Object.keys(currentParams).length > 0) {
-      runSingleBacktest();
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedFiles[0]]);
+  // Backtest only runs on explicit button click ("Run N Variations") — no auto-run on file or param change.
 
   // Update chart data when switching between result tabs with different datasets
   useEffect(() => {
