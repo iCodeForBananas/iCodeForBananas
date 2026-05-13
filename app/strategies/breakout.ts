@@ -21,27 +21,23 @@ const parameters: StrategyParameter[] = [
     description: `Number of bars to look back for breakout detection (default: ${DEFAULT_LOOKBACK_PERIOD})`,
     type: 'number',
     default: DEFAULT_LOOKBACK_PERIOD,
-    min: 5,
-    max: 100,
     step: 1,
   },
   {
     key: 'trailingStopEmaPeriod',
     name: 'Trailing Stop EMA Period',
-    description: `EMA period for trailing stop exit (default: ${DEFAULT_TRAILING_STOP_EMA_PERIOD}). Set to 0 to use opposite breakout exit.`,
+    description: `EMA period for per-bar trailing stop exit (default: ${DEFAULT_TRAILING_STOP_EMA_PERIOD}). Set to 0 to disable; exits will then only fire on opposite-direction breakouts.`,
     type: 'number',
     default: DEFAULT_TRAILING_STOP_EMA_PERIOD,
-    min: 0,
-    max: 200,
     step: 1,
   },
 ];
 
 const handler: StrategyHandler = ({ current, index, series, params }) => {
-  const lookbackPeriod = (params.lookbackPeriod as number) || DEFAULT_LOOKBACK_PERIOD;
+  const lookbackPeriod = (params.lookbackPeriod as number) ?? DEFAULT_LOOKBACK_PERIOD;
   // trailingStopEmaPeriod is consumed by the engine (not the handler) — it
-  // reads `params.trailingStopEmaPeriod` directly to apply a trailing stop on
-  // bar exits. Keep it as a declared parameter so the UI can configure it.
+  // reads `params.trailingStopEmaPeriod` directly to run a per-bar trailing
+  // EMA stop. Keep it as a declared parameter so the UI can configure it.
 
   // Need enough data for lookback period
   if (index < lookbackPeriod) {
@@ -59,35 +55,29 @@ const handler: StrategyHandler = ({ current, index, series, params }) => {
     if (c < lowestClose) lowestClose = c;
   }
 
-  const priceForBuySignal = current.close;
-  const priceForSellSignal = current.close;
-  const highestHigh = highestClose;
-  const lowestLow = lowestClose;
+  const price = current.close;
 
   // Breakout above the highest close - BUY signal (long entry / short exit)
-  if (priceForBuySignal > highestHigh) {
+  if (price > highestClose) {
     return {
       action: 'buy',
-      reason: `Breakout above ${lookbackPeriod}-period high (${priceForBuySignal.toFixed(2)} > ${highestHigh.toFixed(2)})`,
+      reason: `Breakout above ${lookbackPeriod}-period highest close (${price.toFixed(2)} > ${highestClose.toFixed(2)})`,
     };
   }
 
-  // Breakdown below the lowest low - SELL signal (short entry / long exit)
-  if (priceForSellSignal < lowestLow) {
+  // Breakdown below the lowest close - SELL signal (short entry / long exit)
+  if (price < lowestClose) {
     return {
       action: 'sell',
-      reason: `Breakdown below ${lookbackPeriod}-period low (${priceForSellSignal.toFixed(2)} < ${lowestLow.toFixed(2)})`,
+      reason: `Breakdown below ${lookbackPeriod}-period lowest close (${price.toFixed(2)} < ${lowestClose.toFixed(2)})`,
     };
   }
 
-  // NOTE on exits: prior versions of this handler returned buy/sell here on
-  // EMA crossover events to act as a trailing-stop "close". That was wrong —
-  // the strategy handler has no position context, so the engine treated those
-  // signals as fresh entries when flat (it opened longs after EMA crossovers
-  // even though no breakout had occurred). The engine has built-in trailing-
-  // stop-EMA support that runs only when an opposite-direction breakout fires
-  // while a position is open (see backtest-engine.ts), so the right behavior
-  // here is simply to hold until the next genuine breakout.
+  // Exits via opposite-direction breakouts above OR via the engine's per-bar
+  // trailing-stop EMA (params.trailingStopEmaPeriod, runs in backtest-engine.ts).
+  // Earlier versions of this handler returned buy/sell on EMA crossovers
+  // directly — that was wrong because the handler has no position context
+  // and the engine treated such signals as fresh entries when flat.
 
   return { action: 'hold', reason: 'Within range' };
 };

@@ -333,6 +333,50 @@ export function runBacktestWithParams(
       }
     }
 
+    // Per-bar trailing-EMA stop. Independent of riskSettings so it works even
+    // when no SL/TP is configured. Exits at the EMA value the moment the bar's
+    // range crosses it (low <= ema for longs, high >= ema for shorts). Skipped
+    // on the entry bar so a fresh position isn't immediately stopped out by an
+    // EMA already on the wrong side of price.
+    if (position && trailingStopEmaPeriod > 0 && i > position.entryIdx) {
+      const emaKey = `ema${trailingStopEmaPeriod}` as keyof typeof current;
+      const emaVal = current[emaKey] as number | undefined;
+      if (emaVal !== undefined) {
+        const crossed =
+          position.side === PositionSide.LONG
+            ? current.low <= emaVal
+            : current.high >= emaVal;
+        if (crossed) {
+          const exitPrice = emaVal;
+          const exitReason = `Trailing stop EMA ${trailingStopEmaPeriod} hit (exited at ${emaVal.toFixed(2)})`;
+          const pnl =
+            position.side === PositionSide.LONG
+              ? (exitPrice - position.entryPrice) * (equity / position.entryPrice)
+              : (position.entryPrice - exitPrice) * (equity / position.entryPrice);
+          const pnlPercent =
+            ((exitPrice - position.entryPrice) / position.entryPrice) *
+            100 *
+            (position.side === PositionSide.LONG ? 1 : -1);
+          equity += pnl;
+          trades.push({
+            id: `trade-${tradeId++}`,
+            side: position.side,
+            entryPrice: position.entryPrice,
+            entryTime: position.entryTime,
+            exitPrice,
+            exitTime: current.time,
+            pnl,
+            pnlPercent,
+            reason: exitReason,
+            trailingSeries: trailSeries.length > 0 ? [...trailSeries] : undefined,
+          });
+          position = null;
+          trailSeries = [];
+          exitedViaRiskThisBar = true;
+        }
+      }
+    }
+
     if (position && riskSettings) {
       let exitPrice: number | null = null;
       let exitReason: string | null = null;
@@ -458,29 +502,11 @@ export function runBacktestWithParams(
       }
       position = { side: PositionSide.LONG, entryPrice, entryTime: current.time, entryIdx: i, stopLoss, takeProfit };
     } else if (signal.action === "buy" && position && position.side === PositionSide.SHORT) {
-      let exitPrice = current.close;
-      let exitReason = signal.reason;
-      if (trailingStopEmaPeriod > 0) {
-        const emaKey = `ema${trailingStopEmaPeriod}` as keyof typeof current;
-        const trailingStopEma = current[emaKey] as number | undefined;
-        if (trailingStopEma !== undefined && current.high >= trailingStopEma) {
-          exitPrice = trailingStopEma;
-          exitReason = `Trailing stop EMA ${trailingStopEmaPeriod} hit (exited at EMA ${trailingStopEma.toFixed(2)})`;
-        }
-      }
-      closePosition(exitPrice, exitReason);
+      // Trailing-EMA stop runs above (per-bar). If we got here, the EMA wasn't
+      // crossed this bar, so the close is the correct exit price.
+      closePosition(current.close, signal.reason);
     } else if (signal.action === "sell" && position && position.side === PositionSide.LONG) {
-      let exitPrice = current.close;
-      let exitReason = signal.reason;
-      if (trailingStopEmaPeriod > 0) {
-        const emaKey = `ema${trailingStopEmaPeriod}` as keyof typeof current;
-        const trailingStopEma = current[emaKey] as number | undefined;
-        if (trailingStopEma !== undefined && current.low <= trailingStopEma) {
-          exitPrice = trailingStopEma;
-          exitReason = `Trailing stop EMA ${trailingStopEmaPeriod} hit (exited at EMA ${trailingStopEma.toFixed(2)})`;
-        }
-      }
-      closePosition(exitPrice, exitReason);
+      closePosition(current.close, signal.reason);
     } else if (signal.action === "sell" && !position && enableShorts && !exitedViaRiskThisBar) {
       const entryPrice = current.close;
       let stopLoss: number | undefined;

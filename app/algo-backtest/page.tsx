@@ -651,10 +651,11 @@ export default function AlgoBacktestPage() {
   }
 
   return (
-    <div className='flex flex-col h-screen bg-slate-900 text-white overflow-hidden'>
-      <div className='flex-1 flex overflow-hidden'>
-        {/* Left Panel - Strategy & Parameters */}
-        <div className='w-[450px] flex-shrink-0 border-r border-slate-700 flex flex-col overflow-y-auto'>
+    <div className='flex flex-col min-h-screen bg-slate-900 text-white'>
+      <div className='flex-1 flex flex-col lg:flex-row'>
+        {/* Left Panel - Strategy & Parameters. On desktop it sticks so the
+            controls stay visible while the right column scrolls past it. */}
+        <div className='w-full lg:w-[450px] flex-shrink-0 border-r border-slate-700 flex flex-col lg:sticky lg:top-0 lg:self-start lg:max-h-screen lg:overflow-y-auto'>
           {/* Dataset Selector - Multi-select */}
           <div className='p-4 border-b border-slate-700'>
             <div className='flex items-center justify-between mb-2'>
@@ -1081,8 +1082,8 @@ export default function AlgoBacktestPage() {
           )}
         </div>
 
-        {/* Right Panel - Chart and Stats */}
-        <div className='flex-1 flex flex-col overflow-hidden'>
+        {/* Right Panel - Chart and Stats. Auto-height — the whole page scrolls. */}
+        <div className='flex-1 flex flex-col min-w-0'>
           {/* Tabs for Multiple Results */}
           {results.length > 1 && (
             <div className='flex border-b border-slate-700 bg-slate-800 overflow-x-auto'>
@@ -1259,10 +1260,11 @@ export default function AlgoBacktestPage() {
             />
           )}
 
-          {/* Charts Container */}
-          <div className='flex-1 flex flex-col overflow-hidden'>
+          {/* Charts Container — fixed-height blocks so the chart is comfortably
+              tall (was flex-1 inside an h-screen, which compressed it). */}
+          <div className='flex flex-col'>
             {/* Price Chart */}
-            <div className={showEquityCurve ? 'flex-1 min-h-0' : 'flex-1 overflow-hidden'}>
+            <div className='h-[640px]'>
               <BacktestChart
                 data={indicatorData}
                 trades={chartTrades}
@@ -1276,7 +1278,7 @@ export default function AlgoBacktestPage() {
 
             {/* Equity Curve Chart (Separate) */}
             {showEquityCurve && activeResult && (
-              <div className='h-40 border-t border-slate-700'>
+              <div className='h-48 border-t border-slate-700'>
                 <EquityCurveChart
                   equityCurve={activeResult.equityCurve}
                   initialCapital={INITIAL_CAPITAL}
@@ -1287,7 +1289,7 @@ export default function AlgoBacktestPage() {
 
           {/* Trade Log */}
           {activeResult && activeResult.trades.length > 0 && (
-            <div className='h-48 border-t border-slate-700 overflow-hidden flex flex-col'>
+            <div className='h-96 border-t border-slate-700 overflow-hidden flex flex-col'>
               <div className='px-4 py-2 bg-slate-800 text-sm font-semibold border-b border-slate-700'>
                 Trade Log ({activeResult.trades.length} trades)
               </div>
