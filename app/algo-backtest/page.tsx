@@ -18,6 +18,7 @@ import {
   INITIAL_CAPITAL,
   MAX_BATCH_RUNS,
 } from "@/app/lib/backtest-engine";
+import { useBacktestWorker } from "./useBacktestWorker";
 
 const DEFAULT_VISIBLE_CANDLES = 300;
 
@@ -267,6 +268,10 @@ export default function AlgoBacktestPage() {
   const [takeProfitPercent, setTakeProfitPercent] = useState<number>(0);
   const [enableShorts, setEnableShorts] = useState<boolean>(false);
 
+  // Web Worker — owns all backtest compute. Replaces /api/backtest, which was
+  // OOMing on Vercel (1.8 GB lambda heap) under multi-strategy / wide sweeps.
+  const { run: runBacktestWorker, progress: backtestProgress } = useBacktestWorker();
+
   // Unique timeframes derived from available datasets
   const uniqueTimeframes = useMemo(() => {
     const timeframes = Array.from(new Set(availableDatasets.map((ds) => ds.timeframe)));
@@ -459,15 +464,14 @@ export default function AlgoBacktestPage() {
 
   // Run batch backtest with parameter variations against all selected datasets.
   //
-  // Multi-strategy runs fan out as one HTTP request *per strategy* in parallel.
-  // Vercel caps each invocation at 60s, so a single combined request blew the
-  // budget once you select more than a couple of strategies. Splitting keeps
-  // each call small and lets results stream back as they finish.
+  // Compute happens in a Web Worker on the user's machine (see backtest.worker.ts).
+  // The worker fetches CSVs via /api/csv and runs the entire indicator + backtest
+  // pipeline off the main thread, so the UI stays responsive and we don't hit
+  // Vercel's lambda memory/time limits.
   const runBatchBacktest = useCallback(async () => {
     if (selectedFiles.length === 0 || selectedStrategyIds.length === 0) return;
     setIsRunningBatch(true);
     setError(null);
-    // Reset prior results so the UI reflects only the current run.
     setResults([]);
     datasetIndicatorCache.current = {};
 
@@ -489,72 +493,27 @@ export default function AlgoBacktestPage() {
       .filter((r): r is NonNullable<typeof r> => r !== null);
 
     try {
-      const responses = await Promise.all(
-        perStrategyRuns.map((run) =>
-          fetch("/api/backtest", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ selectedFiles, runs: [run] }),
-          })
-            .then(async (res) => ({ run, ok: res.ok, status: res.status, body: await res.json().catch(() => null) }))
-            .catch((err) => ({
-              run,
-              ok: false,
-              status: 0,
-              body: { error: err instanceof Error ? err.message : "Network error" },
-            }))
-        )
-      );
+      const { results: workerResults, indicatorDataByDataset, failedDatasets } =
+        await runBacktestWorker(selectedFiles, perStrategyRuns);
 
-      // Aggregate results + indicator caches across all strategies.
-      const aggregatedResults: ParameterizedResult[] = [];
-      const aggregatedIndicators: Record<string, IndicatorData[]> = {};
-      const failureMessages: string[] = [];
-      const allFailedDatasets: string[] = [];
-
-      for (const r of responses) {
-        if (!r.ok || !r.body?.success) {
-          const msg = r.body?.error ?? `HTTP ${r.status}`;
-          failureMessages.push(`${r.run.strategyId}: ${msg}`);
-          continue;
-        }
-        if (Array.isArray(r.body.results)) aggregatedResults.push(...r.body.results);
-        if (r.body.indicatorDataByDataset) {
-          // First writer wins — datasets appear in every response identically.
-          for (const [k, v] of Object.entries(r.body.indicatorDataByDataset)) {
-            if (!aggregatedIndicators[k]) aggregatedIndicators[k] = v as IndicatorData[];
-          }
-        }
-        if (Array.isArray(r.body.failedDatasets)) allFailedDatasets.push(...r.body.failedDatasets);
-      }
-
-      // Sort by P&L so the top results bubble to tab #1 across strategies.
-      aggregatedResults.sort((a, b) => b.totalPnlPercent - a.totalPnlPercent);
-
-      datasetIndicatorCache.current = aggregatedIndicators;
-      setResults(aggregatedResults);
+      datasetIndicatorCache.current = indicatorDataByDataset;
+      setResults(workerResults);
       setActiveResultTab(0);
 
-      const first = aggregatedResults[0];
-      if (first?.dataset && aggregatedIndicators[first.dataset]) {
-        setIndicatorData(aggregatedIndicators[first.dataset]);
+      const first = workerResults[0];
+      if (first?.dataset && indicatorDataByDataset[first.dataset]) {
+        setIndicatorData(indicatorDataByDataset[first.dataset]);
       }
 
-      const errs: string[] = [];
-      if (failureMessages.length > 0) {
-        errs.push(`${failureMessages.length} strategy run(s) failed: ${failureMessages.join("; ")}`);
+      if (failedDatasets.length > 0) {
+        setError(`Failed to load ${failedDatasets.length} dataset(s): ${failedDatasets.join("; ")}`);
       }
-      if (allFailedDatasets.length > 0) {
-        const unique = [...new Set(allFailedDatasets)];
-        errs.push(`Failed to load ${unique.length} dataset(s): ${unique.join("; ")}`);
-      }
-      if (errs.length > 0) setError(errs.join(" | "));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Backtest request failed");
+      setError(err instanceof Error ? err.message : "Backtest failed");
     } finally {
       setIsRunningBatch(false);
     }
-  }, [selectedFiles, selectedStrategyIds, selectedStrategyId, paramVariations, currentParams, stopLossPercent, takeProfitPercent, enableShorts, buildSavedRun]);
+  }, [selectedFiles, selectedStrategyIds, selectedStrategyId, paramVariations, currentParams, stopLossPercent, takeProfitPercent, enableShorts, buildSavedRun, runBacktestWorker]);
 
   // Generate markdown report for clipboard
   const generateMarkdownReport = useCallback(() => {
@@ -1040,7 +999,9 @@ export default function AlgoBacktestPage() {
                 className='w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:cursor-not-allowed text-white font-medium py-2 px-4 rounded transition-colors'
               >
                 {isRunningBatch
-                  ? "Running..."
+                  ? backtestProgress
+                    ? `Running ${backtestProgress.completed}/${backtestProgress.total}…`
+                    : "Running..."
                   : !mounted
                   ? `Run ${combinationCount * selectedFiles.length} Variations`
                   : (() => {
