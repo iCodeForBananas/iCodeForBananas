@@ -11,8 +11,9 @@ export async function GET(request: NextRequest) {
   }
 
   // Reject anything that isn't a plain .csv basename — blocks path traversal.
+  // `=` is allowed for futures tickers (e.g. ES=F, NQ=F).
   const safe = path.basename(file);
-  if (safe !== file || !/^[A-Za-z0-9._-]+\.csv$/.test(safe)) {
+  if (safe !== file || !/^[A-Za-z0-9._=-]+\.csv$/.test(safe)) {
     return NextResponse.json({ success: false, error: "Invalid file name" }, { status: 400 });
   }
 

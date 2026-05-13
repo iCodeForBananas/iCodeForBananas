@@ -89,7 +89,10 @@ function projectChartRows(rows: IndicatorData[], keys: Set<string>): IndicatorDa
 }
 
 async function fetchCsv(file: string): Promise<PricePoint[]> {
-  const res = await fetch(`/api/csv?file=${encodeURIComponent(file)}`);
+  // Workers don't have a document base, so relative URLs throw — resolve
+  // against the worker's own origin (same-origin as the page that spawned it).
+  const url = new URL(`/api/csv?file=${encodeURIComponent(file)}`, self.location.origin);
+  const res = await fetch(url);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const csvText = await res.text();
   const lines = csvText.trim().split("\n");

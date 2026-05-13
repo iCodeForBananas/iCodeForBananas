@@ -7,6 +7,7 @@ import { useAuth } from "@/app/hooks/useAuth";
 
 const MOBILE_BREAKPOINT = 1024;
 const isMobileDevice = () => window.innerWidth < MOBILE_BREAKPOINT;
+const SIDEBAR_OPEN_KEY = "sidebar-open";
 
 const NAV = [
   {
@@ -66,7 +67,15 @@ export default function Sidebar() {
   useEffect(() => {
     const mobile = isMobileDevice();
     setIsMobile(mobile);
-    setIsOpen(!mobile);
+    // Mobile always starts closed regardless of stored preference (avoids
+    // the sidebar covering content on a phone). Desktop restores from
+    // localStorage, defaulting to open on first visit.
+    if (mobile) {
+      setIsOpen(false);
+    } else {
+      const stored = localStorage.getItem(SIDEBAR_OPEN_KEY);
+      setIsOpen(stored === null ? true : stored === "true");
+    }
     requestAnimationFrame(() => setHasMounted(true));
   }, []);
 
@@ -80,7 +89,21 @@ export default function Sidebar() {
     return () => window.removeEventListener("resize", checkScreenSize);
   }, []);
 
-  const toggle = () => setIsOpen((prev) => !prev);
+  const toggle = () => {
+    setIsOpen((prev) => {
+      const next = !prev;
+      // Only persist on desktop — mobile toggles are transient and shouldn't
+      // override the user's desktop preference next time they sit down.
+      if (!isMobileDevice()) {
+        try {
+          localStorage.setItem(SIDEBAR_OPEN_KEY, String(next));
+        } catch {
+          // localStorage may be disabled (private mode); fall back to in-memory state.
+        }
+      }
+      return next;
+    });
+  };
 
   return (
     <>
