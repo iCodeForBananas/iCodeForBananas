@@ -26,19 +26,31 @@ const parameters: StrategyParameter[] = [
   },
 ];
 
-const handler: StrategyHandler = ({ current, previous, params }) => {
+const handler: StrategyHandler = ({ current, previous, index, params }) => {
   const fastPeriod = (params.fastPeriod as number) || 9;
   const slowPeriod = (params.slowPeriod as number) || 21;
-  
+
+  // Belt-and-suspenders: even with the engine's SMA-seeded EMAs, refuse to
+  // signal until the slow EMA has had its full warmup window — avoids any
+  // chance of trading on an EMA that just emerged from undefined.
+  if (index < slowPeriod) {
+    return { action: 'hold', reason: 'Warming up' };
+  }
+
   const fastKey = `ema${fastPeriod}` as keyof typeof current;
   const slowKey = `ema${slowPeriod}` as keyof typeof current;
-  
+
   const currentFast = current[fastKey] as number | undefined;
   const currentSlow = current[slowKey] as number | undefined;
   const previousFast = previous?.[fastKey] as number | undefined;
   const previousSlow = previous?.[slowKey] as number | undefined;
-  
-  if (!currentFast || !currentSlow || !previousFast || !previousSlow) {
+
+  if (
+    currentFast === undefined ||
+    currentSlow === undefined ||
+    previousFast === undefined ||
+    previousSlow === undefined
+  ) {
     return { action: 'hold', reason: 'Waiting for indicators' };
   }
 

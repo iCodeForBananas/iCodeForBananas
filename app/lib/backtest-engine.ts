@@ -72,10 +72,15 @@ export function calculateIndicatorsWithParams(
   const smaSums: Record<number, number> = {};
   for (const period of allSMAPeriods) smaSums[period] = 0;
 
-  // Track EMA values for each required period
+  // Track EMA values for each required period.
+  // SMA-seeded: emaSums accumulates the first `period` closes, then becomes the
+  // first EMA value at i === period - 1. Avoids the false-crossover-on-bar-1
+  // bug that close[0] seeding caused (every EMA was identical at bar 0).
   const emaState: Record<number, number | undefined> = {};
+  const emaSums: Record<number, number> = {};
   for (const period of requiredEMAs) {
     emaState[period] = undefined;
+    emaSums[period] = 0;
   }
 
   // For RSI
@@ -83,11 +88,25 @@ export function calculateIndicatorsWithParams(
   let avgLoss = 0;
   const rsiPeriod = 14;
 
-  // For MACD (dynamic configurations)
-  const macdState: Map<string, { fastEma: number | undefined; slowEma: number | undefined; signalEma: number | undefined }> = new Map();
+  // For MACD (dynamic configurations) — SMA-seeded fast/slow EMAs to match
+  // the standalone EMA path. signalEma stays seeded with first MACD value
+  // since signalPeriod runs over MACD differences, not closes.
+  const macdState: Map<string, {
+    fastEma: number | undefined;
+    slowEma: number | undefined;
+    signalEma: number | undefined;
+    fastSum: number;
+    slowSum: number;
+  }> = new Map();
   for (const config of requiredMACDs) {
     const key = `${config.fastPeriod}_${config.slowPeriod}_${config.signalPeriod}`;
-    macdState.set(key, { fastEma: undefined, slowEma: undefined, signalEma: undefined });
+    macdState.set(key, {
+      fastEma: undefined,
+      slowEma: undefined,
+      signalEma: undefined,
+      fastSum: 0,
+      slowSum: 0,
+    });
   }
 
   // For ATR (Wilder's smoothing) — only store first atrPeriod TRs to seed the average
@@ -118,16 +137,18 @@ export function calculateIndicatorsWithParams(
       if (i >= period - 1) indicatorData[`sma${period}`] = smaSums[period] / period;
     }
 
-    // Dynamic EMAs
+    // Dynamic EMAs — SMA-seeded: undefined for the first (period - 1) bars,
+    // then SMA of the first `period` closes, then standard EMA recurrence.
     for (const period of requiredEMAs) {
-      const multiplier = 2 / (period + 1);
-      if (i === 0) {
-        emaState[period] = candle.close;
+      if (i < period - 1) {
+        emaSums[period] += candle.close;
+      } else if (i === period - 1) {
+        emaSums[period] += candle.close;
+        emaState[period] = emaSums[period] / period;
       } else {
-        const prevEma = emaState[period];
-        if (prevEma !== undefined) {
-          emaState[period] = (candle.close - prevEma) * multiplier + prevEma;
-        }
+        const multiplier = 2 / (period + 1);
+        const prevEma = emaState[period]!;
+        emaState[period] = (candle.close - prevEma) * multiplier + prevEma;
       }
       indicatorData[`ema${period}`] = emaState[period];
     }
@@ -158,28 +179,35 @@ export function calculateIndicatorsWithParams(
       }
     }
 
-    // MACD (dynamic configurations)
+    // MACD (dynamic configurations) — fast/slow EMAs SMA-seeded.
     for (const config of requiredMACDs) {
       const key = `${config.fastPeriod}_${config.slowPeriod}_${config.signalPeriod}`;
       const state = macdState.get(key);
       if (!state) continue;
 
-      const fastMultiplier = 2 / (config.fastPeriod + 1);
-      const slowMultiplier = 2 / (config.slowPeriod + 1);
-
-      if (i === 0) {
-        state.fastEma = candle.close;
-        state.slowEma = candle.close;
+      // Fast EMA seed
+      if (i < config.fastPeriod - 1) {
+        state.fastSum += candle.close;
+      } else if (i === config.fastPeriod - 1) {
+        state.fastSum += candle.close;
+        state.fastEma = state.fastSum / config.fastPeriod;
       } else {
-        if (state.fastEma !== undefined) {
-          state.fastEma = (candle.close - state.fastEma) * fastMultiplier + state.fastEma;
-        }
-        if (state.slowEma !== undefined) {
-          state.slowEma = (candle.close - state.slowEma) * slowMultiplier + state.slowEma;
-        }
+        const fastMultiplier = 2 / (config.fastPeriod + 1);
+        state.fastEma = (candle.close - state.fastEma!) * fastMultiplier + state.fastEma!;
       }
 
-      if (state.fastEma !== undefined && state.slowEma !== undefined && i >= config.slowPeriod) {
+      // Slow EMA seed
+      if (i < config.slowPeriod - 1) {
+        state.slowSum += candle.close;
+      } else if (i === config.slowPeriod - 1) {
+        state.slowSum += candle.close;
+        state.slowEma = state.slowSum / config.slowPeriod;
+      } else {
+        const slowMultiplier = 2 / (config.slowPeriod + 1);
+        state.slowEma = (candle.close - state.slowEma!) * slowMultiplier + state.slowEma!;
+      }
+
+      if (state.fastEma !== undefined && state.slowEma !== undefined && i >= config.slowPeriod - 1) {
         const macdValue = state.fastEma - state.slowEma;
         indicatorData[`macd_${key}` as `macd_${number}_${number}_${number}`] = macdValue;
 
