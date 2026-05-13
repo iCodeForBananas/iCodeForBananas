@@ -1,6 +1,24 @@
 "use client";
 
-import React, { useRef, useEffect, useState, useCallback, useMemo } from "react";
+import React, { useEffect, useRef, useMemo, useCallback } from "react";
+import {
+  createChart,
+  CandlestickSeries,
+  LineSeries,
+  HistogramSeries,
+  LineStyle,
+  CrosshairMode,
+  createSeriesMarkers,
+  type IChartApi,
+  type ISeriesApi,
+  type ISeriesMarkersPluginApi,
+  type Time,
+  type LogicalRange,
+  type SeriesMarker,
+  type CandlestickData,
+  type LineData,
+  type HistogramData,
+} from "lightweight-charts";
 import { IndicatorData, BacktestTrade, PositionSide } from "@/app/types";
 
 interface BacktestChartProps {
@@ -13,19 +31,10 @@ interface BacktestChartProps {
   currentParams?: Record<string, number | boolean | string>;
 }
 
-const MIN_CANDLES = 50;
+const MIN_CANDLES = 10;
 const MAX_CANDLES = 1000;
 
-// Strategies that show an oscillator sub-panel instead of price overlays
-const OSCILLATOR_STRATEGIES = new Set([
-  "macd-crossover",
-  "rsi-mean-reversion",
-  "rsi2",
-  "stochastic",
-  "momentum-roc",
-]);
-
-// ── Indicator helpers ────────────────────────────────────────────────────────
+// ── Indicator helpers (kept inline for parity with previous chart) ──────────
 
 function calcEMA(closes: number[], period: number): (number | undefined)[] {
   const mult = 2 / (period + 1);
@@ -69,30 +78,26 @@ type PriceLine = {
   color: string;
   label: string;
   lineWidth?: number;
-  dash?: number[];
+  dashed?: boolean;
 };
 
-type OscillatorData = {
+type OscillatorPanel = {
   type: "rsi" | "macd" | "stochastic" | "roc";
-  values: (number | undefined)[];
-  values2?: (number | undefined)[];
-  values3?: (number | undefined)[];
-  label: string;
-  level1?: number;
-  level2?: number;
+  series: { values: (number | undefined)[]; color: string; label: string; lineWidth?: number }[];
+  histogram?: { values: (number | undefined)[]; positiveColor: string; negativeColor: string };
+  hLines?: { value: number; color: string; dashed: boolean }[];
 };
 
-// ── Compute indicators per strategy ─────────────────────────────────────────
-
+// Map a strategy id + its params to overlay lines and (optionally) an oscillator
+// panel. Logic preserved verbatim from the previous canvas chart.
 function computeIndicators(
   data: IndicatorData[],
   strategyId: string,
-  params: Record<string, number | boolean | string>
-): { priceLines: PriceLine[]; oscillator?: OscillatorData } {
+  params: Record<string, number | boolean | string>,
+): { priceLines: PriceLine[]; oscillator?: OscillatorPanel } {
   const closes = data.map((d) => d.close);
   const priceLines: PriceLine[] = [];
-  let oscillator: OscillatorData | undefined;
-
+  let oscillator: OscillatorPanel | undefined;
   const num = (key: string, fallback: number) => ((params[key] as number) ?? fallback);
 
   switch (strategyId) {
@@ -126,18 +131,32 @@ function computeIndicators(
     }
     case "donchian-channel": {
       const period = num("period", 20);
-      priceLines.push({ values: data.map((d) => d[`donchian_${period}_upperBand` as keyof IndicatorData] as number | undefined), color: "#06b6d4", label: `DC ${period}`, dash: [4, 4] });
-      priceLines.push({ values: data.map((d) => d[`donchian_${period}_lowerBand` as keyof IndicatorData] as number | undefined), color: "#06b6d4", label: "", dash: [4, 4] });
-      priceLines.push({ values: data.map((d) => d[`donchian_${period}_midLine` as keyof IndicatorData] as number | undefined), color: "#22d3ee", label: "", lineWidth: 0.8, dash: [2, 2] });
+      priceLines.push({ values: data.map((d) => d[`donchian_${period}_upperBand` as keyof IndicatorData] as number | undefined), color: "#06b6d4", label: `DC ${period}`, dashed: true });
+      priceLines.push({ values: data.map((d) => d[`donchian_${period}_lowerBand` as keyof IndicatorData] as number | undefined), color: "#06b6d4", label: "", dashed: true });
+      priceLines.push({ values: data.map((d) => d[`donchian_${period}_midLine` as keyof IndicatorData] as number | undefined), color: "#22d3ee", label: "", lineWidth: 1, dashed: true });
       break;
     }
     case "breakout": {
-      const period = num("period", 20);
-      priceLines.push({ values: data.map((d) => d[`donchian_${period}_upperBand` as keyof IndicatorData] as number | undefined), color: "#06b6d4", label: `Chan ${period}`, dash: [4, 4] });
-      priceLines.push({ values: data.map((d) => d[`donchian_${period}_lowerBand` as keyof IndicatorData] as number | undefined), color: "#06b6d4", label: "", dash: [4, 4] });
-      const trail = num("trailStopEMAPeriod", 0);
+      // Highest/lowest CLOSE over the lookback (matches strategy semantics).
+      const lookback = num("lookbackPeriod", 20);
+      const upper: (number | undefined)[] = new Array(data.length).fill(undefined);
+      const lower: (number | undefined)[] = new Array(data.length).fill(undefined);
+      for (let i = lookback; i < data.length; i++) {
+        let hi = -Infinity;
+        let lo = Infinity;
+        for (let j = i - lookback; j < i; j++) {
+          const c = closes[j];
+          if (c > hi) hi = c;
+          if (c < lo) lo = c;
+        }
+        upper[i] = hi;
+        lower[i] = lo;
+      }
+      priceLines.push({ values: upper, color: "#06b6d4", label: `${lookback}-bar high close`, dashed: true });
+      priceLines.push({ values: lower, color: "#06b6d4", label: "", dashed: true });
+      const trail = num("trailingStopEmaPeriod", 0);
       if (trail > 0) {
-        priceLines.push({ values: data.map((d) => d[`ema${trail}` as keyof IndicatorData] as number | undefined), color: "#f97316", label: `Trail EMA ${trail}`, dash: [3, 3] });
+        priceLines.push({ values: data.map((d) => d[`ema${trail}` as keyof IndicatorData] as number | undefined), color: "#f97316", label: `Trail EMA ${trail}`, dashed: true });
       }
       break;
     }
@@ -146,9 +165,9 @@ function computeIndicators(
       const mult = num("stdDev", 2);
       const sma = calcSMA(closes, period);
       const std = calcStdDev(closes, period);
-      priceLines.push({ values: sma.map((s, i) => s !== undefined && std[i] !== undefined ? s + mult * std[i]! : undefined), color: "#a855f7", label: `BB±${mult}σ`, dash: [3, 3] });
+      priceLines.push({ values: sma.map((s, i) => s !== undefined && std[i] !== undefined ? s + mult * std[i]! : undefined), color: "#a855f7", label: `BB±${mult}σ`, dashed: true });
       priceLines.push({ values: sma, color: "#3b82f6", label: `SMA ${period}`, lineWidth: 1 });
-      priceLines.push({ values: sma.map((s, i) => s !== undefined && std[i] !== undefined ? s - mult * std[i]! : undefined), color: "#a855f7", label: "", dash: [3, 3] });
+      priceLines.push({ values: sma.map((s, i) => s !== undefined && std[i] !== undefined ? s - mult * std[i]! : undefined), color: "#a855f7", label: "", dashed: true });
       break;
     }
     case "keltner-channel": {
@@ -157,9 +176,9 @@ function computeIndicators(
       const mult = num("multiplier", 2);
       const ema = calcEMA(closes, emaPeriod);
       const atr = calcATR(data, atrPeriod);
-      priceLines.push({ values: ema.map((e, i) => e !== undefined && atr[i] !== undefined ? e + mult * atr[i]! : undefined), color: "#06b6d4", label: `KC±${mult}ATR`, dash: [3, 3] });
+      priceLines.push({ values: ema.map((e, i) => e !== undefined && atr[i] !== undefined ? e + mult * atr[i]! : undefined), color: "#06b6d4", label: `KC±${mult}ATR`, dashed: true });
       priceLines.push({ values: ema, color: "#3b82f6", label: `EMA ${emaPeriod}` });
-      priceLines.push({ values: ema.map((e, i) => e !== undefined && atr[i] !== undefined ? e - mult * atr[i]! : undefined), color: "#06b6d4", label: "", dash: [3, 3] });
+      priceLines.push({ values: ema.map((e, i) => e !== undefined && atr[i] !== undefined ? e - mult * atr[i]! : undefined), color: "#06b6d4", label: "", dashed: true });
       break;
     }
     case "supertrend": {
@@ -181,7 +200,8 @@ function computeIndicators(
           dir = prevST === prevUp ? (data[i].close > up ? 1 : -1) : (data[i].close < dn ? -1 : 1);
         }
         const st = dir === 1 ? dn : up;
-        if (dir === 1) bullLine[i] = st; else bearLine[i] = st;
+        if (dir === 1) bullLine[i] = st;
+        else bearLine[i] = st;
         prevUp = up; prevDn = dn; prevST = st;
       }
       priceLines.push({ values: bullLine, color: "#22c55e", label: "Supertrend ↑", lineWidth: 2 });
@@ -199,27 +219,32 @@ function computeIndicators(
         const hh = Math.max(...data.slice(i - period + 1, i + 1).map((d) => d.high));
         chandLong.push(hh - mult * atr[i]!);
       }
-      priceLines.push({ values: chandLong, color: "#f97316", label: "Chandelier Long", lineWidth: 1.5, dash: [4, 3] });
+      priceLines.push({ values: chandLong, color: "#f97316", label: "Chandelier Long", lineWidth: 2, dashed: true });
       break;
     }
-    // Oscillator strategies
     case "macd-crossover": {
       oscillator = {
         type: "macd",
-        values: data.map((d) => d.macd),
-        values2: data.map((d) => d.macdSignal),
-        values3: data.map((d) => d.macdHistogram),
-        label: "MACD",
+        series: [
+          { values: data.map((d) => d.macd), color: "#3b82f6", label: "MACD" },
+          { values: data.map((d) => d.macdSignal), color: "#f97316", label: "Signal" },
+        ],
+        histogram: { values: data.map((d) => d.macdHistogram), positiveColor: "#22c55e", negativeColor: "#ef4444" },
+        hLines: [{ value: 0, color: "#475569", dashed: true }],
       };
       break;
     }
     case "rsi-mean-reversion": {
+      const ob = num("overbought", 70);
+      const os = num("oversold", 30);
       oscillator = {
         type: "rsi",
-        values: data.map((d) => d.rsi),
-        label: "RSI 14",
-        level1: num("overbought", 70),
-        level2: num("oversold", 30),
+        series: [{ values: data.map((d) => d.rsi), color: "#a855f7", label: "RSI 14" }],
+        hLines: [
+          { value: ob, color: "#ef4444", dashed: true },
+          { value: os, color: "#22c55e", dashed: true },
+          { value: 50, color: "#475569", dashed: true },
+        ],
       };
       break;
     }
@@ -229,13 +254,21 @@ function computeIndicators(
       let ag = 0, al = 0;
       for (let i = 1; i < data.length; i++) {
         const ch = data[i].close - data[i - 1].close;
-        const g = ch > 0 ? ch : 0, l = ch < 0 ? -ch : 0;
+        const g = ch > 0 ? ch : 0;
+        const l = ch < 0 ? -ch : 0;
         if (i < period) { ag += g; al += l; }
         else if (i === period) { ag = (ag + g) / period; al = (al + l) / period; }
         else { ag = (ag * (period - 1) + g) / period; al = (al * (period - 1) + l) / period; }
         if (i >= period) rsiVals[i] = 100 - 100 / (1 + (al === 0 ? 100 : ag / al));
       }
-      oscillator = { type: "rsi", values: rsiVals, label: "RSI 2", level1: num("overbought", 90), level2: num("oversold", 10) };
+      oscillator = {
+        type: "rsi",
+        series: [{ values: rsiVals, color: "#a855f7", label: "RSI 2" }],
+        hLines: [
+          { value: num("overbought", 90), color: "#ef4444", dashed: true },
+          { value: num("oversold", 10), color: "#22c55e", dashed: true },
+        ],
+      };
       break;
     }
     case "stochastic": {
@@ -255,21 +288,35 @@ function computeIndicators(
         const sl = kVals.slice(i - dPeriod + 1, i + 1).filter((v): v is number => v !== undefined);
         return sl.length === dPeriod ? sl.reduce((a, b) => a + b, 0) / dPeriod : undefined;
       });
-      oscillator = { type: "stochastic", values: kVals, values2: dVals, label: "Stochastic", level1: num("overbought", 80), level2: num("oversold", 20) };
+      oscillator = {
+        type: "stochastic",
+        series: [
+          { values: kVals, color: "#3b82f6", label: "%K" },
+          { values: dVals, color: "#f97316", label: "%D" },
+        ],
+        hLines: [
+          { value: num("overbought", 80), color: "#ef4444", dashed: true },
+          { value: num("oversold", 20), color: "#22c55e", dashed: true },
+        ],
+      };
       break;
     }
     case "momentum-roc": {
       const rocPeriod = num("rocPeriod", 20);
       const smoothing = num("smoothing", 5);
       const raw: (number | undefined)[] = closes.map((c, i) =>
-        i < rocPeriod ? undefined : ((c - closes[i - rocPeriod]) / closes[i - rocPeriod]) * 100
+        i < rocPeriod ? undefined : ((c - closes[i - rocPeriod]) / closes[i - rocPeriod]) * 100,
       );
       const smoothed: (number | undefined)[] = raw.map((_, i) => {
         if (raw[i] === undefined) return undefined;
         const sl = raw.slice(Math.max(0, i - smoothing + 1), i + 1).filter((v): v is number => v !== undefined);
         return sl.length < smoothing ? undefined : sl.reduce((a, b) => a + b, 0) / sl.length;
       });
-      oscillator = { type: "roc", values: smoothed, label: `ROC(${rocPeriod})` };
+      oscillator = {
+        type: "roc",
+        series: [{ values: smoothed, color: "#a855f7", label: `ROC(${rocPeriod})` }],
+        hLines: [{ value: 0, color: "#475569", dashed: true }],
+      };
       break;
     }
   }
@@ -277,17 +324,16 @@ function computeIndicators(
   return { priceLines, oscillator };
 }
 
-function bisectTime(data: IndicatorData[], time: number): number {
-  let lo = 0, hi = data.length - 1, result = -1;
-  while (lo <= hi) {
-    const mid = (lo + hi) >> 1;
-    if (data[mid].time >= time) { result = mid; hi = mid - 1; }
-    else lo = mid + 1;
+// Map (number | undefined)[] → LineData[] aligned with chart bars by time.
+function toLineData(times: number[], values: (number | undefined)[]): LineData<Time>[] {
+  const out: LineData<Time>[] = [];
+  for (let i = 0; i < times.length; i++) {
+    const v = values[i];
+    if (v === undefined || !Number.isFinite(v)) continue;
+    out.push({ time: (times[i] / 1000) as Time, value: v });
   }
-  return result;
+  return out;
 }
-
-// ── Component ────────────────────────────────────────────────────────────────
 
 const BacktestChart: React.FC<BacktestChartProps> = ({
   data,
@@ -298,462 +344,332 @@ const BacktestChart: React.FC<BacktestChartProps> = ({
   selectedTradeId,
   currentParams = {},
 }) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
-  const [scrollOffset, setScrollOffset] = useState(0);
-  const [hoveredTrade] = useState<BacktestTrade | null>(null);
+  const priceContainerRef = useRef<HTMLDivElement>(null);
+  const oscContainerRef = useRef<HTMLDivElement>(null);
+  const priceChartRef = useRef<IChartApi | null>(null);
+  const oscChartRef = useRef<IChartApi | null>(null);
+  const candleSeriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
+  const overlaySeriesRef = useRef<ISeriesApi<"Line">[]>([]);
+  const oscSeriesRef = useRef<ISeriesApi<"Line" | "Histogram">[]>([]);
+  const trailSeriesRef = useRef<ISeriesApi<"Line">[]>([]);
+  const markerPluginRef = useRef<ISeriesMarkersPluginApi<Time> | null>(null);
+  const syncingRangeRef = useRef(false);
 
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-    const ro = new ResizeObserver((entries) => {
-      for (const e of entries) {
-        const { width, height } = e.contentRect;
-        setContainerSize({ width, height });
-      }
-    });
-    ro.observe(container);
-    return () => ro.disconnect();
-  }, []);
-
-  // Scroll to selected trade
-  const prevSelectedTradeIdRef = useRef<string | null | undefined>(selectedTradeId);
-  useEffect(() => {
-    if (prevSelectedTradeIdRef.current === selectedTradeId) return;
-    prevSelectedTradeIdRef.current = selectedTradeId;
-    if (!selectedTradeId || !data || data.length === 0) return;
-    const trade = trades.find((t) => t.id === selectedTradeId);
-    if (!trade) return;
-    const idx = bisectTime(data, trade.entryTime);
-    if (idx === -1) return;
-    const half = Math.floor(visibleCandles / 2);
-    const target = Math.max(0, data.length - idx - half);
-    const max = Math.max(0, data.length - visibleCandles);
-    setScrollOffset(Math.max(0, Math.min(max, target)));
-  }, [selectedTradeId, trades, data, visibleCandles]);
-
-  const zoomIn = useCallback(() => onVisibleCandlesChange(Math.max(MIN_CANDLES, Math.floor(visibleCandles * 0.8))), [visibleCandles, onVisibleCandlesChange]);
-  const zoomOut = useCallback(() => onVisibleCandlesChange(Math.min(MAX_CANDLES, Math.floor(visibleCandles * 1.25))), [visibleCandles, onVisibleCandlesChange]);
-
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-    const handleWheel = (e: WheelEvent) => {
-      if (e.ctrlKey || e.metaKey) {
-        e.preventDefault();
-        e.deltaY < 0 ? zoomIn() : zoomOut();
-      } else {
-        e.preventDefault();
-        const max = Math.max(0, data.length - visibleCandles);
-        setScrollOffset((prev) => Math.max(0, Math.min(max, prev + Math.sign(e.deltaY) * 10)));
-      }
-    };
-    container.addEventListener("wheel", handleWheel, { passive: false });
-    return () => container.removeEventListener("wheel", handleWheel);
-  }, [zoomIn, zoomOut, data.length, visibleCandles]);
-
-  // Compute display indicators
   const { priceLines, oscillator } = useMemo(() => {
-    if (!data || data.length === 0 || !selectedStrategyId) return { priceLines: [] };
+    if (!data || data.length === 0 || !selectedStrategyId) return { priceLines: [] as PriceLine[], oscillator: undefined };
     return computeIndicators(data, selectedStrategyId, currentParams);
   }, [data, selectedStrategyId, currentParams]);
 
   const hasOscillator = !!oscillator;
 
-  // Draw
+  // ── Set up the price chart once. The series get rebuilt when data/strategy
+  // changes (it's cleaner than diffing line-by-line).
   useEffect(() => {
-    const canvas = canvasRef.current;
-    const container = containerRef.current;
-    if (!canvas || !container || !data || data.length === 0) return;
-
-    const startIndex = Math.max(0, data.length - visibleCandles - scrollOffset);
-    const endIndex = Math.min(data.length, startIndex + visibleCandles);
-    const visibleData = data.slice(startIndex, endIndex);
-
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    const rect = container.getBoundingClientRect();
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = rect.width * dpr;
-    canvas.height = rect.height * dpr;
-    canvas.style.width = `${rect.width}px`;
-    canvas.style.height = `${rect.height}px`;
-    ctx.scale(dpr, dpr);
-
-    const W = rect.width;
-    const H = rect.height;
-    const pad = { top: 30, right: 80, bottom: 40, left: 10 };
-
-    // Split height if oscillator
-    const oscHeight = hasOscillator ? Math.floor(H * 0.28) : 0;
-    const gap = hasOscillator ? 4 : 0;
-    const priceH = H - oscHeight - gap - pad.bottom;
-
-    ctx.fillStyle = "#0f172a";
-    ctx.fillRect(0, 0, W, H);
-
-    // ── Price chart area ──────────────────────────────────────────────────
-    const chartWidth = W - pad.left - pad.right;
-    const chartHeight = priceH - pad.top;
-
-    const allPrices = visibleData.flatMap((d) => [d.high, d.low]);
-    const minP = Math.min(...allPrices);
-    const maxP = Math.max(...allPrices);
-    const pRange = maxP - minP;
-    const domainMin = minP - pRange * 0.1;
-    const domainMax = maxP + pRange * 0.1;
-
-    const xScale = (i: number) => pad.left + (i / Math.max(visibleData.length - 1, 1)) * chartWidth;
-    const yScale = (p: number) => pad.top + chartHeight - ((p - domainMin) / (domainMax - domainMin)) * chartHeight;
-
-    // Grid
-    ctx.strokeStyle = "#1e293b";
-    ctx.lineWidth = 1;
-    for (let i = 0; i <= 5; i++) {
-      const y = pad.top + (i / 5) * chartHeight;
-      ctx.beginPath();
-      ctx.moveTo(pad.left, y);
-      ctx.lineTo(W - pad.right, y);
-      ctx.stroke();
-      const price = domainMax - (i / 5) * (domainMax - domainMin);
-      ctx.fillStyle = "#64748b";
-      ctx.font = "11px monospace";
-      ctx.textAlign = "left";
-      ctx.fillText(`$${price.toFixed(2)}`, W - pad.right + 5, y + 4);
-    }
-
-    // Price overlay lines
-    const drawLine = (values: (number | undefined)[], color: string, lw = 1, dash?: number[]) => {
-      ctx.strokeStyle = color;
-      ctx.lineWidth = lw;
-      if (dash) ctx.setLineDash(dash);
-      ctx.beginPath();
-      let started = false;
-      visibleData.forEach((_, i) => {
-        const val = values[startIndex + i];
-        if (val !== undefined && val > 0) {
-          const x = xScale(i);
-          const y = yScale(val);
-          if (!started) { ctx.moveTo(x, y); started = true; } else ctx.lineTo(x, y);
-        } else { started = false; }
-      });
-      ctx.stroke();
-      if (dash) ctx.setLineDash([]);
+    const el = priceContainerRef.current;
+    if (!el) return;
+    const chart = createChart(el, {
+      layout: { background: { color: "#0f172a" }, textColor: "#cbd5e1", attributionLogo: false },
+      grid: { vertLines: { color: "#1e293b" }, horzLines: { color: "#1e293b" } },
+      rightPriceScale: { borderColor: "#334155" },
+      timeScale: { borderColor: "#334155", timeVisible: true, secondsVisible: false },
+      crosshair: { mode: CrosshairMode.Normal },
+      autoSize: true,
+    });
+    priceChartRef.current = chart;
+    return () => {
+      chart.remove();
+      priceChartRef.current = null;
+      candleSeriesRef.current = null;
+      overlaySeriesRef.current = [];
+      trailSeriesRef.current = [];
+      markerPluginRef.current = null;
     };
+  }, []);
 
+  // Oscillator chart lifecycle (only when needed).
+  useEffect(() => {
+    const el = oscContainerRef.current;
+    if (!el || !hasOscillator) return;
+    const chart = createChart(el, {
+      layout: { background: { color: "#0f172a" }, textColor: "#cbd5e1", attributionLogo: false },
+      grid: { vertLines: { color: "#1e293b" }, horzLines: { color: "#1e293b" } },
+      rightPriceScale: { borderColor: "#334155" },
+      timeScale: { borderColor: "#334155", timeVisible: true, secondsVisible: false, visible: false },
+      crosshair: { mode: CrosshairMode.Normal },
+      autoSize: true,
+    });
+    oscChartRef.current = chart;
+    return () => {
+      chart.remove();
+      oscChartRef.current = null;
+      oscSeriesRef.current = [];
+    };
+  }, [hasOscillator]);
+
+  // Sync time scales between price + oscillator charts.
+  useEffect(() => {
+    const price = priceChartRef.current;
+    const osc = oscChartRef.current;
+    if (!price || !osc) return;
+    const onPrice = (range: LogicalRange | null) => {
+      if (syncingRangeRef.current || !range) return;
+      syncingRangeRef.current = true;
+      osc.timeScale().setVisibleLogicalRange(range);
+      syncingRangeRef.current = false;
+    };
+    const onOsc = (range: LogicalRange | null) => {
+      if (syncingRangeRef.current || !range) return;
+      syncingRangeRef.current = true;
+      price.timeScale().setVisibleLogicalRange(range);
+      syncingRangeRef.current = false;
+    };
+    price.timeScale().subscribeVisibleLogicalRangeChange(onPrice);
+    osc.timeScale().subscribeVisibleLogicalRangeChange(onOsc);
+    return () => {
+      price.timeScale().unsubscribeVisibleLogicalRangeChange(onPrice);
+      osc.timeScale().unsubscribeVisibleLogicalRangeChange(onOsc);
+    };
+  }, [hasOscillator]);
+
+  // Push candles + overlays whenever inputs change.
+  useEffect(() => {
+    const chart = priceChartRef.current;
+    if (!chart || !data || data.length === 0) return;
+
+    // Candle series — recreate to avoid stale state across dataset switches.
+    if (candleSeriesRef.current) {
+      chart.removeSeries(candleSeriesRef.current);
+      candleSeriesRef.current = null;
+    }
+    const candles = chart.addSeries(CandlestickSeries, {
+      upColor: "#22c55e",
+      downColor: "#ef4444",
+      borderUpColor: "#22c55e",
+      borderDownColor: "#ef4444",
+      wickUpColor: "#22c55e",
+      wickDownColor: "#ef4444",
+    });
+    const candleData: CandlestickData<Time>[] = data.map((d) => ({
+      time: (d.time / 1000) as Time,
+      open: d.open,
+      high: d.high,
+      low: d.low,
+      close: d.close,
+    }));
+    candles.setData(candleData);
+    candleSeriesRef.current = candles;
+
+    // Clear old overlays.
+    for (const s of overlaySeriesRef.current) chart.removeSeries(s);
+    overlaySeriesRef.current = [];
+    for (const s of trailSeriesRef.current) chart.removeSeries(s);
+    trailSeriesRef.current = [];
+    if (markerPluginRef.current) {
+      markerPluginRef.current.detach();
+      markerPluginRef.current = null;
+    }
+
+    const times = data.map((d) => d.time);
+
+    // Indicator overlays.
     for (const line of priceLines) {
-      drawLine(line.values, line.color, line.lineWidth ?? 1, line.dash);
+      const series = chart.addSeries(LineSeries, {
+        color: line.color,
+        lineWidth: (line.lineWidth ?? 1.5) as 1 | 2 | 3 | 4,
+        lineStyle: line.dashed ? LineStyle.Dashed : LineStyle.Solid,
+        priceLineVisible: false,
+        lastValueVisible: !!line.label,
+        title: line.label || undefined,
+        crosshairMarkerVisible: false,
+      });
+      series.setData(toLineData(times, line.values));
+      overlaySeriesRef.current.push(series);
     }
 
-    // Candlesticks
-    const candleWidth = Math.max(2, (chartWidth / visibleData.length) * 0.7);
-    visibleData.forEach((candle, i) => {
-      const x = xScale(i);
-      const isGreen = candle.close >= candle.open;
-      const color = isGreen ? "#10b981" : "#ef4444";
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(x, yScale(candle.high));
-      ctx.lineTo(x, yScale(candle.low));
-      ctx.stroke();
-      const bodyTop = yScale(Math.max(candle.open, candle.close));
-      const bodyH = Math.max(yScale(Math.min(candle.open, candle.close)) - bodyTop, 1);
-      ctx.fillStyle = isGreen ? color : "#1e293b";
-      ctx.strokeStyle = color;
-      ctx.fillRect(x - candleWidth / 2, bodyTop, candleWidth, bodyH);
-      ctx.strokeRect(x - candleWidth / 2, bodyTop, candleWidth, bodyH);
-    });
-
-    // ── Trailing stop lines ───────────────────────────────────────────────
-    // Build a time→index map so trail series lookups are O(1)
-    const timeToDataIdx = new Map(data.map((d, i) => [d.time, i]));
-
-    const tradesWithStop = trades.filter(
-      (t) => t.trailingSeries && t.trailingSeries.length > 0
-    );
-
-    if (tradesWithStop.length > 0) {
-      for (const trade of tradesWithStop) {
-        const ts = trade.trailingSeries!;
-        // Check if this trade overlaps the visible window at all
-        const entryDataIdx = bisectTime(data, trade.entryTime);
-        const exitDataIdx  = bisectTime(data, trade.exitTime);
-        if (entryDataIdx >= endIndex || exitDataIdx < startIndex) continue;
-
-        ctx.strokeStyle = "#ef4444";
-        ctx.lineWidth = 1.5;
-        ctx.setLineDash([]);
-        ctx.beginPath();
-        let pathStarted = false;
-
-        for (const pt of ts) {
-          const idx = timeToDataIdx.get(pt.time);
-          if (idx === undefined || idx < startIndex || idx >= endIndex) {
-            // Gap in visibility — lift the pen so the line doesn't bridge skipped bars
-            pathStarted = false;
-            continue;
-          }
-          const x = xScale(idx - startIndex);
-          const y = yScale(pt.price);
-          if (!pathStarted) { ctx.moveTo(x, y); pathStarted = true; }
-          else ctx.lineTo(x, y);
-        }
-        if (pathStarted) ctx.stroke();
-      }
+    // Trade markers — BUY/SELL with shape + color matching previous chart.
+    const markers: SeriesMarker<Time>[] = [];
+    for (const t of trades) {
+      const isLong = (t.side as PositionSide | string) === PositionSide.LONG || t.side === "LONG";
+      const isSel = t.id === selectedTradeId;
+      markers.push({
+        time: (t.entryTime / 1000) as Time,
+        position: isLong ? "belowBar" : "aboveBar",
+        color: isSel ? "#3b82f6" : isLong ? "#22c55e" : "#ef4444",
+        shape: isLong ? "arrowUp" : "arrowDown",
+        text: isLong ? "BUY" : "SELL",
+        size: isSel ? 2 : 1,
+      });
+      markers.push({
+        time: (t.exitTime / 1000) as Time,
+        position: isLong ? "aboveBar" : "belowBar",
+        color: isSel ? "#3b82f6" : t.pnl > 0 ? "#22c55e" : "#ef4444",
+        shape: "circle",
+        text: t.pnl > 0 ? `+${t.pnlPercent.toFixed(1)}%` : `${t.pnlPercent.toFixed(1)}%`,
+        size: isSel ? 2 : 1,
+      });
     }
+    // Sort markers by time — lightweight-charts requires ascending order.
+    markers.sort((a, b) => (a.time as number) - (b.time as number));
+    markerPluginRef.current = createSeriesMarkers(candles, markers);
 
-    // Trade markers
-    const tradeIndexCache = new Map(
-      trades.map((t) => [t.id, { ei: bisectTime(data, t.entryTime), xi: bisectTime(data, t.exitTime) }])
-    );
-
-    const visibleTrades = trades.filter((t) => {
-      const { ei, xi } = tradeIndexCache.get(t.id)!;
-      return (ei >= startIndex && ei < endIndex) || (xi >= startIndex && xi < endIndex);
-    });
-
-    visibleTrades.forEach((trade) => {
-      const { ei: entryIdx, xi: exitIdx } = tradeIndexCache.get(trade.id)!;
-      const isSel = trade.id === selectedTradeId;
-
-      if (isSel && entryIdx >= startIndex && exitIdx >= startIndex) {
-        const x1 = xScale(Math.max(0, entryIdx - startIndex));
-        const x2 = xScale(Math.min(visibleData.length - 1, exitIdx - startIndex));
-        ctx.fillStyle = "rgba(59,130,246,0.15)";
-        ctx.fillRect(x1 - 20, pad.top, x2 - x1 + 40, chartHeight);
-        ctx.strokeStyle = "rgba(59,130,246,0.6)";
-        ctx.lineWidth = 2;
-        ctx.setLineDash([5, 5]);
-        ctx.beginPath();
-        ctx.moveTo(x1, pad.top); ctx.lineTo(x1, pad.top + chartHeight);
-        ctx.moveTo(x2, pad.top); ctx.lineTo(x2, pad.top + chartHeight);
-        ctx.stroke();
-        ctx.setLineDash([]);
+    // Trailing stop overlays — one line per trade with a non-empty trailingSeries.
+    for (const t of trades) {
+      const ts = t.trailingSeries;
+      if (!ts || ts.length === 0) continue;
+      const trailLine = chart.addSeries(LineSeries, {
+        color: "#ef4444",
+        lineWidth: 1,
+        lineStyle: LineStyle.Solid,
+        priceLineVisible: false,
+        lastValueVisible: false,
+        crosshairMarkerVisible: false,
+      });
+      const lineData: LineData<Time>[] = ts
+        .map((p) => ({ time: (p.time / 1000) as Time, value: p.price }))
+        .sort((a, b) => (a.time as number) - (b.time as number));
+      // Deduplicate identical timestamps (lightweight-charts disallows them).
+      const dedup: LineData<Time>[] = [];
+      for (const d of lineData) {
+        if (dedup.length === 0 || dedup[dedup.length - 1].time !== d.time) dedup.push(d);
       }
-
-      if (entryIdx >= startIndex && entryIdx < endIndex) {
-        const li = entryIdx - startIndex;
-        const x = xScale(li);
-        const y = yScale(trade.entryPrice);
-        const isLong = trade.side === PositionSide.LONG;
-        const ms = isSel ? 1.4 : 1;
-        const bo = 15 * ms, to = 25 * ms, w = 8 * ms;
-        ctx.beginPath();
-        if (isLong) { ctx.moveTo(x, y + bo); ctx.lineTo(x - w, y + to); ctx.lineTo(x + w, y + to); }
-        else { ctx.moveTo(x, y - bo); ctx.lineTo(x - w, y - to); ctx.lineTo(x + w, y - to); }
-        ctx.closePath();
-        ctx.fillStyle = isLong ? "#22c55e" : "#ef4444";
-        ctx.fill();
-        if (isSel) { ctx.strokeStyle = "#3b82f6"; ctx.lineWidth = 3; ctx.stroke(); }
-        ctx.fillStyle = "#fff";
-        ctx.font = isSel ? "bold 11px sans-serif" : "bold 9px sans-serif";
-        ctx.textAlign = "center";
-        ctx.fillText(isLong ? "BUY" : "SELL", x, isLong ? y + to + 13 : y - to - 5);
-      }
-
-      if (exitIdx >= startIndex && exitIdx < endIndex) {
-        const li = exitIdx - startIndex;
-        const x = xScale(li);
-        const y = yScale(trade.exitPrice);
-        const isProfit = trade.pnl > 0;
-        const ms = isSel ? 8 : 6;
-        ctx.strokeStyle = isProfit ? "#22c55e" : "#ef4444";
-        ctx.lineWidth = isSel ? 4 : 3;
-        ctx.beginPath();
-        ctx.moveTo(x - ms, y - ms); ctx.lineTo(x + ms, y + ms);
-        ctx.moveTo(x + ms, y - ms); ctx.lineTo(x - ms, y + ms);
-        ctx.stroke();
-        if (isSel) { ctx.strokeStyle = "#3b82f6"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, ms + 5, 0, Math.PI * 2); ctx.stroke(); }
-        ctx.fillStyle = isProfit ? "#22c55e" : "#ef4444";
-        ctx.font = isSel ? "bold 11px sans-serif" : "bold 9px sans-serif";
-        ctx.textAlign = "center";
-        ctx.fillText(`${isProfit ? "+" : ""}${trade.pnlPercent.toFixed(2)}%`, x, y - (isSel ? 20 : 15));
-      }
-
-      if (entryIdx >= startIndex && entryIdx < endIndex && exitIdx >= startIndex && exitIdx < endIndex) {
-        const x1 = xScale(entryIdx - startIndex);
-        const x2 = xScale(exitIdx - startIndex);
-        ctx.strokeStyle = trade.pnl > 0 ? `rgba(34,197,94,${isSel ? 0.6 : 0.3})` : `rgba(239,68,68,${isSel ? 0.6 : 0.3})`;
-        ctx.lineWidth = isSel ? 3 : 2;
-        ctx.setLineDash([4, 4]);
-        ctx.beginPath();
-        ctx.moveTo(x1, yScale(trade.entryPrice));
-        ctx.lineTo(x2, yScale(trade.exitPrice));
-        ctx.stroke();
-        ctx.setLineDash([]);
-      }
-    });
-
-    // Time labels
-    ctx.fillStyle = "#64748b";
-    ctx.font = "9px monospace";
-    ctx.textAlign = "center";
-    for (let i = 0; i <= 6; i++) {
-      const idx = Math.floor((i / 6) * (visibleData.length - 1));
-      if (idx >= 0 && idx < visibleData.length) {
-        const x = xScale(idx);
-        const t = new Date(visibleData[idx].time);
-        ctx.fillText(t.toLocaleDateString([], { month: "short", day: "numeric" }), x, H - oscHeight - gap - 10);
-      }
+      trailLine.setData(dedup);
+      trailSeriesRef.current.push(trailLine);
     }
+  }, [data, priceLines, trades, selectedTradeId]);
 
-    // Price chart title + legend
-    ctx.fillStyle = "#f8fafc";
-    ctx.font = "bold 12px sans-serif";
-    ctx.textAlign = "left";
-    ctx.fillText("Price Chart", pad.left + 5, 18);
+  // Push oscillator panel data.
+  useEffect(() => {
+    const chart = oscChartRef.current;
+    if (!chart || !oscillator || !data || data.length === 0) return;
 
-    const legendItems = priceLines.filter((l) => l.label);
-    let legendX = pad.left + 95;
-    ctx.font = "9px sans-serif";
-    legendItems.forEach((item) => {
-      ctx.fillStyle = item.color;
-      ctx.fillRect(legendX, 10, 12, 3);
-      ctx.fillStyle = "#94a3b8";
-      ctx.fillText(item.label, legendX + 16, 15);
-      legendX += item.label.length * 6 + 24;
-    });
-    if (tradesWithStop.length > 0) {
-      ctx.fillStyle = "#ef4444";
-      ctx.fillRect(legendX, 10, 12, 3);
-      ctx.fillStyle = "#94a3b8";
-      ctx.fillText("Trail Stop", legendX + 16, 15);
-    }
+    for (const s of oscSeriesRef.current) chart.removeSeries(s);
+    oscSeriesRef.current = [];
 
-    // ── Oscillator sub-panel ──────────────────────────────────────────────
-    if (hasOscillator && oscillator) {
-      const oscTop = priceH + gap;
-      const oscInnerH = oscHeight - 20; // room for label
-      const oscBottom = oscTop + oscInnerH;
+    const times = data.map((d) => d.time);
 
-      // Panel background
-      ctx.fillStyle = "#0d1929";
-      ctx.fillRect(pad.left, oscTop, chartWidth, oscHeight);
-      ctx.strokeStyle = "#1e293b";
-      ctx.lineWidth = 1;
-      ctx.strokeRect(pad.left, oscTop, chartWidth, oscHeight);
-
-      // Label
-      ctx.fillStyle = "#64748b";
-      ctx.font = "9px monospace";
-      ctx.textAlign = "left";
-      ctx.fillText(oscillator.label, pad.left + 4, oscTop + 10);
-
-      // Slice visible values
-      const oVals = oscillator.values.slice(startIndex, endIndex);
-      const oVals2 = oscillator.values2?.slice(startIndex, endIndex);
-      const oVals3 = oscillator.values3?.slice(startIndex, endIndex);
-
-      // Compute domain
-      const allOsc = [...oVals, ...(oVals2 ?? []), ...(oVals3 ?? [])].filter((v): v is number => v !== undefined);
-      if (allOsc.length === 0) return;
-
-      let oscMin = Math.min(...allOsc);
-      let oscMax = Math.max(...allOsc);
-
-      // For RSI/Stochastic, fix domain 0-100
-      if (oscillator.type === "rsi" || oscillator.type === "stochastic") {
-        oscMin = 0; oscMax = 100;
-      } else {
-        const r = oscMax - oscMin || 1;
-        oscMin -= r * 0.1; oscMax += r * 0.1;
-      }
-
-      const oscXScale = (i: number) => pad.left + (i / Math.max(oVals.length - 1, 1)) * chartWidth;
-      const oscYScale = (v: number) => oscTop + 14 + (oscInnerH - 14) - ((v - oscMin) / (oscMax - oscMin)) * (oscInnerH - 14);
-
-      // Zero/level reference lines
-      const drawOscRef = (level: number, color: string, dash?: number[]) => {
-        if (level < oscMin || level > oscMax) return;
-        const y = oscYScale(level);
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 0.8;
-        if (dash) ctx.setLineDash(dash);
-        ctx.beginPath();
-        ctx.moveTo(pad.left, y); ctx.lineTo(pad.left + chartWidth, y);
-        ctx.stroke();
-        if (dash) ctx.setLineDash([]);
-        ctx.fillStyle = color;
-        ctx.font = "8px monospace";
-        ctx.textAlign = "left";
-        ctx.fillText(String(level), W - pad.right + 4, y + 3);
-      };
-
-      if (oscillator.level1 !== undefined) drawOscRef(oscillator.level1, "rgba(239,68,68,0.5)", [3, 3]);
-      if (oscillator.level2 !== undefined) drawOscRef(oscillator.level2, "rgba(34,197,94,0.5)", [3, 3]);
-      if (oscillator.type === "roc" || oscillator.type === "macd") drawOscRef(0, "rgba(148,163,184,0.4)", [2, 2]);
-
-      const drawOscLine = (vals: (number | undefined)[], color: string, lw = 1) => {
-        ctx.strokeStyle = color;
-        ctx.lineWidth = lw;
-        ctx.beginPath();
-        let started = false;
-        vals.forEach((v, i) => {
-          if (v === undefined) { started = false; return; }
-          const x = oscXScale(i);
-          const y = oscYScale(v);
-          if (!started) { ctx.moveTo(x, y); started = true; } else ctx.lineTo(x, y);
+    if (oscillator.histogram) {
+      const histo = chart.addSeries(HistogramSeries, { priceLineVisible: false, lastValueVisible: false });
+      const histoData: HistogramData<Time>[] = [];
+      for (let i = 0; i < times.length; i++) {
+        const v = oscillator.histogram.values[i];
+        if (v === undefined || !Number.isFinite(v)) continue;
+        histoData.push({
+          time: (times[i] / 1000) as Time,
+          value: v,
+          color: v >= 0 ? oscillator.histogram.positiveColor : oscillator.histogram.negativeColor,
         });
-        ctx.stroke();
-      };
+      }
+      histo.setData(histoData);
+      oscSeriesRef.current.push(histo);
+    }
 
-      if (oscillator.type === "macd") {
-        // Histogram bars
-        oVals3?.forEach((v, i) => {
-          if (v === undefined) return;
-          const x = oscXScale(i);
-          const zero = oscYScale(0);
-          const y = oscYScale(v);
-          const bw = Math.max(1, (chartWidth / oVals.length) * 0.6);
-          ctx.fillStyle = v >= 0 ? "rgba(34,197,94,0.5)" : "rgba(239,68,68,0.5)";
-          ctx.fillRect(x - bw / 2, Math.min(y, zero), bw, Math.abs(zero - y));
+    for (const line of oscillator.series) {
+      const s = chart.addSeries(LineSeries, {
+        color: line.color,
+        lineWidth: (line.lineWidth ?? 1.5) as 1 | 2 | 3 | 4,
+        priceLineVisible: false,
+        lastValueVisible: true,
+        title: line.label,
+        crosshairMarkerVisible: false,
+      });
+      s.setData(toLineData(times, line.values));
+      oscSeriesRef.current.push(s);
+    }
+
+    // Horizontal reference lines via createPriceLine on the first series.
+    const first = oscSeriesRef.current[oscSeriesRef.current.length - 1];
+    if (first && oscillator.hLines) {
+      for (const h of oscillator.hLines) {
+        first.createPriceLine({
+          price: h.value,
+          color: h.color,
+          lineWidth: 1,
+          lineStyle: h.dashed ? LineStyle.Dashed : LineStyle.Solid,
+          axisLabelVisible: true,
+          title: "",
         });
-        drawOscLine(oVals, "#3b82f6", 1.5);          // MACD line
-        drawOscLine(oVals2 ?? [], "#f97316", 1);      // Signal line
-      } else if (oscillator.type === "stochastic") {
-        drawOscLine(oVals, "#fbbf24", 1.5);           // %K
-        drawOscLine(oVals2 ?? [], "#a855f7", 1);      // %D
-        // Legend
-        ctx.font = "8px sans-serif";
-        ctx.fillStyle = "#fbbf24"; ctx.fillText("%K", pad.left + chartWidth - 35, oscTop + 10);
-        ctx.fillStyle = "#a855f7"; ctx.fillText("%D", pad.left + chartWidth - 20, oscTop + 10);
-      } else {
-        // RSI or ROC
-        const color = oscillator.type === "rsi" ? "#22d3ee" : "#a855f7";
-        drawOscLine(oVals, color, 1.5);
       }
     }
-  }, [data, trades, visibleCandles, scrollOffset, containerSize, selectedStrategyId, selectedTradeId, priceLines, oscillator, hasOscillator]);
+  }, [oscillator, data]);
 
-  if (!data || data.length === 0) {
-    return (
-      <div className="w-full h-full flex items-center justify-center bg-slate-900 text-slate-400">
-        No data to display
-      </div>
-    );
-  }
+  // Apply visibleCandles by computing the rightmost N bars whenever data or
+  // visibleCandles changes. Skipped while the user pans (range changes from
+  // their gesture) — we only force the range on explicit zoom / new dataset.
+  const lastDataLenRef = useRef<number>(0);
+  useEffect(() => {
+    const chart = priceChartRef.current;
+    if (!chart || data.length === 0) return;
+    const ts = chart.timeScale();
+    const total = data.length;
+    const wanted = Math.min(Math.max(visibleCandles, MIN_CANDLES), Math.min(MAX_CANDLES, total));
+    const from = Math.max(0, total - wanted);
+    const to = total - 1;
+    syncingRangeRef.current = true;
+    ts.setVisibleLogicalRange({ from, to });
+    if (oscChartRef.current) {
+      oscChartRef.current.timeScale().setVisibleLogicalRange({ from, to });
+    }
+    syncingRangeRef.current = false;
+    lastDataLenRef.current = total;
+  }, [visibleCandles, data]);
+
+  // Scroll to selected trade.
+  useEffect(() => {
+    const chart = priceChartRef.current;
+    if (!chart || !selectedTradeId || data.length === 0) return;
+    const trade = trades.find((t) => t.id === selectedTradeId);
+    if (!trade) return;
+    // Find logical index of entry bar.
+    let idx = -1;
+    for (let i = 0; i < data.length; i++) {
+      if (data[i].time >= trade.entryTime) { idx = i; break; }
+    }
+    if (idx === -1) idx = data.length - 1;
+    const half = Math.floor(visibleCandles / 2);
+    const from = Math.max(0, idx - half);
+    const to = Math.min(data.length - 1, from + visibleCandles - 1);
+    syncingRangeRef.current = true;
+    chart.timeScale().setVisibleLogicalRange({ from, to });
+    if (oscChartRef.current) {
+      oscChartRef.current.timeScale().setVisibleLogicalRange({ from, to });
+    }
+    syncingRangeRef.current = false;
+  }, [selectedTradeId, trades, data, visibleCandles]);
+
+  const zoomIn = useCallback(() => {
+    onVisibleCandlesChange(Math.max(MIN_CANDLES, Math.floor(visibleCandles * 0.8)));
+  }, [visibleCandles, onVisibleCandlesChange]);
+  const zoomOut = useCallback(() => {
+    onVisibleCandlesChange(Math.min(MAX_CANDLES, Math.floor(visibleCandles * 1.25)));
+  }, [visibleCandles, onVisibleCandlesChange]);
 
   return (
-    <div ref={containerRef} className="w-full h-full relative">
-      <canvas ref={canvasRef} className="w-full h-full" />
-      <div className="absolute top-2 right-20 flex items-center gap-2 bg-slate-800/80 rounded-lg px-2 py-1 z-10">
-        <button type="button" onClick={zoomIn} className="w-7 h-7 flex items-center justify-center text-slate-300 hover:text-white hover:bg-slate-700 rounded transition-colors text-lg font-bold" title="Zoom In">+</button>
-        <span className="text-slate-400 text-xs font-mono min-w-[60px] text-center">{Math.min(visibleCandles, data.length)} bars</span>
-        <button type="button" onClick={zoomOut} className="w-7 h-7 flex items-center justify-center text-slate-300 hover:text-white hover:bg-slate-700 rounded transition-colors text-lg font-bold" title="Zoom Out">−</button>
+    <div className='w-full h-full flex flex-col bg-slate-900 relative'>
+      {/* Zoom controls */}
+      <div className='absolute top-2 right-20 z-10 flex items-center gap-1 bg-slate-800/80 backdrop-blur rounded px-2 py-1'>
+        <button
+          onClick={zoomOut}
+          className='px-2 py-0.5 text-xs text-slate-300 hover:text-white hover:bg-slate-700 rounded'
+          aria-label='Zoom out'
+        >
+          −
+        </button>
+        <span className='text-xs text-slate-400 w-16 text-center'>{visibleCandles} bars</span>
+        <button
+          onClick={zoomIn}
+          className='px-2 py-0.5 text-xs text-slate-300 hover:text-white hover:bg-slate-700 rounded'
+          aria-label='Zoom in'
+        >
+          +
+        </button>
       </div>
-      {hoveredTrade && (
-        <div className="absolute bg-slate-800 border border-slate-600 rounded-lg p-3 text-xs shadow-lg z-20" style={{ top: 50, left: 50 }}>
-          <div className="font-bold text-white mb-1">Trade Details</div>
-          <div className="text-slate-300">Side: {hoveredTrade.side}</div>
-          <div className="text-slate-300">Entry: ${hoveredTrade.entryPrice.toFixed(2)}</div>
-          <div className="text-slate-300">Exit: ${hoveredTrade.exitPrice.toFixed(2)}</div>
-          <div className={hoveredTrade.pnl > 0 ? "text-green-400" : "text-red-400"}>
-            P&L: {hoveredTrade.pnl > 0 ? "+" : ""}${hoveredTrade.pnl.toFixed(2)} ({hoveredTrade.pnlPercent.toFixed(2)}%)
-          </div>
-        </div>
+
+      <div ref={priceContainerRef} className={hasOscillator ? "flex-[3] min-h-0" : "flex-1 min-h-0"} />
+      {hasOscillator && (
+        <>
+          <div className='h-px bg-slate-700' />
+          <div ref={oscContainerRef} className='flex-1 min-h-0' />
+        </>
       )}
     </div>
   );

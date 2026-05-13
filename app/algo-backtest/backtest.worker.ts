@@ -26,6 +26,9 @@ interface StrategyRun {
   stopLossPercent: number;
   takeProfitPercent: number;
   enableShorts: boolean;
+  positionSizePercent: number;
+  commissionBps: number;
+  slippageBps: number;
 }
 
 export interface BacktestJob {
@@ -131,10 +134,15 @@ async function runJob(job: BacktestJob): Promise<void> {
     const combinations = run.paramVariations.length > 0
       ? generateCombinations(run.paramVariations).map((combo) => ({ ...run.currentParams, ...combo }))
       : [run.currentParams];
-    const riskSettings: RiskSettings | undefined =
-      run.stopLossPercent > 0 || run.takeProfitPercent > 0
-        ? { stopLossPercent: run.stopLossPercent, takeProfitPercent: run.takeProfitPercent }
-        : undefined;
+    // Always pass riskSettings now — it carries position sizing + costs even
+    // when SL/TP are off, which is what bounds PnL to a sensible range.
+    const riskSettings: RiskSettings = {
+      stopLossPercent: run.stopLossPercent,
+      takeProfitPercent: run.takeProfitPercent,
+      positionSizePercent: run.positionSizePercent,
+      commissionBps: run.commissionBps,
+      slippageBps: run.slippageBps,
+    };
     return { run, combinations, riskSettings };
   });
 

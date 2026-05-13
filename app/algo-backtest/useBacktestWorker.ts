@@ -13,6 +13,9 @@ interface StrategyRun {
   stopLossPercent: number;
   takeProfitPercent: number;
   enableShorts: boolean;
+  positionSizePercent: number;
+  commissionBps: number;
+  slippageBps: number;
 }
 
 export interface BacktestJobResult {

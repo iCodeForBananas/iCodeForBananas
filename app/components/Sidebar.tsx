@@ -61,7 +61,6 @@ export default function Sidebar() {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
-  const [hasMounted, setHasMounted] = useState(false);
   const { user, signOut } = useAuth();
 
   useEffect(() => {
@@ -76,7 +75,6 @@ export default function Sidebar() {
       const stored = localStorage.getItem(SIDEBAR_OPEN_KEY);
       setIsOpen(stored === null ? true : stored === "true");
     }
-    requestAnimationFrame(() => setHasMounted(true));
   }, []);
 
   useEffect(() => {
@@ -134,14 +132,14 @@ export default function Sidebar() {
       {isOpen && isMobile && <div className='fixed inset-0 bg-black/70 z-30 lg:hidden' onClick={toggle} />}
 
       <aside
-        className={`fixed lg:relative h-screen flex flex-col z-40 ${hasMounted ? "transition-all duration-300" : ""} ${isOpen ? "w-64 translate-x-0" : "w-0 -translate-x-full lg:w-0 overflow-hidden"}`}
+        className={`fixed lg:relative h-screen flex flex-col z-40 ${isOpen ? "w-64 translate-x-0" : "w-0 -translate-x-full lg:w-0 overflow-hidden"}`}
         style={{
           background: "#000000",
         }}
       >
         <button
           onClick={toggle}
-          className={`w-full flex items-center justify-center shrink-0 ${hasMounted ? "transition-opacity duration-200" : ""} ${isOpen ? "opacity-100" : "opacity-0"}`}
+          className={`w-full flex items-center justify-center shrink-0 ${isOpen ? "opacity-100" : "opacity-0"}`}
           style={{
             height: "42px",
             background: "#facc15",
@@ -162,7 +160,7 @@ export default function Sidebar() {
         </button>
 
         <div
-          className={`flex-1 overflow-y-auto p-6 ${hasMounted ? "transition-opacity duration-200" : ""} ${isOpen ? "opacity-100" : "opacity-0"}`}
+          className={`flex-1 overflow-y-auto p-6 ${isOpen ? "opacity-100" : "opacity-0"}`}
         >
           <Link
             href='/'

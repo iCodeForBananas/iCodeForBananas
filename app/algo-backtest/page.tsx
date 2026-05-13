@@ -40,6 +40,10 @@ interface StrategySettings {
   stopLossPercent: number;
   takeProfitPercent: number;
   enableShorts: boolean;
+  // Position sizing & costs (added 2026-05-12 to fix runaway-compounding bug).
+  positionSizePercent: number; // % of equity allocated per trade
+  commissionBps: number;       // round-trip per fill, in basis points
+  slippageBps: number;         // adverse move on each fill, in basis points
 }
 
 function loadGlobalSettings(): Partial<GlobalSettings> | null {
@@ -267,6 +271,12 @@ export default function AlgoBacktestPage() {
   const [stopLossPercent, setStopLossPercent] = useState<number>(1);
   const [takeProfitPercent, setTakeProfitPercent] = useState<number>(0);
   const [enableShorts, setEnableShorts] = useState<boolean>(false);
+  // Sizing + costs (defaults: full allocation, no costs — match prior behavior
+  // *except* shares are now locked at entry so PnL doesn't compound trade-to-
+  // trade in the broken way it used to).
+  const [positionSizePercent, setPositionSizePercent] = useState<number>(100);
+  const [commissionBps, setCommissionBps] = useState<number>(0);
+  const [slippageBps, setSlippageBps] = useState<number>(0);
 
   // Web Worker — owns all backtest compute. Replaces /api/backtest, which was
   // OOMing on Vercel (1.8 GB lambda heap) under multi-strategy / wide sweeps.
@@ -355,10 +365,16 @@ export default function AlgoBacktestPage() {
       setStopLossPercent(saved.stopLossPercent ?? 1);
       setTakeProfitPercent(saved.takeProfitPercent ?? 0);
       setEnableShorts(saved.enableShorts ?? false);
+      setPositionSizePercent(saved.positionSizePercent ?? 100);
+      setCommissionBps(saved.commissionBps ?? 0);
+      setSlippageBps(saved.slippageBps ?? 0);
     } else {
       setStopLossPercent(1);
       setTakeProfitPercent(0);
       setEnableShorts(false);
+      setPositionSizePercent(100);
+      setCommissionBps(0);
+      setSlippageBps(0);
     }
   }, [selectedStrategyId]);
 
@@ -419,8 +435,11 @@ export default function AlgoBacktestPage() {
       stopLossPercent,
       takeProfitPercent,
       enableShorts,
+      positionSizePercent,
+      commissionBps,
+      slippageBps,
     });
-  }, [selectedStrategyId, currentParams, paramVariations, stopLossPercent, takeProfitPercent, enableShorts]);
+  }, [selectedStrategyId, currentParams, paramVariations, stopLossPercent, takeProfitPercent, enableShorts, positionSizePercent, commissionBps, slippageBps]);
 
   // Build a StrategyRun for one strategy from saved per-strategy settings,
   // falling back to defaults if it has never been edited.
@@ -459,6 +478,9 @@ export default function AlgoBacktestPage() {
       stopLossPercent: saved?.stopLossPercent ?? 1,
       takeProfitPercent: saved?.takeProfitPercent ?? 0,
       enableShorts: saved?.enableShorts ?? false,
+      positionSizePercent: saved?.positionSizePercent ?? 100,
+      commissionBps: saved?.commissionBps ?? 0,
+      slippageBps: saved?.slippageBps ?? 0,
     };
   }, []);
 
@@ -486,6 +508,9 @@ export default function AlgoBacktestPage() {
             stopLossPercent,
             takeProfitPercent,
             enableShorts,
+            positionSizePercent,
+            commissionBps,
+            slippageBps,
           };
         }
         return buildSavedRun(sid);
@@ -513,7 +538,7 @@ export default function AlgoBacktestPage() {
     } finally {
       setIsRunningBatch(false);
     }
-  }, [selectedFiles, selectedStrategyIds, selectedStrategyId, paramVariations, currentParams, stopLossPercent, takeProfitPercent, enableShorts, buildSavedRun, runBacktestWorker]);
+  }, [selectedFiles, selectedStrategyIds, selectedStrategyId, paramVariations, currentParams, stopLossPercent, takeProfitPercent, enableShorts, positionSizePercent, commissionBps, slippageBps, buildSavedRun, runBacktestWorker]);
 
   // Generate markdown report for clipboard
   const generateMarkdownReport = useCallback(() => {
@@ -817,22 +842,97 @@ export default function AlgoBacktestPage() {
           {/* Risk Management Settings */}
           <div className='p-4 border-b border-slate-700'>
             <label className='text-sm text-slate-400 mb-3 block'>Risk Management</label>
-            <div>
-              <label className='block text-xs text-slate-400 mb-1'>Stop Loss %</label>
+
+            <div className='grid grid-cols-2 gap-2'>
+              <div>
+                <label className='block text-xs text-slate-400 mb-1'>Stop Loss %</label>
+                <input
+                  type='number'
+                  value={stopLossPercent}
+                  min={0}
+                  step={0.5}
+                  onChange={(e) => {
+                    const v = parseFloat(e.target.value);
+                    setStopLossPercent(isNaN(v) ? 0 : Math.max(0, v));
+                  }}
+                  placeholder='0 = off'
+                  className='w-full bg-slate-800 border border-slate-600 rounded px-2 py-1.5 text-sm text-white'
+                />
+              </div>
+              <div>
+                <label className='block text-xs text-slate-400 mb-1'>Take Profit %</label>
+                <input
+                  type='number'
+                  value={takeProfitPercent}
+                  min={0}
+                  step={0.5}
+                  onChange={(e) => {
+                    const v = parseFloat(e.target.value);
+                    setTakeProfitPercent(isNaN(v) ? 0 : Math.max(0, v));
+                  }}
+                  placeholder='0 = off'
+                  className='w-full bg-slate-800 border border-slate-600 rounded px-2 py-1.5 text-sm text-white'
+                />
+              </div>
+            </div>
+
+            <div className='mt-3'>
+              <label className='block text-xs text-slate-400 mb-1'>
+                Position Size % of Equity
+              </label>
               <input
                 type='number'
-                value={stopLossPercent}
+                value={positionSizePercent}
                 min={0}
                 max={100}
-                step={0.5}
+                step={1}
                 onChange={(e) => {
-                  const value = parseFloat(e.target.value);
-                  setStopLossPercent(isNaN(value) ? 0 : Math.max(0, value));
+                  const v = parseFloat(e.target.value);
+                  setPositionSizePercent(isNaN(v) ? 100 : Math.max(0, Math.min(100, v)));
                 }}
-                placeholder='0 = disabled'
                 className='w-full bg-slate-800 border border-slate-600 rounded px-2 py-1.5 text-sm text-white'
               />
+              <p className='text-xs text-slate-500 mt-1'>
+                Shares are locked at entry — does not compound mid-trade.
+              </p>
             </div>
+
+            <div className='grid grid-cols-2 gap-2 mt-3'>
+              <div>
+                <label className='block text-xs text-slate-400 mb-1'>Commission (bps)</label>
+                <input
+                  type='number'
+                  value={commissionBps}
+                  min={0}
+                  step={0.5}
+                  onChange={(e) => {
+                    const v = parseFloat(e.target.value);
+                    setCommissionBps(isNaN(v) ? 0 : Math.max(0, v));
+                  }}
+                  placeholder='per fill'
+                  className='w-full bg-slate-800 border border-slate-600 rounded px-2 py-1.5 text-sm text-white'
+                />
+              </div>
+              <div>
+                <label className='block text-xs text-slate-400 mb-1'>Slippage (bps)</label>
+                <input
+                  type='number'
+                  value={slippageBps}
+                  min={0}
+                  step={0.5}
+                  onChange={(e) => {
+                    const v = parseFloat(e.target.value);
+                    setSlippageBps(isNaN(v) ? 0 : Math.max(0, v));
+                  }}
+                  placeholder='per fill'
+                  className='w-full bg-slate-800 border border-slate-600 rounded px-2 py-1.5 text-sm text-white'
+                />
+              </div>
+            </div>
+            <p className='text-xs text-slate-500 mt-1'>
+              1 bp = 0.01%. Commission deducts on entry + exit fills; slippage moves fill price against you.
+            </p>
+
             <div className='mt-3'>
               <label className='flex items-center gap-2 cursor-pointer'>
                 <input

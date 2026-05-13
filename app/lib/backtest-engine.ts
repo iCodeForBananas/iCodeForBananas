@@ -13,6 +13,13 @@ export interface MACDConfig {
 export interface RiskSettings {
   stopLossPercent: number;
   takeProfitPercent: number;
+  // Allocation per trade as % of equity at entry. Default 100 in callers.
+  // Position size (shares) is locked at entry — we don't re-grow during the
+  // trade. Prevents the runaway compounding that was producing absurd PnLs.
+  positionSizePercent?: number;
+  // Round-trip costs in basis points (1 bp = 0.01%).
+  commissionBps?: number; // applied to each fill (entry AND exit)
+  slippageBps?: number;   // moves fill price against you (entry AND exit)
 }
 
 export interface ParameterVariationConfig {
@@ -290,25 +297,93 @@ export function runBacktestWithParams(
   const trades: BacktestTrade[] = [];
   const equityCurve: { time: number; equity: number }[] = [];
   let equity = initialCapital;
-  let position: {
+  // shares is locked at entry — we don't grow position size mid-trade. This is
+  // what previously caused absurd compounding: PnL was scaled by current equity
+  // every trade, so a 1% winner in a 1500-trade run multiplied to ~10^15%.
+  type OpenPosition = {
     side: PositionSide;
-    entryPrice: number;
+    entryPrice: number; // post-slippage fill price
+    shares: number;
     entryTime: number;
     entryIdx: number;
     stopLoss?: number;
     takeProfit?: number;
-  } | null = null;
+  };
+  let position: OpenPosition | null = null;
   let tradeId = 1;
-  // Accumulates the stop level at each bar while a position is open.
-  // Uses inflection-only storage: skips duplicate consecutive values (a fixed
-  // SL never changes → stored as a single point; an EMA-based stop changes
-  // every bar → all points stored, but capped at MAX_TRAIL_POINTS_PER_TRADE).
   let trailSeries: { time: number; price: number }[] = [];
-  const MAX_TRAIL_POINTS_PER_TRADE = 500;
+  const MAX_TRAIL_POINTS_PER_TRADE = 5000;
 
   const trailingStopEmaPeriod = (params.trailingStopEmaPeriod as number) ?? 0;
-  // True when any stop is active — avoids building an unused array
   const hasStopMechanism = trailingStopEmaPeriod > 0 || (riskSettings?.stopLossPercent ?? 0) > 0;
+
+  // Risk-management settings with sensible defaults. Bps = basis points
+  // (1 bp = 0.01%). Default sizing is 100% (matches old behavior of "all in"
+  // on each trade) but PnL is now bounded because shares are locked at entry.
+  const positionSizePct = Math.max(0, Math.min(100, riskSettings?.positionSizePercent ?? 100));
+  const commissionBps = Math.max(0, riskSettings?.commissionBps ?? 0);
+  const slippageBps = Math.max(0, riskSettings?.slippageBps ?? 0);
+  const slippageMult = slippageBps / 10000;
+  const commissionRate = commissionBps / 10000;
+
+  // Slippage moves fills against you: buys fill higher, sells fill lower.
+  const slipBuy = (price: number) => price * (1 + slippageMult);
+  const slipSell = (price: number) => price * (1 - slippageMult);
+
+  // Open a position. Returns shares so callers can attach it. Caller decides
+  // long vs short and which slippage direction to use on the fill.
+  const openPosition = (
+    side: PositionSide,
+    rawPrice: number,
+    time: number,
+    idx: number,
+    stopLoss: number | undefined,
+    takeProfit: number | undefined,
+  ) => {
+    const fillPrice = side === PositionSide.LONG ? slipBuy(rawPrice) : slipSell(rawPrice);
+    if (fillPrice <= 0) return;
+    const allocation = equity * (positionSizePct / 100);
+    const shares = allocation / fillPrice;
+    if (shares <= 0) return;
+    // Entry commission is taken out of equity immediately so it shows up in
+    // the equity curve at the right time.
+    equity -= allocation * commissionRate;
+    position = { side, entryPrice: fillPrice, shares, entryTime: time, entryIdx: idx, stopLoss, takeProfit };
+  };
+
+  // Close at a raw (pre-slippage) price. Applies slippage + commission and
+  // settles PnL based on the locked-in share count.
+  const closeAtPrice = (rawExitPrice: number, exitTime: number, exitReason: string) => {
+    if (!position) return;
+    const fillPrice =
+      position.side === PositionSide.LONG ? slipSell(rawExitPrice) : slipBuy(rawExitPrice);
+    const grossPnl =
+      position.side === PositionSide.LONG
+        ? (fillPrice - position.entryPrice) * position.shares
+        : (position.entryPrice - fillPrice) * position.shares;
+    const exitNotional = fillPrice * position.shares;
+    const exitCommission = exitNotional * commissionRate;
+    const pnl = grossPnl - exitCommission;
+    const pnlPercent =
+      ((fillPrice - position.entryPrice) / position.entryPrice) *
+      100 *
+      (position.side === PositionSide.LONG ? 1 : -1);
+    equity += pnl;
+    trades.push({
+      id: `trade-${tradeId++}`,
+      side: position.side,
+      entryPrice: position.entryPrice,
+      entryTime: position.entryTime,
+      exitPrice: fillPrice,
+      exitTime,
+      pnl,
+      pnlPercent,
+      reason: exitReason,
+      trailingSeries: trailSeries.length > 0 ? [...trailSeries] : undefined,
+    });
+    position = null;
+    trailSeries = [];
+  };
 
   for (let i = 1; i < data.length; i++) {
     const current = data[i];
@@ -317,140 +392,96 @@ export function runBacktestWithParams(
 
     // Record the effective stop level at the start of this bar before any exit checks.
     // For EMA-based trailing stops the level ratchets with price; for fixed SL it is flat.
-    if (position && hasStopMechanism && trailSeries.length < MAX_TRAIL_POINTS_PER_TRADE) {
-      let stopLevel: number | undefined;
-      if (trailingStopEmaPeriod > 0) {
-        stopLevel = current[`ema${trailingStopEmaPeriod}` as keyof typeof current] as number | undefined;
-      } else if (position.stopLoss !== undefined) {
-        stopLevel = position.stopLoss;
-      }
-      // Inflection-only: skip if the stop level hasn't changed since last recorded point
-      if (
-        stopLevel !== undefined &&
-        (trailSeries.length === 0 || trailSeries[trailSeries.length - 1].price !== stopLevel)
-      ) {
-        trailSeries.push({ time: current.time, price: stopLevel });
+    {
+      const pos = position as OpenPosition | null;
+      if (pos && hasStopMechanism && trailSeries.length < MAX_TRAIL_POINTS_PER_TRADE) {
+        let stopLevel: number | undefined;
+        if (trailingStopEmaPeriod > 0) {
+          stopLevel = current[`ema${trailingStopEmaPeriod}` as keyof typeof current] as number | undefined;
+        } else if (pos.stopLoss !== undefined) {
+          stopLevel = pos.stopLoss;
+        }
+        if (
+          stopLevel !== undefined &&
+          (trailSeries.length === 0 || trailSeries[trailSeries.length - 1].price !== stopLevel)
+        ) {
+          trailSeries.push({ time: current.time, price: stopLevel });
+        }
       }
     }
 
-    // Per-bar trailing-EMA stop. Independent of riskSettings so it works even
-    // when no SL/TP is configured. Exits at the EMA value the moment the bar's
-    // range crosses it (low <= ema for longs, high >= ema for shorts). Skipped
-    // on the entry bar so a fresh position isn't immediately stopped out by an
-    // EMA already on the wrong side of price.
-    if (position && trailingStopEmaPeriod > 0 && i > position.entryIdx) {
-      const emaKey = `ema${trailingStopEmaPeriod}` as keyof typeof current;
-      const emaVal = current[emaKey] as number | undefined;
-      if (emaVal !== undefined) {
-        const crossed =
-          position.side === PositionSide.LONG
-            ? current.low <= emaVal
-            : current.high >= emaVal;
-        if (crossed) {
-          const exitPrice = emaVal;
-          const exitReason = `Trailing stop EMA ${trailingStopEmaPeriod} hit (exited at ${emaVal.toFixed(2)})`;
-          const pnl =
-            position.side === PositionSide.LONG
-              ? (exitPrice - position.entryPrice) * (equity / position.entryPrice)
-              : (position.entryPrice - exitPrice) * (equity / position.entryPrice);
-          const pnlPercent =
-            ((exitPrice - position.entryPrice) / position.entryPrice) *
-            100 *
-            (position.side === PositionSide.LONG ? 1 : -1);
-          equity += pnl;
-          trades.push({
-            id: `trade-${tradeId++}`,
-            side: position.side,
-            entryPrice: position.entryPrice,
-            entryTime: position.entryTime,
-            exitPrice,
-            exitTime: current.time,
-            pnl,
-            pnlPercent,
-            reason: exitReason,
-            trailingSeries: trailSeries.length > 0 ? [...trailSeries] : undefined,
-          });
-          position = null;
-          trailSeries = [];
+    // Per-bar trailing-EMA stop — close-based.
+    {
+      const pos = position as OpenPosition | null;
+      if (pos && trailingStopEmaPeriod > 0 && i > pos.entryIdx) {
+        const emaKey = `ema${trailingStopEmaPeriod}` as keyof typeof current;
+        const emaVal = current[emaKey] as number | undefined;
+        if (emaVal !== undefined) {
+          const crossed =
+            pos.side === PositionSide.LONG
+              ? current.close <= emaVal
+              : current.close >= emaVal;
+          if (crossed) {
+            const reason = `Trailing stop EMA ${trailingStopEmaPeriod} hit (close ${current.close.toFixed(2)} ${pos.side === PositionSide.LONG ? "≤" : "≥"} EMA ${emaVal.toFixed(2)})`;
+            closeAtPrice(current.close, current.time, reason);
+            exitedViaRiskThisBar = true;
+          }
+        }
+      }
+    }
+
+    {
+      const pos = position as OpenPosition | null;
+      if (pos && riskSettings) {
+        let exitPrice: number | null = null;
+        let exitReason: string | null = null;
+
+        if (pos.side === PositionSide.LONG) {
+          const slHit = pos.stopLoss !== undefined && current.low <= pos.stopLoss;
+          const tpHit = pos.takeProfit !== undefined && current.high >= pos.takeProfit;
+          if (slHit && tpHit) {
+            const slDistance = Math.abs(current.open - pos.stopLoss!);
+            const tpDistance = Math.abs(current.open - pos.takeProfit!);
+            if (slDistance <= tpDistance) {
+              exitPrice = pos.stopLoss!;
+              exitReason = `Stop loss hit at ${pos.stopLoss!.toFixed(2)}`;
+            } else {
+              exitPrice = pos.takeProfit!;
+              exitReason = `Take profit hit at ${pos.takeProfit!.toFixed(2)}`;
+            }
+          } else if (slHit) {
+            exitPrice = pos.stopLoss!;
+            exitReason = `Stop loss hit at ${pos.stopLoss!.toFixed(2)}`;
+          } else if (tpHit) {
+            exitPrice = pos.takeProfit!;
+            exitReason = `Take profit hit at ${pos.takeProfit!.toFixed(2)}`;
+          }
+        } else if (pos.side === PositionSide.SHORT) {
+          const slHit = pos.stopLoss !== undefined && current.high >= pos.stopLoss;
+          const tpHit = pos.takeProfit !== undefined && current.low <= pos.takeProfit;
+          if (slHit && tpHit) {
+            const slDistance = Math.abs(current.open - pos.stopLoss!);
+            const tpDistance = Math.abs(current.open - pos.takeProfit!);
+            if (slDistance <= tpDistance) {
+              exitPrice = pos.stopLoss!;
+              exitReason = `Stop loss hit at ${pos.stopLoss!.toFixed(2)}`;
+            } else {
+              exitPrice = pos.takeProfit!;
+              exitReason = `Take profit hit at ${pos.takeProfit!.toFixed(2)}`;
+            }
+          } else if (slHit) {
+            exitPrice = pos.stopLoss!;
+            exitReason = `Stop loss hit at ${pos.stopLoss!.toFixed(2)}`;
+          } else if (tpHit) {
+            exitPrice = pos.takeProfit!;
+            exitReason = `Take profit hit at ${pos.takeProfit!.toFixed(2)}`;
+          }
+        }
+
+        if (exitPrice !== null && exitReason !== null) {
+          closeAtPrice(exitPrice, current.time, exitReason);
           exitedViaRiskThisBar = true;
         }
-      }
-    }
-
-    if (position && riskSettings) {
-      let exitPrice: number | null = null;
-      let exitReason: string | null = null;
-
-      if (position.side === PositionSide.LONG) {
-        const slHit = position.stopLoss !== undefined && current.low <= position.stopLoss;
-        const tpHit = position.takeProfit !== undefined && current.high >= position.takeProfit;
-
-        if (slHit && tpHit) {
-          const slDistance = Math.abs(current.open - position.stopLoss!);
-          const tpDistance = Math.abs(current.open - position.takeProfit!);
-          if (slDistance <= tpDistance) {
-            exitPrice = position.stopLoss!;
-            exitReason = `Stop loss hit at ${position.stopLoss!.toFixed(2)}`;
-          } else {
-            exitPrice = position.takeProfit!;
-            exitReason = `Take profit hit at ${position.takeProfit!.toFixed(2)}`;
-          }
-        } else if (slHit) {
-          exitPrice = position.stopLoss!;
-          exitReason = `Stop loss hit at ${position.stopLoss!.toFixed(2)}`;
-        } else if (tpHit) {
-          exitPrice = position.takeProfit!;
-          exitReason = `Take profit hit at ${position.takeProfit!.toFixed(2)}`;
-        }
-      } else if (position.side === PositionSide.SHORT) {
-        const slHit = position.stopLoss !== undefined && current.high >= position.stopLoss;
-        const tpHit = position.takeProfit !== undefined && current.low <= position.takeProfit;
-
-        if (slHit && tpHit) {
-          const slDistance = Math.abs(current.open - position.stopLoss!);
-          const tpDistance = Math.abs(current.open - position.takeProfit!);
-          if (slDistance <= tpDistance) {
-            exitPrice = position.stopLoss!;
-            exitReason = `Stop loss hit at ${position.stopLoss!.toFixed(2)}`;
-          } else {
-            exitPrice = position.takeProfit!;
-            exitReason = `Take profit hit at ${position.takeProfit!.toFixed(2)}`;
-          }
-        } else if (slHit) {
-          exitPrice = position.stopLoss!;
-          exitReason = `Stop loss hit at ${position.stopLoss!.toFixed(2)}`;
-        } else if (tpHit) {
-          exitPrice = position.takeProfit!;
-          exitReason = `Take profit hit at ${position.takeProfit!.toFixed(2)}`;
-        }
-      }
-
-      if (exitPrice !== null && exitReason !== null) {
-        const pnl =
-          position.side === PositionSide.LONG
-            ? (exitPrice - position.entryPrice) * (equity / position.entryPrice)
-            : (position.entryPrice - exitPrice) * (equity / position.entryPrice);
-        const pnlPercent =
-          ((exitPrice - position.entryPrice) / position.entryPrice) *
-          100 *
-          (position.side === PositionSide.LONG ? 1 : -1);
-
-        equity += pnl;
-        trades.push({
-          id: `trade-${tradeId++}`,
-          side: position.side,
-          entryPrice: position.entryPrice,
-          entryTime: position.entryTime,
-          exitPrice,
-          exitTime: current.time,
-          pnl,
-          pnlPercent,
-          reason: exitReason,
-          trailingSeries: trailSeries.length > 0 ? [...trailSeries] : undefined,
-        });
-        position = null;
-        trailSeries = [];
-        exitedViaRiskThisBar = true;
       }
     }
 
@@ -462,34 +493,6 @@ export function runBacktestWithParams(
       params,
     });
 
-    const closePosition = (exitPrice: number, exitReason: string) => {
-      if (!position) return;
-      const pnl =
-        position.side === PositionSide.LONG
-          ? (exitPrice - position.entryPrice) * (equity / position.entryPrice)
-          : (position.entryPrice - exitPrice) * (equity / position.entryPrice);
-      const pnlPercent =
-        ((exitPrice - position.entryPrice) / position.entryPrice) *
-        100 *
-        (position.side === PositionSide.LONG ? 1 : -1);
-
-      equity += pnl;
-      trades.push({
-        id: `trade-${tradeId++}`,
-        side: position.side,
-        entryPrice: position.entryPrice,
-        entryTime: position.entryTime,
-        exitPrice,
-        exitTime: current.time,
-        pnl,
-        pnlPercent,
-        reason: exitReason,
-        trailingSeries: trailSeries.length > 0 ? [...trailSeries] : undefined,
-      });
-      position = null;
-      trailSeries = [];
-    };
-
     if (signal.action === "buy" && !position && !exitedViaRiskThisBar) {
       const entryPrice = current.close;
       let stopLoss: number | undefined;
@@ -500,13 +503,11 @@ export function runBacktestWithParams(
       if (riskSettings && riskSettings.takeProfitPercent > 0) {
         takeProfit = entryPrice * (1 + riskSettings.takeProfitPercent / 100);
       }
-      position = { side: PositionSide.LONG, entryPrice, entryTime: current.time, entryIdx: i, stopLoss, takeProfit };
-    } else if (signal.action === "buy" && position && position.side === PositionSide.SHORT) {
-      // Trailing-EMA stop runs above (per-bar). If we got here, the EMA wasn't
-      // crossed this bar, so the close is the correct exit price.
-      closePosition(current.close, signal.reason);
-    } else if (signal.action === "sell" && position && position.side === PositionSide.LONG) {
-      closePosition(current.close, signal.reason);
+      openPosition(PositionSide.LONG, entryPrice, current.time, i, stopLoss, takeProfit);
+    } else if (signal.action === "buy" && (position as OpenPosition | null)?.side === PositionSide.SHORT) {
+      closeAtPrice(current.close, current.time, signal.reason);
+    } else if (signal.action === "sell" && (position as OpenPosition | null)?.side === PositionSide.LONG) {
+      closeAtPrice(current.close, current.time, signal.reason);
     } else if (signal.action === "sell" && !position && enableShorts && !exitedViaRiskThisBar) {
       const entryPrice = current.close;
       let stopLoss: number | undefined;
@@ -517,37 +518,16 @@ export function runBacktestWithParams(
       if (riskSettings && riskSettings.takeProfitPercent > 0) {
         takeProfit = entryPrice * (1 - riskSettings.takeProfitPercent / 100);
       }
-      position = { side: PositionSide.SHORT, entryPrice, entryTime: current.time, entryIdx: i, stopLoss, takeProfit };
+      openPosition(PositionSide.SHORT, entryPrice, current.time, i, stopLoss, takeProfit);
     }
 
     equityCurve.push({ time: current.time, equity });
   }
 
-  // Close any open position at end
+  // Close any open position at end of data
   if (position && data.length > 0) {
     const lastCandle = data[data.length - 1];
-    const pnl =
-      position.side === PositionSide.LONG
-        ? (lastCandle.close - position.entryPrice) * (equity / position.entryPrice)
-        : (position.entryPrice - lastCandle.close) * (equity / position.entryPrice);
-    const pnlPercent =
-      ((lastCandle.close - position.entryPrice) / position.entryPrice) *
-      100 *
-      (position.side === PositionSide.LONG ? 1 : -1);
-
-    equity += pnl;
-    trades.push({
-      id: `trade-${tradeId++}`,
-      side: position.side,
-      entryPrice: position.entryPrice,
-      entryTime: position.entryTime,
-      exitPrice: lastCandle.close,
-      exitTime: lastCandle.time,
-      pnl,
-      pnlPercent,
-      reason: "End of data",
-      trailingSeries: trailSeries.length > 0 ? [...trailSeries] : undefined,
-    });
+    closeAtPrice(lastCandle.close, lastCandle.time, "End of data");
     equityCurve.push({ time: lastCandle.time, equity });
   }
 
