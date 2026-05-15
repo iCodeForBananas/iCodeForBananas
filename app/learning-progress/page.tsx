@@ -18,9 +18,50 @@ interface CategoryLevel {
   recentAccuracy: number | null;
 }
 
+type GradeKey = "K" | "G1" | "G2" | "G3";
+
+interface StageStat {
+  stageId: number;
+  grade: GradeKey;
+  label: string;
+  standard: string;
+  correct: number;
+  total: number;
+  accuracy: number | null;
+  mastered: boolean;
+  lastPlayed: string | null;
+  sessionCount: number;
+}
+
+interface GradeBreakdown {
+  grade: GradeKey;
+  label: string;
+  totalStages: number;
+  masteredStages: number;
+  complete: boolean;
+  masteryPct: number;
+  totalCorrect: number;
+  totalAttempts: number;
+  accuracy: number | null;
+  stages: StageStat[];
+}
+
+interface GradeStat {
+  grade: GradeKey;
+  label: string;
+  totalStages: number;
+  masteredStages: number;
+  complete: boolean;
+}
+
 interface ProgressData {
   player: string;
   overallLevel: number;
+  currentGrade: GradeKey;
+  currentGradeLabel: string;
+  currentGradeBreakdown: GradeBreakdown;
+  gradeBreakdown: GradeBreakdown[];
+  gradeStats: GradeStat[];
   syllabusComplete: boolean;
   categoryLevels: CategoryLevel[];
   strengths: string[];
@@ -180,6 +221,82 @@ function CategoryRow({ cat }: { cat: CategoryLevel }) {
   );
 }
 
+function CurrentGradeSyllabus({ breakdown }: { breakdown: GradeBreakdown }) {
+  const { label, stages, masteredStages, totalStages, masteryPct, totalCorrect, totalAttempts, accuracy } = breakdown;
+  return (
+    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+      <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h3 className="font-bold text-gray-800">{label} Syllabus · Common Core Standards</h3>
+          <p className="text-xs text-gray-400 mt-0.5">
+            Skills student must master to advance. {masteredStages} of {totalStages} mastered ({masteryPct}%).
+          </p>
+        </div>
+        <div className="flex gap-4 text-right">
+          <div>
+            <div className="text-lg font-bold text-gray-800 tabular-nums">{accuracy != null ? `${Math.round(accuracy * 100)}%` : "—"}</div>
+            <div className="text-[10px] uppercase tracking-wide text-gray-400">{label} accuracy</div>
+          </div>
+          <div>
+            <div className="text-lg font-bold text-gray-800 tabular-nums">{totalCorrect}<span className="text-gray-400 font-normal text-sm">/{totalAttempts}</span></div>
+            <div className="text-[10px] uppercase tracking-wide text-gray-400">Correct / total</div>
+          </div>
+        </div>
+      </div>
+      <div className="divide-y divide-gray-100">
+        {stages.map((s) => {
+          const status: "mastered" | "learning" | "not_started" =
+            s.mastered ? "mastered" : s.total > 0 ? "learning" : "not_started";
+          const acc = s.accuracy != null ? Math.round(s.accuracy * 100) : null;
+          return (
+            <div key={s.stageId} className="px-6 py-3 flex items-center gap-4 hover:bg-gray-50">
+              <div className={`w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${
+                status === "mastered" ? "bg-emerald-500 text-white" :
+                status === "learning" ? "bg-yellow-100 text-yellow-700 border border-yellow-300" :
+                "bg-slate-100 text-slate-400 border border-slate-200"
+              }`}>
+                {status === "mastered" ? "✓" : status === "learning" ? "•" : ""}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="font-semibold text-gray-800 text-sm">{s.label}</div>
+                <div className="text-xs text-gray-400 font-mono mt-0.5">{s.standard}</div>
+              </div>
+              <div className="hidden sm:block w-32">
+                {s.total > 0 ? (
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all ${
+                          (acc ?? 0) >= 80 ? "bg-emerald-500" :
+                          (acc ?? 0) >= 60 ? "bg-yellow-400" : "bg-orange-400"
+                        }`}
+                        style={{ width: `${acc ?? 0}%` }}
+                      />
+                    </div>
+                    <span className="text-xs font-semibold text-gray-700 tabular-nums w-9 text-right">{acc}%</span>
+                  </div>
+                ) : (
+                  <span className="text-xs text-slate-400 italic">Not started</span>
+                )}
+              </div>
+              <div className="text-right text-xs text-gray-400 w-24 hidden md:block">
+                {s.total > 0 ? `${s.correct}/${s.total} correct` : ""}
+              </div>
+              <div className={`text-[10px] font-bold uppercase tracking-wide px-2 py-1 rounded-full shrink-0 ${
+                status === "mastered" ? "bg-emerald-100 text-emerald-700" :
+                status === "learning" ? "bg-yellow-100 text-yellow-700" :
+                "bg-slate-100 text-slate-400"
+              }`}>
+                {status === "mastered" ? "Mastered" : status === "learning" ? "Learning" : "Not started"}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function MathTab({ data, loading, error, onRefresh }: {
   data: ProgressData | null;
   loading: boolean;
@@ -187,7 +304,7 @@ function MathTab({ data, loading, error, onRefresh }: {
   onRefresh: () => void;
 }) {
   if (loading && !data) {
-    return <div className="text-center py-20 text-gray-400">Loading Cai's progress…</div>;
+    return <div className="text-center py-20 text-gray-400">Loading Cai&apos;s progress…</div>;
   }
 
   if (error) {
@@ -201,23 +318,82 @@ function MathTab({ data, loading, error, onRefresh }: {
 
   if (!data) return null;
 
-  const { categoryLevels, overallLevel, strengths, weaknesses, notStarted, totalSessions, totalQuestions } = data;
+  const { categoryLevels, overallLevel, currentGradeLabel, currentGradeBreakdown, gradeStats, syllabusComplete, strengths, weaknesses, notStarted, totalSessions, totalQuestions } = data;
+  const currentGradeStat = gradeStats.find((g) => g.label === currentGradeLabel);
+  const gradeProgressPct = currentGradeStat && currentGradeStat.totalStages > 0
+    ? Math.round((currentGradeStat.masteredStages / currentGradeStat.totalStages) * 100)
+    : 0;
 
   return (
     <div className="space-y-6">
+      {/* Current grade callout */}
+      <div className={`rounded-2xl border p-5 shadow-sm flex items-center gap-5 flex-wrap ${
+        syllabusComplete
+          ? "bg-gradient-to-r from-emerald-50 to-green-50 border-emerald-200"
+          : "bg-gradient-to-r from-indigo-50 to-blue-50 border-indigo-200"
+      }`}>
+        <div className={`w-20 h-20 rounded-2xl flex items-center justify-center text-3xl font-black shadow-sm ${
+          syllabusComplete ? "bg-emerald-500 text-white" : "bg-indigo-600 text-white"
+        }`}>
+          {data.currentGrade}
+        </div>
+        <div className="flex-1 min-w-[200px]">
+          <div className="text-xs font-bold uppercase tracking-wider text-indigo-500 mb-0.5">
+            {syllabusComplete ? "Math Complete" : "Currently working at"}
+          </div>
+          <h2 className="text-2xl font-black text-gray-900">{currentGradeLabel} Math</h2>
+          {currentGradeStat && !syllabusComplete && (
+            <div className="mt-2 flex items-center gap-3">
+              <div className="flex-1 h-2 bg-white/70 rounded-full overflow-hidden border border-indigo-100 max-w-[300px]">
+                <div
+                  className="h-full bg-indigo-500 rounded-full transition-all duration-700"
+                  style={{ width: `${gradeProgressPct}%` }}
+                />
+              </div>
+              <span className="text-xs font-semibold text-indigo-700 tabular-nums">
+                {currentGradeStat.masteredStages}/{currentGradeStat.totalStages} stages mastered ({gradeProgressPct}%)
+              </span>
+            </div>
+          )}
+        </div>
+        <div className="flex gap-2">
+          {gradeStats.map((g) => (
+            <div
+              key={g.grade}
+              className={`flex flex-col items-center px-3 py-2 rounded-lg text-xs font-bold ${
+                g.complete
+                  ? "bg-emerald-100 text-emerald-700 border border-emerald-200"
+                  : g.label === currentGradeLabel
+                  ? "bg-indigo-100 text-indigo-700 border border-indigo-300 ring-2 ring-indigo-300"
+                  : "bg-slate-100 text-slate-400 border border-slate-200"
+              }`}
+              title={`${g.masteredStages} of ${g.totalStages} stages mastered`}
+            >
+              <span>{g.grade}</span>
+              <span className="text-[10px] font-normal mt-0.5">
+                {g.complete ? "✓" : `${g.masteredStages}/${g.totalStages}`}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Current grade syllabus checklist */}
+      <CurrentGradeSyllabus breakdown={currentGradeBreakdown} />
+
       {/* Hero summary */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
         <div className="flex items-center gap-8 flex-wrap">
           <OverallGauge level={overallLevel} />
           <div className="flex-1 min-w-[200px]">
             <h2 className="text-xl font-bold text-gray-900">
-              {overallLevel >= 80 ? "🎉 1st Grade Math Complete!" :
+              {overallLevel >= 80 ? "🎉 K–Grade 3 Math Complete!" :
                overallLevel >= 50 ? "📈 Making Great Progress" :
                overallLevel > 0 ? "🚀 Just Getting Started" :
                "✦ Ready to Begin"}
             </h2>
             <p className="text-gray-500 text-sm mt-1">
-              Overall score across all 1st grade math topics
+              Overall score across Kindergarten through Grade 3 math topics
             </p>
             <div className="flex gap-6 mt-4 flex-wrap">
               <div>
@@ -272,8 +448,8 @@ function MathTab({ data, loading, error, onRefresh }: {
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
           <div>
-            <h3 className="font-bold text-gray-800">1st Grade Math Syllabus</h3>
-            <p className="text-xs text-gray-400 mt-0.5">Level 0–100 · 80+ = Mastered · color = heat intensity</p>
+            <h3 className="font-bold text-gray-800">All Grades · Lifetime Skills Heat Map</h3>
+            <p className="text-xs text-gray-400 mt-0.5">Aggregated across K–Grade 3 · Level 0–100 · 80+ = Mastered</p>
           </div>
           <Link
             href="/space-math"
@@ -307,7 +483,7 @@ function MathTab({ data, loading, error, onRefresh }: {
       {/* Heat map visual */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
         <h3 className="font-bold text-gray-800 mb-4">Skill Heat Map</h3>
-        <div className="grid grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3">
           {categoryLevels.map((cat) => (
             <div key={cat.id} className="flex flex-col items-center gap-2">
               <div
@@ -335,7 +511,7 @@ function MathTab({ data, loading, error, onRefresh }: {
           <div className="text-3xl mb-2">🚀</div>
           <div className="font-semibold text-indigo-800">No play sessions yet</div>
           <p className="text-indigo-600 text-sm mt-1">
-            Head to <Link href="/space-math" className="underline font-semibold">Space Math</Link> and play a few stages — Cai's progress will appear here automatically.
+            Head to <Link href="/space-math" className="underline font-semibold">Space Math</Link> and play a few stages — Student&apos; progress will appear here automatically.
           </p>
         </div>
       )}
@@ -381,8 +557,8 @@ export default function LearningProgressPage() {
         {/* Header */}
         <div className="mb-6 flex items-start justify-between flex-wrap gap-4">
           <div>
-            <h1 className="text-3xl font-black text-gray-900">Cai's Learning Progress</h1>
-            <p className="text-gray-500 mt-1 text-sm">1st Grade · Syllabus coverage tracker</p>
+            <h1 className="text-3xl font-black text-gray-900">Cai&apos;s Learning Progress</h1>
+            <p className="text-gray-500 mt-1 text-sm">Common Core K–Grade 3 · Syllabus coverage tracker</p>
           </div>
           <div className="flex items-center gap-3">
             {lastUpdated && (

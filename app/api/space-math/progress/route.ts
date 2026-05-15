@@ -6,15 +6,48 @@ export const dynamic = "force-dynamic";
 // Stage → syllabus category mapping
 // A stage can contribute to multiple categories; we use the primary one here
 const STAGE_CATEGORY: Record<number, string> = {
-  1: "addition_subtraction",  // Add to 5
-  2: "addition_subtraction",  // Subtract to 5
-  3: "addition_subtraction",  // Add to 10
-  4: "addition_subtraction",  // Subtract to 10
-  5: "place_value",           // Place Value + mental ±10
-  6: "addition_subtraction",  // Add to 100 + word problems
-  7: "number_sense",          // Compare Numbers + mental math
-  8: "measurement",           // Time & Shapes (covers both measurement + geometry)
-  9: "geometry",              // Fractions
+  // K & G1 (existing)
+  1: "addition_subtraction",  // K Add to 5
+  2: "addition_subtraction",  // K Subtract to 5
+  3: "addition_subtraction",  // K Add to 10
+  4: "addition_subtraction",  // K Subtract to 10
+  5: "addition_subtraction",  // G1 Add to 20 + Fact Families
+  6: "number_sense",          // G1 Compare Numbers
+  7: "place_value",           // G1 Place Value & Mental ±10
+  8: "addition_subtraction",  // G1 Add to 100 / Word Problems / Count to 120
+  9: "measurement",           // G1 Time, Shapes & Length
+  10: "geometry",             // G1 Halves & Fourths
+  11: "number_sense",         // K Count to 100
+  12: "addition_subtraction", // K Make 10
+  13: "number_sense",         // K Compare 1–10
+  14: "geometry",              // K Shapes
+  15: "place_value",           // K Teen Numbers (10 + ones)
+  16: "addition_subtraction",  // G1 Equal Sign / Unknown Addend
+  // G2
+  20: "addition_subtraction",  // G2 Add within 100
+  21: "addition_subtraction",  // G2 Subtract within 100
+  22: "place_value",           // G2 3-digit place value
+  23: "number_sense",          // G2 Skip Count
+  24: "number_sense",          // G2 Compare 3-digit
+  25: "place_value",           // G2 Mental ±100
+  26: "number_sense",          // G2 Odd/Even
+  27: "multiplication",        // G2 Arrays (multiplication foundations)
+  28: "measurement",           // G2 Time to 5 min
+  29: "measurement",           // G2 Money
+  30: "geometry",              // G2 Thirds
+  31: "geometry",              // G2 Polygons
+  // G3
+  40: "multiplication",        // G3 Multiplication
+  41: "multiplication",        // G3 ×Multiples of 10
+  42: "multiplication",        // G3 Division
+  43: "place_value",           // G3 Rounding
+  44: "fractions",             // G3 Fractions on Number Line
+  45: "fractions",             // G3 Equivalent Fractions
+  46: "fractions",             // G3 Compare Fractions
+  47: "measurement",           // G3 Area
+  48: "measurement",           // G3 Perimeter
+  49: "measurement",           // G3 Time to the Minute
+  50: "measurement",           // G3 Elapsed Time
 };
 
 // For stages that cover two categories, also record in a secondary one
@@ -23,17 +56,74 @@ const STAGE_SECONDARY_CATEGORY: Record<number, string> = {
   2: "number_sense",
   3: "number_sense",
   4: "number_sense",
-  7: "place_value",
-  8: "geometry",  // shapes portion
+  7: "number_sense",
+  9: "geometry",
+  20: "place_value",
+  21: "place_value",
+  27: "addition_subtraction",
+  47: "multiplication",
+  48: "addition_subtraction",
 };
 
 const SYLLABUS_CATEGORIES = [
-  { id: "number_sense",         label: "Number Sense",          description: "Counting to 120, reading/writing numerals, number comparison" },
-  { id: "addition_subtraction", label: "Addition & Subtraction", description: "Fluency within 20, word problems, fact families" },
-  { id: "place_value",          label: "Place Value",            description: "Tens & ones, compare 2-digit numbers, mental +/- 10" },
-  { id: "measurement",          label: "Measurement",            description: "Tell time to the hour and half-hour, order by length" },
-  { id: "geometry",             label: "Geometry",               description: "2D/3D shape recognition, halves and fourths" },
+  { id: "number_sense",         label: "Number Sense",          description: "Counting, skip-count, compare numbers, odd/even" },
+  { id: "addition_subtraction", label: "Addition & Subtraction", description: "Fluency within 20, word problems, regrouping within 100" },
+  { id: "place_value",          label: "Place Value",            description: "Tens, hundreds, mental ±10/±100, rounding" },
+  { id: "multiplication",       label: "Multiplication & Division", description: "Arrays, multiplication facts, division within 100" },
+  { id: "fractions",            label: "Fractions",              description: "Halves/fourths/thirds, fractions on number line, equivalents" },
+  { id: "measurement",          label: "Measurement",            description: "Time, money, length, area, perimeter, elapsed time" },
+  { id: "geometry",             label: "Geometry",               description: "2D/3D shapes, polygons, partition shapes" },
 ];
+
+// Each stage = one Common Core syllabus skill the child must master to advance the grade.
+type GradeKey = "K" | "G1" | "G2" | "G3";
+const STAGE_INFO: Record<number, { grade: GradeKey; label: string; standard: string }> = {
+  // ── Kindergarten ──
+  1:  { grade: "K",  label: "Add within 5",                      standard: "K.OA.A.5" },
+  2:  { grade: "K",  label: "Subtract within 5",                 standard: "K.OA.A.5" },
+  3:  { grade: "K",  label: "Add within 10",                     standard: "K.OA.A.2" },
+  4:  { grade: "K",  label: "Subtract within 10",                standard: "K.OA.A.2" },
+  11: { grade: "K",  label: "Count to 100 (by 1s and 10s)",      standard: "K.CC.A.1" },
+  12: { grade: "K",  label: "Make 10 (find pair to make 10)",    standard: "K.OA.A.4" },
+  13: { grade: "K",  label: "Compare numbers 1–10",              standard: "K.CC.C.6" },
+  14: { grade: "K",  label: "Identify shapes (2D & 3D)",         standard: "K.G.A.2" },
+  15: { grade: "K",  label: "Teen numbers as 10 + ones",         standard: "K.NBT.A.1" },
+  // ── Grade 1 ──
+  5:  { grade: "G1", label: "Add & subtract within 20 (incl. fact families, three addends)", standard: "1.OA.C.6" },
+  6:  { grade: "G1", label: "Compare two-digit numbers",         standard: "1.NBT.B.3" },
+  7:  { grade: "G1", label: "Place value & mental ±10",          standard: "1.NBT.B.2 / 1.NBT.C.5" },
+  8:  { grade: "G1", label: "Add to 100, word problems, count to 120", standard: "1.NBT.C.4 / 1.OA.A.1" },
+  9:  { grade: "G1", label: "Time, length & shapes",             standard: "1.MD / 1.G" },
+  10: { grade: "G1", label: "Halves & fourths (partition shapes)", standard: "1.G.A.3" },
+  16: { grade: "G1", label: "Equal sign & unknown addend",       standard: "1.OA.D.7 / 1.OA.D.8" },
+  // ── Grade 2 ──
+  20: { grade: "G2", label: "Add within 100 (with regrouping)",  standard: "2.NBT.B.5" },
+  21: { grade: "G2", label: "Subtract within 100 (with regrouping)", standard: "2.NBT.B.5" },
+  22: { grade: "G2", label: "3-digit place value",               standard: "2.NBT.A.1" },
+  23: { grade: "G2", label: "Skip count by 5s, 10s, 100s",       standard: "2.NBT.A.2" },
+  24: { grade: "G2", label: "Compare 3-digit numbers",           standard: "2.NBT.A.4" },
+  25: { grade: "G2", label: "Mental ±10 / ±100",                 standard: "2.NBT.B.8" },
+  26: { grade: "G2", label: "Odd or even (within 20)",           standard: "2.OA.C.3" },
+  27: { grade: "G2", label: "Rectangular arrays (foundations of ×)", standard: "2.OA.C.4" },
+  28: { grade: "G2", label: "Tell time to the nearest 5 min",    standard: "2.MD.C.7" },
+  29: { grade: "G2", label: "Money (coins / cents)",             standard: "2.MD.C.8" },
+  30: { grade: "G2", label: "Thirds (partition shapes)",         standard: "2.G.A.3" },
+  31: { grade: "G2", label: "Identify polygons (quadrilaterals, pentagons, hexagons)", standard: "2.G.A.1" },
+  // ── Grade 3 ──
+  40: { grade: "G3", label: "Multiplication within 100",         standard: "3.OA.C.7" },
+  41: { grade: "G3", label: "Multiply by multiples of 10",       standard: "3.NBT.A.3" },
+  42: { grade: "G3", label: "Division within 100",               standard: "3.OA.C.7" },
+  43: { grade: "G3", label: "Round to nearest 10 or 100",        standard: "3.NBT.A.1" },
+  44: { grade: "G3", label: "Fractions on a number line",        standard: "3.NF.A.2" },
+  45: { grade: "G3", label: "Equivalent fractions",              standard: "3.NF.A.3.b" },
+  46: { grade: "G3", label: "Compare fractions",                 standard: "3.NF.A.3.d" },
+  47: { grade: "G3", label: "Area of rectangles",                standard: "3.MD.C.7" },
+  48: { grade: "G3", label: "Perimeter of polygons",             standard: "3.MD.D.8" },
+  49: { grade: "G3", label: "Tell time to the minute",           standard: "3.MD.A.1" },
+  50: { grade: "G3", label: "Elapsed time word problems",        standard: "3.MD.A.1" },
+};
+const GRADE_LABEL: Record<GradeKey, string> = { K: "Kindergarten", G1: "Grade 1", G2: "Grade 2", G3: "Grade 3" };
+const GRADE_ORDER: GradeKey[] = ["K", "G1", "G2", "G3"];
 
 function supabase() {
   return createClient(
@@ -187,11 +277,81 @@ export async function GET(req: NextRequest) {
     const weaknesses = categoryLevels.filter((c) => c.level < 40 && c.total > 0);
     const notStarted = categoryLevels.filter((c) => c.total === 0);
 
+    // ── Per-stage stats (only count primary-category rows so totals aren't doubled) ──
+    type StageStat = {
+      stageId: number;
+      grade: GradeKey;
+      label: string;
+      standard: string;
+      correct: number;
+      total: number;
+      accuracy: number | null;
+      mastered: boolean;
+      lastPlayed: string | null;
+      sessionCount: number;
+    };
+    const stageMap: Record<number, StageStat> = {};
+    for (const id of Object.keys(STAGE_INFO).map(Number)) {
+      const info = STAGE_INFO[id];
+      stageMap[id] = {
+        stageId: id, grade: info.grade, label: info.label, standard: info.standard,
+        correct: 0, total: 0, accuracy: null, mastered: masteredStages.has(id),
+        lastPlayed: null, sessionCount: 0,
+      };
+    }
+    for (const row of rows) {
+      const id = row.stage_id;
+      if (!stageMap[id]) continue;
+      // Avoid double counting: only sum from the primary-category row
+      if (row.skill_category !== STAGE_CATEGORY[id]) continue;
+      const s = stageMap[id];
+      s.correct += row.correct ?? 0;
+      s.total += row.total ?? 0;
+      s.sessionCount++;
+      if (!s.lastPlayed || row.played_at > s.lastPlayed) s.lastPlayed = row.played_at;
+    }
+    for (const id of Object.keys(stageMap).map(Number)) {
+      const s = stageMap[id];
+      s.accuracy = s.total > 0 ? s.correct / s.total : null;
+    }
+
+    // ── Group stages by grade ──
+    const gradeBreakdown = GRADE_ORDER.map((g) => {
+      const stages = Object.values(stageMap).filter((s) => s.grade === g)
+        .sort((a, b) => a.stageId - b.stageId);
+      const mastered = stages.filter((s) => s.mastered).length;
+      const totalCorrect = stages.reduce((acc, s) => acc + s.correct, 0);
+      const totalAttempts = stages.reduce((acc, s) => acc + s.total, 0);
+      return {
+        grade: g,
+        label: GRADE_LABEL[g],
+        totalStages: stages.length,
+        masteredStages: mastered,
+        complete: stages.length > 0 && mastered === stages.length,
+        masteryPct: stages.length > 0 ? Math.round((mastered / stages.length) * 100) : 0,
+        totalCorrect,
+        totalAttempts,
+        accuracy: totalAttempts > 0 ? totalCorrect / totalAttempts : null,
+        stages,
+      };
+    });
+    // Current grade = lowest grade not fully mastered (matches in-game gating)
+    const currentGradeEntry = gradeBreakdown.find((g) => !g.complete) ?? gradeBreakdown[gradeBreakdown.length - 1];
+
     return NextResponse.json({
       success: true,
       player,
       overallLevel,
-      syllabusComplete: categoryLevels.every((c) => c.level >= 80),
+      currentGrade: currentGradeEntry.grade,
+      currentGradeLabel: currentGradeEntry.label,
+      currentGradeBreakdown: currentGradeEntry,
+      gradeBreakdown,
+      // Backward-compat shape
+      gradeStats: gradeBreakdown.map((g) => ({
+        grade: g.grade, label: g.label, totalStages: g.totalStages,
+        masteredStages: g.masteredStages, complete: g.complete,
+      })),
+      syllabusComplete: gradeBreakdown.every((g) => g.complete),
       categoryLevels,
       strengths: strengths.map((c) => c.label),
       weaknesses: weaknesses.map((c) => c.label),
