@@ -3,51 +3,61 @@ import { createClient } from "@supabase/supabase-js";
 
 export const dynamic = "force-dynamic";
 
-// Stage → syllabus category mapping
-// A stage can contribute to multiple categories; we use the primary one here
+// Stage → syllabus category mapping. Each stage is one Common Core skill.
 const STAGE_CATEGORY: Record<number, string> = {
-  // K & G1 (existing)
-  1: "addition_subtraction",  // K Add to 5
-  2: "addition_subtraction",  // K Subtract to 5
-  3: "addition_subtraction",  // K Add to 10
-  4: "addition_subtraction",  // K Subtract to 10
-  5: "addition_subtraction",  // G1 Add to 20 + Fact Families
-  6: "number_sense",          // G1 Compare Numbers
-  7: "place_value",           // G1 Place Value & Mental ±10
-  8: "addition_subtraction",  // G1 Add to 100 / Word Problems / Count to 120
-  9: "measurement",           // G1 Time, Shapes & Length
-  10: "geometry",             // G1 Halves & Fourths
-  11: "number_sense",         // K Count to 100
+  // ── Kindergarten ──
+  1:  "addition_subtraction", // K Add within 5
+  2:  "addition_subtraction", // K Subtract within 5
+  3:  "addition_subtraction", // K Add within 10
+  4:  "addition_subtraction", // K Subtract within 10
+  11: "number_sense",         // K Count by 1s to 100
+  17: "number_sense",         // K Count by 10s to 100
   12: "addition_subtraction", // K Make 10
   13: "number_sense",         // K Compare 1–10
-  14: "geometry",              // K Shapes
-  15: "place_value",           // K Teen Numbers (10 + ones)
-  16: "addition_subtraction",  // G1 Equal Sign / Unknown Addend
-  // G2
-  20: "addition_subtraction",  // G2 Add within 100
-  21: "addition_subtraction",  // G2 Subtract within 100
-  22: "place_value",           // G2 3-digit place value
-  23: "number_sense",          // G2 Skip Count
-  24: "number_sense",          // G2 Compare 3-digit
-  25: "place_value",           // G2 Mental ±100
-  26: "number_sense",          // G2 Odd/Even
-  27: "multiplication",        // G2 Arrays (multiplication foundations)
-  28: "measurement",           // G2 Time to 5 min
-  29: "measurement",           // G2 Money
-  30: "geometry",              // G2 Thirds
-  31: "geometry",              // G2 Polygons
-  // G3
-  40: "multiplication",        // G3 Multiplication
-  41: "multiplication",        // G3 ×Multiples of 10
-  42: "multiplication",        // G3 Division
-  43: "place_value",           // G3 Rounding
-  44: "fractions",             // G3 Fractions on Number Line
-  45: "fractions",             // G3 Equivalent Fractions
-  46: "fractions",             // G3 Compare Fractions
-  47: "measurement",           // G3 Area
-  48: "measurement",           // G3 Perimeter
-  49: "measurement",           // G3 Time to the Minute
-  50: "measurement",           // G3 Elapsed Time
+  14: "geometry",             // K Shapes
+  15: "place_value",          // K Teen numbers (10 + ones)
+  // ── Grade 1 ──
+  5:  "addition_subtraction", // G1 Add within 20
+  60: "addition_subtraction", // G1 Subtract within 20
+  61: "addition_subtraction", // G1 Three-addend addition
+  62: "addition_subtraction", // G1 Fact families
+  16: "addition_subtraction", // G1 Equal sign true/false
+  63: "addition_subtraction", // G1 Unknown addend
+  6:  "number_sense",         // G1 Compare 2-digit numbers
+  7:  "place_value",          // G1 Tens & ones place value
+  64: "place_value",          // G1 Mental ±10
+  65: "place_value",          // G1 Subtract multiples of 10
+  9:  "measurement",          // G1 Compare lengths
+  66: "measurement",          // G1 Time (hour & half-hour)
+  8:  "addition_subtraction", // G1 Add within 100
+  67: "addition_subtraction", // G1 Word problems within 20
+  68: "number_sense",         // G1 Count to 120
+  10: "geometry",             // G1 Halves & fourths
+  // ── Grade 2 ──
+  20: "addition_subtraction", // G2 Add within 100
+  21: "addition_subtraction", // G2 Subtract within 100
+  22: "place_value",          // G2 3-digit place value
+  23: "number_sense",         // G2 Skip count
+  24: "number_sense",         // G2 Compare 3-digit
+  25: "place_value",          // G2 Mental ±100
+  26: "number_sense",         // G2 Odd/even
+  27: "multiplication",       // G2 Arrays
+  28: "measurement",          // G2 Time to 5 min
+  29: "measurement",          // G2 Money
+  30: "geometry",             // G2 Thirds
+  31: "geometry",             // G2 Polygons
+  // ── Grade 3 ──
+  40: "multiplication",       // G3 Multiplication
+  41: "multiplication",       // G3 ×Multiples of 10
+  42: "multiplication",       // G3 Division
+  43: "place_value",          // G3 Rounding
+  44: "fractions",            // G3 Fractions on number line
+  45: "fractions",            // G3 Equivalent fractions
+  46: "fractions",            // G3 Compare fractions
+  47: "measurement",          // G3 Area
+  48: "measurement",          // G3 Perimeter
+  49: "measurement",          // G3 Time to the minute
+  50: "measurement",          // G3 Elapsed time
 };
 
 // For stages that cover two categories, also record in a secondary one
@@ -57,12 +67,13 @@ const STAGE_SECONDARY_CATEGORY: Record<number, string> = {
   3: "number_sense",
   4: "number_sense",
   7: "number_sense",
-  9: "geometry",
   20: "place_value",
   21: "place_value",
   27: "addition_subtraction",
   47: "multiplication",
   48: "addition_subtraction",
+  62: "number_sense",         // fact families touch number sense
+  65: "addition_subtraction", // sub-multiples of 10
 };
 
 const SYLLABUS_CATEGORIES = [
@@ -79,48 +90,58 @@ const SYLLABUS_CATEGORIES = [
 type GradeKey = "K" | "G1" | "G2" | "G3";
 const STAGE_INFO: Record<number, { grade: GradeKey; label: string; standard: string }> = {
   // ── Kindergarten ──
-  1:  { grade: "K",  label: "Add within 5",                      standard: "K.OA.A.5" },
-  2:  { grade: "K",  label: "Subtract within 5",                 standard: "K.OA.A.5" },
-  3:  { grade: "K",  label: "Add within 10",                     standard: "K.OA.A.2" },
-  4:  { grade: "K",  label: "Subtract within 10",                standard: "K.OA.A.2" },
-  11: { grade: "K",  label: "Count to 100 (by 1s and 10s)",      standard: "K.CC.A.1" },
-  12: { grade: "K",  label: "Make 10 (find pair to make 10)",    standard: "K.OA.A.4" },
-  13: { grade: "K",  label: "Compare numbers 1–10",              standard: "K.CC.C.6" },
-  14: { grade: "K",  label: "Identify shapes (2D & 3D)",         standard: "K.G.A.2" },
-  15: { grade: "K",  label: "Teen numbers as 10 + ones",         standard: "K.NBT.A.1" },
+  1:  { grade: "K",  label: "Add within 5",                       standard: "K.OA.A.5" },
+  2:  { grade: "K",  label: "Subtract within 5",                  standard: "K.OA.A.5" },
+  3:  { grade: "K",  label: "Add within 10",                      standard: "K.OA.A.2" },
+  4:  { grade: "K",  label: "Subtract within 10",                 standard: "K.OA.A.2" },
+  11: { grade: "K",  label: "Count by 1s to 100",                 standard: "K.CC.A.1" },
+  17: { grade: "K",  label: "Count by 10s to 100",                standard: "K.CC.A.1" },
+  12: { grade: "K",  label: "Make 10 (find pair to make 10)",     standard: "K.OA.A.4" },
+  13: { grade: "K",  label: "Compare numbers 1–10",               standard: "K.CC.C.6" },
+  14: { grade: "K",  label: "Identify shapes (2D & 3D)",          standard: "K.G.A.2" },
+  15: { grade: "K",  label: "Teen numbers as 10 + ones",          standard: "K.NBT.A.1" },
   // ── Grade 1 ──
-  5:  { grade: "G1", label: "Add & subtract within 20 (incl. fact families, three addends)", standard: "1.OA.C.6" },
-  6:  { grade: "G1", label: "Compare two-digit numbers",         standard: "1.NBT.B.3" },
-  7:  { grade: "G1", label: "Place value & mental ±10",          standard: "1.NBT.B.2 / 1.NBT.C.5" },
-  8:  { grade: "G1", label: "Add to 100, word problems, count to 120", standard: "1.NBT.C.4 / 1.OA.A.1" },
-  9:  { grade: "G1", label: "Time, length & shapes",             standard: "1.MD / 1.G" },
+  5:  { grade: "G1", label: "Add within 20",                      standard: "1.OA.C.6" },
+  60: { grade: "G1", label: "Subtract within 20",                 standard: "1.OA.C.6" },
+  61: { grade: "G1", label: "Three-addend addition",              standard: "1.OA.A.2" },
+  62: { grade: "G1", label: "Fact families (use ↔ subtraction)",  standard: "1.OA.B.4" },
+  16: { grade: "G1", label: "Equal sign true/false",              standard: "1.OA.D.7" },
+  63: { grade: "G1", label: "Unknown addend (8 + ? = 11)",        standard: "1.OA.D.8" },
+  6:  { grade: "G1", label: "Compare two-digit numbers",          standard: "1.NBT.B.3" },
+  7:  { grade: "G1", label: "Tens & ones place value",            standard: "1.NBT.B.2" },
+  64: { grade: "G1", label: "Mental ±10",                         standard: "1.NBT.C.5" },
+  65: { grade: "G1", label: "Subtract multiples of 10 (70 − 30)", standard: "1.NBT.C.6" },
+  9:  { grade: "G1", label: "Order & compare lengths",            standard: "1.MD.A.1" },
+  66: { grade: "G1", label: "Tell time to hour & half-hour",      standard: "1.MD.B.3" },
+  8:  { grade: "G1", label: "Add within 100 (2-digit + 1-digit / multiple of 10)", standard: "1.NBT.C.4" },
+  67: { grade: "G1", label: "Word problems within 20",            standard: "1.OA.A.1" },
+  68: { grade: "G1", label: "Count to 120 from any number",       standard: "1.NBT.A.1" },
   10: { grade: "G1", label: "Halves & fourths (partition shapes)", standard: "1.G.A.3" },
-  16: { grade: "G1", label: "Equal sign & unknown addend",       standard: "1.OA.D.7 / 1.OA.D.8" },
   // ── Grade 2 ──
-  20: { grade: "G2", label: "Add within 100 (with regrouping)",  standard: "2.NBT.B.5" },
+  20: { grade: "G2", label: "Add within 100 (with regrouping)",   standard: "2.NBT.B.5" },
   21: { grade: "G2", label: "Subtract within 100 (with regrouping)", standard: "2.NBT.B.5" },
-  22: { grade: "G2", label: "3-digit place value",               standard: "2.NBT.A.1" },
-  23: { grade: "G2", label: "Skip count by 5s, 10s, 100s",       standard: "2.NBT.A.2" },
-  24: { grade: "G2", label: "Compare 3-digit numbers",           standard: "2.NBT.A.4" },
-  25: { grade: "G2", label: "Mental ±10 / ±100",                 standard: "2.NBT.B.8" },
-  26: { grade: "G2", label: "Odd or even (within 20)",           standard: "2.OA.C.3" },
+  22: { grade: "G2", label: "3-digit place value",                standard: "2.NBT.A.1" },
+  23: { grade: "G2", label: "Skip count by 5s, 10s, 100s",        standard: "2.NBT.A.2" },
+  24: { grade: "G2", label: "Compare 3-digit numbers",            standard: "2.NBT.A.4" },
+  25: { grade: "G2", label: "Mental ±100",                        standard: "2.NBT.B.8" },
+  26: { grade: "G2", label: "Odd or even (within 20)",            standard: "2.OA.C.3" },
   27: { grade: "G2", label: "Rectangular arrays (foundations of ×)", standard: "2.OA.C.4" },
-  28: { grade: "G2", label: "Tell time to the nearest 5 min",    standard: "2.MD.C.7" },
-  29: { grade: "G2", label: "Money (coins / cents)",             standard: "2.MD.C.8" },
-  30: { grade: "G2", label: "Thirds (partition shapes)",         standard: "2.G.A.3" },
+  28: { grade: "G2", label: "Tell time to the nearest 5 min",     standard: "2.MD.C.7" },
+  29: { grade: "G2", label: "Money (coins / cents)",              standard: "2.MD.C.8" },
+  30: { grade: "G2", label: "Thirds (partition shapes)",          standard: "2.G.A.3" },
   31: { grade: "G2", label: "Identify polygons (quadrilaterals, pentagons, hexagons)", standard: "2.G.A.1" },
   // ── Grade 3 ──
-  40: { grade: "G3", label: "Multiplication within 100",         standard: "3.OA.C.7" },
-  41: { grade: "G3", label: "Multiply by multiples of 10",       standard: "3.NBT.A.3" },
-  42: { grade: "G3", label: "Division within 100",               standard: "3.OA.C.7" },
-  43: { grade: "G3", label: "Round to nearest 10 or 100",        standard: "3.NBT.A.1" },
-  44: { grade: "G3", label: "Fractions on a number line",        standard: "3.NF.A.2" },
-  45: { grade: "G3", label: "Equivalent fractions",              standard: "3.NF.A.3.b" },
-  46: { grade: "G3", label: "Compare fractions",                 standard: "3.NF.A.3.d" },
-  47: { grade: "G3", label: "Area of rectangles",                standard: "3.MD.C.7" },
-  48: { grade: "G3", label: "Perimeter of polygons",             standard: "3.MD.D.8" },
-  49: { grade: "G3", label: "Tell time to the minute",           standard: "3.MD.A.1" },
-  50: { grade: "G3", label: "Elapsed time word problems",        standard: "3.MD.A.1" },
+  40: { grade: "G3", label: "Multiplication within 100",          standard: "3.OA.C.7" },
+  41: { grade: "G3", label: "Multiply by multiples of 10",        standard: "3.NBT.A.3" },
+  42: { grade: "G3", label: "Division within 100",                standard: "3.OA.C.7" },
+  43: { grade: "G3", label: "Round to nearest 10 or 100",         standard: "3.NBT.A.1" },
+  44: { grade: "G3", label: "Fractions on a number line",         standard: "3.NF.A.2" },
+  45: { grade: "G3", label: "Equivalent fractions",               standard: "3.NF.A.3.b" },
+  46: { grade: "G3", label: "Compare fractions",                  standard: "3.NF.A.3.d" },
+  47: { grade: "G3", label: "Area of rectangles",                 standard: "3.MD.C.7" },
+  48: { grade: "G3", label: "Perimeter of polygons",              standard: "3.MD.D.8" },
+  49: { grade: "G3", label: "Tell time to the minute",            standard: "3.MD.A.1" },
+  50: { grade: "G3", label: "Elapsed time word problems",         standard: "3.MD.A.1" },
 };
 const GRADE_LABEL: Record<GradeKey, string> = { K: "Kindergarten", G1: "Grade 1", G2: "Grade 2", G3: "Grade 3" };
 const GRADE_ORDER: GradeKey[] = ["K", "G1", "G2", "G3"];
