@@ -28,6 +28,7 @@ const COMPOUND: { name: string; type: "weighted" | "bodyweight" }[] = [
   { name: "Deadlift", type: "weighted" },
   { name: "Dips", type: "bodyweight" },
   { name: "Incline Press", type: "weighted" },
+  { name: "Leg Lifts", type: "bodyweight" },
   { name: "Leg Press", type: "weighted" },
   { name: "Overhead Press", type: "weighted" },
   { name: "Pull-ups", type: "bodyweight" },
