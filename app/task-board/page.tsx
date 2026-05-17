@@ -4,41 +4,40 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   DndContext,
   DragEndEvent,
-  DragOverEvent,
   DragOverlay,
   DragStartEvent,
   PointerSensor,
-  useDraggable,
-  useDroppable,
+  closestCenter,
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/app/hooks/useAuth";
 import TaskCard from "./TaskCard";
 import TaskModal from "./TaskModal";
+import InlineTaskEditor from "./InlineTaskEditor";
 import { Task, Column } from "./types";
 
-// ── DnD primitives (defined outside page so React never remounts them) ────────
+// ── Sortable task card ────────────────────────────────────────────────────────
 
-function DraggableTaskCard({
-  task,
-  onClick,
-}: {
-  task: Task;
-  onClick: () => void;
-}) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } =
-    useDraggable({ id: task.id });
+function SortableTaskCard({ task, onClick }: { task: Task; onClick: () => void }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: task.id });
 
   return (
     <div
       ref={setNodeRef}
       style={{
-        transform: CSS.Translate.toString(transform),
+        transform: CSS.Transform.toString(transform),
+        transition,
         opacity: isDragging ? 0.25 : 1,
-        transition: isDragging ? undefined : "opacity 0.15s",
         cursor: isDragging ? "grabbing" : "grab",
         touchAction: "none",
       }}
@@ -50,40 +49,6 @@ function DraggableTaskCard({
   );
 }
 
-function DroppableArea({
-  columnId,
-  isOver,
-  children,
-}: {
-  columnId: Column;
-  isOver: boolean;
-  children: React.ReactNode;
-}) {
-  const { setNodeRef } = useDroppable({ id: columnId });
-
-  return (
-    <div
-      ref={setNodeRef}
-      className="flex-1 overflow-y-auto p-3 flex flex-col gap-2 rounded-b-lg"
-      style={{
-        transition: "background 0.15s, box-shadow 0.15s",
-        background: isOver ? "rgba(250,204,21,0.04)" : undefined,
-        boxShadow: isOver ? "inset 0 0 0 1px rgba(250,204,21,0.35)" : undefined,
-      }}
-    >
-      {children}
-    </div>
-  );
-}
-
-// ── Constants ─────────────────────────────────────────────────────────────────
-
-const COLUMNS: { id: Column; label: string; hint: string }[] = [
-  { id: "backlog", label: "Backlog", hint: "Priority-ordered to-do" },
-  { id: "in-progress", label: "In Progress", hint: "Being worked on" },
-  { id: "done", label: "Done", hint: "Completed" },
-];
-
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function TaskBoardPage() {
@@ -93,12 +58,9 @@ export default function TaskBoardPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loadingTasks, setLoadingTasks] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
-  const [addingTo, setAddingTo] = useState<Column | null>(null);
+  const [isAdding, setIsAdding] = useState(false);
   const [newTitle, setNewTitle] = useState("");
-
-  // DnD state
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
-  const [overColumnId, setOverColumnId] = useState<Column | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -120,57 +82,50 @@ export default function TaskBoardPage() {
       });
   }, [supabase, user]);
 
-  const updateTask = useCallback(
-    async (updated: Task) => {
-      setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
-      if (!supabase) return;
-      const { error } = await supabase
-        .from("tasks")
-        .update({
-          title: updated.title,
-          body: updated.body,
-          board_column: updated.board_column,
-          sort_order: updated.sort_order,
-          updated_at: updated.updated_at,
-        })
-        .eq("id", updated.id);
-      if (error) console.error("Failed to update task:", error);
-    },
-    [supabase],
-  );
+  const updateTask = useCallback(async (updated: Task) => {
+    setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+    if (!supabase) return;
+    const { error } = await supabase
+      .from("tasks")
+      .update({
+        title: updated.title,
+        body: updated.body,
+        board_column: updated.board_column,
+        sort_order: updated.sort_order,
+        updated_at: updated.updated_at,
+      })
+      .eq("id", updated.id);
+    if (error) console.error("Failed to update task:", error);
+  }, [supabase]);
 
-  const deleteTask = useCallback(
-    async (id: string) => {
-      setTasks((prev) => prev.filter((t) => t.id !== id));
-      setSelectedTaskId(null);
-      if (!supabase) return;
-      const { error } = await supabase.from("tasks").delete().eq("id", id);
-      if (error) console.error("Failed to delete task:", error);
-    },
-    [supabase],
-  );
+  const deleteTask = useCallback(async (id: string) => {
+    setTasks((prev) => prev.filter((t) => t.id !== id));
+    setSelectedTaskId(null);
+    if (!supabase) return;
+    const { error } = await supabase.from("tasks").delete().eq("id", id);
+    if (error) console.error("Failed to delete task:", error);
+  }, [supabase]);
 
-  async function addTask(column: Column) {
+  async function addTask() {
     if (!newTitle.trim() || !supabase || !user) return;
+    const visibleCount = tasks.filter((t) => t.board_column !== "done").length;
     const { data, error } = await supabase
       .from("tasks")
       .insert({
         user_id: user.id,
         title: newTitle.trim(),
         body: "",
-        board_column: column,
-        sort_order: tasks.filter((t) => t.board_column === column).length,
+        board_column: "backlog" as Column,
+        sort_order: visibleCount,
       })
       .select()
       .single();
     if (error || !data) { console.error("Failed to add task:", error); return; }
     setTasks((prev) => [...prev, data as Task]);
     setNewTitle("");
-    setAddingTo(null);
+    setIsAdding(false);
     setSelectedTaskId(data.id);
   }
-
-  function cancelAdd() { setAddingTo(null); setNewTitle(""); }
 
   // ── DnD handlers ────────────────────────────────────────────
 
@@ -178,31 +133,50 @@ export default function TaskBoardPage() {
     setActiveTaskId(active.id as string);
   }
 
-  function handleDragOver({ over }: DragOverEvent) {
-    setOverColumnId(over ? (over.id as Column) : null);
-  }
-
-  function handleDragEnd({ active, over }: DragEndEvent) {
+  async function handleDragEnd({ active, over }: DragEndEvent) {
     setActiveTaskId(null);
-    setOverColumnId(null);
-    if (!over) return;
+    if (!over || active.id === over.id) return;
 
-    const task = tasks.find((t) => t.id === active.id);
-    const newColumn = over.id as Column;
-    if (!task || task.board_column === newColumn) return;
+    const visible = tasks
+      .filter((t) => t.board_column !== "done")
+      .sort((a, b) => a.sort_order - b.sort_order);
 
-    updateTask({ ...task, board_column: newColumn, updated_at: new Date().toISOString() });
+    const oldIndex = visible.findIndex((t) => t.id === active.id);
+    const newIndex = visible.findIndex((t) => t.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const reordered = arrayMove(visible, oldIndex, newIndex).map((t, i) => ({ ...t, sort_order: i }));
+
+    setTasks((prev) => {
+      const done = prev.filter((t) => t.board_column === "done");
+      return [...reordered, ...done];
+    });
+
+    if (!supabase) return;
+    await Promise.all(
+      reordered.map((t) =>
+        supabase
+          .from("tasks")
+          .update({ sort_order: t.sort_order, updated_at: new Date().toISOString() })
+          .eq("id", t.id),
+      ),
+    );
   }
 
-  function handleDragCancel() {
-    setActiveTaskId(null);
-    setOverColumnId(null);
-  }
+  // ── Derived ─────────────────────────────────────────────────
 
-  // ── Render ───────────────────────────────────────────────────
+  const visibleTasks = useMemo(
+    () =>
+      tasks
+        .filter((t) => t.board_column !== "done")
+        .sort((a, b) => a.sort_order - b.sort_order),
+    [tasks],
+  );
 
   const activeTask = tasks.find((t) => t.id === activeTaskId) ?? null;
   const selectedTask = tasks.find((t) => t.id === selectedTaskId) ?? null;
+
+  // ── Auth guards ─────────────────────────────────────────────
 
   if (authLoading) {
     return (
@@ -223,145 +197,130 @@ export default function TaskBoardPage() {
     );
   }
 
+  // ── Render ───────────────────────────────────────────────────
+
   return (
     <main className="flex-1 flex flex-col min-h-0 overflow-hidden" style={{ background: "var(--bg-primary)" }}>
       {/* Header */}
-      <div className="px-5 py-3 flex items-center gap-3 shrink-0 border-b" style={{ borderColor: "var(--border-color)" }}>
-        <h1 className="text-base font-bold uppercase tracking-widest" style={{ color: "var(--text-primary)" }}>
-          Task Board
-        </h1>
-        <span className="text-xs" style={{ color: "var(--text-secondary)" }}>
-          {loadingTasks ? "Loading…" : `${tasks.length} task${tasks.length !== 1 ? "s" : ""}`}
-        </span>
+      <div
+        className="px-5 py-3 flex items-center justify-between shrink-0 border-b"
+        style={{ borderColor: "var(--border-color)" }}
+      >
+        <div className="flex items-center gap-3">
+          <h1 className="text-base font-bold uppercase tracking-widest" style={{ color: "var(--text-primary)" }}>
+            Task Board
+          </h1>
+          <span className="text-xs" style={{ color: "var(--text-secondary)" }}>
+            {loadingTasks
+              ? "Loading…"
+              : `${visibleTasks.length} task${visibleTasks.length !== 1 ? "s" : ""}`}
+          </span>
+        </div>
+        <button
+          onClick={() => { setIsAdding(true); setNewTitle(""); }}
+          className="text-xs px-3 py-1.5 rounded font-semibold transition-opacity hover:opacity-80"
+          style={{ background: "#facc15", color: "#0a0a0a" }}
+        >
+          + Add task
+        </button>
       </div>
 
-      {/* Board */}
-      <DndContext
-        sensors={sensors}
-        onDragStart={handleDragStart}
-        onDragOver={handleDragOver}
-        onDragEnd={handleDragEnd}
-        onDragCancel={handleDragCancel}
-      >
-        <div className="flex-1 grid grid-cols-3 gap-4 p-4 min-h-0 overflow-y-auto">
-          {COLUMNS.map((col) => {
-            const colTasks = tasks
-              .filter((t) => t.board_column === col.id)
-              .sort((a, b) => a.sort_order - b.sort_order);
-            const isAdding = addingTo === col.id;
-
-            return (
-              <div
-                key={col.id}
-                className="flex flex-col rounded-lg min-h-0"
-                style={{
-                  background: "var(--bg-secondary)",
-                  border: "1px solid #404040",
-                }}
-              >
-                {/* Column header */}
-                <div
-                  className="px-4 py-3 flex items-center justify-between shrink-0 border-b"
-                  style={{ borderColor: "#404040" }}
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-sm" style={{ color: "var(--text-primary)" }}>
-                      {col.label}
-                    </span>
-                    <span
-                      className="text-xs px-1.5 py-0.5 rounded-full font-medium"
-                      style={{ background: "var(--border-color)", color: "var(--text-secondary)" }}
-                    >
-                      {colTasks.length}
-                    </span>
-                  </div>
-                  <button
-                    onClick={() => { setAddingTo(col.id); setNewTitle(""); }}
-                    className="text-xs px-2 py-1 rounded font-semibold transition-opacity hover:opacity-80"
-                    style={{ background: "#facc15", color: "#0a0a0a" }}
-                  >
-                    + Add
-                  </button>
-                </div>
-
-                {/* Droppable task list */}
-                <DroppableArea columnId={col.id} isOver={overColumnId === col.id}>
-                  {/* Inline add form */}
-                  {isAdding && (
-                    <div
-                      className="rounded-lg p-3"
-                      style={{ background: "var(--bg-primary)", border: "1px solid #facc15" }}
-                    >
-                      <input
-                        autoFocus
-                        value={newTitle}
-                        onChange={(e) => setNewTitle(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") addTask(col.id);
-                          if (e.key === "Escape") cancelAdd();
-                        }}
-                        placeholder="Task title…"
-                        className="w-full bg-transparent text-sm outline-none"
-                        style={{ color: "var(--text-primary)" }}
-                      />
-                      <div className="flex gap-2 mt-2">
-                        <button
-                          onClick={() => addTask(col.id)}
-                          className="text-xs px-2 py-1 rounded font-semibold"
-                          style={{ background: "#facc15", color: "#0a0a0a" }}
-                        >
-                          Add
-                        </button>
-                        <button
-                          onClick={cancelAdd}
-                          className="text-xs px-2 py-1 rounded transition-opacity hover:opacity-70"
-                          style={{ color: "var(--text-secondary)" }}
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {colTasks.map((task) => (
-                    <DraggableTaskCard
-                      key={task.id}
-                      task={task}
-                      onClick={() => setSelectedTaskId(task.id)}
-                    />
-                  ))}
-
-                  {colTasks.length === 0 && !isAdding && (
-                    <div
-                      className="text-xs text-center py-8 select-none"
-                      style={{ color: "var(--border-dark)" }}
-                    >
-                      {col.hint}
-                    </div>
-                  )}
-                </DroppableArea>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Drag ghost / overlay */}
-        <DragOverlay dropAnimation={{ duration: 180, easing: "ease" }}>
-          {activeTask && (
+      {/* Priority list */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="flex flex-col gap-2 p-4 max-w-2xl mx-auto">
+          {/* Inline add form */}
+          {isAdding && (
             <div
-              style={{
-                transform: "scale(1.03) rotate(1deg)",
-                boxShadow: "0 12px 32px rgba(0,0,0,0.6), 0 0 0 1px rgba(250,204,21,0.3)",
-                borderRadius: "0.5rem",
-                opacity: 0.95,
-                pointerEvents: "none",
-              }}
+              className="rounded-lg p-3 shrink-0"
+              style={{ background: "var(--bg-secondary)", border: "1px solid #facc15" }}
             >
-              <TaskCard task={activeTask} onClick={() => {}} />
+              <input
+                autoFocus
+                value={newTitle}
+                onChange={(e) => setNewTitle(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") addTask();
+                  if (e.key === "Escape") { setIsAdding(false); setNewTitle(""); }
+                }}
+                placeholder="Task title…"
+                className="w-full bg-transparent text-sm outline-none"
+                style={{ color: "var(--text-primary)" }}
+              />
+              <div className="flex gap-2 mt-2">
+                <button
+                  onClick={addTask}
+                  className="text-xs px-2 py-1 rounded font-semibold"
+                  style={{ background: "#facc15", color: "#0a0a0a" }}
+                >
+                  Add
+                </button>
+                <button
+                  onClick={() => { setIsAdding(false); setNewTitle(""); }}
+                  className="text-xs px-2 py-1 rounded transition-opacity hover:opacity-70"
+                  style={{ color: "var(--text-secondary)" }}
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
           )}
-        </DragOverlay>
-      </DndContext>
+
+          {/* Featured first task — inline editable */}
+          {visibleTasks[0] && (
+            <InlineTaskEditor
+              key={visibleTasks[0].id}
+              task={visibleTasks[0]}
+              onUpdate={updateTask}
+              onExpand={() => setSelectedTaskId(visibleTasks[0].id)}
+            />
+          )}
+
+          {/* Remaining tasks — sortable */}
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext items={visibleTasks.slice(1).map((t) => t.id)} strategy={verticalListSortingStrategy}>
+              <div className="flex flex-col gap-2">
+                {visibleTasks.slice(1).map((task) => (
+                  <SortableTaskCard
+                    key={task.id}
+                    task={task}
+                    onClick={() => setSelectedTaskId(task.id)}
+                  />
+                ))}
+              </div>
+            </SortableContext>
+
+            <DragOverlay dropAnimation={{ duration: 180, easing: "ease" }}>
+              {activeTask && (
+                <div
+                  style={{
+                    transform: "scale(1.03) rotate(1deg)",
+                    boxShadow: "0 12px 32px rgba(0,0,0,0.6), 0 0 0 1px rgba(250,204,21,0.3)",
+                    borderRadius: "0.5rem",
+                    opacity: 0.95,
+                    pointerEvents: "none",
+                  }}
+                >
+                  <TaskCard task={activeTask} onClick={() => {}} />
+                </div>
+              )}
+            </DragOverlay>
+          </DndContext>
+
+          {visibleTasks.length === 0 && !isAdding && (
+            <div
+              className="text-center py-16 text-sm select-none"
+              style={{ color: "var(--text-secondary)" }}
+            >
+              No tasks yet — add one to get started.
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Task detail modal */}
       {selectedTask && (

@@ -17,16 +17,28 @@ interface TaskCardProps {
   onClick: () => void;
 }
 
+const STATUS_LABEL: Record<string, string> = {
+  "backlog": "Not Started",
+  "in-progress": "In Progress",
+};
+
+const STATUS_STYLE: Record<string, React.CSSProperties> = {
+  "backlog": { background: "rgba(255,255,255,0.06)", color: "var(--text-secondary)" },
+  "in-progress": { background: "rgba(250,204,21,0.15)", color: "#facc15" },
+};
+
 export default function TaskCard({ task, onClick }: TaskCardProps) {
   const excerpt = stripHtml(task.body).slice(0, 100);
   const thumbnail = extractFirstImage(task.body);
+  const statusLabel = STATUS_LABEL[task.board_column];
+  const statusStyle = STATUS_STYLE[task.board_column];
 
   return (
     <button
       onClick={onClick}
       className="w-full text-left rounded-lg p-3 transition-all"
       style={{
-        background: "var(--bg-primary)",
+        background: "var(--bg-secondary)",
         border: "1px solid #404040",
       }}
       onMouseEnter={(e) => {
@@ -41,8 +53,18 @@ export default function TaskCard({ task, onClick }: TaskCardProps) {
           <img src={thumbnail} alt="" className="w-full h-full object-cover" />
         </div>
       )}
-      <div className="font-medium text-sm" style={{ color: "var(--text-primary)" }}>
-        {task.title || "Untitled"}
+      <div className="flex items-center justify-between gap-2">
+        <div className="font-medium text-sm" style={{ color: "var(--text-primary)" }}>
+          {task.title || "Untitled"}
+        </div>
+        {statusLabel && (
+          <span
+            className="shrink-0 text-xs px-2 py-0.5 rounded-full font-medium"
+            style={statusStyle}
+          >
+            {statusLabel}
+          </span>
+        )}
       </div>
       {excerpt && (
         <div

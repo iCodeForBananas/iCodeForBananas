@@ -8,7 +8,7 @@ import Placeholder from "@tiptap/extension-placeholder";
 import { Task, Column } from "./types";
 
 const COLUMN_OPTIONS: { value: Column; label: string }[] = [
-  { value: "backlog", label: "Backlog" },
+  { value: "backlog", label: "Not Started" },
   { value: "in-progress", label: "In Progress" },
   { value: "done", label: "Done" },
 ];
@@ -54,6 +54,7 @@ export default function TaskModal({ task, onUpdate, onDelete, onClose }: TaskMod
   }, [flush]);
 
   const editor = useEditor({
+    immediatelyRender: false,
     extensions: [
       StarterKit,
       TipTapImage.configure({ inline: false, allowBase64: true }),
