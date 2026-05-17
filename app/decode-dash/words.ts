@@ -45,13 +45,13 @@ const rv = (t: string): Tile => ({ text: t, type: "r-vowel" });
 
 // ── Phoneme speech hints (for TTS) ──────────────────────────────────────────
 export const PHONEME_SPEECH: Record<string, string> = {
-  a: "aah", e: "eh", i: "ih", o: "awh", u: "uh",
-  ai: "ay", ee: "ee", oa: "oh", ea: "ee", oo: "oo",
-  ar: "ar", or: "or", er: "er", ir: "er", ur: "er",
-  sh: "sh", ch: "ch", th: "th", wh: "wh",
-  st: "st", cl: "cl", tr: "tr", bl: "bl", gr: "gr",
-  fl: "fl", sl: "sl", dr: "dr", sn: "sn", sp: "sp",
-  cr: "cr", fr: "fr", br: "br",
+  a: "aah.", e: "eh.", i: "ih.", o: "awh.", u: "uh.",
+  ai: "ay.", ee: "ee.", oa: "oh.", ea: "ee.", oo: "oo.",
+  ar: "ar.", or: "or.", er: "er.", ir: "er.", ur: "er.",
+  sh: "shh.", ch: "chuh.", th: "thuh.", wh: "wuh.",
+  st: "stuh.", cl: "cluh.", tr: "truh.", bl: "bluh.", gr: "gruh.",
+  fl: "fluh.", sl: "sluh.", dr: "druh.", sn: "snuh.", sp: "spuh.",
+  cr: "cruh.", fr: "fruh.", br: "bruh.",
 };
 
 // ── Tile color classes ───────────────────────────────────────────────────────

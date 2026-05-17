@@ -25,6 +25,7 @@ function speakPhoneme(tile: Tile) {
   if (tile.isSilent || typeof window === "undefined") return;
   window.speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(getTileSound(tile));
+  u.lang = "en-US";
   u.rate = 0.6;
   u.pitch = 1.2;
   window.speechSynthesis.speak(u);
