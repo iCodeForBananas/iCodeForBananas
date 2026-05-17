@@ -74,6 +74,7 @@ const BODY_PART_MAP: Partial<Record<string, string[]>> = {
   "Core Work": ["core"],
   "Dragon Flag": ["core"],
   "Leg Raises": ["core"],
+  "Leg Lifts": ["core"],
   "Crunches": ["core"],
   "Deadlift": ["back", "legs"],
   "Dips": ["chest"],
