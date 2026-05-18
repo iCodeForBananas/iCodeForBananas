@@ -7,11 +7,7 @@ import { useAuth } from "@/app/hooks/useAuth";
 import { ArrowLeft, Pencil, Maximize2, Minimize2 } from "lucide-react";
 import { type LeadSheet, migrateSection, ChordLyricLine } from "../../shared";
 
-export default function PreviewLeadSheet({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default function PreviewLeadSheet({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
@@ -25,11 +21,7 @@ export default function PreviewLeadSheet({
 
   async function loadSheet() {
     setLoading(true);
-    const { data } = await createClient()!
-      .from("lead_sheets")
-      .select("*")
-      .eq("id", id)
-      .single();
+    const { data } = await createClient()!.from("lead_sheets").select("*").eq("id", id).single();
     if (data) {
       setSheet({
         ...data,
@@ -41,88 +33,83 @@ export default function PreviewLeadSheet({
 
   if (authLoading || loading) {
     return (
-      <main className="px-4 py-6 flex-1">
-        <div className="w-full lg:max-w-3xl lg:mx-auto">
-          <div className="rounded-lg p-6 bg-white text-center text-[#373A40]/50">Loading...</div>
-        </div>
-      </main>
+      <div className='flex flex-col flex-1'>
+        <main className='pr-4 py-4 flex-1 '>
+          <div className='rounded-lg p-6 bg-white text-center text-[#373A40]/50'>Loading...</div>
+        </main>
+      </div>
     );
   }
 
   if (!user || !sheet) {
     return (
-      <main className="px-4 py-6 flex-1">
-        <div className="w-full lg:max-w-3xl lg:mx-auto">
-          <div className="rounded-lg p-6 bg-white text-center text-[#373A40]/50">Sheet not found.</div>
-        </div>
-      </main>
+      <div className='flex flex-col flex-1'>
+        <main className='pr-4 py-4 flex-1 '>
+          <div className='rounded-lg p-6 bg-white text-center text-[#373A40]/50'>Sheet not found.</div>
+        </main>
+      </div>
     );
   }
 
   return (
-    <main
-      className={
-        fullscreen
-          ? "fixed inset-0 z-50 bg-white overflow-y-auto"
-          : "px-4 py-6 flex-1 metronome-static"
-      }
-    >
-      <div className={fullscreen ? "max-w-3xl mx-auto px-6 py-8" : "w-full lg:max-w-3xl lg:mx-auto"}>
+    <div className={fullscreen ? "" : "flex flex-col flex-1"}>
+      <main className={fullscreen ? "fixed inset-0 z-50 bg-white overflow-y-auto" : "pr-4 py-4 flex-1 "}>
+        <div className={fullscreen ? "max-w-3xl mx-auto px-6 py-8" : "rounded-lg p-6 bg-white"}>
         {/* Toolbar */}
-        <div className="flex items-center justify-between mb-8 print:hidden">
+        <div className='flex items-center justify-between mb-8 print:hidden'>
           <button
-            onClick={
-              fullscreen
-                ? () => setFullscreen(false)
-                : () => router.push("/lead-sheet-editor")
-            }
-            className="flex items-center gap-2 text-[#373A40]/50 hover:text-black transition-colors text-sm font-medium"
+            onClick={fullscreen ? () => setFullscreen(false) : () => router.push("/lead-sheet-editor")}
+            className='flex items-center gap-2 text-[#373A40]/50 hover:text-black transition-colors text-sm font-medium'
           >
-            <ArrowLeft className="w-4 h-4" />
+            <ArrowLeft className='w-4 h-4' />
             {fullscreen ? "Exit Fullscreen" : "All Sheets"}
           </button>
-          <div className="flex items-center gap-2">
+          <div className='flex items-center gap-2'>
             <button
               onClick={() => setFullscreen((v) => !v)}
-              className="flex items-center gap-1.5 rounded border border-[#373A40]/30 px-3 py-2 text-sm font-medium hover:border-black hover:bg-black hover:text-[#facc15] transition-colors"
+              className='flex items-center gap-1.5 rounded border border-[#373A40]/30 px-3 py-2 text-sm font-medium hover:border-black hover:bg-black hover:text-[#facc15] transition-colors'
             >
               {fullscreen ? (
-                <><Minimize2 className="w-4 h-4" /> Exit</>
+                <>
+                  <Minimize2 className='w-4 h-4' /> Exit
+                </>
               ) : (
-                <><Maximize2 className="w-4 h-4" /> Fullscreen</>
+                <>
+                  <Maximize2 className='w-4 h-4' /> Fullscreen
+                </>
               )}
             </button>
             <button
               onClick={() => router.push(`/lead-sheet-editor/${id}/edit`)}
-              className="flex items-center gap-1.5 rounded bg-black px-4 py-2 text-sm font-medium hover:bg-black/80 transition-colors"
+              className='flex items-center gap-1.5 rounded bg-black px-4 py-2 text-sm font-medium hover:bg-black/80 transition-colors'
               style={{ color: "#facc15" }}
             >
-              <Pencil className="w-4 h-4" />
+              <Pencil className='w-4 h-4' />
               Edit
             </button>
           </div>
         </div>
 
         {/* Sheet */}
-        <div className={fullscreen ? "" : "rounded-lg bg-white p-8 border border-[#373A40]/10"}>
-          <div className="mb-8 border-b-2 border-black pb-6">
+        <div>
+          <div className='mb-8 border-b-2 border-black pb-6'>
             <h1
               className={`font-bold leading-tight mb-3 ${fullscreen ? "text-5xl" : "text-4xl"}`}
               style={{ color: "#000" }}
             >
               {sheet.title || "Untitled"}
             </h1>
-            <div className="flex flex-wrap gap-6 text-sm">
+            <div className='flex flex-wrap gap-6 text-sm'>
               {sheet.key && (
                 <span>
-                  <span className="uppercase tracking-wider text-xs text-[#373A40]/40 mr-1">Key</span>
-                  <span className="font-bold text-black text-base">{sheet.key}</span>
+                  <span className='uppercase tracking-wider text-xs text-[#373A40]/40 mr-1'>Key</span>
+                  <span className='font-bold text-black text-base'>{sheet.key}</span>
                 </span>
               )}
               {sheet.tempo && (
                 <span>
-                  <span className="uppercase tracking-wider text-xs text-[#373A40]/40 mr-1">Tempo</span>
-                  <span className="font-bold text-black text-base">{sheet.tempo} BPM</span>
+                  <span className='uppercase tracking-wider text-xs text-[#373A40]/40 mr-1'>Tempo</span>
+                  <span className='font-bold text-black text-base'>{sheet.tempo} BPM</span>
                 </span>
               )}
             </div>
@@ -133,26 +120,26 @@ export default function PreviewLeadSheet({
             )}
           </div>
 
-          <div className="space-y-10">
+          <div className='space-y-10'>
             {sheet.sections.map((section) => {
               const lines = (section.content ?? "").split("\n");
               return (
                 <div key={section.id}>
-                  <div className="mb-4">
+                  <div className='mb-4'>
                     <span
-                      className="text-xs font-bold uppercase tracking-widest px-2 py-1 rounded"
+                      className='text-xs font-bold uppercase tracking-widest px-2 py-1 rounded'
                       style={{ background: "#facc15", color: "#000" }}
                     >
                       {section.label || section.type}
                     </span>
                   </div>
-                  <div className="space-y-3 overflow-x-auto">
+                  <div className='space-y-3 overflow-x-auto'>
                     {lines.map((line, i) =>
                       line.trim() === "" ? (
-                        <div key={i} className="h-3" />
+                        <div key={i} className='h-3' />
                       ) : (
                         <ChordLyricLine key={i} line={line} large={fullscreen} />
-                      )
+                      ),
                     )}
                   </div>
                   {section.notes && (
@@ -165,7 +152,8 @@ export default function PreviewLeadSheet({
             })}
           </div>
         </div>
-      </div>
-    </main>
+        </div>
+      </main>
+    </div>
   );
 }

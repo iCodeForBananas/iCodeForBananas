@@ -133,9 +133,9 @@ export default function Sidebar() {
       {isOpen && isMobile && <div className='fixed inset-0 bg-black/70 z-30 lg:hidden' onClick={toggle} />}
 
       <aside
-        className={`fixed lg:relative h-screen flex flex-col z-40 ${isOpen ? "w-64 translate-x-0" : "w-0 -translate-x-full lg:w-0 overflow-hidden"}`}
+        className={`fixed lg:relative min-h-screen flex flex-col z-40 ${isOpen ? "w-64 translate-x-0" : "w-0 -translate-x-full lg:w-0 overflow-hidden"}`}
         style={{
-          background: "#000000",
+          color: "var(--bg-secondary)",
         }}
       >
         <button
@@ -161,7 +161,7 @@ export default function Sidebar() {
         </button>
 
         <div
-          className={`flex-1 overflow-y-auto p-6 ${isOpen ? "opacity-100" : "opacity-0"}`}
+          className={`flex-1 p-6 ${isOpen ? "opacity-100" : "opacity-0"}`}
         >
           <Link
             href='/'
@@ -240,14 +240,14 @@ export default function Sidebar() {
                       }
                       onMouseEnter={(e) => {
                         if (pathname !== href) {
-                          e.currentTarget.style.background = "rgba(250,204,21,0.15)";
-                          e.currentTarget.style.color = "#facc15";
+                          e.currentTarget.style.background = "rgba(0,0,0,0.1)";
+                          e.currentTarget.style.color = "var(--bg-secondary)";
                         }
                       }}
                       onMouseLeave={(e) => {
                         if (pathname !== href) {
                           e.currentTarget.style.background = "transparent";
-                          e.currentTarget.style.color = "#F8F9FA";
+                          e.currentTarget.style.color = "var(--bg-secondary)";
                         }
                       }}
                     >

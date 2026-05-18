@@ -177,8 +177,7 @@ export default function ProgressionBuilderPage() {
 
   return (
     <div className='flex flex-col flex-1'>
-      <main className='px-4 py-6 flex-1'>
-        <div className='w-full'>
+      <main className='pr-4 py-4 flex-1 '>
           <div className='rounded-lg p-6 bg-white'>
             <div className='text-center mb-8'>
               <h1 className='text-5xl font-bold drop-shadow-lg' style={{ color: "#000" }}>
@@ -307,7 +306,6 @@ export default function ProgressionBuilderPage() {
               </button>
             </div>
           </div>
-        </div>
       </main>
     </div>
   );

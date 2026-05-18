@@ -1,13 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import {
-  type ChordShape,
-  sharpNotes,
-  flatNotes,
-  chordTypes,
-  resolveChordShape,
-} from "../lib/chordShapes";
+import { type ChordShape, sharpNotes, flatNotes, chordTypes, resolveChordShape } from "../lib/chordShapes";
 import ChordDiagram from "../components/ChordDiagram";
 
 const formatChordLabel = (note: string, type: string) => {
@@ -36,12 +30,15 @@ export default function ChordShapesPage() {
 
   return (
     <div className='flex flex-col flex-1'>
-      <main className='px-4 py-6 flex-1 metronome-static'>
-        <div className='w-full lg:max-w-5xl lg:mx-auto'>
+      <main className='pr-4 py-4 flex-1 '>
           <div className='rounded-lg p-6 bg-white'>
             <div className='text-center mb-10'>
-              <h1 className='text-5xl font-bold drop-shadow-lg' style={{ color: "#000" }}>Chord Diagrams</h1>
-              <p className='text-lg mt-3' style={{ color: "#000" }}>Fingering diagrams for every chord type across all 12 keys</p>
+              <h1 className='text-5xl font-bold drop-shadow-lg' style={{ color: "#000" }}>
+                Chord Diagrams
+              </h1>
+              <p className='text-lg mt-3' style={{ color: "#000" }}>
+                Fingering diagrams for every chord type across all 12 keys
+              </p>
             </div>
             <div className='p-6'>
               <div className='mb-6'>
@@ -94,7 +91,7 @@ export default function ChordShapesPage() {
                       ) : (
                         <div className='text-center'>
                           <h6 className='font-semibold text-sm'>{chordName}</h6>
-                           <p className='text-[#1A1B1E]/50 text-xs'>Shape not available</p>
+                          <p className='text-[#1A1B1E]/50 text-xs'>Shape not available</p>
                         </div>
                       )}
                     </div>
@@ -103,7 +100,6 @@ export default function ChordShapesPage() {
               </div>
             </div>
           </div>
-        </div>
       </main>
     </div>
   );

@@ -5,7 +5,7 @@
 
 /* Banana yellow + black theme */
 :root {
-  --bg-primary: #0a0a0a;
+  --bg-primary: #facc15;
   --bg-secondary: #111111;
   --text-primary: #facc15;
   --text-secondary: #a89a00;
@@ -51,11 +51,11 @@
 
   /* Brainy Bloom game colors */
   --color-bb-bg: #121212;
-  --color-bb-surface: #1E1E1E;
-  --color-bb-card: #2C2C2C;
-  --color-bb-text: #E0E0E0;
-  --color-bb-muted: #A0A0A0;
-  --color-bb-accent: #BB86FC;
+  --color-bb-surface: #1e1e1e;
+  --color-bb-card: #2c2c2c;
+  --color-bb-text: #e0e0e0;
+  --color-bb-muted: #a0a0a0;
+  --color-bb-accent: #bb86fc;
 
   /* Fonts from next/font */
   --font-sans: var(--font-geist-sans);
@@ -63,12 +63,12 @@
 
   /* PavePlan Pro brand tokens */
   --color-brand-primary: #141414;
-  --color-brand-accent:  #F27D26;
-  --color-brand-bg:      #E4E3E0;
+  --color-brand-accent: #f27d26;
+  --color-brand-bg: #e4e3e0;
 }
 
 body {
-  background: var(--bg-primary);
+  background: linear-gradient(135deg, #facc15 0%, #fde047 100%);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
   margin: 0;
@@ -167,12 +167,6 @@ body {
   color: var(--text-secondary) !important;
 }
 
-/* Static gradient background for metronome view */
-.metronome-static {
-  background: linear-gradient(135deg, #facc15 0%, #fde047 100%);
-  min-height: 100vh;
-}
-
 /* ── Portfolio landing page animations ─────────────────── */
 @keyframes pulse-ring {
   0% {
@@ -268,8 +262,13 @@ body {
 }
 
 @keyframes wiggle {
-  0%, 100% { transform: rotate(-3deg); }
-  50% { transform: rotate(3deg); }
+  0%,
+  100% {
+    transform: rotate(-3deg);
+  }
+  50% {
+    transform: rotate(3deg);
+  }
 }
 .animate-wiggle {
   animation: wiggle 0.3s ease-in-out infinite;
@@ -410,6 +409,13 @@ body {
   @apply px-4 py-2 bg-brand-accent text-white rounded-lg font-medium
          hover:bg-brand-accent/90 transition-colors;
 }
-.ppp-scrollbar::-webkit-scrollbar { width: 4px; }
-.ppp-scrollbar::-webkit-scrollbar-track { background: transparent; }
-.ppp-scrollbar::-webkit-scrollbar-thumb { background: rgba(20,20,20,0.15); border-radius: 2px; }
+.ppp-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.ppp-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.ppp-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(20, 20, 20, 0.15);
+  border-radius: 2px;
+}
