@@ -2121,7 +2121,7 @@ export default function SpaceMathPage() {
   const GRADE_LABEL: Record<Grade, string> = { K: "Kindergarten", G1: "Grade 1", G2: "Grade 2", G3: "Grade 3" };
 
   return (
-    <div className='flex-1 bg-black text-white selection:bg-blue-500/30 relative flex flex-col overflow-hidden'>
+    <div className='flex-1 bg-black text-white selection:bg-blue-500/30 relative flex flex-col overflow-hidden max-h-screen'>
       <div className='absolute inset-0 pointer-events-none'>
         {STARS.map((s, i) => (
           <div
