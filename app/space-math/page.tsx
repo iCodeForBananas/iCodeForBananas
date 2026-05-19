@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Rocket, Star, Trophy, ChevronRight, Sparkles, Check, X, Volume2 } from "lucide-react";
 
@@ -1949,14 +1949,134 @@ const SessionProgressBar = ({ correct }: { correct: number }) => {
 
 // ─── Static decorations (module-level so Math.random never runs during render) ─
 
-const STARS = Array.from({ length: 50 }, () => ({
-  w: Math.random() * 3,
-  h: Math.random() * 3,
-  t: Math.random() * 100,
-  l: Math.random() * 100,
-  o: Math.random() * 0.7 + 0.3,
-  d: Math.random() * 5,
-}));
+function SpaceBackground() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current!;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d")!;
+    if (!ctx) return;
+
+    type Star = { x: number; y: number; r: number; phase: number; speed: number };
+    type Comet = { x: number; y: number; vx: number; vy: number; len: number; life: number; maxLife: number };
+
+    const stars: Star[] = Array.from({ length: 180 }, () => ({
+      x: Math.random(),
+      y: Math.random(),
+      r: Math.random() * 1.6 + 0.3,
+      phase: Math.random() * Math.PI * 2,
+      speed: Math.random() * 0.025 + 0.004,
+    }));
+
+    const comets: Comet[] = [];
+    let nextCometIn = 30 + Math.random() * 60;
+
+    function spawnComet() {
+      const w = canvas.width;
+      const h = canvas.height;
+      const angle = (6 + Math.random() * 24) * (Math.PI / 180);
+      const speed = 10 + Math.random() * 9;
+      comets.push({
+        x: -280,
+        y: Math.random() * h * 0.8,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        len: 90 + Math.random() * 170,
+        life: 0,
+        maxLife: Math.ceil((w + 560) / speed),
+      });
+    }
+
+    function resize() {
+      canvas.width = canvas.offsetWidth;
+      canvas.height = canvas.offsetHeight;
+    }
+    resize();
+    const ro = new ResizeObserver(resize);
+    ro.observe(canvas);
+
+    const NEBULAE = [
+      { cx: 0.12, cy: 0.42, rr: 0.48, rgb: "59,130,246",  a: 0.08 },
+      { cx: 0.88, cy: 0.16, rr: 0.40, rgb: "139,92,246",  a: 0.07 },
+      { cx: 0.52, cy: 0.88, rr: 0.34, rgb: "16,185,129",  a: 0.05 },
+    ];
+
+    let frame = 0;
+    let animId: number;
+
+    function draw() {
+      const w = canvas.width;
+      const h = canvas.height;
+      if (w === 0 || h === 0) { animId = requestAnimationFrame(draw); return; }
+
+      ctx.clearRect(0, 0, w, h);
+
+      for (const n of NEBULAE) {
+        const gx = n.cx * w, gy = n.cy * h, gr = n.rr * Math.max(w, h);
+        const g = ctx.createRadialGradient(gx, gy, 0, gx, gy, gr);
+        g.addColorStop(0, `rgba(${n.rgb},${n.a})`);
+        g.addColorStop(1, "rgba(0,0,0,0)");
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, w, h);
+      }
+
+      for (const s of stars) {
+        const alpha = 0.15 + 0.85 * (0.5 + 0.5 * Math.sin(frame * s.speed + s.phase));
+        ctx.beginPath();
+        ctx.arc(s.x * w, s.y * h, s.r, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255,255,255,${alpha.toFixed(3)})`;
+        ctx.fill();
+      }
+
+      if (--nextCometIn <= 0) {
+        spawnComet();
+        nextCometIn = 90 + Math.random() * 180;
+      }
+
+      for (let i = comets.length - 1; i >= 0; i--) {
+        const c = comets[i];
+        const p = c.life / c.maxLife;
+        const alpha = p < 0.08 ? p / 0.08 : p > 0.85 ? (1 - p) / 0.15 : 1;
+        const mag = Math.hypot(c.vx, c.vy);
+        const tx = c.x - (c.vx / mag) * c.len;
+        const ty = c.y - (c.vy / mag) * c.len;
+
+        const streak = ctx.createLinearGradient(tx, ty, c.x, c.y);
+        streak.addColorStop(0, "rgba(255,255,255,0)");
+        streak.addColorStop(0.5, `rgba(180,210,255,${(alpha * 0.4).toFixed(3)})`);
+        streak.addColorStop(1, `rgba(255,255,255,${alpha.toFixed(3)})`);
+        ctx.beginPath();
+        ctx.moveTo(tx, ty);
+        ctx.lineTo(c.x, c.y);
+        ctx.strokeStyle = streak;
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        const headGlow = ctx.createRadialGradient(c.x, c.y, 0, c.x, c.y, 6);
+        headGlow.addColorStop(0, `rgba(255,255,255,${alpha.toFixed(3)})`);
+        headGlow.addColorStop(1, "rgba(255,255,255,0)");
+        ctx.beginPath();
+        ctx.arc(c.x, c.y, 6, 0, Math.PI * 2);
+        ctx.fillStyle = headGlow;
+        ctx.fill();
+
+        c.x += c.vx;
+        c.y += c.vy;
+        c.life++;
+        if (c.life >= c.maxLife) comets.splice(i, 1);
+      }
+
+      frame++;
+      animId = requestAnimationFrame(draw);
+    }
+
+    draw();
+    return () => { cancelAnimationFrame(animId); ro.disconnect(); };
+  }, []);
+
+  return <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none" />;
+}
 
 const CONFETTI = Array.from({ length: 20 }, () => ({
   x: (Math.random() - 0.5) * 400,
@@ -1986,6 +2106,22 @@ export default function SpaceMathPage() {
   const [gameState, setGameState] = useState<"start" | "playing" | "finale">("start");
   const [sessionId, setSessionId] = useState<string>(() => crypto.randomUUID());
   const [sessionTopicStats, setSessionTopicStats] = useState<Record<string, { correct: number; total: number }>>({});
+
+  useEffect(() => {
+    const stored = localStorage.getItem("sidebar-open");
+    const sidebarOpen = stored === null ? true : stored === "true";
+    if (!sidebarOpen) document.documentElement.style.overflow = "hidden";
+
+    const onToggle = (e: Event) => {
+      const open = (e as CustomEvent<{ isOpen: boolean }>).detail.isOpen;
+      document.documentElement.style.overflow = open ? "" : "hidden";
+    };
+    window.addEventListener("sidebar-toggle", onToggle);
+    return () => {
+      document.documentElement.style.overflow = "";
+      window.removeEventListener("sidebar-toggle", onToggle);
+    };
+  }, []);
 
   useEffect(() => {
     localStorage.setItem("space-math-save", JSON.stringify({ score, topicRecords }));
@@ -2122,24 +2258,9 @@ export default function SpaceMathPage() {
 
   return (
     <div className='flex-1 bg-black text-white selection:bg-blue-500/30 relative flex flex-col overflow-hidden max-h-screen'>
-      <div className='absolute inset-0 pointer-events-none'>
-        {STARS.map((s, i) => (
-          <div
-            key={i}
-            className='absolute bg-white rounded-full animate-pulse'
-            style={{
-              width: s.w + "px",
-              height: s.h + "px",
-              top: s.t + "%",
-              left: s.l + "%",
-              opacity: s.o,
-              animationDelay: s.d + "s",
-            }}
-          />
-        ))}
-      </div>
+      <SpaceBackground />
       <StarBank score={score} onClear={clearStars} />
-      <main className='relative z-10 w-full p-4 sm:p-6 flex flex-col items-center flex-1 min-h-0 overflow-hidden'>
+      <main className='relative z-10 w-full pt-4 sm:pt-6 px-4 sm:px-6 pb-20 sm:pb-24 flex flex-col items-center flex-1 min-h-0 overflow-hidden'>
         <div className='w-full flex justify-between items-center mb-3 sm:mb-4 shrink-0'>
           <div className='flex items-center gap-3'>
             <div className='p-2 bg-blue-600 rounded-xl shadow-lg shadow-blue-600/20'>

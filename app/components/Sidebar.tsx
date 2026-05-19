@@ -81,8 +81,6 @@ export default function Sidebar() {
   const toggle = () => {
     setIsOpen((prev) => {
       const next = !prev;
-      // Only persist on desktop — mobile toggles are transient and shouldn't
-      // override the user's desktop preference next time they sit down.
       if (!isMobileDevice()) {
         try {
           localStorage.setItem(SIDEBAR_OPEN_KEY, String(next));
@@ -90,6 +88,7 @@ export default function Sidebar() {
           // localStorage may be disabled (private mode); fall back to in-memory state.
         }
       }
+      window.dispatchEvent(new CustomEvent("sidebar-toggle", { detail: { isOpen: next } }));
       return next;
     });
   };

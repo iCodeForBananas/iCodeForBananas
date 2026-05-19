@@ -278,6 +278,25 @@ body {
   animation: wiggle 0.3s ease-in-out infinite;
 }
 
+/* ── Space Math background animations ───────────────────────────────────── */
+@keyframes star-twinkle {
+  0%, 100% { opacity: 0.9; }
+  50% { opacity: 0.06; }
+}
+
+@keyframes comet-fly {
+  0% {
+    transform: rotate(var(--comet-angle)) translateX(-400px);
+    opacity: 0;
+  }
+  8% { opacity: 1; }
+  85% { opacity: 1; }
+  100% {
+    transform: rotate(var(--comet-angle)) translateX(calc(100vw + 400px));
+    opacity: 0;
+  }
+}
+
 /* ── Task Board — TipTap WYSIWYG editor ─────────────────── */
 .task-board-editor .ProseMirror {
   outline: none;
