@@ -166,7 +166,7 @@ export default function Sidebar() {
           <Link
             href='/'
             className='font-black uppercase mb-3 block w-full'
-            style={{ color: "#F8F9FA", fontSize: "1rem", letterSpacing: "0.18em" }}
+            style={{ color: "#000000", fontSize: "1rem", letterSpacing: "0.18em" }}
           >
             iCodeForBananas
           </Link>
@@ -215,7 +215,7 @@ export default function Sidebar() {
                 {section.label && (
                   <h3
                     className='text-xs font-bold mb-2 uppercase tracking-wider whitespace-nowrap'
-                    style={{ color: "#909296" }}
+                    style={{ color: "#000000" }}
                   >
                     {section.label}
                   </h3>
@@ -236,18 +236,18 @@ export default function Sidebar() {
                               borderLeft: "2px solid #facc15",
                               boxShadow: "0 0 10px rgba(250,204,21,0.2)",
                             }
-                          : { color: "#F8F9FA" }
+                          : { color: "#000000" }
                       }
                       onMouseEnter={(e) => {
                         if (pathname !== href) {
-                          e.currentTarget.style.background = "rgba(0,0,0,0.1)";
-                          e.currentTarget.style.color = "var(--bg-secondary)";
+                          e.currentTarget.style.background = "#000000";
+                          e.currentTarget.style.color = "#ffffff";
                         }
                       }}
                       onMouseLeave={(e) => {
                         if (pathname !== href) {
                           e.currentTarget.style.background = "transparent";
-                          e.currentTarget.style.color = "var(--bg-secondary)";
+                          e.currentTarget.style.color = "#000000";
                         }
                       }}
                     >

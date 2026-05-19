@@ -67,6 +67,10 @@
   --color-brand-bg: #e4e3e0;
 }
 
+main {
+  min-height: 100vh;
+}
+
 body {
   background: linear-gradient(135deg, #facc15 0%, #fde047 100%);
   color: var(--foreground);
