@@ -38,13 +38,6 @@ const NAV = [
     ],
   },
   {
-    label: "Websites",
-    links: [
-      { href: "/websites/seattle-concrete", text: "Seattle Concrete Co." },
-      { href: "/websites/seattle-concrete/estimate", text: "↳ Estimate Tool" },
-    ],
-  },
-  {
     label: "Misc",
     links: [
       { href: "/task-board", text: "Task Board" },
