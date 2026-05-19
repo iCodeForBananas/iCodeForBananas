@@ -21,7 +21,6 @@ const NAV = [
       { href: "/chord-voicings", text: "Chord Voicings" },
       { href: "/chord-finder", text: "Chord Finder" },
       { href: "/chord-inversions", text: "Chord Inversions" },
-      { href: "/fretboard-architect", text: "Fretboard Architect" },
       { href: "/fretboard-explorer", text: "Fretboard Explorer" },
       { href: "/fretboard-quiz", text: "Fretboard Quiz" },
       { href: "/lead-sheet-editor", text: "Lead Sheet Editor" },
@@ -32,7 +31,6 @@ const NAV = [
     links: [
       { href: "/space-math", text: "Space Math" },
       { href: "/decode-dash", text: "Decode Dash" },
-      { href: "/spelling-bee", text: "Spelling Bee" },
       { href: "/learning-progress", text: "Learning Progress" },
     ],
   },
