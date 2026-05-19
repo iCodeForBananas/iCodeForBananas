@@ -492,21 +492,24 @@ export default function Home() {
       </div>
 
       {/* ── HERO ──────────────────────────────────────────────── */}
-      <section className='bg-yellow-400 text-black relative flex flex-col items-center justify-center flex-1 px-6 overflow-hidden'>
-        <div className='flex flex-col items-center text-center gap-16'>
+      <section className='bg-yellow-400 text-black relative grid grid-rows-[1fr_auto_1fr] flex-1 px-6 overflow-hidden'>
+        {/* Top row — title anchored to bottom so spacing above and below banana is equal */}
+        <div className='flex items-end justify-center pb-8'>
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, ease: "easeOut" }}
           >
-            <h1 className='text-7xl md:text-8xl font-black leading-none tracking-tighter uppercase mb-8 whitespace-nowrap'>
+            <h1 className='text-7xl md:text-8xl font-black leading-none tracking-tighter uppercase whitespace-nowrap text-center'>
               I Code For
               <br />
               <span className='text-white drop-shadow-[4px_4px_0px_rgba(0,0,0,1)]'>Bananas</span>
             </h1>
           </motion.div>
+        </div>
 
-          <motion.div
+        {/* Middle row — banana sits at the exact vertical center */}
+        <motion.div
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 1, delay: 0.2 }}
@@ -616,7 +619,9 @@ export default function Home() {
             <div className='absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] aspect-square border-2 border-black/20 rounded-full -z-0' />
             <div className='absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[100%] aspect-square border-2 border-black/10 rounded-full -z-0' />
           </motion.div>
-        </div>
+
+        {/* Bottom row — mirrors top, keeps banana centered */}
+        <div />
       </section>
     </main>
   );
