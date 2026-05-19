@@ -31,7 +31,6 @@ const NAV = [
     label: "Learning Games",
     links: [
       { href: "/space-math", text: "Space Math" },
-      { href: "/brainy-bloom", text: "Brainy Bloom" },
       { href: "/decode-dash", text: "Decode Dash" },
       { href: "/spelling-bee", text: "Spelling Bee" },
       { href: "/learning-progress", text: "Learning Progress" },
