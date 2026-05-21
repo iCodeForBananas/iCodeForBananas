@@ -378,10 +378,9 @@ Do not just print the new text in the chat. Wrap it in the tags so the system ca
   // ─── Render ───────────────────────────────────────────────────
 
   return (
-    <div
-      data-theme={theme}
-      className="flex h-full w-full bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans overflow-hidden transition-colors duration-300"
-    >
+    <div data-theme={theme} className='flex flex-col flex-1'>
+      <main className='pr-4 py-4 flex-1'>
+        <div className='rounded-lg p-6 bg-white'>
       <Sidebar
         notes={notes}
         activeNoteId={activeNoteId}
@@ -428,6 +427,8 @@ Do not just print the new text in the chat. Wrap it in the tags so the system ca
         note={activeNote}
         onRestoreVersion={handleRestoreVersion}
       />
+        </div>
+      </main>
     </div>
   );
 }
