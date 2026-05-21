@@ -1,0 +1,576 @@
+/* Scoped port of React-Aaron-Futures. Every rule is namespaced under
+   .aaronFuturesRoot so the original `body { ... }` declarations (which
+   set black backgrounds, hidden overflow, and global animations) don't
+   leak into the rest of the site. */
+
+.aaronFuturesRoot {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: black;
+  background: linear-gradient(
+    180deg,
+    #1e172e,
+    #1e172e,
+    #2a203f,
+    #251c38,
+    #251c38,
+    #251c38,
+    #251c38,
+    #251c38,
+    #251c38,
+    #2a203f,
+    #1e172e,
+    #1e172e
+  );
+  background-size: 2400% 2400%;
+  animation: aaron-day-night 60s ease infinite;
+  box-sizing: border-box;
+}
+
+.aaronFuturesRoot *,
+.aaronFuturesRoot *:before,
+.aaronFuturesRoot *:after {
+  box-sizing: inherit;
+}
+
+/* ── Main menu ───────────────────────────────────────────────── */
+.centerContainer {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-gap: 10px;
+  grid-auto-rows: calc(33vh - 20px);
+  grid-template-areas:
+    ". . ."
+    ". a ."
+    ". . .";
+  height: 100%;
+  width: 100%;
+}
+
+.centerContents {
+  cursor: pointer;
+  grid-area: a;
+  align-self: center;
+  justify-self: center;
+}
+
+.centerContainerZoomed {
+  cursor: default;
+  transform: scale(2);
+  transition: all 14s;
+}
+
+.triangle {
+  fill: transparent;
+  animation-name: aaron-spin;
+  animation-duration: 4s;
+  animation-iteration-count: infinite;
+  animation-timing-function: ease-in-out;
+  transform-origin: 50% 65%;
+}
+
+.centerContainerZoomed .triangle {
+  animation-duration: 2s;
+  transition: all 1s;
+  animation-timing-function: linear;
+}
+
+.triangle1 {
+  stroke: #fd55f8;
+}
+.triangle2 {
+  stroke: #fb91f7;
+  animation-delay: 0.05s;
+}
+.triangle3 {
+  stroke: #fbbef8;
+  animation-delay: 0.1s;
+}
+
+@keyframes aaron-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.spinText {
+  position: relative;
+  font-family: var(--font-permanent-marker), cursive;
+  font-variant: small-caps;
+  font-size: 90px;
+  -webkit-transform: skew(-15deg, -15deg);
+  transform: skew(-15deg, -15deg);
+  background-image: -webkit-linear-gradient(#ff0ff8 0%, #f9f9f7 100%);
+  background-image: linear-gradient(#ff0ff8 0%, #f9f9f7 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin: 0;
+  -webkit-filter: drop-shadow(2px 2px 20px #f008b7);
+  filter: drop-shadow(2px 2px 20px #f008b7);
+}
+
+/* ── Music video ─────────────────────────────────────────────── */
+@keyframes aaron-day-night {
+  0% {
+    background-position: 25% 0%;
+  }
+  50% {
+    background-position: 76% 100%;
+  }
+  100% {
+    background-position: 25% 0%;
+  }
+}
+@keyframes aaron-driving {
+  0% {
+    left: -25%;
+  }
+  10% {
+    bottom: 0%;
+  }
+  20% {
+    transform: scale(0.5) rotateZ(-5deg);
+    bottom: 5%;
+  }
+  25% {
+    transform: scale(0.5) rotateZ(0deg);
+  }
+  40% {
+    transform: scale(0.5) rotateZ(5deg);
+  }
+  50% {
+    transform: scale(0.5) rotateZ(0deg);
+  }
+  100% {
+    left: 110%;
+    bottom: 10%;
+    transform: scale(0.5) rotateZ(0deg);
+  }
+}
+@keyframes aaron-road-moving {
+  100% {
+    transform: translate(-2400px);
+  }
+}
+@keyframes aaron-wheels-rotation {
+  100% {
+    transform: rotate(360deg);
+  }
+}
+@keyframes aaron-sun-moon {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.carContainer {
+  position: absolute;
+  bottom: -10%;
+  width: 430px;
+  height: 300px;
+  animation: aaron-driving 6s infinite linear;
+  transform: scale(0.5);
+}
+.carContainer:after {
+  content: "";
+  width: 426px;
+  height: 1px;
+  margin-top: 88px;
+  display: block;
+  position: absolute;
+  left: -3%;
+  z-index: -1;
+  bottom: 0;
+  box-shadow: 2px -15px 25px 2px #000000;
+}
+.carAaron {
+  background: url(/aaron-futures/images/stickAaron.png) no-repeat center;
+  background-size: contain;
+  width: 230px;
+  height: 230px;
+  position: absolute;
+  top: -128px;
+  left: -100px;
+}
+
+.wheel1,
+.wheel2 {
+  width: 120px;
+  height: 120px;
+  background-color: white;
+  border-radius: 50%;
+  border: 20px solid #161415;
+  position: absolute;
+  bottom: 0;
+  animation: aaron-wheels-rotation 1s infinite linear;
+}
+.wheel1 {
+  left: 5%;
+}
+.wheel1Top,
+.wheel2Top {
+  bottom: 48px;
+  position: absolute;
+  width: 106px;
+  height: 80px;
+  border-radius: 50%;
+  z-index: 5;
+  box-shadow: 0px 13px 3px 0px rgba(240, 240, 240, 0.53);
+  transform: rotateX(180deg);
+}
+.wheel1Top {
+  left: 7%;
+}
+.wheel2Top {
+  right: 7%;
+}
+.wheel2 {
+  right: 5%;
+}
+.wheelDot1,
+.wheelDot2 {
+  width: 10px;
+  height: 25px;
+  background-color: black;
+  position: absolute;
+}
+.wheelDot3,
+.wheelDot4 {
+  width: 25px;
+  height: 10px;
+  background-color: black;
+  position: absolute;
+}
+.wheelDot1 {
+  top: 10%;
+  left: 45%;
+}
+.wheelDot2 {
+  bottom: 10%;
+  left: 45%;
+}
+.wheelDot3 {
+  top: 45%;
+  right: 10%;
+}
+.wheelDot4 {
+  top: 45%;
+  left: 10%;
+}
+.door {
+  width: 110px;
+  height: 100px;
+  border: 3px solid #b57a84;
+  position: absolute;
+  left: 36%;
+  top: 16px;
+  border-radius: 10% 40% 10% 10%;
+}
+.doorKnob {
+  width: 30px;
+  height: 14px;
+  background-color: #e8e6e6;
+  border-radius: 30%;
+  position: absolute;
+  left: 20%;
+  top: 5%;
+  border: 1px solid lightcoral;
+}
+.carTop1 {
+  border-radius: 25% 40% 0 0;
+  background-color: #ec3606;
+  max-width: 100%;
+  width: 250px;
+  height: 130px;
+  position: absolute;
+  top: 0;
+  left: 4%;
+}
+.window1,
+.window2 {
+  background-color: #161817;
+  border-radius: 5px;
+  position: absolute;
+  width: 40%;
+  height: 60%;
+  margin: 17px;
+  border: 9px solid #a02503;
+}
+.window1 {
+  left: 0;
+  border-top-left-radius: 30%;
+}
+.window2 {
+  right: 0;
+  border-top-right-radius: 50%;
+}
+.carTop2 {
+  border-radius: 100px 200px 0 0;
+  border: 10px solid #161817;
+  background-color: #ec3606;
+  max-width: 100%;
+  width: 430px;
+  height: 140px;
+  position: absolute;
+  bottom: 20%;
+}
+.road {
+  width: 250%;
+  height: 200px;
+  background-color: #041334;
+  border-top: 10px solid #22307f;
+  border-bottom: 20px solid #22307f;
+  position: absolute;
+  bottom: 0%;
+  margin-left: -10px;
+  padding: 0;
+}
+.road::before {
+  content: " ";
+  position: absolute;
+  z-index: 0;
+  top: -17px;
+  left: 0px;
+  right: 0px;
+  border: 5px solid black;
+}
+.roadTopHalf {
+  height: 15px;
+  width: 250%;
+  position: absolute;
+  left: -10%;
+  top: 30px;
+  border-top: 40px dashed #22307f;
+  margin-top: 25px;
+  animation: aaron-road-moving 10s infinite linear;
+  transition: all 3s linear;
+}
+.skyline {
+  width: 100%;
+  position: absolute;
+  bottom: 205px;
+  padding: 0;
+  left: 110%;
+  animation: aaron-road-moving 10s infinite linear;
+  transition: all 8s linear;
+}
+.building1 {
+  width: 220px;
+  height: 450px;
+  background-color: #211919;
+  position: relative;
+}
+.building1Shadow {
+  border-top: 15px solid transparent;
+  border-right: 60px solid rgb(44, 37, 37);
+  border-bottom: 15px solid #000;
+  border-left: 15px solid transparent;
+  height: 450px;
+  width: 200px;
+  position: absolute;
+  left: -199px;
+}
+.buildingLeftHalf,
+.buildingRightHalf {
+  height: 300px;
+  width: 50px;
+  position: absolute;
+  top: 10px;
+  border-left: 16px dashed #a9d2c7;
+  border-right: 16px dashed rgba(255, 255, 0, 0.19);
+  margin-top: 25px;
+}
+.buildingLeftHalf {
+  left: 10px;
+  padding: 25px;
+}
+.buildingRightHalf {
+  right: 10px;
+  padding: 20px;
+}
+.moon {
+  height: 200px;
+  width: 200px;
+  border-radius: 50%;
+  background: #fbea47;
+  margin: auto;
+  box-shadow: 0 0 60px #e31ae2, 0 0 100px #e31ae2,
+    inset 0 5px 12px 26px #fbea47, inset -2px 8px 15px 36px #fbea47;
+  transition: 1s;
+  right: 370px;
+  top: 30px;
+  position: absolute;
+  animation: aaron-sun-moon 40s 2s linear infinite;
+  transform-origin: 50% 500px;
+}
+.carTop1:after {
+  width: 13px;
+  height: 37px;
+  background-color: #161817;
+  position: absolute;
+  bottom: -63px;
+  right: -168px;
+  z-index: 10;
+  content: " ";
+  border-radius: 10px;
+  border: 2px solid black;
+  border-left-style: none;
+  transform: rotate(-15deg);
+}
+.carTop2:after {
+  position: absolute;
+  bottom: 7px;
+  right: -340px;
+  content: " ";
+  width: 0;
+  height: 0;
+  border-top: 20px solid transparent;
+  border-bottom: 80px solid transparent;
+  border-right: 500px solid rgba(191, 188, 87, 0.7);
+  z-index: -1;
+  -webkit-mask-box-image: linear-gradient(to right, black, transparent);
+  mask-border: linear-gradient(to right, black, transparent);
+  transform: rotate(-9deg);
+}
+.scoreCounter {
+  position: absolute;
+  top: 30px;
+  left: 30px;
+  font-family: var(--font-permanent-marker), cursive;
+  font-variant: small-caps;
+  font-size: 40px;
+  -webkit-transform: skew(-15deg, -15deg);
+  transform: skew(-15deg, -15deg);
+  background-image: -webkit-linear-gradient(#ff0ff8 0%, #f9f9f7 100%);
+  background-image: linear-gradient(#ff0ff8 0%, #f9f9f7 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin: 0;
+  -webkit-filter: drop-shadow(2px 2px 20px #f008b7);
+  filter: drop-shadow(2px 2px 20px #f008b7);
+  z-index: 100;
+}
+
+/* ── Billboard ───────────────────────────────────────────────── */
+.buildingBillboard {
+  background: url(/aaron-futures/images/billboard.png) center no-repeat;
+  background-size: contain;
+  width: 280px;
+  height: 280px;
+  position: absolute;
+  top: -240px;
+  left: -45px;
+  z-index: -10;
+}
+.buildingBillboardViewer {
+  background: url(/aaron-futures/images/1.gif) center no-repeat black;
+  background-size: cover;
+  width: 254px;
+  height: 149px;
+  position: absolute;
+  top: 50px;
+  left: 13px;
+}
+
+/* ── Fireworks (compressed: rules apply per-vendor automatically
+    via the unprefixed @keyframes; webkit/moz/ms forks dropped) ── */
+.pyro > .before,
+.pyro > .after {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  box-shadow: 0 0 #fff, 0 0 #fff, 0 0 #fff, 0 0 #fff, 0 0 #fff, 0 0 #fff,
+    0 0 #fff, 0 0 #fff, 0 0 #fff, 0 0 #fff, 0 0 #fff, 0 0 #fff, 0 0 #fff,
+    0 0 #fff, 0 0 #fff, 0 0 #fff, 0 0 #fff, 0 0 #fff, 0 0 #fff, 0 0 #fff,
+    0 0 #fff, 0 0 #fff, 0 0 #fff, 0 0 #fff, 0 0 #fff, 0 0 #fff, 0 0 #fff,
+    0 0 #fff, 0 0 #fff, 0 0 #fff, 0 0 #fff, 0 0 #fff, 0 0 #fff, 0 0 #fff,
+    0 0 #fff, 0 0 #fff, 0 0 #fff, 0 0 #fff, 0 0 #fff, 0 0 #fff, 0 0 #fff,
+    0 0 #fff, 0 0 #fff, 0 0 #fff, 0 0 #fff, 0 0 #fff, 0 0 #fff, 0 0 #fff,
+    0 0 #fff, 0 0 #fff;
+  animation:
+    1s aaron-bang ease-out infinite backwards,
+    1s aaron-gravity ease-in infinite backwards,
+    5s aaron-position linear infinite backwards;
+}
+.pyro > .after {
+  animation-delay: 1.25s, 1.25s, 1.25s;
+  animation-duration: 1.25s, 1.25s, 6.25s;
+}
+
+@keyframes aaron-bang {
+  to {
+    box-shadow:
+      -174px -218.6666666667px #0059ff, -175px 13.3333333333px #ffd900,
+      225px -388.6666666667px #99ff00, -55px -242.6666666667px #6aff00,
+      -239px -220.6666666667px #ff5500, 222px -67.6666666667px #00ffbf,
+      -11px -286.6666666667px #2b00ff, -34px -23.6666666667px #9dff00,
+      134px -111.6666666667px #ff003c, 50px 20.3333333333px deepskyblue,
+      31px 12.3333333333px #00bbff, 20px -264.6666666667px #0004ff,
+      -50px 59.3333333333px #ff2600, 209px -139.6666666667px #006aff,
+      -43px -195.6666666667px #2200ff, 98px -6.6666666667px #ffae00,
+      -237px -74.6666666667px #80ff00, -6px -302.6666666667px #8400ff,
+      -193px -334.6666666667px #00ffbb, -182px -294.6666666667px #ff6f00,
+      129px -72.6666666667px #001eff, -241px -235.6666666667px #ff001a,
+      -88px -250.6666666667px #ff8800, -128px -407.6666666667px #37ff00,
+      -220px -249.6666666667px deepskyblue, 130px -83.6666666667px #80ff00,
+      119px -236.6666666667px #00ff09, 180px -198.6666666667px #2bff00,
+      -140px -365.6666666667px #44ff00, 90px 52.3333333333px #3300ff,
+      221px -154.6666666667px #fffb00, 129px -180.6666666667px #ff0900,
+      53px -218.6666666667px #ff9900, -47px -108.6666666667px #f7ff00,
+      202px -120.6666666667px #00ff44, -221px -317.6666666667px #5100ff,
+      -89px -273.6666666667px #00ffae, -164px -121.6666666667px #ff00e1,
+      27px -277.6666666667px #ff0055, 102px -259.6666666667px #e1ff00,
+      82px -396.6666666667px #9dff00, 22px -80.6666666667px #1aff00,
+      -174px -8.6666666667px #4000ff, -229px -285.6666666667px #c4ff00,
+      -62px -369.6666666667px #6aff00, 63px -228.6666666667px #ff00ee,
+      138px 81.3333333333px #a6ff00, 120px -90.6666666667px #0026ff,
+      99px -351.6666666667px #2b00ff, 110px -256.6666666667px #ccff00,
+      199px -414.6666666667px #006aff;
+  }
+}
+
+@keyframes aaron-gravity {
+  to {
+    transform: translateY(200px);
+    opacity: 0;
+  }
+}
+
+@keyframes aaron-position {
+  0%,
+  19.9% {
+    margin-top: 10%;
+    margin-left: 40%;
+  }
+  20%,
+  39.9% {
+    margin-top: 40%;
+    margin-left: 30%;
+  }
+  40%,
+  59.9% {
+    margin-top: 20%;
+    margin-left: 70%;
+  }
+  60%,
+  79.9% {
+    margin-top: 30%;
+    margin-left: 20%;
+  }
+  80%,
+  99.9% {
+    margin-top: 30%;
+    margin-left: 80%;
+  }
+}

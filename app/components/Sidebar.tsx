@@ -39,6 +39,7 @@ const NAV = [
     links: [
       { href: "/task-board", text: "Task Board" },
       { href: "/mermaid-flow", text: "Mermaid Flow" },
+      { href: "/aaron-futures", text: "Aaron Futures" },
       { href: "/workout-tracker", text: "Workout Tracker" },
       { href: "/wordsmith", text: "Wordsmith" },
       { href: "/algo-backtest", text: "Algo Backtest" },
