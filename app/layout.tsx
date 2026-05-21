@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
 import Script from "next/script";
@@ -10,10 +10,21 @@ import { ThemeProvider } from "./lib/ThemeContext";
 import { FavoriteChordsProvider } from "./lib/FavoriteChordsContext";
 import Sidebar from "./components/Sidebar";
 import MusicFavoritesBar from "./components/MusicFavoritesBar";
+import PwaRegistration from "./components/PwaRegistration";
+
+export const viewport: Viewport = {
+  themeColor: "#facc15",
+};
 
 export const metadata: Metadata = {
   title: "iCodeForBananas - Music Theory Tools",
   description: "Interactive music theory tools including harmonic flow and guitar fretboard explorer",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "iCodeForBananas",
+  },
 };
 
 export default function RootLayout({
@@ -48,6 +59,7 @@ export default function RootLayout({
         </ThemeProvider>
         <Analytics />
         <SpeedInsights />
+        <PwaRegistration />
       </body>
     </html>
   );
