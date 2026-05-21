@@ -220,13 +220,7 @@ export default function Sidebar() {
                       className='px-3 py-2 rounded whitespace-nowrap transition-colors font-medium text-sm'
                       style={
                         pathname === href
-                          ? {
-                              background: "#facc15",
-                              color: "#0a0a0a",
-                              fontWeight: 700,
-                              borderLeft: "2px solid #facc15",
-                              boxShadow: "0 0 10px rgba(250,204,21,0.2)",
-                            }
+                          ? { background: "#000000", color: "#ffffff" }
                           : { color: "#000000" }
                       }
                       onMouseEnter={(e) => {
