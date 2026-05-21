@@ -200,7 +200,9 @@ export default function TaskBoardPage() {
   // ── Render ───────────────────────────────────────────────────
 
   return (
-    <main className="flex-1 flex flex-col min-h-0 overflow-hidden" style={{ background: "var(--bg-primary)" }}>
+    <div className='flex flex-col flex-1'>
+      <main className='pr-4 py-4 flex-1'>
+        <div className='rounded-lg p-6 bg-white'>
       {/* Header */}
       <div
         className="px-5 py-3 flex items-center justify-between shrink-0 border-b"
@@ -332,6 +334,8 @@ export default function TaskBoardPage() {
           onClose={() => setSelectedTaskId(null)}
         />
       )}
-    </main>
+        </div>
+      </main>
+    </div>
   );
 }
