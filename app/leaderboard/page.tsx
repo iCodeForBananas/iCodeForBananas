@@ -329,9 +329,9 @@ export default function LeaderboardPage() {
     : 0;
 
   return (
-    <div className="flex flex-col flex-1 bg-gray-50">
-      <main className="px-4 py-8 flex-1">
-        <div className="w-full max-w-5xl mx-auto">
+    <div className='flex flex-col flex-1'>
+      <main className='pr-4 py-4 flex-1'>
+        <div className='rounded-lg p-6 bg-white'>
           {/* Header */}
           <div className="mb-8">
             <div className="flex items-start justify-between flex-wrap gap-4">
