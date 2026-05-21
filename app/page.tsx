@@ -619,6 +619,7 @@ export default function Home() {
             <div className='absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] aspect-square border-2 border-black/20 rounded-full -z-0' />
             <div className='absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[100%] aspect-square border-2 border-black/10 rounded-full -z-0' />
           </motion.div>
+        </motion.div>
 
         {/* Bottom row — mirrors top, keeps banana centered */}
         <div />
