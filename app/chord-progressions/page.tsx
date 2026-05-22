@@ -8,8 +8,6 @@ export default function ChordProgressionsPage() {
   return (
     <BentoPageLayout
       title='Chord Progressions'
-      category='Music Theory Generator'
-      description='Browse and practice common chord progressions'
     >
       <ProgressionsView />
     </BentoPageLayout>

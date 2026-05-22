@@ -8,8 +8,6 @@ export default function FretboardQuizPage() {
   return (
     <BentoPageLayout
       title='Fretboard Quiz'
-      category='Music Theory'
-      description='Test your knowledge of scales on the guitar fretboard'
     >
       <FretboardQuiz />
     </BentoPageLayout>

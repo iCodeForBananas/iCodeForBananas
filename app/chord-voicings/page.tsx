@@ -139,8 +139,6 @@ export default function NoteShapesPage() {
   return (
     <BentoPageLayout
       title='Chord Voicings'
-      category='Music Theory'
-      description='All chords for a root note with multiple voicings'
     >
               {/* Root note selector + position dropdown */}
               <div className='mb-6 flex flex-wrap items-start justify-between gap-4'>

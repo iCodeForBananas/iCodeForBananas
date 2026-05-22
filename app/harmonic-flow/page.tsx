@@ -8,8 +8,6 @@ export default function HarmonicFlowPage() {
   return (
     <BentoPageLayout
       title='Harmonic Flow'
-      category='Music AI Suite'
-      description='Build beautiful chord progressions interactively'
     >
       <ProgressionNavigator startKey='G' bpm={80} />
     </BentoPageLayout>

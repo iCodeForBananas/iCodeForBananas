@@ -173,8 +173,6 @@ export default function ChordInversionsPage() {
   return (
     <BentoPageLayout
       title='Chord Inversions'
-      category='Music Theory'
-      description='All voicings for root position, 1st & 2nd inversions'
     >
               <div className='mb-8 flex flex-wrap items-start gap-6'>
                 <div>

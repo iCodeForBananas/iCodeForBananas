@@ -179,8 +179,6 @@ export default function ProgressionBuilderPage() {
   return (
     <BentoPageLayout
       title='Progression Builder'
-      category='Music Theory'
-      description='Build a chord progression and explore positions and inversions for each chord'
     >
             <div className='flex gap-4 overflow-x-auto pb-4 items-start'>
               {columns.map((col) => {
