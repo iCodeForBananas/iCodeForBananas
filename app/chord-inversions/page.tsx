@@ -16,6 +16,7 @@ import {
   semitoneFromA,
 } from "../lib/chordShapes";
 import ChordDiagram from "../components/ChordDiagram";
+import BentoPageLayout from "../components/BentoPageLayout";
 
 const VOICINGS = ["Major", "Minor"] as const;
 type Voicing = (typeof VOICINGS)[number];
@@ -170,18 +171,11 @@ export default function ChordInversionsPage() {
   );
 
   return (
-    <div className='flex flex-col flex-1'>
-      <main className='pr-4 py-4 flex-1 '>
-          <div className='rounded-lg p-6 bg-white'>
-            <div className='text-center mb-10'>
-              <h1 className='text-5xl font-bold drop-shadow-lg' style={{ color: "#000" }}>
-                Chord Inversions
-              </h1>
-              <p className='text-lg mt-3' style={{ color: "#000" }}>
-                All voicings for root position, 1st &amp; 2nd inversions
-              </p>
-            </div>
-            <div className='p-6'>
+    <BentoPageLayout
+      title='Chord Inversions'
+      category='Music Theory'
+      description='All voicings for root position, 1st & 2nd inversions'
+    >
               <div className='mb-8 flex flex-wrap items-start gap-6'>
                 <div>
                   <p className='text-xs font-semibold text-[#1A1B1E]/50 uppercase tracking-wider mb-2'>Root Note</p>
@@ -242,9 +236,6 @@ export default function ChordInversionsPage() {
               <Section title='Root Position' subtitle='1 – 3 – 5 (root note in the bass)' items={roots} />
               <Section title='1st Inversion' subtitle='3 – 5 – 1 (3rd in the bass)' items={firsts} />
               <Section title='2nd Inversion' subtitle='5 – 1 – 3 (5th in the bass)' items={seconds} />
-            </div>
-          </div>
-      </main>
-    </div>
+    </BentoPageLayout>
   );
 }

@@ -107,20 +107,20 @@
 }
 
 .chord-display {
-  background: #111111;
-  border: 1px solid #2a2a2a;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
   border-radius: 20px;
   padding: 2rem;
   min-width: 230px;
   width: 100%;
   max-width: 300px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-  color: #F8F9FA;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  color: #111111;
 }
 
 .chord-placeholder {
-  background: #111111;
-  border: 1px dashed #2a2a2a;
+  background: #ffffff;
+  border: 1px dashed #e5e7eb;
   border-radius: 20px;
   padding: 2rem;
   min-width: 230px;
@@ -129,7 +129,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #a89a00;
+  color: #6b7280;
 }
 
 .chord-diagram {

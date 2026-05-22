@@ -17,6 +17,7 @@ import {
   semitoneFromA,
 } from "../lib/chordShapes";
 import ChordDiagram from "../components/ChordDiagram";
+import BentoPageLayout from "../components/BentoPageLayout";
 
 interface LabeledShape {
   shape: ChordShape;
@@ -136,18 +137,11 @@ export default function NoteShapesPage() {
   const displayNotes = useFlats ? flatNotes : sharpNotes;
 
   return (
-    <div className='flex flex-col flex-1'>
-      <main className='pr-4 py-4 flex-1 '>
-          <div className='rounded-lg p-6 bg-white'>
-            <div className='text-center mb-10'>
-              <h1 className='text-5xl font-bold drop-shadow-lg' style={{ color: "#000" }}>
-                Chord Voicings
-              </h1>
-              <p className='text-lg mt-3' style={{ color: "#000" }}>
-                All chords for a root note with multiple voicings
-              </p>
-            </div>
-            <div className='p-6'>
+    <BentoPageLayout
+      title='Chord Voicings'
+      category='Music Theory'
+      description='All chords for a root note with multiple voicings'
+    >
               {/* Root note selector + position dropdown */}
               <div className='mb-6 flex flex-wrap items-start justify-between gap-4'>
                 <div>
@@ -232,9 +226,6 @@ export default function NoteShapesPage() {
                   </div>
                 ))}
               </div>
-            </div>
-          </div>
-      </main>
-    </div>
+    </BentoPageLayout>
   );
 }

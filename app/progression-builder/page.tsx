@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import ChordDiagram from "@/app/components/ChordDiagram";
+import BentoPageLayout from "@/app/components/BentoPageLayout";
 import {
   sharpNotes,
   chordTypes,
@@ -176,18 +177,11 @@ export default function ProgressionBuilderPage() {
   };
 
   return (
-    <div className='flex flex-col flex-1'>
-      <main className='pr-4 py-4 flex-1 '>
-          <div className='rounded-lg p-6 bg-white'>
-            <div className='text-center mb-8'>
-              <h1 className='text-5xl font-bold drop-shadow-lg' style={{ color: "#000" }}>
-                Progression Builder
-              </h1>
-              <p className='text-lg mt-3' style={{ color: "#000" }}>
-                Build a chord progression and explore positions and inversions for each chord
-              </p>
-            </div>
-
+    <BentoPageLayout
+      title='Progression Builder'
+      category='Music Theory'
+      description='Build a chord progression and explore positions and inversions for each chord'
+    >
             <div className='flex gap-4 overflow-x-auto pb-4 items-start'>
               {columns.map((col) => {
                 const positions = getPositions(col.note, col.type);
@@ -305,8 +299,6 @@ export default function ProgressionBuilderPage() {
                 Add Chord
               </button>
             </div>
-          </div>
-      </main>
-    </div>
+    </BentoPageLayout>
   );
 }
