@@ -280,7 +280,7 @@ export default function AlgoBacktestPage() {
 
   // Web Worker — owns all backtest compute. Replaces /api/backtest, which was
   // OOMing on Vercel (1.8 GB lambda heap) under multi-strategy / wide sweeps.
-  const { run: runBacktestWorker, progress: backtestProgress } = useBacktestWorker();
+  const { run: runBacktestWorker, cancel: cancelBacktest, progress: backtestProgress } = useBacktestWorker();
 
   // Unique timeframes derived from available datasets
   const uniqueTimeframes = useMemo(() => {
@@ -534,7 +534,8 @@ export default function AlgoBacktestPage() {
         setError(`Failed to load ${failedDatasets.length} dataset(s): ${failedDatasets.join("; ")}`);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Backtest failed");
+      const msg = err instanceof Error ? err.message : "Backtest failed";
+      if (msg !== "Cancelled") setError(msg);
     } finally {
       setIsRunningBatch(false);
     }
@@ -670,6 +671,57 @@ export default function AlgoBacktestPage() {
             <div className='text-xl mb-2'>Error</div>
             <div>{error}</div>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isRunningBatch) {
+    const pct = backtestProgress && backtestProgress.total > 0
+      ? Math.round((backtestProgress.completed / backtestProgress.total) * 100)
+      : 0;
+    return (
+      <div className='flex flex-col flex-1 bg-slate-900 text-white items-center justify-center min-h-screen'>
+        <div className='w-full max-w-md mx-auto px-6 text-center'>
+          <div className='mb-6'>
+            <div className='inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-900/40 border border-blue-500/40 mb-4'>
+              <svg className='w-8 h-8 text-blue-400 animate-spin' fill='none' viewBox='0 0 24 24'>
+                <circle className='opacity-25' cx='12' cy='12' r='10' stroke='currentColor' strokeWidth='4' />
+                <path className='opacity-75' fill='currentColor' d='M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z' />
+              </svg>
+            </div>
+            <h2 className='text-xl font-semibold text-white mb-1'>Running Backtest</h2>
+            <p className='text-sm text-slate-400'>
+              {backtestProgress?.currentDataset
+                ? `Processing ${backtestProgress.currentDataset}…`
+                : 'Initialising…'}
+            </p>
+          </div>
+
+          {backtestProgress && backtestProgress.total > 0 && (
+            <div className='mb-6'>
+              <div className='flex items-center justify-between text-xs text-slate-400 mb-2'>
+                <span>{backtestProgress.completed} / {backtestProgress.total} datasets</span>
+                <span>{pct}%</span>
+              </div>
+              <div className='w-full h-2 bg-slate-700 rounded-full overflow-hidden'>
+                <div
+                  className='h-full bg-blue-500 rounded-full transition-all duration-300'
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+            </div>
+          )}
+
+          <button
+            onClick={() => {
+              cancelBacktest();
+              setIsRunningBatch(false);
+            }}
+            className='px-5 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 text-sm rounded transition-colors'
+          >
+            Cancel
+          </button>
         </div>
       </div>
     );
