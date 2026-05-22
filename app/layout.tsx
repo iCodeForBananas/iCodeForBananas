@@ -11,13 +11,17 @@ import { FavoriteChordsProvider } from "./lib/FavoriteChordsContext";
 import Sidebar from "./components/Sidebar";
 import MusicFavoritesBar from "./components/MusicFavoritesBar";
 import PwaRegistration from "./components/PwaRegistration";
+import PathnameTitleSync from "./components/PathnameTitleSync";
 
 export const viewport: Viewport = {
   themeColor: "#facc15",
 };
 
 export const metadata: Metadata = {
-  title: "iCodeForBananas - Music Theory Tools",
+  title: {
+    default: "iCodeForBananas",
+    template: "%s | iCodeForBananas",
+  },
   description: "Interactive music theory tools including harmonic flow and guitar fretboard explorer",
   manifest: "/manifest.json",
   appleWebApp: {
@@ -60,6 +64,7 @@ export default function RootLayout({
         <Analytics />
         <SpeedInsights />
         <PwaRegistration />
+        <PathnameTitleSync />
       </body>
     </html>
   );

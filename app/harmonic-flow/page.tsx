@@ -1,4 +1,7 @@
+import type { Metadata } from "next";
 import ProgressionNavigator from "../components/ProgressionNavigator";
+
+export const metadata: Metadata = { title: "Harmonic Flow" };
 
 export default function HarmonicFlowPage() {
   return (
