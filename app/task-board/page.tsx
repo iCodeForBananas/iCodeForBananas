@@ -61,6 +61,7 @@ export default function TaskBoardPage() {
   const [isAdding, setIsAdding] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -176,6 +177,23 @@ export default function TaskBoardPage() {
   const activeTask = tasks.find((t) => t.id === activeTaskId) ?? null;
   const selectedTask = tasks.find((t) => t.id === selectedTaskId) ?? null;
 
+  const copyAllTasks = useCallback(async () => {
+    const active = tasks.filter((t) => t.board_column !== "done");
+    if (active.length === 0) return;
+    const text = active
+      .sort((a, b) => a.sort_order - b.sort_order)
+      .map((t) => {
+        const body = t.body
+          ? t.body.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim()
+          : "";
+        return body ? `## ${t.title}\n\n${body}` : `## ${t.title}`;
+      })
+      .join("\n\n---\n\n");
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }, [tasks]);
+
   // ── Auth guards ─────────────────────────────────────────────
 
   if (authLoading) {
@@ -218,13 +236,23 @@ export default function TaskBoardPage() {
               : `${visibleTasks.length} task${visibleTasks.length !== 1 ? "s" : ""}`}
           </span>
         </div>
-        <button
-          onClick={() => { setIsAdding(true); setNewTitle(""); }}
-          className="text-xs px-3 py-1.5 rounded font-semibold transition-opacity hover:opacity-80"
-          style={{ background: "#facc15", color: "#0a0a0a" }}
-        >
-          + Add task
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={copyAllTasks}
+            disabled={visibleTasks.length === 0}
+            className="text-xs px-3 py-1.5 rounded font-semibold transition-opacity hover:opacity-80 disabled:opacity-40"
+            style={{ background: "#f3f4f6", color: "#374151", border: "1px solid #e5e7eb" }}
+          >
+            {copied ? "Copied!" : "Copy All"}
+          </button>
+          <button
+            onClick={() => { setIsAdding(true); setNewTitle(""); }}
+            className="text-xs px-3 py-1.5 rounded font-semibold transition-opacity hover:opacity-80"
+            style={{ background: "#facc15", color: "#0a0a0a" }}
+          >
+            + Add task
+          </button>
+        </div>
       </div>
 
       {/* Priority list */}
