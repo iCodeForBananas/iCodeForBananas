@@ -58,7 +58,7 @@ export default function CircleOfFifths() {
   return (
     <div className='circle-of-fifths-container'>
       <div className='circle-column'>
-        <svg width='500' height='500' viewBox='0 0 500 500' className='circle-svg'>
+        <svg viewBox='0 0 500 500' className='circle-svg'>
           {/* Outer decorative ring */}
           <circle cx={centerX} cy={centerY} r={outerRadius} className='outer-ring' />
 

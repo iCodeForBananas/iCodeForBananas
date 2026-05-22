@@ -19,6 +19,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { createClient } from "@/utils/supabase/client";
+import BentoPageLayout from "@/app/components/BentoPageLayout";
 import { useAuth } from "@/app/hooks/useAuth";
 import TaskCard from "./TaskCard";
 import TaskModal from "./TaskModal";
@@ -218,36 +219,21 @@ export default function TaskBoardPage() {
   // ── Render ───────────────────────────────────────────────────
 
   return (
-    <div className='flex flex-col flex-1'>
-      <main className='pr-4 py-4 flex-1'>
-        <div className='rounded-lg p-6 bg-white'>
-      {/* Header */}
-      <div
-        className="px-5 py-3 flex items-center justify-between shrink-0 border-b"
-        style={{ borderColor: "#e5e7eb" }}
-      >
-        <div className="flex items-center gap-3">
-          <h1 className="text-base font-bold uppercase tracking-widest" style={{ color: "#111827" }}>
-            Task Board
-          </h1>
-          <span className="text-xs" style={{ color: "#6b7280" }}>
-            {loadingTasks
-              ? "Loading…"
-              : `${visibleTasks.length} task${visibleTasks.length !== 1 ? "s" : ""}`}
-          </span>
-        </div>
+    <BentoPageLayout title='Task Board'>
+      {/* Action bar */}
+      <div className="flex items-center justify-end mb-4">
         <div className="flex items-center gap-2">
           <button
             onClick={copyAllTasks}
             disabled={visibleTasks.length === 0}
-            className="text-xs px-3 py-1.5 rounded font-semibold transition-opacity hover:opacity-80 disabled:opacity-40"
+            className="text-sm px-4 py-2 rounded font-semibold transition-opacity hover:opacity-80 disabled:opacity-40"
             style={{ background: "#f3f4f6", color: "#374151", border: "1px solid #e5e7eb" }}
           >
             {copied ? "Copied!" : "Copy All"}
           </button>
           <button
             onClick={() => { setIsAdding(true); setNewTitle(""); }}
-            className="text-xs px-3 py-1.5 rounded font-semibold transition-opacity hover:opacity-80"
+            className="text-sm px-4 py-2 rounded font-semibold transition-opacity hover:opacity-80"
             style={{ background: "#facc15", color: "#0a0a0a" }}
           >
             + Add task
@@ -255,9 +241,8 @@ export default function TaskBoardPage() {
         </div>
       </div>
 
-      {/* Priority list */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="flex flex-col gap-2 p-4 max-w-2xl mx-auto">
+      {/* Task list */}
+      <div className="flex flex-col gap-2 max-w-2xl mx-auto w-full">
           {/* Inline add form */}
           {isAdding && (
             <div
@@ -349,7 +334,6 @@ export default function TaskBoardPage() {
               No tasks yet — add one to get started.
             </div>
           )}
-        </div>
       </div>
 
       {/* Task detail modal */}
@@ -362,8 +346,6 @@ export default function TaskBoardPage() {
           onClose={() => setSelectedTaskId(null)}
         />
       )}
-        </div>
-      </main>
-    </div>
+    </BentoPageLayout>
   );
 }

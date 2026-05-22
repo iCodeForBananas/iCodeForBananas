@@ -482,7 +482,7 @@ export default function Home() {
         <motion.div
           animate={{ x: [0, -1000] }}
           transition={{ repeat: Infinity, duration: 20, ease: "linear" }}
-          className='inline-block text-sm font-bold tracking-widest uppercase'
+          className='inline-block text-sm lg:text-base xl:text-lg font-bold tracking-widest uppercase'
         >
           WILL CODE FOR BANANAS • POTASSIUM DRIVEN DEVELOPMENT • NO MONKEY BUSINESS • 100% ORGANIC CODE • PEELING BACK
           THE LAYERS OF WEB DEV • WILL CODE FOR BANANAS • POTASSIUM DRIVEN DEVELOPMENT • NO MONKEY BUSINESS • 100%
@@ -491,44 +491,51 @@ export default function Home() {
       </div>
 
       {/* ── HERO ──────────────────────────────────────────────── */}
-      <section className='bg-yellow-400 text-black relative grid grid-rows-[1fr_auto_1fr] flex-1 px-6 overflow-hidden'>
-        {/* Top row — title anchored to bottom so spacing above and below banana is equal */}
-        <div className='flex items-end justify-center pb-8'>
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, ease: "easeOut" }}
-          >
-            <h1 className='text-7xl md:text-8xl font-black leading-none tracking-tighter uppercase whitespace-nowrap text-center'>
-              I Code For
-              <br />
-              <span className='text-white drop-shadow-[4px_4px_0px_rgba(0,0,0,1)]'>Bananas</span>
-            </h1>
-          </motion.div>
+      <section className='bg-yellow-400 text-black relative flex flex-col justify-center items-center flex-1 px-4 sm:px-6 overflow-hidden gap-8 sm:gap-12 md:gap-16'>
+
+        {/* Background rings */}
+        <div className='absolute inset-0 flex items-center justify-center pointer-events-none' style={{ zIndex: 0 }}>
+          {Array.from({ length: 20 }, (_, i) => (
+            <div key={i} className='absolute aspect-square border border-black/[0.15] rounded-full' style={{ width: `${(i + 1) * 12}%` }} />
+          ))}
         </div>
 
-        {/* Middle row — banana sits at the exact vertical center */}
+        {/* Title */}
+        <motion.div
+          className='relative z-10'
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
+        >
+          <h1 className='text-5xl sm:text-6xl md:text-7xl lg:text-8xl xl:text-9xl font-black leading-none tracking-tighter uppercase text-center'>
+            I Code For
+            <br />
+            <span className='text-white drop-shadow-[4px_4px_0px_rgba(0,0,0,1)]'>Bananas</span>
+          </h1>
+        </motion.div>
+
+        {/* Banana */}
         <motion.div
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 1, delay: 0.2 }}
-            className='relative flex justify-center'
+            className='relative z-10 flex justify-center'
           >
             <div className='relative z-10'>
               <motion.div
                 animate={{ y: [0, -20, 0], rotate: [-5, 5, -5] }}
                 transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
               >
-                <img src='/banana-icon.svg' alt='Banana' className='w-64 h-64 md:w-96 md:h-96 drop-shadow-[10px_10px_0px_rgba(0,0,0,1)]' />
+                <img src='/banana-icon.svg' alt='Banana' className='w-[35vmin] h-[35vmin] md:w-[41vmin] md:h-[41vmin] lg:w-[36vmin] lg:h-[36vmin]' />
               </motion.div>
 
-              {/* Floating Tech Tags */}
+              {/* Floating Tech Tags — desktop only */}
               {(
                 [
                   {
                     label: "Harmonic Flow",
                     href: "/harmonic-flow",
-                    pos: "absolute -top-4 -right-4",
+                    pos: "absolute -top-6 -right-28",
                     anim: { y: [0, 15, 0] },
                     dur: 3,
                     delay: 0.5,
@@ -536,15 +543,15 @@ export default function Home() {
                   {
                     label: "Algo Backtest",
                     href: "/algo-backtest",
-                    pos: "absolute bottom-10 -left-10",
+                    pos: "absolute bottom-8 -left-32",
                     anim: { y: [0, -15, 0] },
                     dur: 3.5,
                     delay: 1,
                   },
                   {
-                    label: "Cloud Architect",
-                    href: "/cloud-architect",
-                    pos: "absolute top-1/2 -right-16",
+                    label: "Chord Progressions",
+                    href: "/chord-progressions",
+                    pos: "absolute top-1/2 -right-36",
                     anim: { x: [0, 10, 0] },
                     dur: 4,
                     delay: 0.2,
@@ -552,7 +559,7 @@ export default function Home() {
                   {
                     label: "Chord Finder",
                     href: "/chord-finder",
-                    pos: "absolute -bottom-4 right-10",
+                    pos: "absolute -bottom-10 right-4",
                     anim: { y: [0, -10, 0], x: [0, 5, 0] },
                     dur: 4.5,
                     delay: 0.8,
@@ -560,7 +567,7 @@ export default function Home() {
                   {
                     label: "FIRE Estimator",
                     href: "/fire-estimator",
-                    pos: "absolute -top-12 left-1/2 -translate-x-1/2",
+                    pos: "absolute -top-20 left-1/2 -translate-x-1/2",
                     anim: { scale: [1, 1.05, 1] },
                     dur: 3.8,
                     delay: 1.2,
@@ -568,7 +575,7 @@ export default function Home() {
                   {
                     label: "Fretboard Quiz",
                     href: "/fretboard-quiz",
-                    pos: "absolute bottom-1/2 -left-20",
+                    pos: "absolute bottom-1/2 -left-36",
                     anim: { x: [0, -10, 0] },
                     dur: 4.2,
                     delay: 0.4,
@@ -576,15 +583,15 @@ export default function Home() {
                   {
                     label: "Workout Tracker",
                     href: "/workout-tracker",
-                    pos: "absolute top-0 -left-8",
+                    pos: "absolute top-2 -left-32",
                     anim: { y: [0, 8, 0] },
                     dur: 3.2,
                     delay: 1.5,
                   },
                   {
-                    label: "Silent Metronome",
-                    href: "/silent-metronome",
-                    pos: "absolute -bottom-12 left-1/4",
+                    label: "Wordsmith",
+                    href: "/wordsmith",
+                    pos: "absolute -bottom-20 left-1/4",
                     anim: { x: [0, 8, 0] },
                     dur: 3.6,
                     delay: 0.7,
@@ -592,7 +599,7 @@ export default function Home() {
                   {
                     label: "Circle of Fifths",
                     href: "/circle-of-fifths",
-                    pos: "absolute top-1/3 -right-24",
+                    pos: "absolute top-1/3 -right-40",
                     anim: { y: [0, -12, 0] },
                     dur: 4.8,
                     delay: 1.8,
@@ -603,11 +610,11 @@ export default function Home() {
                   key={label}
                   animate={anim as unknown as Record<string, number[]>}
                   transition={{ repeat: Infinity, duration: dur, delay }}
-                  className={`${pos} z-20`}
+                  className={`${pos} z-20 hidden md:block`}
                 >
                   <Link
                     href={href}
-                    className='block bg-white border-2 border-black p-3 font-bold text-sm shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:bg-yellow-400 transition-colors'
+                    className='block bg-white border-2 border-black p-3 lg:p-4 xl:p-5 font-bold text-sm lg:text-base xl:text-lg shadow-[4px_4px_0px_rgba(0,0,0,1)] lg:shadow-[6px_6px_0px_rgba(0,0,0,1)] hover:bg-yellow-400 transition-colors'
                   >
                     {label}
                   </Link>
@@ -615,12 +622,32 @@ export default function Home() {
               ))}
             </div>
 
-            <div className='absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] aspect-square border-2 border-black/20 rounded-full -z-0' />
-            <div className='absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[100%] aspect-square border-2 border-black/10 rounded-full -z-0' />
           </motion.div>
 
-        {/* Bottom row — mirrors top, keeps banana centered */}
-        <div />
+        {/* Mobile tool tags */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.8 }}
+          className='flex md:hidden flex-wrap justify-center gap-2 max-w-xs'
+        >
+          {[
+            { label: "Harmonic Flow", href: "/harmonic-flow" },
+            { label: "Chord Finder", href: "/chord-finder" },
+            { label: "Algo Backtest", href: "/algo-backtest" },
+            { label: "Fretboard Quiz", href: "/fretboard-quiz" },
+            { label: "FIRE Estimator", href: "/fire-estimator" },
+            { label: "Workout Tracker", href: "/workout-tracker" },
+          ].map(({ label, href }) => (
+            <Link
+              key={label}
+              href={href}
+              className='bg-white border-2 border-black px-3 py-1.5 font-bold text-xs shadow-[3px_3px_0px_rgba(0,0,0,1)] hover:bg-yellow-300 transition-colors'
+            >
+              {label}
+            </Link>
+          ))}
+        </motion.div>
       </section>
     </main>
   );

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import BentoPageLayout from "../components/BentoPageLayout";
 
 interface CategoryLevel {
   id: string;
@@ -552,14 +553,10 @@ export default function LearningProgressPage() {
   ] as const;
 
   return (
-    <div className="flex flex-col flex-1 bg-gray-50 min-h-screen">
-      <main className="px-4 py-8 flex-1 max-w-5xl mx-auto w-full">
-        {/* Header */}
-        <div className="mb-6 flex items-start justify-between flex-wrap gap-4">
-          <div>
-            <h1 className="text-3xl font-black text-gray-900">Cai&apos;s Learning Progress</h1>
-            <p className="text-gray-500 mt-1 text-sm">Common Core K–Grade 3 · Syllabus coverage tracker</p>
-          </div>
+    <BentoPageLayout title="Cai's Learning Progress">
+        {/* Toolbar */}
+        <div className="mb-6 flex items-center justify-between flex-wrap gap-3">
+          <p className="text-sm text-gray-500">Common Core K–Grade 3 · Syllabus coverage tracker</p>
           <div className="flex items-center gap-3">
             {lastUpdated && (
               <span className="text-xs text-gray-400">Updated {lastUpdated.toLocaleTimeString()}</span>
@@ -612,7 +609,6 @@ export default function LearningProgressPage() {
             </p>
           </div>
         )}
-      </main>
-    </div>
+    </BentoPageLayout>
   );
 }

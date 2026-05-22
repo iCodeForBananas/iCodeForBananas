@@ -2,7 +2,10 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2rem;
+  gap: 1.5rem;
+  width: 100%;
+  flex: 1;
+  min-height: 0;
 }
 
 @media (min-width: 900px) {
@@ -18,11 +21,24 @@
   display: flex;
   justify-content: center;
   align-items: center;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
 }
 
 .circle-svg {
-  flex-shrink: 0;
+  width: min(100%, 75vmin);
+  height: auto;
   filter: drop-shadow(0 4px 24px rgba(0, 0, 0, 0.3));
+}
+
+@media (min-width: 900px) {
+  .circle-svg {
+    height: 100%;
+    width: auto;
+    max-width: 100%;
+    max-height: 100%;
+  }
 }
 
 .outer-ring {
@@ -41,8 +57,15 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 300px;
-  width: 300px;
+  flex-shrink: 0;
+  width: clamp(200px, 20vw, 280px);
+}
+
+@media (max-width: 899px) {
+  .chord-column {
+    width: 100%;
+    max-width: 300px;
+  }
 }
 
 .key-circle {
@@ -111,9 +134,7 @@
   border: 1px solid #e5e7eb;
   border-radius: 20px;
   padding: 2rem;
-  min-width: 230px;
   width: 100%;
-  max-width: 300px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
   color: #111111;
 }
@@ -123,9 +144,7 @@
   border: 1px dashed #e5e7eb;
   border-radius: 20px;
   padding: 2rem;
-  min-width: 230px;
   width: 100%;
-  max-width: 300px;
   display: flex;
   align-items: center;
   justify-content: center;
