@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { useRouter } from "next/navigation";
+import BentoPageLayout from "@/app/components/BentoPageLayout";
 
 export default function LoginForm() {
   const [email, setEmail] = useState("");
@@ -37,38 +38,33 @@ export default function LoginForm() {
   };
 
   return (
-    <div className='flex flex-col flex-1'>
-      <main className='pr-4 py-4 flex-1 '>
-        <div className='rounded-lg p-6 bg-white'>
-          <form onSubmit={handleLogin} className='w-full max-w-sm mx-auto space-y-4 py-12'>
-            <h1 className='text-2xl font-bold text-center'>Sign In</h1>
-            {error && <p className='text-red-500 text-sm text-center'>{error}</p>}
-            <input
-              type='email'
-              placeholder='Email'
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className='w-full border border-[#373A40]/30 rounded px-3 py-2 text-sm'
-            />
-            <input
-              type='password'
-              placeholder='Password'
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className='w-full border border-[#373A40]/30 rounded px-3 py-2 text-sm'
-            />
-            <button
-              type='submit'
-              disabled={loading}
-              className='w-full rounded bg-black px-5 py-2 text-sm font-medium text-[#facc15] hover:bg-black/80 disabled:opacity-50'
-            >
-              {loading ? "Signing in…" : "Sign In"}
-            </button>
-          </form>
-        </div>
-      </main>
-    </div>
+    <BentoPageLayout title='Sign In' maxWidth='max-w-sm'>
+      <form onSubmit={handleLogin} className='w-full space-y-4 py-8'>
+        {error && <p className='text-red-500 text-sm text-center'>{error}</p>}
+        <input
+          type='email'
+          placeholder='Email'
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          className='w-full border border-[#373A40]/30 rounded px-3 py-2 text-sm'
+        />
+        <input
+          type='password'
+          placeholder='Password'
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+          className='w-full border border-[#373A40]/30 rounded px-3 py-2 text-sm'
+        />
+        <button
+          type='submit'
+          disabled={loading}
+          className='w-full rounded bg-black px-5 py-2 text-sm font-medium text-[#facc15] hover:bg-black/80 disabled:opacity-50'
+        >
+          {loading ? "Signing in…" : "Sign In"}
+        </button>
+      </form>
+    </BentoPageLayout>
   );
 }
