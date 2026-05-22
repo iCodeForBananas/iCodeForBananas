@@ -55,17 +55,21 @@ const handler: StrategyHandler = ({ series, index, params }) => {
   const highestHigh = Math.max(...lookback.map((b) => b.high));
   const lowestLow = Math.min(...lookback.map((b) => b.low));
 
-  // ATR
-  const atrSlice = series.slice(Math.max(0, index - atrPeriod), index + 1);
-  let atrSum = 0;
-  for (let i = 1; i < atrSlice.length; i++) {
-    atrSum += Math.max(
-      atrSlice[i].high - atrSlice[i].low,
-      Math.abs(atrSlice[i].high - atrSlice[i - 1].close),
-      Math.abs(atrSlice[i].low - atrSlice[i - 1].close)
-    );
+  // Wilder's ATR replayed from bar 1 to current index — matches chart computation.
+  let trSum = 0, trCount = 0;
+  let atr: number | undefined;
+  for (let i = 1; i <= index; i++) {
+    const b = series[i], pb = series[i - 1];
+    const tr = Math.max(b.high - b.low, Math.abs(b.high - pb.close), Math.abs(b.low - pb.close));
+    if (trCount < atrPeriod) {
+      trSum += tr;
+      trCount++;
+      if (trCount === atrPeriod) atr = trSum / atrPeriod;
+    } else {
+      atr = (atr! * (atrPeriod - 1) + tr) / atrPeriod;
+    }
   }
-  const atr = atrSum / Math.max(1, atrSlice.length - 1);
+  if (atr === undefined) return { action: 'hold', reason: 'Warming up' };
 
   const chandelierLong = highestHigh - multiplier * atr;   // Long exit / short entry
   const chandelierShort = lowestLow + multiplier * atr;    // Short exit / long entry

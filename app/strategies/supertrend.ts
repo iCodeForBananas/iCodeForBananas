@@ -27,66 +27,70 @@ const parameters: StrategyParameter[] = [
   },
 ];
 
-// Supertrend requires stateful computation across bars — we maintain it on the series
+// Supertrend requires stateful computation — replay from bar 0 each call using the full series.
 const handler: StrategyHandler = ({ series, index, params }) => {
   const atrPeriod = (params.atrPeriod as number) ?? 10;
   const multiplier = (params.multiplier as number) ?? 3.0;
 
-  if (index < atrPeriod + 1) return { action: 'hold', reason: 'Warming up' };
+  if (index < atrPeriod + 2) return { action: 'hold', reason: 'Warming up' };
 
-  // Compute ATR for current bar
-  const slice = series.slice(Math.max(0, index - atrPeriod), index + 1);
-  let atrSum = 0;
-  for (let i = 1; i < slice.length; i++) {
-    const tr = Math.max(
-      slice[i].high - slice[i].low,
-      Math.abs(slice[i].high - slice[i - 1].close),
-      Math.abs(slice[i].low - slice[i - 1].close)
-    );
-    atrSum += tr;
-  }
-  const atr = atrSum / Math.min(atrPeriod, slice.length - 1);
+  // Wilder's ATR + proper ratcheted Supertrend bands, replayed from bar 1 to index.
+  let trSum = 0, trCount = 0;
+  let atr: number | undefined;
+  let finalUp = 0, finalDn = 0;
+  let dir = 1;           // 1 = uptrend, -1 = downtrend
+  let prevDir = 1;
+  let started = false;
 
-  const current = series[index];
-  const prev = series[index - 1];
+  for (let i = 1; i <= index; i++) {
+    const d = series[i];
+    const p = series[i - 1];
+    const tr = Math.max(d.high - d.low, Math.abs(d.high - p.close), Math.abs(d.low - p.close));
 
-  const hl2 = (current.high + current.low) / 2;
-  const upperBasic = hl2 + multiplier * atr;
-  const lowerBasic = hl2 - multiplier * atr;
+    if (trCount < atrPeriod) {
+      trSum += tr;
+      trCount++;
+      if (trCount === atrPeriod) atr = trSum / atrPeriod;
+    } else {
+      atr = (atr! * (atrPeriod - 1) + tr) / atrPeriod;
+    }
 
-  // Simple Supertrend: if close > upper band → uptrend (buy), if close < lower band → downtrend (sell)
-  // We use a 2-bar lookback to detect crossovers
+    if (atr === undefined) continue;
 
-  const prevHl2 = (prev.high + prev.low) / 2;
+    const hl2 = (d.high + d.low) / 2;
+    const rawUp = hl2 + multiplier * atr;
+    const rawDn = hl2 - multiplier * atr;
 
-  // Compute ATR for previous bar
-  const prevSlice = series.slice(Math.max(0, index - atrPeriod - 1), index);
-  let prevAtrSum = 0;
-  for (let i = 1; i < prevSlice.length; i++) {
-    const tr = Math.max(
-      prevSlice[i].high - prevSlice[i].low,
-      Math.abs(prevSlice[i].high - (prevSlice[i - 1]?.close ?? prevSlice[i].close)),
-      Math.abs(prevSlice[i].low - (prevSlice[i - 1]?.close ?? prevSlice[i].close))
-    );
-    prevAtrSum += tr;
-  }
-  const prevAtr = prevAtrSum / Math.max(1, prevSlice.length - 1);
-  const prevUpperBasic = prevHl2 + multiplier * prevAtr;
-  const prevLowerBasic = prevHl2 - multiplier * prevAtr;
+    let newUp: number, newDn: number, newDir: number;
+    if (!started) {
+      newUp = rawUp;
+      newDn = rawDn;
+      newDir = d.close > rawUp ? 1 : -1;
+      started = true;
+    } else {
+      newUp = (rawUp < finalUp || p.close > finalUp) ? rawUp : finalUp;
+      newDn = (rawDn > finalDn || p.close < finalDn) ? rawDn : finalDn;
+      newDir = dir === -1 ? (d.close > newUp ? 1 : -1) : (d.close < newDn ? -1 : 1);
+    }
 
-  // Trend direction based on close vs bands
-  const currentTrend = current.close > upperBasic ? 1 : current.close < lowerBasic ? -1 : 0;
-  const prevTrend = prev.close > prevUpperBasic ? 1 : prev.close < prevLowerBasic ? -1 : 0;
-
-  if (prevTrend <= 0 && currentTrend === 1) {
-    return { action: 'buy', reason: `Supertrend bullish (close ${current.close.toFixed(2)} > upper ${upperBasic.toFixed(2)})` };
+    prevDir = dir;
+    dir = newDir;
+    finalUp = newUp;
+    finalDn = newDn;
   }
 
-  if (prevTrend >= 0 && currentTrend === -1) {
-    return { action: 'sell', reason: `Supertrend bearish (close ${current.close.toFixed(2)} < lower ${lowerBasic.toFixed(2)})` };
+  if (!started) return { action: 'hold', reason: 'Warming up' };
+
+  const st = dir === 1 ? finalDn : finalUp;
+
+  if (prevDir === -1 && dir === 1) {
+    return { action: 'buy', reason: `Supertrend flipped bullish (stop ${finalDn.toFixed(2)})` };
+  }
+  if (prevDir === 1 && dir === -1) {
+    return { action: 'sell', reason: `Supertrend flipped bearish (stop ${finalUp.toFixed(2)})` };
   }
 
-  return { action: 'hold', reason: '' };
+  return { action: 'hold', reason: `Supertrend ${dir === 1 ? 'bullish' : 'bearish'} (${st.toFixed(2)})` };
 };
 
 const strategy: StrategyDefinition = {

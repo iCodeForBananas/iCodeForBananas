@@ -40,21 +40,20 @@ const handler: StrategyHandler = ({ current, series, index, params }) => {
   const overbought = (params.overbought as number) ?? 90;
   const trendFilter = (params.trendFilter as boolean) ?? true;
 
-  // Compute 2-period RSI manually from series
+  // Wilder's RSI-2 replayed from bar 1 to current index — matches chart computation.
   if (index < 3) return { action: 'hold', reason: 'Warming up' };
 
-  const closes = series.slice(Math.max(0, index - 2), index + 1).map((b) => b.close);
-  let avgGain = 0;
-  let avgLoss = 0;
-  for (let i = 1; i < closes.length; i++) {
-    const delta = closes[i] - closes[i - 1];
-    if (delta > 0) avgGain += delta;
-    else avgLoss += Math.abs(delta);
+  const rsiPeriod = 2;
+  let ag = 0, al = 0;
+  for (let i = 1; i <= index; i++) {
+    const delta = series[i].close - series[i - 1].close;
+    const g = delta > 0 ? delta : 0;
+    const l = delta < 0 ? -delta : 0;
+    if (i < rsiPeriod) { ag += g; al += l; }
+    else if (i === rsiPeriod) { ag = (ag + g) / rsiPeriod; al = (al + l) / rsiPeriod; }
+    else { ag = (ag * (rsiPeriod - 1) + g) / rsiPeriod; al = (al * (rsiPeriod - 1) + l) / rsiPeriod; }
   }
-  const n = closes.length - 1;
-  avgGain /= n;
-  avgLoss /= n;
-  const rsi2 = avgLoss === 0 ? 100 : 100 - 100 / (1 + avgGain / avgLoss);
+  const rsi2 = al === 0 ? 100 : 100 - 100 / (1 + ag / al);
 
   const aboveTrend = !trendFilter || (current.sma200 != null && current.close > current.sma200);
 

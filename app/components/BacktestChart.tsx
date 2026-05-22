@@ -36,14 +36,6 @@ const MAX_CANDLES = 1000;
 
 // ── Indicator helpers (kept inline for parity with previous chart) ──────────
 
-function calcEMA(closes: number[], period: number): (number | undefined)[] {
-  const mult = 2 / (period + 1);
-  let ema: number | undefined;
-  return closes.map((c, i) => {
-    ema = i === 0 ? c : (c - ema!) * mult + ema!;
-    return i >= period - 1 ? ema : undefined;
-  });
-}
 
 function calcSMA(closes: number[], period: number): (number | undefined)[] {
   return closes.map((_, i) => {
@@ -62,14 +54,20 @@ function calcStdDev(closes: number[], period: number): (number | undefined)[] {
 }
 
 function calcATR(data: IndicatorData[], period: number): (number | undefined)[] {
+  let trSum = 0;
+  let trCount = 0;
   let atr: number | undefined;
   return data.map((d, i) => {
-    const tr =
-      i === 0
-        ? d.high - d.low
-        : Math.max(d.high - d.low, Math.abs(d.high - data[i - 1].close), Math.abs(d.low - data[i - 1].close));
-    atr = i === 0 ? tr : (atr! * (period - 1) + tr) / period;
-    return i >= period - 1 ? atr : undefined;
+    if (i === 0) return undefined;
+    const tr = Math.max(d.high - d.low, Math.abs(d.high - data[i - 1].close), Math.abs(d.low - data[i - 1].close));
+    if (trCount < period) {
+      trSum += tr;
+      trCount++;
+      if (trCount === period) atr = trSum / period;
+    } else {
+      atr = (atr! * (period - 1) + tr) / period;
+    }
+    return atr;
   });
 }
 
@@ -174,7 +172,7 @@ function computeIndicators(
       const emaPeriod = num("emaPeriod", 20);
       const atrPeriod = num("atrPeriod", 10);
       const mult = num("multiplier", 2);
-      const ema = calcEMA(closes, emaPeriod);
+      const ema = data.map((d) => d[`ema${emaPeriod}` as keyof IndicatorData] as number | undefined);
       const atr = calcATR(data, atrPeriod);
       priceLines.push({ values: ema.map((e, i) => e !== undefined && atr[i] !== undefined ? e + mult * atr[i]! : undefined), color: "#06b6d4", label: `KC±${mult}ATR`, dashed: true });
       priceLines.push({ values: ema, color: "#3b82f6", label: `EMA ${emaPeriod}` });
