@@ -206,13 +206,13 @@ export default function TaskBoardPage() {
       {/* Header */}
       <div
         className="px-5 py-3 flex items-center justify-between shrink-0 border-b"
-        style={{ borderColor: "var(--border-color)" }}
+        style={{ borderColor: "#e5e7eb" }}
       >
         <div className="flex items-center gap-3">
-          <h1 className="text-base font-bold uppercase tracking-widest" style={{ color: "var(--text-primary)" }}>
+          <h1 className="text-base font-bold uppercase tracking-widest" style={{ color: "#111827" }}>
             Task Board
           </h1>
-          <span className="text-xs" style={{ color: "var(--text-secondary)" }}>
+          <span className="text-xs" style={{ color: "#6b7280" }}>
             {loadingTasks
               ? "Loading…"
               : `${visibleTasks.length} task${visibleTasks.length !== 1 ? "s" : ""}`}
@@ -234,7 +234,7 @@ export default function TaskBoardPage() {
           {isAdding && (
             <div
               className="rounded-lg p-3 shrink-0"
-              style={{ background: "var(--bg-secondary)", border: "1px solid #facc15" }}
+              style={{ background: "#f9fafb", border: "1px solid #facc15" }}
             >
               <input
                 autoFocus
@@ -246,7 +246,7 @@ export default function TaskBoardPage() {
                 }}
                 placeholder="Task title…"
                 className="w-full bg-transparent text-sm outline-none"
-                style={{ color: "var(--text-primary)" }}
+                style={{ color: "#111827" }}
               />
               <div className="flex gap-2 mt-2">
                 <button
@@ -259,7 +259,7 @@ export default function TaskBoardPage() {
                 <button
                   onClick={() => { setIsAdding(false); setNewTitle(""); }}
                   className="text-xs px-2 py-1 rounded transition-opacity hover:opacity-70"
-                  style={{ color: "var(--text-secondary)" }}
+                  style={{ color: "#6b7280" }}
                 >
                   Cancel
                 </button>
@@ -301,7 +301,7 @@ export default function TaskBoardPage() {
                 <div
                   style={{
                     transform: "scale(1.03) rotate(1deg)",
-                    boxShadow: "0 12px 32px rgba(0,0,0,0.6), 0 0 0 1px rgba(250,204,21,0.3)",
+                    boxShadow: "0 12px 32px rgba(0,0,0,0.15), 0 0 0 1px rgba(250,204,21,0.5)",
                     borderRadius: "0.5rem",
                     opacity: 0.95,
                     pointerEvents: "none",
@@ -316,7 +316,7 @@ export default function TaskBoardPage() {
           {visibleTasks.length === 0 && !isAdding && (
             <div
               className="text-center py-16 text-sm select-none"
-              style={{ color: "var(--text-secondary)" }}
+              style={{ color: "#6b7280" }}
             >
               No tasks yet — add one to get started.
             </div>

@@ -108,7 +108,7 @@ export default function InlineTaskEditor({ task, onUpdate, onExpand }: Props) {
         className="px-2 py-1 rounded text-xs font-medium transition-all"
         style={{
           background: active ? "#facc15" : "transparent",
-          color: active ? "#0a0a0a" : "#a89a00",
+          color: active ? "#0a0a0a" : "#6b7280",
           border: "1px solid transparent",
         }}
         onMouseEnter={(e) => {
@@ -127,15 +127,15 @@ export default function InlineTaskEditor({ task, onUpdate, onExpand }: Props) {
     <div
       className="rounded-xl"
       style={{
-        background: "var(--bg-secondary)",
+        background: "#ffffff",
         border: "1px solid #facc15",
-        boxShadow: "0 0 0 2px rgba(250,204,21,0.1), 0 4px 24px rgba(0,0,0,0.25)",
+        boxShadow: "0 0 0 2px rgba(250,204,21,0.1), 0 4px 24px rgba(0,0,0,0.08)",
       }}
     >
       {/* Header: status + expand */}
       <div
         className="flex items-center justify-between px-4 py-2 border-b shrink-0"
-        style={{ borderColor: "var(--border-color)" }}
+        style={{ borderColor: "#e5e7eb" }}
       >
         <div className="flex gap-1">
           {COLUMN_OPTIONS.map((opt) => (
@@ -144,8 +144,8 @@ export default function InlineTaskEditor({ task, onUpdate, onExpand }: Props) {
               onClick={() => handleColumnChange(opt.value)}
               className="text-xs px-2 py-1 rounded transition-all font-medium"
               style={{
-                background: boardColumn === opt.value ? "#facc15" : "var(--border-color)",
-                color: boardColumn === opt.value ? "#0a0a0a" : "#a89a00",
+                background: boardColumn === opt.value ? "#facc15" : "#f3f4f6",
+                color: boardColumn === opt.value ? "#0a0a0a" : "#6b7280",
               }}
             >
               {opt.label}
@@ -155,7 +155,7 @@ export default function InlineTaskEditor({ task, onUpdate, onExpand }: Props) {
         <button
           onClick={onExpand}
           className="text-xs px-2 py-1 rounded font-medium transition-opacity hover:opacity-70"
-          style={{ color: "#a89a00" }}
+          style={{ color: "#6b7280" }}
         >
           ↗ Expand
         </button>
@@ -168,7 +168,7 @@ export default function InlineTaskEditor({ task, onUpdate, onExpand }: Props) {
           onChange={(e) => setTitle(e.target.value)}
           onBlur={handleTitleBlur}
           className="w-full bg-transparent text-xl font-bold outline-none"
-          style={{ color: "var(--text-primary)" }}
+          style={{ color: "#111827" }}
           placeholder="Task title"
         />
       </div>
@@ -176,23 +176,23 @@ export default function InlineTaskEditor({ task, onUpdate, onExpand }: Props) {
       {/* Toolbar */}
       <div
         className="px-4 py-1.5 flex flex-wrap items-center gap-0.5 border-b shrink-0"
-        style={{ borderColor: "var(--border-color)" }}
+        style={{ borderColor: "#e5e7eb" }}
       >
         <ToolbarBtn active={editor?.isActive("heading", { level: 1 })} onClick={() => editor?.chain().focus().toggleHeading({ level: 1 }).run()} title="Heading 1">H1</ToolbarBtn>
         <ToolbarBtn active={editor?.isActive("heading", { level: 2 })} onClick={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()} title="Heading 2">H2</ToolbarBtn>
         <ToolbarBtn active={editor?.isActive("heading", { level: 3 })} onClick={() => editor?.chain().focus().toggleHeading({ level: 3 }).run()} title="Heading 3">H3</ToolbarBtn>
-        <div className="w-px h-4 mx-1 shrink-0" style={{ background: "var(--border-dark)" }} />
+        <div className="w-px h-4 mx-1 shrink-0" style={{ background: "#d1d5db" }} />
         <ToolbarBtn active={editor?.isActive("bold")} onClick={() => editor?.chain().focus().toggleBold().run()} title="Bold"><strong>B</strong></ToolbarBtn>
         <ToolbarBtn active={editor?.isActive("italic")} onClick={() => editor?.chain().focus().toggleItalic().run()} title="Italic"><em>I</em></ToolbarBtn>
         <ToolbarBtn active={editor?.isActive("strike")} onClick={() => editor?.chain().focus().toggleStrike().run()} title="Strikethrough"><s>S</s></ToolbarBtn>
         <ToolbarBtn active={editor?.isActive("code")} onClick={() => editor?.chain().focus().toggleCode().run()} title="Inline code">{"</>"}</ToolbarBtn>
-        <div className="w-px h-4 mx-1 shrink-0" style={{ background: "var(--border-dark)" }} />
+        <div className="w-px h-4 mx-1 shrink-0" style={{ background: "#d1d5db" }} />
         <ToolbarBtn active={editor?.isActive("bulletList")} onClick={() => editor?.chain().focus().toggleBulletList().run()} title="Bullet list">• List</ToolbarBtn>
         <ToolbarBtn active={editor?.isActive("orderedList")} onClick={() => editor?.chain().focus().toggleOrderedList().run()} title="Ordered list">1. List</ToolbarBtn>
-        <div className="w-px h-4 mx-1 shrink-0" style={{ background: "var(--border-dark)" }} />
+        <div className="w-px h-4 mx-1 shrink-0" style={{ background: "#d1d5db" }} />
         <ToolbarBtn active={editor?.isActive("blockquote")} onClick={() => editor?.chain().focus().toggleBlockquote().run()} title="Blockquote">❝ Quote</ToolbarBtn>
         <ToolbarBtn active={editor?.isActive("codeBlock")} onClick={() => editor?.chain().focus().toggleCodeBlock().run()} title="Code block">Code block</ToolbarBtn>
-        <div className="w-px h-4 mx-1 shrink-0" style={{ background: "var(--border-dark)" }} />
+        <div className="w-px h-4 mx-1 shrink-0" style={{ background: "#d1d5db" }} />
         <ToolbarBtn onClick={() => imageInputRef.current?.click()} title="Insert image">＋ Image</ToolbarBtn>
         <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
       </div>

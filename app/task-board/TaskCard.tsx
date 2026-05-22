@@ -23,8 +23,8 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 const STATUS_STYLE: Record<string, React.CSSProperties> = {
-  "backlog": { background: "rgba(255,255,255,0.06)", color: "var(--text-secondary)" },
-  "in-progress": { background: "rgba(250,204,21,0.15)", color: "#facc15" },
+  "backlog": { background: "#f3f4f6", color: "#6b7280" },
+  "in-progress": { background: "#fef9c3", color: "#854d0e" },
 };
 
 export default function TaskCard({ task, onClick }: TaskCardProps) {
@@ -38,14 +38,14 @@ export default function TaskCard({ task, onClick }: TaskCardProps) {
       onClick={onClick}
       className="w-full text-left rounded-lg p-3 transition-all"
       style={{
-        background: "var(--bg-secondary)",
-        border: "1px solid #404040",
+        background: "#ffffff",
+        border: "1px solid #e5e7eb",
       }}
       onMouseEnter={(e) => {
         e.currentTarget.style.borderColor = "#facc15";
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.borderColor = "#404040";
+        e.currentTarget.style.borderColor = "#e5e7eb";
       }}
     >
       {thumbnail && (
@@ -54,7 +54,7 @@ export default function TaskCard({ task, onClick }: TaskCardProps) {
         </div>
       )}
       <div className="flex items-center justify-between gap-2">
-        <div className="font-medium text-sm" style={{ color: "var(--text-primary)" }}>
+        <div className="font-medium text-sm" style={{ color: "#111827" }}>
           {task.title || "Untitled"}
         </div>
         {statusLabel && (
@@ -70,7 +70,7 @@ export default function TaskCard({ task, onClick }: TaskCardProps) {
         <div
           className="mt-1 text-xs leading-relaxed"
           style={{
-            color: "var(--text-secondary)",
+            color: "#6b7280",
             display: "-webkit-box",
             WebkitLineClamp: 2,
             WebkitBoxOrient: "vertical",

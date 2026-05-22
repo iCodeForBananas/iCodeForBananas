@@ -122,7 +122,7 @@ export default function TaskModal({ task, onUpdate, onDelete, onClose }: TaskMod
         className="px-2 py-1 rounded text-xs font-medium transition-all"
         style={{
           background: active ? "#facc15" : "transparent",
-          color: active ? "#0a0a0a" : "#a89a00",
+          color: active ? "#0a0a0a" : "#6b7280",
           border: "1px solid transparent",
         }}
         onMouseEnter={(e) => {
@@ -146,8 +146,8 @@ export default function TaskModal({ task, onUpdate, onDelete, onClose }: TaskMod
       <div
         className="flex flex-col rounded-xl w-full max-w-3xl"
         style={{
-          background: "var(--bg-secondary)",
-          border: "1px solid var(--border-dark)",
+          background: "#ffffff",
+          border: "1px solid #e5e7eb",
           minHeight: "70vh",
           maxHeight: "calc(100vh - 4rem)",
         }}
@@ -155,7 +155,7 @@ export default function TaskModal({ task, onUpdate, onDelete, onClose }: TaskMod
         {/* Header row: column selector + actions */}
         <div
           className="flex items-center justify-between px-5 py-3 border-b shrink-0"
-          style={{ borderColor: "var(--border-color)" }}
+          style={{ borderColor: "#e5e7eb" }}
         >
           <div className="flex gap-1">
             {COLUMN_OPTIONS.map((opt) => (
@@ -164,8 +164,8 @@ export default function TaskModal({ task, onUpdate, onDelete, onClose }: TaskMod
                 onClick={() => handleColumnChange(opt.value)}
                 className="text-xs px-2 py-1 rounded transition-all font-medium"
                 style={{
-                  background: boardColumn === opt.value ? "#facc15" : "var(--border-color)",
-                  color: boardColumn === opt.value ? "#0a0a0a" : "#a89a00",
+                  background: boardColumn === opt.value ? "#facc15" : "#f3f4f6",
+                  color: boardColumn === opt.value ? "#0a0a0a" : "#6b7280",
                 }}
               >
                 {opt.label}
@@ -176,14 +176,14 @@ export default function TaskModal({ task, onUpdate, onDelete, onClose }: TaskMod
             <button
               onClick={handleDelete}
               className="text-xs px-2 py-1 rounded font-medium transition-opacity hover:opacity-80"
-              style={{ background: "rgba(127,29,29,0.6)", color: "#fca5a5" }}
+              style={{ background: "#fef2f2", color: "#dc2626" }}
             >
               Delete
             </button>
             <button
               onClick={onClose}
               className="text-xs px-2 py-1 rounded font-medium transition-opacity hover:opacity-70"
-              style={{ color: "#a89a00" }}
+              style={{ color: "#6b7280" }}
             >
               ✕ Close
             </button>
@@ -197,7 +197,7 @@ export default function TaskModal({ task, onUpdate, onDelete, onClose }: TaskMod
             onChange={(e) => setTitle(e.target.value)}
             onBlur={handleTitleBlur}
             className="w-full bg-transparent text-2xl font-bold outline-none"
-            style={{ color: "var(--text-primary)" }}
+            style={{ color: "#111827" }}
             placeholder="Task title"
           />
         </div>
@@ -205,7 +205,7 @@ export default function TaskModal({ task, onUpdate, onDelete, onClose }: TaskMod
         {/* Toolbar */}
         <div
           className="px-5 py-1.5 flex flex-wrap items-center gap-0.5 border-b shrink-0"
-          style={{ borderColor: "var(--border-color)" }}
+          style={{ borderColor: "#e5e7eb" }}
         >
           <ToolbarBtn
             active={editor?.isActive("heading", { level: 1 })}
@@ -229,7 +229,7 @@ export default function TaskModal({ task, onUpdate, onDelete, onClose }: TaskMod
             H3
           </ToolbarBtn>
 
-          <div className="w-px h-4 mx-1 shrink-0" style={{ background: "var(--border-dark)" }} />
+          <div className="w-px h-4 mx-1 shrink-0" style={{ background: "#d1d5db" }} />
 
           <ToolbarBtn
             active={editor?.isActive("bold")}
@@ -260,7 +260,7 @@ export default function TaskModal({ task, onUpdate, onDelete, onClose }: TaskMod
             {"</>"}
           </ToolbarBtn>
 
-          <div className="w-px h-4 mx-1 shrink-0" style={{ background: "var(--border-dark)" }} />
+          <div className="w-px h-4 mx-1 shrink-0" style={{ background: "#d1d5db" }} />
 
           <ToolbarBtn
             active={editor?.isActive("bulletList")}
@@ -277,7 +277,7 @@ export default function TaskModal({ task, onUpdate, onDelete, onClose }: TaskMod
             1. List
           </ToolbarBtn>
 
-          <div className="w-px h-4 mx-1 shrink-0" style={{ background: "var(--border-dark)" }} />
+          <div className="w-px h-4 mx-1 shrink-0" style={{ background: "#d1d5db" }} />
 
           <ToolbarBtn
             active={editor?.isActive("blockquote")}
@@ -294,7 +294,7 @@ export default function TaskModal({ task, onUpdate, onDelete, onClose }: TaskMod
             Code block
           </ToolbarBtn>
 
-          <div className="w-px h-4 mx-1 shrink-0" style={{ background: "var(--border-dark)" }} />
+          <div className="w-px h-4 mx-1 shrink-0" style={{ background: "#d1d5db" }} />
 
           <ToolbarBtn onClick={() => imageInputRef.current?.click()} title="Insert image">
             ＋ Image

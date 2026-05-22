@@ -379,7 +379,7 @@ Do not just print the new text in the chat. Wrap it in the tags so the system ca
 
   return (
     <div data-theme={theme} className='flex flex-col flex-1'>
-      <main className='pr-4 py-4 flex-1 flex min-h-0 overflow-hidden rounded-lg font-sans text-slate-900 dark:text-slate-100 bg-slate-50 dark:bg-slate-950 transition-colors duration-300'>
+      <main className='pb-4 flex-1 flex min-h-0 overflow-hidden rounded-lg font-sans text-slate-900 dark:text-slate-100 bg-slate-50 dark:bg-slate-950 transition-colors duration-300'>
         <Sidebar
           notes={notes}
           activeNoteId={activeNoteId}
