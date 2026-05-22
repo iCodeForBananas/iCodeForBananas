@@ -20,8 +20,6 @@
   <circle cx="452" cy="166" r="20" fill="#7c2d12"/>
 
   <!-- ── Cute face ── -->
-  <!-- Sits on the convex (outer/right) side of the banana, around the lower arc -->
-
   <!-- Eyes -->
   <circle cx="180" cy="280" r="15" fill="#7c2d12"/>
   <circle cx="195" cy="254" r="15" fill="#7c2d12"/>
