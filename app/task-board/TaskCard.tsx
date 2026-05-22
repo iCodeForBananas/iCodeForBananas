@@ -36,7 +36,7 @@ export default function TaskCard({ task, onClick }: TaskCardProps) {
   return (
     <button
       onClick={onClick}
-      className="w-full text-left rounded-lg p-3 transition-all"
+      className="w-full text-left rounded-xl p-5 transition-all"
       style={{
         background: "#ffffff",
         border: "1px solid #e5e7eb",
@@ -54,12 +54,12 @@ export default function TaskCard({ task, onClick }: TaskCardProps) {
         </div>
       )}
       <div className="flex items-center justify-between gap-2">
-        <div className="font-medium text-sm" style={{ color: "#111827" }}>
+        <div className="font-semibold text-lg" style={{ color: "#111827" }}>
           {task.title || "Untitled"}
         </div>
         {statusLabel && (
           <span
-            className="shrink-0 text-xs px-2 py-0.5 rounded-full font-medium"
+            className="shrink-0 text-sm px-3 py-1 rounded-full font-medium"
             style={statusStyle}
           >
             {statusLabel}
@@ -68,7 +68,7 @@ export default function TaskCard({ task, onClick }: TaskCardProps) {
       </div>
       {excerpt && (
         <div
-          className="mt-1 text-xs leading-relaxed"
+          className="mt-2 text-base leading-relaxed"
           style={{
             color: "#6b7280",
             display: "-webkit-box",

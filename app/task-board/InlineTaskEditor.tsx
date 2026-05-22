@@ -105,7 +105,7 @@ export default function InlineTaskEditor({ task, onUpdate, onExpand }: Props) {
       <button
         onMouseDown={(e) => { e.preventDefault(); onClick(); }}
         title={btnTitle}
-        className="px-2 py-1 rounded text-xs font-medium transition-all"
+        className="px-2 py-1 rounded text-sm font-medium transition-all"
         style={{
           background: active ? "#facc15" : "transparent",
           color: active ? "#0a0a0a" : "#6b7280",
@@ -134,15 +134,15 @@ export default function InlineTaskEditor({ task, onUpdate, onExpand }: Props) {
     >
       {/* Header: status + expand */}
       <div
-        className="flex items-center justify-between px-4 py-2 border-b shrink-0"
+        className="flex items-center justify-between px-4 py-2.5 border-b shrink-0"
         style={{ borderColor: "#e5e7eb" }}
       >
-        <div className="flex gap-1">
+        <div className="flex gap-1.5">
           {COLUMN_OPTIONS.map((opt) => (
             <button
               key={opt.value}
               onClick={() => handleColumnChange(opt.value)}
-              className="text-xs px-2 py-1 rounded transition-all font-medium"
+              className="text-sm px-3 py-1.5 rounded transition-all font-medium"
               style={{
                 background: boardColumn === opt.value ? "#facc15" : "#f3f4f6",
                 color: boardColumn === opt.value ? "#0a0a0a" : "#6b7280",
@@ -154,7 +154,7 @@ export default function InlineTaskEditor({ task, onUpdate, onExpand }: Props) {
         </div>
         <button
           onClick={onExpand}
-          className="text-xs px-2 py-1 rounded font-medium transition-opacity hover:opacity-70"
+          className="text-sm px-2 py-1 rounded font-medium transition-opacity hover:opacity-70"
           style={{ color: "#6b7280" }}
         >
           ↗ Expand
@@ -167,7 +167,7 @@ export default function InlineTaskEditor({ task, onUpdate, onExpand }: Props) {
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           onBlur={handleTitleBlur}
-          className="w-full bg-transparent text-xl font-bold outline-none"
+          className="w-full bg-transparent text-2xl font-bold outline-none"
           style={{ color: "#111827" }}
           placeholder="Task title"
         />
@@ -198,7 +198,7 @@ export default function InlineTaskEditor({ task, onUpdate, onExpand }: Props) {
       </div>
 
       {/* Editor body */}
-      <div className="px-5 py-4 overflow-y-auto" style={{ minHeight: "180px", maxHeight: "320px" }}>
+      <div className="px-5 py-4 overflow-y-auto" style={{ minHeight: "240px", maxHeight: "400px" }}>
         <EditorContent editor={editor} className="task-board-editor" />
       </div>
     </div>

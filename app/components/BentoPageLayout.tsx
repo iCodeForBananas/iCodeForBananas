@@ -9,7 +9,7 @@ interface BentoPageLayoutProps {
 export default function BentoPageLayout({ title, maxWidth, children }: BentoPageLayoutProps) {
   return (
     <div className='flex flex-col flex-1 min-h-0'>
-      <main className='flex flex-col flex-1 min-h-0 pr-2 py-2 sm:pr-4 sm:py-4'>
+      <main className='flex flex-col flex-1 min-h-0 p-2 sm:p-4'>
         <div
           className={`flex flex-col flex-1 min-h-0 rounded-2xl overflow-hidden${maxWidth ? ` ${maxWidth} mx-auto` : ""}`}
           style={{ background: "#fff", border: "1px solid var(--border-color)" }}

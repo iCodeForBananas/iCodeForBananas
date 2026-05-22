@@ -119,7 +119,7 @@ export default function TaskModal({ task, onUpdate, onDelete, onClose }: TaskMod
       <button
         onMouseDown={(e) => { e.preventDefault(); onClick(); }}
         title={btnTitle}
-        className="px-2 py-1 rounded text-xs font-medium transition-all"
+        className="px-2 py-1 rounded text-sm font-medium transition-all"
         style={{
           background: active ? "#facc15" : "transparent",
           color: active ? "#0a0a0a" : "#6b7280",
@@ -139,12 +139,12 @@ export default function TaskModal({ task, onUpdate, onDelete, onClose }: TaskMod
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center p-4 pt-8 overflow-y-auto"
+      className="fixed inset-0 z-50 flex items-start justify-center p-2 pt-3 sm:p-4 sm:pt-8 overflow-y-auto"
       style={{ background: "rgba(0,0,0,0.75)" }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div
-        className="flex flex-col rounded-xl w-full max-w-3xl"
+        className="flex flex-col rounded-xl w-full max-w-3xl mx-1 sm:mx-0"
         style={{
           background: "#ffffff",
           border: "1px solid #e5e7eb",
@@ -157,12 +157,12 @@ export default function TaskModal({ task, onUpdate, onDelete, onClose }: TaskMod
           className="flex items-center justify-between px-5 py-3 border-b shrink-0"
           style={{ borderColor: "#e5e7eb" }}
         >
-          <div className="flex gap-1">
+          <div className="flex gap-1.5">
             {COLUMN_OPTIONS.map((opt) => (
               <button
                 key={opt.value}
                 onClick={() => handleColumnChange(opt.value)}
-                className="text-xs px-2 py-1 rounded transition-all font-medium"
+                className="text-sm px-3 py-1.5 rounded transition-all font-medium"
                 style={{
                   background: boardColumn === opt.value ? "#facc15" : "#f3f4f6",
                   color: boardColumn === opt.value ? "#0a0a0a" : "#6b7280",
@@ -175,14 +175,14 @@ export default function TaskModal({ task, onUpdate, onDelete, onClose }: TaskMod
           <div className="flex items-center gap-2">
             <button
               onClick={handleDelete}
-              className="text-xs px-2 py-1 rounded font-medium transition-opacity hover:opacity-80"
+              className="text-sm px-3 py-1.5 rounded font-medium transition-opacity hover:opacity-80"
               style={{ background: "#fef2f2", color: "#dc2626" }}
             >
               Delete
             </button>
             <button
               onClick={onClose}
-              className="text-xs px-2 py-1 rounded font-medium transition-opacity hover:opacity-70"
+              className="text-sm px-3 py-1.5 rounded font-medium transition-opacity hover:opacity-70"
               style={{ color: "#6b7280" }}
             >
               ✕ Close
@@ -196,7 +196,7 @@ export default function TaskModal({ task, onUpdate, onDelete, onClose }: TaskMod
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             onBlur={handleTitleBlur}
-            className="w-full bg-transparent text-2xl font-bold outline-none"
+            className="w-full bg-transparent text-xl sm:text-2xl font-bold outline-none"
             style={{ color: "#111827" }}
             placeholder="Task title"
           />

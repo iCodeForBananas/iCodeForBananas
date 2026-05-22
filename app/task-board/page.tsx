@@ -226,14 +226,14 @@ export default function TaskBoardPage() {
           <button
             onClick={copyAllTasks}
             disabled={visibleTasks.length === 0}
-            className="text-sm px-4 py-2 rounded font-semibold transition-opacity hover:opacity-80 disabled:opacity-40"
+            className="text-base px-5 py-2.5 rounded font-semibold transition-opacity hover:opacity-80 disabled:opacity-40"
             style={{ background: "#f3f4f6", color: "#374151", border: "1px solid #e5e7eb" }}
           >
             {copied ? "Copied!" : "Copy All"}
           </button>
           <button
             onClick={() => { setIsAdding(true); setNewTitle(""); }}
-            className="text-sm px-4 py-2 rounded font-semibold transition-opacity hover:opacity-80"
+            className="text-base px-5 py-2.5 rounded font-semibold transition-opacity hover:opacity-80"
             style={{ background: "#facc15", color: "#0a0a0a" }}
           >
             + Add task
@@ -242,11 +242,11 @@ export default function TaskBoardPage() {
       </div>
 
       {/* Task list */}
-      <div className="flex flex-col gap-2 max-w-2xl mx-auto w-full">
+      <div className="flex flex-col gap-4 w-full">
           {/* Inline add form */}
           {isAdding && (
             <div
-              className="rounded-lg p-3 shrink-0"
+              className="rounded-lg p-4 shrink-0"
               style={{ background: "#f9fafb", border: "1px solid #facc15" }}
             >
               <input
@@ -258,20 +258,20 @@ export default function TaskBoardPage() {
                   if (e.key === "Escape") { setIsAdding(false); setNewTitle(""); }
                 }}
                 placeholder="Task title…"
-                className="w-full bg-transparent text-sm outline-none"
+                className="w-full bg-transparent text-base outline-none"
                 style={{ color: "#111827" }}
               />
-              <div className="flex gap-2 mt-2">
+              <div className="flex gap-2 mt-3">
                 <button
                   onClick={addTask}
-                  className="text-xs px-2 py-1 rounded font-semibold"
+                  className="text-sm px-3 py-1.5 rounded font-semibold"
                   style={{ background: "#facc15", color: "#0a0a0a" }}
                 >
                   Add
                 </button>
                 <button
                   onClick={() => { setIsAdding(false); setNewTitle(""); }}
-                  className="text-xs px-2 py-1 rounded transition-opacity hover:opacity-70"
+                  className="text-sm px-3 py-1.5 rounded transition-opacity hover:opacity-70"
                   style={{ color: "#6b7280" }}
                 >
                   Cancel
@@ -328,7 +328,7 @@ export default function TaskBoardPage() {
 
           {visibleTasks.length === 0 && !isAdding && (
             <div
-              className="text-center py-16 text-sm select-none"
+              className="text-center py-16 text-base select-none"
               style={{ color: "#6b7280" }}
             >
               No tasks yet — add one to get started.
