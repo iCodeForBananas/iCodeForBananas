@@ -7,7 +7,7 @@ export default function HarmonicFlowPage() {
   return (
     <div className='flex flex-col flex-1'>
       <main className='pr-4 py-4 flex-1 '>
-        <div className='rounded-lg p-6 bg-white'>
+        <div className='rounded-lg p-6 bg-white max-w-4xl mx-auto'>
           <div className='text-center mb-10'>
             <h1 className='text-5xl font-bold drop-shadow-lg' style={{ color: "#000" }}>
               Harmonic Flow
