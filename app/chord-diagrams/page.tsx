@@ -32,8 +32,6 @@ export default function ChordShapesPage() {
   return (
     <BentoPageLayout
       title='Chord Diagrams'
-      category='Music Theory'
-      description='Fingering diagrams for every chord type across all 12 keys'
     >
       <div className='mb-6'>
         <div className='flex flex-wrap gap-2 justify-center items-center'>

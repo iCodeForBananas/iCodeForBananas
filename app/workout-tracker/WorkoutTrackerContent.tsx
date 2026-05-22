@@ -203,20 +203,20 @@ export default function WorkoutTrackerContent() {
 
   return (
     <div className='flex flex-col flex-1'>
-      <main className='pr-4 py-4 flex-1 '>
-        <div className='rounded-lg p-6 bg-white'>
-          <div className='text-center mb-10'>
-            <h1 className='text-5xl font-bold drop-shadow-lg' style={{ color: "#000" }}>
+      <main className='p-2 sm:p-4 flex-1 overflow-y-auto'>
+        <div className='rounded-2xl p-4 sm:p-6 bg-white'>
+          <div className='text-center mb-6 sm:mb-10'>
+            <h1 className='text-3xl sm:text-5xl font-bold drop-shadow-lg' style={{ color: "#000" }}>
               🏋️ 5×5 Tracker
             </h1>
-            <p className='text-lg mt-3' style={{ color: "#000" }}>
+            <p className='text-base sm:text-lg mt-3' style={{ color: "#000" }}>
               All exercises are 5 sets × 5 reps
             </p>
           </div>
 
           {/* Log form */}
           {user && (
-            <div className='flex flex-wrap gap-2 items-end mb-8 max-w-3xl mx-auto'>
+            <div className='flex flex-wrap gap-2 items-end mb-6 sm:mb-8 max-w-3xl mx-auto'>
               <input
                 type='date'
                 value={date}
@@ -226,7 +226,7 @@ export default function WorkoutTrackerContent() {
               <select
                 value={selected}
                 onChange={(e) => setSelected(e.target.value)}
-                className='border border-[#373A40]/30 rounded px-3 py-2 text-sm flex-1 min-w-[160px]'
+                className='border border-[#373A40]/30 rounded px-3 py-2 text-sm flex-1 min-w-[140px]'
               >
                 {sortedExercises.map((c) => (
                   <option key={c.name} value={c.name}>
@@ -242,11 +242,11 @@ export default function WorkoutTrackerContent() {
                 placeholder='lbs'
                 onChange={(e) => setWeight(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && submit()}
-                className='w-24 border border-[#373A40]/30 rounded px-3 py-2 text-sm'
+                className='w-20 sm:w-24 border border-[#373A40]/30 rounded px-3 py-2 text-sm'
               />
               <button
                 onClick={submit}
-                className='rounded bg-black px-5 py-2 text-sm font-medium text-[#facc15] hover:bg-black/80'
+                className='flex-1 sm:flex-none rounded bg-black px-5 py-2 text-sm font-medium text-[#facc15] hover:bg-black/80'
               >
                 Submit
               </button>
@@ -257,7 +257,7 @@ export default function WorkoutTrackerContent() {
           {exercisesWithLogs.length > 0 && chartData.length > 0 && (
             <div className='border-t border-[#373A40]/10 pt-6 mb-8'>
               <h2 className='font-semibold text-lg mb-4'>Weight Progress</h2>
-              <div className='h-72'>
+              <div className='h-52 sm:h-72'>
                 <ResponsiveContainer width='100%' height='100%'>
                   <LineChart data={chartData}>
                     <CartesianGrid strokeDasharray='3 3' stroke='#e5e7eb' />
@@ -305,13 +305,13 @@ export default function WorkoutTrackerContent() {
           <div className='border-t border-[#373A40]/10 pt-6 mb-8 relative'>
             <h2 className='font-semibold text-lg mb-4'>Activity</h2>
             <div className='overflow-x-auto'>
-              <div className='flex gap-[3px]'>
+              <div className='flex gap-[2px] sm:gap-[3px]'>
                 {contributionData.map((week, wi) => (
-                  <div key={wi} className='flex flex-col gap-[3px]'>
+                  <div key={wi} className='flex flex-col gap-[2px] sm:gap-[3px]'>
                     {week.map((day) => (
                       <div
                         key={day.date}
-                        className='w-[13px] h-[13px] rounded-sm cursor-default'
+                        className='w-[10px] h-[10px] sm:w-[13px] sm:h-[13px] rounded-sm cursor-default'
                         style={{
                           backgroundColor:
                             day.count === 0
