@@ -676,7 +676,8 @@ export default function AlgoBacktestPage() {
   }
 
   return (
-    <div className='flex flex-col min-h-screen bg-slate-900 text-white'>
+    <div className='flex flex-col flex-1 bg-slate-900 text-white'>
+      <main className='pr-4 py-4 flex-1'>
       <div className='flex-1 flex flex-col lg:flex-row'>
         {/* Left Panel - Strategy & Parameters. On desktop it sticks so the
             controls stay visible while the right column scrolls past it. */}
@@ -1460,6 +1461,7 @@ export default function AlgoBacktestPage() {
         params={activeResult?.params ?? currentParams}
         authToken={authToken}
       />
+      </main>
     </div>
   );
 }
