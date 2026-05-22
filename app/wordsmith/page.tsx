@@ -379,55 +379,53 @@ Do not just print the new text in the chat. Wrap it in the tags so the system ca
 
   return (
     <div data-theme={theme} className='flex flex-col flex-1'>
-      <main className='pr-4 py-4 flex-1'>
-        <div className='rounded-lg p-6 bg-white'>
-      <Sidebar
-        notes={notes}
-        activeNoteId={activeNoteId}
-        onSelectNote={setActiveNoteId}
-        onAddNote={handleAddNote}
-        onDeleteNote={handleDeleteNote}
-        onOpenTemplates={() => setIsTemplateModalOpen(true)}
-        theme={theme}
-        onToggleTheme={() => setTheme((p) => (p === 'light' ? 'dark' : 'light'))}
-      />
-
-      <main className="flex-1 flex flex-col min-w-0 bg-white dark:bg-slate-950 shadow-sm z-0 relative transition-colors duration-300 overflow-hidden">
-        <Editor note={activeNote} onUpdateNote={handleUpdateNote} onOpenHistory={() => setIsHistoryOpen(true)} />
-      </main>
-
-      <aside className="border-l border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 flex flex-col shadow-xl z-10 transition-colors duration-300">
-        <Chat
-          messages={messages}
-          onSendMessage={handleSendMessage}
-          onClearChat={() => setMessages([])}
-          isGenerating={isGenerating}
+      <main className='pr-4 py-4 flex-1 flex min-h-0 overflow-hidden rounded-lg font-sans text-slate-900 dark:text-slate-100 bg-slate-50 dark:bg-slate-950 transition-colors duration-300'>
+        <Sidebar
           notes={notes}
           activeNoteId={activeNoteId}
-          attachedNoteIds={attachedNoteIds}
-          onToggleAttachNote={handleToggleAttachNote}
-          tones={TONES}
-          activeToneId={activeToneId}
-          onSelectTone={setActiveToneId}
+          onSelectNote={setActiveNoteId}
+          onAddNote={handleAddNote}
+          onDeleteNote={handleDeleteNote}
+          onOpenTemplates={() => setIsTemplateModalOpen(true)}
+          theme={theme}
+          onToggleTheme={() => setTheme((p) => (p === 'light' ? 'dark' : 'light'))}
         />
-      </aside>
 
-      <TemplateModal
-        isOpen={isTemplateModalOpen}
-        onClose={() => setIsTemplateModalOpen(false)}
-        templates={templates}
-        onCreateTemplate={handleCreateTemplate}
-        onDeleteTemplate={handleDeleteTemplate}
-        onUseTemplate={handleUseTemplate}
-      />
-
-      <VersionHistory
-        isOpen={isHistoryOpen}
-        onClose={() => setIsHistoryOpen(false)}
-        note={activeNote}
-        onRestoreVersion={handleRestoreVersion}
-      />
+        <div className="flex-1 flex flex-col min-w-0 bg-white dark:bg-slate-950 shadow-sm z-0 relative transition-colors duration-300 overflow-hidden">
+          <Editor note={activeNote} onUpdateNote={handleUpdateNote} onOpenHistory={() => setIsHistoryOpen(true)} />
         </div>
+
+        <aside className="border-l border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 flex flex-col shadow-xl z-10 transition-colors duration-300">
+          <Chat
+            messages={messages}
+            onSendMessage={handleSendMessage}
+            onClearChat={() => setMessages([])}
+            isGenerating={isGenerating}
+            notes={notes}
+            activeNoteId={activeNoteId}
+            attachedNoteIds={attachedNoteIds}
+            onToggleAttachNote={handleToggleAttachNote}
+            tones={TONES}
+            activeToneId={activeToneId}
+            onSelectTone={setActiveToneId}
+          />
+        </aside>
+
+        <TemplateModal
+          isOpen={isTemplateModalOpen}
+          onClose={() => setIsTemplateModalOpen(false)}
+          templates={templates}
+          onCreateTemplate={handleCreateTemplate}
+          onDeleteTemplate={handleDeleteTemplate}
+          onUseTemplate={handleUseTemplate}
+        />
+
+        <VersionHistory
+          isOpen={isHistoryOpen}
+          onClose={() => setIsHistoryOpen(false)}
+          note={activeNote}
+          onRestoreVersion={handleRestoreVersion}
+        />
       </main>
     </div>
   );
