@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { motion } from "motion/react";
-import { Banana } from "lucide-react";
 
 // ─── Data ─────────────────────────────────────────────────────
 
@@ -520,7 +519,7 @@ export default function Home() {
                 animate={{ y: [0, -20, 0], rotate: [-5, 5, -5] }}
                 transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
               >
-                <Banana className='w-64 h-64 md:w-96 md:h-96 text-black fill-yellow-300 drop-shadow-[10px_10px_0px_rgba(0,0,0,1)]' />
+                <img src='/banana-icon.svg' alt='Banana' className='w-64 h-64 md:w-96 md:h-96 drop-shadow-[10px_10px_0px_rgba(0,0,0,1)]' />
               </motion.div>
 
               {/* Floating Tech Tags */}
