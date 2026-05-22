@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from "recharts";
+import ClientOnly from "@/app/lib/ClientOnly";
 import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/app/hooks/useAuth";
 
@@ -258,6 +259,7 @@ export default function WorkoutTrackerContent() {
             <div className='border-t border-[#373A40]/10 pt-6 mb-8'>
               <h2 className='font-semibold text-lg mb-4'>Weight Progress</h2>
               <div className='h-52 sm:h-72'>
+                <ClientOnly>
                 <ResponsiveContainer width='100%' height='100%'>
                   <LineChart data={chartData}>
                     <CartesianGrid strokeDasharray='3 3' stroke='#e5e7eb' />
@@ -297,6 +299,7 @@ export default function WorkoutTrackerContent() {
                     ))}
                   </LineChart>
                 </ResponsiveContainer>
+                </ClientOnly>
               </div>
             </div>
           )}

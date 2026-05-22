@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { LineChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid } from "recharts";
+import ClientOnly from "@/app/lib/ClientOnly";
 
 interface Trade {
   id: string;
@@ -91,6 +92,7 @@ function MiniChart({ data, positive }: { data: { time: string; equity: number }[
     return <div className="h-16 flex items-center justify-center text-xs text-gray-400">No chart data yet</div>;
   }
   return (
+    <ClientOnly>
     <ResponsiveContainer width="100%" height={64}>
       <LineChart data={data} margin={{ top: 4, right: 4, left: 4, bottom: 4 }}>
         <Line
@@ -114,6 +116,7 @@ function MiniChart({ data, positive }: { data: { time: string; equity: number }[
         />
       </LineChart>
     </ResponsiveContainer>
+    </ClientOnly>
   );
 }
 
@@ -259,6 +262,7 @@ function FullEquityChart({ lambdas }: { lambdas: Lambda[] }) {
     <div className="bg-white rounded-xl border border-gray-200 p-5 mb-6 shadow-sm">
       <h2 className="font-bold text-gray-800 mb-4">All Strategies — Equity Curves</h2>
       <div className="h-64">
+        <ClientOnly>
         <ResponsiveContainer width="100%" height="100%">
           <LineChart margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
@@ -288,6 +292,7 @@ function FullEquityChart({ lambdas }: { lambdas: Lambda[] }) {
             ))}
           </LineChart>
         </ResponsiveContainer>
+        </ClientOnly>
       </div>
     </div>
   );

@@ -5,6 +5,7 @@ import { createClient } from "@supabase/supabase-js";
 import {
   LineChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid, ReferenceLine,
 } from "recharts";
+import ClientOnly from "@/app/lib/ClientOnly";
 
 interface TradingLambda {
   id: string;
@@ -131,6 +132,7 @@ function MiniChart({
   }
   const color = isPositive ? "#4ade80" : "#f87171";
   return (
+    <ClientOnly>
     <ResponsiveContainer width="100%" height="100%">
       <LineChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
@@ -145,6 +147,7 @@ function MiniChart({
         <Line type="monotone" dataKey="equity" stroke={color} strokeWidth={2} dot={false} />
       </LineChart>
     </ResponsiveContainer>
+    </ClientOnly>
   );
 }
 

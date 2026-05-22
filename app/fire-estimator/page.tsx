@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine, Legend } from "recharts";
+import ClientOnly from "@/app/lib/ClientOnly";
 
 const RETURN_RATES: Record<string, number> = {
   none: 0,
@@ -484,6 +485,7 @@ export default function FireEstimatorPage() {
             style={{ height: 480 }}
             title='When the purple portfolio line crosses above the pink FIRE target line, you can retire — the green vertical line marks that age'
           >
+            <ClientOnly>
             <ResponsiveContainer width='100%' height='100%'>
               <AreaChart data={data} margin={{ top: 10, right: 30, left: 10, bottom: 0 }}>
                 <defs>
@@ -537,6 +539,7 @@ export default function FireEstimatorPage() {
                 )}
               </AreaChart>
             </ResponsiveContainer>
+            </ClientOnly>
           </div>
         </div>
       </main>
