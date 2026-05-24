@@ -12,6 +12,7 @@ import Sidebar from "./components/Sidebar";
 import MusicFavoritesBar from "./components/MusicFavoritesBar";
 import PwaRegistration from "./components/PwaRegistration";
 import PathnameTitleSync from "./components/PathnameTitleSync";
+import CopyPageHandler from "./components/CopyPageHandler";
 
 export const viewport: Viewport = {
   themeColor: "#facc15",
@@ -58,7 +59,7 @@ export default function RootLayout({
           <FavoriteChordsProvider>
             <div className='flex h-dvh font-sans'>
               <Sidebar />
-              <div className='flex-1 min-w-0 overflow-hidden flex flex-col'>
+              <div id='main-content' className='flex-1 min-w-0 overflow-hidden flex flex-col'>
                 <MusicFavoritesBar />
                 {children}
               </div>
@@ -69,6 +70,7 @@ export default function RootLayout({
         <SpeedInsights />
         <PwaRegistration />
         <PathnameTitleSync />
+        <CopyPageHandler />
       </body>
     </html>
   );

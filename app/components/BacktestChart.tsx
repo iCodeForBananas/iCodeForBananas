@@ -489,6 +489,13 @@ const BacktestChart: React.FC<BacktestChartProps> = ({
     for (const t of trades) {
       const isLong = (t.side as PositionSide | string) === PositionSide.LONG || t.side === "LONG";
       const isSel = t.id === selectedTradeId;
+      // Stop-loss and trailing-stop exits fire when price moves against the
+      // position, so the exit is at the bottom for longs (belowBar) and at the
+      // top for shorts (aboveBar) — matching where the EMA/SL trail line ends.
+      const isStopExit = t.reason.includes("Stop loss hit") || t.reason.includes("Trailing stop");
+      const exitPosition: "aboveBar" | "belowBar" = isLong
+        ? (isStopExit ? "belowBar" : "aboveBar")
+        : (isStopExit ? "aboveBar" : "belowBar");
       markers.push({
         time: (t.entryTime / 1000) as Time,
         position: isLong ? "belowBar" : "aboveBar",
@@ -499,7 +506,7 @@ const BacktestChart: React.FC<BacktestChartProps> = ({
       });
       markers.push({
         time: (t.exitTime / 1000) as Time,
-        position: isLong ? "aboveBar" : "belowBar",
+        position: exitPosition,
         color: isSel ? "#3b82f6" : t.pnl > 0 ? "#22c55e" : "#ef4444",
         shape: "circle",
         text: t.pnl > 0 ? `+${t.pnlPercent.toFixed(1)}%` : `${t.pnlPercent.toFixed(1)}%`,
@@ -511,9 +518,12 @@ const BacktestChart: React.FC<BacktestChartProps> = ({
     markerPluginRef.current = createSeriesMarkers(candles, markers);
 
     // Trailing stop overlays — one line per trade with a non-empty trailingSeries.
+    // When a specific trade is selected, only show that trade's trail to avoid
+    // overlapping lines from other trades cluttering the view.
     for (const t of trades) {
       const ts = t.trailingSeries;
       if (!ts || ts.length === 0) continue;
+      if (selectedTradeId && t.id !== selectedTradeId) continue;
       const trailLine = chart.addSeries(LineSeries, {
         color: "#ef4444",
         lineWidth: 1,
