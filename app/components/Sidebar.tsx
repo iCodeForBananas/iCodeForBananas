@@ -123,7 +123,7 @@ export default function Sidebar() {
         </button>
       )}
 
-      {isOpen && isMobile && <div className='fixed inset-0 bg-black/70 z-30 lg:hidden' onClick={toggle} />}
+      {isOpen && isMobile && <div className='fixed inset-0 bg-black/50 z-30 lg:hidden' onClick={toggle} />}
 
       <aside
         className={`fixed lg:relative min-h-screen flex flex-col z-40 ${isOpen ? "w-64 translate-x-0" : "w-0 -translate-x-full lg:w-0 overflow-hidden"}`}
