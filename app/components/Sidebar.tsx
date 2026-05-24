@@ -46,6 +46,7 @@ const NAV = [
       { href: "/paper-trading", text: "Paper Trading" },
       { href: "/leaderboard", text: "Trading Leaderboard" },
       { href: "/fire-estimator", text: "FIRE Estimator" },
+      { href: "/game-world", text: "Game World" },
     ],
   },
 ];
