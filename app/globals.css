@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+#main-content {
+  -webkit-overflow-scrolling: touch;
+}
+
 /* Dark mode variant for wordsmith (data-theme="dark" on a wrapper element) */
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 

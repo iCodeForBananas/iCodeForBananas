@@ -128,6 +128,7 @@ export default function Sidebar() {
       <aside
         className={`fixed lg:relative min-h-screen flex flex-col z-40 ${isOpen ? "w-64 translate-x-0" : "w-0 -translate-x-full lg:w-0 overflow-hidden"}`}
         style={{
+          background: "#facc15",
           color: "var(--bg-secondary)",
         }}
       >
