@@ -1,0 +1,12 @@
+node_modules/
+.next/
+.git/
+.claude/
+app/
+public/
+data/
+scripts/
+docs/
+supabase/
+utils/
+*.log

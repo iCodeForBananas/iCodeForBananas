@@ -55,6 +55,7 @@
     "tailwind-merge": "^3.5.0",
     "three": "^0.184.0",
     "uuid": "^13.0.0",
+    "ws": "^8.21.0",
     "yahoo-finance2": "^3.13.0"
   },
   "devDependencies": {
@@ -68,7 +69,6 @@
     "eslint": "^9",
     "eslint-config-next": "16.1.1",
     "tailwindcss": "^4",
-    "typescript": "5.9.3",
-    "ws": "^8.21.0"
+    "typescript": "5.9.3"
   }
 }
