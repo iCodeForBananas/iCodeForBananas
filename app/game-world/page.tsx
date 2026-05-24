@@ -3,6 +3,8 @@
 import { useEffect, useRef } from 'react'
 import type { Object3D, BufferGeometry, Material } from 'three'
 
+const WS_URL = process.env.NEXT_PUBLIC_GAME_WS_URL ?? 'ws://localhost:8080'
+
 export default function GameWorldPage() {
   const mountRef = useRef<HTMLDivElement>(null)
 
@@ -94,18 +96,8 @@ export default function GameWorldPage() {
         scene.add(crown)
       }
 
-      // ── Player ─────────────────────────────────────────────
-      const player = new THREE.Group()
-      scene.add(player)
-
-      const mSkin  = new THREE.MeshLambertMaterial({ color: 0xf4c895 })
-      const mShirt = new THREE.MeshLambertMaterial({ color: 0x1565c0 })
-      const mPants = new THREE.MeshLambertMaterial({ color: 0x263238 })
-      const mShoe  = new THREE.MeshLambertMaterial({ color: 0x121212 })
-      const mHair  = new THREE.MeshLambertMaterial({ color: 0x3e2723 })
-
+      // ── Player mesh builder ────────────────────────────────
       const box = (w: number, h: number, d: number) => new THREE.BoxGeometry(w, h, d)
-
       const addTo = (parent: Object3D, geo: BufferGeometry, mat: Material, y: number) => {
         const m = new THREE.Mesh(geo, mat)
         m.position.y = y
@@ -114,38 +106,50 @@ export default function GameWorldPage() {
         return m
       }
 
-      // body (all y-coords are world-relative since player.position.y = 0)
-      addTo(player, box(0.42, 0.42, 0.38), mSkin,  1.85)  // head
-      addTo(player, box(0.46, 0.12, 0.42), mHair,  2.06)  // hair
-      addTo(player, box(0.65, 0.70, 0.32), mShirt, 1.25)  // torso
+      const buildPlayer = (shirtColor: number) => {
+        const group = new THREE.Group()
+        const mSkin  = new THREE.MeshLambertMaterial({ color: 0xf4c895 })
+        const mShirt = new THREE.MeshLambertMaterial({ color: shirtColor })
+        const mPants = new THREE.MeshLambertMaterial({ color: 0x263238 })
+        const mShoe  = new THREE.MeshLambertMaterial({ color: 0x121212 })
+        const mHair  = new THREE.MeshLambertMaterial({ color: 0x3e2723 })
 
-      // arms — groups so rotation pivots at shoulder
-      const leftArm = new THREE.Group()
-      leftArm.position.set(-0.44, 1.55, 0)
-      addTo(leftArm, box(0.22, 0.40, 0.22), mShirt, -0.20)
-      addTo(leftArm, box(0.18, 0.36, 0.18), mSkin,  -0.58)
-      player.add(leftArm)
+        addTo(group, box(0.42, 0.42, 0.38), mSkin,  1.85)
+        addTo(group, box(0.46, 0.12, 0.42), mHair,  2.06)
+        addTo(group, box(0.65, 0.70, 0.32), mShirt, 1.25)
 
-      const rightArm = new THREE.Group()
-      rightArm.position.set(0.44, 1.55, 0)
-      addTo(rightArm, box(0.22, 0.40, 0.22), mShirt, -0.20)
-      addTo(rightArm, box(0.18, 0.36, 0.18), mSkin,  -0.58)
-      player.add(rightArm)
+        const leftArm = new THREE.Group()
+        leftArm.position.set(-0.44, 1.55, 0)
+        addTo(leftArm, box(0.22, 0.40, 0.22), mShirt, -0.20)
+        addTo(leftArm, box(0.18, 0.36, 0.18), mSkin,  -0.58)
+        group.add(leftArm)
 
-      // legs — groups so rotation pivots at hip
-      const leftLeg = new THREE.Group()
-      leftLeg.position.set(-0.19, 0.9, 0)
-      addTo(leftLeg, box(0.27, 0.44, 0.27), mPants, -0.22)
-      addTo(leftLeg, box(0.23, 0.44, 0.23), mPants, -0.60)
-      addTo(leftLeg, box(0.25, 0.10, 0.38), mShoe,  -0.87)
-      player.add(leftLeg)
+        const rightArm = new THREE.Group()
+        rightArm.position.set(0.44, 1.55, 0)
+        addTo(rightArm, box(0.22, 0.40, 0.22), mShirt, -0.20)
+        addTo(rightArm, box(0.18, 0.36, 0.18), mSkin,  -0.58)
+        group.add(rightArm)
 
-      const rightLeg = new THREE.Group()
-      rightLeg.position.set(0.19, 0.9, 0)
-      addTo(rightLeg, box(0.27, 0.44, 0.27), mPants, -0.22)
-      addTo(rightLeg, box(0.23, 0.44, 0.23), mPants, -0.60)
-      addTo(rightLeg, box(0.25, 0.10, 0.38), mShoe,  -0.87)
-      player.add(rightLeg)
+        const leftLeg = new THREE.Group()
+        leftLeg.position.set(-0.19, 0.9, 0)
+        addTo(leftLeg, box(0.27, 0.44, 0.27), mPants, -0.22)
+        addTo(leftLeg, box(0.23, 0.44, 0.23), mPants, -0.60)
+        addTo(leftLeg, box(0.25, 0.10, 0.38), mShoe,  -0.87)
+        group.add(leftLeg)
+
+        const rightLeg = new THREE.Group()
+        rightLeg.position.set(0.19, 0.9, 0)
+        addTo(rightLeg, box(0.27, 0.44, 0.27), mPants, -0.22)
+        addTo(rightLeg, box(0.23, 0.44, 0.23), mPants, -0.60)
+        addTo(rightLeg, box(0.25, 0.10, 0.38), mShoe,  -0.87)
+        group.add(rightLeg)
+
+        return { group, leftArm, rightArm, leftLeg, rightLeg }
+      }
+
+      // ── Local player ───────────────────────────────────────
+      const { group: player, leftArm, rightArm, leftLeg, rightLeg } = buildPlayer(0x1565c0)
+      scene.add(player)
 
       // ── Input ──────────────────────────────────────────────
       const keys: Record<string, boolean> = {}
@@ -155,9 +159,9 @@ export default function GameWorldPage() {
       // Mouse orbit
       let isDragging = false
       let lastX = 0, lastY = 0
-      let playerAngle = 0      // player/camera yaw (radians)
-      let camPitch = 0.38      // camera elevation angle
-      let camDist  = 6.5       // camera distance from player
+      let playerAngle = 0
+      let camPitch = 0.38
+      let camDist  = 6.5
       const camTarget = new THREE.Vector3(0, 1.2, 0)
 
       renderer.domElement.addEventListener('mousedown', (e: MouseEvent) => {
@@ -199,8 +203,128 @@ export default function GameWorldPage() {
         renderer.setSize(mount.clientWidth, mount.clientHeight)
       }, { signal: sig })
 
+      // ── WebSocket multiplayer ──────────────────────────────
+      type RemotePlayer = {
+        group: THREE.Group
+        targetX: number
+        targetZ: number
+        targetAngle: number
+        walkTime: number
+        leftArm: THREE.Group
+        rightArm: THREE.Group
+        leftLeg: THREE.Group
+        rightLeg: THREE.Group
+      }
+
+      const remotePlayers = new Map<string, RemotePlayer>()
+      let myId: string | null = null
+
+      // Server position for local player — used to correct client prediction drift
+      let serverX = 0, serverZ = 0, serverAngle = 0
+
+      const shirtColorFromId = (id: string) => {
+        let h = 5381
+        for (let i = 0; i < id.length; i++) h = Math.imul(h ^ id.charCodeAt(i), 0x9e3779b9)
+        const hue = ((Math.abs(h) % 300) + 270) % 360
+        return new THREE.Color().setHSL(hue / 360, 0.85, 0.45).getHex()
+      }
+
+      let ws: WebSocket | null = null
+      let connected = false
+
+      const connect = () => {
+        ws = new WebSocket(WS_URL)
+
+        ws.addEventListener('open', () => {
+          connected = true
+        })
+
+        ws.addEventListener('message', (event) => {
+          let msg: Record<string, unknown>
+          try { msg = JSON.parse(event.data as string) } catch { return }
+
+          if (msg.type === 'init') {
+            myId = msg.id as string
+            return
+          }
+
+          if (msg.type === 'state') {
+            const incoming = msg.players as Array<{ id: string; x: number; z: number; angle: number }>
+            const activeIds = new Set<string>()
+
+            for (const p of incoming) {
+              activeIds.add(p.id)
+
+              if (p.id === myId) {
+                // Store server-authoritative position for local player
+                serverX = p.x
+                serverZ = p.z
+                serverAngle = p.angle
+                continue
+              }
+
+              if (!remotePlayers.has(p.id)) {
+                const color = shirtColorFromId(p.id)
+                const built = buildPlayer(color)
+                built.group.position.set(p.x, 0, p.z)
+                built.group.rotation.y = p.angle
+                scene.add(built.group)
+                remotePlayers.set(p.id, {
+                  group: built.group,
+                  targetX: p.x,
+                  targetZ: p.z,
+                  targetAngle: p.angle,
+                  walkTime: 0,
+                  leftArm: built.leftArm,
+                  rightArm: built.rightArm,
+                  leftLeg: built.leftLeg,
+                  rightLeg: built.rightLeg,
+                })
+              } else {
+                const rp = remotePlayers.get(p.id)!
+                rp.targetX = p.x
+                rp.targetZ = p.z
+                rp.targetAngle = p.angle
+              }
+            }
+
+            // Remove players that left between state broadcasts
+            for (const [id, rp] of remotePlayers) {
+              if (!activeIds.has(id)) {
+                scene.remove(rp.group)
+                remotePlayers.delete(id)
+              }
+            }
+            return
+          }
+
+          if (msg.type === 'leave') {
+            const rp = remotePlayers.get(msg.id as string)
+            if (rp) {
+              scene.remove(rp.group)
+              remotePlayers.delete(msg.id as string)
+            }
+          }
+        })
+
+        ws.addEventListener('close', () => {
+          connected = false
+          ws = null
+          // Reconnect after 2 s if not unmounted
+          if (!disposed) setTimeout(connect, 2000)
+        })
+
+        ws.addEventListener('error', () => {
+          // error fires before close; let the close handler retry
+        })
+      }
+
+      connect()
+      sig.addEventListener('abort', () => { ws?.close() })
+
       // ── Loop ───────────────────────────────────────────────
       let walkTime = 0
+      let prevKeys = { w: false, s: false, a: false, d: false }
 
       const loop = () => {
         if (disposed) return
@@ -210,14 +334,20 @@ export default function GameWorldPage() {
         const rotSpeed = 0.03
         let moving = false
 
-        if (keys['KeyA'] || keys['ArrowLeft'])  playerAngle += rotSpeed
-        if (keys['KeyD'] || keys['ArrowRight']) playerAngle -= rotSpeed
-        if (keys['KeyW'] || keys['ArrowUp']) {
+        const w = !!(keys['KeyW'] || keys['ArrowUp'])
+        const s = !!(keys['KeyS'] || keys['ArrowDown'])
+        const a = !!(keys['KeyA'] || keys['ArrowLeft'])
+        const d = !!(keys['KeyD'] || keys['ArrowRight'])
+
+        // Client-side prediction — keeps local movement responsive
+        if (a) playerAngle += rotSpeed
+        if (d) playerAngle -= rotSpeed
+        if (w) {
           player.position.x -= Math.sin(playerAngle) * speed
           player.position.z -= Math.cos(playerAngle) * speed
           moving = true
         }
-        if (keys['KeyS'] || keys['ArrowDown']) {
+        if (s) {
           player.position.x += Math.sin(playerAngle) * speed
           player.position.z += Math.cos(playerAngle) * speed
           moving = true
@@ -225,15 +355,48 @@ export default function GameWorldPage() {
 
         player.rotation.y = playerAngle
 
-        // Walk animation
+        // Gently correct local player toward server position to prevent drift
+        if (myId) {
+          player.position.x += (serverX - player.position.x) * 0.05
+          player.position.z += (serverZ - player.position.z) * 0.05
+        }
+
+        // Send key state to server only when it changes
+        if (connected && ws && (w !== prevKeys.w || s !== prevKeys.s || a !== prevKeys.a || d !== prevKeys.d)) {
+          ws.send(JSON.stringify({ type: 'keys', w, s, a, d }))
+          prevKeys = { w, s, a, d }
+        }
+
+        // Local walk animation
         if (moving) {
           walkTime += 0.16
-          const s = Math.sin(walkTime) * 0.65
-          leftArm.rotation.x  =  s;  rightArm.rotation.x = -s
-          leftLeg.rotation.x  = -s;  rightLeg.rotation.x =  s
+          const sv = Math.sin(walkTime) * 0.65
+          leftArm.rotation.x  =  sv;  rightArm.rotation.x = -sv
+          leftLeg.rotation.x  = -sv;  rightLeg.rotation.x =  sv
         } else {
           leftArm.rotation.x  *= 0.82;  rightArm.rotation.x *= 0.82
           leftLeg.rotation.x  *= 0.82;  rightLeg.rotation.x *= 0.82
+        }
+
+        // Update remote players
+        for (const rp of remotePlayers.values()) {
+          const dx = rp.targetX - rp.group.position.x
+          const dz = rp.targetZ - rp.group.position.z
+          const isMoving = Math.abs(dx) > 0.002 || Math.abs(dz) > 0.002
+
+          rp.group.position.x += dx * 0.2
+          rp.group.position.z += dz * 0.2
+          rp.group.rotation.y = rp.targetAngle
+
+          if (isMoving) {
+            rp.walkTime += 0.16
+            const sv = Math.sin(rp.walkTime) * 0.65
+            rp.leftArm.rotation.x  =  sv;  rp.rightArm.rotation.x = -sv
+            rp.leftLeg.rotation.x  = -sv;  rp.rightLeg.rotation.x =  sv
+          } else {
+            rp.leftArm.rotation.x  *= 0.82;  rp.rightArm.rotation.x *= 0.82
+            rp.leftLeg.rotation.x  *= 0.82;  rp.rightLeg.rotation.x *= 0.82
+          }
         }
 
         // Third-person camera orbit behind player
@@ -242,9 +405,9 @@ export default function GameWorldPage() {
         const pz = player.position.z
         const cosP = Math.cos(camPitch)
         camera.position.set(
-          px - Math.sin(playerAngle) * camDist * cosP,
+          px + Math.sin(playerAngle) * camDist * cosP,
           py + Math.sin(camPitch) * camDist + 0.8,
-          pz - Math.cos(playerAngle) * camDist * cosP
+          pz + Math.cos(playerAngle) * camDist * cosP
         )
         camTarget.lerp(new THREE.Vector3(px, py + 1.2, pz), 0.12)
         camera.lookAt(camTarget)
@@ -254,14 +417,12 @@ export default function GameWorldPage() {
 
       loop()
 
-      // Cleanup on abort
       sig.addEventListener('abort', () => {
         cancelAnimationFrame(rafId)
         renderer.dispose()
         if (mount.contains(renderer.domElement)) mount.removeChild(renderer.domElement)
       })
 
-      // signal cleanup to outer scope
       ;(init as unknown as { _ac: AbortController })._ac = ac
     }
 
