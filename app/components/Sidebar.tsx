@@ -21,6 +21,7 @@ const NAV = [
       { href: "/chord-voicings", text: "Chord Voicings" },
       { href: "/chord-finder", text: "Chord Finder" },
       { href: "/chord-inversions", text: "Chord Inversions" },
+      { href: "/fret-range-progression", text: "Fret Range Progression" },
       { href: "/fretboard-explorer", text: "Fretboard Explorer" },
       { href: "/fretboard-quiz", text: "Fretboard Quiz" },
       { href: "/lead-sheet-editor", text: "Lead Sheet Editor" },
