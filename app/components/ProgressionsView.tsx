@@ -84,7 +84,8 @@ export default function ProgressionsView() {
   });
   const [formulaIndex, setFormulaIndex] = useState(() => {
     if (typeof window !== "undefined") {
-      return parseInt(localStorage.getItem("guitar-formulaIndex") || "0", 10);
+      const idx = parseInt(localStorage.getItem("guitar-formulaIndex") || "0", 10);
+      return idx >= 0 && idx < progressionPresets.length ? idx : 0;
     }
     return 0;
   });

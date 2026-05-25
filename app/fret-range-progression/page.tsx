@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   type ChordShape,
   sharpNotes,
@@ -29,12 +29,13 @@ interface VoicingResult {
   tag: string;
 }
 
-const PRESETS = [
-  { label: "Open", min: 0, max: 4 },
-  { label: "5fr", min: 4, max: 8 },
-  { label: "7fr", min: 6, max: 10 },
-  { label: "9fr", min: 8, max: 12 },
-  { label: "12fr", min: 11, max: 15 },
+const LS_KEY = "fret-range-progression";
+
+const DEFAULT_SLOTS: ChordSlot[] = [
+  { note: "A", type: "Minor" },
+  { note: "F", type: "Major" },
+  { note: "C", type: "Major" },
+  { note: "G", type: "Major" },
 ];
 
 const formatChordLabel = (note: string, type: string) => {
@@ -44,23 +45,7 @@ const formatChordLabel = (note: string, type: string) => {
   return `${note} ${type}`;
 };
 
-const fitsInRange = (shape: ChordShape, minFret: number, maxFret: number): boolean => {
-  const playedFrets = shape.frets.filter((f) => f > 0);
-  if (playedFrets.length === 0) return true;
-  const shapeMin = Math.min(...playedFrets);
-  const shapeMax = Math.max(...playedFrets);
-  const hasOpen = shape.frets.some((f) => f === 0);
-  // Open-string shapes only belong in near-open positions
-  if (hasOpen) return minFret <= 1 && shapeMax <= maxFret;
-  return shapeMin >= minFret && shapeMax <= maxFret;
-};
-
-const getVoicingsInRange = (
-  note: string,
-  type: string,
-  minFret: number,
-  maxFret: number
-): VoicingResult[] => {
+const getAllVoicings = (note: string, type: string): VoicingResult[] => {
   const seen = new Set<string>();
   const results: VoicingResult[] = [];
 
@@ -68,12 +53,11 @@ const getVoicingsInRange = (
     if (!shape) return;
     const key = shape.frets.join(",");
     if (seen.has(key)) return;
-    if (!fitsInRange(shape, minFret, maxFret)) return;
     seen.add(key);
     results.push({ shape, tag });
   };
 
-  // E-shape CAGED — check this octave and one up
+  // E-shape CAGED — two positions across the neck
   const eTemplate = eShapeTemplates[type];
   if (eTemplate) {
     for (const oct of [0, 12]) {
@@ -81,7 +65,7 @@ const getVoicingsInRange = (
     }
   }
 
-  // A-shape CAGED
+  // A-shape CAGED — two positions across the neck
   const aTemplate = aShapeTemplates[type];
   if (aTemplate) {
     for (const oct of [0, 12]) {
@@ -105,15 +89,25 @@ const getVoicingsInRange = (
 };
 
 export default function FretRangeProgressionPage() {
-  const [slots, setSlots] = useState<ChordSlot[]>([
-    { note: "A", type: "Minor" },
-    { note: "F", type: "Major" },
-    { note: "C", type: "Major" },
-    { note: "G", type: "Major" },
-  ]);
-  const [minFret, setMinFret] = useState(0);
-  const [maxFret, setMaxFret] = useState(4);
+  const [slots, setSlots] = useState<ChordSlot[]>(DEFAULT_SLOTS);
   const [useFlats, setUseFlats] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(LS_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed.slots) && parsed.slots.length > 0) setSlots(parsed.slots);
+        if (parsed.useFlats != null) setUseFlats(parsed.useFlats);
+      }
+    } catch {}
+    setHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (hydrated) localStorage.setItem(LS_KEY, JSON.stringify({ slots, useFlats }));
+  }, [slots, useFlats, hydrated]);
 
   const noteOptions = useFlats ? flatNotes : sharpNotes;
 
@@ -137,7 +131,7 @@ export default function FretRangeProgressionPage() {
   };
 
   const addSlot = () => {
-    if (slots.length < 4) {
+    if (slots.length < 8) {
       setSlots((prev) => [...prev, { note: "C", type: "Major" }]);
     }
   };
@@ -147,14 +141,13 @@ export default function FretRangeProgressionPage() {
   };
 
   const results = useMemo(
-    () => slots.map((s) => getVoicingsInRange(s.note, s.type, minFret, maxFret)),
-    [slots, minFret, maxFret]
+    () => slots.map((s) => getAllVoicings(s.note, s.type)),
+    [slots]
   );
 
   return (
     <BentoPageLayout title="Fret Range Progression">
       <div className="flex flex-col gap-5 mb-6">
-        {/* Chord slots */}
         <div>
           <p className="text-xs font-semibold text-[#1A1B1E]/50 uppercase tracking-wider mb-2">Chords</p>
           <div className="flex flex-wrap gap-3 items-center">
@@ -197,7 +190,7 @@ export default function FretRangeProgressionPage() {
                 )}
               </div>
             ))}
-            {slots.length < 4 && (
+            {slots.length < 8 && (
               <button
                 onClick={addSlot}
                 className="px-3 py-1.5 rounded-lg border text-sm transition-colors border-border hover:bg-foreground/10"
@@ -217,59 +210,8 @@ export default function FretRangeProgressionPage() {
             </button>
           </div>
         </div>
-
-        {/* Fret range */}
-        <div>
-          <p className="text-xs font-semibold text-[#1A1B1E]/50 uppercase tracking-wider mb-2">Fret Range</p>
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-2">
-              <input
-                type="number"
-                min={0}
-                max={maxFret}
-                value={minFret}
-                onChange={(e) =>
-                  setMinFret(Math.max(0, Math.min(Number(e.target.value), maxFret)))
-                }
-                className="w-14 text-sm border rounded px-2 py-1 text-center"
-                style={{ borderColor: "var(--border-color)" }}
-                aria-label="Minimum fret"
-              />
-              <span className="text-sm text-[#1A1B1E]/40">–</span>
-              <input
-                type="number"
-                min={minFret}
-                max={22}
-                value={maxFret}
-                onChange={(e) => setMaxFret(Math.max(Number(e.target.value), minFret))}
-                className="w-14 text-sm border rounded px-2 py-1 text-center"
-                style={{ borderColor: "var(--border-color)" }}
-                aria-label="Maximum fret"
-              />
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {PRESETS.map((p) => {
-                const active = minFret === p.min && maxFret === p.max;
-                return (
-                  <button
-                    key={p.label}
-                    onClick={() => { setMinFret(p.min); setMaxFret(p.max); }}
-                    className={`px-3 py-1 rounded border text-sm transition-colors ${
-                      active
-                        ? "bg-accent/20 border-accent font-medium"
-                        : "border-border hover:bg-foreground/10"
-                    }`}
-                  >
-                    {p.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
       </div>
 
-      {/* Results */}
       <div
         className="grid gap-8"
         style={{ gridTemplateColumns: `repeat(auto-fit, minmax(130px, 1fr))` }}
@@ -291,7 +233,7 @@ export default function FretRangeProgressionPage() {
                 ))
               ) : (
                 <p className="text-sm text-[#1A1B1E]/35 italic text-center leading-relaxed">
-                  No voicings<br />in frets {minFret}–{maxFret}
+                  No voicings available
                 </p>
               )}
             </div>
