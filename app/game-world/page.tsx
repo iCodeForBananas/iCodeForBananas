@@ -152,9 +152,79 @@ export default function GameWorldPage() {
       const { group: player, leftArm, rightArm, leftLeg, rightLeg } = buildPlayer(0x1565c0)
       scene.add(player)
 
+      // ── Weapons ─────────────────────────────────────────────
+
+      // Lightsaber (toggle with 1, cycles colors)
+      let saberOn = false
+      let saberColorIdx = 0
+      const saberHues = [0x00ff88, 0xff2244, 0x4488ff, 0xffbb00]
+      const saberMat     = new THREE.MeshBasicMaterial({ color: saberHues[0] })
+      const saberGlowMat = new THREE.MeshBasicMaterial({ color: saberHues[0], transparent: true, opacity: 0.35 })
+      const saberBlade = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 1.1, 8), saberMat)
+      const saberGlowM = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 1.1, 8), saberGlowMat)
+      saberBlade.rotation.x = Math.PI / 2;  saberGlowM.rotation.x = Math.PI / 2
+      saberBlade.position.z = -0.65;        saberGlowM.position.z  = -0.65
+      const saberGroup = new THREE.Group()
+      saberGroup.position.set(0, -0.76, 0)
+      saberGroup.add(saberBlade, saberGlowM)
+      saberGroup.visible = false
+      rightArm.add(saberGroup)
+
+      // Flamethrower (hold F)
+      type FlamePart = { mesh: THREE.Mesh; vel: THREE.Vector3; age: number; max: number }
+      const flames: FlamePart[] = []
+
+      // Lightning (hold L)
+      const mkLightGeo = (len: number) => {
+        const pts: THREE.Vector3[] = []
+        for (let i = 0; i <= 10; i++) {
+          const t = i / 10
+          const s = t < 1 ? Math.sin(t * Math.PI) * 0.3 : 0
+          pts.push(new THREE.Vector3((Math.random() - 0.5) * s, (Math.random() - 0.5) * s, -t * len))
+        }
+        return new THREE.BufferGeometry().setFromPoints(pts)
+      }
+      const ltMat = new THREE.LineBasicMaterial({ color: 0xaabbff })
+      const boltL = new THREE.Line(mkLightGeo(7), ltMat.clone())
+      const boltR = new THREE.Line(mkLightGeo(7), ltMat.clone())
+      boltL.position.set(0, -0.76, 0);  boltR.position.set(0, -0.76, 0)
+      boltL.visible = false;             boltR.visible = false
+      leftArm.add(boltL);                rightArm.add(boltR)
+
+      // Gravity gun (G to grab/throw) — colored boxes scattered around the world
+      type Grabbable = { mesh: THREE.Mesh; vel: THREE.Vector3; grounded: boolean; halfH: number }
+      const grabPool: Grabbable[] = []
+      const gColors = [0xee4444, 0x44ee44, 0x4444ee, 0xeeee44, 0xee44ee, 0x44eeee, 0xff8800, 0x00ffcc]
+      for (let i = 0; i < 12; i++) {
+        const bw = 0.3 + Math.random() * 0.5
+        const bh = 0.3 + Math.random() * 0.5
+        const bd = 0.3 + Math.random() * 0.5
+        const gm = new THREE.Mesh(
+          new THREE.BoxGeometry(bw, bh, bd),
+          new THREE.MeshLambertMaterial({ color: gColors[i % gColors.length] })
+        )
+        gm.position.set(rng(-55, 55), bh / 2, rng(-55, 55))
+        gm.castShadow = true
+        scene.add(gm)
+        grabPool.push({ mesh: gm, vel: new THREE.Vector3(), grounded: true, halfH: bh / 2 })
+      }
+      let heldObj: Grabbable | null = null
+      let gWas = false
+
       // ── Input ──────────────────────────────────────────────
       const keys: Record<string, boolean> = {}
-      window.addEventListener('keydown', (e) => { keys[e.code] = true },  { signal: sig })
+      window.addEventListener('keydown', (e) => {
+        keys[e.code] = true
+        if (e.code === 'Digit1') {
+          saberOn = !saberOn
+          saberGroup.visible = saberOn
+          if (saberOn) {
+            saberColorIdx = (saberColorIdx + 1) % saberHues.length
+            saberMat.color.setHex(saberHues[saberColorIdx])
+            saberGlowMat.color.setHex(saberHues[saberColorIdx])
+          }
+        }
+      }, { signal: sig })
       window.addEventListener('keyup',   (e) => { keys[e.code] = false }, { signal: sig })
 
       // Mouse orbit
@@ -400,6 +470,103 @@ export default function GameWorldPage() {
           }
         }
 
+        // ── Flamethrower ──────────────────────────────────────
+        if (keys['KeyF']) {
+          const hand = new THREE.Vector3()
+          rightArm.getWorldPosition(hand)
+          hand.y -= 0.7
+          const fwd = new THREE.Vector3(-Math.sin(playerAngle), 0.05, -Math.cos(playerAngle))
+          for (let fi = 0; fi < 2; fi++) {
+            const fgeo = new THREE.SphereGeometry(0.06 + Math.random() * 0.07, 5, 5)
+            const fmat = new THREE.MeshBasicMaterial({
+              color: [0xff6600, 0xff2200, 0xffaa00, 0xff4400][Math.floor(Math.random() * 4)],
+              transparent: true,
+            })
+            const fm = new THREE.Mesh(fgeo, fmat)
+            fm.position.copy(hand)
+            scene.add(fm)
+            flames.push({
+              mesh: fm,
+              vel: new THREE.Vector3(
+                fwd.x + (Math.random() - 0.5) * 0.12,
+                fwd.y + Math.random() * 0.04,
+                fwd.z + (Math.random() - 0.5) * 0.12,
+              ).multiplyScalar(0.2),
+              age: 0,
+              max: 15 + Math.floor(Math.random() * 10),
+            })
+          }
+        }
+        for (let fi = flames.length - 1; fi >= 0; fi--) {
+          const fp = flames[fi]
+          fp.age++
+          fp.mesh.position.addScaledVector(fp.vel, 1)
+          fp.vel.y += 0.003
+          const ft = fp.age / fp.max
+          ;(fp.mesh.material as THREE.MeshBasicMaterial).opacity = 1 - ft
+          fp.mesh.scale.setScalar(1 + ft * 3)
+          if (fp.age >= fp.max) {
+            scene.remove(fp.mesh)
+            fp.mesh.geometry.dispose()
+            ;(fp.mesh.material as THREE.MeshBasicMaterial).dispose()
+            flames.splice(fi, 1)
+          }
+        }
+
+        // ── Lightning ─────────────────────────────────────────
+        const lOn = !!keys['KeyL']
+        if (lOn) {
+          boltL.geometry.dispose(); boltL.geometry = mkLightGeo(7)
+          boltR.geometry.dispose(); boltR.geometry = mkLightGeo(7)
+          boltL.visible = Math.random() > 0.25
+          boltR.visible = Math.random() > 0.25
+        } else {
+          boltL.visible = false; boltR.visible = false
+        }
+
+        // ── Gravity gun ───────────────────────────────────────
+        const gNow = !!keys['KeyG']
+        if (gNow && !gWas) {
+          if (heldObj) {
+            const throwFwd = new THREE.Vector3(-Math.sin(playerAngle), 0.25, -Math.cos(playerAngle))
+            heldObj.vel.copy(throwFwd).multiplyScalar(0.45)
+            heldObj.grounded = false
+            heldObj = null
+          } else {
+            let best: Grabbable | null = null, bestD = 6
+            for (const g of grabPool) {
+              const gd = g.mesh.position.distanceTo(player.position)
+              if (gd < bestD) { best = g; bestD = gd }
+            }
+            heldObj = best
+          }
+        }
+        gWas = gNow
+
+        if (heldObj) {
+          const holdTarget = new THREE.Vector3(
+            player.position.x - Math.sin(playerAngle) * 1.8,
+            player.position.y + 1.3,
+            player.position.z - Math.cos(playerAngle) * 1.8,
+          )
+          heldObj.mesh.position.lerp(holdTarget, 0.18)
+          heldObj.mesh.rotation.y += 0.04
+        }
+        for (const g of grabPool) {
+          if (g === heldObj) continue
+          if (!g.grounded) {
+            g.vel.y -= 0.012
+            g.mesh.position.addScaledVector(g.vel, 1)
+            g.vel.multiplyScalar(0.99)
+            if (g.mesh.position.y <= g.halfH) {
+              g.mesh.position.y = g.halfH
+              g.vel.y = Math.abs(g.vel.y) * 0.4
+              g.vel.x *= 0.85; g.vel.z *= 0.85
+              if (g.vel.length() < 0.01) { g.vel.set(0, 0, 0); g.grounded = true }
+            }
+          }
+        }
+
         // Third-person camera orbit behind player
         const px = player.position.x
         const py = player.position.y
@@ -447,7 +614,7 @@ export default function GameWorldPage() {
         className='pointer-events-none absolute left-1/2 top-3 z-10 -translate-x-1/2 rounded-full px-4 py-1.5 text-xs text-white'
         style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(6px)' }}
       >
-        WASD / ↑↓←→ &nbsp;·&nbsp; Drag to orbit &nbsp;·&nbsp; Scroll to zoom
+        WASD / ↑↓←→ &nbsp;·&nbsp; Drag to orbit &nbsp;·&nbsp; Scroll to zoom &nbsp;·&nbsp; 1: Saber &nbsp;·&nbsp; F: Flame &nbsp;·&nbsp; L: Lightning &nbsp;·&nbsp; G: Grab
       </div>
       <div ref={mountRef} className='h-full w-full' />
     </div>
