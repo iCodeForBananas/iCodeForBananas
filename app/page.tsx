@@ -526,7 +526,7 @@ export default function Home() {
                 animate={{ y: [0, -20, 0], rotate: [-5, 5, -5] }}
                 transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
               >
-                <img src='/banana-icon.svg' alt='Banana' className='w-[35vmin] h-[35vmin] md:w-[41vmin] md:h-[41vmin] lg:w-[36vmin] lg:h-[36vmin]' />
+                <img src='/icon.svg' alt='Banana' className='w-[35vmin] h-[35vmin] md:w-[41vmin] md:h-[41vmin] lg:w-[36vmin] lg:h-[36vmin]' />
               </motion.div>
 
               {/* Floating Tech Tags — desktop only */}
