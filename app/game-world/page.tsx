@@ -434,47 +434,48 @@ export default function GameWorldPage() {
       }, { signal: sig })
       window.addEventListener('keyup',   (e) => { keys[e.code] = false }, { signal: sig })
 
-      // Mouse orbit
-      let isDragging = false
-      let lastY = 0
+      // ── Camera control (Pointer Lock TPS) ─────────────────
+      let cameraAngle = 0
       let playerAngle = 0
       let camPitch = 0.38
       let camDist  = 6.5
       const camTarget = new THREE.Vector3(0, 1.2, 0)
-      const raycaster = new THREE.Raycaster()
-      const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)
-      const mouseNDC = new THREE.Vector2(0, 0)
-      const mouseWorld = new THREE.Vector3()
 
-      renderer.domElement.addEventListener('mousedown', (e: MouseEvent) => {
-        isDragging = true; lastY = e.clientY
-        mouseDownRef.current = true
+      // Click canvas to capture mouse; ESC releases (browser default)
+      renderer.domElement.addEventListener('click', () => {
+        renderer.domElement.requestPointerLock()
       }, { signal: sig })
-      window.addEventListener('mouseup', () => { isDragging = false; mouseDownRef.current = false }, { signal: sig })
-      window.addEventListener('mousemove', (e: MouseEvent) => {
-        mouseNDC.x = (e.clientX / mount.clientWidth) * 2 - 1
-        mouseNDC.y = -(e.clientY / mount.clientHeight) * 2 + 1
-        if (isDragging) {
-          camPitch = Math.max(0.05, Math.min(1.3, camPitch + (e.clientY - lastY) * 0.005))
-          lastY = e.clientY
-        }
+
+      document.addEventListener('mousemove', (e: MouseEvent) => {
+        if (document.pointerLockElement !== renderer.domElement) return
+        cameraAngle -= e.movementX * 0.003
+        camPitch = Math.max(0.05, Math.min(1.3, camPitch + e.movementY * 0.003))
       }, { signal: sig })
+
+      // Only register weapon-fire when pointer is already locked (ignore the lock-in click)
+      renderer.domElement.addEventListener('mousedown', () => {
+        if (document.pointerLockElement === renderer.domElement) mouseDownRef.current = true
+      }, { signal: sig })
+      window.addEventListener('mouseup', () => { mouseDownRef.current = false }, { signal: sig })
       renderer.domElement.addEventListener('wheel', (e: WheelEvent) => {
         camDist = Math.max(2, Math.min(14, camDist + e.deltaY * 0.01))
       }, { signal: sig })
       renderer.domElement.addEventListener('contextmenu', (e: Event) => e.preventDefault(), { signal: sig })
 
       // ── Touch support ──────────────────────────────────────
-      let lastTouchY = 0, isTouching = false
+      let lastTouchX = 0, lastTouchY = 0, isTouching = false
       renderer.domElement.addEventListener('touchstart', (e: TouchEvent) => {
         isTouching = true
+        lastTouchX = e.touches[0].clientX
         lastTouchY = e.touches[0].clientY
       }, { signal: sig })
       renderer.domElement.addEventListener('touchend', () => { isTouching = false }, { signal: sig })
       renderer.domElement.addEventListener('touchmove', (e: TouchEvent) => {
         if (!isTouching) return
         e.preventDefault()
+        cameraAngle -= (e.touches[0].clientX - lastTouchX) * 0.005
         camPitch = Math.max(0.05, Math.min(1.3, camPitch + (e.touches[0].clientY - lastTouchY) * 0.005))
+        lastTouchX = e.touches[0].clientX
         lastTouchY = e.touches[0].clientY
       }, { signal: sig, passive: false })
 
@@ -631,15 +632,8 @@ export default function GameWorldPage() {
         const a = !!(keys['KeyA'] || keys['ArrowLeft'])
         const d = !!(keys['KeyD'] || keys['ArrowRight'])
 
-        // Mouse look — rotate player to face mouse cursor on the ground plane
-        raycaster.setFromCamera(mouseNDC, camera)
-        if (raycaster.ray.intersectPlane(groundPlane, mouseWorld)) {
-          const dx = mouseWorld.x - player.position.x
-          const dz = mouseWorld.z - player.position.z
-          if (Math.abs(dx) > 0.01 || Math.abs(dz) > 0.01) {
-            playerAngle = Math.atan2(-dx, -dz)
-          }
-        }
+        // Player body always faces the camera's forward direction
+        playerAngle = cameraAngle
 
         // Client-side prediction — keeps local movement responsive
         if (w) {
@@ -843,9 +837,9 @@ export default function GameWorldPage() {
         const pz = player.position.z
         const cosP = Math.cos(camPitch)
         camera.position.set(
-          px + Math.sin(playerAngle) * camDist * cosP,
+          px + Math.sin(cameraAngle) * camDist * cosP,
           py + Math.sin(camPitch) * camDist + 0.8,
-          pz + Math.cos(playerAngle) * camDist * cosP
+          pz + Math.cos(cameraAngle) * camDist * cosP
         )
         camTarget.lerp(new THREE.Vector3(px, py + 1.2, pz), 0.12)
         camera.lookAt(camTarget)
@@ -856,6 +850,7 @@ export default function GameWorldPage() {
       loop()
 
       sig.addEventListener('abort', () => {
+        if (document.pointerLockElement === renderer.domElement) document.exitPointerLock()
         cancelAnimationFrame(rafId)
         renderer.dispose()
         if (mount.contains(renderer.domElement)) mount.removeChild(renderer.domElement)
@@ -891,7 +886,7 @@ export default function GameWorldPage() {
         className='pointer-events-none absolute left-1/2 top-3 z-10 -translate-x-1/2 rounded-full px-4 py-1.5 text-xs text-white'
         style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(6px)' }}
       >
-        WASD to move &nbsp;·&nbsp; Mouse to aim &nbsp;·&nbsp; Drag to tilt &nbsp;·&nbsp; Scroll to zoom &nbsp;·&nbsp; Shift to sprint
+        WASD to move &nbsp;·&nbsp; Mouse to look &nbsp;·&nbsp; Scroll to zoom &nbsp;·&nbsp; Shift to sprint &nbsp;·&nbsp; ESC to release
       </div>
 
       {/* Hotbar */}
