@@ -436,22 +436,28 @@ export default function GameWorldPage() {
 
       // Mouse orbit
       let isDragging = false
-      let lastX = 0, lastY = 0
+      let lastY = 0
       let playerAngle = 0
       let camPitch = 0.38
       let camDist  = 6.5
       const camTarget = new THREE.Vector3(0, 1.2, 0)
+      const raycaster = new THREE.Raycaster()
+      const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)
+      const mouseNDC = new THREE.Vector2(0, 0)
+      const mouseWorld = new THREE.Vector3()
 
       renderer.domElement.addEventListener('mousedown', (e: MouseEvent) => {
-        isDragging = true; lastX = e.clientX; lastY = e.clientY
+        isDragging = true; lastY = e.clientY
         mouseDownRef.current = true
       }, { signal: sig })
       window.addEventListener('mouseup', () => { isDragging = false; mouseDownRef.current = false }, { signal: sig })
       window.addEventListener('mousemove', (e: MouseEvent) => {
-        if (!isDragging) return
-        playerAngle -= (e.clientX - lastX) * 0.005
-        camPitch = Math.max(0.05, Math.min(1.3, camPitch + (e.clientY - lastY) * 0.005))
-        lastX = e.clientX; lastY = e.clientY
+        mouseNDC.x = (e.clientX / mount.clientWidth) * 2 - 1
+        mouseNDC.y = -(e.clientY / mount.clientHeight) * 2 + 1
+        if (isDragging) {
+          camPitch = Math.max(0.05, Math.min(1.3, camPitch + (e.clientY - lastY) * 0.005))
+          lastY = e.clientY
+        }
       }, { signal: sig })
       renderer.domElement.addEventListener('wheel', (e: WheelEvent) => {
         camDist = Math.max(2, Math.min(14, camDist + e.deltaY * 0.01))
@@ -459,19 +465,16 @@ export default function GameWorldPage() {
       renderer.domElement.addEventListener('contextmenu', (e: Event) => e.preventDefault(), { signal: sig })
 
       // ── Touch support ──────────────────────────────────────
-      let lastTouchX = 0, lastTouchY = 0, isTouching = false
+      let lastTouchY = 0, isTouching = false
       renderer.domElement.addEventListener('touchstart', (e: TouchEvent) => {
         isTouching = true
-        lastTouchX = e.touches[0].clientX
         lastTouchY = e.touches[0].clientY
       }, { signal: sig })
       renderer.domElement.addEventListener('touchend', () => { isTouching = false }, { signal: sig })
       renderer.domElement.addEventListener('touchmove', (e: TouchEvent) => {
         if (!isTouching) return
         e.preventDefault()
-        playerAngle -= (e.touches[0].clientX - lastTouchX) * 0.005
         camPitch = Math.max(0.05, Math.min(1.3, camPitch + (e.touches[0].clientY - lastTouchY) * 0.005))
-        lastTouchX = e.touches[0].clientX
         lastTouchY = e.touches[0].clientY
       }, { signal: sig, passive: false })
 
@@ -621,7 +624,6 @@ export default function GameWorldPage() {
         }
 
         const speed = isSprinting ? 0.17 : 0.08
-        const rotSpeed = 0.03
         let moving = false
 
         const w = !!(keys['KeyW'] || keys['ArrowUp'])
@@ -629,9 +631,17 @@ export default function GameWorldPage() {
         const a = !!(keys['KeyA'] || keys['ArrowLeft'])
         const d = !!(keys['KeyD'] || keys['ArrowRight'])
 
+        // Mouse look — rotate player to face mouse cursor on the ground plane
+        raycaster.setFromCamera(mouseNDC, camera)
+        if (raycaster.ray.intersectPlane(groundPlane, mouseWorld)) {
+          const dx = mouseWorld.x - player.position.x
+          const dz = mouseWorld.z - player.position.z
+          if (Math.abs(dx) > 0.01 || Math.abs(dz) > 0.01) {
+            playerAngle = Math.atan2(-dx, -dz)
+          }
+        }
+
         // Client-side prediction — keeps local movement responsive
-        if (a) playerAngle += rotSpeed
-        if (d) playerAngle -= rotSpeed
         if (w) {
           player.position.x -= Math.sin(playerAngle) * speed
           player.position.z -= Math.cos(playerAngle) * speed
@@ -640,6 +650,16 @@ export default function GameWorldPage() {
         if (s) {
           player.position.x += Math.sin(playerAngle) * speed
           player.position.z += Math.cos(playerAngle) * speed
+          moving = true
+        }
+        if (a) {
+          player.position.x -= Math.cos(playerAngle) * speed
+          player.position.z += Math.sin(playerAngle) * speed
+          moving = true
+        }
+        if (d) {
+          player.position.x += Math.cos(playerAngle) * speed
+          player.position.z -= Math.sin(playerAngle) * speed
           moving = true
         }
 
@@ -871,7 +891,7 @@ export default function GameWorldPage() {
         className='pointer-events-none absolute left-1/2 top-3 z-10 -translate-x-1/2 rounded-full px-4 py-1.5 text-xs text-white'
         style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(6px)' }}
       >
-        WASD / ↑↓←→ &nbsp;·&nbsp; Drag to orbit &nbsp;·&nbsp; Scroll to zoom &nbsp;·&nbsp; Shift to sprint
+        WASD to move &nbsp;·&nbsp; Mouse to aim &nbsp;·&nbsp; Drag to tilt &nbsp;·&nbsp; Scroll to zoom &nbsp;·&nbsp; Shift to sprint
       </div>
 
       {/* Hotbar */}
