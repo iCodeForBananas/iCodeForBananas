@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type * as THREE from 'three'
 import type { Object3D, BufferGeometry, Material } from 'three'
 
@@ -8,6 +8,10 @@ const WS_URL = process.env.NEXT_PUBLIC_GAME_WS_URL ?? 'ws://localhost:8080'
 
 export default function GameWorldPage() {
   const mountRef = useRef<HTMLDivElement>(null)
+  const staminaBarRef = useRef<HTMLDivElement>(null)
+  const activeSlotRef = useRef(0)
+  const [activeSlot, setActiveSlot] = useState(0)
+  const mouseDownRef = useRef(false)
 
   useEffect(() => {
     const mount = mountRef.current
@@ -82,6 +86,7 @@ export default function GameWorldPage() {
         const x = rng(-90, 90)
         const z = rng(-90, 90)
         if (Math.abs(x) < 6 && Math.abs(z) < 6) continue
+        if (x > 4 && x < 40 && z > -8 && z < 8) continue  // street + building footprint
 
         const h = rng(1.5, 3.5)
         const trunk = new THREE.Mesh(new THREE.BoxGeometry(0.3, h, 0.3), trunkMat)
@@ -96,6 +101,140 @@ export default function GameWorldPage() {
         crown.castShadow = true
         scene.add(crown)
       }
+
+      // ── Street ─────────────────────────────────────────────
+      const stRoadMat  = new THREE.MeshLambertMaterial({ color: 0x333344 })
+      const stCurbMat  = new THREE.MeshLambertMaterial({ color: 0x888899 })
+
+      const stRoad = new THREE.Mesh(new THREE.PlaneGeometry(30, 80), stRoadMat)
+      stRoad.rotation.x = -Math.PI / 2
+      stRoad.position.set(14, 0.005, 0)
+      stRoad.receiveShadow = true
+      scene.add(stRoad)
+
+      const stStripe = new THREE.Mesh(
+        new THREE.PlaneGeometry(0.25, 80),
+        new THREE.MeshLambertMaterial({ color: 0xffdd00 })
+      )
+      stStripe.rotation.x = -Math.PI / 2
+      stStripe.position.set(14, 0.01, 0)
+      scene.add(stStripe)
+
+      for (const sz of [-5, 5]) {
+        const curb = new THREE.Mesh(new THREE.BoxGeometry(30, 0.12, 0.3), stCurbMat)
+        curb.position.set(14, 0.06, sz)
+        scene.add(curb)
+      }
+
+      const stSidewalk = new THREE.Mesh(new THREE.PlaneGeometry(6, 80), stCurbMat)
+      stSidewalk.rotation.x = -Math.PI / 2
+      stSidewalk.position.set(22, 0.06, 0)
+      stSidewalk.receiveShadow = true
+      scene.add(stSidewalk)
+
+      // ── Building (x=[24,36], z=[-5,5], 5 floors × 3 units) ───
+      const bldConcrete = new THREE.MeshLambertMaterial({ color: 0x8a8a9a })
+      const bldGlass    = new THREE.MeshLambertMaterial({ color: 0x1a3a5a })
+      const bldSlab     = new THREE.MeshLambertMaterial({ color: 0x6a6a7a })
+      const wallBoxes: THREE.Box3[] = []
+
+      const bldWall = (cx: number, cy: number, cz: number, w: number, h: number, d: number, col = true) => {
+        const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), bldConcrete)
+        m.position.set(cx, cy, cz)
+        m.castShadow = true
+        m.receiveShadow = true
+        scene.add(m)
+        if (col) wallBoxes.push(new THREE.Box3(
+          new THREE.Vector3(cx - w / 2, cy - h / 2, cz - d / 2),
+          new THREE.Vector3(cx + w / 2, cy + h / 2, cz + d / 2)
+        ))
+      }
+
+      // Exterior walls (full 15-unit height)
+      bldWall(36,   7.5,  0,    0.3, 15, 10.3)   // east
+      bldWall(30,   7.5, -5,   12.3, 15,  0.3)   // north
+      bldWall(30,   7.5,  5,   12.3, 15,  0.3)   // south
+      bldWall(24,   7.5, -2.85, 0.3, 15,  4.3)   // west-left
+      bldWall(24,   7.5,  2.85, 0.3, 15,  4.3)   // west-right
+      bldWall(24,   8.7,  0,    0.3, 12.6, 1.4)  // door arch
+
+      // Roof
+      const roofMesh = new THREE.Mesh(new THREE.BoxGeometry(12, 0.3, 10), bldConcrete)
+      roofMesh.position.set(30, 15.15, 0)
+      roofMesh.castShadow = true
+      scene.add(roofMesh)
+
+      // Interior floor slabs (floors 2–5)
+      for (let f = 1; f <= 4; f++) {
+        const slab = new THREE.Mesh(new THREE.BoxGeometry(11.4, 0.15, 9.4), bldSlab)
+        slab.position.set(30, f * 3, 0)
+        slab.receiveShadow = true
+        scene.add(slab)
+      }
+
+      // Ground-floor interior surface
+      const intFloor = new THREE.Mesh(new THREE.PlaneGeometry(11.4, 9.4), bldSlab)
+      intFloor.rotation.x = -Math.PI / 2
+      intFloor.position.set(30, 0.01, 0)
+      scene.add(intFloor)
+
+      // Interior room divider at x=30, gap at z=[-0.7, 0.7]
+      bldWall(30, 1.5, -2.85, 0.2, 3, 4.3)
+      bldWall(30, 1.5,  2.85, 0.2, 3, 4.3)
+
+      // Staircase ramp (visual, NE corner)
+      const rampMesh = new THREE.Mesh(new THREE.BoxGeometry(3, 0.25, 3.5), bldSlab)
+      rampMesh.rotation.x = -Math.PI / 6
+      rampMesh.position.set(33.5, 1.1, -3.6)
+      rampMesh.castShadow = true
+      scene.add(rampMesh)
+
+      // Windows — 5 floors × 4 faces
+      for (let f = 0; f < 5; f++) {
+        const wy = f * 3 + 1.8
+        for (const wx of [26, 29, 32, 35]) {
+          const wN = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 1.1), bldGlass)
+          wN.position.set(wx, wy, -4.88)
+          scene.add(wN)
+          const wS = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 1.1), bldGlass)
+          wS.rotation.y = Math.PI
+          wS.position.set(wx, wy, 4.88)
+          scene.add(wS)
+        }
+        for (const wz of [-3, 0, 3]) {
+          const wE = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 1.1), bldGlass)
+          wE.rotation.y = -Math.PI / 2
+          wE.position.set(35.88, wy, wz)
+          scene.add(wE)
+        }
+        if (f > 0) {
+          for (const wz of [-3, 3]) {
+            const wW = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 1.1), bldGlass)
+            wW.rotation.y = Math.PI / 2
+            wW.position.set(24.12, wy, wz)
+            scene.add(wW)
+          }
+        }
+      }
+
+      // ── Door ──────────────────────────────────────────────
+      let doorOpen = false
+      const doorWallBox = new THREE.Box3(
+        new THREE.Vector3(23.85, 0, -0.7),
+        new THREE.Vector3(24.15, 2.4, 0.7)
+      )
+      wallBoxes.push(doorWallBox)
+
+      const doorPivot = new THREE.Group()
+      doorPivot.position.set(24.05, 0, -0.7)
+      scene.add(doorPivot)
+
+      const doorPanel = new THREE.Mesh(
+        new THREE.BoxGeometry(0.08, 2.4, 1.4),
+        new THREE.MeshLambertMaterial({ color: 0x6b3a1f })
+      )
+      doorPanel.position.set(0, 1.2, 0.7)
+      doorPivot.add(doorPanel)
 
       // ── Player mesh builder ────────────────────────────────
       const box = (w: number, h: number, d: number) => new THREE.BoxGeometry(w, h, d)
@@ -191,22 +330,83 @@ export default function GameWorldPage() {
       boltL.visible = false;             boltR.visible = false
       leftArm.add(boltL);                rightArm.add(boltR)
 
-      // Gravity gun (G to grab/throw) — colored boxes scattered around the world
-      type Grabbable = { mesh: THREE.Mesh; vel: THREE.Vector3; grounded: boolean; halfH: number }
+      // Gravity gun (G to grab/throw) — alien lab devices scattered around the world
+      type Grabbable = {
+        group: THREE.Group
+        mesh: THREE.Mesh
+        vel: THREE.Vector3
+        grounded: boolean
+        halfH: number
+        arcs: THREE.LineSegments[]
+        glowOrb: THREE.Mesh
+        arcTimer: number
+        makeArcGeo: () => THREE.BufferGeometry
+      }
+
+      const buildAlienDevice = () => {
+        const g = new THREE.Group()
+
+        const bodyMat = new THREE.MeshStandardMaterial({
+          color: 0x0a0a0a, emissive: 0x00ff44, emissiveIntensity: 0.5,
+          metalness: 0.95, roughness: 0.15,
+        })
+        const coreMesh = new THREE.Mesh(new THREE.OctahedronGeometry(0.26, 0), bodyMat)
+        coreMesh.castShadow = true
+        g.add(coreMesh)
+
+        const ring1 = new THREE.Mesh(new THREE.TorusGeometry(0.38, 0.04, 8, 28), bodyMat.clone())
+        ring1.rotation.x = Math.PI / 2
+        g.add(ring1)
+
+        const ring2 = new THREE.Mesh(new THREE.TorusGeometry(0.38, 0.04, 8, 28), bodyMat.clone())
+        ring2.rotation.z = Math.PI / 3
+        g.add(ring2)
+
+        const glowMat = new THREE.MeshBasicMaterial({ color: 0x39ff14, transparent: true, opacity: 0.7 })
+        const glowOrb = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 8), glowMat)
+        g.add(glowOrb)
+
+        const arcMat = new THREE.LineBasicMaterial({ color: 0x00ff44 })
+        const makeArcGeo = () => {
+          const pts: THREE.Vector3[] = []
+          const origin = new THREE.Vector3((Math.random() - 0.5) * 0.2, (Math.random() - 0.5) * 0.2, (Math.random() - 0.5) * 0.2)
+          for (let s = 0; s <= 6; s++) {
+            pts.push(new THREE.Vector3(
+              origin.x + (Math.random() - 0.5) * 0.55,
+              origin.y + (Math.random() - 0.5) * 0.55,
+              origin.z + (Math.random() - 0.5) * 0.55,
+            ))
+          }
+          return new THREE.BufferGeometry().setFromPoints(pts)
+        }
+
+        const arcs: THREE.LineSegments[] = []
+        for (let a = 0; a < 3; a++) {
+          const arc = new THREE.LineSegments(makeArcGeo(), arcMat.clone())
+          g.add(arc)
+          arcs.push(arc)
+        }
+
+        return { group: g, coreMesh, glowOrb, arcs, makeArcGeo }
+      }
+
       const grabPool: Grabbable[] = []
-      const gColors = [0xee4444, 0x44ee44, 0x4444ee, 0xeeee44, 0xee44ee, 0x44eeee, 0xff8800, 0x00ffcc]
       for (let i = 0; i < 12; i++) {
-        const bw = 0.3 + Math.random() * 0.5
-        const bh = 0.3 + Math.random() * 0.5
-        const bd = 0.3 + Math.random() * 0.5
-        const gm = new THREE.Mesh(
-          new THREE.BoxGeometry(bw, bh, bd),
-          new THREE.MeshLambertMaterial({ color: gColors[i % gColors.length] })
-        )
-        gm.position.set(rng(-55, 55), bh / 2, rng(-55, 55))
-        gm.castShadow = true
-        scene.add(gm)
-        grabPool.push({ mesh: gm, vel: new THREE.Vector3(), grounded: true, halfH: bh / 2 })
+        const { group, coreMesh, glowOrb, arcs, makeArcGeo } = buildAlienDevice()
+        const px = rng(-55, 55), pz = rng(-55, 55)
+        group.position.set(px, 0.32, pz)
+        scene.add(group)
+        grabPool.push({
+          group,
+          mesh: coreMesh,
+          vel: new THREE.Vector3(),
+          grounded: true,
+          halfH: 0.32,
+          arcs,
+          glowOrb,
+          arcTimer: 0,
+          makeArcGeo,
+        })
       }
       let heldObj: Grabbable | null = null
       let gWas = false
@@ -215,6 +415,13 @@ export default function GameWorldPage() {
       const keys: Record<string, boolean> = {}
       window.addEventListener('keydown', (e) => {
         keys[e.code] = true
+        if (e.code === 'Digit1') { activeSlotRef.current = 0; setActiveSlot(0) }
+        if (e.code === 'Digit2') { activeSlotRef.current = 1; setActiveSlot(1) }
+        if (e.code === 'Digit3') { activeSlotRef.current = 2; setActiveSlot(2) }
+        if (e.code === 'Digit4') { activeSlotRef.current = 3; setActiveSlot(3) }
+        if (e.code === 'KeyE') {
+          if (player.position.distanceTo(new THREE.Vector3(24, 0, 0)) < 5) doorOpen = !doorOpen
+        }
         if (e.code === 'Digit1') {
           saberOn = !saberOn
           saberGroup.visible = saberOn
@@ -237,8 +444,9 @@ export default function GameWorldPage() {
 
       renderer.domElement.addEventListener('mousedown', (e: MouseEvent) => {
         isDragging = true; lastX = e.clientX; lastY = e.clientY
+        mouseDownRef.current = true
       }, { signal: sig })
-      window.addEventListener('mouseup', () => { isDragging = false }, { signal: sig })
+      window.addEventListener('mouseup', () => { isDragging = false; mouseDownRef.current = false }, { signal: sig })
       window.addEventListener('mousemove', (e: MouseEvent) => {
         if (!isDragging) return
         playerAngle -= (e.clientX - lastX) * 0.005
@@ -395,13 +603,24 @@ export default function GameWorldPage() {
 
       // ── Loop ───────────────────────────────────────────────
       let walkTime = 0
+      let stamina = 1.0
+      let isSprinting = false
       let prevKeys = { w: false, s: false, a: false, d: false }
 
       const loop = () => {
         if (disposed) return
         rafId = requestAnimationFrame(loop)
 
-        const speed = 0.08
+        const shift = !!(keys['ShiftLeft'] || keys['ShiftRight'])
+        isSprinting = shift && stamina > 0
+        if (isSprinting) stamina = Math.max(0, stamina - 0.008)
+        else             stamina = Math.min(1, stamina + 0.004)
+        if (staminaBarRef.current) {
+          staminaBarRef.current.style.width = `${stamina * 100}%`
+          staminaBarRef.current.style.background = stamina > 0.5 ? '#39ff14' : stamina > 0.25 ? '#ffaa00' : '#ff3300'
+        }
+
+        const speed = isSprinting ? 0.17 : 0.08
         const rotSpeed = 0.03
         let moving = false
 
@@ -432,6 +651,23 @@ export default function GameWorldPage() {
           player.position.z += (serverZ - player.position.z) * 0.05
         }
 
+        // Wall collision (AABB push-out)
+        for (const wb of wallBoxes) {
+          if (wb === doorWallBox && doorOpen) continue
+          const wCX = (wb.min.x + wb.max.x) / 2
+          const wCZ = (wb.min.z + wb.max.z) / 2
+          const wHW = (wb.max.x - wb.min.x) / 2
+          const wHD = (wb.max.z - wb.min.z) / 2
+          const dx = player.position.x - wCX
+          const dz = player.position.z - wCZ
+          const overlapX = 0.25 + wHW - Math.abs(dx)
+          const overlapZ = 0.25 + wHD - Math.abs(dz)
+          if (overlapX > 0 && overlapZ > 0) {
+            if (overlapX < overlapZ) player.position.x += Math.sign(dx) * overlapX
+            else                     player.position.z += Math.sign(dz) * overlapZ
+          }
+        }
+
         // Send key state to server only when it changes
         if (connected && ws && (w !== prevKeys.w || s !== prevKeys.s || a !== prevKeys.a || d !== prevKeys.d)) {
           ws.send(JSON.stringify({ type: 'keys', w, s, a, d }))
@@ -440,7 +676,7 @@ export default function GameWorldPage() {
 
         // Local walk animation
         if (moving) {
-          walkTime += 0.16
+          walkTime += isSprinting ? 0.28 : 0.16
           const sv = Math.sin(walkTime) * 0.65
           leftArm.rotation.x  =  sv;  rightArm.rotation.x = -sv
           leftLeg.rotation.x  = -sv;  rightLeg.rotation.x =  sv
@@ -471,7 +707,7 @@ export default function GameWorldPage() {
         }
 
         // ── Flamethrower ──────────────────────────────────────
-        if (keys['KeyF']) {
+        if (keys['KeyF'] || (mouseDownRef.current && activeSlotRef.current === 1)) {
           const hand = new THREE.Vector3()
           rightArm.getWorldPosition(hand)
           hand.y -= 0.7
@@ -514,7 +750,7 @@ export default function GameWorldPage() {
         }
 
         // ── Lightning ─────────────────────────────────────────
-        const lOn = !!keys['KeyL']
+        const lOn = !!(keys['KeyL'] || (mouseDownRef.current && activeSlotRef.current === 2))
         if (lOn) {
           boltL.geometry.dispose(); boltL.geometry = mkLightGeo(7)
           boltR.geometry.dispose(); boltR.geometry = mkLightGeo(7)
@@ -535,7 +771,7 @@ export default function GameWorldPage() {
           } else {
             let best: Grabbable | null = null, bestD = 6
             for (const g of grabPool) {
-              const gd = g.mesh.position.distanceTo(player.position)
+              const gd = g.group.position.distanceTo(player.position)
               if (gd < bestD) { best = g; bestD = gd }
             }
             heldObj = best
@@ -549,23 +785,37 @@ export default function GameWorldPage() {
             player.position.y + 1.3,
             player.position.z - Math.cos(playerAngle) * 1.8,
           )
-          heldObj.mesh.position.lerp(holdTarget, 0.18)
-          heldObj.mesh.rotation.y += 0.04
+          heldObj.group.position.lerp(holdTarget, 0.18)
+          heldObj.group.rotation.y += 0.04
         }
         for (const g of grabPool) {
           if (g === heldObj) continue
           if (!g.grounded) {
             g.vel.y -= 0.012
-            g.mesh.position.addScaledVector(g.vel, 1)
+            g.group.position.addScaledVector(g.vel, 1)
             g.vel.multiplyScalar(0.99)
-            if (g.mesh.position.y <= g.halfH) {
-              g.mesh.position.y = g.halfH
+            if (g.group.position.y <= g.halfH) {
+              g.group.position.y = g.halfH
               g.vel.y = Math.abs(g.vel.y) * 0.4
               g.vel.x *= 0.85; g.vel.z *= 0.85
               if (g.vel.length() < 0.01) { g.vel.set(0, 0, 0); g.grounded = true }
             }
           }
+          // Alien device animations
+          g.group.rotation.y += 0.01
+          g.arcTimer++
+          if (g.arcTimer % 3 === 0) {
+            for (const arc of g.arcs) {
+              arc.geometry.dispose()
+              arc.geometry = g.makeArcGeo()
+            }
+          }
+          const pulse = 0.5 + Math.sin(Date.now() * 0.004 + g.group.position.x) * 0.3
+          ;(g.glowOrb.material as THREE.MeshBasicMaterial).opacity = pulse
         }
+
+        // Door swing animation
+        doorPivot.rotation.y += ((doorOpen ? Math.PI / 2 : 0) - doorPivot.rotation.y) * 0.12
 
         // Third-person camera orbit behind player
         const px = player.position.x
@@ -608,14 +858,53 @@ export default function GameWorldPage() {
     }
   }, [])
 
+  const slots = [
+    { label: 'Saber',   key: '1', sub: 'toggle' },
+    { label: 'Flame',   key: '2', sub: 'hold' },
+    { label: 'Bolt',    key: '3', sub: 'hold' },
+    { label: 'Grab',    key: '4', sub: 'press' },
+  ]
+
   return (
     <div className='relative w-full flex-1 overflow-hidden bg-black'>
       <div
         className='pointer-events-none absolute left-1/2 top-3 z-10 -translate-x-1/2 rounded-full px-4 py-1.5 text-xs text-white'
         style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(6px)' }}
       >
-        WASD / ↑↓←→ &nbsp;·&nbsp; Drag to orbit &nbsp;·&nbsp; Scroll to zoom &nbsp;·&nbsp; 1: Saber &nbsp;·&nbsp; F: Flame &nbsp;·&nbsp; L: Lightning &nbsp;·&nbsp; G: Grab
+        WASD / ↑↓←→ &nbsp;·&nbsp; Drag to orbit &nbsp;·&nbsp; Scroll to zoom &nbsp;·&nbsp; Shift to sprint
       </div>
+
+      {/* Hotbar */}
+      <div className='pointer-events-none absolute bottom-5 left-1/2 z-20 flex -translate-x-1/2 flex-col items-center gap-2'>
+        {/* Stamina bar */}
+        <div className='w-52 overflow-hidden rounded-full' style={{ height: 5, background: 'rgba(255,255,255,0.12)' }}>
+          <div
+            ref={staminaBarRef}
+            style={{ width: '100%', height: '100%', background: '#39ff14', borderRadius: 9999, transition: 'background 0.3s' }}
+          />
+        </div>
+        {/* Slots */}
+        <div className='flex gap-2'>
+          {slots.map((slot, i) => (
+            <div
+              key={i}
+              className='flex flex-col items-center rounded-xl px-3 py-2'
+              style={{
+                minWidth: 56,
+                background: activeSlot === i ? 'rgba(57,255,20,0.18)' : 'rgba(0,0,0,0.62)',
+                border: `1.5px solid ${activeSlot === i ? '#39ff14' : 'rgba(255,255,255,0.18)'}`,
+                backdropFilter: 'blur(10px)',
+                color: '#fff',
+              }}
+            >
+              <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1 }}>{slot.label}</span>
+              <span style={{ fontSize: 16, fontWeight: 900, color: activeSlot === i ? '#39ff14' : '#aaa', lineHeight: 1.4 }}>{slot.key}</span>
+              <span style={{ fontSize: 9, opacity: 0.45, marginTop: 1 }}>{slot.sub}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
       <div ref={mountRef} className='h-full w-full' />
     </div>
   )
