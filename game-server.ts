@@ -5,8 +5,8 @@ const PORT    = parseInt(process.env.GAME_WS_PORT ?? "8080");
 const TICK_MS = 50; // 20 fps server tick
 
 // ── Player movement ──────────────────────────────────────────────────────────
-const WALK_SPEED       = 0.13;
-const SPRINT_SPEED     = 0.22;
+const WALK_SPEED       = 0.34125;
+const SPRINT_SPEED     = 0.5775;
 const STAMINA_DRAIN    = 0.008;
 const STAMINA_REGEN    = 0.004;
 const BOUNDS           = 95;

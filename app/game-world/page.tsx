@@ -1278,42 +1278,18 @@ export default function GameWorldPage() {
             staminaBarRef.current.style.background = stamina > 0.5 ? '#39ff14' : stamina > 0.25 ? '#ffaa00' : '#ff3300'
           }
 
-          const speed = isSprinting ? 0.22 : 0.13
-
           const w = !!(keys['KeyW'] || keys['ArrowUp'])
           const s = !!(keys['KeyS'] || keys['ArrowDown'])
           const a = !!(keys['KeyA'] || keys['ArrowLeft'])
           const d = !!(keys['KeyD'] || keys['ArrowRight'])
+          moving = w || s || a || d
 
           playerAngle = cameraAngle
-
-          if (w) { player.position.x -= Math.sin(playerAngle) * speed; player.position.z -= Math.cos(playerAngle) * speed; moving = true }
-          if (s) { player.position.x += Math.sin(playerAngle) * speed; player.position.z += Math.cos(playerAngle) * speed; moving = true }
-          if (a) { player.position.x -= Math.cos(playerAngle) * speed; player.position.z += Math.sin(playerAngle) * speed; moving = true }
-          if (d) { player.position.x += Math.cos(playerAngle) * speed; player.position.z -= Math.sin(playerAngle) * speed; moving = true }
-
           player.rotation.y = playerAngle
 
           if (myId) {
-            player.position.x += (serverX - player.position.x) * 0.05
-            player.position.z += (serverZ - player.position.z) * 0.05
-          }
-
-          for (const wb of wallBoxes) {
-            if (wb === doorWallBox && doorOpen) continue
-            if (openShackDoorBoxes.has(wb)) continue
-            const wCX = (wb.min.x + wb.max.x) / 2
-            const wCZ = (wb.min.z + wb.max.z) / 2
-            const wHW = (wb.max.x - wb.min.x) / 2
-            const wHD = (wb.max.z - wb.min.z) / 2
-            const dx = player.position.x - wCX
-            const dz = player.position.z - wCZ
-            const overlapX = 0.25 + wHW - Math.abs(dx)
-            const overlapZ = 0.25 + wHD - Math.abs(dz)
-            if (overlapX > 0 && overlapZ > 0) {
-              if (overlapX < overlapZ) player.position.x += Math.sign(dx) * overlapX
-              else                     player.position.z += Math.sign(dz) * overlapZ
-            }
+            player.position.x += (serverX - player.position.x) * 0.35
+            player.position.z += (serverZ - player.position.z) * 0.35
           }
 
           if (connected && ws) {
