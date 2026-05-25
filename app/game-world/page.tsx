@@ -156,7 +156,7 @@ export default function GameWorldPage() {
       bldWall(30,   7.5,  5,   12.3, 15,  0.3)   // south
       bldWall(24,   7.5, -2.85, 0.3, 15,  4.3)   // west-left
       bldWall(24,   7.5,  2.85, 0.3, 15,  4.3)   // west-right
-      bldWall(24,   8.7,  0,    0.3, 12.6, 1.4)  // door arch
+      bldWall(24,   8.7,  0,    0.3, 12.6, 1.4, false)  // door arch — above head height, no 2D collision
 
       // Roof
       const roofMesh = new THREE.Mesh(new THREE.BoxGeometry(12, 0.3, 10), bldConcrete)
@@ -886,7 +886,7 @@ export default function GameWorldPage() {
         className='pointer-events-none absolute left-1/2 top-3 z-10 -translate-x-1/2 rounded-full px-4 py-1.5 text-xs text-white'
         style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(6px)' }}
       >
-        WASD to move &nbsp;·&nbsp; Mouse to look &nbsp;·&nbsp; Scroll to zoom &nbsp;·&nbsp; Shift to sprint &nbsp;·&nbsp; ESC to release
+        WASD to move &nbsp;·&nbsp; Mouse to look &nbsp;·&nbsp; Scroll to zoom &nbsp;·&nbsp; Shift to sprint &nbsp;·&nbsp; E near door to open &nbsp;·&nbsp; ESC to release
       </div>
 
       {/* Hotbar */}
