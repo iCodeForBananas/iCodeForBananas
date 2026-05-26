@@ -5,8 +5,8 @@ const PORT    = parseInt(process.env.GAME_WS_PORT ?? "8080");
 const TICK_MS = 50; // 20 fps server tick
 
 // ── Player movement ──────────────────────────────────────────────────────────
-const WALK_SPEED       = 0.34125;
-const SPRINT_SPEED     = 0.5775;
+const WALK_SPEED       = 0.2900625;
+const SPRINT_SPEED     = 0.490875;
 const STAMINA_DRAIN    = 0.008;
 const STAMINA_REGEN    = 0.004;
 const BOUNDS           = 95;
@@ -57,6 +57,60 @@ const SUB_CX = -15, SUB_HW = 3.2, SUB_FY = -7;
 // ── Collision ────────────────────────────────────────────────────────────────
 type Box = { minX: number; minZ: number; maxX: number; maxZ: number };
 
+function mkRng(seed: number) {
+  let s = seed;
+  return () => {
+    s = (s + 0x6D2B79F5) | 0;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = t + Math.imul(t ^ (t >>> 7), 61 | t) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function buildShackWalls(): Box[] {
+  const rng = mkRng(42);
+  const boxes: Box[] = [];
+  const positions: [number, number][] = [
+    [30,-18],[33,-12],[27,-8],[35,-5],[29,0],[38,3],[32,9],[26,14],[36,18],[30,24],
+    [41,-15],[42,8],[24,-3],[38,-10],[25,20],[44,-2],[28,-22],[34,25],[40,15],[45,-20],
+    [22,10],[46,5],[31,-28],[43,22],
+  ];
+  for (const [sx, sz] of positions) {
+    const bx = sx + (rng()-0.5)*2.5;
+    const bz = sz + (rng()-0.5)*2.5;
+    const rot = (rng()-0.5)*0.7;
+    const w = 3 + rng() * 2.5;
+    rng(); // h (visual only)
+    const d = 3 + rng() * 2.5;
+    const wt = 0.18;
+    const dw = Math.min(0.95, w * 0.32);
+    const fLW = (w - dw) / 2;
+    rng(); // wallM (visual)
+    rng(); // roofM (visual)
+    rng(); // roof rotation (visual)
+    const hasLean = rng() > 0.55;
+    if (hasLean) rng(); // lean width (visual)
+
+    const cosR = Math.cos(rot), sinR = Math.sin(rot);
+    const absC = Math.abs(cosR), absS = Math.abs(sinR);
+    const addWB = (lx: number, lz: number, hw: number, hd: number) => {
+      const wx = bx + lx * cosR - lz * sinR;
+      const wz = bz + lx * sinR + lz * cosR;
+      boxes.push({
+        minX: wx - hw * absC - hd * absS, minZ: wz - hw * absS - hd * absC,
+        maxX: wx + hw * absC + hd * absS, maxZ: wz + hw * absS + hd * absC,
+      });
+    };
+    addWB(0,              d / 2,   w / 2,   wt / 2); // back
+    addWB(-w / 2,         0,       wt / 2,  d / 2);  // left
+    addWB( w / 2,         0,       wt / 2,  d / 2);  // right
+    addWB(-(dw/2+fLW/2), -d / 2,  fLW / 2, wt / 2); // front-left
+    addWB( dw/2+fLW/2,  -d / 2,  fLW / 2, wt / 2);  // front-right
+    // door gap is always passable server-side (no door box added)
+  }
+  return boxes;
+}
+
 function resolveCollision(x: number, z: number, boxes: Box[]) {
   const R = COLLISION_RADIUS;
   for (const b of boxes) {
@@ -92,6 +146,8 @@ const STATIC_WALLS: Box[] = [
   { minX: -59.1, minZ: 56.9, maxX: 59.1, maxZ: 59.1 },
   { minX: -59.1, minZ: -59.1, maxX: -56.9, maxZ: 59.1 },
   { minX: 56.9, minZ: -59.1, maxX: 59.1, maxZ: 59.1 },
+  // Shantytown shacks (deterministic layout, mirrors client geometry)
+  ...buildShackWalls(),
 ];
 const DOOR_BOX: Box = { minX: 23.85, minZ: -0.7, maxX: 24.15, maxZ: 0.7 };
 

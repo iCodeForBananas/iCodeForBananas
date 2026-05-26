@@ -575,6 +575,18 @@ export default function GameWorldPage() {
       }
 
       // ── Shantytown (east quadrant, dense sporadic layout) ───────────────
+      // Seeded RNG — must match server so collision geometry is identical
+      const mkShackRng = (seed: number) => {
+        let s = seed
+        return () => {
+          s = (s + 0x6D2B79F5) | 0
+          let t = Math.imul(s ^ (s >>> 15), 1 | s)
+          t = t + Math.imul(t ^ (t >>> 7), 61 | t) ^ t
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+        }
+      }
+      const shackRng = mkShackRng(42)
+
       const shWood1 = new THREE.MeshLambertMaterial({ color: 0x4a3218 })
       const shWood2 = new THREE.MeshLambertMaterial({ color: 0x3a2810 })
       const shTin1  = new THREE.MeshLambertMaterial({ color: 0x5a5044 })
@@ -591,16 +603,16 @@ export default function GameWorldPage() {
       const shackDoors: ShackDoor[] = []
       const openShackDoorBoxes = new Set<THREE.Box3>()
 
-      const mkShack = (bx: number, bz: number, rot: number) => {
-        const w = 3 + Math.random() * 2.5
-        const h = 3.2 + Math.random() * 2.5
-        const d = 3 + Math.random() * 2.5
+      const mkShack = (bx: number, bz: number, rot: number, rng: () => number) => {
+        const w = 3 + rng() * 2.5
+        const h = 3.2 + rng() * 2.5
+        const d = 3 + rng() * 2.5
         const wt = 0.18
         const dw = Math.min(0.95, w * 0.32)
         const dh = Math.min(h - 0.3, 2.3)
         const fLW = (w - dw) / 2
-        const wallM = shMats[Math.floor(Math.random() * shMats.length)]
-        const roofM = Math.random() > 0.5 ? shTin1 : shTarp
+        const wallM = shMats[Math.floor(rng() * shMats.length)]
+        const roofM = rng() > 0.5 ? shTin1 : shTarp
         const g = new THREE.Group()
         g.rotation.y = rot
 
@@ -628,11 +640,11 @@ export default function GameWorldPage() {
         shFloor.rotation.x = -Math.PI / 2; shFloor.position.set(0, 0.01, 0); shFloor.receiveShadow = true; g.add(shFloor)
 
         const roofMesh = new THREE.Mesh(new THREE.BoxGeometry(w + 0.4, 0.15, d + 0.4), roofM)
-        roofMesh.rotation.z = (Math.random() - 0.5) * 0.25
+        roofMesh.rotation.z = (rng() - 0.5) * 0.25
         roofMesh.position.y = h + 0.08; roofMesh.castShadow = true; g.add(roofMesh)
 
-        if (Math.random() > 0.55) {
-          const lw = 0.9 + Math.random() * 1.2
+        if (rng() > 0.55) {
+          const lw = 0.9 + rng() * 1.2
           const lean = new THREE.Mesh(new THREE.BoxGeometry(lw, h * 0.65, d * 0.8), wallM)
           lean.position.set(w / 2 + lw / 2, h * 0.65 / 2, 0); lean.castShadow = true; g.add(lean)
           const lroof = new THREE.Mesh(new THREE.BoxGeometry(lw + 0.2, 0.12, d * 0.8 + 0.2), roofM)
@@ -690,10 +702,10 @@ export default function GameWorldPage() {
         [41,-15],[42,8],[24,-3],[38,-10],[25,20],[44,-2],[28,-22],[34,25],[40,15],[45,-20],
         [22,10],[46,5],[31,-28],[43,22],
       ] as [number,number][]) {
-        mkShack(sx + (Math.random()-0.5)*2.5, sz + (Math.random()-0.5)*2.5, (Math.random()-0.5)*0.7)
+        mkShack(sx + (shackRng()-0.5)*2.5, sz + (shackRng()-0.5)*2.5, (shackRng()-0.5)*0.7, shackRng)
       }
       for (const [bx,bz] of [[29,-14],[37,1],[32,16],[26,8],[41,-8],[44,12]] as [number,number][]) {
-        mkBarrel(bx+(Math.random()-0.5), bz+(Math.random()-0.5))
+        mkBarrel(bx+(shackRng()-0.5), bz+(shackRng()-0.5))
       }
 
       // ── District 8 Arena Wall ────────────────────────────────────────
@@ -1239,6 +1251,9 @@ export default function GameWorldPage() {
       let isSprinting = false
       let lastInputSend = 0
       let uziVisualCooldown = 0
+      let jumpVelY = 0
+      let isGrounded = true
+      let spaceWas = false
 
       const raycaster = new THREE.Raycaster()
       let flashTimer = 0
@@ -1283,6 +1298,10 @@ export default function GameWorldPage() {
           const a = !!(keys['KeyA'] || keys['ArrowLeft'])
           const d = !!(keys['KeyD'] || keys['ArrowRight'])
           moving = w || s || a || d
+
+          const spaceNow = !!keys['Space']
+          if (spaceNow && !spaceWas && isGrounded) jumpVelY = 0.18
+          spaceWas = spaceNow
 
           playerAngle = cameraAngle
           player.rotation.y = playerAngle
@@ -1589,17 +1608,25 @@ export default function GameWorldPage() {
           ;(g.glowOrb.material as THREE.MeshBasicMaterial).opacity = pulse
         }
 
-        // ── Player Y — subway ramp transition ─────────────────
+        // ── Player Y — jump physics + ramp floor ──────────────────
         {
           const inSubX = Math.abs(player.position.x - subCX) < subHW - 0.3
           const pz = player.position.z
-          let tgtY = 0
+          let floorY = 0
           if (inSubX) {
-            if (pz >= -20 && pz <= 20)     tgtY = subFY
-            else if (pz < -20 && pz > -30) tgtY = ((-20 - pz) / 10) * subFY
-            else if (pz >  20 && pz <  30) tgtY = ((pz - 20)  / 10) * subFY
+            if (pz >= -20 && pz <= 20)     floorY = subFY
+            else if (pz < -20 && pz > -30) floorY = ((-20 - pz) / 10) * subFY
+            else if (pz >  20 && pz <  30) floorY = ((pz - 20)  / 10) * subFY
           }
-          player.position.y += (tgtY - player.position.y) * 0.15
+          jumpVelY -= 0.010
+          player.position.y += jumpVelY
+          if (player.position.y <= floorY) {
+            player.position.y = floorY
+            jumpVelY = 0
+            isGrounded = true
+          } else {
+            isGrounded = false
+          }
         }
 
         // Door swing animation
@@ -1666,7 +1693,7 @@ export default function GameWorldPage() {
         className='pointer-events-none absolute left-1/2 top-3 z-10 -translate-x-1/2 rounded-full px-4 py-1.5 text-xs text-white'
         style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(6px)' }}
       >
-        WASD · Mouse · Shift sprint · Click shoot · E door · M buy menu · ESC release
+        WASD · Space jump · Mouse · Shift sprint · Click shoot · E door · M buy menu · ESC release
       </div>
 
       {/* Money */}
