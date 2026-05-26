@@ -41,6 +41,7 @@ export default function GameWorldPage() {
   const [hasUzi,           setHasUzi]            = useState(false)
   const [uziAmmo,          setUziAmmo]           = useState(30)
   const [uziReloading,     setUziReloading]      = useState(false)
+  const [inHospital,       setInHospital]        = useState(false)
 
   const playerHealthRef  = useRef(100)
   const playerMoneyRef   = useRef(10000)
@@ -57,6 +58,7 @@ export default function GameWorldPage() {
   const hasUziRef        = useRef(false)
   const uziAmmoRef       = useRef(30)
   const uziReloadingRef  = useRef(false)
+  const inHospitalRef    = useRef(false)
 
   useEffect(() => {
     const mount = mountRef.current
@@ -1181,6 +1183,585 @@ export default function GameWorldPage() {
 
       // Arena wall removed
 
+      // ── Industrial District (north corridor, X=-5→22, Z=-58→-92) ─────────────
+      // Dark warehouses connecting Market District (west) to Shantytown (east).
+      // WH_A (NW, biggest): X=-5→9,  Z=-77→-92, h=8.5  — ladder + rampart
+      // WH_B (NE):          X=13→22, Z=-77→-92, h=7.5  — ladder + rampart
+      // WH_C (SW, sealed):  X=-5→6,  Z=-60→-73, h=6.0  — no roof access
+      // WH_D (SE):          X=13→22, Z=-60→-73, h=7.0  — ladder + rampart
+      // Cross alley: Z=-73→-77  |  North alley (A-B gap): X=9→13
+      {
+        const IWT = 0.25  // wall thickness
+
+        // ── Materials ──────────────────────────────────────────────────────
+        const idBk1 = new THREE.MeshLambertMaterial({ color: 0x1e1208 })   // dark brick
+        const idBk2 = new THREE.MeshLambertMaterial({ color: 0x2a1a0c })   // mid brick
+        const idCnc = new THREE.MeshLambertMaterial({ color: 0x181614 })   // dark concrete
+        const idMtl = new THREE.MeshLambertMaterial({ color: 0x141412 })   // iron/metal
+        const idGls = new THREE.MeshLambertMaterial({ color: 0x0a1420, transparent: true, opacity: 0.82 })
+        const idWlk = new THREE.MeshLambertMaterial({ color: 0x151513 })   // walkway grating
+        const idRal = new THREE.MeshLambertMaterial({ color: 0x0c0c0a })   // railing iron
+        const idRst = new THREE.MeshLambertMaterial({ color: 0x2e1506 })   // rust
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const idFrM: any = new THREE.MeshBasicMaterial({ color: 0xff4400, transparent: true, opacity: 0.88 })
+        const idDmp = new THREE.MeshLambertMaterial({ color: 0x16200e })   // dumpster
+        const idCrt = new THREE.MeshLambertMaterial({ color: 0x3a2a14 })   // wood crate
+        const idCap = new THREE.MeshLambertMaterial({ color: 0x2a1e0e })   // crate cap darker
+
+        // ── District ground (covers all 8 warehouses, X=-44→22, Z=-57→-95) ──
+        const distGnd = new THREE.Mesh(
+          new THREE.PlaneGeometry(68, 40),
+          new THREE.MeshLambertMaterial({ color: 0x0e0d0c })
+        )
+        distGnd.rotation.x = -Math.PI / 2
+        distGnd.position.set(-11, 0.004, -76)
+        distGnd.receiveShadow = true
+        scene.add(distGnd)
+        // Subtle cracked-concrete grid
+        const distGr = new THREE.GridHelper(68, 14, 0x1c1b1a, 0x1c1b1a)
+        distGr.position.set(-11, 0.007, -76)
+        scene.add(distGr)
+
+        // ── Rampart helper: walkway slab + outer parapet + inner railing ──
+        const mkRampart = (rx1: number, rx2: number, rz1: number, rz2: number, ry: number) => {
+          const rW = 1.4, parH = 1.0, slabT = 0.18
+          const rcx = (rx1 + rx2) / 2, rcz = (rz1 + rz2) / 2
+          const W = rx2 - rx1, D = Math.abs(rz2 - rz1)
+          // Walkway slabs around perimeter (atop each wall)
+          stB(rcx, ry + slabT / 2, rz1, W + rW * 2, slabT, rW, idWlk) // south
+          stB(rcx, ry + slabT / 2, rz2, W + rW * 2, slabT, rW, idWlk) // north
+          stB(rx1, ry + slabT / 2, rcz, rW, slabT, D - rW * 2, idWlk) // west
+          stB(rx2, ry + slabT / 2, rcz, rW, slabT, D - rW * 2, idWlk) // east
+          // Outer parapet walls (short walls on outer edge)
+          const parY = ry + slabT + parH / 2
+          stB(rcx, parY, rz1 - rW / 2, W + rW * 2, parH, IWT, idBk1)   // south outer
+          stB(rcx, parY, rz2 + rW / 2, W + rW * 2, parH, IWT, idBk1)   // north outer
+          stB(rx1 - rW / 2, parY, rcz, IWT, parH, D + rW * 2, idBk1)   // west outer
+          stB(rx2 + rW / 2, parY, rcz, IWT, parH, D + rW * 2, idBk1)   // east outer
+          // Inner railing posts every ~3 units
+          const postH = 0.68, postY = ry + slabT + postH / 2
+          for (let px = rx1; px <= rx2 + 0.1; px += 3.0) {
+            stB(px, postY, rz1 + rW / 2, 0.08, postH, 0.08, idRal)
+            stB(px, postY, rz2 - rW / 2, 0.08, postH, 0.08, idRal)
+          }
+          for (let pz = rz1 + rW + 1; pz <= rz2 - rW - 1; pz += 3.0) {
+            stB(rx1 + rW / 2, postY, pz, 0.08, postH, 0.08, idRal)
+            stB(rx2 - rW / 2, postY, pz, 0.08, postH, 0.08, idRal)
+          }
+          // Horizontal rail bars on inner edges
+          const rbY = ry + slabT + postH * 0.65
+          stB(rcx, rbY, rz1 + rW / 2, W, 0.06, 0.06, idRal)
+          stB(rcx, rbY, rz2 - rW / 2, W, 0.06, 0.06, idRal)
+          stB(rx1 + rW / 2, rbY, rcz, 0.06, 0.06, D - rW * 2, idRal)
+          stB(rx2 - rW / 2, rbY, rcz, 0.06, 0.06, D - rW * 2, idRal)
+        }
+
+        // ── Ladder helper (east-wall: rails run Z, rungs stick out in Z) ───
+        const mkIndLadderE = (lx: number, lz: number, topY: number) => {
+          for (const oz of [-0.22, 0.22]) stB(lx, topY / 2, lz + oz, 0.06, topY, 0.06, idRst)
+          for (let ry = 0.55; ry < topY - 0.15; ry += 0.62)
+            stB(lx, ry, lz, 0.08, 0.06, 0.42, idMtl)
+        }
+
+        // ── Metal gate builder (closed metal bars across door opening) ─────
+        const warehouseGateMeshes = new Map<string, THREE.Group>()
+        const mkGate = (id: string, cx: number, southZ: number, gw: number, gh: number) => {
+          const gateGroup = new THREE.Group()
+          const gateMat = new THREE.MeshLambertMaterial({ color: 0x181614 })
+          const nBars = Math.max(3, Math.round(gw / 0.32))
+          for (let i = 0; i <= nBars; i++) {
+            const bx = cx - gw / 2 + (i / nBars) * gw
+            const bar = new THREE.Mesh(new THREE.BoxGeometry(0.07, gh, 0.07), gateMat)
+            bar.position.set(bx, gh / 2, southZ)
+            bar.castShadow = true
+            gateGroup.add(bar)
+          }
+          for (const yf of [0.12, 0.50, 0.88]) {
+            const rail = new THREE.Mesh(new THREE.BoxGeometry(gw, 0.08, 0.08), gateMat)
+            rail.position.set(cx, yf * gh, southZ)
+            gateGroup.add(rail)
+          }
+          scene.add(gateGroup)
+          warehouseGateMeshes.set(id, gateGroup)
+        }
+
+        // ── Fire barrel ────────────────────────────────────────────────────
+        const mkIndBarrel = (bx: number, bz: number) => {
+          stB(bx, 0.38, bz, 0.46, 0.76, 0.46, idRst)
+          const bFire = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.21, 0.3, 6), idFrM)
+          bFire.position.set(bx, 0.93, bz); scene.add(bFire)
+          const bPL = new THREE.PointLight(0xff6600, 0.95, 9)
+          bPL.position.set(bx, 1.3, bz); scene.add(bPL)
+        }
+
+        // ── Dumpster ───────────────────────────────────────────────────────
+        const mkDumpster = (dx: number, dz: number, rotY: number) => {
+          const dg = new THREE.Group(); dg.rotation.y = rotY
+          const dBody = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.1, 0.95), idDmp)
+          dBody.position.set(0, 0.55, 0); dBody.castShadow = true; dg.add(dBody)
+          const dLid = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.08, 0.95), idCrt)
+          dLid.position.set(0, 1.14, 0); dg.add(dLid)
+          dg.position.set(dx, 0, dz); scene.add(dg)
+        }
+
+        // ── Sodium-vapor street lamp ───────────────────────────────────────
+        const mkIndLamp = (lx: number, lz: number) => {
+          stB(lx, 2.9, lz, 0.1, 5.8, 0.1, idMtl)              // pole
+          stB(lx + 0.45, 5.5, lz, 0.9, 0.08, 0.08, idMtl)     // arm
+          stB(lx + 0.9, 5.28, lz, 0.42, 0.32, 0.28, idMtl)    // head
+          const lensM = new THREE.MeshBasicMaterial({ color: 0xffcc88 })
+          const lns = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.12, 0.20), lensM)
+          lns.position.set(lx + 0.9, 5.12, lz); scene.add(lns)
+          const lPL = new THREE.PointLight(0xff9944, 0.85, 18)
+          lPL.position.set(lx + 0.9, 4.9, lz); scene.add(lPL)
+        }
+
+        // ── WH_A: Main NW warehouse (X=-8→9, Z=-77→-92, h=8.5) ───────────
+        {
+          const ax1 = -8, ax2 = 9, az1 = -77, az2 = -92, ah = 8.5
+          const acx = (ax1 + ax2) / 2, acz = (az1 + az2) / 2
+          const aW = ax2 - ax1, aD = Math.abs(az2 - az1)
+
+          // Floor
+          const whAF = new THREE.Mesh(new THREE.PlaneGeometry(aW, aD), idCnc)
+          whAF.rotation.x = -Math.PI / 2; whAF.position.set(acx, 0.01, acz)
+          whAF.receiveShadow = true; scene.add(whAF)
+
+          // North wall
+          stB(acx, ah / 2, az2 - IWT / 2, aW + IWT * 2, ah, IWT, idBk1)
+          // West wall
+          stB(ax1 - IWT / 2, ah / 2, acz, IWT, ah, aD + IWT * 2, idBk1)
+          // East wall
+          stB(ax2 + IWT / 2, ah / 2, acz, IWT, ah, aD + IWT * 2, idBk2)
+
+          // South wall — large loading door opening (center X=2, width=3.5, doorH=3.2)
+          const adx = 2.0, adw = 3.5, adh = 3.2
+          const afl = (adx - adw / 2) - ax1        // left section X width
+          const afr = ax2 - (adx + adw / 2)        // right section X width
+          stB(ax1 + afl / 2, ah / 2, az1 - IWT / 2, afl, ah, IWT, idBk1)
+          stB(ax2 - afr / 2, ah / 2, az1 - IWT / 2, afr, ah, IWT, idBk1)
+          stB(adx, adh + (ah - adh) / 2, az1 - IWT / 2, adw, ah - adh, IWT, idBk1) // above door
+
+          // Corrugated metal door panels (visual, leaning against wall sides)
+          stB(adx - adw / 2 - 0.22, ah * 0.4, az1 - 0.12, 0.4, ah * 0.78, 0.08, idMtl)
+          stB(adx + adw / 2 + 0.22, ah * 0.4, az1 - 0.12, 0.4, ah * 0.78, 0.08, idMtl)
+
+          // Loading dock threshold
+          stB(adx, 0.22, az1 + 0.6, adw + 0.8, 0.44, 1.2, idCnc)
+
+          // Windows near top — north face (3), west face (2), east face (2)
+          for (const wx of [-2.0, 2.0, 6.0]) {
+            stB(wx, ah - 1.45, az2, 0.95, 1.55, IWT * 2.5, idBk1)          // frame
+            stB(wx, ah - 1.45, az2 + 0.02, 0.6, 1.05, IWT * 0.7, idGls)   // glass
+          }
+          for (const wz of [-81.5, -87.5]) {
+            stB(ax1, ah - 1.45, wz, IWT * 2.5, 1.55, 0.95, idBk1)
+            stB(ax1 - 0.02, ah - 1.45, wz, IWT * 0.7, 1.05, 0.6, idGls)
+            stB(ax2, ah - 1.45, wz, IWT * 2.5, 1.55, 0.95, idBk2)
+            stB(ax2 + 0.02, ah - 1.45, wz, IWT * 0.7, 1.05, 0.6, idGls)
+          }
+
+          // Interior: steel columns + overhead hoist track
+          for (const cz of [-80.5, -86.5]) {
+            stB(ax1 + 2.2, ah * 0.45, cz, 0.3, ah * 0.9, 0.3, idCnc)
+            stB(ax2 - 2.2, ah * 0.45, cz, 0.3, ah * 0.9, 0.3, idCnc)
+          }
+          stB(acx, ah - 0.24, acz, 0.22, 0.28, aD - 2.5, idMtl) // hoist rail
+
+          // Rooftop: vent stacks + chimney details
+          stB(acx, ah + 1.1, acz - 4, 0.55, 2.2, 0.55, idMtl)
+          stB(acx + 4, ah + 0.9, acz, 0.48, 1.8, 0.48, idRst)
+          stB(ax1 + 2.5, ah + 0.7, az2 + 2.5, 0.42, 1.4, 0.42, idMtl)
+          // Vent cap discs
+          stB(acx, ah + 2.25, acz - 4, 0.78, 0.12, 0.78, idMtl)
+          stB(acx + 4, ah + 1.84, acz, 0.68, 0.12, 0.68, idMtl)
+
+          mkRampart(ax1, ax2, az1, az2, ah)
+          mkIndLadderE(ax2 + 0.15, (az1 + az2) / 2, ah)   // east-wall ladder
+          mkGate('WH_A', adx, az1 - IWT / 2, adw, adh)    // closed metal gate
+        }
+
+        // ── WH_B: NE warehouse (X=13→22, Z=-77→-92, h=7.5) ──────────────
+        {
+          const bx1 = 13, bx2 = 22, bz1 = -77, bz2 = -92, bh = 7.5
+          const bcx = (bx1 + bx2) / 2, bcz = (bz1 + bz2) / 2
+          const bW = bx2 - bx1, bD = Math.abs(bz2 - bz1)
+
+          const whBF = new THREE.Mesh(new THREE.PlaneGeometry(bW, bD), idCnc)
+          whBF.rotation.x = -Math.PI / 2; whBF.position.set(bcx, 0.01, bcz)
+          whBF.receiveShadow = true; scene.add(whBF)
+
+          stB(bcx, bh / 2, bz2 - IWT / 2, bW + IWT * 2, bh, IWT, idBk2)
+          stB(bx1 - IWT / 2, bh / 2, bcz, IWT, bh, bD + IWT * 2, idBk1)
+          stB(bx2 + IWT / 2, bh / 2, bcz, IWT, bh, bD + IWT * 2, idBk2)
+
+          // South wall — door opening (center X=17.5, width=2.5, h=3.0)
+          const bdx = 17.5, bdw = 2.5, bdh = 3.0
+          const bfl = (bdx - bdw / 2) - bx1
+          const bfr = bx2 - (bdx + bdw / 2)
+          stB(bx1 + bfl / 2, bh / 2, bz1 - IWT / 2, bfl, bh, IWT, idBk2)
+          stB(bx2 - bfr / 2, bh / 2, bz1 - IWT / 2, bfr, bh, IWT, idBk2)
+          stB(bdx, bdh + (bh - bdh) / 2, bz1 - IWT / 2, bdw, bh - bdh, IWT, idBk2)
+
+          stB(bdx, 0.22, bz1 + 0.55, bdw + 0.6, 0.44, 1.1, idCnc) // dock
+
+          // Windows
+          for (const wx of [15.5, 19.5]) {
+            stB(wx, bh - 1.35, bz2, 0.9, 1.45, IWT * 2.5, idBk2)
+            stB(wx, bh - 1.35, bz2 + 0.02, 0.56, 0.98, IWT * 0.7, idGls)
+          }
+          for (const wz of [-82.0, -88.0]) {
+            stB(bx1, bh - 1.35, wz, IWT * 2.5, 1.45, 0.9, idBk1)
+            stB(bx1 - 0.02, bh - 1.35, wz, IWT * 0.7, 0.98, 0.56, idGls)
+            stB(bx2, bh - 1.35, wz, IWT * 2.5, 1.45, 0.9, idBk2)
+            stB(bx2 + 0.02, bh - 1.35, wz, IWT * 0.7, 0.98, 0.56, idGls)
+          }
+
+          // Interior column
+          stB(bcx, bh * 0.45, bcz, 0.3, bh * 0.9, 0.3, idCnc)
+          stB(bcx, bh - 0.24, bcz, 0.2, 0.26, bD - 2.5, idMtl)
+
+          // Rooftop vents
+          stB(bcx - 1.5, bh + 0.9, bcz - 2, 0.5, 1.8, 0.5, idMtl)
+          stB(bx2 - 2, bh + 0.7, bz2 + 2.5, 0.45, 1.4, 0.45, idRst)
+          stB(bcx - 1.5, bh + 1.85, bcz - 2, 0.72, 0.12, 0.72, idMtl)
+
+          mkRampart(bx1, bx2, bz1, bz2, bh)
+          mkIndLadderE(bx2 + 0.15, (bz1 + bz2) / 2, bh)
+          mkGate('WH_B', bdx, bz1 - IWT / 2, bdw, bdh)
+        }
+
+        // ── WH_C: SW warehouse (X=-8→6, Z=-60→-73, h=6.5) ───────────────
+        {
+          const cx1 = -8, cx2 = 6, cz1 = -60, cz2 = -73, ch = 6.5
+          const ccx = (cx1 + cx2) / 2, ccz = (cz1 + cz2) / 2
+          const cW = cx2 - cx1, cD = Math.abs(cz2 - cz1)
+
+          const whCF = new THREE.Mesh(new THREE.PlaneGeometry(cW, cD), idCnc)
+          whCF.rotation.x = -Math.PI / 2; whCF.position.set(ccx, 0.01, ccz)
+          whCF.receiveShadow = true; scene.add(whCF)
+
+          stB(ccx, ch / 2, cz2 - IWT / 2, cW + IWT * 2, ch, IWT, idBk1)
+          stB(cx1 - IWT / 2, ch / 2, ccz, IWT, ch, cD + IWT * 2, idBk1)
+          stB(cx2 + IWT / 2, ch / 2, ccz, IWT, ch, cD + IWT * 2, idBk2)
+
+          // South wall — narrow door (center X=0.5, width=2.2, h=2.8)
+          const cdx = 0.5, cdw = 2.2, cdh = 2.8
+          const cfl = (cdx - cdw / 2) - cx1
+          const cfr = cx2 - (cdx + cdw / 2)
+          stB(cx1 + cfl / 2, ch / 2, cz1 - IWT / 2, cfl, ch, IWT, idBk1)
+          stB(cx2 - cfr / 2, ch / 2, cz1 - IWT / 2, cfr, ch, IWT, idBk1)
+          stB(cdx, cdh + (ch - cdh) / 2, cz1 - IWT / 2, cdw, ch - cdh, IWT, idBk1)
+
+          // Windows (2 north, 1 each side)
+          for (const wx of [-1.5, 3.5]) {
+            stB(wx, ch - 1.2, cz2, 0.9, 1.35, IWT * 2.5, idBk1)
+            stB(wx, ch - 1.2, cz2 + 0.02, 0.56, 0.9, IWT * 0.7, idGls)
+          }
+          for (const wz of [-64.0, -70.0]) {
+            stB(cx1, ch - 1.2, wz, IWT * 2.5, 1.35, 0.9, idBk1)
+            stB(cx1 - 0.02, ch - 1.2, wz, IWT * 0.7, 0.9, 0.56, idGls)
+            stB(cx2, ch - 1.2, wz, IWT * 2.5, 1.35, 0.9, idBk2)
+            stB(cx2 + 0.02, ch - 1.2, wz, IWT * 0.7, 0.9, 0.56, idGls)
+          }
+
+          // Rooftop vent
+          stB(ccx + 1.5, ch + 0.75, ccz - 1, 0.45, 1.5, 0.45, idRst)
+          stB(ccx + 1.5, ch + 1.55, ccz - 1, 0.65, 0.12, 0.65, idMtl)
+
+          mkRampart(cx1, cx2, cz1, cz2, ch)
+          mkIndLadderE(cx2 + 0.15, (cz1 + cz2) / 2, ch)
+          mkGate('WH_C', cdx, cz1 - IWT / 2, cdw, cdh)
+        }
+
+        // ── WH_D: SE warehouse (X=13→22, Z=-60→-73, h=7.0) — with stairs ─
+        {
+          const dx1 = 13, dx2 = 22, dz1 = -60, dz2 = -73, dh = 7.0
+          const dcx = (dx1 + dx2) / 2, dcz = (dz1 + dz2) / 2
+          const dW = dx2 - dx1, dD = Math.abs(dz2 - dz1)
+
+          const whDF = new THREE.Mesh(new THREE.PlaneGeometry(dW, dD), idCnc)
+          whDF.rotation.x = -Math.PI / 2; whDF.position.set(dcx, 0.01, dcz)
+          whDF.receiveShadow = true; scene.add(whDF)
+
+          stB(dcx, dh / 2, dz2 - IWT / 2, dW + IWT * 2, dh, IWT, idBk2)
+          stB(dx1 - IWT / 2, dh / 2, dcz, IWT, dh, dD + IWT * 2, idBk2)
+          stB(dx2 + IWT / 2, dh / 2, dcz, IWT, dh, dD + IWT * 2, idBk1)
+
+          // South wall — door opening (center X=17.5, width=2.5, h=3.0)
+          const ddx = 17.5, ddw = 2.5, ddh = 3.0
+          const dfl = (ddx - ddw / 2) - dx1
+          const dfr = dx2 - (ddx + ddw / 2)
+          stB(dx1 + dfl / 2, dh / 2, dz1 - IWT / 2, dfl, dh, IWT, idBk2)
+          stB(dx2 - dfr / 2, dh / 2, dz1 - IWT / 2, dfr, dh, IWT, idBk2)
+          stB(ddx, ddh + (dh - ddh) / 2, dz1 - IWT / 2, ddw, dh - ddh, IWT, idBk2)
+
+          stB(ddx, 0.22, dz1 + 0.55, ddw + 0.6, 0.44, 1.1, idCnc) // dock
+
+          // Windows
+          for (const wx of [15.5, 19.5]) {
+            stB(wx, dh - 1.3, dz2, 0.9, 1.45, IWT * 2.5, idBk2)
+            stB(wx, dh - 1.3, dz2 + 0.02, 0.56, 0.98, IWT * 0.7, idGls)
+          }
+          for (const wz of [-64.0, -70.0]) {
+            stB(dx1, dh - 1.3, wz, IWT * 2.5, 1.45, 0.9, idBk2)
+            stB(dx1 - 0.02, dh - 1.3, wz, IWT * 0.7, 0.98, 0.56, idGls)
+            stB(dx2, dh - 1.3, wz, IWT * 2.5, 1.45, 0.9, idBk1)
+            stB(dx2 + 0.02, dh - 1.3, wz, IWT * 0.7, 0.98, 0.56, idGls)
+          }
+
+          // Interior column + hoist
+          stB(dcx, dh * 0.45, dcz, 0.3, dh * 0.9, 0.3, idCnc)
+          stB(dcx, dh - 0.22, dcz, 0.2, 0.26, dD - 2.5, idMtl)
+
+          // Rooftop vents
+          stB(dcx - 1, dh + 0.85, dcz - 1.5, 0.5, 1.7, 0.5, idMtl)
+          stB(dcx - 1, dh + 1.75, dcz - 1.5, 0.72, 0.12, 0.72, idMtl)
+
+          mkRampart(dx1, dx2, dz1, dz2, dh)
+          mkIndLadderE(dx2 + 0.15, (dz1 + dz2) / 2, dh)
+          mkGate('WH_D', ddx, dz1 - IWT / 2, ddw, ddh)
+        }
+
+        // ── Overhead catwalk connecting WH_A east rampart → WH_B west rampart ─
+        // Spans the 4-unit gap X=9→13, at Z=-84.5, elevation Y=7.5 (WH_B rampart height)
+        stB(11, 7.5 + 0.09, -84.5, 4.6, 0.18, 1.3, idWlk) // catwalk floor slab
+        for (const oz of [-0.65, 0.65]) {
+          stB(11, 7.5 + 0.45, -84.5 + oz, 4.6, 0.06, 0.06, idRal) // side rails
+          for (const px of [9.4, 11.0, 12.6]) stB(px, 7.5 + 0.38, -84.5 + oz, 0.07, 0.56, 0.07, idRal) // posts
+        }
+
+        // ── WH_E: west-extension NW (X=-26→-12, Z=-77→-92, h=7.5) ──────────
+        {
+          const ex1 = -26, ex2 = -12, ez1 = -77, ez2 = -92, eh = 7.5
+          const ecx = (ex1 + ex2) / 2, ecz = (ez1 + ez2) / 2
+          const eW = ex2 - ex1, eD = Math.abs(ez2 - ez1)
+          const edx = -19.0, edw = 3.0, edh = 3.0
+
+          const eF = new THREE.Mesh(new THREE.PlaneGeometry(eW, eD), idCnc)
+          eF.rotation.x = -Math.PI / 2; eF.position.set(ecx, 0.01, ecz); eF.receiveShadow = true; scene.add(eF)
+
+          stB(ecx, eh / 2, ez2 - IWT / 2, eW + IWT * 2, eh, IWT, idBk2)  // north
+          stB(ex1 - IWT / 2, eh / 2, ecz, IWT, eh, eD + IWT * 2, idBk1)  // west
+          stB(ex2 + IWT / 2, eh / 2, ecz, IWT, eh, eD + IWT * 2, idBk2)  // east
+
+          // South wall with loading door
+          const efl = (edx - edw / 2) - ex1, efr = ex2 - (edx + edw / 2)
+          stB(ex1 + efl / 2, eh / 2, ez1 - IWT / 2, efl, eh, IWT, idBk1)
+          stB(ex2 - efr / 2, eh / 2, ez1 - IWT / 2, efr, eh, IWT, idBk1)
+          stB(edx, edh + (eh - edh) / 2, ez1 - IWT / 2, edw, eh - edh, IWT, idBk1)
+          stB(edx, 0.22, ez1 + 0.55, edw + 0.6, 0.44, 1.1, idCnc)
+
+          // Windows
+          for (const wx of [-23, -17]) {
+            stB(wx, eh - 1.35, ez2, 0.9, 1.4, IWT * 2.5, idBk2)
+            stB(wx, eh - 1.35, ez2 + 0.02, 0.55, 0.95, IWT * 0.7, idGls)
+          }
+          for (const wz of [-81, -87]) {
+            stB(ex1, eh - 1.35, wz, IWT * 2.5, 1.4, 0.9, idBk1)
+            stB(ex1 - 0.02, eh - 1.35, wz, IWT * 0.7, 0.95, 0.55, idGls)
+            stB(ex2, eh - 1.35, wz, IWT * 2.5, 1.4, 0.9, idBk2)
+            stB(ex2 + 0.02, eh - 1.35, wz, IWT * 0.7, 0.95, 0.55, idGls)
+          }
+
+          // Interior column + hoist rail
+          stB(ecx, eh * 0.45, ecz, 0.3, eh * 0.9, 0.3, idCnc)
+          stB(ecx, eh - 0.24, ecz, 0.22, 0.28, eD - 2.5, idMtl)
+
+          // Rooftop vents
+          stB(ecx - 2, eh + 0.9, ecz + 2, 0.5, 1.8, 0.5, idMtl)
+          stB(ecx - 2, eh + 1.84, ecz + 2, 0.72, 0.12, 0.72, idMtl)
+          stB(ecx + 3, eh + 0.7, ecz - 3, 0.45, 1.4, 0.45, idRst)
+
+          mkRampart(ex1, ex2, ez1, ez2, eh)
+          mkIndLadderE(ex2 + 0.15, (ez1 + ez2) / 2, eh)
+          mkGate('WH_E', edx, ez1 - IWT / 2, edw, edh)
+        }
+
+        // ── WH_F: west-extension SW (X=-26→-12, Z=-60→-73, h=6.5) ──────────
+        {
+          const fx1 = -26, fx2 = -12, fz1 = -60, fz2 = -73, fh = 6.5
+          const fcx = (fx1 + fx2) / 2, fcz = (fz1 + fz2) / 2
+          const fW = fx2 - fx1, fD = Math.abs(fz2 - fz1)
+          const fdx = -19.0, fdw = 2.8, fdh = 2.8
+
+          const fFlr = new THREE.Mesh(new THREE.PlaneGeometry(fW, fD), idCnc)
+          fFlr.rotation.x = -Math.PI / 2; fFlr.position.set(fcx, 0.01, fcz); fFlr.receiveShadow = true; scene.add(fFlr)
+
+          stB(fcx, fh / 2, fz2 - IWT / 2, fW + IWT * 2, fh, IWT, idBk1)
+          stB(fx1 - IWT / 2, fh / 2, fcz, IWT, fh, fD + IWT * 2, idBk1)
+          stB(fx2 + IWT / 2, fh / 2, fcz, IWT, fh, fD + IWT * 2, idBk2)
+
+          const ffl = (fdx - fdw / 2) - fx1, ffr = fx2 - (fdx + fdw / 2)
+          stB(fx1 + ffl / 2, fh / 2, fz1 - IWT / 2, ffl, fh, IWT, idBk1)
+          stB(fx2 - ffr / 2, fh / 2, fz1 - IWT / 2, ffr, fh, IWT, idBk1)
+          stB(fdx, fdh + (fh - fdh) / 2, fz1 - IWT / 2, fdw, fh - fdh, IWT, idBk1)
+          stB(fdx, 0.22, fz1 + 0.5, fdw + 0.5, 0.44, 1.0, idCnc)
+
+          for (const wx of [-23, -17]) {
+            stB(wx, fh - 1.2, fz2, 0.88, 1.35, IWT * 2.5, idBk1)
+            stB(wx, fh - 1.2, fz2 + 0.02, 0.54, 0.9, IWT * 0.7, idGls)
+          }
+          for (const wz of [-64, -70]) {
+            stB(fx1, fh - 1.2, wz, IWT * 2.5, 1.35, 0.88, idBk1)
+            stB(fx1 - 0.02, fh - 1.2, wz, IWT * 0.7, 0.9, 0.54, idGls)
+            stB(fx2, fh - 1.2, wz, IWT * 2.5, 1.35, 0.88, idBk2)
+            stB(fx2 + 0.02, fh - 1.2, wz, IWT * 0.7, 0.9, 0.54, idGls)
+          }
+
+          stB(fcx, fh * 0.45, fcz, 0.3, fh * 0.9, 0.3, idCnc)
+          stB(fcx, fh - 0.22, fcz, 0.2, 0.26, fD - 2.5, idMtl)
+          stB(fcx + 2, fh + 0.75, fcz - 1.5, 0.45, 1.5, 0.45, idRst)
+          stB(fcx + 2, fh + 1.55, fcz - 1.5, 0.65, 0.12, 0.65, idMtl)
+
+          mkRampart(fx1, fx2, fz1, fz2, fh)
+          mkIndLadderE(fx2 + 0.15, (fz1 + fz2) / 2, fh)
+          mkGate('WH_F', fdx, fz1 - IWT / 2, fdw, fdh)
+        }
+
+        // ── WH_G: far-west NW (X=-44→-30, Z=-77→-92, h=8.0) ────────────────
+        {
+          const gx1 = -44, gx2 = -30, gz1 = -77, gz2 = -92, gh = 8.0
+          const gcx = (gx1 + gx2) / 2, gcz = (gz1 + gz2) / 2
+          const gW = gx2 - gx1, gD = Math.abs(gz2 - gz1)
+          const gdx = -37.0, gdw = 3.5, gdh = 3.2
+
+          const gFlr = new THREE.Mesh(new THREE.PlaneGeometry(gW, gD), idCnc)
+          gFlr.rotation.x = -Math.PI / 2; gFlr.position.set(gcx, 0.01, gcz); gFlr.receiveShadow = true; scene.add(gFlr)
+
+          stB(gcx, gh / 2, gz2 - IWT / 2, gW + IWT * 2, gh, IWT, idBk1)
+          stB(gx1 - IWT / 2, gh / 2, gcz, IWT, gh, gD + IWT * 2, idBk1)
+          stB(gx2 + IWT / 2, gh / 2, gcz, IWT, gh, gD + IWT * 2, idBk2)
+
+          const gfl = (gdx - gdw / 2) - gx1, gfr = gx2 - (gdx + gdw / 2)
+          stB(gx1 + gfl / 2, gh / 2, gz1 - IWT / 2, gfl, gh, IWT, idBk1)
+          stB(gx2 - gfr / 2, gh / 2, gz1 - IWT / 2, gfr, gh, IWT, idBk1)
+          stB(gdx, gdh + (gh - gdh) / 2, gz1 - IWT / 2, gdw, gh - gdh, IWT, idBk1)
+          stB(gdx, 0.22, gz1 + 0.6, gdw + 0.8, 0.44, 1.2, idCnc)
+
+          for (const wx of [-41, -35]) {
+            stB(wx, gh - 1.4, gz2, 0.95, 1.5, IWT * 2.5, idBk1)
+            stB(wx, gh - 1.4, gz2 + 0.02, 0.6, 1.05, IWT * 0.7, idGls)
+          }
+          for (const wz of [-81, -87]) {
+            stB(gx1, gh - 1.4, wz, IWT * 2.5, 1.5, 0.95, idBk1)
+            stB(gx1 - 0.02, gh - 1.4, wz, IWT * 0.7, 1.05, 0.6, idGls)
+            stB(gx2, gh - 1.4, wz, IWT * 2.5, 1.5, 0.95, idBk2)
+            stB(gx2 + 0.02, gh - 1.4, wz, IWT * 0.7, 1.05, 0.6, idGls)
+          }
+
+          for (const cz of [-81, -87]) {
+            stB(gx1 + 2.5, gh * 0.45, cz, 0.3, gh * 0.9, 0.3, idCnc)
+            stB(gx2 - 2.5, gh * 0.45, cz, 0.3, gh * 0.9, 0.3, idCnc)
+          }
+          stB(gcx, gh - 0.24, gcz, 0.22, 0.28, gD - 2.5, idMtl)
+
+          stB(gcx, gh + 1.1, gcz - 3, 0.55, 2.2, 0.55, idMtl)
+          stB(gcx, gh + 2.25, gcz - 3, 0.78, 0.12, 0.78, idMtl)
+          stB(gcx + 4, gh + 0.8, gcz + 2, 0.48, 1.6, 0.48, idRst)
+
+          mkRampart(gx1, gx2, gz1, gz2, gh)
+          mkIndLadderE(gx2 + 0.15, (gz1 + gz2) / 2, gh)
+          mkGate('WH_G', gdx, gz1 - IWT / 2, gdw, gdh)
+        }
+
+        // ── WH_H: far-west SW (X=-44→-30, Z=-60→-73, h=7.0) ────────────────
+        {
+          const hx1 = -44, hx2 = -30, hz1 = -60, hz2 = -73, hh = 7.0
+          const hcx = (hx1 + hx2) / 2, hcz = (hz1 + hz2) / 2
+          const hW = hx2 - hx1, hD = Math.abs(hz2 - hz1)
+          const hdx = -37.0, hdw = 3.0, hdh = 3.0
+
+          const hFlr = new THREE.Mesh(new THREE.PlaneGeometry(hW, hD), idCnc)
+          hFlr.rotation.x = -Math.PI / 2; hFlr.position.set(hcx, 0.01, hcz); hFlr.receiveShadow = true; scene.add(hFlr)
+
+          stB(hcx, hh / 2, hz2 - IWT / 2, hW + IWT * 2, hh, IWT, idBk2)
+          stB(hx1 - IWT / 2, hh / 2, hcz, IWT, hh, hD + IWT * 2, idBk1)
+          stB(hx2 + IWT / 2, hh / 2, hcz, IWT, hh, hD + IWT * 2, idBk2)
+
+          const hfl = (hdx - hdw / 2) - hx1, hfr = hx2 - (hdx + hdw / 2)
+          stB(hx1 + hfl / 2, hh / 2, hz1 - IWT / 2, hfl, hh, IWT, idBk2)
+          stB(hx2 - hfr / 2, hh / 2, hz1 - IWT / 2, hfr, hh, IWT, idBk2)
+          stB(hdx, hdh + (hh - hdh) / 2, hz1 - IWT / 2, hdw, hh - hdh, IWT, idBk2)
+          stB(hdx, 0.22, hz1 + 0.55, hdw + 0.6, 0.44, 1.1, idCnc)
+
+          for (const wx of [-41, -35]) {
+            stB(wx, hh - 1.3, hz2, 0.9, 1.4, IWT * 2.5, idBk2)
+            stB(wx, hh - 1.3, hz2 + 0.02, 0.56, 0.95, IWT * 0.7, idGls)
+          }
+          for (const wz of [-64, -70]) {
+            stB(hx1, hh - 1.3, wz, IWT * 2.5, 1.4, 0.9, idBk1)
+            stB(hx1 - 0.02, hh - 1.3, wz, IWT * 0.7, 0.95, 0.56, idGls)
+            stB(hx2, hh - 1.3, wz, IWT * 2.5, 1.4, 0.9, idBk2)
+            stB(hx2 + 0.02, hh - 1.3, wz, IWT * 0.7, 0.95, 0.56, idGls)
+          }
+
+          stB(hcx, hh * 0.45, hcz, 0.3, hh * 0.9, 0.3, idCnc)
+          stB(hcx, hh - 0.22, hcz, 0.2, 0.26, hD - 2.5, idMtl)
+          stB(hcx - 2, hh + 0.85, hcz - 2, 0.5, 1.7, 0.5, idMtl)
+          stB(hcx - 2, hh + 1.75, hcz - 2, 0.72, 0.12, 0.72, idMtl)
+
+          mkRampart(hx1, hx2, hz1, hz2, hh)
+          mkIndLadderE(hx2 + 0.15, (hz1 + hz2) / 2, hh)
+          mkGate('WH_H', hdx, hz1 - IWT / 2, hdw, hdh)
+        }
+
+        // ── Alley props ────────────────────────────────────────────────────
+        // Fire barrels
+        mkIndBarrel(-1.0, -64.5)
+        mkIndBarrel(10.5, -75.5)
+        mkIndBarrel(20.5, -68.5)
+        mkIndBarrel(4.5, -88.5)
+        mkIndBarrel(17.0, -85.5)
+        mkIndBarrel(7.5, -63.5)
+
+        // Dumpsters in alleys
+        mkDumpster(7.2,  -65.5, 0.18)
+        mkDumpster(-3.8, -75.5, 0)
+        mkDumpster(21.0, -79.0, Math.PI / 2)
+        mkDumpster(11.0, -62.5, 0.05)
+
+        // Stacked wooden crates
+        for (const [cx3, cz3, stack] of [
+          [-3.5, -70, 2], [8.5, -90, 3], [14.0, -62.5, 2], [21.5, -90, 2], [11.5, -85, 2],
+        ] as [number, number, number][]) {
+          for (let ci = 0; ci < stack; ci++) {
+            stB(cx3, 0.55 + ci * 1.0, cz3, 1.6, 0.9, 1.6, idCrt)
+            stB(cx3, 0.96 + ci * 1.0, cz3, 1.62, 0.08, 1.62, idCap)
+          }
+        }
+
+        // Rusty 55-gal barrels (non-lit)
+        for (const [bx, bz] of [[-4, -90], [8, -79], [22, -63], [12, -72]] as [number, number][]) {
+          stB(bx, 0.4, bz, 0.46, 0.8, 0.46, idRst)
+        }
+
+        // Chain-link fence fragments along alley edges
+        const fenceM = new THREE.MeshLambertMaterial({ color: 0x1c1c18, transparent: true, opacity: 0.72 })
+        for (const [fx, fy, fz, fw, fh, fd] of [
+          [11.5, 0.9, -70.5, 2.6, 1.8, 0.06],  // east side of cross-alley
+          [11.5, 0.9, -67.0, 2.6, 1.8, 0.06],
+          [-3.8, 0.9, -59.2, 0.06, 1.8, 2.5],  // south entrance west
+          [22.2, 0.9, -59.2, 0.06, 1.8, 2.5],  // south entrance east
+        ] as [number, number, number, number, number, number][]) {
+          const fm = new THREE.Mesh(new THREE.BoxGeometry(fw, fh, fd), fenceM)
+          fm.position.set(fx, fy, fz); scene.add(fm)
+        }
+
+        // Alley street lamps (sodium vapor, dim orange)
+        mkIndLamp(-4.0, -64.0)
+        mkIndLamp(10.5, -66.5)
+        mkIndLamp(10.5, -84.5)
+        mkIndLamp(23.0, -75.5)
+        mkIndLamp(10.5, -58.5) // south district entrance lamp
+
+        // Ambient glow inside warehouses (very dim, sets mood)
+        const whAmbA = new THREE.PointLight(0xff8833, 0.3, 12); whAmbA.position.set(2, 3, -84.5); scene.add(whAmbA)
+        const whAmbB = new THREE.PointLight(0xff8833, 0.3, 10); whAmbB.position.set(17.5, 3, -84.5); scene.add(whAmbB)
+        const whAmbC = new THREE.PointLight(0xff8833, 0.25, 9); whAmbC.position.set(0.5, 3, -66.5); scene.add(whAmbC)
+        const whAmbD = new THREE.PointLight(0xff8833, 0.25, 9); whAmbD.position.set(17.5, 3, -66.5); scene.add(whAmbD)
+      }
+
       // ── Chancellor's Market Square (south of shantytown, X=35, Z=52) ──────────
       {
         const sqCX = 35, sqCZ = 52
@@ -1354,6 +1935,81 @@ export default function GameWorldPage() {
         }
 
         for (let i = 0; i < 8; i++) mkPlazaLamp((i / 8) * Math.PI * 2 + Math.PI / 8)
+
+        // ── Circular road ringing the plaza ───────────────────────────────────
+        const roadAsph = new THREE.MeshLambertMaterial({ color: 0x111114 })
+        const roadYell = new THREE.MeshLambertMaterial({ color: 0xffdd00 })
+        const roadCurb = new THREE.MeshLambertMaterial({ color: 0x888899 })
+
+        // Asphalt ring (inner radius 19.5, outer 24 — sits just outside plaza disc)
+        const ringRoad = new THREE.Mesh(new THREE.RingGeometry(19.5, 24.0, 64), roadAsph)
+        ringRoad.rotation.x = -Math.PI / 2
+        ringRoad.position.set(sqCX, 0.02, sqCZ)
+        ringRoad.receiveShadow = true
+        scene.add(ringRoad)
+
+        // Yellow double centerline at radius ~21.75
+        const ringLineA = new THREE.Mesh(new THREE.RingGeometry(21.45, 21.68, 64), roadYell)
+        ringLineA.rotation.x = -Math.PI / 2
+        ringLineA.position.set(sqCX, 0.03, sqCZ)
+        scene.add(ringLineA)
+        const ringLineB = new THREE.Mesh(new THREE.RingGeometry(21.82, 22.05, 64), roadYell)
+        ringLineB.rotation.x = -Math.PI / 2
+        ringLineB.position.set(sqCX, 0.03, sqCZ)
+        scene.add(ringLineB)
+
+        // Curbs — inner and outer edges of ring road
+        const curbInner = new THREE.Mesh(new THREE.RingGeometry(19.1, 19.55, 64), roadCurb)
+        curbInner.rotation.x = -Math.PI / 2
+        curbInner.position.set(sqCX, 0.04, sqCZ)
+        scene.add(curbInner)
+        const curbOuter = new THREE.Mesh(new THREE.RingGeometry(23.95, 24.4, 64), roadCurb)
+        curbOuter.rotation.x = -Math.PI / 2
+        curbOuter.position.set(sqCX, 0.04, sqCZ)
+        scene.add(curbOuter)
+
+        // ── NE exit road (bearing 45° — passes east of shantytown, seeds city growth) ──
+        // Direction unit vector for NE bearing in XZ: (+sin45, -cos45)
+        const neDirX = Math.sin(Math.PI / 4)   //  0.7071
+        const neDirZ = -Math.cos(Math.PI / 4)  // -0.7071
+        const neRoadLen = 54
+        const neRoadW   = 5.5
+
+        // Exit from ring road centerline (radius 21.75) heading NE
+        const neExitX = sqCX + neDirX * 21.75
+        const neExitZ = sqCZ + neDirZ * 21.75
+        // Midpoint of straight segment
+        const neMidX = neExitX + neDirX * (neRoadLen / 2)
+        const neMidZ = neExitZ + neDirZ * (neRoadLen / 2)
+
+        // Group rotated NE so its -Z axis points northeast; plane lays flat inside
+        const neGrp = new THREE.Group()
+        neGrp.position.set(neMidX, 0, neMidZ)
+        neGrp.rotation.y = -Math.PI / 4
+
+        const neRoadPlane = new THREE.Mesh(new THREE.PlaneGeometry(neRoadW, neRoadLen), roadAsph)
+        neRoadPlane.rotation.x = -Math.PI / 2
+        neRoadPlane.position.y = 0.02
+        neRoadPlane.receiveShadow = true
+        neGrp.add(neRoadPlane)
+
+        // Yellow double centerline on NE road
+        for (const ox of [-0.17, 0.17]) {
+          const stripe = new THREE.Mesh(new THREE.PlaneGeometry(0.2, neRoadLen), roadYell)
+          stripe.rotation.x = -Math.PI / 2
+          stripe.position.set(ox, 0.03, 0)
+          neGrp.add(stripe)
+        }
+
+        // Curbs on both sides of NE road
+        for (const side of [-1, 1]) {
+          const crbPl = new THREE.Mesh(new THREE.PlaneGeometry(0.42, neRoadLen), roadCurb)
+          crbPl.rotation.x = -Math.PI / 2
+          crbPl.position.set((neRoadW / 2 + 0.21) * side, 0.04, 0)
+          neGrp.add(crbPl)
+        }
+
+        scene.add(neGrp)
       }
 
       // ── Water Tower (northeast corner: X=52 Z=-45, platform at Y=9) ──────────
@@ -1422,9 +2078,201 @@ export default function GameWorldPage() {
         wtLight.position.set(wtCX, wtPY + 7.5, wtCZ); scene.add(wtLight)
       }
 
+      // ── Emergency Room Hospital (west of plaza, player spawn) ──────────────
+      const HOSP_X1 = 8, HOSP_X2 = -12, HOSP_Z1 = 46, HOSP_Z2 = 58
+      {
+        const hospH  = 5.5
+        const HWT    = 0.25
+        const doorZ  = 52.0
+        const doorW  = 3.2
+        const hcxM   = (HOSP_X1 + HOSP_X2) / 2   // -2
+        const hczM   = (HOSP_Z1 + HOSP_Z2) / 2   // 52
+
+        const hospWallM  = new THREE.MeshLambertMaterial({ color: 0xf2f0ec })
+        const hospFloorM = new THREE.MeshLambertMaterial({ color: 0xdce9e5 })
+        const hospRoofM  = new THREE.MeshLambertMaterial({ color: 0xbbbbbb })
+        const hospGlassM = new THREE.MeshLambertMaterial({ color: 0x99ccee, transparent: true, opacity: 0.38 })
+        const hospTrimM  = new THREE.MeshLambertMaterial({ color: 0xaaaaaa })
+        const hospDeskM  = new THREE.MeshLambertMaterial({ color: 0x888899 })
+        const hospBedM   = new THREE.MeshLambertMaterial({ color: 0xfafafa })
+        const hospChairM = new THREE.MeshLambertMaterial({ color: 0x2a6a4a })
+
+        // Floor tile
+        const hospFloorMesh = new THREE.Mesh(
+          new THREE.PlaneGeometry(HOSP_X1 - HOSP_X2 - HWT * 2, HOSP_Z2 - HOSP_Z1 - HWT * 2),
+          hospFloorM
+        )
+        hospFloorMesh.rotation.x = -Math.PI / 2
+        hospFloorMesh.position.set(hcxM, 0.02, hczM)
+        hospFloorMesh.receiveShadow = true
+        scene.add(hospFloorMesh)
+
+        // Roof slab
+        stB(hcxM, hospH + 0.11, hczM, HOSP_X1 - HOSP_X2 + 0.6, 0.22, HOSP_Z2 - HOSP_Z1 + 0.6, hospRoofM)
+
+        // North wall
+        stB(hcxM, hospH / 2, HOSP_Z1 - HWT / 2, HOSP_X1 - HOSP_X2 + HWT * 2, hospH, HWT, hospWallM)
+        wallBoxes.push(new THREE.Box3(
+          new THREE.Vector3(HOSP_X2 - HWT, 0, HOSP_Z1 - HWT),
+          new THREE.Vector3(HOSP_X1 + HWT, hospH + 0.2, HOSP_Z1)
+        ))
+
+        // South wall
+        stB(hcxM, hospH / 2, HOSP_Z2 + HWT / 2, HOSP_X1 - HOSP_X2 + HWT * 2, hospH, HWT, hospWallM)
+        wallBoxes.push(new THREE.Box3(
+          new THREE.Vector3(HOSP_X2 - HWT, 0, HOSP_Z2),
+          new THREE.Vector3(HOSP_X1 + HWT, hospH + 0.2, HOSP_Z2 + HWT)
+        ))
+
+        // West back wall
+        stB(HOSP_X2 - HWT / 2, hospH / 2, hczM, HWT, hospH, HOSP_Z2 - HOSP_Z1 + HWT * 2, hospWallM)
+        wallBoxes.push(new THREE.Box3(
+          new THREE.Vector3(HOSP_X2 - HWT, 0, HOSP_Z1 - HWT),
+          new THREE.Vector3(HOSP_X2, hospH + 0.2, HOSP_Z2 + HWT)
+        ))
+
+        // East front wall — north of entrance opening
+        const fNorthLen = doorZ - doorW / 2 - HOSP_Z1
+        stB(HOSP_X1 + HWT / 2, hospH / 2, HOSP_Z1 + fNorthLen / 2, HWT, hospH, fNorthLen, hospWallM)
+        wallBoxes.push(new THREE.Box3(
+          new THREE.Vector3(HOSP_X1, 0, HOSP_Z1),
+          new THREE.Vector3(HOSP_X1 + HWT, hospH + 0.2, doorZ - doorW / 2)
+        ))
+
+        // East front wall — south of entrance opening
+        const fSouthLen = HOSP_Z2 - (doorZ + doorW / 2)
+        stB(HOSP_X1 + HWT / 2, hospH / 2, HOSP_Z2 - fSouthLen / 2, HWT, hospH, fSouthLen, hospWallM)
+        wallBoxes.push(new THREE.Box3(
+          new THREE.Vector3(HOSP_X1, 0, doorZ + doorW / 2),
+          new THREE.Vector3(HOSP_X1 + HWT, hospH + 0.2, HOSP_Z2)
+        ))
+
+        // Panel above entrance opening
+        stB(HOSP_X1 + HWT / 2, hospH * 0.88, doorZ, HWT, hospH * 0.24, doorW, hospWallM)
+
+        // Glass sliding door panels (no collision — players walk through freely)
+        stB(HOSP_X1 + 0.04, hospH * 0.44, doorZ - doorW / 4, 0.08, hospH * 0.72, doorW / 2 - 0.1, hospGlassM)
+        stB(HOSP_X1 + 0.04, hospH * 0.44, doorZ + doorW / 4, 0.08, hospH * 0.72, doorW / 2 - 0.1, hospGlassM)
+
+        // Entrance threshold / landing step
+        stB(HOSP_X1 + 0.65, 0.07, doorZ, 1.3, 0.14, doorW + 1.2, hospTrimM)
+
+        // Corner trim pillars on east face
+        stB(HOSP_X1 + HWT / 2, hospH / 2, HOSP_Z1, HWT * 2.5, hospH + 0.1, HWT * 2.5, hospTrimM)
+        stB(HOSP_X1 + HWT / 2, hospH / 2, HOSP_Z2, HWT * 2.5, hospH + 0.1, HWT * 2.5, hospTrimM)
+
+        // ── Interior divider wall separating lobby (east) from surgery (west) ──
+        const divX    = 0
+        const divDZ   = hczM      // door in divider centered at Z=52
+        const divDW   = 1.8
+        const dNLen   = divDZ - divDW / 2 - HOSP_Z1
+        const dSLen   = HOSP_Z2 - (divDZ + divDW / 2)
+
+        stB(divX, hospH / 2, HOSP_Z1 + dNLen / 2, HWT, hospH, dNLen, hospWallM)
+        wallBoxes.push(new THREE.Box3(
+          new THREE.Vector3(divX - HWT / 2, 0, HOSP_Z1),
+          new THREE.Vector3(divX + HWT / 2, hospH, divDZ - divDW / 2)
+        ))
+        stB(divX, hospH / 2, HOSP_Z2 - dSLen / 2, HWT, hospH, dSLen, hospWallM)
+        wallBoxes.push(new THREE.Box3(
+          new THREE.Vector3(divX - HWT / 2, 0, divDZ + divDW / 2),
+          new THREE.Vector3(divX + HWT / 2, hospH, HOSP_Z2)
+        ))
+        // Panel above divider door
+        stB(divX, hospH * 0.88, divDZ, HWT, hospH * 0.24, divDW, hospWallM)
+
+        // Surgery door (E to open, swings west into surgery room)
+        const surgDMat = new THREE.MeshLambertMaterial({ color: 0xc8c8cc })
+        const surgDPiv = new THREE.Group()
+        surgDPiv.position.set(divX - HWT / 2, 0, divDZ - divDW / 2)
+        const surgDP = new THREE.Mesh(new THREE.BoxGeometry(HWT * 0.9, hospH * 0.71, divDW), surgDMat)
+        surgDP.position.set(0, hospH * 0.355, divDW / 2)
+        surgDPiv.add(surgDP)
+        scene.add(surgDPiv)
+        const surgDBox = new THREE.Box3(
+          new THREE.Vector3(divX - HWT, 0, divDZ - divDW / 2),
+          new THREE.Vector3(divX, hospH * 0.71, divDZ + divDW / 2)
+        )
+        wallBoxes.push(surgDBox)
+        shackDoors.push({ pivot: surgDPiv, doorBox: surgDBox, worldCenter: new THREE.Vector3(divX, 1, divDZ), open: false })
+
+        // ── Lobby furnishings ────────────────────────────────────────────────
+        // Reception desk (east-facing, centered in lobby)
+        stB(2.0, 0.5, hczM, 3.8, 1.0, 1.4, hospDeskM)
+        stB(2.0, 1.02, hczM, 3.9, 0.09, 1.5, hospTrimM)
+        // Monitor on desk
+        stB(1.2, 1.56, hczM, 0.07, 0.54, 0.46, new THREE.MeshLambertMaterial({ color: 0x1a1a22 }))
+        stB(1.2, 1.44, hczM, 0.08, 0.09, 0.27, new THREE.MeshLambertMaterial({ color: 0x1a1a22 }))
+        stB(1.19, 1.56, hczM, 0.07, 0.38, 0.33, new THREE.MeshBasicMaterial({ color: 0x1a44aa }))
+
+        // Waiting chairs — north cluster
+        for (const [chx, chz] of [[5.5, 48], [5.5, 49], [3.5, 48], [3.5, 49]] as [number, number][]) {
+          stB(chx, 0.29, chz, 0.72, 0.3, 0.72, hospChairM)
+          stB(chx, 0.72, chz + 0.34, 0.72, 0.58, 0.09, hospChairM)
+        }
+        // Waiting chairs — south cluster
+        for (const [chx, chz] of [[5.5, 56], [5.5, 55], [3.5, 56], [3.5, 55]] as [number, number][]) {
+          stB(chx, 0.29, chz, 0.72, 0.3, 0.72, hospChairM)
+          stB(chx, 0.72, chz - 0.34, 0.72, 0.58, 0.09, hospChairM)
+        }
+
+        // Lobby ceiling fluorescent strips
+        stB(4, hospH - 0.12, hczM - 2, 0.2, 0.07, 2.4, new THREE.MeshBasicMaterial({ color: 0xfffffa }))
+        stB(4, hospH - 0.12, hczM + 2, 0.2, 0.07, 2.4, new THREE.MeshBasicMaterial({ color: 0xfffffa }))
+        const hospLobbyPL = new THREE.PointLight(0xfff9f2, 1.0, 18)
+        hospLobbyPL.position.set(4, hospH - 0.8, hczM); scene.add(hospLobbyPL)
+
+        // ── Surgery room furnishings ─────────────────────────────────────────
+        const surgCX = -6
+        // Operating table pedestal + surface + padding
+        stB(surgCX, 0.44, hczM, 0.55, 0.88, 0.62, new THREE.MeshLambertMaterial({ color: 0x555566 }))
+        stB(surgCX, 0.92, hczM, 2.1, 0.14, 0.86, hospBedM)
+        stB(surgCX, 1.07, hczM, 2.1, 0.06, 0.86, new THREE.MeshLambertMaterial({ color: 0xeeddcc }))
+        // IV drip stand
+        stB(surgCX - 1.0, 1.5, hczM - 0.46, 0.06, 3.0, 0.06, hospTrimM)
+        stB(surgCX - 1.0, 3.08, hczM - 0.46, 0.44, 0.06, 0.44, hospTrimM)
+        stB(surgCX - 1.0, 2.82, hczM - 0.46, 0.18, 0.38, 0.10,
+          new THREE.MeshLambertMaterial({ color: 0xcce8dd, transparent: true, opacity: 0.75 }))
+        // Overhead surgical light rig
+        stB(surgCX, hospH - 0.24, hczM, 0.13, 0.13, 0.13, hospTrimM)
+        stB(surgCX, hospH - 0.72, hczM, 0.09, 0.96, 0.09, hospTrimM)
+        stB(surgCX, hospH - 1.22, hczM, 0.62, 0.16, 0.62, new THREE.MeshBasicMaterial({ color: 0xffffff }))
+        const surgPL = new THREE.PointLight(0xffffff, 1.5, 10)
+        surgPL.position.set(surgCX, hospH - 1.4, hczM); scene.add(surgPL)
+        // Surgery ceiling strip
+        stB(surgCX, hospH - 0.12, hczM, 0.2, 0.07, 2.6, new THREE.MeshBasicMaterial({ color: 0xfffffe }))
+        const surgRoomPL = new THREE.PointLight(0xf4f8ff, 0.8, 14)
+        surgRoomPL.position.set(surgCX, hospH - 0.8, hczM); scene.add(surgRoomPL)
+
+        // ── Exterior signage — red cross above entrance ───────────────────────
+        stB(HOSP_X1 + 0.07, hospH - 0.28, hczM, 0.14, 1.0, 3.8,
+          new THREE.MeshLambertMaterial({ color: 0xffffff }))
+        stB(HOSP_X1 + 0.08, hospH - 0.28, hczM, 0.15, 0.76, 2.8,
+          new THREE.MeshBasicMaterial({ color: 0xcc1111 }))
+        stB(HOSP_X1 + 0.09, hospH - 0.28, hczM, 0.16, 0.68, 0.30,
+          new THREE.MeshBasicMaterial({ color: 0xffffff }))
+        stB(HOSP_X1 + 0.09, hospH - 0.28, hczM, 0.16, 0.30, 0.68,
+          new THREE.MeshBasicMaterial({ color: 0xffffff }))
+
+        // Sconce lights flanking entrance
+        for (const sz of [doorZ - doorW / 2 - 0.7, doorZ + doorW / 2 + 0.7]) {
+          const ironM = new THREE.MeshLambertMaterial({ color: 0x333333 })
+          stB(HOSP_X1 + 0.22, hospH - 0.9, sz, 0.3, 0.06, 0.06, ironM)
+          stB(HOSP_X1 + 0.40, hospH - 1.06, sz, 0.2, 0.28, 0.2, ironM)
+          const glM = new THREE.Mesh(
+            new THREE.BoxGeometry(0.1, 0.22, 0.1),
+            new THREE.MeshBasicMaterial({ color: 0xfff0cc, transparent: true, opacity: 0.95 })
+          )
+          glM.position.set(HOSP_X1 + 0.40, hospH - 1.06, sz); scene.add(glM)
+          const hspl = new THREE.PointLight(0xffcc88, 1.0, 9)
+          hspl.position.set(HOSP_X1 + 0.40, hospH - 1.26, sz); scene.add(hspl)
+        }
+      }
+
       // ── Local player ───────────────────────────────────────
       const { group: player, leftArm, rightArm, leftLeg, rightLeg } = buildPlayer(0x1565c0)
       scene.add(player)
+      player.position.set(5, 0, 52)
       player.visible = false
 
       // ── Zombie spawning (underground subway) ─────────────
@@ -1914,7 +2762,7 @@ export default function GameWorldPage() {
           if (cd !== lastDispCountdown) { lastDispCountdown = cd; setRespawnCountdown(cd) }
           if (respawnTimerRef.current <= 0) {
             isDeadRef.current = false; setIsDead(false)
-            player.position.set(0, 0, 0)
+            player.position.set(5, 0, 52)
             playerHealthRef.current = 100; lastDispHealth = 100; setPlayerHealth(100)
             if (healthBarRef.current) {
               healthBarRef.current.style.width = '100%'
@@ -1925,6 +2773,14 @@ export default function GameWorldPage() {
         }
 
         const playerActive = !isDeadRef.current && !buyMenuOpenRef.current
+
+        // ── Hospital safe zone ─────────────────────────────────────────────
+        const inHosp = player.position.x < HOSP_X1 && player.position.x > HOSP_X2
+          && player.position.z > HOSP_Z1 && player.position.z < HOSP_Z2
+        if (inHosp !== inHospitalRef.current) {
+          inHospitalRef.current = inHosp
+          setInHospital(inHosp)
+        }
 
         // ── Stamina + movement (only when alive and not in menu) ──
         let moving = false
@@ -2011,7 +2867,7 @@ export default function GameWorldPage() {
         }
 
         // ── Shooting (raycast on left click) ──────────────────
-        if (pendingShotRef.current && playerActive) {
+        if (pendingShotRef.current && playerActive && !inHospitalRef.current) {
           pendingShotRef.current = false
           const usingPistol = activeSlotRef.current === 5 && hasPistolRef.current
           if (usingPistol) {
@@ -2048,7 +2904,7 @@ export default function GameWorldPage() {
         if (flashTimer > 0) flashTimer--
 
         // ── Flamethrower ──────────────────────────────────────
-        if (mouseDownRef.current && activeSlotRef.current === 1) {
+        if (mouseDownRef.current && activeSlotRef.current === 1 && !inHospitalRef.current) {
           const hand = new THREE.Vector3()
           rightArm.getWorldPosition(hand)
           hand.y -= 0.7
@@ -2091,7 +2947,7 @@ export default function GameWorldPage() {
         }
 
         // ── Lightning ─────────────────────────────────────────
-        const lOn = !!(mouseDownRef.current && activeSlotRef.current === 2)
+        const lOn = !!(mouseDownRef.current && activeSlotRef.current === 2 && !inHospitalRef.current)
         if (lOn) {
           boltL.geometry.dispose(); boltL.geometry = mkLightGeo(7)
           boltR.geometry.dispose(); boltR.geometry = mkLightGeo(7)
@@ -2102,12 +2958,12 @@ export default function GameWorldPage() {
         }
 
         // ── Pistol ────────────────────────────────────────────
-        pistolGroup.visible = hasPistolRef.current && activeSlotRef.current === 5
+        pistolGroup.visible = hasPistolRef.current && activeSlotRef.current === 5 && !inHospitalRef.current
 
         // ── Uzi ───────────────────────────────────────────────
-        uziGroup.visible = hasUziRef.current && activeSlotRef.current === 6
+        uziGroup.visible = hasUziRef.current && activeSlotRef.current === 6 && !inHospitalRef.current
         if (uziVisualCooldown > 0) uziVisualCooldown--
-        if (mouseDownRef.current && activeSlotRef.current === 6 && hasUziRef.current && playerActive && !uziReloadingRef.current && uziAmmoRef.current > 0) {
+        if (mouseDownRef.current && activeSlotRef.current === 6 && hasUziRef.current && playerActive && !uziReloadingRef.current && uziAmmoRef.current > 0 && !inHospitalRef.current) {
           if (uziVisualCooldown === 0) {
             uziVisualCooldown = 2
             flashTimer = 2
@@ -2149,9 +3005,10 @@ export default function GameWorldPage() {
         }
 
         // ── Mini gun ─────────────────────────────────────────
-        mgGroup.visible = hasMiniGunRef.current && activeSlotRef.current === 4
+        mgGroup.visible = hasMiniGunRef.current && activeSlotRef.current === 4 && !inHospitalRef.current
+        if (inHospitalRef.current) saberGroup.visible = false
         if (mgCooldown > 0) mgCooldown--
-        if (mouseDownRef.current && activeSlotRef.current === 4 && hasMiniGunRef.current && playerActive) {
+        if (mouseDownRef.current && activeSlotRef.current === 4 && hasMiniGunRef.current && playerActive && !inHospitalRef.current) {
           if (mgCooldown === 0) {
             mgCooldown = 3
             flashTimer = 2
@@ -2269,6 +3126,24 @@ export default function GameWorldPage() {
           } else if (Math.abs(ppx - 52) <= 4.0 && Math.abs(pz + 45) <= 4.0 && player.position.y > 7.0) {
             // Water tower platform (square deck, Y-gated to prevent teleport from ground)
             floorY = 9
+          } else if (Math.abs(ppx - 2.0) < 0.8 && pz >= -77 && pz <= -74) {
+            // WH_A south ladder (approach from Z=-74, reach wall at Z=-77, rise to Y=8.5)
+            floorY = Math.max(0, Math.min(8.5, (-74 - pz) / 3 * 8.5))
+          } else if (Math.abs(ppx - 2.0) <= 7.5 && pz >= -92 && pz <= -77 && player.position.y > 7.0) {
+            // WH_A roof/rampart platform
+            floorY = 8.5
+          } else if (Math.abs(ppx - 17.5) < 0.8 && pz >= -77 && pz <= -74) {
+            // WH_B south ladder
+            floorY = Math.max(0, Math.min(7.5, (-74 - pz) / 3 * 7.5))
+          } else if (Math.abs(ppx - 17.5) <= 5.0 && pz >= -92 && pz <= -77 && player.position.y > 6.0) {
+            // WH_B roof/rampart platform
+            floorY = 7.5
+          } else if (Math.abs(ppx - 17.5) < 0.8 && pz >= -60 && pz <= -57) {
+            // WH_D south ladder (approach from Z=-57)
+            floorY = Math.max(0, Math.min(7.0, (-57 - pz) / 3 * 7.0))
+          } else if (Math.abs(ppx - 17.5) <= 5.0 && pz >= -73 && pz <= -60 && player.position.y > 6.0) {
+            // WH_D roof/rampart platform
+            floorY = 7.0
           }
           jumpVelY -= 0.010
           player.position.y += jumpVelY
@@ -2405,6 +3280,16 @@ export default function GameWorldPage() {
       <div className='pointer-events-none absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2'>
         <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'rgba(255,255,255,0.85)', border: '1px solid rgba(0,0,0,0.5)' }} />
       </div>
+
+      {/* Hospital safe zone badge */}
+      {inHospital && (
+        <div
+          className='pointer-events-none absolute left-1/2 top-20 z-10 -translate-x-1/2 rounded-lg px-4 py-2 text-sm font-bold text-white'
+          style={{ background: 'rgba(20,80,50,0.78)', backdropFilter: 'blur(6px)', border: '1px solid rgba(100,200,140,0.35)', letterSpacing: 1 }}
+        >
+          SAFE ZONE — No weapons
+        </div>
+      )}
 
       {/* Death overlay */}
       {isDead && (

@@ -32,7 +32,8 @@ const MINIGUN_DAMAGE = 12;
 const MINIGUN_PRICE  = 500;
 const UZI_DAMAGE     = 18;
 const UZI_AMMO       = 30;
-const UZI_PRICE      = 400;
+const UZI_PRICE           = 400;
+const WAREHOUSE_GATE_PRICE = 500;
 
 // ── Timers (1 tick = TICK_MS ms) ─────────────────────────────────────────────
 const ZOMBIE_DEAD_TICKS = 1200; // 60 s
@@ -217,8 +218,79 @@ const STATIC_WALLS: Box[] = [
   { minX: 49.58, minZ: -43.02, maxX: 50.02, maxZ: -42.58 },
   { minX: 53.98, minZ: -47.42, maxX: 54.42, maxZ: -47.02 },
   { minX: 49.58, minZ: -47.42, maxX: 50.02, maxZ: -47.02 },
+  // Industrial District warehouses (8 total, 2 rows × 4 columns going west)
+  // WH_A (X=-8→9, Z=-77→-92) — door gap X=0.25→3.75, ladder on east wall
+  { minX: -8.25, minZ: -92.25, maxX:  9.25, maxZ: -92.00 }, // north wall
+  { minX: -8.25, minZ: -92.00, maxX: -8.00, maxZ: -77.00 }, // west wall
+  { minX:  9.00, minZ: -92.00, maxX:  9.25, maxZ: -77.00 }, // east wall
+  { minX: -8.25, minZ: -77.25, maxX:  0.25, maxZ: -77.00 }, // south wall left of door
+  { minX:  3.75, minZ: -77.25, maxX:  9.25, maxZ: -77.00 }, // south wall right of door
+  // WH_B (X=13→22, Z=-77→-92) — door gap X=16.25→18.75, ladder on east wall
+  { minX: 12.75, minZ: -92.25, maxX: 22.25, maxZ: -92.00 }, // north wall
+  { minX: 12.75, minZ: -92.00, maxX: 13.00, maxZ: -77.00 }, // west wall
+  { minX: 22.00, minZ: -92.00, maxX: 22.25, maxZ: -77.00 }, // east wall
+  { minX: 12.75, minZ: -77.25, maxX: 16.25, maxZ: -77.00 }, // south wall left of door
+  { minX: 18.75, minZ: -77.25, maxX: 22.25, maxZ: -77.00 }, // south wall right of door
+  // WH_C (X=-8→6, Z=-60→-73) — door gap X=-0.60→1.60, ladder on east wall
+  { minX: -8.25, minZ: -73.25, maxX:  6.25, maxZ: -73.00 }, // north wall
+  { minX: -8.25, minZ: -73.00, maxX: -8.00, maxZ: -60.00 }, // west wall
+  { minX:  6.00, minZ: -73.00, maxX:  6.25, maxZ: -60.00 }, // east wall
+  { minX: -8.25, minZ: -60.25, maxX: -0.60, maxZ: -60.00 }, // south wall left of door
+  { minX:  1.60, minZ: -60.25, maxX:  6.25, maxZ: -60.00 }, // south wall right of door
+  // WH_D (X=13→22, Z=-60→-73) — door gap X=16.25→18.75, ladder on east wall
+  { minX: 12.75, minZ: -73.25, maxX: 22.25, maxZ: -73.00 }, // north wall
+  { minX: 12.75, minZ: -73.00, maxX: 13.00, maxZ: -60.00 }, // west wall
+  { minX: 22.00, minZ: -73.00, maxX: 22.25, maxZ: -60.00 }, // east wall
+  { minX: 12.75, minZ: -60.25, maxX: 16.25, maxZ: -60.00 }, // south wall left of door
+  { minX: 18.75, minZ: -60.25, maxX: 22.25, maxZ: -60.00 }, // south wall right of door
+  // WH_E (X=-26→-12, Z=-77→-92) — door gap X=-21.0→-18.0, ladder on east wall
+  { minX: -26.25, minZ: -92.25, maxX: -11.75, maxZ: -92.00 }, // north wall
+  { minX: -26.25, minZ: -92.00, maxX: -26.00, maxZ: -77.00 }, // west wall
+  { minX: -12.00, minZ: -92.00, maxX: -11.75, maxZ: -77.00 }, // east wall
+  { minX: -26.25, minZ: -77.25, maxX: -21.00, maxZ: -77.00 }, // south wall left of door
+  { minX: -18.00, minZ: -77.25, maxX: -11.75, maxZ: -77.00 }, // south wall right of door
+  // WH_F (X=-26→-12, Z=-60→-73) — door gap X=-20.4→-17.6, ladder on east wall
+  { minX: -26.25, minZ: -73.25, maxX: -11.75, maxZ: -73.00 }, // north wall
+  { minX: -26.25, minZ: -73.00, maxX: -26.00, maxZ: -60.00 }, // west wall
+  { minX: -12.00, minZ: -73.00, maxX: -11.75, maxZ: -60.00 }, // east wall
+  { minX: -26.25, minZ: -60.25, maxX: -20.40, maxZ: -60.00 }, // south wall left of door
+  { minX: -17.60, minZ: -60.25, maxX: -11.75, maxZ: -60.00 }, // south wall right of door
+  // WH_G (X=-44→-30, Z=-77→-92) — door gap X=-38.75→-35.25, ladder on east wall
+  { minX: -44.25, minZ: -92.25, maxX: -29.75, maxZ: -92.00 }, // north wall
+  { minX: -44.25, minZ: -92.00, maxX: -44.00, maxZ: -77.00 }, // west wall
+  { minX: -30.00, minZ: -92.00, maxX: -29.75, maxZ: -77.00 }, // east wall
+  { minX: -44.25, minZ: -77.25, maxX: -38.75, maxZ: -77.00 }, // south wall left of door
+  { minX: -35.25, minZ: -77.25, maxX: -29.75, maxZ: -77.00 }, // south wall right of door
+  // WH_H (X=-44→-30, Z=-60→-73) — door gap X=-38.5→-35.5, ladder on east wall
+  { minX: -44.25, minZ: -73.25, maxX: -29.75, maxZ: -73.00 }, // north wall
+  { minX: -44.25, minZ: -73.00, maxX: -44.00, maxZ: -60.00 }, // west wall
+  { minX: -30.00, minZ: -73.00, maxX: -29.75, maxZ: -60.00 }, // east wall
+  { minX: -44.25, minZ: -60.25, maxX: -38.50, maxZ: -60.00 }, // south wall left of door
+  { minX: -35.50, minZ: -60.25, maxX: -29.75, maxZ: -60.00 }, // south wall right of door
 ];
 const DOOR_BOX: Box = { minX: 23.85, minZ: -0.7, maxX: 24.15, maxZ: 0.7 };
+
+const WAREHOUSE_GATE_BOXES: Record<string, Box> = {
+  WH_A: { minX:  0.25, minZ: -77.25, maxX:  3.75, maxZ: -77.00 },
+  WH_B: { minX: 16.25, minZ: -77.25, maxX: 18.75, maxZ: -77.00 },
+  WH_C: { minX: -0.60, minZ: -60.25, maxX:  1.60, maxZ: -60.00 },
+  WH_D: { minX: 16.25, minZ: -60.25, maxX: 18.75, maxZ: -60.00 },
+  WH_E: { minX: -21.00, minZ: -77.25, maxX: -18.00, maxZ: -77.00 },
+  WH_F: { minX: -20.40, minZ: -60.25, maxX: -17.60, maxZ: -60.00 },
+  WH_G: { minX: -38.75, minZ: -77.25, maxX: -35.25, maxZ: -77.00 },
+  WH_H: { minX: -38.50, minZ: -60.25, maxX: -35.50, maxZ: -60.00 },
+};
+const GATE_DOOR_CENTERS: Record<string, { x: number; z: number }> = {
+  WH_A: { x:   2.0, z: -77 },
+  WH_B: { x:  17.5, z: -77 },
+  WH_C: { x:   0.5, z: -60 },
+  WH_D: { x:  17.5, z: -60 },
+  WH_E: { x: -19.5, z: -77 },
+  WH_F: { x: -19.0, z: -60 },
+  WH_G: { x: -37.0, z: -77 },
+  WH_H: { x: -37.0, z: -60 },
+};
+const openGates = new Set<string>();
 
 // ── Types ────────────────────────────────────────────────────────────────────
 type ZombieAIState = "idle" | "chasing" | "attacking" | "dead";
@@ -343,8 +415,8 @@ setInterval(() => {
       if (--p.respawnTimer <= 0) {
         p.isDead = false;
         p.health = 100;
-        p.x = (Math.random() - 0.5) * 10;
-        p.z = (Math.random() - 0.5) * 10;
+        p.x = 5 + (Math.random() - 0.5) * 2;
+        p.z = 52 + (Math.random() - 0.5) * 2;
         p.y = 0;
         console.log(`[respawn] ${p.id} respawned`);
       }
@@ -376,7 +448,10 @@ setInterval(() => {
       nz -= Math.sin(p.angle) * speed;
     }
 
-    const walls = p.doorOpen ? STATIC_WALLS : [...STATIC_WALLS, DOOR_BOX];
+    const gateBoxes = Object.entries(WAREHOUSE_GATE_BOXES)
+      .filter(([id]) => !openGates.has(id))
+      .map(([, box]) => box);
+    const walls = [...STATIC_WALLS, ...gateBoxes, ...(p.doorOpen ? [] : [DOOR_BOX])];
     const pos = resolveCollision(nx, nz, walls);
     p.x = Math.max(-BOUNDS, Math.min(BOUNDS, pos.x));
     p.z = Math.max(-BOUNDS, Math.min(BOUNDS, pos.z));
@@ -394,6 +469,46 @@ setInterval(() => {
     } else if (Math.abs(p.x - 52) <= 4.0 && Math.abs(p.z + 45) <= 4.0 && p.y > 7.0) {
       // Water tower platform
       ty = 9;
+    } else if (Math.abs(p.z + 84.5) < 0.8 && p.x >= 9 && p.x <= 12) {
+      // WH_A east-wall ladder (approach from east, climb as x decreases to 9)
+      ty = Math.max(0, Math.min(8.5, (12 - p.x) / 3 * 8.5));
+    } else if (p.x >= -8 && p.x <= 9 && p.z >= -92 && p.z <= -77 && p.y > 7.0) {
+      ty = 8.5; // WH_A roof
+    } else if (Math.abs(p.z + 84.5) < 0.8 && p.x >= 22 && p.x <= 25) {
+      // WH_B east-wall ladder
+      ty = Math.max(0, Math.min(7.5, (25 - p.x) / 3 * 7.5));
+    } else if (p.x >= 13 && p.x <= 22 && p.z >= -92 && p.z <= -77 && p.y > 6.0) {
+      ty = 7.5; // WH_B roof
+    } else if (Math.abs(p.z + 66.5) < 0.8 && p.x >= 6 && p.x <= 9) {
+      // WH_C east-wall ladder
+      ty = Math.max(0, Math.min(6.5, (9 - p.x) / 3 * 6.5));
+    } else if (p.x >= -8 && p.x <= 6 && p.z >= -73 && p.z <= -60 && p.y > 5.0) {
+      ty = 6.5; // WH_C roof
+    } else if (Math.abs(p.z + 66.5) < 0.8 && p.x >= 22 && p.x <= 25) {
+      // WH_D east-wall ladder
+      ty = Math.max(0, Math.min(7.0, (25 - p.x) / 3 * 7.0));
+    } else if (p.x >= 13 && p.x <= 22 && p.z >= -73 && p.z <= -60 && p.y > 6.0) {
+      ty = 7.0; // WH_D roof
+    } else if (Math.abs(p.z + 84.5) < 0.8 && p.x >= -12 && p.x <= -9) {
+      // WH_E east-wall ladder
+      ty = Math.max(0, Math.min(7.5, (-9 - p.x) / 3 * 7.5));
+    } else if (p.x >= -26 && p.x <= -12 && p.z >= -92 && p.z <= -77 && p.y > 6.0) {
+      ty = 7.5; // WH_E roof
+    } else if (Math.abs(p.z + 66.5) < 0.8 && p.x >= -12 && p.x <= -9) {
+      // WH_F east-wall ladder
+      ty = Math.max(0, Math.min(6.5, (-9 - p.x) / 3 * 6.5));
+    } else if (p.x >= -26 && p.x <= -12 && p.z >= -73 && p.z <= -60 && p.y > 5.0) {
+      ty = 6.5; // WH_F roof
+    } else if (Math.abs(p.z + 84.5) < 0.8 && p.x >= -30 && p.x <= -27) {
+      // WH_G east-wall ladder
+      ty = Math.max(0, Math.min(8.0, (-27 - p.x) / 3 * 8.0));
+    } else if (p.x >= -44 && p.x <= -30 && p.z >= -92 && p.z <= -77 && p.y > 6.5) {
+      ty = 8.0; // WH_G roof
+    } else if (Math.abs(p.z + 66.5) < 0.8 && p.x >= -30 && p.x <= -27) {
+      // WH_H east-wall ladder
+      ty = Math.max(0, Math.min(7.0, (-27 - p.x) / 3 * 7.0));
+    } else if (p.x >= -44 && p.x <= -30 && p.z >= -73 && p.z <= -60 && p.y > 5.5) {
+      ty = 7.0; // WH_H roof
     }
     p.y += (ty - p.y) * 0.15;
 
@@ -518,7 +633,7 @@ setInterval(() => {
     walkTime: z.walkTime,
   }));
 
-  const msg = JSON.stringify({ type: "state", tick, players: pArr, zombies: zArr });
+  const msg = JSON.stringify({ type: "state", tick, players: pArr, zombies: zArr, openGates: [...openGates] });
   for (const p of players.values()) {
     if (p.ws.readyState === WebSocket.OPEN) p.ws.send(msg);
   }
@@ -532,9 +647,9 @@ wss.on("connection", (ws) => {
   const player: Player = {
     id,
     ws,
-    x: (Math.random() - 0.5) * 10,
+    x: 5 + (Math.random() - 0.5) * 2,
     y: 0,
-    z: (Math.random() - 0.5) * 10,
+    z: 52 + (Math.random() - 0.5) * 2,
     angle: 0,
     w: false,
     s: false,
@@ -637,6 +752,18 @@ wss.on("connection", (ws) => {
         p.money -= DRUG_LAB_PRICE;
         p.drugLabs.push({ x: p.x + 1.5, z: p.z, incomeTimer: 0 });
         console.log(`[buy] ${p.id} placed drug lab #${p.drugLabs.length} ($${DRUG_LAB_PRICE}, remaining $${p.money})`);
+      }
+    }
+
+    // Warehouse gate purchase
+    if (msg.type === "buy_gate" && !p.isDead) {
+      const gateId = msg.id as string;
+      const center = GATE_DOOR_CENTERS[gateId];
+      if (center && !openGates.has(gateId) && p.money >= WAREHOUSE_GATE_PRICE &&
+          dist(p.x, p.z, center.x, center.z) < 6) {
+        p.money -= WAREHOUSE_GATE_PRICE;
+        openGates.add(gateId);
+        console.log(`[gate] ${p.id} opened ${gateId} (-$${WAREHOUSE_GATE_PRICE}, remaining $${p.money})`);
       }
     }
 
