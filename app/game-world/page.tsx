@@ -175,167 +175,7 @@ export default function GameWorldPage() {
       stSidewalk.receiveShadow = true
       scene.add(stSidewalk)
 
-      // ── Building (x=[24,36], z=[-5,5], 5 floors × 3 units) ───
-
-      // Procedural textures
-      const mkConcreteMap = () => {
-        const size = 256
-        const cv = document.createElement('canvas')
-        cv.width = cv.height = size
-        const tc = cv.getContext('2d')!
-        tc.fillStyle = '#8c8fa2'
-        tc.fillRect(0, 0, size, size)
-        const id = tc.getImageData(0, 0, size, size)
-        for (let i = 0; i < id.data.length; i += 4) {
-          const n = (Math.random() - 0.5) * 22
-          id.data[i]   = Math.min(255, Math.max(0, id.data[i]   + n))
-          id.data[i+1] = Math.min(255, Math.max(0, id.data[i+1] + n))
-          id.data[i+2] = Math.min(255, Math.max(0, id.data[i+2] + n + 8))
-        }
-        tc.putImageData(id, 0, 0)
-        // Horizontal floor bands (5 per tile → 3 units/band at repeat.y=5)
-        tc.strokeStyle = 'rgba(0,0,0,0.32)'
-        tc.lineWidth = 4
-        for (let y = 0; y <= size; y += size / 5) { tc.beginPath(); tc.moveTo(0, y); tc.lineTo(size, y); tc.stroke() }
-        tc.strokeStyle = 'rgba(255,255,255,0.07)'
-        tc.lineWidth = 2
-        for (let y = 5; y <= size; y += size / 5) { tc.beginPath(); tc.moveTo(0, y); tc.lineTo(size, y); tc.stroke() }
-        // Vertical expansion joints
-        tc.strokeStyle = 'rgba(0,0,0,0.16)'
-        tc.lineWidth = 2
-        for (let x = 0; x <= size; x += size / 3) { tc.beginPath(); tc.moveTo(x, 0); tc.lineTo(x, size); tc.stroke() }
-        const t = new THREE.CanvasTexture(cv)
-        t.wrapS = t.wrapT = THREE.RepeatWrapping
-        t.repeat.set(4, 5)
-        return t
-      }
-
-      const mkWindowMap = () => {
-        const size = 128
-        const cv = document.createElement('canvas')
-        cv.width = cv.height = size
-        const tc = cv.getContext('2d')!
-        tc.fillStyle = '#1a3a5a'
-        tc.fillRect(0, 0, size, size)
-        const g = tc.createLinearGradient(0, 0, size, size)
-        g.addColorStop(0,   'rgba(120,180,255,0.25)')
-        g.addColorStop(0.5, 'rgba(80,140,220,0.06)')
-        g.addColorStop(1,   'rgba(0,20,60,0.30)')
-        tc.fillStyle = g; tc.fillRect(0, 0, size, size)
-        // Frame
-        tc.strokeStyle = 'rgba(180,215,255,0.6)'
-        tc.lineWidth = 6; tc.strokeRect(3, 3, size - 6, size - 6)
-        // Pane dividers
-        tc.strokeStyle = 'rgba(140,190,255,0.32)'
-        tc.lineWidth = 3
-        tc.beginPath(); tc.moveTo(size / 2, 3); tc.lineTo(size / 2, size - 3); tc.stroke()
-        tc.beginPath(); tc.moveTo(3, size / 2); tc.lineTo(size - 3, size / 2); tc.stroke()
-        return new THREE.CanvasTexture(cv)
-      }
-
-      const mkRoofMap = () => {
-        const size = 256
-        const cv = document.createElement('canvas')
-        cv.width = cv.height = size
-        const tc = cv.getContext('2d')!
-        tc.fillStyle = '#28282e'
-        tc.fillRect(0, 0, size, size)
-        for (let i = 0; i < 500; i++) {
-          const x = Math.random() * size, y = Math.random() * size, r = 1 + Math.random() * 2.5
-          const v = 30 + Math.floor(Math.random() * 50)
-          tc.fillStyle = `rgb(${v},${v},${v + 5})`
-          tc.beginPath(); tc.arc(x, y, r, 0, Math.PI * 2); tc.fill()
-        }
-        const t = new THREE.CanvasTexture(cv)
-        t.wrapS = t.wrapT = THREE.RepeatWrapping
-        t.repeat.set(3, 2)
-        return t
-      }
-
-      const bldConcrete = new THREE.MeshLambertMaterial({ map: mkConcreteMap(), color: 0xffffff })
-      const bldGlass    = new THREE.MeshLambertMaterial({ map: mkWindowMap(),   color: 0xffffff, emissive: 0x0a1f38 })
-      const bldRoof     = new THREE.MeshLambertMaterial({ map: mkRoofMap(),     color: 0xffffff })
-      const bldSlab     = new THREE.MeshLambertMaterial({ color: 0x6a6a7a })
       const wallBoxes: THREE.Box3[] = []
-
-      const bldWall = (cx: number, cy: number, cz: number, w: number, h: number, d: number, col = true) => {
-        const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), bldConcrete)
-        m.position.set(cx, cy, cz)
-        m.castShadow = true
-        m.receiveShadow = true
-        scene.add(m)
-        if (col) wallBoxes.push(new THREE.Box3(
-          new THREE.Vector3(cx - w / 2, cy - h / 2, cz - d / 2),
-          new THREE.Vector3(cx + w / 2, cy + h / 2, cz + d / 2)
-        ))
-      }
-
-      // Exterior walls (full 15-unit height)
-      bldWall(36,   7.5,  0,    0.3, 15, 10.3)   // east
-      bldWall(30,   7.5, -5,   12.3, 15,  0.3)   // north
-      bldWall(30,   7.5,  5,   12.3, 15,  0.3)   // south
-      bldWall(24,   7.5, -2.85, 0.3, 15,  4.3)   // west-left
-      bldWall(24,   7.5,  2.85, 0.3, 15,  4.3)   // west-right
-      bldWall(24,   8.7,  0,    0.3, 12.6, 1.4, false)  // door arch — above head height, no 2D collision
-
-      // Roof
-      const roofMesh = new THREE.Mesh(new THREE.BoxGeometry(12, 0.3, 10), bldRoof)
-      roofMesh.position.set(30, 15.15, 0)
-      roofMesh.castShadow = true
-      scene.add(roofMesh)
-
-      // Interior floor slabs (floors 2–5)
-      for (let f = 1; f <= 4; f++) {
-        const slab = new THREE.Mesh(new THREE.BoxGeometry(11.4, 0.15, 9.4), bldSlab)
-        slab.position.set(30, f * 3, 0)
-        slab.receiveShadow = true
-        scene.add(slab)
-      }
-
-      // Ground-floor interior surface
-      const intFloor = new THREE.Mesh(new THREE.PlaneGeometry(11.4, 9.4), bldSlab)
-      intFloor.rotation.x = -Math.PI / 2
-      intFloor.position.set(30, 0.01, 0)
-      scene.add(intFloor)
-
-      // Interior room divider at x=30, gap at z=[-0.7, 0.7]
-      bldWall(30, 1.5, -2.85, 0.2, 3, 4.3)
-      bldWall(30, 1.5,  2.85, 0.2, 3, 4.3)
-
-      // Staircase ramp (visual, NE corner)
-      const rampMesh = new THREE.Mesh(new THREE.BoxGeometry(3, 0.25, 3.5), bldSlab)
-      rampMesh.rotation.x = -Math.PI / 6
-      rampMesh.position.set(33.5, 1.1, -3.6)
-      rampMesh.castShadow = true
-      scene.add(rampMesh)
-
-      // Windows — 5 floors × 4 faces
-      for (let f = 0; f < 5; f++) {
-        const wy = f * 3 + 1.8
-        for (const wx of [26, 29, 32, 35]) {
-          const wN = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 1.1), bldGlass)
-          wN.position.set(wx, wy, -4.88)
-          scene.add(wN)
-          const wS = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 1.1), bldGlass)
-          wS.rotation.y = Math.PI
-          wS.position.set(wx, wy, 4.88)
-          scene.add(wS)
-        }
-        for (const wz of [-3, 0, 3]) {
-          const wE = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 1.1), bldGlass)
-          wE.rotation.y = -Math.PI / 2
-          wE.position.set(35.88, wy, wz)
-          scene.add(wE)
-        }
-        if (f > 0) {
-          for (const wz of [-3, 3]) {
-            const wW = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 1.1), bldGlass)
-            wW.rotation.y = Math.PI / 2
-            wW.position.set(24.12, wy, wz)
-            scene.add(wW)
-          }
-        }
-      }
 
       // ── Underground Subway ──────────────────────────────────────────
       const subCX  = -15       // tunnel center X
@@ -425,25 +265,6 @@ export default function GameWorldPage() {
         sgn.position.set(subCX, 2.55, ez + dir * 0.07)
         scene.add(sgn)
       }
-
-      // ── Door ──────────────────────────────────────────────
-      let doorOpen = false
-      const doorWallBox = new THREE.Box3(
-        new THREE.Vector3(23.85, 0, -0.7),
-        new THREE.Vector3(24.15, 2.4, 0.7)
-      )
-      wallBoxes.push(doorWallBox)
-
-      const doorPivot = new THREE.Group()
-      doorPivot.position.set(24.05, 0, -0.7)
-      scene.add(doorPivot)
-
-      const doorPanel = new THREE.Mesh(
-        new THREE.BoxGeometry(0.08, 2.4, 1.4),
-        new THREE.MeshLambertMaterial({ color: 0x6b3a1f })
-      )
-      doorPanel.position.set(0, 1.2, 0.7)
-      doorPivot.add(doorPanel)
 
       // ── Player mesh builder ────────────────────────────────
       const box = (w: number, h: number, d: number) => new THREE.BoxGeometry(w, h, d)
@@ -977,10 +798,6 @@ export default function GameWorldPage() {
         if (e.code === 'Digit6') { activeSlotRef.current = 5; setActiveSlot(5) }
         if (e.code === 'Digit7') { activeSlotRef.current = 6; setActiveSlot(6) }
         if (e.code === 'KeyE') {
-          if (player.position.distanceTo(new THREE.Vector3(24, 0, 0)) < 5) {
-            doorOpen = !doorOpen
-            if (connected && ws) ws.send(JSON.stringify({ type: 'door' }))
-          }
           for (const sd of shackDoors) {
             if (player.position.distanceTo(sd.worldCenter) < 3.5) {
               sd.open = !sd.open
@@ -1114,7 +931,6 @@ export default function GameWorldPage() {
               hasPistol: boolean; hasMiniGun: boolean; hasUzi: boolean
               uziAmmo: number; uziReloading: boolean
               drugLabCount: number; drugLabs: { x: number; z: number }[]
-              doorOpen: boolean
             }
             type SZ = { id: number; x: number; y: number; z: number; angle: number; state: ServerZombieState; walkTime: number }
             const pList = msg.players as SP[]
@@ -1174,8 +990,6 @@ export default function GameWorldPage() {
                   drugLabsRef.current.push({ ...lab, incomeTimer: 0 })
                 }
                 setDrugLabCount(p.drugLabCount)
-                // Door
-                doorOpen = p.doorOpen
                 continue
               }
 
@@ -1629,8 +1443,6 @@ export default function GameWorldPage() {
           }
         }
 
-        // Door swing animation
-        doorPivot.rotation.y += ((doorOpen ? Math.PI / 2 : 0) - doorPivot.rotation.y) * 0.12
         for (const sd of shackDoors) {
           sd.pivot.rotation.y += ((sd.open ? Math.PI / 2 : 0) - sd.pivot.rotation.y) * 0.12
         }
@@ -1693,7 +1505,7 @@ export default function GameWorldPage() {
         className='pointer-events-none absolute left-1/2 top-3 z-10 -translate-x-1/2 rounded-full px-4 py-1.5 text-xs text-white'
         style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(6px)' }}
       >
-        WASD · Space jump · Mouse · Shift sprint · Click shoot · E door · M buy menu · ESC release
+        WASD · Space jump · Mouse · Shift sprint · Click shoot · E shack · M buy menu · ESC release
       </div>
 
       {/* Money */}
