@@ -141,13 +141,82 @@ const STATIC_WALLS: Box[] = [
   // Interior dividers
   { minX: 29.9, minZ: -5.0, maxX: 30.1, maxZ: -0.7 },
   { minX: 29.9, minZ: 0.7, maxX: 30.1, maxZ: 5.0 },
-  // Arena perimeter
-  { minX: -59.1, minZ: -59.1, maxX: 59.1, maxZ: -56.9 },
-  { minX: -59.1, minZ: 56.9, maxX: 59.1, maxZ: 59.1 },
-  { minX: -59.1, minZ: -59.1, maxX: -56.9, maxZ: 59.1 },
-  { minX: 56.9, minZ: -59.1, maxX: 59.1, maxZ: 59.1 },
+  // Arena perimeter removed
   // Shantytown shacks (deterministic layout, mirrors client geometry)
   ...buildShackWalls(),
+  // Market District stores (west side, front at X=-29, stores face east)
+  // Store 1: Grocery (sx1=-29,sx2=-43,sz1=-50,sz2=-34, door dz=-42 dw=1.5)
+  { minX: -43.18, minZ: -50.18, maxX: -43,    maxZ: -33.82 },
+  { minX: -43.18, minZ: -50.18, maxX: -28.82, maxZ: -50    },
+  { minX: -43.18, minZ: -34,    maxX: -28.82, maxZ: -33.82 },
+  { minX: -29,    minZ: -50,    maxX: -28.82, maxZ: -42.75 },
+  { minX: -29,    minZ: -41.25, maxX: -28.82, maxZ: -34    },
+  // Store 2: Boutique (sx1=-29,sx2=-37,sz1=-32,sz2=-25, door dz=-28.5 dw=1.0)
+  { minX: -37.18, minZ: -32.18, maxX: -37,    maxZ: -24.82 },
+  { minX: -37.18, minZ: -32.18, maxX: -28.82, maxZ: -32    },
+  { minX: -37.18, minZ: -25,    maxX: -28.82, maxZ: -24.82 },
+  { minX: -29,    minZ: -32,    maxX: -28.82, maxZ: -29    },
+  { minX: -29,    minZ: -28,    maxX: -28.82, maxZ: -25    },
+  // Store 3: Electronics (sx1=-29,sx2=-39,sz1=-23,sz2=-15, door dz=-19 dw=1.2)
+  { minX: -39.18, minZ: -23.18, maxX: -39,    maxZ: -14.82 },
+  { minX: -39.18, minZ: -23.18, maxX: -28.82, maxZ: -23    },
+  { minX: -39.18, minZ: -15,    maxX: -28.82, maxZ: -14.82 },
+  { minX: -29,    minZ: -23,    maxX: -28.82, maxZ: -19.6  },
+  { minX: -29,    minZ: -18.4,  maxX: -28.82, maxZ: -15    },
+  // Store 4: Hardware (sx1=-29,sx2=-45,sz1=-13,sz2=-1, door dz=-7 dw=1.5)
+  { minX: -45.18, minZ: -13.18, maxX: -45,    maxZ: -0.82  },
+  { minX: -45.18, minZ: -13.18, maxX: -28.82, maxZ: -13    },
+  { minX: -45.18, minZ: -1,     maxX: -28.82, maxZ: -0.82  },
+  { minX: -29,    minZ: -13,    maxX: -28.82, maxZ: -7.75  },
+  { minX: -29,    minZ: -6.25,  maxX: -28.82, maxZ: -1     },
+  // Store 5: Red Shop (sx1=-29,sx2=-37,sz1=1,sz2=7, door dz=4 dw=0.95)
+  { minX: -37.18, minZ: 0.82,   maxX: -37,    maxZ: 7.18   },
+  { minX: -37.18, minZ: 0.82,   maxX: -28.82, maxZ: 1      },
+  { minX: -37.18, minZ: 7,      maxX: -28.82, maxZ: 7.18   },
+  { minX: -29,    minZ: 1,      maxX: -28.82, maxZ: 3.525  },
+  { minX: -29,    minZ: 4.475,  maxX: -28.82, maxZ: 7      },
+  // Store 6: Cream Shop (sx1=-29,sx2=-38,sz1=9,sz2=16, door dz=12.5 dw=1.1)
+  { minX: -38.18, minZ: 8.82,   maxX: -38,    maxZ: 16.18  },
+  { minX: -38.18, minZ: 8.82,   maxX: -28.82, maxZ: 9      },
+  { minX: -38.18, minZ: 16,     maxX: -28.82, maxZ: 16.18  },
+  { minX: -29,    minZ: 9,      maxX: -28.82, maxZ: 11.95  },
+  { minX: -29,    minZ: 13.05,  maxX: -28.82, maxZ: 16     },
+  // Opposite row: west-facing stores (sx1=front/west, sx2=back/east, sx2>sx1)
+  // Store A: Olive Warehouse (sx1=-24,sx2=-16,sz1=-50,sz2=-36, dz=-43 dw=1.3)
+  { minX: -16, minZ: -50.18, maxX: -15.82, maxZ: -35.82 },
+  { minX: -24.18, minZ: -50.18, maxX: -15.82, maxZ: -50 },
+  { minX: -24.18, minZ: -36, maxX: -15.82, maxZ: -35.82 },
+  { minX: -24.18, minZ: -50, maxX: -24, maxZ: -43.65 },
+  { minX: -24.18, minZ: -42.35, maxX: -24, maxZ: -36 },
+  // Store B: Orange Spice Market (sx1=-24,sx2=-19,sz1=-33,sz2=-24, dz=-28.5 dw=1.0)
+  { minX: -19, minZ: -33.18, maxX: -18.82, maxZ: -23.82 },
+  { minX: -24.18, minZ: -33.18, maxX: -18.82, maxZ: -33 },
+  { minX: -24.18, minZ: -24, maxX: -18.82, maxZ: -23.82 },
+  { minX: -24.18, minZ: -33, maxX: -24, maxZ: -29 },
+  { minX: -24.18, minZ: -28, maxX: -24, maxZ: -24 },
+  // Store C: Purple Curiosity Shop (sx1=-24,sx2=-19,sz1=-22,sz2=-14, dz=-18 dw=1.0)
+  { minX: -19, minZ: -22.18, maxX: -18.82, maxZ: -13.82 },
+  { minX: -24.18, minZ: -22.18, maxX: -18.82, maxZ: -22 },
+  { minX: -24.18, minZ: -14, maxX: -18.82, maxZ: -13.82 },
+  { minX: -24.18, minZ: -22, maxX: -24, maxZ: -18.5 },
+  { minX: -24.18, minZ: -17.5, maxX: -24, maxZ: -14 },
+  // Store D: Yellow General Store (sx1=-24,sx2=-16,sz1=-12,sz2=2, dz=-5 dw=1.4)
+  { minX: -16, minZ: -12.18, maxX: -15.82, maxZ: 2.18 },
+  { minX: -24.18, minZ: -12.18, maxX: -15.82, maxZ: -12 },
+  { minX: -24.18, minZ: 2, maxX: -15.82, maxZ: 2.18 },
+  { minX: -24.18, minZ: -12, maxX: -24, maxZ: -5.7 },
+  { minX: -24.18, minZ: -4.3, maxX: -24, maxZ: 2 },
+  // Store E: Teal Garden Shop (sx1=-24,sx2=-18,sz1=4,sz2=17, dz=10.5 dw=1.1)
+  { minX: -18, minZ: 3.82, maxX: -17.82, maxZ: 17.18 },
+  { minX: -24.18, minZ: 3.82, maxX: -17.82, maxZ: 4 },
+  { minX: -24.18, minZ: 17, maxX: -17.82, maxZ: 17.18 },
+  { minX: -24.18, minZ: 4, maxX: -24, maxZ: 9.95 },
+  { minX: -24.18, minZ: 11.05, maxX: -24, maxZ: 17 },
+  // Water tower legs (center X=52 Z=-45, legs at ±2.2)
+  { minX: 53.98, minZ: -43.02, maxX: 54.42, maxZ: -42.58 },
+  { minX: 49.58, minZ: -43.02, maxX: 50.02, maxZ: -42.58 },
+  { minX: 53.98, minZ: -47.42, maxX: 54.42, maxZ: -47.02 },
+  { minX: 49.58, minZ: -47.42, maxX: 50.02, maxZ: -47.02 },
 ];
 const DOOR_BOX: Box = { minX: 23.85, minZ: -0.7, maxX: 24.15, maxZ: 0.7 };
 
@@ -312,13 +381,19 @@ setInterval(() => {
     p.x = Math.max(-BOUNDS, Math.min(BOUNDS, pos.x));
     p.z = Math.max(-BOUNDS, Math.min(BOUNDS, pos.z));
 
-    // Y — subway ramp interpolation (matches client)
+    // Y — subway ramp + water tower interpolation (matches client)
     const inSub = Math.abs(p.x - SUB_CX) < SUB_HW - 0.3;
     let ty = 0;
     if (inSub) {
       if (p.z >= -20 && p.z <= 20) ty = SUB_FY;
       else if (p.z < -20 && p.z > -30) ty = ((-20 - p.z) / 10) * SUB_FY;
       else if (p.z > 20 && p.z < 30) ty = ((p.z - 20) / 10) * SUB_FY;
+    } else if (Math.abs(p.x - 52) < 0.9 && p.z >= -41 && p.z <= -39) {
+      // Water tower ladder (south approach, walking north raises Y)
+      ty = Math.max(0, Math.min(9, (-39 - p.z) / 2 * 9));
+    } else if (Math.abs(p.x - 52) <= 4.0 && Math.abs(p.z + 45) <= 4.0 && p.y > 7.0) {
+      // Water tower platform
+      ty = 9;
     }
     p.y += (ty - p.y) * 0.15;
 
