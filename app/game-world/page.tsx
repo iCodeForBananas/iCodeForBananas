@@ -28,7 +28,11 @@ export default function GameWorldPage() {
   const compassStripRef = useRef<HTMLDivElement>(null)
   const activeSlotRef = useRef(0)
   const [activeSlot, setActiveSlot] = useState(0)
-  const mouseDownRef = useRef(false)
+  const mouseDownRef    = useRef(false)
+  const joystickRef     = useRef({ x: 0, y: 0 })
+  const jumpTouchRef    = useRef(false)
+  const joystickBaseRef = useRef<HTMLDivElement>(null)
+  const joystickKnobRef = useRef<HTMLDivElement>(null)
 
   const [playerMoney,      setPlayerMoney]      = useState(10000)
   const [playerHealth,     setPlayerHealth]      = useState(100)
@@ -42,6 +46,7 @@ export default function GameWorldPage() {
   const [uziAmmo,          setUziAmmo]           = useState(30)
   const [uziReloading,     setUziReloading]      = useState(false)
   const [inHospital,       setInHospital]        = useState(false)
+  const [isIPad,           setIsIPad]            = useState(false)
 
   const playerHealthRef  = useRef(100)
   const playerMoneyRef   = useRef(10000)
@@ -78,8 +83,8 @@ export default function GameWorldPage() {
 
       // ── Scene ──────────────────────────────────────────────
       const scene = new THREE.Scene()
-      scene.background = new THREE.Color(0x87ceeb)
-      scene.fog = new THREE.Fog(0x87ceeb, 40, 120)
+      scene.background = new THREE.Color(0x06060f)
+      scene.fog = new THREE.Fog(0x06060f, 18, 70)
 
       // ── Renderer ───────────────────────────────────────────
       renderer = new THREE.WebGLRenderer({ antialias: true })
@@ -98,35 +103,107 @@ export default function GameWorldPage() {
       )
 
       // ── Lights ─────────────────────────────────────────────
-      scene.add(new THREE.AmbientLight(0xffffff, 0.55))
+      const ambientLight = new THREE.AmbientLight(0x1a2244, 0.45)
+      scene.add(ambientLight)
 
-      const sun = new THREE.DirectionalLight(0xfff5e0, 1.1)
-      sun.position.set(20, 40, 20)
-      sun.castShadow = true
-      sun.shadow.mapSize.set(2048, 2048)
-      sun.shadow.camera.left = -60
-      sun.shadow.camera.right = 60
-      sun.shadow.camera.top = 60
-      sun.shadow.camera.bottom = -60
-      sun.shadow.camera.far = 200
-      scene.add(sun)
+      const moon = new THREE.DirectionalLight(0x8899cc, 0.55)
+      moon.position.set(-30, 60, -20)
+      moon.castShadow = true
+      moon.shadow.mapSize.set(2048, 2048)
+      moon.shadow.camera.left = -60
+      moon.shadow.camera.right = 60
+      moon.shadow.camera.top = 60
+      moon.shadow.camera.bottom = -60
+      moon.shadow.camera.far = 200
+      scene.add(moon)
+
+      // Dim fill to lift shadow-side geometry off pure black
+      const fillLight = new THREE.DirectionalLight(0x223344, 0.18)
+      fillLight.position.set(30, 20, 20)
+      scene.add(fillLight)
+
+      // ── Moon disc in sky (sits within cloud layer, hazy) ──
+      const moonPos = new THREE.Vector3(-75, 62, -120)
+      const moonDisc = new THREE.Mesh(
+        new THREE.CircleGeometry(5.5, 32),
+        new THREE.MeshBasicMaterial({ color: 0xdde8ff })
+      )
+      moonDisc.position.copy(moonPos)
+      moonDisc.lookAt(0, 10, 0)
+      scene.add(moonDisc)
+
+      // Layered haze planes between moon and viewer — simulate cloud diffusion
+      const hazeConfigs: [number, number, number, number][] = [
+        [9,  0.22, 0, 0],       // inner glow ring
+        [14, 0.10, 0.5, 0.5],   // mid haze
+        [20, 0.07, 1.2, 1.0],   // outer diffusion
+        [28, 0.04, 2.0, 1.8],   // far bleed
+      ]
+      for (const [r, op, ox, oy] of hazeConfigs) {
+        const haze = new THREE.Mesh(
+          new THREE.CircleGeometry(r, 32),
+          new THREE.MeshBasicMaterial({ color: 0xaabbdd, transparent: true, opacity: op, depthWrite: false })
+        )
+        haze.position.set(moonPos.x + ox, moonPos.y + oy, moonPos.z + 2)
+        haze.lookAt(0, 10, 0)
+        scene.add(haze)
+      }
+
+      // Thin dark cloud wisps draped over the moon
+      const wispMat = new THREE.MeshBasicMaterial({ color: 0x090912, transparent: true, opacity: 0.55, depthWrite: false })
+      for (const [wx, wy, ww, wh] of [
+        [-4, 1.5, 14, 2.8], [3, -1, 18, 2.2], [-7, -2.5, 10, 2.0], [6, 3, 12, 1.8],
+      ] as [number,number,number,number][]) {
+        const wisp = new THREE.Mesh(new THREE.PlaneGeometry(ww, wh), wispMat)
+        wisp.position.set(moonPos.x + wx, moonPos.y + wy, moonPos.z + 3)
+        wisp.lookAt(0, 10, 0)
+        scene.add(wisp)
+      }
+
+      // ── Overcast cloud layer ───────────────────────────────
+      const mkCloud = (cx: number, cy: number, cz: number, w: number, d: number) => {
+        const puffs = [
+          [0, 0, 0, w, 5, d],
+          [-w * 0.28, -1.2, 0, w * 0.65, 3.5, d * 0.75],
+          [w * 0.25, -0.8, d * 0.18, w * 0.55, 3.2, d * 0.6],
+          [0, 1.5, -d * 0.2, w * 0.75, 3, d * 0.55],
+        ] as [number,number,number,number,number,number][]
+        const cloudMat = new THREE.MeshLambertMaterial({ color: 0x0e0e18, transparent: true, opacity: 0.88 })
+        for (const [ox, oy, oz, pw, ph, pd] of puffs) {
+          const c = new THREE.Mesh(new THREE.BoxGeometry(pw, ph, pd), cloudMat)
+          c.position.set(cx + ox, cy + oy, cz + oz)
+          scene.add(c)
+        }
+      }
+      mkCloud(-40, 55, -50, 55, 22)
+      mkCloud(10,  58, -70, 65, 28)
+      mkCloud(60,  52, -45, 48, 20)
+      mkCloud(-80, 60, -20, 70, 30)
+      mkCloud(30,  56, 40,  52, 24)
+      mkCloud(-20, 62, 30,  60, 26)
+      mkCloud(80,  54, 10,  44, 18)
+      mkCloud(-60, 50, 50,  58, 22)
+      mkCloud(5,   64, -120, 80, 35)
+      // cloud mass flanking the moon — gives it something to diffuse through
+      mkCloud(-90, 60, -110, 60, 25)
+      mkCloud(-55, 63, -130, 50, 20)
 
       // ── Ground ─────────────────────────────────────────────
       const ground = new THREE.Mesh(
         new THREE.PlaneGeometry(200, 200),
-        new THREE.MeshLambertMaterial({ color: 0x5a8a40 })
+        new THREE.MeshLambertMaterial({ color: 0x0f1a0a })
       )
       ground.rotation.x = -Math.PI / 2
       ground.receiveShadow = true
       scene.add(ground)
 
-      const grid = new THREE.GridHelper(200, 40, 0x3a6a28, 0x4a7a38)
+      const grid = new THREE.GridHelper(200, 40, 0x0a1006, 0x0d1508)
       grid.position.y = 0.01
       scene.add(grid)
 
       // ── Trees ──────────────────────────────────────────────
-      const trunkMat = new THREE.MeshLambertMaterial({ color: 0x6b4226 })
-      const crownMat = new THREE.MeshLambertMaterial({ color: 0x2e7d32 })
+      const trunkMat = new THREE.MeshLambertMaterial({ color: 0x2a1a0a })
+      const crownMat = new THREE.MeshLambertMaterial({ color: 0x0e2210 })
       const rng = (lo: number, hi: number) => lo + Math.random() * (hi - lo)
 
       for (let i = 0; i < 35; i++) {
@@ -183,12 +260,12 @@ export default function GameWorldPage() {
 
       // ── Underground Subway (NYC-style) ─────────────────────────────
       const subCX    = -15    // tunnel center X
-      const subHW    = 3.2    // half-width
-      const subFY    = -7     // floor Y
+      const subHW    = 5.0    // half-width (wall to wall)
+      const subFY    = -7     // floor Y (track pit level)
       const subTH    = 6      // tunnel height
-      const subPlatH = 1.1    // platform slab height
-      const subPlatW = 1.05   // platform width each side
-      const subPlatY = subFY + subPlatH  // -5.9, top of platform
+      const subPlatH = 1.5    // platform slab height (raised above track pit)
+      const subPlatW = 1.8    // platform width each side
+      const subPlatY = subFY + subPlatH  // -5.5, top of platform
 
       const subConc   = new THREE.MeshLambertMaterial({ color: 0x888899 })
       const subFlrM   = new THREE.MeshLambertMaterial({ color: 0x4a4a52 })
@@ -270,68 +347,85 @@ export default function GameWorldPage() {
         subPL.position.set(subCX, subFY + subTH - 0.5, lz); scene.add(subPL)
       }
 
-      // ── Rail tracks ───────────────────────────────────────────────
-      // Two rails running Z: -20 to 20 (platform length)
-      const rail1X = subCX - 0.65, rail2X = subCX + 0.65
-      subBox(rail1X, subFY + 0.12, 0, 0.08, 0.16, 40, subRailM)
-      subBox(rail2X, subFY + 0.12, 0, 0.08, 0.16, 40, subRailM)
-      // Rail head profile (top cap)
-      subBox(rail1X, subFY + 0.22, 0, 0.12, 0.06, 40, subRailM)
-      subBox(rail2X, subFY + 0.22, 0, 0.12, 0.06, 40, subRailM)
-      // Wooden ties every 0.75 units
-      for (let tz = -19.6; tz <= 19.6; tz += 0.75) {
-        subBox(subCX, subFY + 0.07, tz, trackBedW - 0.1, 0.12, 0.22, subTieM)
-      }
-      // Third rail (electrified, offset east)
-      subBox(subCX + 1.3, subFY + 0.16, 0, 0.06, 0.1, 40, subRailM)
+      // ── Rail tracks (two lines: one each direction) ───────────────
+      const track1CX = subCX - 0.9   // west track (northbound)
+      const track2CX = subCX + 0.9   // east track (southbound)
+      const gauge    = 0.72           // rail separation per track
 
-      // ── NYC staircase (north: Z=-20→-30, south: Z=20→30) ─────────
-      // 10 steps, each 0.7 tall × 1.0 deep; player Y interpolation unchanged
+      // Track 1 rails + heads
+      subBox(track1CX - gauge / 2, subFY + 0.12, 0, 0.08, 0.16, 40, subRailM)
+      subBox(track1CX + gauge / 2, subFY + 0.12, 0, 0.08, 0.16, 40, subRailM)
+      subBox(track1CX - gauge / 2, subFY + 0.22, 0, 0.12, 0.06, 40, subRailM)
+      subBox(track1CX + gauge / 2, subFY + 0.22, 0, 0.12, 0.06, 40, subRailM)
+
+      // Track 2 rails + heads
+      subBox(track2CX - gauge / 2, subFY + 0.12, 0, 0.08, 0.16, 40, subRailM)
+      subBox(track2CX + gauge / 2, subFY + 0.12, 0, 0.08, 0.16, 40, subRailM)
+      subBox(track2CX - gauge / 2, subFY + 0.22, 0, 0.12, 0.06, 40, subRailM)
+      subBox(track2CX + gauge / 2, subFY + 0.22, 0, 0.12, 0.06, 40, subRailM)
+
+      // Wooden ties per track every 0.75 units
+      for (let tz = -19.6; tz <= 19.6; tz += 0.75) {
+        subBox(track1CX, subFY + 0.07, tz, gauge + 0.5, 0.12, 0.22, subTieM)
+        subBox(track2CX, subFY + 0.07, tz, gauge + 0.5, 0.12, 0.22, subTieM)
+      }
+
+      // Third rails (electrified, outer side of each track)
+      subBox(track1CX - gauge / 2 - 0.3, subFY + 0.16, 0, 0.06, 0.10, 40, subRailM)
+      subBox(track2CX + gauge / 2 + 0.3, subFY + 0.16, 0, 0.06, 0.10, 40, subRailM)
+
+      // Tunnel portal pillars at Z = ±20 (center divider marking two separate tunnel openings)
+      subBox(subCX, subFY + subTH / 2, -20, 0.35, subTH, 0.5, subConc)
+      subBox(subCX, subFY + subTH / 2,  20, 0.35, subTH, 0.5, subConc)
+
+      // ── Staircases (north: street at Z=-30, descend south to platform at Z=-20)
+      //              (south: street at Z=+30, descend north to platform at Z=+20) ───
+      // topZ = street end, dir = direction toward platform (+1 south, -1 north)
       const mkStaircase = (topZ: number, dir: number) => {
+        const shaftLen = 10
+        const shaftCenterZ = topZ + dir * (shaftLen / 2)  // Z=-25 or Z=+25
+
+        // 10 steps: si=0 is top (street, Y≈0), si=9 is bottom (platform, Y≈-7)
         for (let si = 0; si < 10; si++) {
-          const stepZ  = topZ + dir * (si + 0.5)  // step center Z
-          const stepY  = -(si * 0.7) - 0.35       // step center Y (descending)
+          const stepZ = topZ + dir * (si + 0.5)
+          const stepY = -(si * 0.7) - 0.35
           const treadH = 0.7
-          const rise   = 0.09                      // visible riser lip height
-          // Tread slab
-          subBox(subCX, stepY, stepZ, subHW * 2, treadH, 1.0, subStepM)
-          // Nosing accent strip
-          subBox(subCX, stepY + treadH / 2 - 0.04, stepZ - dir * 0.47, subHW * 2, 0.06, 0.06, subYell)
-          // Riser face (front of step)
-          subBox(subCX, stepY - rise / 2, stepZ - dir * 0.5, subHW * 2, rise, 0.04, subConc)
+          // Tread slab (slightly narrower than shaft so shaft walls show)
+          subBox(subCX, stepY, stepZ, subHW * 2 - 0.8, treadH, 1.0, subStepM)
+          // Yellow nosing strip on leading edge
+          subBox(subCX, stepY + treadH / 2 - 0.04, stepZ - dir * 0.47, subHW * 2 - 0.8, 0.06, 0.06, subYell)
         }
 
-        // Side walls enclosing stair shaft
-        const shaftZ = topZ + dir * 5  // center Z of shaft
-        subBox(subCX - subHW + 0.15, -3.5, shaftZ, 0.3, 7, 10, subConc) // west shaft wall
-        subBox(subCX + subHW - 0.15, -3.5, shaftZ, 0.3, 7, 10, subConc) // east shaft wall
-        // Under-stair fill
-        subBox(subCX, -5.25, shaftZ, subHW * 2, 3.5, 10, subConc)
+        // Shaft side walls: rise from Y=-7 to Y=+0.8 so they're visible above ground
+        const shaftWallH = -subFY + 0.8  // 7.8 units tall
+        const shaftWallCY = (subFY - 0.8) / 2  // center Y ≈ -3.9
+        subBox(subCX - subHW + 0.2, shaftWallCY, shaftCenterZ, 0.4, shaftWallH, shaftLen, subConc)
+        subBox(subCX + subHW - 0.2, shaftWallCY, shaftCenterZ, 0.4, shaftWallH, shaftLen, subConc)
 
-        // Green handrails (two posts per side + diagonal bar)
-        const railY_top = 0.9  // handrail height at top
-        for (const hx of [subCX - subHW + 0.55, subCX + subHW - 0.55]) {
-          // Vertical posts every 3 steps
+        // Concrete lip at street entrance (low curb marks the top of shaft)
+        subBox(subCX, 0.3, topZ - dir * 0.4, subHW * 2 + 1.0, 0.6, 0.8, subConc)
+
+        // Under-stair fill (solid concrete wedge behind the steps)
+        subBox(subCX, subFY + 1.75, shaftCenterZ, subHW * 2 - 1.0, 3.5, shaftLen, subConc)
+
+        // Green handrails
+        const railY_top = 0.9
+        for (const hx of [subCX - subHW + 0.65, subCX + subHW - 0.65]) {
           for (let pi = 0; pi < 10; pi += 3) {
             const pz = topZ + dir * (pi + 0.5)
             const py = -(pi * 0.7) + railY_top
             subBox(hx, py - 0.45, pz, 0.07, 0.9, 0.07, subRailGM)
           }
-          // Diagonal handrail bar (tilted box)
-          const hrBar = new THREE.Mesh(
-            new THREE.BoxGeometry(0.06, 0.06, 10.4),
-            subRailGM
-          )
+          const hrBar = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 10.4), subRailGM)
           hrBar.rotation.x = dir * Math.atan2(7, 10)
           hrBar.position.set(hx, -3.0, topZ + dir * 5)
           scene.add(hrBar)
         }
       }
-      mkStaircase(-20, -1)  // north staircase (goes deeper as Z decreases)
-      mkStaircase( 20,  1)  // south staircase (goes deeper as Z increases)
+      mkStaircase(-30, +1)  // north: street at Z=-30, walk south (↑Z) to descend
+      mkStaircase(+30, -1)  // south: street at Z=+30, walk north (↓Z) to descend
 
-      // ── Street-level entrance structures ─────────────────────────
-      // Classic NYC iron railing entrance with globe lights
+      // ── Street-level entrance structures (at street end of each shaft) ────────
       const mkSubwayEntrance = (surfaceZ: number, streetDir: number) => {
         const gateW = subHW * 2 + 0.6
         const gateH = 2.8
@@ -345,16 +439,15 @@ export default function GameWorldPage() {
         for (const barY of [0.9, 1.7]) {
           subBox(subCX, barY, surfaceZ, gateW, 0.14, 0.14, subGreenM)
         }
-        // Vertical pickets
-        for (let px = -subHW + 0.5; px <= subHW - 0.3; px += 0.55) {
+        // Vertical pickets (spaced across full new width)
+        for (let px = -subHW + 0.5; px <= subHW - 0.3; px += 0.65) {
           subBox(subCX + px, 1.2, surfaceZ, 0.10, 2.0, 0.10, subGreenM)
         }
 
         // Canopy extending toward street
         const canoZ = surfaceZ + streetDir * 1.2
         subBox(subCX, gateH + 0.18, canoZ, gateW + 0.4, 0.14, 2.6, subGreenM)
-        // Canopy ribs
-        for (const rx of [-subHW + 0.1, 0, subHW - 0.1]) {
+        for (const rx of [-subHW + 0.1, -subHW * 0.3, 0, subHW * 0.3, subHW - 0.1]) {
           subBox(subCX + rx, gateH + 0.14, canoZ, 0.08, 0.08, 2.6, subGreenM)
         }
 
@@ -367,18 +460,17 @@ export default function GameWorldPage() {
           gpl.position.set(gx, gateH + 0.1, surfaceZ); scene.add(gpl)
         }
 
-        // Yellow SUBWAY sign on header
+        // SUBWAY sign
         const sgn = new THREE.Mesh(new THREE.BoxGeometry(gateW - 0.3, 0.44, 0.12), subSgnM)
         sgn.position.set(subCX, gateH - 0.55, surfaceZ + streetDir * 0.08); scene.add(sgn)
-        // Sign inner text panel
         const sgnInner = new THREE.Mesh(new THREE.BoxGeometry(gateW - 0.7, 0.26, 0.13), new THREE.MeshBasicMaterial({ color: 0x1a1a1a }))
         sgnInner.position.set(subCX, gateH - 0.55, surfaceZ + streetDir * 0.09); scene.add(sgnInner)
 
-        // Ground-level grate / threshold plate
+        // Ground grate at threshold
         subBox(subCX, 0.04, surfaceZ + streetDir * 0.3, gateW, 0.08, 0.8, subConc)
       }
-      mkSubwayEntrance(-20,  1)   // north entrance, street is toward south (+Z)
-      mkSubwayEntrance( 20, -1)   // south entrance, street is toward north (-Z)
+      mkSubwayEntrance(-30, -1)   // north entrance: gate at Z=-30, street faces north (-Z)
+      mkSubwayEntrance(+30, +1)   // south entrance: gate at Z=+30, street faces south (+Z)
 
       // ── Player mesh builder ────────────────────────────────
       const box = (w: number, h: number, d: number) => new THREE.BoxGeometry(w, h, d)
@@ -532,7 +624,6 @@ export default function GameWorldPage() {
       const shMats  = [shWood1, shWood2, shTin1, shTin2, shRust, shConc2]
 
       const barrelMat2 = new THREE.MeshLambertMaterial({ color: 0x222211 })
-      const fireMat2   = new THREE.MeshBasicMaterial({ color: 0xff6600, transparent: true, opacity: 0.85 })
 
       type ShackDoor = { pivot: THREE.Group; doorBox: THREE.Box3; worldCenter: THREE.Vector3; open: boolean }
       const shackDoors: ShackDoor[] = []
@@ -621,27 +712,148 @@ export default function GameWorldPage() {
         )
         wallBoxes.push(doorBox)
         shackDoors.push({ pivot: doorPiv, doorBox, worldCenter: new THREE.Vector3(doorWX, 1, doorWZ), open: false })
+
+        // Interior hanging bulb (cord + emissive globe)
+        const cordM3 = new THREE.MeshLambertMaterial({ color: 0x1a1410 })
+        const cord3  = new THREE.Mesh(new THREE.BoxGeometry(0.018, 0.28, 0.018), cordM3)
+        cord3.position.set(0, h - 0.26, 0)
+        g.add(cord3)
+        const blbM3 = new THREE.MeshBasicMaterial({ color: 0xffdd88 })
+        const blb3  = new THREE.Mesh(new THREE.SphereGeometry(0.07, 6, 4), blbM3)
+        blb3.position.set(0, h - 0.42, 0)
+        g.add(blb3)
+        return h
       }
 
       const mkBarrel = (bx: number, bz: number) => {
         const b = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.24, 0.7, 8), barrelMat2)
         b.position.set(bx, 0.35, bz); scene.add(b)
-        const f = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.18, 0.25, 6), fireMat2)
-        f.position.set(bx, 0.85, bz); scene.add(f)
-        const fl = new THREE.PointLight(0xff5500, 1.2, 8)
-        fl.position.set(bx, 1.1, bz); scene.add(fl)
       }
 
+      const shackPositions: Array<{x: number, z: number, roofY: number}> = []
       for (const [sx, sz] of [
+        // original east cluster
         [30,-18],[33,-12],[27,-8],[35,-5],[29,0],[38,3],[32,9],[26,14],[36,18],[30,24],
         [41,-15],[42,8],[24,-3],[38,-10],[25,20],[44,-2],[28,-22],[34,25],[40,15],[45,-20],
         [22,10],[46,5],[31,-28],[43,22],
+        // west expansion — between street and east cluster
+        [18,-25],[16,-18],[20,-10],[17,-3],[19,5],[15,12],[18,20],[21,28],
+        [13,-22],[11,-14],[14,-6],[12,2],[10,10],[13,18],[16,26],[11,30],
+        // far-west fringe across the street
+        [5,-30],[7,-22],[4,-14],[6,-6],[3,2],[8,14],[5,22],[2,30],
+        [-4,-18],[-6,-8],[-3,4],[-5,16],[-7,-28],[-2,26],
+        // southern sprawl
+        [32,-35],[26,-38],[38,-32],[20,-40],[44,-36],[14,-34],[8,-36],[0,-32],
+        // northern sprawl
+        [30,32],[24,36],[38,30],[18,34],[44,28],[12,30],[6,36],[0,28],
       ] as [number,number][]) {
-        mkShack(sx + (shackRng()-0.5)*2.5, sz + (shackRng()-0.5)*2.5, (shackRng()-0.5)*0.7, shackRng)
+        const ax = sx + (shackRng()-0.5)*2.5
+        const az = sz + (shackRng()-0.5)*2.5
+        const arot = (shackRng()-0.5)*0.7
+        const roofY = mkShack(ax, az, arot, shackRng)
+        shackPositions.push({ x: ax, z: az, roofY })
       }
-      for (const [bx,bz] of [[29,-14],[37,1],[32,16],[26,8],[41,-8],[44,12]] as [number,number][]) {
+      for (const [bx,bz] of [
+        // original barrels
+        [29,-14],[37,1],[32,16],[26,8],[41,-8],[44,12],
+        // west expansion barrels
+        [17,-20],[13,-8],[10,5],[15,22],[19,-2],[12,14],
+        [5,-25],[7,-12],[4,8],[6,20],[2,-18],[8,28],
+        [-4,-10],[-3,12],[-6,-22],[-2,24],
+        // sprawl barrels
+        [31,-33],[22,-37],[6,-34],[-1,-28],[28,32],[10,34],[-3,28],[40,30],
+        // east cluster outer edge (dark corners)
+        [43,-14],[46,4],[47,-12],[45,-22],[45,22],[42,-20],[47,8],
+        // southern sprawl gaps
+        [38,-34],[44,-34],[14,-36],[8,-38],[0,-34],[26,-34],[20,-36],
+        // northern sprawl gaps
+        [24,34],[38,32],[18,32],[44,30],[6,34],[0,30],[12,34],[36,34],
+        // inner east cluster gaps
+        [35,-15],[33,5],[40,8],[36,20],[42,15],
+      ] as [number,number][]) {
         mkBarrel(bx+(shackRng()-0.5), bz+(shackRng()-0.5))
       }
+
+      // ── Shantytown power poles + electrical wiring ─────────────────────────
+      const shPoleM = new THREE.MeshLambertMaterial({ color: 0x2a1a08 })
+      const shInsM  = new THREE.MeshBasicMaterial({ color: 0xd8d4c2 })
+      const shWireM = new THREE.LineBasicMaterial({ color: 0x181208 })
+
+      const mkPowerPole = (px: number, pz: number) => {
+        subBox(px, 4.0, pz, 0.18, 8.0, 0.18, shPoleM)           // main pole
+        subBox(px, 8.1, pz, 0.28, 0.18, 0.28, shPoleM)          // top cap
+        subBox(px, 7.0, pz, 0.12, 0.14, 4.4, shPoleM)           // upper crossarm
+        subBox(px, 6.0, pz, 0.10, 0.12, 3.2, shPoleM)           // lower crossarm
+        // upper-arm insulators
+        for (const oz of [-2.2, -0.8, 0.8, 2.2]) {
+          const ins = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.16, 6), shInsM)
+          ins.position.set(px, 7.12, pz + oz); scene.add(ins)
+        }
+        // lower-arm insulators
+        for (const oz of [-1.6, 1.6]) {
+          const ins = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.14, 6), shInsM)
+          ins.position.set(px, 6.13, pz + oz); scene.add(ins)
+        }
+      }
+
+      const mkWireLine = (x1: number, y1: number, z1: number, x2: number, y2: number, z2: number) => {
+        const wS = new THREE.Vector3(x1, y1, z1)
+        const wE = new THREE.Vector3(x2, y2, z2)
+        const wM = wS.clone().lerp(wE, 0.5)
+        wM.y -= wS.distanceTo(wE) * 0.065   // catenary sag
+        const crv = new THREE.QuadraticBezierCurve3(wS, wM, wE)
+        const geo = new THREE.BufferGeometry().setFromPoints(crv.getPoints(8))
+        scene.add(new THREE.Line(geo, shWireM))
+      }
+
+      const shPoles = [
+        { x: 36, z: -8  },
+        { x: 28, z: 18  },
+        { x: 14, z: -12 },
+        { x:  0, z:  6  },
+      ]
+      for (const p of shPoles) mkPowerPole(p.x, p.z)
+
+      // Trunk wires pole-to-pole (two parallel runs for visual weight)
+      for (const [ai, bi] of [[0,2],[2,3],[0,1],[1,2]] as [number,number][]) {
+        const pa = shPoles[ai], pb = shPoles[bi]
+        mkWireLine(pa.x, 7.1, pa.z - 0.15, pb.x, 7.1, pb.z - 0.15)
+        mkWireLine(pa.x, 7.1, pa.z + 0.15, pb.x, 7.1, pb.z + 0.15)
+      }
+
+      // Service wire from every shack roof to its nearest pole
+      for (const sp of shackPositions) {
+        let nPole = shPoles[0], nDist = Infinity
+        for (const pole of shPoles) {
+          const d = Math.hypot(sp.x - pole.x, sp.z - pole.z)
+          if (d < nDist) { nDist = d; nPole = pole }
+        }
+        mkWireLine(sp.x, sp.roofY + 0.12, sp.z, nPole.x, 7.1, nPole.z)
+      }
+
+      // ── Shantytown street lamps ────────────────────────────────────────────
+      const shLPolM = new THREE.MeshLambertMaterial({ color: 0x2a1a08 })
+      const shLGlbM = new THREE.MeshBasicMaterial({ color: 0xffee88 })
+      const mkShLamp = (lx: number, lz: number) => {
+        subBox(lx, 2.75, lz, 0.12, 5.5, 0.12, shLPolM)
+        subBox(lx + 0.35, 5.5, lz, 0.7, 0.08, 0.08, shLPolM)
+        const glb = new THREE.Mesh(new THREE.SphereGeometry(0.20, 8, 5), shLGlbM)
+        glb.position.set(lx + 0.7, 5.3, lz); scene.add(glb)
+        const lpl = new THREE.PointLight(0xffcc77, 4.0, 50)
+        lpl.position.set(lx + 0.7, 5.0, lz); scene.add(lpl)
+      }
+      // Tap power poles for extra overhead light
+      for (const p of shPoles) {
+        const ppl = new THREE.PointLight(0xffcc77, 3.0, 45)
+        ppl.position.set(p.x, 7.5, p.z); scene.add(ppl)
+      }
+      // Street lamp posts distributed across the full shantytown
+      mkShLamp(31, -24); mkShLamp(40, -12); mkShLamp(28,   2); mkShLamp(36,  12)
+      mkShLamp(43,  -4); mkShLamp(44,  20); mkShLamp(25, -10); mkShLamp(17, -22)
+      mkShLamp(14,  -4); mkShLamp(19,  14); mkShLamp(11,  26); mkShLamp(12, -14)
+      mkShLamp( 5, -27); mkShLamp( 4,  -8); mkShLamp( 6,  12); mkShLamp( 2,  28)
+      mkShLamp(35, -35); mkShLamp(18, -37); mkShLamp( 3, -31)
+      mkShLamp(33,  32); mkShLamp(15,  34); mkShLamp(-1,  29)
 
       // ── Market District (west side, stores face east, front wall at X=-29) ───
 
@@ -676,7 +888,7 @@ export default function GameWorldPage() {
         stB(-24.7, 4.46, z, 0.46, 0.22, 0.30, ironM)
         const lens = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.12, 0.21), lensM)
         lens.position.set(-24.7, 4.33, z); scene.add(lens)
-        const lampPL = new THREE.PointLight(0xffeecc, 1.3, 18)
+        const lampPL = new THREE.PointLight(0xffcc88, 4.4, 44)
         lampPL.position.set(-24.7, 4.2, z); scene.add(lampPL)
       }
       for (const lz of [-47, -35, -23, -11, 1, 13]) mkAlleyLamp(lz)
@@ -691,8 +903,6 @@ export default function GameWorldPage() {
           new THREE.MeshBasicMaterial({ color: 0xffeeaa, transparent: true, opacity: 0.95 })
         )
         gM.position.set(wallX + 0.27, y + 0.19, z); scene.add(gM)
-        const sconPL = new THREE.PointLight(0xffcc66, 0.9, 8)
-        sconPL.position.set(wallX + 0.27, y, z); scene.add(sconPL)
       }
 
       // Store sign panel (protruding from east/front face)
@@ -1202,8 +1412,6 @@ export default function GameWorldPage() {
         const idWlk = new THREE.MeshLambertMaterial({ color: 0x151513 })   // walkway grating
         const idRal = new THREE.MeshLambertMaterial({ color: 0x0c0c0a })   // railing iron
         const idRst = new THREE.MeshLambertMaterial({ color: 0x2e1506 })   // rust
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const idFrM: any = new THREE.MeshBasicMaterial({ color: 0xff4400, transparent: true, opacity: 0.88 })
         const idDmp = new THREE.MeshLambertMaterial({ color: 0x16200e })   // dumpster
         const idCrt = new THREE.MeshLambertMaterial({ color: 0x3a2a14 })   // wood crate
         const idCap = new THREE.MeshLambertMaterial({ color: 0x2a1e0e })   // crate cap darker
@@ -1288,10 +1496,6 @@ export default function GameWorldPage() {
         // ── Fire barrel ────────────────────────────────────────────────────
         const mkIndBarrel = (bx: number, bz: number) => {
           stB(bx, 0.38, bz, 0.46, 0.76, 0.46, idRst)
-          const bFire = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.21, 0.3, 6), idFrM)
-          bFire.position.set(bx, 0.93, bz); scene.add(bFire)
-          const bPL = new THREE.PointLight(0xff6600, 0.95, 9)
-          bPL.position.set(bx, 1.3, bz); scene.add(bPL)
         }
 
         // ── Dumpster ───────────────────────────────────────────────────────
@@ -1312,8 +1516,23 @@ export default function GameWorldPage() {
           const lensM = new THREE.MeshBasicMaterial({ color: 0xffcc88 })
           const lns = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.12, 0.20), lensM)
           lns.position.set(lx + 0.9, 5.12, lz); scene.add(lns)
-          const lPL = new THREE.PointLight(0xff9944, 0.85, 18)
+          const lPL = new THREE.PointLight(0xff9944, 4.0, 52)
           lPL.position.set(lx + 0.9, 4.9, lz); scene.add(lPL)
+        }
+
+        // ── Industrial overhead cage light (interior) ──────────────────────
+        const wlCordM = new THREE.MeshLambertMaterial({ color: 0x1a1410 })
+        const wlCageM = new THREE.MeshLambertMaterial({ color: 0x252018 })
+        const wlBulbM = new THREE.MeshBasicMaterial({ color: 0xfff4cc })
+        const mkWhLight = (lx: number, ly: number, lz: number) => {
+          const wlCord = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.6, 0.04), wlCordM)
+          wlCord.position.set(lx, ly - 0.3, lz); scene.add(wlCord)
+          const wlCage = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.30, 0.42), wlCageM)
+          wlCage.position.set(lx, ly - 0.75, lz); wlCage.castShadow = true; scene.add(wlCage)
+          const wlBulb = new THREE.Mesh(new THREE.SphereGeometry(0.14, 6, 4), wlBulbM)
+          wlBulb.position.set(lx, ly - 0.80, lz); scene.add(wlBulb)
+          const wlPL = new THREE.PointLight(0xfff0aa, 2.2, 24)
+          wlPL.position.set(lx, ly - 1.1, lz); scene.add(wlPL)
         }
 
         // ── WH_A: Main NW warehouse (X=-8→9, Z=-77→-92, h=8.5) ───────────
@@ -1748,18 +1967,466 @@ export default function GameWorldPage() {
           fm.position.set(fx, fy, fz); scene.add(fm)
         }
 
-        // Alley street lamps (sodium vapor, dim orange)
-        mkIndLamp(-4.0, -64.0)
-        mkIndLamp(10.5, -66.5)
-        mkIndLamp(10.5, -84.5)
-        mkIndLamp(23.0, -75.5)
-        mkIndLamp(10.5, -58.5) // south district entrance lamp
+        // Alley street lamps — full district coverage (sodium vapor)
+        mkIndLamp(-4.0,  -64.0)
+        mkIndLamp(10.5,  -66.5)
+        mkIndLamp(10.5,  -84.5)
+        mkIndLamp(23.0,  -75.5)
+        mkIndLamp(10.5,  -58.5)  // south entrance east
+        mkIndLamp(-4.0,  -75.5)  // east cross-alley
+        mkIndLamp(-13.5, -58.5)  // south entrance mid
+        mkIndLamp(-28.5, -58.5)  // south entrance west
+        mkIndLamp(-43.5, -58.5)  // south entrance far-west
+        mkIndLamp(-13.5, -66.5)  // WH_F south row
+        mkIndLamp(-28.5, -66.5)  // WH_H south row
+        mkIndLamp(-13.5, -75.5)  // cross-alley center
+        mkIndLamp(-28.5, -75.5)  // cross-alley west
+        mkIndLamp(-43.5, -75.5)  // cross-alley far-west
+        mkIndLamp(-13.5, -84.5)  // WH_E north row
+        mkIndLamp(-28.5, -84.5)  // WH_G north row
 
-        // Ambient glow inside warehouses (very dim, sets mood)
-        const whAmbA = new THREE.PointLight(0xff8833, 0.3, 12); whAmbA.position.set(2, 3, -84.5); scene.add(whAmbA)
-        const whAmbB = new THREE.PointLight(0xff8833, 0.3, 10); whAmbB.position.set(17.5, 3, -84.5); scene.add(whAmbB)
-        const whAmbC = new THREE.PointLight(0xff8833, 0.25, 9); whAmbC.position.set(0.5, 3, -66.5); scene.add(whAmbC)
-        const whAmbD = new THREE.PointLight(0xff8833, 0.25, 9); whAmbD.position.set(17.5, 3, -66.5); scene.add(whAmbD)
+        // Interior warehouse cage lights (2 per warehouse)
+        mkWhLight(  0.5, 8.5, -81.0); mkWhLight(  0.5, 8.5, -88.0)  // WH_A
+        mkWhLight( 17.5, 7.5, -81.0); mkWhLight( 17.5, 7.5, -88.0)  // WH_B
+        mkWhLight( -1.0, 6.5, -63.0); mkWhLight( -1.0, 6.5, -70.0)  // WH_C
+        mkWhLight( 17.5, 7.0, -63.0); mkWhLight( 17.5, 7.0, -70.0)  // WH_D
+        mkWhLight(-19.0, 7.5, -81.0); mkWhLight(-19.0, 7.5, -88.0)  // WH_E
+        mkWhLight(-19.0, 6.5, -63.0); mkWhLight(-19.0, 6.5, -70.0)  // WH_F
+        mkWhLight(-37.0, 8.0, -81.0); mkWhLight(-37.0, 8.0, -88.0)  // WH_G
+        mkWhLight(-37.0, 7.0, -63.0); mkWhLight(-37.0, 7.0, -70.0)  // WH_H
+      }
+
+      // ── Perimeter road loop around Industrial District ─────────────────────────
+      // Road centerlines: south Z=-55, north Z=-97, east X=28, west X=-51
+      {
+        const rdMat   = new THREE.MeshLambertMaterial({ color: 0x1c1c22 })
+        const swMat   = new THREE.MeshLambertMaterial({ color: 0x38383e })
+        const cuMat   = new THREE.MeshLambertMaterial({ color: 0x4e4e58 })
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const poleMat: any = new THREE.MeshLambertMaterial({ color: 0x111116 })
+        const lensM   = new THREE.MeshBasicMaterial({ color: 0xffee88 })
+        const dashMat = new THREE.MeshLambertMaterial({ color: 0xffcc00 })
+
+        const prS = -55, prN = -97, prE = 28, prW = -51
+        const rdW = 4.0, swW = 1.8, cuW = 0.22, cuH = 0.12
+        const hX     = rdW / 2 + cuW + swW   // half cross-section = 4.02
+        const ewCX   = (prW + prE) / 2        // -11.5
+        const nsCZ   = (prN + prS) / 2        // -76
+        const ewLen  = prE - prW               // 79
+        const nsLen  = prS - prN               // 42
+        const ewFull = ewLen + 2 * hX          // 87.04 — extends into corners
+        const nsFull = nsLen - 2 * hX          // 33.96 — trimmed at corners
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const rPlane = (cx: number, cz: number, w: number, d: number, y: number, mat: any) => {
+          const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), mat)
+          m.rotation.x = -Math.PI / 2; m.position.set(cx, y, cz)
+          m.receiveShadow = true; scene.add(m)
+        }
+        const rBox = (cx: number, cz: number, bw: number, bd: number) => {
+          const m = new THREE.Mesh(new THREE.BoxGeometry(bw, cuH, bd), cuMat)
+          m.position.set(cx, cuH / 2, cz); scene.add(m)
+        }
+
+        // Asphalt road surfaces
+        rPlane(ewCX, prS, ewFull, rdW, 0.006, rdMat)       // south E-W (covers corners)
+        rPlane(ewCX, prN, ewFull, rdW, 0.006, rdMat)       // north E-W (covers corners)
+        rPlane(prE,  nsCZ, rdW,  nsFull, 0.006, rdMat)    // east N-S (trimmed)
+        rPlane(prW,  nsCZ, rdW,  nsFull, 0.006, rdMat)    // west N-S (trimmed)
+
+        // Yellow center-line stripe on each segment
+        rPlane(ewCX, prS,  ewLen, 0.18, 0.012, dashMat)
+        rPlane(ewCX, prN,  ewLen, 0.18, 0.012, dashMat)
+        rPlane(prE,  nsCZ, 0.18, nsLen, 0.012, dashMat)
+        rPlane(prW,  nsCZ, 0.18, nsLen, 0.012, dashMat)
+
+        // Curbs — raised stone strips at road edges
+        rBox(ewCX, prS + rdW / 2 + cuW / 2, ewFull, cuW)   // south road N curb
+        rBox(ewCX, prS - rdW / 2 - cuW / 2, ewFull, cuW)   // south road S curb
+        rBox(ewCX, prN + rdW / 2 + cuW / 2, ewFull, cuW)   // north road N curb (inner)
+        rBox(ewCX, prN - rdW / 2 - cuW / 2, ewFull, cuW)   // north road S curb (outer)
+        rBox(prE + rdW / 2 + cuW / 2, nsCZ, cuW, nsFull)   // east road E curb (outer)
+        rBox(prE - rdW / 2 - cuW / 2, nsCZ, cuW, nsFull)   // east road W curb (inner)
+        rBox(prW + rdW / 2 + cuW / 2, nsCZ, cuW, nsFull)   // west road E curb (inner)
+        rBox(prW - rdW / 2 - cuW / 2, nsCZ, cuW, nsFull)   // west road W curb (outer)
+
+        // Sidewalks — concrete paving on both sides of each road segment
+        rPlane(ewCX, prS + rdW / 2 + cuW + swW / 2, ewFull, swW, 0.07, swMat)  // south-N
+        rPlane(ewCX, prS - rdW / 2 - cuW - swW / 2, ewFull, swW, 0.07, swMat)  // south-S
+        rPlane(ewCX, prN + rdW / 2 + cuW + swW / 2, ewFull, swW, 0.07, swMat)  // north-N (inner)
+        rPlane(ewCX, prN - rdW / 2 - cuW - swW / 2, ewFull, swW, 0.07, swMat)  // north-S (outer)
+        rPlane(prE + rdW / 2 + cuW + swW / 2, nsCZ, swW, nsFull, 0.07, swMat)  // east-E (outer)
+        rPlane(prE - rdW / 2 - cuW - swW / 2, nsCZ, swW, nsFull, 0.07, swMat)  // east-W (inner)
+        rPlane(prW + rdW / 2 + cuW + swW / 2, nsCZ, swW, nsFull, 0.07, swMat)  // west-E (inner)
+        rPlane(prW - rdW / 2 - cuW - swW / 2, nsCZ, swW, nsFull, 0.07, swMat)  // west-W (outer)
+
+        // Street lamp: tall iron pole + horizontal arm + sodium-vapor head + PointLight
+        const mkStrLamp = (lx: number, lz: number, armAxis: 'x' | 'z', armSign: number) => {
+          const pH = 6.2, aL = 2.0
+          stB(lx, pH / 2, lz, 0.1, pH, 0.1, poleMat)
+          const aox = armAxis === 'x' ? armSign * aL / 2 : 0
+          const aoz = armAxis === 'z' ? armSign * aL / 2 : 0
+          stB(lx + aox, pH - 0.05, lz + aoz,
+            armAxis === 'x' ? aL : 0.08, 0.08, armAxis === 'z' ? aL : 0.08, poleMat)
+          const hx = lx + (armAxis === 'x' ? armSign * aL : 0)
+          const hz = lz + (armAxis === 'z' ? armSign * aL : 0)
+          stB(hx, pH - 0.42, hz,
+            armAxis === 'x' ? 0.38 : 0.24, 0.26, armAxis === 'z' ? 0.38 : 0.24, poleMat)
+          const lens = new THREE.Mesh(
+            new THREE.BoxGeometry(armAxis === 'x' ? 0.24 : 0.16, 0.09, armAxis === 'z' ? 0.24 : 0.16),
+            lensM
+          )
+          lens.position.set(hx, pH - 0.57, hz); scene.add(lens)
+          const pl = new THREE.PointLight(0xffbb55, 2.8, 40)
+          pl.position.set(hx, pH - 0.8, hz); scene.add(pl)
+        }
+
+        // Pole placed on outer sidewalk; arm swings toward road center over carriageway
+        const outerOff = rdW / 2 + cuW + swW * 0.7  // ≈ 3.48 from road center
+
+        // South road — outer sidewalk is south (more −Z); arm points +Z toward road
+        for (let lx = prW + 8; lx <= prE - 6; lx += 14)
+          mkStrLamp(lx, prS - outerOff, 'z', +1)
+
+        // North road — outer sidewalk is north (more −Z); arm points +Z toward road
+        for (let lx = prW + 8; lx <= prE - 6; lx += 14)
+          mkStrLamp(lx, prN - outerOff, 'z', +1)
+
+        // East road — outer sidewalk is east (more +X); arm points −X toward road
+        for (let lz = prN + 8; lz <= prS - 6; lz += 12)
+          mkStrLamp(prE + outerOff, lz, 'x', -1)
+
+        // West road — outer sidewalk is west (more −X); arm points +X toward road
+        for (let lz = prN + 8; lz <= prS - 6; lz += 12)
+          mkStrLamp(prW - outerOff, lz, 'x', +1)
+      }
+
+      // ── The Sanctum — Chancellor's Command Stronghold ─────────────────────────
+      // Compound wall: X=47→73, Z=-57(south)→-83(north)
+      // Main building: X=54→66, Z=-63→-77, 2 floors + roof
+      {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const smDkM:  any = new THREE.MeshLambertMaterial({ color: 0x060c06 })
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const smDk2M: any = new THREE.MeshLambertMaterial({ color: 0x0a100a })
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const smGrnM: any = new THREE.MeshBasicMaterial({ color: 0x00ff55 })
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const smGrnDimM: any = new THREE.MeshLambertMaterial({ color: 0x003a18 })
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const smMtlM: any = new THREE.MeshLambertMaterial({ color: 0x060608 })
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const smGlsM: any = new THREE.MeshLambertMaterial({ color: 0x001a08, transparent: true, opacity: 0.74 })
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const smFlrM: any = new THREE.MeshLambertMaterial({ color: 0x0c120c })
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const smCncM: any = new THREE.MeshLambertMaterial({ color: 0x0f150f })
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const smConsMat: any = new THREE.MeshLambertMaterial({ color: 0x060e06 })
+
+        const gPL = (x: number, y: number, z: number, intensity: number, range: number) => {
+          const pl = new THREE.PointLight(0x00ff55, intensity, range)
+          pl.position.set(x, y, z); scene.add(pl)
+        }
+
+        // Compound bounds
+        const cwx1 = 47, cwx2 = 73, cwz1 = -57, cwz2 = -83
+        const cwT = 0.5, cwH = 4.5
+        const cwCX = (cwx1 + cwx2) / 2  // 60
+        const cwCZ = (cwz1 + cwz2) / 2  // -70
+
+        // Compound ground fill
+        const cGnd = new THREE.Mesh(new THREE.PlaneGeometry(cwx2 - cwx1, Math.abs(cwz2 - cwz1)), smFlrM)
+        cGnd.rotation.x = -Math.PI / 2; cGnd.position.set(cwCX, 0.005, cwCZ)
+        cGnd.receiveShadow = true; scene.add(cGnd)
+        const cGr = new THREE.GridHelper(26, 13, 0x0c180c, 0x0c180c)
+        cGr.position.set(cwCX, 0.008, cwCZ); scene.add(cGr)
+
+        // ── Perimeter walls ──────────────────────────────────────────────────────
+        // South wall (cwz1=-57): front gate opening X=58.5→61.5
+        stB(52.75, cwH / 2, cwz1, 11.5, cwH, cwT, smDkM)  // left of gate
+        stB(67.25, cwH / 2, cwz1, 11.5, cwH, cwT, smDkM)  // right of gate
+        // North wall (cwz2=-83): crawl gap X=59→61
+        stB(53,    cwH / 2, cwz2, 12,   cwH, cwT, smDkM)
+        stB(67,    cwH / 2, cwz2, 12,   cwH, cwT, smDkM)
+        stB(60, 1.4 + (cwH - 1.4) / 2, cwz2, 2, cwH - 1.4, cwT, smDkM) // above crawl hole
+        // West wall (cwx1=47): side gate Z=-68.5→-71.5
+        stB(cwx1, cwH / 2, -62.75, cwT, cwH, 11.5, smDkM)
+        stB(cwx1, cwH / 2, -77.25, cwT, cwH, 11.5, smDkM)
+        // East wall (cwx2=73): mirror side gate
+        stB(cwx2, cwH / 2, -62.75, cwT, cwH, 11.5, smDkM)
+        stB(cwx2, cwH / 2, -77.25, cwT, cwH, 11.5, smDkM)
+
+        // Green top-edge strips on all walls
+        for (const [wx, wz, ww, wd] of [
+          [cwCX, cwz1, cwx2 - cwx1, cwT * 1.1],
+          [cwCX, cwz2, cwx2 - cwx1, cwT * 1.1],
+          [cwx1, cwCZ, cwT * 1.1, Math.abs(cwz2 - cwz1)],
+          [cwx2, cwCZ, cwT * 1.1, Math.abs(cwz2 - cwz1)],
+        ] as [number, number, number, number][]) {
+          stB(wx, cwH + 0.07, wz, ww, 0.14, wd, smGrnM)
+        }
+
+        // ── Front gate (south, iron bars) ────────────────────────────────────────
+        const fgH = cwH + 1.2
+        stB(58.2, fgH / 2, cwz1, 0.55, fgH, 0.55, smMtlM)   // left pillar
+        stB(61.8, fgH / 2, cwz1, 0.55, fgH, 0.55, smMtlM)   // right pillar
+        stB(60, fgH - 0.11, cwz1, 4.0, 0.22, 0.55, smMtlM)  // arch header
+        stB(58.2, 2.8, cwz1 - 0.04, 0.07, 3.8, 0.07, smGrnM)  // pillar glow strip L
+        stB(61.8, 2.8, cwz1 - 0.04, 0.07, 3.8, 0.07, smGrnM)  // pillar glow strip R
+        // Vertical gate bars
+        for (let gx = 58.5; gx <= 61.5; gx += 0.55) {
+          const gb = new THREE.Mesh(new THREE.BoxGeometry(0.07, 3.6, 0.07), smMtlM)
+          gb.position.set(gx, 1.8, cwz1); scene.add(gb)
+        }
+        for (const gy of [0.4, 1.8, 3.3]) {
+          const gr = new THREE.Mesh(new THREE.BoxGeometry(3.0, 0.07, 0.07), smMtlM)
+          gr.position.set(60, gy, cwz1); scene.add(gr)
+        }
+        gPL(60, fgH + 0.6, cwz1 + 1.2, 10.0, 44)  // entry floodlight
+
+        // ── Side gates (bars only) ────────────────────────────────────────────────
+        for (const [gx5, gz5] of [[cwx1, -70], [cwx2, -70]] as [number, number][]) {
+          stB(gx5, cwH / 2 + 0.25, gz5 - 1.4, cwT * 1.4, cwH + 0.5, 0.5, smMtlM)
+          stB(gx5, cwH / 2 + 0.25, gz5 + 1.4, cwT * 1.4, cwH + 0.5, 0.5, smMtlM)
+          for (let bi = -1.35; bi <= 1.35; bi += 0.6) {
+            const gb2 = new THREE.Mesh(new THREE.BoxGeometry(0.07, 3.0, 0.07), smMtlM)
+            gb2.position.set(gx5, 1.5, gz5 + bi); scene.add(gb2)
+          }
+          gPL(gx5, 4.5, gz5, 4.0, 26)
+        }
+
+        // ── Corner turrets + Sanctum flags ───────────────────────────────────────
+        const flagBM = new THREE.MeshBasicMaterial({ color: 0x000d03 })
+        const flagGM = new THREE.MeshBasicMaterial({ color: 0x00cc44 })
+        for (const [fx, fz] of [[cwx1, cwz1], [cwx2, cwz1], [cwx1, cwz2], [cwx2, cwz2]] as [number, number][]) {
+          stB(fx, cwH + 0.6, fz, 1.2, cwH + 1.2, 1.2, smDkM)           // turret body
+          stB(fx, cwH * 2 + 1.25, fz, 1.4, 0.14, 1.4, smDkM)            // turret cap
+          stB(fx, cwH + 0.07, fz, 1.22, 0.14, 1.22, smGrnM)             // turret base glow
+          stB(fx, cwH * 2 + 1.06, fz, 0.07, cwH + 0.3, 0.07, smMtlM)   // flag pole
+          // Flag body (thin box facing outward)
+          const fSign = (fx < cwCX ? -1 : 1)
+          const flagB = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.9, 1.6), flagBM)
+          flagB.position.set(fx + fSign * 0.82, cwH * 2 + 1.8, fz); scene.add(flagB)
+          // Sanctum S-glyph bars on flag
+          for (const [fy2, fz2] of [[0.38, 0], [0.0, 0], [-0.38, 0]] as [number, number][]) {
+            const fb = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.1, 1.1), flagGM)
+            fb.position.set(fx + fSign * 0.83, cwH * 2 + 1.8 + fy2, fz + fz2); scene.add(fb)
+          }
+          const fvL = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.42, 0.1), flagGM)
+          fvL.position.set(fx + fSign * 0.83, cwH * 2 + 1.99, fz - 0.5); scene.add(fvL)
+          const fvR = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.42, 0.1), flagGM)
+          fvR.position.set(fx + fSign * 0.83, cwH * 2 + 1.61, fz + 0.5); scene.add(fvR)
+          gPL(fx, cwH + 2.8, fz, 3.0, 24)
+        }
+
+        // ── Main building exterior ────────────────────────────────────────────────
+        const bx1 = 54, bx2 = 66, bz1 = -63, bz2 = -77
+        const bH1 = 4.0, bH2 = 3.5
+        const bcx = (bx1 + bx2) / 2   // 60
+        const bcz = (bz1 + bz2) / 2   // -70
+        const bW = bx2 - bx1          // 12
+        const bD = Math.abs(bz2 - bz1) // 14
+        const bWT = 0.2
+
+        // Building ground floor
+        const bGnd = new THREE.Mesh(new THREE.PlaneGeometry(bW, bD), smCncM)
+        bGnd.rotation.x = -Math.PI / 2; bGnd.position.set(bcx, 0.01, bcz)
+        bGnd.receiveShadow = true; scene.add(bGnd)
+
+        // South wall — iron double doors X=59→61 (sdw=2, sdh=3.2)
+        const sdw = 2.0, sdh = 3.2
+        stB(bx1 + 2.5, bH1 / 2, bz1, 5, bH1, bWT, smDkM)         // left
+        stB(bx2 - 2.5, bH1 / 2, bz1, 5, bH1, bWT, smDkM)         // right
+        stB(60, sdh + (bH1 - sdh) / 2, bz1, sdw, bH1 - sdh, bWT, smDkM) // above doors
+        // Iron door panels
+        for (const [dx, ds] of [[59.5, -1], [60.5, +1]] as [number, number][]) {
+          stB(dx, sdh / 2, bz1 - 0.01, sdw / 2 - 0.02, sdh, 0.09, smMtlM)
+          stB(dx, sdh * 0.07, bz1 - 0.07, sdw / 2 - 0.04, 0.07, 0.04, smGrnM)
+          stB(dx, sdh * 0.93, bz1 - 0.07, sdw / 2 - 0.04, 0.07, 0.04, smGrnM)
+          stB(dx + ds * 0.28, sdh * 0.45, bz1 - 0.1, 0.05, 0.55, 0.05, smGrnDimM) // handle
+        }
+        gPL(60, 4.8, bz1 - 1.4, 12.0, 44)  // entry spotlight
+
+        // North, East, West walls (solid)
+        stB(bcx, bH1 / 2, bz2, bW, bH1, bWT, smDkM)
+        stB(bx2, bH1 / 2, bcz, bWT, bH1, bD, smDkM)
+        stB(bx1, bH1 / 2, bcz, bWT, bH1, bD, smDkM)
+
+        // Barred windows — east wall (jail side)
+        for (const wz of [-66.5, -69.5, -72.5]) {
+          stB(bx2, bH1 * 0.6, wz, bWT * 2.4, bH1 * 0.65, 0.95, smDkM)   // frame
+          stB(bx2 + 0.02, bH1 * 0.6, wz, bWT * 0.7, bH1 * 0.48, 0.62, smGlsM)  // dark glass
+          for (const boz of [-0.22, 0, 0.22]) {
+            stB(bx2 + 0.01, bH1 * 0.6, wz + boz, bWT * 0.5, bH1 * 0.48, 0.05, smMtlM)
+          }
+        }
+        // West wall small windows (armory)
+        for (const wz of [-67.5, -71.0]) {
+          stB(bx1, bH1 * 0.62, wz, bWT * 2.4, bH1 * 0.5, 1.1, smDkM)
+          stB(bx1 - 0.02, bH1 * 0.62, wz, bWT * 0.7, bH1 * 0.35, 0.8, smGlsM)
+        }
+
+        // Building corner green strips (vertical)
+        for (const [ex, ez] of [[bx1, bz1], [bx2, bz1], [bx1, bz2], [bx2, bz2]] as [number, number][]) {
+          stB(ex, (bH1 + bH2) / 2, ez, 0.09, bH1 + bH2, 0.09, smGrnM)
+        }
+        // Horizontal green transition strips (at floor change)
+        stB(bcx, bH1 + 0.04, bz1, bW + 0.1, 0.08, 0.08, smGrnM)
+        stB(bcx, bH1 + 0.04, bz2, bW + 0.1, 0.08, 0.08, smGrnM)
+        stB(bx1, bH1 + 0.04, bcz, 0.08, 0.08, bD, smGrnM)
+        stB(bx2, bH1 + 0.04, bcz, 0.08, 0.08, bD, smGrnM)
+
+        // ── F1 Interior: lobby / jails / armory / clone room ─────────────────────
+        const lobZ = -66.5  // lobby divider Z
+        const clnZ = -73.0  // clone room N divider Z
+        // Lobby divider (E-W), door gap X=59→61
+        stB(bx1 + 2.5, bH1 / 2, lobZ, 5, bH1, bWT, smDkM)
+        stB(bx2 - 2.5, bH1 / 2, lobZ, 5, bH1, bWT, smDkM)
+        stB(60, sdh + (bH1 - sdh) / 2, lobZ, 2.0, bH1 - sdh, bWT, smDkM)
+        gPL(bcx, 3.2, (bz1 + lobZ) / 2, 14.0, 32)  // lobby fill
+
+        // Clone room N divider (E-W), door gap X=59→61
+        stB(bx1 + 2.5, bH1 / 2, clnZ, 5, bH1, bWT, smDkM)
+        stB(bx2 - 2.5, bH1 / 2, clnZ, 5, bH1, bWT, smDkM)
+        stB(60, sdh + (bH1 - sdh) / 2, clnZ, 2.0, bH1 - sdh, bWT, smDkM)
+
+        // Armory / jail N-S divider (X=60)
+        stB(60, bH1 / 2, (lobZ + clnZ) / 2, bWT, bH1, Math.abs(clnZ - lobZ), smDkM)
+
+        // Jail bars on east interior (X=bx2 inner face, Z=lobZ→clnZ)
+        for (let jz = lobZ + 0.8; jz <= clnZ - 0.6; jz += 1.1) {
+          stB(bx2 - 0.06, bH1 * 0.44, jz, 0.06, bH1 * 0.76, 0.06, smMtlM)
+        }
+        gPL(bx2 - 1.5, 3.5, (lobZ + clnZ) / 2, 12.0, 26)
+
+        // Armory weapon racks on west interior wall
+        for (let az = lobZ + 1.0; az <= clnZ - 0.9; az += 2.1) {
+          stB(bx1 + 0.24, 1.6, az, 0.14, 2.8, 0.95, smMtlM)
+          stB(bx1 + 0.20, 0.5, az, 0.14, 0.07, 0.95, smGrnDimM)
+          stB(bx1 + 0.20, 2.7, az, 0.14, 0.07, 0.95, smGrnDimM)
+        }
+        gPL(bx1 + 2.0, 3.5, (lobZ + clnZ) / 2, 12.0, 26)
+
+        // Clone room lab tables + capsules
+        const capMat = new THREE.MeshLambertMaterial({ color: 0x001604, transparent: true, opacity: 0.8 })
+        const tblMat = new THREE.MeshLambertMaterial({ color: 0x0a160a })
+        for (const [lcx, lcz] of [[57, -74.5], [60, -74.5], [63, -74.5], [57, -75.8], [63, -75.8]] as [number, number][]) {
+          stB(lcx, 0.9, lcz, 1.5, 0.1, 0.85, tblMat)
+          const pod = new THREE.Mesh(new THREE.CylinderGeometry(0.21, 0.21, 1.15, 8), capMat)
+          pod.rotation.z = Math.PI / 2; pod.position.set(lcx, 1.52, lcz); scene.add(pod)
+          const podPL = new THREE.PointLight(0x00ff66, 0.5, 3.5)
+          podPL.position.set(lcx, 1.5, lcz); scene.add(podPL)
+        }
+        gPL(bcx, 3.5, (clnZ + bz2) / 2, 14.0, 30)
+
+        // ── F1 Ceiling light panels ───────────────────────────────────────────────
+        const ceilLitM = new THREE.MeshBasicMaterial({ color: 0xaaffcc })
+        stB(bcx,     bH1 - 0.04, (bz1 + lobZ) / 2,   2.8, 0.04, 0.5, ceilLitM) // lobby strip
+        stB(bx1 + 3, bH1 - 0.04, (lobZ + clnZ) / 2,  0.4, 0.04, 3.2, ceilLitM) // armory strip
+        stB(bx2 - 3, bH1 - 0.04, (lobZ + clnZ) / 2,  0.4, 0.04, 3.2, ceilLitM) // jail strip
+        stB(bcx,     bH1 - 0.04, (clnZ + bz2) / 2,   2.8, 0.04, 0.5, ceilLitM) // clone room strip
+
+        // ── Floor 2: Bridge / Command Room ───────────────────────────────────────
+        const f2Y = bH1
+        const f2Flr = new THREE.Mesh(new THREE.PlaneGeometry(bW - bWT * 2, bD - bWT * 2), smCncM)
+        f2Flr.rotation.x = -Math.PI / 2; f2Flr.position.set(bcx, f2Y + 0.01, bcz)
+        scene.add(f2Flr)
+
+        // F2 walls
+        stB(bcx, f2Y + bH2 / 2, bz1, bW, bH2, bWT, smDk2M)  // south (glass front)
+        stB(bcx, f2Y + bH2 / 2, bz2, bW, bH2, bWT, smDkM)   // north
+        stB(bx1, f2Y + bH2 / 2, bcz, bWT, bH2, bD, smDkM)   // west
+        stB(bx2, f2Y + bH2 / 2, bcz, bWT, bH2, bD, smDkM)   // east
+
+        // F2 south: panoramic command windows (3 panes)
+        for (const wx of [55.5, 60, 64.5]) {
+          stB(wx, f2Y + bH2 * 0.5, bz1 + 0.01, 3.2, bH2 * 0.72, 0.05, smGlsM)
+          stB(wx, f2Y + bH2 * 0.06, bz1, 3.3, bH2 * 0.09, bWT, smDkM)
+          stB(wx, f2Y + bH2 * 0.94, bz1, 3.3, bH2 * 0.09, bWT, smDkM)
+        }
+
+        // Command consoles (F2, facing south windows)
+        const scrM = new THREE.MeshBasicMaterial({ color: 0x003322 })
+        const actM = new THREE.MeshBasicMaterial({ color: 0x00ff77, transparent: true, opacity: 0.6 })
+        for (const [cx7, cz7] of [[56, -64.2], [60, -64.2], [64, -64.2]] as [number, number][]) {
+          stB(cx7, f2Y + 0.55, cz7, 2.2, 0.8, 0.7, smConsMat)
+          const scr = new THREE.Mesh(new THREE.BoxGeometry(2.0, 1.0, 0.06), scrM)
+          scr.position.set(cx7, f2Y + 1.3, cz7 - 0.16); scene.add(scr)
+          const act = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.7, 0.05), actM)
+          act.position.set(cx7, f2Y + 1.3, cz7 - 0.17); scene.add(act)
+          const spl = new THREE.PointLight(0x00ffaa, 0.4, 5)
+          spl.position.set(cx7, f2Y + 1.8, cz7); scene.add(spl)
+        }
+        gPL(bcx, f2Y + 2.8, bcz, 14.0, 38)
+
+        // ── Roof ─────────────────────────────────────────────────────────────────
+        const roofY = f2Y + bH2
+        stB(bcx, roofY + 0.1, bcz, bW + 0.4, 0.2, bD + 0.4, smDkM)         // roof slab
+        stB(bcx, roofY + 0.7, bz1, bW, 1.4, bWT, smDkM)                      // parapet S
+        stB(bcx, roofY + 0.7, bz2, bW, 1.4, bWT, smDkM)                      // parapet N
+        stB(bx1, roofY + 0.7, bcz, bWT, 1.4, bD, smDkM)                      // parapet W
+        stB(bx2, roofY + 0.7, bcz, bWT, 1.4, bD, smDkM)                      // parapet E
+        stB(bcx, roofY + 1.42, bz1, bW + 0.1, 0.1, 0.1, smGrnM)             // parapet top strips
+        stB(bcx, roofY + 1.42, bz2, bW + 0.1, 0.1, 0.1, smGrnM)
+        stB(bx1, roofY + 1.42, bcz, 0.1, 0.1, bD, smGrnM)
+        stB(bx2, roofY + 1.42, bcz, 0.1, 0.1, bD, smGrnM)
+        // Comms antenna array
+        stB(bcx, roofY + 2.5, bcz - 4, 0.08, 3.2, 0.08, smMtlM)
+        stB(bcx + 1.6, roofY + 1.9, bcz - 4, 0.06, 1.8, 0.06, smMtlM)
+        stB(bcx - 1.6, roofY + 1.9, bcz - 4, 0.06, 1.8, 0.06, smMtlM)
+        stB(bcx, roofY + 3.5, bcz - 4, 3.6, 0.05, 0.05, smMtlM)
+        stB(bcx, roofY + 2.9, bcz - 4, 2.4, 0.05, 0.05, smMtlM)
+        const antL = new THREE.PointLight(0xff2200, 0.7, 8)
+        antL.position.set(bcx, roofY + 4.1, bcz - 4); scene.add(antL)
+
+        // Roof access ladder (east exterior wall, near south corner)
+        const ladX = bx2 + 0.15, ladZ = bz1 + 3.5
+        for (const zo of [-0.16, 0.16]) stB(ladX, roofY / 2, ladZ + zo, 0.05, roofY, 0.05, smMtlM)
+        for (let ly = 0.6; ly < roofY - 0.1; ly += 0.65)
+          stB(ladX, ly, ladZ, 0.07, 0.05, 0.3, smMtlM)
+
+        // ── Compound perimeter lighting (low wall-mount, green sodium) ────────────
+        for (let lpx = cwx1 + 6; lpx <= cwx2 - 6; lpx += 11) {
+          gPL(lpx, cwH + 0.5, cwz1 - 1.0, 3.0, 24)
+          gPL(lpx, cwH + 0.5, cwz2 + 1.0, 3.0, 24)
+        }
+        for (let lpz = cwz2 + 6; lpz <= cwz1 - 6; lpz += 11) {
+          gPL(cwx1 - 1.0, cwH + 0.5, lpz, 3.0, 24)
+          gPL(cwx2 + 1.0, cwH + 0.5, lpz, 3.0, 24)
+        }
+        // Building exterior flood lights
+        for (const [flx, flz] of [[bx1, bz1], [bx2, bz1], [bx1, bz2], [bx2, bz2]] as [number, number][]) {
+          gPL(flx, roofY + 0.6, flz, 5.0, 32)
+        }
+
+        // F2 ceiling panel
+        const f2CeilM = new THREE.MeshBasicMaterial({ color: 0xaaffcc })
+        stB(bcx, f2Y + bH2 - 0.04, bcz, 3.2, 0.04, 0.6, f2CeilM)
+      }
+
+      // ── Sanctum exterior street lamps ─────────────────────────────────────────
+      {
+        const sancPolM = new THREE.MeshLambertMaterial({ color: 0x111116 })
+        const sancLnsM = new THREE.MeshBasicMaterial({ color: 0xbbffcc })
+        const mkSancLamp = (lx: number, lz: number) => {
+          const pH = 5.8
+          stB(lx, pH / 2, lz, 0.1, pH, 0.1, sancPolM)
+          stB(lx, pH - 0.12, lz, 0.36, 0.08, 0.36, sancPolM)
+          const lens = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.09, 0.22), sancLnsM)
+          lens.position.set(lx, pH - 0.32, lz); scene.add(lens)
+          const lp = new THREE.PointLight(0x99ffbb, 4.4, 50)
+          lp.position.set(lx, pH - 0.55, lz); scene.add(lp)
+        }
+        // South approach flanking the front gate (Z=-57)
+        mkSancLamp(50, -51)
+        mkSancLamp(70, -51)
+        // West side (outside west wall X=47)
+        mkSancLamp(43, -63)
+        mkSancLamp(43, -77)
+        // East side (outside east wall X=73)
+        mkSancLamp(77, -63)
+        mkSancLamp(77, -77)
       }
 
       // ── Chancellor's Market Square (south of shantytown, X=35, Z=52) ──────────
@@ -2330,6 +2997,32 @@ export default function GameWorldPage() {
       boltL.visible = false;             boltR.visible = false
       leftArm.add(boltL);                rightArm.add(boltR)
 
+      // ── Sky lightning ──────────────────────────────────────────────
+      const skyBoltMat = new THREE.LineBasicMaterial({ color: 0xd0e8ff })
+      let skyBolts: THREE.Line[] = []
+      let skyFlashIntensity = 0
+      let skyBoltFrames = 0
+      let skyNextStrike = 200 + Math.floor(Math.random() * 400)
+
+      const skyCloudOrigins: [number, number, number][] = [
+        [-40, 55, -50], [10, 58, -70], [60, 52, -45], [-80, 60, -20],
+        [30, 56, 40],   [-20, 62, 30], [80, 54, 10],  [-60, 50, 50],
+      ]
+
+      const mkSkyBoltGeo = (ox: number, oy: number, oz: number, endY: number) => {
+        const pts: THREE.Vector3[] = []
+        for (let i = 0; i <= 14; i++) {
+          const t = i / 14
+          const jitter = (1 - t * 0.65) * 4
+          pts.push(new THREE.Vector3(
+            ox + (Math.random() - 0.5) * jitter,
+            oy + (endY - oy) * t,
+            oz + (Math.random() - 0.5) * jitter
+          ))
+        }
+        return new THREE.BufferGeometry().setFromPoints(pts)
+      }
+
       // Mini gun mesh (shown in slot 5 when purchased)
       const mgMat    = new THREE.MeshLambertMaterial({ color: 0x222222 })
       const mgAccent = new THREE.MeshLambertMaterial({ color: 0x555566 })
@@ -2530,21 +3223,24 @@ export default function GameWorldPage() {
       window.addEventListener('mouseup', () => { mouseDownRef.current = false }, { signal: sig })
       renderer.domElement.addEventListener('contextmenu', (e: Event) => e.preventDefault(), { signal: sig })
 
-      // ── Touch support ──────────────────────────────────────
+      // ── Touch support (camera swipe — joystick overlay handles its own touches) ─
       let lastTouchX = 0, lastTouchY = 0, isTouching = false
       renderer.domElement.addEventListener('touchstart', (e: TouchEvent) => {
+        if (!e.targetTouches.length) return
         isTouching = true
-        lastTouchX = e.touches[0].clientX
-        lastTouchY = e.touches[0].clientY
+        lastTouchX = e.targetTouches[0].clientX
+        lastTouchY = e.targetTouches[0].clientY
       }, { signal: sig })
-      renderer.domElement.addEventListener('touchend', () => { isTouching = false }, { signal: sig })
+      renderer.domElement.addEventListener('touchend', (e: TouchEvent) => {
+        if (!e.targetTouches.length) isTouching = false
+      }, { signal: sig })
       renderer.domElement.addEventListener('touchmove', (e: TouchEvent) => {
-        if (!isTouching) return
+        if (!isTouching || !e.targetTouches.length) return
         e.preventDefault()
-        cameraAngle -= (e.touches[0].clientX - lastTouchX) * 0.005
-        camPitch = Math.max(-1.4, Math.min(1.4, camPitch - (e.touches[0].clientY - lastTouchY) * 0.005))
-        lastTouchX = e.touches[0].clientX
-        lastTouchY = e.touches[0].clientY
+        cameraAngle -= (e.targetTouches[0].clientX - lastTouchX) * 0.005
+        camPitch = Math.max(-1.4, Math.min(1.4, camPitch - (e.targetTouches[0].clientY - lastTouchY) * 0.005))
+        lastTouchX = e.targetTouches[0].clientX
+        lastTouchY = e.targetTouches[0].clientY
       }, { signal: sig, passive: false })
 
       // ── Resize ─────────────────────────────────────────────
@@ -2794,13 +3490,13 @@ export default function GameWorldPage() {
             staminaBarRef.current.style.background = stamina > 0.5 ? '#39ff14' : stamina > 0.25 ? '#ffaa00' : '#ff3300'
           }
 
-          const w = !!(keys['KeyW'] || keys['ArrowUp'])
-          const s = !!(keys['KeyS'] || keys['ArrowDown'])
-          const a = !!(keys['KeyA'] || keys['ArrowLeft'])
-          const d = !!(keys['KeyD'] || keys['ArrowRight'])
+          const w = !!(keys['KeyW'] || keys['ArrowUp'])    || joystickRef.current.y < -0.3
+          const s = !!(keys['KeyS'] || keys['ArrowDown'])  || joystickRef.current.y >  0.3
+          const a = !!(keys['KeyA'] || keys['ArrowLeft'])  || joystickRef.current.x < -0.3
+          const d = !!(keys['KeyD'] || keys['ArrowRight']) || joystickRef.current.x >  0.3
           moving = w || s || a || d
 
-          const spaceNow = !!keys['Space']
+          const spaceNow = !!keys['Space'] || jumpTouchRef.current
           if (spaceNow && !spaceWas && isGrounded) jumpVelY = 0.18
           spaceWas = spaceNow
 
@@ -2955,6 +3651,42 @@ export default function GameWorldPage() {
           boltR.visible = Math.random() > 0.25
         } else {
           boltL.visible = false; boltR.visible = false
+        }
+
+        // ── Sky lightning strikes ──────────────────────────────────────
+        skyNextStrike--
+        if (skyNextStrike <= 0) {
+          for (const b of skyBolts) { scene.remove(b); b.geometry.dispose() }
+          skyBolts = []
+          const [ox, oy, oz] = skyCloudOrigins[Math.floor(Math.random() * skyCloudOrigins.length)]
+          const sx = ox + (Math.random() - 0.5) * 24
+          const sz = oz + (Math.random() - 0.5) * 24
+          const mainBolt = new THREE.Line(mkSkyBoltGeo(sx, oy, sz, 4 + Math.random() * 8), skyBoltMat)
+          scene.add(mainBolt); skyBolts.push(mainBolt)
+          const branches = 1 + Math.floor(Math.random() * 2)
+          for (let bi = 0; bi < branches; bi++) {
+            const bsy = oy - 10 - Math.random() * 14
+            const branch = new THREE.Line(
+              mkSkyBoltGeo(sx + (Math.random() - 0.5) * 8, bsy, sz + (Math.random() - 0.5) * 8, bsy - 8 - Math.random() * 14),
+              skyBoltMat
+            )
+            scene.add(branch); skyBolts.push(branch)
+          }
+          skyFlashIntensity = 1.6
+          skyBoltFrames = 5
+          skyNextStrike = 300 + Math.floor(Math.random() * 600)
+        }
+        if (skyBoltFrames > 0) {
+          skyBoltFrames--
+          if (skyBoltFrames === 0) {
+            for (const b of skyBolts) { scene.remove(b); b.geometry.dispose() }
+            skyBolts = []
+          }
+        }
+        if (skyFlashIntensity > 0) {
+          ambientLight.intensity = 0.18 + skyFlashIntensity
+          skyFlashIntensity = Math.max(0, skyFlashIntensity - 0.07)
+          if (skyFlashIntensity === 0) ambientLight.intensity = 0.18
         }
 
         // ── Pistol ────────────────────────────────────────────
@@ -3222,6 +3954,50 @@ export default function GameWorldPage() {
     }
   }, [])
 
+  useEffect(() => {
+    const ua = navigator.userAgent
+    setIsIPad(/iPad/.test(ua) || (/Mac/.test(ua) && navigator.maxTouchPoints > 1))
+  }, [])
+
+  useEffect(() => {
+    if (!isIPad) return
+    const base = joystickBaseRef.current
+    const knob = joystickKnobRef.current
+    if (!base || !knob) return
+    const RADIUS = 44
+    let startX = 0, startY = 0
+    const onStart = (e: TouchEvent) => {
+      e.preventDefault()
+      startX = e.targetTouches[0].clientX
+      startY = e.targetTouches[0].clientY
+    }
+    const onMove = (e: TouchEvent) => {
+      e.preventDefault()
+      const dx = e.targetTouches[0].clientX - startX
+      const dy = e.targetTouches[0].clientY - startY
+      const dist = Math.sqrt(dx * dx + dy * dy)
+      const clamp = Math.min(dist, RADIUS)
+      const nx = dist > 0 ? (dx / dist) * clamp : 0
+      const ny = dist > 0 ? (dy / dist) * clamp : 0
+      joystickRef.current = { x: nx / RADIUS, y: ny / RADIUS }
+      knob.style.transform = `translate(${nx}px, ${ny}px)`
+    }
+    const onEnd = () => {
+      joystickRef.current = { x: 0, y: 0 }
+      knob.style.transform = 'translate(0px, 0px)'
+    }
+    base.addEventListener('touchstart',  onStart, { passive: false })
+    base.addEventListener('touchmove',   onMove,  { passive: false })
+    base.addEventListener('touchend',    onEnd)
+    base.addEventListener('touchcancel', onEnd)
+    return () => {
+      base.removeEventListener('touchstart',  onStart)
+      base.removeEventListener('touchmove',   onMove)
+      base.removeEventListener('touchend',    onEnd)
+      base.removeEventListener('touchcancel', onEnd)
+    }
+  }, [isIPad])
+
   const slots = [
     { label: 'Saber',   key: '1', sub: 'toggle' },
     { label: 'Flame',   key: '2', sub: 'hold' },
@@ -3437,6 +4213,69 @@ export default function GameWorldPage() {
           ))}
         </div>
       </div>
+
+      {/* iPad virtual controls */}
+      {isIPad && (
+        <>
+          {/* Left joystick */}
+          <div
+            ref={joystickBaseRef}
+            className='absolute z-30'
+            style={{
+              bottom: 110,
+              left: 36,
+              width: 112,
+              height: 112,
+              borderRadius: '50%',
+              background: 'rgba(255,255,255,0.08)',
+              border: '2px solid rgba(255,255,255,0.25)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              touchAction: 'none',
+              userSelect: 'none',
+            }}
+          >
+            <div
+              ref={joystickKnobRef}
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: '50%',
+                background: 'rgba(255,255,255,0.35)',
+                border: '2px solid rgba(255,255,255,0.6)',
+                pointerEvents: 'none',
+                willChange: 'transform',
+              }}
+            />
+          </div>
+
+          {/* Jump button */}
+          <div
+            className='absolute z-30 flex items-center justify-center select-none'
+            style={{
+              bottom: 110,
+              right: 36,
+              width: 80,
+              height: 80,
+              borderRadius: '50%',
+              background: 'rgba(57,255,20,0.18)',
+              border: '2px solid rgba(57,255,20,0.5)',
+              color: 'rgba(255,255,255,0.9)',
+              fontSize: 13,
+              fontWeight: 700,
+              letterSpacing: 1,
+              touchAction: 'none',
+              userSelect: 'none',
+            }}
+            onTouchStart={(e) => { e.preventDefault(); jumpTouchRef.current = true }}
+            onTouchEnd={() => { jumpTouchRef.current = false }}
+            onTouchCancel={() => { jumpTouchRef.current = false }}
+          >
+            JUMP
+          </div>
+        </>
+      )}
 
       <div ref={mountRef} className='h-full w-full' />
     </div>

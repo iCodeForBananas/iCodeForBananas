@@ -53,7 +53,7 @@ const ZOMBIE_CHASE_SPEED   = 0.045;
 const ZOMBIE_WANDER_SPEED  = 0.015;
 
 // ── World geometry ───────────────────────────────────────────────────────────
-const SUB_CX = -15, SUB_HW = 3.2, SUB_FY = -7;
+const SUB_CX = -15, SUB_HW = 5.0, SUB_FY = -7;
 
 // ── Collision ────────────────────────────────────────────────────────────────
 type Box = { minX: number; minZ: number; maxX: number; maxZ: number };
@@ -267,6 +267,33 @@ const STATIC_WALLS: Box[] = [
   { minX: -30.00, minZ: -73.00, maxX: -29.75, maxZ: -60.00 }, // east wall
   { minX: -44.25, minZ: -60.25, maxX: -38.50, maxZ: -60.00 }, // south wall left of door
   { minX: -35.50, minZ: -60.25, maxX: -29.75, maxZ: -60.00 }, // south wall right of door
+  // Sanctum compound perimeter (X=47→73, Z=-57→-83; gates leave gaps)
+  // South wall (Z=-57): front gate gap X=58.5→61.5
+  { minX: 47.00, minZ: -57.25, maxX: 58.50, maxZ: -56.75 },
+  { minX: 61.50, minZ: -57.25, maxX: 73.00, maxZ: -56.75 },
+  // North wall (Z=-83): crawl hole gap X=59→61
+  { minX: 47.00, minZ: -83.25, maxX: 59.00, maxZ: -82.75 },
+  { minX: 61.00, minZ: -83.25, maxX: 73.00, maxZ: -82.75 },
+  // West wall (X=47): side gate gap Z=-68.5→-71.5
+  { minX: 46.75, minZ: -68.50, maxX: 47.25, maxZ: -57.00 },
+  { minX: 46.75, minZ: -83.00, maxX: 47.25, maxZ: -71.50 },
+  // East wall (X=73): mirror side gate
+  { minX: 72.75, minZ: -68.50, maxX: 73.25, maxZ: -57.00 },
+  { minX: 72.75, minZ: -83.00, maxX: 73.25, maxZ: -71.50 },
+  // Sanctum main building (X=54→66, Z=-63→-77; front door gap X=59→61)
+  { minX: 54.00, minZ: -63.10, maxX: 59.00, maxZ: -62.90 }, // south wall left of doors
+  { minX: 61.00, minZ: -63.10, maxX: 66.00, maxZ: -62.90 }, // south wall right of doors
+  { minX: 54.00, minZ: -77.10, maxX: 66.00, maxZ: -76.90 }, // north wall
+  { minX: 53.90, minZ: -77.00, maxX: 54.10, maxZ: -63.00 }, // west wall
+  { minX: 65.90, minZ: -77.00, maxX: 66.10, maxZ: -63.00 }, // east wall
+  // Lobby divider (Z=-66.5), door gap X=59→61
+  { minX: 54.00, minZ: -66.60, maxX: 59.00, maxZ: -66.40 },
+  { minX: 61.00, minZ: -66.60, maxX: 66.00, maxZ: -66.40 },
+  // Clone room divider (Z=-73), door gap X=59→61
+  { minX: 54.00, minZ: -73.10, maxX: 59.00, maxZ: -72.90 },
+  { minX: 61.00, minZ: -73.10, maxX: 66.00, maxZ: -72.90 },
+  // Armory/jail N-S divider (X=60)
+  { minX: 59.90, minZ: -73.00, maxX: 60.10, maxZ: -66.50 },
 ];
 const DOOR_BOX: Box = { minX: 23.85, minZ: -0.7, maxX: 24.15, maxZ: 0.7 };
 
@@ -355,7 +382,8 @@ const players = new Map<WebSocket, Player>();
 // Deterministic zombie init — no Math.random so IDs are stable
 function initZombies(): Zombie[] {
   return Array.from({ length: ZOMBIE_COUNT }, (_, i) => {
-    const sx = SUB_CX + ((i / (ZOMBIE_COUNT - 1)) * SUB_HW * 1.6 - SUB_HW * 0.8);
+    // Spawn in the track pit: subHW=5.0, platW=1.8 → pit half-width ≈ 3.0
+    const sx = SUB_CX + ((i / (ZOMBIE_COUNT - 1)) * 6.0 - 3.0);
     const sz = -16 + i * 4;
     return {
       id: i,
@@ -460,9 +488,10 @@ setInterval(() => {
     const inSub = Math.abs(p.x - SUB_CX) < SUB_HW - 0.3;
     let ty = 0;
     if (inSub) {
+      // Platform flat section; stairs: 0 at street end (Z=±30), -7 at platform end (Z=±20)
       if (p.z >= -20 && p.z <= 20) ty = SUB_FY;
-      else if (p.z < -20 && p.z > -30) ty = ((-20 - p.z) / 10) * SUB_FY;
-      else if (p.z > 20 && p.z < 30) ty = ((p.z - 20) / 10) * SUB_FY;
+      else if (p.z < -20 && p.z > -30) ty = ((p.z + 30) / 10) * SUB_FY;
+      else if (p.z > 20 && p.z < 30) ty = ((30 - p.z) / 10) * SUB_FY;
     } else if (Math.abs(p.x - 52) < 0.9 && p.z >= -41 && p.z <= -39) {
       // Water tower ladder (south approach, walking north raises Y)
       ty = Math.max(0, Math.min(9, (-39 - p.z) / 2 * 9));
@@ -593,7 +622,7 @@ setInterval(() => {
         z.wanderAngle = Math.random() * Math.PI * 2;
       }
       z.angle = z.wanderAngle;
-      z.x = Math.max(SUB_CX - SUB_HW + 0.5, Math.min(SUB_CX + SUB_HW - 0.5, z.x + Math.sin(z.wanderAngle) * ZOMBIE_WANDER_SPEED));
+      z.x = Math.max(SUB_CX - 3.0, Math.min(SUB_CX + 3.0, z.x + Math.sin(z.wanderAngle) * ZOMBIE_WANDER_SPEED));
       z.z = Math.max(-28, Math.min(28, z.z + Math.cos(z.wanderAngle) * ZOMBIE_WANDER_SPEED));
       z.walkTime += 0.05;
     }
