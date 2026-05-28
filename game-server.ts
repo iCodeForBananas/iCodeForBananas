@@ -294,6 +294,91 @@ const STATIC_WALLS: Box[] = [
   { minX: 61.00, minZ: -73.10, maxX: 66.00, maxZ: -72.90 },
   // Armory/jail N-S divider (X=60)
   { minX: 59.90, minZ: -73.00, maxX: 60.10, maxZ: -66.50 },
+  // ── East Side Urban District ─────────────────────────────────────────
+  // NE1A (65-76, 32-43, door N at X=70.5 dw=2.0)
+  { minX: 65.00, minZ: 31.78, maxX: 69.50, maxZ: 32.22 },
+  { minX: 71.50, minZ: 31.78, maxX: 76.00, maxZ: 32.22 },
+  { minX: 65.00, minZ: 42.78, maxX: 76.00, maxZ: 43.22 },
+  { minX: 64.78, minZ: 32.00, maxX: 65.22, maxZ: 43.00 },
+  { minX: 75.78, minZ: 32.00, maxX: 76.22, maxZ: 43.00 },
+  // NE1B (65-76, 45-53, door S at X=70.5 dw=1.8)
+  { minX: 65.00, minZ: 44.78, maxX: 76.00, maxZ: 45.22 },
+  { minX: 65.00, minZ: 52.78, maxX: 69.60, maxZ: 53.22 },
+  { minX: 71.40, minZ: 52.78, maxX: 76.00, maxZ: 53.22 },
+  { minX: 64.78, minZ: 45.00, maxX: 65.22, maxZ: 53.00 },
+  { minX: 75.78, minZ: 45.00, maxX: 76.22, maxZ: 53.00 },
+  // NE2A (80-90, 32-41, door N at X=85 dw=2.5)
+  { minX: 80.00, minZ: 31.78, maxX: 83.75, maxZ: 32.22 },
+  { minX: 86.25, minZ: 31.78, maxX: 90.00, maxZ: 32.22 },
+  { minX: 80.00, minZ: 40.78, maxX: 90.00, maxZ: 41.22 },
+  { minX: 79.78, minZ: 32.00, maxX: 80.22, maxZ: 41.00 },
+  { minX: 89.78, minZ: 32.00, maxX: 90.22, maxZ: 41.00 },
+  // NE2B (80-90, 43-53, door N at X=85 dw=1.8)
+  { minX: 80.00, minZ: 42.78, maxX: 84.10, maxZ: 43.22 },
+  { minX: 85.90, minZ: 42.78, maxX: 90.00, maxZ: 43.22 },
+  { minX: 80.00, minZ: 52.78, maxX: 90.00, maxZ: 53.22 },
+  { minX: 79.78, minZ: 43.00, maxX: 80.22, maxZ: 53.00 },
+  { minX: 89.78, minZ: 43.00, maxX: 90.22, maxZ: 53.00 },
+  // E1 Grocery (65-76, 57-68, door N at X=70.5 dw=2.5)
+  { minX: 65.00, minZ: 56.78, maxX: 69.25, maxZ: 57.22 },
+  { minX: 71.75, minZ: 56.78, maxX: 76.00, maxZ: 57.22 },
+  { minX: 65.00, minZ: 67.78, maxX: 76.00, maxZ: 68.22 },
+  { minX: 64.78, minZ: 57.00, maxX: 65.22, maxZ: 68.00 },
+  { minX: 75.78, minZ: 57.00, maxX: 76.22, maxZ: 68.00 },
+  // E2 Narrow (65-76, 70-72, door S at X=70.5 dw=1.6)
+  { minX: 65.00, minZ: 69.78, maxX: 76.00, maxZ: 70.22 },
+  { minX: 65.00, minZ: 71.78, maxX: 69.70, maxZ: 72.22 },
+  { minX: 71.30, minZ: 71.78, maxX: 76.00, maxZ: 72.22 },
+  { minX: 64.78, minZ: 70.00, maxX: 65.22, maxZ: 72.00 },
+  { minX: 75.78, minZ: 70.00, maxX: 76.22, maxZ: 72.00 },
+  // E3 Tower (80-90, 57-71, door W at Z=64 dw=2.0)
+  { minX: 80.00, minZ: 56.78, maxX: 90.00, maxZ: 57.22 },
+  { minX: 80.00, minZ: 70.78, maxX: 90.00, maxZ: 71.22 },
+  { minX: 79.78, minZ: 57.00, maxX: 80.22, maxZ: 63.00 },
+  { minX: 79.78, minZ: 65.00, maxX: 80.22, maxZ: 71.00 },
+  { minX: 89.78, minZ: 57.00, maxX: 90.22, maxZ: 71.00 },
+  // SE1 (65-76, 75-86, door N at X=70.5 dw=2.0)
+  { minX: 65.00, minZ: 74.78, maxX: 69.50, maxZ: 75.22 },
+  { minX: 71.50, minZ: 74.78, maxX: 76.00, maxZ: 75.22 },
+  { minX: 65.00, minZ: 85.78, maxX: 76.00, maxZ: 86.22 },
+  { minX: 64.78, minZ: 75.00, maxX: 65.22, maxZ: 86.00 },
+  { minX: 75.78, minZ: 75.00, maxX: 76.22, maxZ: 86.00 },
+  // SE2 (80-90, 75-87, door N at X=85 dw=1.8)
+  { minX: 80.00, minZ: 74.78, maxX: 84.10, maxZ: 75.22 },
+  { minX: 85.90, minZ: 74.78, maxX: 90.00, maxZ: 75.22 },
+  { minX: 80.00, minZ: 86.78, maxX: 90.00, maxZ: 87.22 },
+  { minX: 79.78, minZ: 75.00, maxX: 80.22, maxZ: 87.00 },
+  { minX: 89.78, minZ: 75.00, maxX: 90.22, maxZ: 87.00 },
+  // S1 (36-50, 77-87, door N at X=43 dw=2.0)
+  { minX: 36.00, minZ: 76.78, maxX: 42.00, maxZ: 77.22 },
+  { minX: 44.00, minZ: 76.78, maxX: 50.00, maxZ: 77.22 },
+  { minX: 36.00, minZ: 86.78, maxX: 50.00, maxZ: 87.22 },
+  { minX: 35.78, minZ: 77.00, maxX: 36.22, maxZ: 87.00 },
+  { minX: 49.78, minZ: 77.00, maxX: 50.22, maxZ: 87.00 },
+  // S2 (52-62, 77-87, door N at X=57 dw=2.0) ← stairwell
+  { minX: 52.00, minZ: 76.78, maxX: 56.00, maxZ: 77.22 },
+  { minX: 58.00, minZ: 76.78, maxX: 62.00, maxZ: 77.22 },
+  { minX: 52.00, minZ: 86.78, maxX: 62.00, maxZ: 87.22 },
+  { minX: 51.78, minZ: 77.00, maxX: 52.22, maxZ: 87.00 },
+  { minX: 61.78, minZ: 77.00, maxX: 62.22, maxZ: 87.00 },
+  // SW1 (16-27, 77-87, door N at X=21.5 dw=1.8)
+  { minX: 16.00, minZ: 76.78, maxX: 20.60, maxZ: 77.22 },
+  { minX: 22.40, minZ: 76.78, maxX: 27.00, maxZ: 77.22 },
+  { minX: 16.00, minZ: 86.78, maxX: 27.00, maxZ: 87.22 },
+  { minX: 15.78, minZ: 77.00, maxX: 16.22, maxZ: 87.00 },
+  { minX: 26.78, minZ: 77.00, maxX: 27.22, maxZ: 87.00 },
+  // SW2 (29-35, 77-87, door N at X=32 dw=1.4)
+  { minX: 29.00, minZ: 76.78, maxX: 31.30, maxZ: 77.22 },
+  { minX: 32.70, minZ: 76.78, maxX: 35.00, maxZ: 77.22 },
+  { minX: 29.00, minZ: 86.78, maxX: 35.00, maxZ: 87.22 },
+  { minX: 28.78, minZ: 77.00, maxX: 29.22, maxZ: 87.00 },
+  { minX: 34.78, minZ: 77.00, maxX: 35.22, maxZ: 87.00 },
+  // W1 (3-11, 65-75, door E at Z=70 dw=1.6)
+  { minX:  3.00, minZ: 64.78, maxX: 11.00, maxZ: 65.22 },
+  { minX:  3.00, minZ: 74.78, maxX: 11.00, maxZ: 75.22 },
+  { minX:  2.78, minZ: 65.00, maxX:  3.22, maxZ: 75.00 },
+  { minX: 10.78, minZ: 65.00, maxX: 11.22, maxZ: 69.20 },
+  { minX: 10.78, minZ: 70.80, maxX: 11.22, maxZ: 75.00 },
 ];
 const DOOR_BOX: Box = { minX: 23.85, minZ: -0.7, maxX: 24.15, maxZ: 0.7 };
 
@@ -538,6 +623,25 @@ setInterval(() => {
       ty = Math.max(0, Math.min(7.0, (-27 - p.x) / 3 * 7.0));
     } else if (p.x >= -44 && p.x <= -30 && p.z >= -73 && p.z <= -60 && p.y > 5.5) {
       ty = 7.0; // WH_H roof
+    // ── Urban District stairwells (NE1A and S2) ──────────────────────────
+    } else if (p.x >= 65.5 && p.x <= 67.0 && p.z >= 32.4 && p.z <= 42.2) {
+      // NE1A stairwell — walk south (+Z) to climb 9 floors
+      ty = Math.max(0, Math.min(9, (p.z - 32.4) / 9.8 * 9));
+    } else if (p.x >= 65 && p.x <= 76 && p.z >= 32 && p.z <= 43 && p.y > 8.5) {
+      ty = 9; // NE1A floor 4
+    } else if (p.x >= 65 && p.x <= 76 && p.z >= 32 && p.z <= 43 && p.y > 5.5) {
+      ty = 6; // NE1A floor 3
+    } else if (p.x >= 65 && p.x <= 76 && p.z >= 32 && p.z <= 43 && p.y > 2.5) {
+      ty = 3; // NE1A floor 2
+    } else if (p.x >= 52.5 && p.x <= 54.0 && p.z >= 77.8 && p.z <= 86.2) {
+      // S2 stairwell — walk south (+Z) to climb
+      ty = Math.max(0, Math.min(9, (p.z - 77.8) / 8.4 * 9));
+    } else if (p.x >= 52 && p.x <= 62 && p.z >= 77 && p.z <= 87 && p.y > 8.5) {
+      ty = 9; // S2 floor 4
+    } else if (p.x >= 52 && p.x <= 62 && p.z >= 77 && p.z <= 87 && p.y > 5.5) {
+      ty = 6; // S2 floor 3
+    } else if (p.x >= 52 && p.x <= 62 && p.z >= 77 && p.z <= 87 && p.y > 2.5) {
+      ty = 3; // S2 floor 2
     }
     p.y += (ty - p.y) * 0.15;
 

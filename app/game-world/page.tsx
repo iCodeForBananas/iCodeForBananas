@@ -2679,6 +2679,218 @@ export default function GameWorldPage() {
         scene.add(neGrp)
       }
 
+      // ── East Side Urban District (NYC-dystopian, around Chancellor's plaza) ─────
+      {
+        const ubAsphM  = new THREE.MeshLambertMaterial({ color: 0x111116 })
+        const ubCurbM  = new THREE.MeshLambertMaterial({ color: 0x3a3a44 })
+        const ubLineM  = new THREE.MeshLambertMaterial({ color: 0xbbaa00 })
+        const ubSwalkM = new THREE.MeshLambertMaterial({ color: 0x252530 })
+        const ubPostM  = new THREE.MeshLambertMaterial({ color: 0x181818 })
+        const ubGlowM  = new THREE.MeshBasicMaterial({ color: 0x88aaff })
+        const ubStairM = new THREE.MeshLambertMaterial({ color: 0x28283a })
+        const ubDumpM  = new THREE.MeshLambertMaterial({ color: 0x0e1e0e })
+        const ubFescM  = new THREE.MeshLambertMaterial({ color: 0x3a2a18 })
+
+        // ── Streets ─────────────────────────────────────────────────────
+        const mkEWRoad = (cz: number, x1r: number, x2r: number) => {
+          const w = x2r - x1r
+          const r = new THREE.Mesh(new THREE.PlaneGeometry(w, 5), ubAsphM)
+          r.rotation.x = -Math.PI / 2; r.position.set((x1r+x2r)/2, 0.03, cz); r.receiveShadow = true; scene.add(r)
+          stB((x1r+x2r)/2, 0.04, cz, w, 0.02, 0.18, ubLineM)
+          for (const sz of [cz-2.5, cz+2.5]) { const c = new THREE.Mesh(new THREE.BoxGeometry(w, 0.1, 0.28), ubCurbM); c.position.set((x1r+x2r)/2, 0.05, sz); scene.add(c) }
+        }
+        const mkNSRoad = (cx: number, z1r: number, z2r: number) => {
+          const d = z2r - z1r
+          const r = new THREE.Mesh(new THREE.PlaneGeometry(5, d), ubAsphM)
+          r.rotation.x = -Math.PI / 2; r.position.set(cx, 0.03, (z1r+z2r)/2); r.receiveShadow = true; scene.add(r)
+          stB(cx, 0.04, (z1r+z2r)/2, 0.18, 0.02, d, ubLineM)
+          for (const sx of [cx-2.5, cx+2.5]) { const c = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.1, d), ubCurbM); c.position.set(sx, 0.05, (z1r+z2r)/2); scene.add(c) }
+        }
+        const mkSW = (cx: number, cz: number, w: number, d: number) => {
+          const s = new THREE.Mesh(new THREE.PlaneGeometry(w, d), ubSwalkM)
+          s.rotation.x = -Math.PI / 2; s.position.set(cx, 0.06, cz); s.receiveShadow = true; scene.add(s)
+        }
+
+        // North Cross (44th St) Z=30; East Concourse Z=55; South Cross Z=73; Far South Z=89
+        mkEWRoad(30, 59, 93); mkEWRoad(55, 59, 93); mkEWRoad(73, 12, 93); mkEWRoad(89, 10, 93)
+        // 1st Ave X=62; 2nd Ave X=78; West Blvd X=13
+        mkNSRoad(62, 27, 92); mkNSRoad(78, 27, 92); mkNSRoad(13, 55, 92)
+        // Sidewalks
+        mkSW(64.5,60,3,65); mkSW(59.5,60,3,65); mkSW(80.5,60,3,65); mkSW(75.5,60,3,65)
+        mkSW(50,30,60,3); mkSW(50,55,60,3); mkSW(50,73,60,3); mkSW(50,89,60,3)
+
+        // ── Building factory ─────────────────────────────────────────────
+        const mkBuilding = (
+          x1: number, x2: number, z1: number, z2: number,
+          floors: number,
+          doorSide: 'N'|'S'|'E'|'W',
+          doorCenter: number, doorWidth: number,
+          wallC: number, trimC: number, winC = 0x446688
+        ) => {
+          const FH = 3, H = floors * FH, WT = 0.22, DH = 2.4
+          const cx = (x1+x2)/2, cz = (z1+z2)/2, W = x2-x1, D = z2-z1
+          const wallM = new THREE.MeshLambertMaterial({ color: wallC })
+          const trimM = new THREE.MeshLambertMaterial({ color: trimC })
+          const winM  = new THREE.MeshLambertMaterial({ color: winC, transparent: true, opacity: 0.38 })
+          const flrM  = new THREE.MeshLambertMaterial({ color: 0x181820 })
+          const intM  = new THREE.MeshLambertMaterial({ color: 0x1e1e28 })
+          // Floors
+          stB(cx, 0.02, cz, W-WT*2, 0.04, D-WT*2, flrM)
+          for (let f = 1; f < floors; f++) stB(cx, f*FH-0.04, cz, W-WT*2, 0.08, D-WT*2, intM)
+          // Wall builder
+          const mkWall = (axis: 'X'|'Z', fixC: number, from: number, to: number,
+                          hasDoor: boolean, dCtr: number, dW: number) => {
+            for (let f = 0; f < floors; f++) {
+              const fy = f * FH, isG = f === 0, len = to - from
+              if (hasDoor && isG) {
+                const dL = dCtr - dW/2 - from, dR = to - (dCtr + dW/2)
+                if (axis === 'X') {
+                  if (dL > 0.05) stB(from+dL/2, fy+DH/2, fixC, dL, DH, WT, wallM)
+                  if (dR > 0.05) stB(to-dR/2, fy+DH/2, fixC, dR, DH, WT, wallM)
+                  if (FH > DH) stB(from+len/2, fy+DH+(FH-DH)/2, fixC, len, FH-DH, WT, wallM)
+                } else {
+                  if (dL > 0.05) stB(fixC, fy+DH/2, from+dL/2, WT, DH, dL, wallM)
+                  if (dR > 0.05) stB(fixC, fy+DH/2, to-dR/2, WT, DH, dR, wallM)
+                  if (FH > DH) stB(fixC, fy+DH+(FH-DH)/2, from+len/2, WT, FH-DH, len, wallM)
+                }
+              } else {
+                if (axis === 'X') {
+                  stB(from+len/2, fy+FH/2, fixC, len, FH, WT, wallM)
+                  const nw = Math.max(1, Math.round(len/2.5))
+                  for (let wi = 0; wi < nw; wi++) {
+                    const wp = from+(wi+0.5)*len/nw, woff = fixC > cz ? -0.01 : 0.01
+                    stB(wp, fy+1.65, fixC+woff, len/nw*0.52, 1.2, WT*0.35, winM)
+                  }
+                } else {
+                  stB(fixC, fy+FH/2, from+len/2, WT, FH, len, wallM)
+                  const nw = Math.max(1, Math.round(len/2.5))
+                  for (let wi = 0; wi < nw; wi++) {
+                    const wp = from+(wi+0.5)*len/nw, woff = fixC > cx ? -0.01 : 0.01
+                    stB(fixC+woff, fy+1.65, wp, WT*0.35, 1.2, len/nw*0.52, winM)
+                  }
+                }
+              }
+            }
+          }
+          // 4 walls: ZMin='N' door wall, ZMax='S' door wall, XMin='W', XMax='E'
+          mkWall('X', z1, x1, x2, doorSide==='N', doorSide==='N'?doorCenter:cx, doorSide==='N'?doorWidth:0)
+          mkWall('X', z2, x1, x2, doorSide==='S', doorSide==='S'?doorCenter:cx, doorSide==='S'?doorWidth:0)
+          mkWall('Z', x1, z1, z2, doorSide==='W', doorSide==='W'?doorCenter:cz, doorSide==='W'?doorWidth:0)
+          mkWall('Z', x2, z1, z2, doorSide==='E', doorSide==='E'?doorCenter:cz, doorSide==='E'?doorWidth:0)
+          // Roof slab + parapet
+          stB(cx, H+0.1, cz, W+0.3, 0.2, D+0.3, trimM)
+          stB(cx, H+0.45, z1-WT, W+0.3, 0.7, WT*2.5, trimM)
+          stB(cx, H+0.45, z2+WT, W+0.3, 0.7, WT*2.5, trimM)
+          stB(x1-WT, H+0.45, cz, WT*2.5, 0.7, D, trimM)
+          stB(x2+WT, H+0.45, cz, WT*2.5, 0.7, D, trimM)
+          // Rooftop details
+          stB(cx+W*0.28, H+0.85, cz+D*0.28, 1.1, 1.6, 1.1, wallM) // water tank
+          stB(cx-W*0.25, H+0.55, cz-D*0.25, 1.4, 0.85, 0.85, trimM) // AC unit
+          // Visual interior staircase (NW corner, runs south)
+          const sLen = D * 0.62, sSteps = Math.max(4, Math.floor(sLen / 0.82))
+          for (let si = 0; si < sSteps; si++) {
+            const sy = (si/sSteps) * H, sz = z1+0.4+si*(sLen/sSteps)
+            stB(x1+1.1, sy+H/(sSteps*2), sz, 1.8, H/sSteps, sLen/sSteps, ubStairM)
+          }
+        }
+
+        // ── Place all buildings ─────────────────────────────────────────
+        // NE block (between North Cross Z=30 and Concourse Z=55)
+        mkBuilding(65,76, 32,43, 4,'N',70.5,2.0, 0x2e2e3c,0x1c1c28)          // Apt NE1A
+        mkBuilding(65,76, 45,53, 3,'S',70.5,1.8, 0x38200e,0x241408)           // Apt NE1B
+        mkBuilding(80,90, 32,41, 2,'N',85,  2.5, 0x1c1c28,0x303050, 0x66aaee) // Store NE2A
+        mkBuilding(80,90, 43,53, 5,'N',85,  1.8, 0x2a1a08,0x3a2a10)           // Apt NE2B
+
+        // E block (Concourse Z=55 to South Cross Z=73)
+        mkBuilding(65,76, 57,68, 2,'N',70.5,2.5, 0x122012,0x1c3018, 0x55dd88) // Grocery E1
+        mkBuilding(65,76, 70,72, 3,'S',70.5,1.6, 0x281428,0x3a1e3a)           // Narrow E2
+        mkBuilding(80,90, 57,71, 4,'W',64,  2.0, 0x181828,0x222238)           // Tower E3
+
+        // SE block (South Cross Z=73 to Far South Z=89)
+        mkBuilding(65,76, 75,86, 3,'N',70.5,2.0, 0x2a1c08,0x3c2c10)          // Apt SE1
+        mkBuilding(80,90, 75,87, 4,'N',85,  1.8, 0x141420,0x1e1e2e)           // Apt SE2
+
+        // South row (just south of ring road, Z=77+)
+        mkBuilding(36,50, 77,87, 3,'N',43,  2.0, 0x2a0a16,0x3c1020)           // S1
+        mkBuilding(52,62, 77,87, 4,'N',57,  2.0, 0x0a1826,0x121e30)           // S2 ← stairs
+
+        // SW block
+        mkBuilding(16,27, 77,87, 3,'N',21.5,1.8, 0x2a1a08,0x3c2c10)           // SW1
+        mkBuilding(29,35, 77,87, 2,'N',32,  1.4, 0x142018,0x1e2e22)           // SW2
+
+        // West (west of plaza ring road, south section)
+        mkBuilding(3,11,  65,75, 3,'E',70,  1.6, 0x1a0826,0x281238)           // W1
+
+        // ── Street lamps (futuristic angled arm) ──────────────────────
+        const mkUrbLamp = (x: number, z: number) => {
+          stB(x, 3.5, z, 0.1, 7.0, 0.1, ubPostM)
+          stB(x+0.75, 7.1, z, 1.5, 0.07, 0.07, ubPostM)
+          stB(x+1.5, 6.9, z, 0.07, 0.34, 0.24, ubGlowM)
+          const lp = new THREE.PointLight(0xaabbff, 18, 80)
+          lp.position.set(x+1.5, 6.6, z); scene.add(lp)
+        }
+        for (const z of [32,43,55,64,73,82,89]) { mkUrbLamp(64.5,z); mkUrbLamp(59.5,z) }
+        for (const z of [34,47,57,66,76,85])     { mkUrbLamp(80.5,z); mkUrbLamp(75.5,z) }
+        for (const x of [30,42,56,68,83])         { mkUrbLamp(x,75); mkUrbLamp(x,71) }
+        for (const x of [68,84])                   { mkUrbLamp(x,32); mkUrbLamp(x,28) }
+        for (const z of [62,72,82])                 mkUrbLamp(15,z)
+        for (const x of [68,84])                   { mkUrbLamp(x,57); mkUrbLamp(x,53) }
+
+        // ── Neon signs ────────────────────────────────────────────────
+        const mkNeon = (x: number, y: number, z: number, w: number, col: number) => {
+          const ns = new THREE.Mesh(new THREE.BoxGeometry(w,0.22,0.12), new THREE.MeshBasicMaterial({ color: col }))
+          ns.position.set(x,y,z); scene.add(ns)
+          const nl = new THREE.PointLight(col, 3.5, 28); nl.position.set(x,y,z); scene.add(nl)
+        }
+        mkNeon(70.5,13.2,32.1, 4.5,0xff2244)   // NE1A red
+        mkNeon(70.5,9.5, 53.1, 3.8,0xffaa00)   // NE1B amber
+        mkNeon(85,  6.9, 32.1, 5.0,0x33aaff)   // NE2A storefront blue
+        mkNeon(85, 16.2, 43.1, 4.0,0xff6600)   // NE2B orange
+        mkNeon(70.5,6.9, 57.1, 5.5,0x22ee66)   // Grocery green
+        mkNeon(70.5,9.5, 72.1, 3.5,0xcc22ff)   // E2 purple
+        mkNeon(80.1,13.2, 64,  4.0,0x00ccff)   // Tower cyan (west face)
+        mkNeon(70.5,9.5, 75.1, 4.0,0xff8822)   // SE1 orange
+        mkNeon(85, 13.2, 75.1, 4.0,0xffdd00)   // SE2 yellow
+        mkNeon(43,  9.5, 77.1, 4.5,0xff3366)   // S1 pink
+        mkNeon(57, 13.2, 77.1, 4.0,0x44ddff)   // S2 teal
+        mkNeon(21.5,9.5, 77.1, 4.0,0xffcc22)   // SW1 gold
+        mkNeon(32,  6.9, 77.1, 3.0,0x66ff44)   // SW2 lime
+        mkNeon(11.1,9.5, 70,   3.5,0xdd44ff)   // W1 violet (east face)
+
+        // ── Alley props ───────────────────────────────────────────────
+        const mkDump = (x: number, z: number) => {
+          stB(x,0.65,z, 1.8,1.3,0.9, ubDumpM)
+          stB(x,1.32,z, 1.82,0.08,0.92, new THREE.MeshLambertMaterial({ color: 0x0a1a0a }))
+        }
+        mkDump(72,44.2); mkDump(74.5,44.5); mkDump(85,42.2); mkDump(88,42.5)
+        mkDump(72,69.2); mkDump(74.5,69.5); mkDump(50.5,76); mkDump(63,76.5)
+        mkDump(28,76);   mkDump(36,76.5);   mkDump(11,64);   mkDump(11.5,68)
+
+        // Fire escapes on east faces
+        const mkFesc = (x: number, yB: number, z: number, h: number) => {
+          stB(x,yB+h/2,z-0.4, 0.06,h,0.06, ubFescM); stB(x,yB+h/2,z+0.4, 0.06,h,0.06, ubFescM)
+          for (let ry = yB+0.25; ry < yB+h; ry += 0.55) stB(x,ry,z, 0.88,0.06,0.07, ubFescM)
+        }
+        mkFesc(76.15,3,37,9);  mkFesc(76.15,3,62,9)
+        mkFesc(90.15,3,47,12); mkFesc(76.15,3,80,9)
+        mkFesc(62.15,3,82,9)
+
+        // Street-level detail: benches along concourse
+        const benchM = new THREE.MeshLambertMaterial({ color: 0x3a2a18 })
+        for (const [bx,bz] of [[68,56.5],[73,56.5],[68,53.5],[73,53.5]] as [number,number][]) {
+          const s = new THREE.Mesh(new THREE.BoxGeometry(1.5,0.08,0.4), benchM); s.position.set(bx,0.42,bz); scene.add(s)
+          const b = new THREE.Mesh(new THREE.BoxGeometry(1.5,0.06,0.35), benchM); b.rotation.x=0.25; b.position.set(bx,0.75,bz+0.16); scene.add(b)
+        }
+
+        // Newspaper boxes / phone booths along 1st Ave
+        const kioskM = new THREE.MeshLambertMaterial({ color: 0x1a3a1a })
+        const kioskGM= new THREE.MeshBasicMaterial({ color: 0x88ccaa, transparent:true, opacity:0.5 })
+        for (const kz of [36,50,60,70,83]) {
+          stB(64.7,0.9,kz, 0.55,1.8,0.55, kioskM)
+          stB(64.7,1.3,kz+0.22, 0.4,1.0,0.08, kioskGM)
+        }
+      }
+
       // ── Water Tower (northeast corner: X=52 Z=-45, platform at Y=9) ──────────
       {
         const wtCX = 52, wtCZ = -45, wtPY = 9.0, wtLeg = 2.2
@@ -3876,6 +4088,25 @@ export default function GameWorldPage() {
           } else if (Math.abs(ppx - 17.5) <= 5.0 && pz >= -73 && pz <= -60 && player.position.y > 6.0) {
             // WH_D roof/rampart platform
             floorY = 7.0
+          // ── Urban District stairwells ──────────────────────────────
+          } else if (ppx >= 65.5 && ppx <= 67.0 && pz >= 32.4 && pz <= 42.2) {
+            // NE1A stairwell — walk south to climb 3 floors (Y 0→9)
+            floorY = Math.max(0, Math.min(9, (pz - 32.4) / 9.8 * 9))
+          } else if (ppx >= 65 && ppx <= 76 && pz >= 32 && pz <= 43 && player.position.y > 8.5) {
+            floorY = 9 // NE1A floor 4
+          } else if (ppx >= 65 && ppx <= 76 && pz >= 32 && pz <= 43 && player.position.y > 5.5) {
+            floorY = 6 // NE1A floor 3
+          } else if (ppx >= 65 && ppx <= 76 && pz >= 32 && pz <= 43 && player.position.y > 2.5) {
+            floorY = 3 // NE1A floor 2
+          } else if (ppx >= 52.5 && ppx <= 54.0 && pz >= 77.8 && pz <= 86.2) {
+            // S2 stairwell — walk south to climb
+            floorY = Math.max(0, Math.min(9, (pz - 77.8) / 8.4 * 9))
+          } else if (ppx >= 52 && ppx <= 62 && pz >= 77 && pz <= 87 && player.position.y > 8.5) {
+            floorY = 9 // S2 floor 4
+          } else if (ppx >= 52 && ppx <= 62 && pz >= 77 && pz <= 87 && player.position.y > 5.5) {
+            floorY = 6 // S2 floor 3
+          } else if (ppx >= 52 && ppx <= 62 && pz >= 77 && pz <= 87 && player.position.y > 2.5) {
+            floorY = 3 // S2 floor 2
           }
           jumpVelY -= 0.010
           player.position.y += jumpVelY
