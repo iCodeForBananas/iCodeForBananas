@@ -16,13 +16,13 @@ const NAV = [
       { href: "/circle-of-fifths", text: "Circle of Fifths" },
       { href: "/harmonic-flow", text: "Harmonic Flow" },
       { href: "/chord-progressions", text: "Chord Progressions" },
-      { href: "/progression-builder", text: "Progression Builder" },
+      { href: "/inversion-picker", text: "Inversion Picker" },
       { href: "/chord-diagrams", text: "Chord Diagrams" },
       { href: "/chord-voicings", text: "Chord Voicings" },
       { href: "/chord-finder", text: "Chord Finder" },
       { href: "/chord-inversions", text: "Chord Inversions" },
-      { href: "/fret-range-progression", text: "Fret Range Progression" },
-      { href: "/fretboard-explorer", text: "Fretboard Explorer" },
+      { href: "/chord-positions", text: "Chord Positions" },
+      { href: "/note-map", text: "Note Map" },
       { href: "/fretboard-quiz", text: "Fretboard Quiz" },
       { href: "/lead-sheet-editor", text: "Lead Sheet Editor" },
     ],
@@ -126,7 +126,7 @@ export default function Sidebar() {
       {isOpen && isMobile && <div className='fixed inset-0 bg-black/50 z-30 lg:hidden' onClick={toggle} />}
 
       <aside
-        className={`fixed lg:relative min-h-screen flex flex-col z-40 ${isOpen ? "w-64 translate-x-0" : "w-0 -translate-x-full lg:w-0 overflow-hidden"}`}
+        className={`fixed lg:relative h-screen flex flex-col z-40 ${isOpen ? "w-64 translate-x-0" : "w-0 -translate-x-full lg:w-0 overflow-hidden"}`}
         style={{
           background: "#facc15",
           color: "var(--bg-secondary)",
@@ -155,7 +155,7 @@ export default function Sidebar() {
         </button>
 
         <div
-          className={`flex-1 p-6 ${isOpen ? "opacity-100" : "opacity-0"}`}
+          className={`flex-1 p-6 overflow-y-auto ${isOpen ? "opacity-100" : "opacity-0"}`}
         >
           <Link
             href='/'

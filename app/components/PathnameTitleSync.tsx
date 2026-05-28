@@ -25,7 +25,7 @@ const TITLES: Record<string, string> = {
   "/learning-progress":                   "Learning Progress | iCodeForBananas",
   "/login":                               "Sign In | iCodeForBananas",
   "/paper-trading":                       "Paper Trading | iCodeForBananas",
-  "/progression-builder":                 "Progression Builder | iCodeForBananas",
+  "/inversion-picker":                     "Inversion Picker | iCodeForBananas",
   "/settings":                            "Settings | iCodeForBananas",
   "/space-math":                          "Space Math | iCodeForBananas",
   "/spelling-bee":                        "Spelling Bee | iCodeForBananas",

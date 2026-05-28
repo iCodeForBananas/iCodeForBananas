@@ -4,7 +4,7 @@ import { useFavoriteChords } from "../lib/FavoriteChordsContext";
 import ChordDiagram from "./ChordDiagram";
 
 export default function FavoriteChordsBar() {
-  const { favorites } = useFavoriteChords();
+  const { favorites, toggle } = useFavoriteChords();
   if (favorites.length === 0) return null;
 
   return (
@@ -12,8 +12,14 @@ export default function FavoriteChordsBar() {
       <p className="text-xs font-semibold text-[#facc15] uppercase tracking-wider mb-2">♥ Favorites</p>
       <div className="flex gap-4 overflow-x-auto pb-2">
         {favorites.map((fav) => (
-          <div key={fav.id} className="shrink-0 bg-white rounded-lg p-2">
-            <ChordDiagram shape={fav.shape} label={fav.label} />
+          <div
+            key={fav.id}
+            className="shrink-0 bg-white rounded-lg p-2 cursor-pointer hover:opacity-60 transition-opacity"
+            onClick={() => toggle(fav)}
+          >
+            <div className="pointer-events-none">
+              <ChordDiagram shape={fav.shape} label={fav.label} />
+            </div>
           </div>
         ))}
       </div>

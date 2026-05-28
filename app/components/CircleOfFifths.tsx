@@ -1,7 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import "./circleOfFifths.css";
+import ChordDiagram from "./ChordDiagram";
+import {
+  type ChordShape,
+  chordTypes,
+  chordShapes,
+  eShapeTemplates,
+  aShapeTemplates,
+  buildChordKey,
+  transposeShape,
+  semitoneFromE,
+  semitoneFromA,
+  sharpToFlat,
+  flatToSharp,
+} from "../lib/chordShapes";
 
 interface ChordInfo {
   major: string;
@@ -10,8 +24,12 @@ interface ChordInfo {
   minorFrets: (number | null)[];
 }
 
+interface LabeledShape {
+  shape: ChordShape;
+  label: string;
+}
+
 const circleData: ChordInfo[] = [
-  // Major keys on outer circle, relative minors on inner circle
   { major: "C", minor: "Am", majorFrets: [null, 3, 2, 0, 1, 0], minorFrets: [null, 0, 2, 2, 1, 0] },
   { major: "G", minor: "Em", majorFrets: [3, 2, 0, 0, 0, 3], minorFrets: [0, 2, 2, 0, 0, 0] },
   { major: "D", minor: "Bm", majorFrets: [null, null, 0, 2, 3, 2], minorFrets: [null, 2, 4, 4, 3, 2] },
@@ -26,6 +44,58 @@ const circleData: ChordInfo[] = [
   { major: "F", minor: "Dm", majorFrets: [1, 3, 3, 2, 1, 1], minorFrets: [null, null, 0, 2, 3, 1] },
 ];
 
+const getAllVoicings = (note: string, type: string): LabeledShape[] => {
+  const voicings: LabeledShape[] = [];
+  const seenFrets = new Set<string>();
+
+  const addIfNew = (shape: ChordShape | null | undefined, label: string) => {
+    if (!shape) return;
+    const key = shape.frets.join(",");
+    if (seenFrets.has(key)) return;
+    seenFrets.add(key);
+    voicings.push({ shape, label });
+  };
+
+  const canonicalNote = flatToSharp[note] ?? note;
+  const enharmonic = sharpToFlat[canonicalNote] ?? flatToSharp[note];
+
+  for (const n of [note, canonicalNote, enharmonic].filter(Boolean) as string[]) {
+    const key = buildChordKey(n, type);
+    const shapes = chordShapes[key];
+    if (shapes && shapes.length > 0) {
+      shapes.forEach((s, i) => addIfNew(s, i === 0 ? "Standard" : `Standard (${i + 1})`));
+      break;
+    }
+  }
+
+  const aTemplate = aShapeTemplates[type];
+  if (aTemplate) {
+    const shift = semitoneFromA(note);
+    const aShape = transposeShape(aTemplate, shift);
+    if (aShape) addIfNew(aShape, shift === 0 ? "A-Shape (Open)" : `A-Shape (${shift}fr)`);
+  }
+
+  const eTemplate = eShapeTemplates[type];
+  if (eTemplate) {
+    const shift = semitoneFromE(note);
+    const eShape = transposeShape(eTemplate, shift);
+    if (eShape) addIfNew(eShape, shift === 0 ? "E-Shape (Open)" : `E-Shape (${shift}fr)`);
+  }
+
+  return voicings;
+};
+
+const parseChordNote = (chord: string, type: "major" | "minor"): string => {
+  const primary = chord.split("/")[0];
+  const ascii = primary.replace(/♯/g, "#").replace(/♭/g, "b");
+  return type === "minor" ? ascii.replace(/m$/, "") : ascii;
+};
+
+const formatChordLabel = (note: string, type: string) => {
+  if (["6", "7", "m7", "9", "13"].includes(type)) return `${note}${type}`;
+  return `${note} ${type}`;
+};
+
 export default function CircleOfFifths() {
   const [hoveredKey, setHoveredKey] = useState<{
     chord: string;
@@ -37,13 +107,16 @@ export default function CircleOfFifths() {
     frets: (number | null)[];
     type: "major" | "minor";
   } | null>(null);
+  const [majorChordType, setMajorChordType] = useState("Major");
+  const [minorChordType, setMinorChordType] = useState("Minor");
+  const [voicingIndex, setVoicingIndex] = useState(0);
 
   const centerX = 250;
   const centerY = 250;
   const outerRadius = 185;
   const innerRadius = 125;
   const angleStep = (2 * Math.PI) / 12;
-  const startAngle = -Math.PI / 2; // Start at top
+  const startAngle = -Math.PI / 2;
 
   const getPosition = (index: number, radius: number) => {
     const angle = startAngle + index * angleStep;
@@ -53,59 +126,71 @@ export default function CircleOfFifths() {
     };
   };
 
+  const majorTypes = chordTypes.filter((t) => t !== "Minor" && t !== "m7");
+  const minorTypes = chordTypes.filter((t) => t === "Minor" || t === "m7");
+
   const activeKey = hoveredKey || selectedKey;
+  const rootNote = activeKey ? parseChordNote(activeKey.chord, activeKey.type) : null;
+  const isMinorContext = activeKey?.type === "minor";
+  const chordType = isMinorContext ? minorChordType : majorChordType;
+  const activeTypes = isMinorContext ? minorTypes : majorTypes;
+
+  const setChordType = (t: string) => {
+    if (isMinorContext) setMinorChordType(t);
+    else setMajorChordType(t);
+  };
+
+  const voicings = useMemo(() => {
+    if (!rootNote) return [];
+    return getAllVoicings(rootNote, chordType);
+  }, [rootNote, chordType]);
+
+  const clampedIndex = Math.min(voicingIndex, Math.max(0, voicings.length - 1));
+  const currentShape = voicings[clampedIndex]?.shape ?? null;
+
+  const selectKey = (chord: string, frets: (number | null)[], type: "major" | "minor") => {
+    setSelectedKey({ chord, frets, type });
+    setVoicingIndex(0);
+  };
 
   return (
     <div className='circle-of-fifths-container'>
       <div className='circle-column'>
         <svg viewBox='0 0 500 500' className='circle-svg'>
-          {/* Outer decorative ring */}
           <circle cx={centerX} cy={centerY} r={outerRadius} className='outer-ring' />
-
-          {/* Inner decorative ring */}
           <circle cx={centerX} cy={centerY} r={innerRadius} className='inner-ring' />
 
-          {/* Connecting lines between rings */}
           {circleData.map((_, index) => {
             const outerPos = getPosition(index, outerRadius + 30);
             const innerPos = getPosition(index, innerRadius - 25);
             return (
               <line
                 key={`line-${index}`}
-                x1={outerPos.x}
-                y1={outerPos.y}
-                x2={innerPos.x}
-                y2={innerPos.y}
-                stroke='rgba(250,204,21,0.15)'
-                strokeWidth='1'
+                x1={outerPos.x} y1={outerPos.y}
+                x2={innerPos.x} y2={innerPos.y}
+                stroke='rgba(250,204,21,0.15)' strokeWidth='1'
               />
             );
           })}
 
-          {/* Major keys (outer circle) */}
           {circleData.map((data, index) => {
             const pos = getPosition(index, outerRadius);
             const isActive = activeKey?.chord === data.major;
             return (
               <g key={`major-${index}`}>
                 <circle
-                  cx={pos.x}
-                  cy={pos.y}
-                  r={isActive ? 30 : 27}
+                  cx={pos.x} cy={pos.y} r={isActive ? 30 : 27}
                   className={`key-circle major-key${isActive ? " active" : ""}`}
                   onMouseEnter={() => setHoveredKey({ chord: data.major, frets: data.majorFrets, type: "major" })}
                   onMouseLeave={() => setHoveredKey(null)}
-                  onClick={() => setSelectedKey({ chord: data.major, frets: data.majorFrets, type: "major" })}
+                  onClick={() => selectKey(data.major, data.majorFrets, "major")}
                 />
                 <text
-                  x={pos.x}
-                  y={pos.y}
-                  textAnchor='middle'
-                  dominantBaseline='middle'
+                  x={pos.x} y={pos.y} textAnchor='middle' dominantBaseline='middle'
                   className={`key-text${isActive ? " active" : ""}`}
                   onMouseEnter={() => setHoveredKey({ chord: data.major, frets: data.majorFrets, type: "major" })}
                   onMouseLeave={() => setHoveredKey(null)}
-                  onClick={() => setSelectedKey({ chord: data.major, frets: data.majorFrets, type: "major" })}
+                  onClick={() => selectKey(data.major, data.majorFrets, "major")}
                 >
                   {data.major}
                 </text>
@@ -113,30 +198,24 @@ export default function CircleOfFifths() {
             );
           })}
 
-          {/* Minor keys (inner circle) */}
           {circleData.map((data, index) => {
             const pos = getPosition(index, innerRadius);
             const isActive = activeKey?.chord === data.minor;
             return (
               <g key={`minor-${index}`}>
                 <circle
-                  cx={pos.x}
-                  cy={pos.y}
-                  r={isActive ? 25 : 22}
+                  cx={pos.x} cy={pos.y} r={isActive ? 25 : 22}
                   className={`key-circle minor-key${isActive ? " active" : ""}`}
                   onMouseEnter={() => setHoveredKey({ chord: data.minor, frets: data.minorFrets, type: "minor" })}
                   onMouseLeave={() => setHoveredKey(null)}
-                  onClick={() => setSelectedKey({ chord: data.minor, frets: data.minorFrets, type: "minor" })}
+                  onClick={() => selectKey(data.minor, data.minorFrets, "minor")}
                 />
                 <text
-                  x={pos.x}
-                  y={pos.y}
-                  textAnchor='middle'
-                  dominantBaseline='middle'
+                  x={pos.x} y={pos.y} textAnchor='middle' dominantBaseline='middle'
                   className={`key-text minor-text${isActive ? " active" : ""}`}
                   onMouseEnter={() => setHoveredKey({ chord: data.minor, frets: data.minorFrets, type: "minor" })}
                   onMouseLeave={() => setHoveredKey(null)}
-                  onClick={() => setSelectedKey({ chord: data.minor, frets: data.minorFrets, type: "minor" })}
+                  onClick={() => selectKey(data.minor, data.minorFrets, "minor")}
                 >
                   {data.minor}
                 </text>
@@ -144,7 +223,6 @@ export default function CircleOfFifths() {
             );
           })}
 
-          {/* Center label */}
           <text x={centerX} y={centerY - 8} textAnchor='middle' dominantBaseline='middle' className='center-text'>
             Circle of
           </text>
@@ -154,86 +232,45 @@ export default function CircleOfFifths() {
         </svg>
       </div>
 
-      {/* Chord diagram display */}
       <div className='chord-column'>
-        {activeKey ? (
+        {activeKey && rootNote ? (
           <div className='chord-display'>
-            <h3 className='text-2xl font-bold mb-1 text-center'>{activeKey.chord}</h3>
-            <p className='text-sm text-center opacity-50 mb-3'>{activeKey.type === "major" ? "Major" : "Minor"}</p>
-            <div className='chord-diagram'>
-              <svg width='150' height='200' viewBox='0 0 150 200'>
-                {/* Nut (top thick line) */}
-                <rect x='18' y='28' width='114' height='4' rx='2' fill='currentColor' />
+            {/* Chord type — all 13 types for the selected root */}
+            <label className='voicing-label'>Chord Type</label>
+            <select
+              value={chordType}
+              onChange={(e) => { setChordType(e.target.value); setVoicingIndex(0); }}
+              className='voicing-select'
+            >
+              {activeTypes.map((t) => (
+                <option key={t} value={t}>{formatChordLabel(rootNote, t)}</option>
+              ))}
+            </select>
 
-                {/* Fret lines */}
-                {[1, 2, 3, 4].map((fret) => (
-                  <line
-                    key={`fret-${fret}`}
-                    x1='20'
-                    y1={30 + fret * 35}
-                    x2='130'
-                    y2={30 + fret * 35}
-                    stroke='currentColor'
-                    strokeWidth='1'
-                    opacity='0.3'
-                  />
-                ))}
+            {/* Position — Standard / A-Shape / E-Shape */}
+            {voicings.length > 1 && (
+              <>
+                <label className='voicing-label'>Voicing</label>
+                <select
+                  value={clampedIndex}
+                  onChange={(e) => setVoicingIndex(Number(e.target.value))}
+                  className='voicing-select'
+                >
+                  {voicings.map((v, i) => (
+                    <option key={i} value={i}>{v.label}</option>
+                  ))}
+                </select>
+              </>
+            )}
 
-                {/* String lines */}
-                {[0, 1, 2, 3, 4, 5].map((string) => (
-                  <line
-                    key={`string-${string}`}
-                    x1={30 + string * 20}
-                    y1='30'
-                    x2={30 + string * 20}
-                    y2='170'
-                    stroke='currentColor'
-                    strokeWidth='1'
-                    opacity='0.4'
-                  />
-                ))}
-
-                {/* Finger positions and muted strings */}
-                {activeKey.frets.map((fret, stringIndex) => {
-                  const x = 30 + stringIndex * 20;
-                  if (fret === null) {
-                    // Muted string (X)
-                    return (
-                      <text
-                        key={`muted-${stringIndex}`}
-                        x={x}
-                        y='20'
-                        textAnchor='middle'
-                        fontSize='14'
-                        fontWeight='bold'
-                        opacity='0.5'
-                      >
-                        ×
-                      </text>
-                    );
-                  } else if (fret === 0) {
-                    // Open string (O)
-                    return (
-                      <circle
-                        key={`open-${stringIndex}`}
-                        cx={x}
-                        cy='16'
-                        r='6'
-                        fill='none'
-                        stroke='currentColor'
-                        strokeWidth='2'
-                        opacity='0.5'
-                      />
-                    );
-                  } else {
-                    // Fingered note
-                    const y = 30 + (fret - 0.5) * 35;
-                    return <circle key={`finger-${stringIndex}`} cx={x} cy={y} r='8' fill='var(--accent)' />;
-                  }
-                })}
-              </svg>
-              <p className='text-xs mt-2 text-center opacity-40 uppercase tracking-wider'>First Position</p>
-            </div>
+            {currentShape ? (
+              <>
+                <ChordDiagram shape={currentShape} label={formatChordLabel(rootNote, chordType)} />
+                <p className='text-xs mt-3 text-center opacity-40 uppercase tracking-wider'>Click to add to favorites</p>
+              </>
+            ) : (
+              <p className='text-sm text-center opacity-40 mt-4'>No voicing available</p>
+            )}
           </div>
         ) : (
           <div className='chord-placeholder'>

@@ -474,7 +474,7 @@ const KanbanCard = ({ title, note }: { title: string; note: string }) => (
 export default function Home() {
   return (
     <main
-      className='flex w-full flex-col h-full overflow-hidden'
+      className='flex w-full flex-col flex-1 overflow-hidden'
       style={{ background: "var(--bg-primary)", color: "var(--text-primary)" }}
     >
       {/* ── MARQUEE ───────────────────────────────────────────── */}
@@ -491,7 +491,7 @@ export default function Home() {
       </div>
 
       {/* ── HERO ──────────────────────────────────────────────── */}
-      <section className='bg-yellow-400 text-black relative flex flex-col justify-center items-center flex-1 px-4 sm:px-6 overflow-hidden gap-8 sm:gap-12 md:gap-16'>
+      <section className='bg-yellow-400 text-black relative flex flex-col justify-center items-center flex-1 px-4 sm:px-6 gap-8 sm:gap-12 md:gap-16'>
 
         {/* Background rings */}
         <div className='absolute inset-0 flex items-center justify-center pointer-events-none' style={{ zIndex: 0 }}>

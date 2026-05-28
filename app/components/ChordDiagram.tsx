@@ -39,7 +39,7 @@ export default function ChordDiagram({ shape, label, useFlats = false, dotColor 
   return (
     <div className="flex flex-col items-center cursor-pointer group" onClick={handleClick}>
       {label && (
-        <h6 className="text-center mb-1 font-semibold text-sm flex items-center gap-1">
+        <h6 className="text-center mb-1 font-semibold text-sm flex items-center gap-1 text-[#1A1B1E]">
           {label} <span className={`text-xs ${favorited ? "text-red-500" : "text-transparent group-hover:text-red-300"}`}>♥</span>
         </h6>
       )}

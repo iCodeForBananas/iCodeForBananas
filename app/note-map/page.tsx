@@ -7,7 +7,7 @@ import BentoPageLayout from "../components/BentoPageLayout";
 export default function FretboardPage() {
   return (
     <BentoPageLayout
-      title='Fretboard Explorer'
+      title='Note Map'
     >
       <ChordScaleView />
     </BentoPageLayout>
