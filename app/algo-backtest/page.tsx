@@ -222,6 +222,7 @@ export default function AlgoBacktestPage() {
   const [error, setError] = useState<string | null>(null);
   const [availableDatasets, setAvailableDatasets] = useState<DatasetInfo[]>([]);
   const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
+  const [datasetSearch, setDatasetSearch] = useState<string>("");
   const [visibleCandles, setVisibleCandles] = useState<number>(DEFAULT_VISIBLE_CANDLES);
   const [showEquityCurve, setShowEquityCurve] = useState(true);
 
@@ -740,22 +741,30 @@ export default function AlgoBacktestPage() {
               <label className='text-sm text-slate-400'>Datasets</label>
               <div className='flex items-center gap-2'>
                 <button
-                  onClick={() => {
-                    if (selectedFiles.length === availableDatasets.length) {
-                      setSelectedFiles([]);
-                    } else {
-                      setSelectedFiles(availableDatasets.map((ds) => ds.file));
-                    }
-                  }}
+                  onClick={() => setSelectedFiles(availableDatasets.map((ds) => ds.file))}
                   className='text-xs text-blue-400 hover:text-blue-300 transition-colors'
                 >
-                  {selectedFiles.length === availableDatasets.length ? 'Deselect All' : 'Select All'}
+                  Select All
+                </button>
+                <button
+                  onClick={() => setSelectedFiles([])}
+                  disabled={selectedFiles.length === 0}
+                  className='text-xs text-slate-400 hover:text-slate-200 disabled:text-slate-600 disabled:cursor-not-allowed transition-colors'
+                >
+                  Deselect
                 </button>
                 <span className='text-xs text-slate-500'>
                   {selectedFiles.length} selected
                 </span>
               </div>
             </div>
+            <input
+              type='text'
+              value={datasetSearch}
+              onChange={(e) => setDatasetSearch(e.target.value)}
+              placeholder='Search by ticker…'
+              className='w-full mb-2 bg-slate-800 border border-slate-600 rounded px-2 py-1.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500'
+            />
             {uniqueTimeframes.length > 1 && (
               <div className='flex flex-wrap gap-1 mb-2'>
                 {uniqueTimeframes.map((tf) => {
@@ -780,7 +789,9 @@ export default function AlgoBacktestPage() {
               </div>
             )}
             <div className='max-h-48 overflow-y-auto bg-slate-800 border border-slate-600 rounded p-2 space-y-1'>
-              {availableDatasets.map((ds) => (
+              {availableDatasets.filter((ds) =>
+                ds.symbol.toLowerCase().includes(datasetSearch.toLowerCase())
+              ).map((ds) => (
                 <label
                   key={ds.file}
                   className='flex items-center gap-2 px-2 py-1 hover:bg-slate-700 rounded cursor-pointer'
