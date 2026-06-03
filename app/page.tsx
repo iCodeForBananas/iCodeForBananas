@@ -20,16 +20,6 @@ interface Module {
 const MODULES: Module[] = [
   // Flagships
   {
-    slug: "harmonic-flow",
-    title: "Harmonic Flow",
-    category: "Music AI Suite",
-    description:
-      "Real-time chord-to-scale resolver with interactive fretboard overlay. Maps harmonic relationships across all keys and modes simultaneously.",
-    stack: ["React 19", "Web Audio API", "Recharts", "Music Theory Engine"],
-    metric: "850+ scale/mode combos",
-    size: "flagship",
-  },
-  {
     slug: "algo-backtest",
     title: "Algo Backtest",
     category: "Quantitative Trading Engine",
@@ -533,14 +523,6 @@ export default function Home() {
               {(
                 [
                   {
-                    label: "Harmonic Flow",
-                    href: "/harmonic-flow",
-                    pos: "absolute -top-6 -right-28",
-                    anim: { y: [0, 15, 0] },
-                    dur: 3,
-                    delay: 0.5,
-                  },
-                  {
                     label: "Algo Backtest",
                     href: "/algo-backtest",
                     pos: "absolute bottom-8 -left-32",
@@ -632,7 +614,6 @@ export default function Home() {
           className='flex md:hidden flex-wrap justify-center gap-2 max-w-xs'
         >
           {[
-            { label: "Harmonic Flow", href: "/harmonic-flow" },
             { label: "Chord Finder", href: "/chord-finder" },
             { label: "Algo Backtest", href: "/algo-backtest" },
             { label: "Fretboard Quiz", href: "/fretboard-quiz" },

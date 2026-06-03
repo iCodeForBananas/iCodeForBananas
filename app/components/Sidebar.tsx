@@ -14,7 +14,6 @@ const NAV = [
     label: "Music",
     links: [
       { href: "/circle-of-fifths", text: "Circle of Fifths" },
-      { href: "/harmonic-flow", text: "Harmonic Flow" },
       { href: "/chord-progressions", text: "Chord Progressions" },
       { href: "/inversion-picker", text: "Inversion Picker" },
       { href: "/chord-diagrams", text: "Chord Diagrams" },

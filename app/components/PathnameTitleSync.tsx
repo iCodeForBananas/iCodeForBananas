@@ -19,7 +19,6 @@ const TITLES: Record<string, string> = {
   "/fretboard-architect":                 "Fretboard Architect | iCodeForBananas",
   "/fretboard-explorer":                  "Fretboard Explorer | iCodeForBananas",
   "/fretboard-quiz":                      "Fretboard Quiz | iCodeForBananas",
-  "/harmonic-flow":                       "Harmonic Flow | iCodeForBananas",
   "/lead-sheet-editor":                   "Lead Sheet Editor | iCodeForBananas",
   "/leaderboard":                         "Trading Leaderboard | iCodeForBananas",
   "/learning-progress":                   "Learning Progress | iCodeForBananas",

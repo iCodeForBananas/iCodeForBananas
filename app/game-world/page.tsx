@@ -103,10 +103,10 @@ export default function GameWorldPage() {
       )
 
       // ── Lights ─────────────────────────────────────────────
-      const ambientLight = new THREE.AmbientLight(0x1a2244, 0.45)
+      const ambientLight = new THREE.AmbientLight(0x1a2244, 0.52)
       scene.add(ambientLight)
 
-      const moon = new THREE.DirectionalLight(0x8899cc, 0.55)
+      const moon = new THREE.DirectionalLight(0x8899cc, 0.63)
       moon.position.set(-30, 60, -20)
       moon.castShadow = true
       moon.shadow.mapSize.set(2048, 2048)
@@ -118,7 +118,7 @@ export default function GameWorldPage() {
       scene.add(moon)
 
       // Dim fill to lift shadow-side geometry off pure black
-      const fillLight = new THREE.DirectionalLight(0x223344, 0.18)
+      const fillLight = new THREE.DirectionalLight(0x223344, 0.21)
       fillLight.position.set(30, 20, 20)
       scene.add(fillLight)
 
@@ -839,12 +839,12 @@ export default function GameWorldPage() {
         subBox(lx + 0.35, 5.5, lz, 0.7, 0.08, 0.08, shLPolM)
         const glb = new THREE.Mesh(new THREE.SphereGeometry(0.20, 8, 5), shLGlbM)
         glb.position.set(lx + 0.7, 5.3, lz); scene.add(glb)
-        const lpl = new THREE.PointLight(0xffcc77, 4.0, 50)
+        const lpl = new THREE.PointLight(0xffcc77, 6.0, 50)
         lpl.position.set(lx + 0.7, 5.0, lz); scene.add(lpl)
       }
       // Tap power poles for extra overhead light
       for (const p of shPoles) {
-        const ppl = new THREE.PointLight(0xffcc77, 3.0, 45)
+        const ppl = new THREE.PointLight(0xffcc77, 4.5, 45)
         ppl.position.set(p.x, 7.5, p.z); scene.add(ppl)
       }
       // Street lamp posts distributed across the full shantytown
@@ -888,7 +888,7 @@ export default function GameWorldPage() {
         stB(-24.7, 4.46, z, 0.46, 0.22, 0.30, ironM)
         const lens = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.12, 0.21), lensM)
         lens.position.set(-24.7, 4.33, z); scene.add(lens)
-        const lampPL = new THREE.PointLight(0xffcc88, 4.4, 44)
+        const lampPL = new THREE.PointLight(0xffcc88, 6.6, 44)
         lampPL.position.set(-24.7, 4.2, z); scene.add(lampPL)
       }
       for (const lz of [-47, -35, -23, -11, 1, 13]) mkAlleyLamp(lz)
@@ -2077,7 +2077,7 @@ export default function GameWorldPage() {
             lensM
           )
           lens.position.set(hx, pH - 0.57, hz); scene.add(lens)
-          const pl = new THREE.PointLight(0xffbb55, 2.8, 40)
+          const pl = new THREE.PointLight(0xffbb55, 4.2, 40)
           pl.position.set(hx, pH - 0.8, hz); scene.add(pl)
         }
 
@@ -2183,7 +2183,7 @@ export default function GameWorldPage() {
           const gr = new THREE.Mesh(new THREE.BoxGeometry(3.0, 0.07, 0.07), smMtlM)
           gr.position.set(60, gy, cwz1); scene.add(gr)
         }
-        gPL(60, fgH + 0.6, cwz1 + 1.2, 10.0, 44)  // entry floodlight
+        gPL(60, fgH + 0.6, cwz1 + 1.2, 20.0, 60)  // entry floodlight
 
         // ── Side gates (bars only) ────────────────────────────────────────────────
         for (const [gx5, gz5] of [[cwx1, -70], [cwx2, -70]] as [number, number][]) {
@@ -2388,22 +2388,80 @@ export default function GameWorldPage() {
 
         // ── Compound perimeter lighting (low wall-mount, green sodium) ────────────
         for (let lpx = cwx1 + 6; lpx <= cwx2 - 6; lpx += 11) {
-          gPL(lpx, cwH + 0.5, cwz1 - 1.0, 3.0, 24)
-          gPL(lpx, cwH + 0.5, cwz2 + 1.0, 3.0, 24)
+          gPL(lpx, cwH + 0.5, cwz1 - 1.0, 7.0, 40)
+          gPL(lpx, cwH + 0.5, cwz2 + 1.0, 7.0, 40)
         }
         for (let lpz = cwz2 + 6; lpz <= cwz1 - 6; lpz += 11) {
-          gPL(cwx1 - 1.0, cwH + 0.5, lpz, 3.0, 24)
-          gPL(cwx2 + 1.0, cwH + 0.5, lpz, 3.0, 24)
+          gPL(cwx1 - 1.0, cwH + 0.5, lpz, 7.0, 40)
+          gPL(cwx2 + 1.0, cwH + 0.5, lpz, 7.0, 40)
         }
         // Building exterior flood lights
         for (const [flx, flz] of [[bx1, bz1], [bx2, bz1], [bx1, bz2], [bx2, bz2]] as [number, number][]) {
-          gPL(flx, roofY + 0.6, flz, 5.0, 32)
+          gPL(flx, roofY + 0.6, flz, 12.0, 50)
         }
 
         // F2 ceiling panel
         const f2CeilM = new THREE.MeshBasicMaterial({ color: 0xaaffcc })
         stB(bcx, f2Y + bH2 - 0.04, bcz, 3.2, 0.04, 0.6, f2CeilM)
       }
+
+      // ── Nexus Sky Beam (sanctum energy column) ───────────────────────────────
+      // bcx=60, bcz=-70, roofY=7.5 from Sanctum building dims
+      const nexusBX = 60, nexusBZ = -70, nexusBaseY = 8.2
+      const nexusBeamH = 240
+
+      const nexusCoreMat = new THREE.MeshBasicMaterial({ color: 0x00ff77 })
+      const nexusCoreBeam = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.14, nexusBeamH, 8), nexusCoreMat)
+      nexusCoreBeam.position.set(nexusBX, nexusBaseY + nexusBeamH / 2, nexusBZ)
+      scene.add(nexusCoreBeam)
+
+      const nexusMidMat = new THREE.MeshBasicMaterial({ color: 0x44ffaa, transparent: true, opacity: 0.22 })
+      const nexusMidBeam = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.55, nexusBeamH, 10), nexusMidMat)
+      nexusMidBeam.position.set(nexusBX, nexusBaseY + nexusBeamH / 2, nexusBZ)
+      scene.add(nexusMidBeam)
+
+      const nexusOuterMat = new THREE.MeshBasicMaterial({ color: 0x00ff44, transparent: true, opacity: 0.09 })
+      const nexusOuterBeam = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1.4, nexusBeamH, 12), nexusOuterMat)
+      nexusOuterBeam.position.set(nexusBX, nexusBaseY + nexusBeamH / 2, nexusBZ)
+      scene.add(nexusOuterBeam)
+
+      // Helical coils — created relative to origin so spinning the group looks correct
+      const mkNexusHelix = (phase: number, radius: number, col: number, thick: number) => {
+        const pts: THREE.Vector3[] = []
+        const turns = 20, steps = 300
+        for (let i = 0; i <= steps; i++) {
+          const t = (i / steps) * turns * Math.PI * 2
+          pts.push(new THREE.Vector3(Math.cos(t + phase) * radius, (i / steps) * nexusBeamH, Math.sin(t + phase) * radius))
+        }
+        const curve = new THREE.CatmullRomCurve3(pts)
+        const mat = new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.88 })
+        return new THREE.Mesh(new THREE.TubeGeometry(curve, 400, thick, 5, false), mat)
+      }
+      const nexusHelixGroup = new THREE.Group()
+      nexusHelixGroup.position.set(nexusBX, nexusBaseY, nexusBZ)
+      nexusHelixGroup.add(mkNexusHelix(0,               0.32, 0x00ffaa, 0.045))
+      nexusHelixGroup.add(mkNexusHelix(Math.PI,         0.32, 0x55ffbb, 0.045))
+      nexusHelixGroup.add(mkNexusHelix(Math.PI / 2,     0.52, 0x00ee66, 0.030))
+      nexusHelixGroup.add(mkNexusHelix(Math.PI * 3 / 2, 0.52, 0x00cc55, 0.030))
+      scene.add(nexusHelixGroup)
+
+      // Floating energy rings that drift upward along the beam
+      const nexusRings: THREE.Mesh[] = []
+      for (let ri = 0; ri < 14; ri++) {
+        const ring = new THREE.Mesh(
+          new THREE.TorusGeometry(0.5 + ri * 0.035, 0.055, 6, 24),
+          new THREE.MeshBasicMaterial({ color: 0x00ffcc, transparent: true, opacity: 0.75 })
+        )
+        ring.rotation.x = Math.PI / 2
+        ring.position.set(nexusBX, nexusBaseY + (ri / 14) * nexusBeamH, nexusBZ)
+        scene.add(ring)
+        nexusRings.push(ring)
+      }
+
+      // Strong pulsing base floodlight
+      const nexusBasePL = new THREE.PointLight(0x00ff77, 30, 90)
+      nexusBasePL.position.set(nexusBX, nexusBaseY + 3, nexusBZ)
+      scene.add(nexusBasePL)
 
       // ── Sanctum exterior street lamps ─────────────────────────────────────────
       {
@@ -2415,7 +2473,7 @@ export default function GameWorldPage() {
           stB(lx, pH - 0.12, lz, 0.36, 0.08, 0.36, sancPolM)
           const lens = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.09, 0.22), sancLnsM)
           lens.position.set(lx, pH - 0.32, lz); scene.add(lens)
-          const lp = new THREE.PointLight(0x99ffbb, 4.4, 50)
+          const lp = new THREE.PointLight(0x99ffbb, 9.0, 70)
           lp.position.set(lx, pH - 0.55, lz); scene.add(lp)
         }
         // South approach flanking the front gate (Z=-57)
@@ -2597,7 +2655,7 @@ export default function GameWorldPage() {
           stB(lx, 5.5, lz - 0.64, 0.08, 0.24, 0.08, sqIronM)
           const lamp = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.22, 0.26), sqLensM)
           lamp.position.set(lx, 5.36, lz - 0.64); scene.add(lamp)
-          const pl = new THREE.PointLight(0xffeecc, 1.1, 18)
+          const pl = new THREE.PointLight(0xffeecc, 1.65, 18)
           pl.position.set(lx, 5.1, lz - 0.64); scene.add(pl)
         }
 
@@ -3146,6 +3204,201 @@ export default function GameWorldPage() {
           const hspl = new THREE.PointLight(0xffcc88, 1.0, 9)
           hspl.position.set(HOSP_X1 + 0.40, hospH - 1.26, sz); scene.add(hspl)
         }
+      }
+
+      // ── Perimeter Wall — Industrial Containment Ring ─────────────────────────
+      // Bounds: W=-62, E=97, N=-100, S=97  — dystopian industrial-alien enclosure
+      // Streets end at closed checkpoint gates; corner towers with alien sensor eyes
+      {
+        const WN = -100, WS = 97, WW = -62, WE = 97
+        const WH = 7.5, WTk = 0.9, PWW = 2.2
+
+        const wConc = new THREE.MeshLambertMaterial({ color: 0x0e0d0b })
+        const wMtl  = new THREE.MeshLambertMaterial({ color: 0x141210 })
+        const wRst  = new THREE.MeshLambertMaterial({ color: 0x1e0b03 })
+        const wPlr  = new THREE.MeshLambertMaterial({ color: 0x090807 })
+        const wWrn  = new THREE.MeshBasicMaterial({ color: 0xff4400 })
+        const wBar  = new THREE.MeshLambertMaterial({ color: 0x0f0e0c })
+        const wGlow = new THREE.MeshBasicMaterial({ color: 0x00ff44, transparent: true, opacity: 0.40 })
+
+        // Buttress pillar on an E-W wall (wall runs along X, fixed Z)
+        const mkPillarEW = (px: number, wz: number) => {
+          const pH = WH + 1.8
+          stB(px, pH/2,     wz,           PWW,        pH,       PWW*1.8, wPlr)
+          stB(px, WH*0.45,  wz - PWW*0.8, PWW*0.85,   WH*0.78,  0.48,    wConc)
+          stB(px, WH*0.45,  wz + PWW*0.8, PWW*0.85,   WH*0.78,  0.48,    wConc)
+          stB(px, WH*0.28,  wz,           0.18,        WH*0.44,  PWW*1.8+0.1, wRst)
+          stB(px, pH - 0.28,wz,           0.32,        0.28,     0.32,    wWrn)
+          const l = new THREE.PointLight(0xff3300, 1.4, 22)
+          l.position.set(px, pH + 0.1, wz); scene.add(l)
+        }
+
+        // Buttress pillar on an N-S wall (wall runs along Z, fixed X)
+        const mkPillarNS = (wx: number, pz: number) => {
+          const pH = WH + 1.8
+          stB(wx,           pH/2,     pz,           PWW*1.8, pH,      PWW,       wPlr)
+          stB(wx - PWW*0.8, WH*0.45,  pz,           0.48,    WH*0.78, PWW*0.85,  wConc)
+          stB(wx + PWW*0.8, WH*0.45,  pz,           0.48,    WH*0.78, PWW*0.85,  wConc)
+          stB(wx,           WH*0.28,  pz,           PWW*1.8+0.1, WH*0.44, 0.18,  wRst)
+          stB(wx,           pH - 0.28,pz,           0.32,    0.28,    0.32,      wWrn)
+          const l = new THREE.PointLight(0xff3300, 1.4, 22)
+          l.position.set(wx, pH + 0.1, pz); scene.add(l)
+        }
+
+        // Checkpoint gate — gate opening runs along X axis (on N or S wall)
+        const mkGateEW = (gx: number, wz: number, gW = 5.5) => {
+          const ppH = WH + 3.4, nBars = Math.round(gW / 0.44)
+          const outer = wz < 0 ? wz - 0.55 : wz + 0.55   // outward-facing side
+          const inner = wz < 0 ? wz + 0.55 : wz - 0.55
+          // Tall gate pillars + arch
+          stB(gx - gW/2 - PWW/2, ppH/2,      wz, PWW,          ppH,  PWW*2.2,      wPlr)
+          stB(gx + gW/2 + PWW/2, ppH/2,      wz, PWW,          ppH,  PWW*2.2,      wPlr)
+          stB(gx,                 ppH - 0.22, wz, gW + PWW*2.4, 0.44, PWW*1.8,      wBar)
+          // Warning lamps on gate pillars (outward-facing)
+          stB(gx - gW/2 - PWW/2, ppH - 0.6, outer, 0.3, 0.28, 0.3, wWrn)
+          stB(gx + gW/2 + PWW/2, ppH - 0.6, outer, 0.3, 0.28, 0.3, wWrn)
+          const gl1 = new THREE.PointLight(0xff2200, 3.0, 22)
+          gl1.position.set(gx - gW/2 - PWW/2, ppH - 0.2, outer); scene.add(gl1)
+          const gl2 = new THREE.PointLight(0xff2200, 3.0, 22)
+          gl2.position.set(gx + gW/2 + PWW/2, ppH - 0.2, outer); scene.add(gl2)
+          // Alien glow strip on inner arch face
+          stB(gx, ppH - 0.14, inner, gW*0.7, 0.08, 0.08, wGlow)
+          const agl = new THREE.PointLight(0x00ff44, 2.5, 20)
+          agl.position.set(gx, ppH + 0.5, wz); scene.add(agl)
+          // Gate bars (closed — no passage)
+          const bsp = gW / (nBars + 1)
+          for (let i = 1; i <= nBars; i++)
+            stB(gx - gW/2 + i*bsp, WH*0.44, wz, 0.09, WH*0.88, 0.09, wBar)
+          for (const yf of [0.14, 0.44, 0.74])
+            stB(gx, yf*WH, wz, gW, 0.10, 0.12, wBar)
+          wallBoxes.push(new THREE.Box3(
+            new THREE.Vector3(gx - gW/2, 0, wz - WTk/2 - 0.1),
+            new THREE.Vector3(gx + gW/2, WH, wz + WTk/2 + 0.1)
+          ))
+        }
+
+        // Checkpoint gate — gate opening runs along Z axis (on E or W wall)
+        const mkGateNS = (wx: number, gz: number, gW = 5.5) => {
+          const ppH = WH + 3.4, nBars = Math.round(gW / 0.44)
+          const outer = wx < 0 ? wx - 0.55 : wx + 0.55
+          const inner = wx < 0 ? wx + 0.55 : wx - 0.55
+          stB(wx, ppH/2, gz - gW/2 - PWW/2, PWW*2.2, ppH,  PWW,         wPlr)
+          stB(wx, ppH/2, gz + gW/2 + PWW/2, PWW*2.2, ppH,  PWW,         wPlr)
+          stB(wx, ppH - 0.22, gz,            PWW*1.8, 0.44, gW + PWW*2.4, wBar)
+          stB(outer, ppH - 0.6, gz - gW/2 - PWW/2, 0.3, 0.28, 0.3, wWrn)
+          stB(outer, ppH - 0.6, gz + gW/2 + PWW/2, 0.3, 0.28, 0.3, wWrn)
+          const gl1 = new THREE.PointLight(0xff2200, 3.0, 22)
+          gl1.position.set(outer, ppH - 0.2, gz - gW/2 - PWW/2); scene.add(gl1)
+          const gl2 = new THREE.PointLight(0xff2200, 3.0, 22)
+          gl2.position.set(outer, ppH - 0.2, gz + gW/2 + PWW/2); scene.add(gl2)
+          stB(inner, ppH - 0.14, gz, 0.08, 0.08, gW*0.7, wGlow)
+          const agl = new THREE.PointLight(0x00ff44, 2.5, 20)
+          agl.position.set(wx, ppH + 0.5, gz); scene.add(agl)
+          const bsp = gW / (nBars + 1)
+          for (let i = 1; i <= nBars; i++)
+            stB(wx, WH*0.44, gz - gW/2 + i*bsp, 0.09, WH*0.88, 0.09, wBar)
+          for (const yf of [0.14, 0.44, 0.74])
+            stB(wx, yf*WH, gz, 0.12, 0.10, gW, wBar)
+          wallBoxes.push(new THREE.Box3(
+            new THREE.Vector3(wx - WTk/2 - 0.1, 0, gz - gW/2),
+            new THREE.Vector3(wx + WTk/2 + 0.1, WH, gz + gW/2)
+          ))
+        }
+
+        // Corner towers with alien sensor eyes and crenellated battlements
+        const mkCorner = (tx: number, tz: number) => {
+          const tH = WH + 5.2, tS = 4.2
+          stB(tx, tH/2, tz, tS, tH, tS, wPlr)
+          for (const [ox, oz] of [
+            [-1.1,0],[1.1,0],[0,-1.1],[0,1.1],
+            [-1.2,-1.2],[1.2,-1.2],[-1.2,1.2],[1.2,1.2]
+          ] as [number,number][]) {
+            stB(tx+ox, tH+0.42, tz+oz, 0.88, 0.84, 0.88, wPlr)
+          }
+          // Alien sensor eye — faces outward from city on both exposed faces
+          stB(tx < 0 ? tx-0.18 : tx+0.18, tH-1.6, tz,           0.14, 0.52, 0.52, wGlow)
+          stB(tx,                           tH-1.6, tz < 0 ? tz-0.18 : tz+0.18, 0.52, 0.52, 0.14, wGlow)
+          const l1 = new THREE.PointLight(0x00ff44, 4.0, 38)
+          l1.position.set(tx, tH + 1.2, tz); scene.add(l1)
+          const l2 = new THREE.PointLight(0xff3300, 3.0, 30)
+          l2.position.set(tx, tH - 1.0, tz); scene.add(l2)
+        }
+
+        // Half-footprint of a gate + its pillars (gap to exclude from wall spans)
+        const gHalf = 5.5/2 + PWW + 0.3
+
+        // Build E-W wall segments (wall runs along X) with auto pillars between gates
+        const mkEWSpan = (wz: number, gates: number[]) => {
+          const skips = [...gates].sort((a, b) => a - b).map(g => [g - gHalf, g + gHalf] as [number,number])
+          let cur = WW
+          for (const [gs, ge] of skips) {
+            if (gs > cur + 0.5) {
+              const len = gs - cur, cx = (cur + gs) / 2
+              stB(cx, WH/2,       wz, len, WH,   WTk,     wConc)
+              stB(cx, WH - 0.36,  wz, len, 0.72, WTk*1.2, wMtl)
+              stB(cx, WH + 0.18,  wz, len, 0.12, 0.12,    wRst)
+              for (let pp = cur + 14; pp < gs - 7; pp += 14) mkPillarEW(pp, wz)
+              wallBoxes.push(new THREE.Box3(
+                new THREE.Vector3(cur, 0, wz - WTk/2), new THREE.Vector3(gs, WH, wz + WTk/2)
+              ))
+            }
+            cur = ge
+          }
+          if (WE > cur + 0.5) {
+            const len = WE - cur, cx = (cur + WE) / 2
+            stB(cx, WH/2,       wz, len, WH,   WTk,     wConc)
+            stB(cx, WH - 0.36,  wz, len, 0.72, WTk*1.2, wMtl)
+            stB(cx, WH + 0.18,  wz, len, 0.12, 0.12,    wRst)
+            for (let pp = cur + 14; pp < WE - 7; pp += 14) mkPillarEW(pp, wz)
+            wallBoxes.push(new THREE.Box3(
+              new THREE.Vector3(cur, 0, wz - WTk/2), new THREE.Vector3(WE, WH, wz + WTk/2)
+            ))
+          }
+        }
+
+        // Build N-S wall segments (wall runs along Z) with auto pillars between gates
+        const mkNSSpan = (wx: number, gates: number[]) => {
+          const skips = [...gates].sort((a, b) => a - b).map(g => [g - gHalf, g + gHalf] as [number,number])
+          let cur = WN
+          for (const [gs, ge] of skips) {
+            if (gs > cur + 0.5) {
+              const len = gs - cur, cz = (cur + gs) / 2
+              stB(wx, WH/2,       cz, WTk,     WH,   len, wConc)
+              stB(wx, WH - 0.36,  cz, WTk*1.2, 0.72, len, wMtl)
+              stB(wx, WH + 0.18,  cz, 0.12,    0.12, len, wRst)
+              for (let pp = cur + 14; pp < gs - 7; pp += 14) mkPillarNS(wx, pp)
+              wallBoxes.push(new THREE.Box3(
+                new THREE.Vector3(wx - WTk/2, 0, cur), new THREE.Vector3(wx + WTk/2, WH, gs)
+              ))
+            }
+            cur = ge
+          }
+          if (WS > cur + 0.5) {
+            const len = WS - cur, cz = (cur + WS) / 2
+            stB(wx, WH/2,       cz, WTk,     WH,   len, wConc)
+            stB(wx, WH - 0.36,  cz, WTk*1.2, 0.72, len, wMtl)
+            stB(wx, WH + 0.18,  cz, 0.12,    0.12, len, wRst)
+            for (let pp = cur + 14; pp < WS - 7; pp += 14) mkPillarNS(wx, pp)
+            wallBoxes.push(new THREE.Box3(
+              new THREE.Vector3(wx - WTk/2, 0, cur), new THREE.Vector3(wx + WTk/2, WH, WS)
+            ))
+          }
+        }
+
+        // Four walls — gaps align with street terminations
+        mkEWSpan(WN, [14, -11, 60])         // north: main st, industrial center, sanctum
+        mkEWSpan(WS, [14, 35, 62, 78])      // south: main st, market sq, 1st Ave, 2nd Ave
+        mkNSSpan(WE, [30, 55, 73, 89])      // east: 44th, Concourse, South Cross, Far South
+        mkNSSpan(WW, [-65, 30])             // west: industrial service, market approach
+
+        // Checkpoint gates at every street terminus (all closed)
+        mkGateEW(14,  WN); mkGateEW(-11, WN); mkGateEW(60,  WN)
+        mkGateEW(14,  WS); mkGateEW(35,  WS); mkGateEW(62,  WS); mkGateEW(78, WS)
+        mkGateNS(WE,  30); mkGateNS(WE,  55); mkGateNS(WE,  73); mkGateNS(WE, 89)
+        mkGateNS(WW, -65); mkGateNS(WW,  30)
+
+        // Corner towers
+        mkCorner(WW, WN); mkCorner(WE, WN); mkCorner(WW, WS); mkCorner(WE, WS)
       }
 
       // ── Local player ───────────────────────────────────────
@@ -4052,6 +4305,22 @@ export default function GameWorldPage() {
           }
           const pulse = 0.5 + Math.sin(Date.now() * 0.004 + g.group.position.x) * 0.3
           ;(g.glowOrb.material as THREE.MeshBasicMaterial).opacity = pulse
+        }
+
+        // ── Nexus sky beam animation ───────────────────────────────────────────
+        {
+          const bt = Date.now() * 0.001
+          nexusHelixGroup.rotation.y = bt * 1.8
+          nexusMidMat.opacity = 0.18 + Math.sin(bt * 2.5) * 0.10
+          nexusOuterMat.opacity = 0.07 + Math.sin(bt * 1.7 + 1.0) * 0.04
+          nexusBasePL.intensity = 26 + Math.sin(bt * 4.0) * 9 + Math.sin(bt * 9.1) * 4
+          for (let ri = 0; ri < nexusRings.length; ri++) {
+            nexusRings[ri].position.y += 0.25
+            if (nexusRings[ri].position.y > nexusBaseY + nexusBeamH - 5)
+              nexusRings[ri].position.y = nexusBaseY + 2
+            ;(nexusRings[ri].material as THREE.MeshBasicMaterial).opacity =
+              0.25 + Math.sin(bt * 2.2 + ri * 0.9) * 0.35
+          }
         }
 
         // ── Player Y — jump physics + ramp floor ──────────────────
