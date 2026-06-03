@@ -8,6 +8,7 @@ import { Chat } from './components/Chat';
 import { TemplateModal } from './components/TemplateModal';
 import { VersionHistory } from './components/VersionHistory';
 import { Note, Message, Template, Tone, NoteVersion } from './types';
+import { createClient } from '@/utils/supabase/client';
 
 // ─── Constants ────────────────────────────────────────────────
 
@@ -142,6 +143,8 @@ export default function WordsmithPage() {
   });
 
   const versionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const dbSyncRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
 
   // Persist theme
   useEffect(() => {
@@ -173,6 +176,79 @@ export default function WordsmithPage() {
 
   const activeNote = notes.find((n) => n.id === activeNoteId) || null;
   const activeTone = TONES.find((t) => t.id === activeToneId);
+
+  // Load from Supabase on mount and merge with localStorage
+  useEffect(() => {
+    const init = async () => {
+      const supabase = createClient();
+      if (!supabase) return;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const uid = session.user.id;
+      setUserId(uid);
+
+      const { data: dbNotes } = await supabase
+        .from('notes')
+        .select('id, title, content, prompt, updated_at')
+        .eq('user_id', uid)
+        .order('updated_at', { ascending: false });
+
+      if (!dbNotes) return;
+
+      setNotes(prev => {
+        const localIds = new Set(prev.map(n => n.id));
+        const dbIds = new Set(dbNotes.map((n: { id: string }) => n.id));
+
+        // Upsert localStorage-only notes to Supabase
+        const localOnly = prev.filter(n => !dbIds.has(n.id));
+        if (localOnly.length > 0) {
+          supabase.from('notes').upsert(
+            localOnly.map(n => ({
+              id: n.id,
+              user_id: uid,
+              title: n.title,
+              content: n.content,
+              prompt: n.prompt ?? null,
+              updated_at: n.updatedAt,
+            })),
+            { onConflict: 'id' }
+          );
+        }
+
+        // Add DB-only notes to local state
+        const dbOnly = dbNotes
+          .filter((n: { id: string }) => !localIds.has(n.id))
+          .map((n: { id: string; title: string; content: string; prompt?: string; updated_at: string }) => ({
+            id: n.id,
+            title: n.title,
+            content: n.content,
+            prompt: n.prompt || undefined,
+            updatedAt: n.updated_at,
+          }));
+
+        return dbOnly.length > 0 ? [...prev, ...dbOnly] : prev;
+      });
+    };
+    init();
+  }, []);
+
+  // Debounced sync of active note to Supabase after edits
+  useEffect(() => {
+    if (!userId || !activeNote) return;
+    if (dbSyncRef.current) clearTimeout(dbSyncRef.current);
+    dbSyncRef.current = setTimeout(() => {
+      createClient()?.from('notes').upsert({
+        id: activeNote.id,
+        user_id: userId,
+        title: activeNote.title,
+        content: activeNote.content,
+        prompt: activeNote.prompt ?? null,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'id' });
+    }, 2000);
+    return () => { if (dbSyncRef.current) clearTimeout(dbSyncRef.current); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeNote?.content, activeNote?.title, activeNote?.prompt, userId]);
 
   // ─── Version saving ──────────────────────────────────────────
 
@@ -213,11 +289,23 @@ export default function WordsmithPage() {
     };
     setNotes([newNote, ...notes]);
     setActiveNoteId(newNote.id);
+    if (userId) {
+      createClient()?.from('notes').insert({
+        id: newNote.id,
+        user_id: userId,
+        title: newNote.title,
+        content: newNote.content,
+        updated_at: newNote.updatedAt,
+      });
+    }
   };
 
   const handleDeleteNote = (id: string) => {
     setNotes(notes.filter((n) => n.id !== id));
     if (activeNoteId === id) setActiveNoteId(null);
+    if (userId) {
+      createClient()?.from('notes').delete().eq('id', id).eq('user_id', userId);
+    }
   };
 
   const handleUpdateNote = (id: string, updates: Partial<Note>) => {
@@ -245,6 +333,16 @@ export default function WordsmithPage() {
     setNotes([newNote, ...notes]);
     setActiveNoteId(newNote.id);
     setIsTemplateModalOpen(false);
+    if (userId) {
+      createClient()?.from('notes').insert({
+        id: newNote.id,
+        user_id: userId,
+        title: newNote.title,
+        content: newNote.content,
+        prompt: newNote.prompt ?? null,
+        updated_at: newNote.updatedAt,
+      });
+    }
     if (template.prompt) {
       setMessages((prev) => [
         ...prev,
