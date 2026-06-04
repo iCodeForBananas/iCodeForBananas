@@ -219,17 +219,17 @@ export default function WorkoutTrackerContent() {
 
           {/* Log form */}
           {user && (
-            <div className='flex flex-wrap gap-2 items-end mb-6 sm:mb-8 max-w-3xl mx-auto'>
+            <div className='flex flex-col sm:flex-row sm:flex-wrap gap-3 sm:items-end mb-6 sm:mb-8 max-w-3xl mx-auto'>
               <input
                 type='date'
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className='border border-[#373A40]/30 rounded px-3 py-2 text-sm bg-white'
+                className='border border-[#373A40]/30 rounded px-3 py-2.5 text-base bg-white min-h-[44px] w-full sm:w-auto'
               />
               <select
                 value={selected}
                 onChange={(e) => setSelected(e.target.value)}
-                className='border border-[#373A40]/30 rounded px-3 py-2 text-sm flex-1 min-w-[140px]'
+                className='border border-[#373A40]/30 rounded px-3 py-2.5 text-base min-h-[44px] w-full sm:flex-1 sm:min-w-[140px]'
               >
                 {sortedExercises.map((c) => (
                   <option key={c.name} value={c.name}>
@@ -245,11 +245,11 @@ export default function WorkoutTrackerContent() {
                 placeholder='lbs'
                 onChange={(e) => setWeight(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && submit()}
-                className='w-20 sm:w-24 border border-[#373A40]/30 rounded px-3 py-2 text-sm'
+                className='w-full sm:w-24 border border-[#373A40]/30 rounded px-3 py-2.5 text-base min-h-[44px]'
               />
               <button
                 onClick={submit}
-                className='flex-1 sm:flex-none rounded bg-black px-5 py-2 text-sm font-medium text-[#facc15] hover:bg-black/80'
+                className='w-full sm:flex-none rounded bg-black px-5 py-2.5 text-base font-medium text-[#facc15] hover:bg-black/80 min-h-[44px]'
               >
                 Submit
               </button>
@@ -374,7 +374,7 @@ export default function WorkoutTrackerContent() {
                 {bodyPartCoverage.map(({ part, days }) => (
                   <div
                     key={part}
-                    className='relative flex items-center gap-3 py-2 px-3 rounded-lg cursor-default'
+                    className='relative flex items-center gap-3 py-3 px-3 rounded-lg cursor-default'
                     onMouseEnter={() => setHoveredBodyPart(part as BodyPart)}
                     onMouseLeave={() => setHoveredBodyPart(null)}
                   >
@@ -422,10 +422,10 @@ export default function WorkoutTrackerContent() {
                     {paged.map((l) => (
                       <div
                         key={l.id}
-                        className='flex items-center justify-between py-2 border-b border-[#373A40]/10 last:border-0'
+                        className='flex items-center justify-between gap-2 py-3 border-b border-[#373A40]/10 last:border-0'
                       >
-                        <div className='text-sm'>
-                          <span className='text-[#000]/50 mr-2'>
+                        <div className='text-sm min-w-0'>
+                          <span className='text-[#000]/50 mr-2 text-xs shrink-0'>
                             {new Date(l.date + "T12:00:00").toLocaleDateString("en-US", {
                               month: "short",
                               day: "numeric",
@@ -433,12 +433,12 @@ export default function WorkoutTrackerContent() {
                           </span>
                           <span className='font-medium'>{l.exercise}</span>
                           {l.weight != null && l.weight > 0 && (
-                            <span className='text-[#000]/50 ml-1'>@ {l.weight} lbs</span>
+                            <span className='text-[#000]/50 ml-1 text-xs'>@ {l.weight} lbs</span>
                           )}
                         </div>
                         <button
                           onClick={() => remove(l.id)}
-                          className='text-[#373A40]/30 hover:text-red-500 text-lg px-1'
+                          className='shrink-0 w-11 h-11 flex items-center justify-center text-xl text-[#373A40]/30 hover:text-red-500 -mr-2'
                           aria-label='Delete'
                           style={{ display: user ? undefined : "none" }}
                         >
@@ -452,7 +452,7 @@ export default function WorkoutTrackerContent() {
                       <button
                         onClick={() => setPage((p) => p - 1)}
                         disabled={page === 0}
-                        className='text-sm px-3 py-1 rounded border border-[#373A40]/20 disabled:opacity-30'
+                        className='text-sm px-4 py-2.5 rounded border border-[#373A40]/20 disabled:opacity-30 min-h-[44px]'
                       >
                         ← Prev
                       </button>
@@ -462,7 +462,7 @@ export default function WorkoutTrackerContent() {
                       <button
                         onClick={() => setPage((p) => p + 1)}
                         disabled={page >= totalPages - 1}
-                        className='text-sm px-3 py-1 rounded border border-[#373A40]/20 disabled:opacity-30'
+                        className='text-sm px-4 py-2.5 rounded border border-[#373A40]/20 disabled:opacity-30 min-h-[44px]'
                       >
                         Next →
                       </button>
