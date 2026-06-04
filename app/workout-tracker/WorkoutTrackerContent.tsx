@@ -260,7 +260,7 @@ export default function WorkoutTrackerContent() {
           {exercisesWithLogs.length > 0 && chartData.length > 0 && (
             <div className='border-t border-[#373A40]/10 pt-6 mb-8'>
               <h2 className='font-semibold text-lg mb-4'>Weight Progress</h2>
-              <div className='h-52 sm:h-72'>
+              <div className='h-72 sm:h-96'>
                 <ClientOnly>
                 <ResponsiveContainer width='100%' height='100%'>
                   <LineChart data={chartData}>
