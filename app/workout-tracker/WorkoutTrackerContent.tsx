@@ -34,6 +34,7 @@ const COMPOUND: { name: string; type: "weighted" | "bodyweight" }[] = [
   { name: "Overhead Press", type: "weighted" },
   { name: "Pull-ups", type: "bodyweight" },
   { name: "Push-ups", type: "weighted" },
+  { name: "Sit-ups", type: "bodyweight" },
   { name: "Squat", type: "weighted" },
   { name: "Upright Rows", type: "weighted" },
 ];
@@ -56,6 +57,7 @@ const BODY_PART_MAP: Partial<Record<string, string[]>> = {
   "Leg Raises": ["core"],
   "Leg Lifts": ["core"],
   Crunches: ["core"],
+  "Sit-ups": ["core"],
   Deadlift: ["back", "legs"],
   Dips: ["chest"],
   "Incline Press": ["chest"],
