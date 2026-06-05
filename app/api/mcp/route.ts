@@ -59,7 +59,8 @@ async function verifyLongLivedToken(token: string): Promise<string | null> {
   } catch { return null; }
 }
 
-async function getUser(token: string, authClient: ReturnType<typeof createClient>) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function getUser(token: string, authClient: any) {
   // Static API key (cron jobs)
   if (process.env.MCP_API_KEY && token === process.env.MCP_API_KEY) {
     const id = process.env.TASK_REMINDER_USER_ID;
