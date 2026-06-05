@@ -1,9 +1,11 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
-  const base = process.env.NEXT_PUBLIC_APP_URL ?? "https://icodeforbananas.com";
+export async function GET(req: NextRequest) {
+  const proto = req.headers.get("x-forwarded-proto") ?? "https";
+  const host = req.headers.get("host") ?? "www.icodeforbananas.com";
+  const base = `${proto}://${host}`;
   return NextResponse.json({
     issuer: base,
     authorization_endpoint: `${base}/api/oauth/authorize`,
