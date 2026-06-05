@@ -7,10 +7,10 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 function makeSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  if (!url || !key) throw new Error("Supabase env vars not configured");
+  return createClient(url, key);
 }
 
 const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://icodeforbananas.com";
@@ -803,7 +803,7 @@ async function handleMcpRequest(request: Request): Promise<Response> {
     return new Response(JSON.stringify({ error: "unauthorized" }), {
       status: 401,
       headers: {
-        "WWW-Authenticate": `Bearer resource_metadata="${resourceMetadata}"`,
+        "WWW-Authenticate": `Bearer resource_metadata="${resourceMetadata}", scope="mcp"`,
         "Content-Type": "application/json",
       },
     });
