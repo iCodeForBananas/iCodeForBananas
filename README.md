@@ -53,10 +53,12 @@ In the Vercel dashboard for this project, add:
 
 ```
 NEXT_PUBLIC_APP_URL=https://icodeforbananas.com
-MCP_API_KEY=<random-secret>         # static key for Claude.ai connector auth
+MCP_API_KEY=<random-secret>          # bearer token issued to Claude.ai
+MCP_OAUTH_CLIENT_ID=<random-string>  # shown to Claude.ai in the connector dialog
+MCP_OAUTH_CLIENT_SECRET=<random-secret>
 ```
 
-Generate a key with: `openssl rand -hex 32`
+Generate values with: `openssl rand -hex 32`
 
 **2. Run the Supabase migration**
 
@@ -77,12 +79,18 @@ https://icodeforbananas.com/api/mcp
 
 ### Connecting in Claude.ai
 
+Claude.ai uses OAuth 2.0 for MCP connectors. The app implements a minimal OAuth server at `/api/oauth/`.
+
 1. Go to **Settings → Connectors → Add custom connector**
 2. Enter URL: `https://icodeforbananas.com/api/mcp`
-3. Paste your `MCP_API_KEY` value as the **Bearer token**
-4. Save and start chatting
+3. Open **Advanced settings**
+4. Enter `MCP_OAUTH_CLIENT_ID` as the **OAuth Client ID**
+5. Enter `MCP_OAUTH_CLIENT_SECRET` as the **OAuth Client Secret**
+6. Click **Add** — Claude.ai will redirect you to the app's authorization page
+7. Click **Authorize** on the approval page
+8. You're connected
 
-> **Supabase JWT (alternative)**: If you haven't set `MCP_API_KEY`, you can use your Supabase session JWT instead — sign in to the site, open DevTools → Application → Local Storage, find the key starting with `sb-` ending with `-auth-token`, and copy the `access_token` value. Note that JWTs expire after ~1 hour.
+OAuth flow summary: Claude.ai discovers endpoints via `/.well-known/oauth-authorization-server`, prompts you to authorize, then exchanges the code for your `MCP_API_KEY` as the long-lived bearer token.
 
 ### Smoke tests
 

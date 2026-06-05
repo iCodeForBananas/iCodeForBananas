@@ -7,6 +7,14 @@ const nextConfig: NextConfig = {
     "/api/data-files": ["./data/**"],
     "/api/spy-data": ["./data/**"],
   },
+  async rewrites() {
+    return [
+      {
+        source: "/.well-known/oauth-authorization-server",
+        destination: "/api/oauth/well-known",
+      },
+    ];
+  },
 };
 
 export default nextConfig;
