@@ -6,11 +6,17 @@ import { z } from "zod";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-function makeSupabase() {
+function makeQueryClient(jwt: string | null) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-  if (!url || !key) throw new Error("Supabase env vars not configured");
-  return createClient(url, key);
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  if (!url) throw new Error("NEXT_PUBLIC_SUPABASE_URL not configured");
+  if (serviceKey) return createClient(url, serviceKey);
+  if (!anonKey) throw new Error("Supabase key not configured");
+  // Forward user JWT so auth.uid() resolves in RLS when service role key is absent
+  return createClient(url, anonKey, jwt ? {
+    global: { headers: { Authorization: `Bearer ${jwt}` } },
+  } : undefined);
 }
 
 const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://icodeforbananas.com";
@@ -23,7 +29,7 @@ function extractToken(req: Request): string | null {
   return auth.replace("Bearer ", "");
 }
 
-async function getUser(token: string, db: ReturnType<typeof makeSupabase>) {
+async function getUser(token: string, db: ReturnType<typeof makeQueryClient>) {
   // Static API key — avoids needing a Supabase JWT from the browser
   if (process.env.MCP_API_KEY && token === process.env.MCP_API_KEY) {
     const id = process.env.TASK_REMINDER_USER_ID;
@@ -54,7 +60,7 @@ function toolErr(name: string, e: unknown) {
 // ── Server factory ──────────────────────────────────────────────────────────
 
 function makeServer(token: string | null): McpServer {
-  const supabase = makeSupabase();
+  const supabase = makeQueryClient(token);
   const server = new McpServer({ name: "icodeforbananas", version: "1.0.0" });
 
   // ── Wordsmith ────────────────────────────────────────────────────────────
