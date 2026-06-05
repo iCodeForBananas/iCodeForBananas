@@ -74,6 +74,19 @@ export async function POST(req: NextRequest) {
     new URLSearchParams(text).forEach((v, k) => { params[k] = v; });
   }
 
+  // Support client_secret_basic (Authorization: Basic base64(id:secret))
+  const basicAuth = req.headers.get("authorization") ?? "";
+  if (basicAuth.startsWith("Basic ")) {
+    try {
+      const decoded = atob(basicAuth.slice(6));
+      const sep = decoded.indexOf(":");
+      if (sep !== -1) {
+        params.client_id = decoded.slice(0, sep);
+        params.client_secret = decoded.slice(sep + 1);
+      }
+    } catch { /* ignore */ }
+  }
+
   const { grant_type, code, client_id, client_secret, code_verifier, redirect_uri } = params;
 
   if (grant_type !== "authorization_code") return err("unsupported_grant_type", 400);
