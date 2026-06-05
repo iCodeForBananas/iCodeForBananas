@@ -793,6 +793,15 @@ function makeServer(token: string | null): McpServer {
 
 async function handleMcpRequest(request: Request): Promise<Response> {
   const token = extractToken(request);
+  if (!token) {
+    return new Response(JSON.stringify({ error: "unauthorized" }), {
+      status: 401,
+      headers: {
+        "WWW-Authenticate": `Bearer realm="${baseUrl}"`,
+        "Content-Type": "application/json",
+      },
+    });
+  }
   const transport = new WebStandardStreamableHTTPServerTransport({ sessionIdGenerator: undefined });
   const server = makeServer(token);
   await server.connect(transport);
