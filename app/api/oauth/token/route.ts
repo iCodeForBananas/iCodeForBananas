@@ -30,7 +30,12 @@ async function verifyCode(code: string): Promise<CodePayload | null> {
     return null;
   }
 
-  const valid = await crypto.subtle.verify("HMAC", key, sigBytes, new TextEncoder().encode(payload));
+  const valid = await crypto.subtle.verify(
+    "HMAC",
+    key,
+    sigBytes as unknown as ArrayBufferView,
+    new TextEncoder().encode(payload) as unknown as ArrayBufferView
+  );
   if (!valid) return null;
 
   let data: CodePayload;
