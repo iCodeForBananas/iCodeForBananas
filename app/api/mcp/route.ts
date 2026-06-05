@@ -8,7 +8,7 @@ export const maxDuration = 60;
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
 const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://icodeforbananas.com";
