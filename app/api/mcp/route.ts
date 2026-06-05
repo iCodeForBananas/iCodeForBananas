@@ -22,6 +22,12 @@ function extractToken(req: Request): string | null {
 }
 
 async function getUser(token: string) {
+  // Static API key — avoids needing a Supabase JWT from the browser
+  if (process.env.MCP_API_KEY && token === process.env.MCP_API_KEY) {
+    const id = process.env.TASK_REMINDER_USER_ID;
+    if (!id) return null;
+    return { id };
+  }
   const { data: { user }, error } = await supabase.auth.getUser(token);
   if (error || !user) return null;
   return user;

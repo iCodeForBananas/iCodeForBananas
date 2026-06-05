@@ -47,13 +47,16 @@ The app exposes a remote MCP (Model Context Protocol) server at `/api/mcp`, allo
 
 ### Deployment
 
-**1. Add Vercel environment variable**
+**1. Add Vercel environment variables**
 
 In the Vercel dashboard for this project, add:
 
 ```
 NEXT_PUBLIC_APP_URL=https://icodeforbananas.com
+MCP_API_KEY=<random-secret>         # static key for Claude.ai connector auth
 ```
+
+Generate a key with: `openssl rand -hex 32`
 
 **2. Run the Supabase migration**
 
@@ -76,13 +79,10 @@ https://icodeforbananas.com/api/mcp
 
 1. Go to **Settings → Connectors → Add custom connector**
 2. Enter URL: `https://icodeforbananas.com/api/mcp`
-3. Get your Supabase JWT:
-   - Sign in to [icodeforbananas.com](https://icodeforbananas.com)
-   - Open DevTools → Application → Local Storage
-   - Find the key starting with `sb-` and ending with `-auth-token`
-   - Copy the `access_token` value
-4. Paste the JWT as the **Bearer token** in Claude's connector auth field
-5. Save and start chatting
+3. Paste your `MCP_API_KEY` value as the **Bearer token**
+4. Save and start chatting
+
+> **Supabase JWT (alternative)**: If you haven't set `MCP_API_KEY`, you can use your Supabase session JWT instead — sign in to the site, open DevTools → Application → Local Storage, find the key starting with `sb-` ending with `-auth-token`, and copy the `access_token` value. Note that JWTs expire after ~1 hour.
 
 ### Smoke tests
 
