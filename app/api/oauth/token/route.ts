@@ -7,6 +7,7 @@ interface CodePayload {
   cc: string;   // code_challenge
   ru: string;   // redirect_uri
   exp: number;  // expiry ms
+  at: string;   // Supabase access_token (JWT)
 }
 
 async function verifyCode(code: string): Promise<CodePayload | null> {
@@ -106,9 +107,11 @@ export async function POST(req: NextRequest) {
     if (!ok) return err("invalid_grant", 400);
   }
 
+  if (!payload.at) return err("invalid_grant", 400);
+
   return NextResponse.json({
-    access_token: process.env.MCP_API_KEY,
+    access_token: payload.at,
     token_type: "bearer",
-    expires_in: 315360000, // ~10 years
+    expires_in: 3600,
   });
 }

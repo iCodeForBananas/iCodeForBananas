@@ -2,7 +2,7 @@
 
 import { useState, useRef } from "react";
 import { createClient } from "@/utils/supabase/client";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import BentoPageLayout from "@/app/components/BentoPageLayout";
 
 export default function LoginForm() {
@@ -11,6 +11,7 @@ export default function LoginForm() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null);
   const getSupabase = () => {
     if (!supabaseRef.current) supabaseRef.current = createClient();
@@ -33,8 +34,13 @@ export default function LoginForm() {
       setLoading(false);
       return;
     }
-    router.push("/workout-tracker");
-    router.refresh();
+    const returnTo = searchParams.get("returnTo");
+    if (returnTo && returnTo.startsWith("/")) {
+      window.location.href = returnTo;
+    } else {
+      router.push("/workout-tracker");
+      router.refresh();
+    }
   };
 
   return (

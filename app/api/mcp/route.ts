@@ -13,8 +13,9 @@ function makeQueryClient(jwt: string | null) {
   if (!url) throw new Error("NEXT_PUBLIC_SUPABASE_URL not configured");
   if (serviceKey) return createClient(url, serviceKey);
   if (!anonKey) throw new Error("Supabase key not configured");
-  // Forward user JWT so auth.uid() resolves in RLS when service role key is absent
-  return createClient(url, anonKey, jwt ? {
+  // Forward JWT so auth.uid() resolves in RLS — only when it's a real JWT (3 parts)
+  const isJwt = jwt != null && jwt.split(".").length === 3;
+  return createClient(url, anonKey, isJwt ? {
     global: { headers: { Authorization: `Bearer ${jwt}` } },
   } : undefined);
 }

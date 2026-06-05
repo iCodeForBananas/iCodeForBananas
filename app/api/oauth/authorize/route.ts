@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { cookies } from "next/headers";
+import { createClient as createSbClient } from "@/utils/supabase/server";
 
 export const dynamic = "force-dynamic";
 
@@ -11,10 +13,10 @@ function esc(s: string) {
 }
 
 // Self-contained signed code — no storage needed, serverless-safe.
-// Payload embeds code_challenge + redirect_uri + expiry, signed with MCP_API_KEY.
-async function makeCode(codeChallenge: string, redirectUri: string): Promise<string> {
+// Payload embeds code_challenge + redirect_uri + expiry + Supabase access_token, signed with MCP_API_KEY.
+async function makeCode(codeChallenge: string, redirectUri: string, accessToken: string): Promise<string> {
   const payload = btoa(
-    JSON.stringify({ cc: codeChallenge, ru: redirectUri, exp: Date.now() + 5 * 60 * 1000 })
+    JSON.stringify({ cc: codeChallenge, ru: redirectUri, exp: Date.now() + 5 * 60 * 1000, at: accessToken })
   );
   const secret = process.env.MCP_API_KEY ?? "";
   const key = await crypto.subtle.importKey(
@@ -34,14 +36,25 @@ async function makeCode(codeChallenge: string, redirectUri: string): Promise<str
 export async function GET(req: NextRequest) {
   const p = req.nextUrl.searchParams;
   const clientId = p.get("client_id") ?? "";
-  const redirectUri = p.get("redirect_uri") ?? "";
-  const state = p.get("state") ?? "";
-  const codeChallenge = p.get("code_challenge") ?? "";
-  const codeChallengeMethod = p.get("code_challenge_method") ?? "";
 
   if (!clientId) {
     return new Response("Missing client_id", { status: 400 });
   }
+
+  const cookieStore = await cookies();
+  const sb = createSbClient(cookieStore);
+  const { data: { session } } = await sb.auth.getSession();
+
+  if (!session) {
+    const loginUrl = new URL("/login", req.url);
+    loginUrl.searchParams.set("returnTo", req.nextUrl.pathname + "?" + p.toString());
+    return NextResponse.redirect(loginUrl.toString(), { status: 302 });
+  }
+
+  const redirectUri = p.get("redirect_uri") ?? "";
+  const state = p.get("state") ?? "";
+  const codeChallenge = p.get("code_challenge") ?? "";
+  const codeChallengeMethod = p.get("code_challenge_method") ?? "";
 
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -107,13 +120,17 @@ export async function POST(req: NextRequest) {
     return new Response("Invalid redirect_uri", { status: 400 });
   }
 
-  if (action !== "approve" || !clientId) {
+  const cookieStore = await cookies();
+  const sb = createSbClient(cookieStore);
+  const { data: { session } } = await sb.auth.getSession();
+
+  if (action !== "approve" || !clientId || !session) {
     redirectBase.searchParams.set("error", "access_denied");
     if (state) redirectBase.searchParams.set("state", state);
     return NextResponse.redirect(redirectBase.toString(), { status: 303 });
   }
 
-  const code = await makeCode(codeChallenge, redirectUri);
+  const code = await makeCode(codeChallenge, redirectUri, session.access_token);
   redirectBase.searchParams.set("code", code);
   if (state) redirectBase.searchParams.set("state", state);
   return NextResponse.redirect(redirectBase.toString(), { status: 303 });
