@@ -39,8 +39,8 @@ export async function GET(req: NextRequest) {
   const codeChallenge = p.get("code_challenge") ?? "";
   const codeChallengeMethod = p.get("code_challenge_method") ?? "";
 
-  if (!process.env.MCP_OAUTH_CLIENT_ID || clientId !== process.env.MCP_OAUTH_CLIENT_ID) {
-    return new Response("Invalid client_id", { status: 400 });
+  if (!clientId) {
+    return new Response("Missing client_id", { status: 400 });
   }
 
   const html = `<!DOCTYPE html>
@@ -107,7 +107,7 @@ export async function POST(req: NextRequest) {
     return new Response("Invalid redirect_uri", { status: 400 });
   }
 
-  if (action !== "approve" || clientId !== process.env.MCP_OAUTH_CLIENT_ID) {
+  if (action !== "approve" || !clientId) {
     redirectBase.searchParams.set("error", "access_denied");
     if (state) redirectBase.searchParams.set("state", state);
     return NextResponse.redirect(redirectBase.toString(), { status: 303 });

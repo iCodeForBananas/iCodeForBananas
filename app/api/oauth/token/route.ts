@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { verifyClient } from "@/lib/mcp-oauth";
 
 export const dynamic = "force-dynamic";
 
@@ -90,12 +91,7 @@ export async function POST(req: NextRequest) {
   const { grant_type, code, client_id, client_secret, code_verifier, redirect_uri } = params;
 
   if (grant_type !== "authorization_code") return err("unsupported_grant_type", 400);
-  if (
-    !process.env.MCP_OAUTH_CLIENT_ID ||
-    !process.env.MCP_OAUTH_CLIENT_SECRET ||
-    client_id !== process.env.MCP_OAUTH_CLIENT_ID ||
-    client_secret !== process.env.MCP_OAUTH_CLIENT_SECRET
-  ) {
+  if (!await verifyClient(client_id, client_secret)) {
     return err("invalid_client", 401);
   }
   if (!code) return err("invalid_grant", 400);
