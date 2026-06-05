@@ -109,6 +109,32 @@ export async function POST(req: NextRequest) {
 
   if (!payload.at) return err("invalid_grant", 400);
 
+  // When service role key is available, issue a long-lived HMAC-signed token with the user_id.
+  // This avoids 1-hour Supabase JWT expiry and re-authorization prompts.
+  if (process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.MCP_API_KEY) {
+    try {
+      const jwtPayload = JSON.parse(atob(payload.at.split(".")[1]));
+      const userId = jwtPayload.sub as string;
+      if (userId) {
+        const tokenBody = btoa(JSON.stringify({ uid: userId })).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
+        const sigKey = await crypto.subtle.importKey(
+          "raw", new TextEncoder().encode(process.env.MCP_API_KEY),
+          { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
+        );
+        const sigBuf = await crypto.subtle.sign("HMAC", sigKey, new TextEncoder().encode(tokenBody));
+        let str = "";
+        for (const b of new Uint8Array(sigBuf)) str += String.fromCharCode(b);
+        const sig = btoa(str).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
+        return NextResponse.json({
+          access_token: `${tokenBody}.${sig}`,
+          token_type: "bearer",
+          expires_in: 315360000, // ~10 years
+        });
+      }
+    } catch { /* fall through */ }
+  }
+
+  // Fallback: return the Supabase JWT directly (expires in ~1 hour)
   return NextResponse.json({
     access_token: payload.at,
     token_type: "bearer",

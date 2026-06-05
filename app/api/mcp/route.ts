@@ -6,18 +6,24 @@ import { z } from "zod";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-function makeQueryClient(jwt: string | null) {
+// Returns two clients: authClient (clean, for token verification) and dbClient (JWT-forwarded, for queries).
+// Keeping them separate prevents the global Authorization header from interfering with auth.getUser().
+function makeClients(jwt: string | null) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
   if (!url) throw new Error("NEXT_PUBLIC_SUPABASE_URL not configured");
-  if (serviceKey) return createClient(url, serviceKey);
+  if (serviceKey) {
+    const client = createClient(url, serviceKey);
+    return { authClient: client, dbClient: client };
+  }
   if (!anonKey) throw new Error("Supabase key not configured");
-  // Forward JWT so auth.uid() resolves in RLS — only when it's a real JWT (3 parts)
+  const authClient = createClient(url, anonKey);
   const isJwt = jwt != null && jwt.split(".").length === 3;
-  return createClient(url, anonKey, isJwt ? {
-    global: { headers: { Authorization: `Bearer ${jwt}` } },
-  } : undefined);
+  const dbClient = isJwt
+    ? createClient(url, anonKey, { global: { headers: { Authorization: `Bearer ${jwt}` } } })
+    : authClient;
+  return { authClient, dbClient };
 }
 
 const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://icodeforbananas.com";
@@ -30,14 +36,43 @@ function extractToken(req: Request): string | null {
   return auth.replace("Bearer ", "");
 }
 
-async function getUser(token: string, db: ReturnType<typeof makeQueryClient>) {
-  // Static API key — avoids needing a Supabase JWT from the browser
+// Verifies a long-lived HMAC-signed token (payload.sig, 2 parts) and returns the user_id.
+async function verifyLongLivedToken(token: string): Promise<string | null> {
+  const apiKey = process.env.MCP_API_KEY;
+  if (!apiKey) return null;
+  const parts = token.split(".");
+  if (parts.length !== 2) return null;
+  const [payload, sig] = parts;
+  const key = await crypto.subtle.importKey(
+    "raw", new TextEncoder().encode(apiKey),
+    { name: "HMAC", hash: "SHA-256" }, false, ["verify"]
+  );
+  let sigBytes: Uint8Array;
+  try {
+    sigBytes = Uint8Array.from(atob(sig.replace(/-/g, "+").replace(/_/g, "/")), c => c.charCodeAt(0));
+  } catch { return null; }
+  const valid = await crypto.subtle.verify("HMAC", key, sigBytes.buffer as ArrayBuffer, new TextEncoder().encode(payload).buffer as ArrayBuffer);
+  if (!valid) return null;
+  try {
+    const data = JSON.parse(atob(payload.replace(/-/g, "+").replace(/_/g, "/")));
+    return typeof data.uid === "string" ? data.uid : null;
+  } catch { return null; }
+}
+
+async function getUser(token: string, authClient: ReturnType<typeof createClient>) {
+  // Static API key (cron jobs)
   if (process.env.MCP_API_KEY && token === process.env.MCP_API_KEY) {
     const id = process.env.TASK_REMINDER_USER_ID;
     if (!id) return null;
     return { id };
   }
-  const { data: { user }, error } = await db.auth.getUser(token);
+  // Long-lived HMAC token (2 parts: payload.sig) — requires SUPABASE_SERVICE_ROLE_KEY for DB ops
+  if (token.split(".").length === 2) {
+    const uid = await verifyLongLivedToken(token);
+    return uid ? { id: uid } : null;
+  }
+  // Supabase JWT (3 parts) — expires in ~1 hour
+  const { data: { user }, error } = await authClient.auth.getUser(token);
   if (error || !user) return null;
   return user;
 }
@@ -61,7 +96,7 @@ function toolErr(name: string, e: unknown) {
 // ── Server factory ──────────────────────────────────────────────────────────
 
 function makeServer(token: string | null): McpServer {
-  const supabase = makeQueryClient(token);
+  const { authClient, dbClient: supabase } = makeClients(token);
   const server = new McpServer({ name: "icodeforbananas", version: "1.0.0" });
 
   // ── Wordsmith ────────────────────────────────────────────────────────────
@@ -72,7 +107,7 @@ function makeServer(token: string | null): McpServer {
     {},
     async () => {
       if (!token) return UNAUTH;
-      const user = await getUser(token, supabase);
+      const user = await getUser(token, authClient);
       if (!user) return UNAUTH;
       try {
         const { data, error } = await supabase
@@ -92,7 +127,7 @@ function makeServer(token: string | null): McpServer {
     { id: z.string().uuid() },
     async ({ id }) => {
       if (!token) return UNAUTH;
-      const user = await getUser(token, supabase);
+      const user = await getUser(token, authClient);
       if (!user) return UNAUTH;
       try {
         const { data, error } = await supabase
@@ -117,7 +152,7 @@ function makeServer(token: string | null): McpServer {
     },
     async ({ title, content, prompt }) => {
       if (!token) return UNAUTH;
-      const user = await getUser(token, supabase);
+      const user = await getUser(token, authClient);
       if (!user) return UNAUTH;
       try {
         const { data, error } = await supabase
@@ -142,7 +177,7 @@ function makeServer(token: string | null): McpServer {
     },
     async ({ id, title, content, prompt }) => {
       if (!token) return UNAUTH;
-      const user = await getUser(token, supabase);
+      const user = await getUser(token, authClient);
       if (!user) return UNAUTH;
       if (title === undefined && content === undefined && prompt === undefined) {
         return {
@@ -174,7 +209,7 @@ function makeServer(token: string | null): McpServer {
     { id: z.string().uuid() },
     async ({ id }) => {
       if (!token) return UNAUTH;
-      const user = await getUser(token, supabase);
+      const user = await getUser(token, authClient);
       if (!user) return UNAUTH;
       try {
         const { error } = await supabase
@@ -194,7 +229,7 @@ function makeServer(token: string | null): McpServer {
     { query: z.string().min(1) },
     async ({ query }) => {
       if (!token) return UNAUTH;
-      const user = await getUser(token, supabase);
+      const user = await getUser(token, authClient);
       if (!user) return UNAUTH;
       try {
         const { data, error } = await supabase
@@ -224,7 +259,7 @@ function makeServer(token: string | null): McpServer {
     { column: z.enum(["backlog", "in-progress", "done"]).optional() },
     async ({ column }) => {
       if (!token) return UNAUTH;
-      const user = await getUser(token, supabase);
+      const user = await getUser(token, authClient);
       if (!user) return UNAUTH;
       try {
         let q = supabase
@@ -251,7 +286,7 @@ function makeServer(token: string | null): McpServer {
     },
     async ({ title, body, board_column }) => {
       if (!token) return UNAUTH;
-      const user = await getUser(token, supabase);
+      const user = await getUser(token, authClient);
       if (!user) return UNAUTH;
       try {
         const { data, error } = await supabase
@@ -275,7 +310,7 @@ function makeServer(token: string | null): McpServer {
     },
     async ({ id, title, body }) => {
       if (!token) return UNAUTH;
-      const user = await getUser(token, supabase);
+      const user = await getUser(token, authClient);
       if (!user) return UNAUTH;
       try {
         const fields: Record<string, unknown> = {};
@@ -303,7 +338,7 @@ function makeServer(token: string | null): McpServer {
     },
     async ({ id, board_column }) => {
       if (!token) return UNAUTH;
-      const user = await getUser(token, supabase);
+      const user = await getUser(token, authClient);
       if (!user) return UNAUTH;
       try {
         const { data, error } = await supabase
@@ -325,7 +360,7 @@ function makeServer(token: string | null): McpServer {
     { id: z.string().uuid() },
     async ({ id }) => {
       if (!token) return UNAUTH;
-      const user = await getUser(token, supabase);
+      const user = await getUser(token, authClient);
       if (!user) return UNAUTH;
       try {
         const { error } = await supabase
@@ -347,7 +382,7 @@ function makeServer(token: string | null): McpServer {
     { status: z.enum(["active", "paused", "stopped"]).optional() },
     async ({ status }) => {
       if (!token) return UNAUTH;
-      const user = await getUser(token, supabase);
+      const user = await getUser(token, authClient);
       if (!user) return UNAUTH;
       try {
         let q = supabase
@@ -369,7 +404,7 @@ function makeServer(token: string | null): McpServer {
     { id: z.string().uuid() },
     async ({ id }) => {
       if (!token) return UNAUTH;
-      const user = await getUser(token, supabase);
+      const user = await getUser(token, authClient);
       if (!user) return UNAUTH;
       try {
         const [{ data: strategy, error: stratErr }, { data: trades, error: tradesErr }] = await Promise.all([
@@ -439,7 +474,7 @@ function makeServer(token: string | null): McpServer {
     },
     async ({ id, status }) => {
       if (!token) return UNAUTH;
-      const user = await getUser(token, supabase);
+      const user = await getUser(token, authClient);
       if (!user) return UNAUTH;
       try {
         const { data, error } = await supabase
@@ -461,7 +496,7 @@ function makeServer(token: string | null): McpServer {
     { id: z.string().uuid() },
     async ({ id }) => {
       if (!token) return UNAUTH;
-      const user = await getUser(token, supabase);
+      const user = await getUser(token, authClient);
       if (!user) return UNAUTH;
       try {
         const { error } = await supabase
@@ -484,7 +519,7 @@ function makeServer(token: string | null): McpServer {
     },
     async ({ lambda_id, limit = 50 }) => {
       if (!token) return UNAUTH;
-      const user = await getUser(token, supabase);
+      const user = await getUser(token, authClient);
       if (!user) return UNAUTH;
       try {
         // Two-query approach: fetch user's lambda IDs first, then filter trades
@@ -681,7 +716,7 @@ function makeServer(token: string | null): McpServer {
     {},
     async () => {
       if (!token) return UNAUTH;
-      const user = await getUser(token, supabase);
+      const user = await getUser(token, authClient);
       if (!user) return UNAUTH;
       try {
         const { data, error } = await supabase
@@ -701,7 +736,7 @@ function makeServer(token: string | null): McpServer {
     { id: z.string().uuid() },
     async ({ id }) => {
       if (!token) return UNAUTH;
-      const user = await getUser(token, supabase);
+      const user = await getUser(token, authClient);
       if (!user) return UNAUTH;
       try {
         const { data, error } = await supabase
@@ -728,7 +763,7 @@ function makeServer(token: string | null): McpServer {
     },
     async ({ title, key, tempo, general_notes, sections }) => {
       if (!token) return UNAUTH;
-      const user = await getUser(token, supabase);
+      const user = await getUser(token, authClient);
       if (!user) return UNAUTH;
       try {
         const { data, error } = await supabase
@@ -755,7 +790,7 @@ function makeServer(token: string | null): McpServer {
     },
     async ({ id, title, key, tempo, general_notes, sections }) => {
       if (!token) return UNAUTH;
-      const user = await getUser(token, supabase);
+      const user = await getUser(token, authClient);
       if (!user) return UNAUTH;
       try {
         const fields: Record<string, unknown> = {};
@@ -783,7 +818,7 @@ function makeServer(token: string | null): McpServer {
     { id: z.string().uuid() },
     async ({ id }) => {
       if (!token) return UNAUTH;
-      const user = await getUser(token, supabase);
+      const user = await getUser(token, authClient);
       if (!user) return UNAUTH;
       try {
         const { error } = await supabase
