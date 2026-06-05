@@ -258,9 +258,14 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
 
   if (authLoading || loading) {
     return (
-      <div className='flex flex-col flex-1'>
-        <main className='pr-4 py-4 flex-1 '>
-          <div className='rounded-lg p-6 bg-white text-center text-[#373A40]/50'>Loading...</div>
+      <div className='flex flex-col flex-1 min-h-0'>
+        <main className='flex flex-col flex-1 min-h-0 p-2 sm:p-4'>
+          <div
+            className='flex flex-col flex-1 min-h-0 rounded-2xl overflow-hidden'
+            style={{ background: "#fff", border: "1px solid var(--border-color)" }}
+          >
+            <div className='flex-1 flex items-center justify-center text-[#373A40]/50'>Loading...</div>
+          </div>
         </main>
       </div>
     );
@@ -268,133 +273,146 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
 
   if (!user || !current) {
     return (
-      <div className='flex flex-col flex-1'>
-        <main className='pr-4 py-4 flex-1 '>
-          <div className='rounded-lg p-6 bg-white text-center text-[#373A40]/50'>Sheet not found.</div>
+      <div className='flex flex-col flex-1 min-h-0'>
+        <main className='flex flex-col flex-1 min-h-0 p-2 sm:p-4'>
+          <div
+            className='flex flex-col flex-1 min-h-0 rounded-2xl overflow-hidden'
+            style={{ background: "#fff", border: "1px solid var(--border-color)" }}
+          >
+            <div className='flex-1 flex items-center justify-center text-[#373A40]/50'>Sheet not found.</div>
+          </div>
         </main>
       </div>
     );
   }
 
   return (
-    <div className='flex flex-col flex-1'>
-      <main className='pr-4 py-4 flex-1 '>
-        <div className='rounded-lg p-6 bg-white'>
-          {/* Header */}
-          <div className='flex items-center justify-between mb-6'>
-            <button
-              onClick={handleBack}
-              className='flex items-center gap-2 text-[#373A40]/50 hover:text-black transition-colors text-sm font-medium'
-            >
-              <ArrowLeft className='w-4 h-4' />
-              All Sheets
-            </button>
-            <div className='flex items-center gap-2'>
+    <div className='flex flex-col flex-1 min-h-0'>
+      <main className='flex flex-col flex-1 min-h-0 p-2 sm:p-4'>
+        <div
+          className='flex flex-col flex-1 min-h-0 rounded-2xl overflow-hidden'
+          style={{ background: "#fff", border: "1px solid var(--border-color)" }}
+        >
+          {/* Toolbar */}
+          <div className='border-b shrink-0' style={{ borderColor: "var(--border-color)" }}>
+            <div className='flex items-center justify-between px-4 py-3 sm:px-6 sm:py-4'>
               <button
-                onClick={handlePreview}
-                className='flex items-center gap-1.5 rounded border border-[#373A40]/30 px-3 py-2 text-sm font-medium hover:border-black hover:bg-black hover:text-[#facc15] transition-colors'
+                onClick={handleBack}
+                className='flex items-center gap-2 text-[#373A40]/50 hover:text-black transition-colors text-sm font-medium'
               >
-                <Eye className='w-4 h-4' />
-                Preview
+                <ArrowLeft className='w-4 h-4' />
+                All Sheets
               </button>
-              <button
-                onClick={saveSheet}
-                disabled={!dirty || saving}
-                className='flex items-center gap-2 rounded bg-black px-4 py-2 text-sm font-medium hover:bg-black/80 disabled:opacity-30 disabled:cursor-not-allowed transition-colors'
-                style={{ color: "#facc15" }}
-              >
-                <Save className='w-4 h-4' />
-                {saving ? "Saving..." : dirty ? "Save" : "Saved"}
-              </button>
-            </div>
-          </div>
-
-          {/* Title */}
-          <input
-            type='text'
-            value={current.title}
-            onChange={(e) => patch({ title: e.target.value })}
-            placeholder='Song Title'
-            className='w-full text-3xl font-bold border-0 border-b-2 border-[#373A40]/20 focus:border-black outline-none pb-2 mb-6 bg-transparent'
-            style={{ color: "#000" }}
-          />
-
-          {/* Metadata */}
-          <div className='grid grid-cols-2 gap-4 mb-6'>
-            <div>
-              <label className='block text-xs font-semibold uppercase tracking-wider text-[#373A40]/50 mb-1'>Key</label>
-              <select
-                value={current.key}
-                onChange={(e) => patch({ key: e.target.value })}
-                className='w-full border border-[#373A40]/30 rounded px-3 py-2 outline-none bg-white text-sm'
-              >
-                <option value=''>Select key...</option>
-                {KEYS.map((k) => (
-                  <option key={k} value={k}>
-                    {k}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className='block text-xs font-semibold uppercase tracking-wider text-[#373A40]/50 mb-1'>
-                Tempo (BPM)
-              </label>
-              <input
-                type='number'
-                value={current.tempo ?? ""}
-                onChange={(e) => patch({ tempo: e.target.value ? Number(e.target.value) : null })}
-                placeholder='120'
-                min={20}
-                max={300}
-                className='w-full border border-[#373A40]/30 rounded px-3 py-2 outline-none bg-white text-sm'
-              />
-            </div>
-          </div>
-
-          {/* Performance Notes */}
-          <div className='mb-8'>
-            <label className='block text-xs font-semibold uppercase tracking-wider text-[#373A40]/50 mb-1'>
-              Performance Notes
-            </label>
-            <TextareaAutosize
-              value={current.general_notes}
-              onChange={(e) => patch({ general_notes: e.target.value })}
-              placeholder='Capo 3, fingerpicking pattern, dynamics, overall feel...'
-              minRows={2}
-              className='w-full border border-[#373A40]/30 rounded px-3 py-2 outline-none resize-none text-sm bg-white'
-            />
-          </div>
-
-          {/* Sections */}
-          <div className='space-y-3 mb-6'>
-            <h2 className='text-xs font-semibold uppercase tracking-wider text-[#373A40]/50'>Sections</h2>
-            {current.sections.map((section, idx) => (
-              <SectionBlock
-                key={section.id}
-                section={section}
-                isFirst={idx === 0}
-                isLast={idx === current.sections.length - 1}
-                onChange={(updates) => patchSection(section.id, updates)}
-                onMove={(dir) => moveSection(section.id, dir)}
-                onDelete={() => removeSection(section.id)}
-              />
-            ))}
-          </div>
-
-          {/* Add Section */}
-          <div>
-            <p className='text-xs font-semibold uppercase tracking-wider text-[#373A40]/50 mb-2'>Add Section</p>
-            <div className='flex flex-wrap gap-2'>
-              {SECTION_TYPES.map((type) => (
+              <div className='flex items-center gap-2'>
                 <button
-                  key={type}
-                  onClick={() => addSection(type)}
-                  className='px-3 py-1.5 text-sm border border-[#373A40]/30 rounded hover:border-black hover:bg-black hover:text-[#facc15] transition-colors capitalize'
+                  onClick={handlePreview}
+                  className='flex items-center gap-1.5 rounded border border-[#373A40]/30 px-3 py-2 text-sm font-medium hover:border-black hover:bg-black hover:text-[#facc15] transition-colors'
                 >
-                  + {type}
+                  <Eye className='w-4 h-4' />
+                  Preview
                 </button>
+                <button
+                  onClick={saveSheet}
+                  disabled={!dirty || saving}
+                  className='flex items-center gap-2 rounded bg-black px-4 py-2 text-sm font-medium hover:bg-black/80 disabled:opacity-30 disabled:cursor-not-allowed transition-colors'
+                  style={{ color: "#facc15" }}
+                >
+                  <Save className='w-4 h-4' />
+                  {saving ? "Saving..." : dirty ? "Save" : "Saved"}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Scrollable content */}
+          <div className='flex-1 overflow-auto p-4 sm:p-6 flex flex-col'>
+            {/* Title */}
+            <input
+              type='text'
+              value={current.title}
+              onChange={(e) => patch({ title: e.target.value })}
+              placeholder='Song Title'
+              className='w-full text-3xl font-bold border-0 border-b-2 border-[#373A40]/20 focus:border-black outline-none pb-2 mb-6 bg-transparent'
+              style={{ color: "#000" }}
+            />
+
+            {/* Metadata */}
+            <div className='grid grid-cols-2 gap-4 mb-6'>
+              <div>
+                <label className='block text-xs font-semibold uppercase tracking-wider text-[#373A40]/50 mb-1'>Key</label>
+                <select
+                  value={current.key}
+                  onChange={(e) => patch({ key: e.target.value })}
+                  className='w-full border border-[#373A40]/30 rounded px-3 py-2 outline-none bg-white text-sm'
+                >
+                  <option value=''>Select key...</option>
+                  {KEYS.map((k) => (
+                    <option key={k} value={k}>
+                      {k}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className='block text-xs font-semibold uppercase tracking-wider text-[#373A40]/50 mb-1'>
+                  Tempo (BPM)
+                </label>
+                <input
+                  type='number'
+                  value={current.tempo ?? ""}
+                  onChange={(e) => patch({ tempo: e.target.value ? Number(e.target.value) : null })}
+                  placeholder='120'
+                  min={20}
+                  max={300}
+                  className='w-full border border-[#373A40]/30 rounded px-3 py-2 outline-none bg-white text-sm'
+                />
+              </div>
+            </div>
+
+            {/* Performance Notes */}
+            <div className='mb-8'>
+              <label className='block text-xs font-semibold uppercase tracking-wider text-[#373A40]/50 mb-1'>
+                Performance Notes
+              </label>
+              <TextareaAutosize
+                value={current.general_notes}
+                onChange={(e) => patch({ general_notes: e.target.value })}
+                placeholder='Capo 3, fingerpicking pattern, dynamics, overall feel...'
+                minRows={2}
+                className='w-full border border-[#373A40]/30 rounded px-3 py-2 outline-none resize-none text-sm bg-white'
+              />
+            </div>
+
+            {/* Sections */}
+            <div className='space-y-3 mb-6'>
+              <h2 className='text-xs font-semibold uppercase tracking-wider text-[#373A40]/50'>Sections</h2>
+              {current.sections.map((section, idx) => (
+                <SectionBlock
+                  key={section.id}
+                  section={section}
+                  isFirst={idx === 0}
+                  isLast={idx === current.sections.length - 1}
+                  onChange={(updates) => patchSection(section.id, updates)}
+                  onMove={(dir) => moveSection(section.id, dir)}
+                  onDelete={() => removeSection(section.id)}
+                />
               ))}
+            </div>
+
+            {/* Add Section */}
+            <div>
+              <p className='text-xs font-semibold uppercase tracking-wider text-[#373A40]/50 mb-2'>Add Section</p>
+              <div className='flex flex-wrap gap-2'>
+                {SECTION_TYPES.map((type) => (
+                  <button
+                    key={type}
+                    onClick={() => addSection(type)}
+                    className='px-3 py-1.5 text-sm border border-[#373A40]/30 rounded hover:border-black hover:bg-black hover:text-[#facc15] transition-colors capitalize'
+                  >
+                    + {type}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>
