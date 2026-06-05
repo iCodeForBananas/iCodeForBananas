@@ -110,11 +110,11 @@ export async function POST(req: NextRequest) {
   if (action !== "approve" || clientId !== process.env.MCP_OAUTH_CLIENT_ID) {
     redirectBase.searchParams.set("error", "access_denied");
     if (state) redirectBase.searchParams.set("state", state);
-    return NextResponse.redirect(redirectBase.toString());
+    return NextResponse.redirect(redirectBase.toString(), { status: 303 });
   }
 
   const code = await makeCode(codeChallenge, redirectUri);
   redirectBase.searchParams.set("code", code);
   if (state) redirectBase.searchParams.set("state", state);
-  return NextResponse.redirect(redirectBase.toString());
+  return NextResponse.redirect(redirectBase.toString(), { status: 303 });
 }
