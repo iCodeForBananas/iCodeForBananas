@@ -13,5 +13,5 @@ export async function POST() {
     client_secret: clientSecret,
     client_id_issued_at: Math.floor(Date.now() / 1000),
     client_secret_expires_at: 0,
-  });
+  }, { status: 201 });
 }
