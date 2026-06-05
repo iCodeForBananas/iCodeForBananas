@@ -43,9 +43,10 @@ const UNAUTH = {
 };
 
 function toolErr(name: string, e: unknown) {
+  const msg = e instanceof Error ? e.message : String(e);
   console.error(`[mcp:${name}]`, e);
   return {
-    content: [{ type: "text" as const, text: JSON.stringify({ error: "An error occurred" }) }],
+    content: [{ type: "text" as const, text: JSON.stringify({ error: msg }) }],
     isError: true,
   };
 }
