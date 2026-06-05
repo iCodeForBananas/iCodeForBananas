@@ -22,6 +22,7 @@ const NAV = [
       { href: "/chord-inversions", text: "Chord Inversions" },
       { href: "/chord-positions", text: "Chord Positions" },
       { href: "/note-map", text: "Note Map" },
+      { href: "/scale-tool", text: "Scale Tool" },
       { href: "/fretboard-quiz", text: "Fretboard Quiz" },
       { href: "/lead-sheet-editor", text: "Lead Sheet Editor" },
     ],
