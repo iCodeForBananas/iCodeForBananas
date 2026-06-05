@@ -6,10 +6,12 @@ import { z } from "zod";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+function makeSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+}
 
 const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://icodeforbananas.com";
 
@@ -21,14 +23,14 @@ function extractToken(req: Request): string | null {
   return auth.replace("Bearer ", "");
 }
 
-async function getUser(token: string) {
+async function getUser(token: string, db: ReturnType<typeof makeSupabase>) {
   // Static API key — avoids needing a Supabase JWT from the browser
   if (process.env.MCP_API_KEY && token === process.env.MCP_API_KEY) {
     const id = process.env.TASK_REMINDER_USER_ID;
     if (!id) return null;
     return { id };
   }
-  const { data: { user }, error } = await supabase.auth.getUser(token);
+  const { data: { user }, error } = await db.auth.getUser(token);
   if (error || !user) return null;
   return user;
 }
@@ -51,6 +53,7 @@ function toolErr(name: string, e: unknown) {
 // ── Server factory ──────────────────────────────────────────────────────────
 
 function makeServer(token: string | null): McpServer {
+  const supabase = makeSupabase();
   const server = new McpServer({ name: "icodeforbananas", version: "1.0.0" });
 
   // ── Wordsmith ────────────────────────────────────────────────────────────
@@ -61,7 +64,7 @@ function makeServer(token: string | null): McpServer {
     {},
     async () => {
       if (!token) return UNAUTH;
-      const user = await getUser(token);
+      const user = await getUser(token, supabase);
       if (!user) return UNAUTH;
       try {
         const { data, error } = await supabase
@@ -81,7 +84,7 @@ function makeServer(token: string | null): McpServer {
     { id: z.string().uuid() },
     async ({ id }) => {
       if (!token) return UNAUTH;
-      const user = await getUser(token);
+      const user = await getUser(token, supabase);
       if (!user) return UNAUTH;
       try {
         const { data, error } = await supabase
@@ -106,7 +109,7 @@ function makeServer(token: string | null): McpServer {
     },
     async ({ title, content, prompt }) => {
       if (!token) return UNAUTH;
-      const user = await getUser(token);
+      const user = await getUser(token, supabase);
       if (!user) return UNAUTH;
       try {
         const { data, error } = await supabase
@@ -131,7 +134,7 @@ function makeServer(token: string | null): McpServer {
     },
     async ({ id, title, content, prompt }) => {
       if (!token) return UNAUTH;
-      const user = await getUser(token);
+      const user = await getUser(token, supabase);
       if (!user) return UNAUTH;
       if (title === undefined && content === undefined && prompt === undefined) {
         return {
@@ -163,7 +166,7 @@ function makeServer(token: string | null): McpServer {
     { id: z.string().uuid() },
     async ({ id }) => {
       if (!token) return UNAUTH;
-      const user = await getUser(token);
+      const user = await getUser(token, supabase);
       if (!user) return UNAUTH;
       try {
         const { error } = await supabase
@@ -183,7 +186,7 @@ function makeServer(token: string | null): McpServer {
     { query: z.string().min(1) },
     async ({ query }) => {
       if (!token) return UNAUTH;
-      const user = await getUser(token);
+      const user = await getUser(token, supabase);
       if (!user) return UNAUTH;
       try {
         const { data, error } = await supabase
@@ -213,7 +216,7 @@ function makeServer(token: string | null): McpServer {
     { column: z.enum(["backlog", "in-progress", "done"]).optional() },
     async ({ column }) => {
       if (!token) return UNAUTH;
-      const user = await getUser(token);
+      const user = await getUser(token, supabase);
       if (!user) return UNAUTH;
       try {
         let q = supabase
@@ -240,7 +243,7 @@ function makeServer(token: string | null): McpServer {
     },
     async ({ title, body, board_column }) => {
       if (!token) return UNAUTH;
-      const user = await getUser(token);
+      const user = await getUser(token, supabase);
       if (!user) return UNAUTH;
       try {
         const { data, error } = await supabase
@@ -264,7 +267,7 @@ function makeServer(token: string | null): McpServer {
     },
     async ({ id, title, body }) => {
       if (!token) return UNAUTH;
-      const user = await getUser(token);
+      const user = await getUser(token, supabase);
       if (!user) return UNAUTH;
       try {
         const fields: Record<string, unknown> = {};
@@ -292,7 +295,7 @@ function makeServer(token: string | null): McpServer {
     },
     async ({ id, board_column }) => {
       if (!token) return UNAUTH;
-      const user = await getUser(token);
+      const user = await getUser(token, supabase);
       if (!user) return UNAUTH;
       try {
         const { data, error } = await supabase
@@ -314,7 +317,7 @@ function makeServer(token: string | null): McpServer {
     { id: z.string().uuid() },
     async ({ id }) => {
       if (!token) return UNAUTH;
-      const user = await getUser(token);
+      const user = await getUser(token, supabase);
       if (!user) return UNAUTH;
       try {
         const { error } = await supabase
@@ -336,7 +339,7 @@ function makeServer(token: string | null): McpServer {
     { status: z.enum(["active", "paused", "stopped"]).optional() },
     async ({ status }) => {
       if (!token) return UNAUTH;
-      const user = await getUser(token);
+      const user = await getUser(token, supabase);
       if (!user) return UNAUTH;
       try {
         let q = supabase
@@ -358,7 +361,7 @@ function makeServer(token: string | null): McpServer {
     { id: z.string().uuid() },
     async ({ id }) => {
       if (!token) return UNAUTH;
-      const user = await getUser(token);
+      const user = await getUser(token, supabase);
       if (!user) return UNAUTH;
       try {
         const [{ data: strategy, error: stratErr }, { data: trades, error: tradesErr }] = await Promise.all([
@@ -428,7 +431,7 @@ function makeServer(token: string | null): McpServer {
     },
     async ({ id, status }) => {
       if (!token) return UNAUTH;
-      const user = await getUser(token);
+      const user = await getUser(token, supabase);
       if (!user) return UNAUTH;
       try {
         const { data, error } = await supabase
@@ -450,7 +453,7 @@ function makeServer(token: string | null): McpServer {
     { id: z.string().uuid() },
     async ({ id }) => {
       if (!token) return UNAUTH;
-      const user = await getUser(token);
+      const user = await getUser(token, supabase);
       if (!user) return UNAUTH;
       try {
         const { error } = await supabase
@@ -473,7 +476,7 @@ function makeServer(token: string | null): McpServer {
     },
     async ({ lambda_id, limit = 50 }) => {
       if (!token) return UNAUTH;
-      const user = await getUser(token);
+      const user = await getUser(token, supabase);
       if (!user) return UNAUTH;
       try {
         // Two-query approach: fetch user's lambda IDs first, then filter trades
@@ -670,7 +673,7 @@ function makeServer(token: string | null): McpServer {
     {},
     async () => {
       if (!token) return UNAUTH;
-      const user = await getUser(token);
+      const user = await getUser(token, supabase);
       if (!user) return UNAUTH;
       try {
         const { data, error } = await supabase
@@ -690,7 +693,7 @@ function makeServer(token: string | null): McpServer {
     { id: z.string().uuid() },
     async ({ id }) => {
       if (!token) return UNAUTH;
-      const user = await getUser(token);
+      const user = await getUser(token, supabase);
       if (!user) return UNAUTH;
       try {
         const { data, error } = await supabase
@@ -717,7 +720,7 @@ function makeServer(token: string | null): McpServer {
     },
     async ({ title, key, tempo, general_notes, sections }) => {
       if (!token) return UNAUTH;
-      const user = await getUser(token);
+      const user = await getUser(token, supabase);
       if (!user) return UNAUTH;
       try {
         const { data, error } = await supabase
@@ -744,7 +747,7 @@ function makeServer(token: string | null): McpServer {
     },
     async ({ id, title, key, tempo, general_notes, sections }) => {
       if (!token) return UNAUTH;
-      const user = await getUser(token);
+      const user = await getUser(token, supabase);
       if (!user) return UNAUTH;
       try {
         const fields: Record<string, unknown> = {};
@@ -772,7 +775,7 @@ function makeServer(token: string | null): McpServer {
     { id: z.string().uuid() },
     async ({ id }) => {
       if (!token) return UNAUTH;
-      const user = await getUser(token);
+      const user = await getUser(token, supabase);
       if (!user) return UNAUTH;
       try {
         const { error } = await supabase
