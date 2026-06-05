@@ -22,7 +22,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const { error } = await db
       .from("trading_lambdas")
       .update({ ...body, updated_at: new Date().toISOString() })
-      .eq("id", id);
+      .eq("id", id)
+      .eq("user_id", user.id);
     if (error) throw error;
     return NextResponse.json({ success: true });
   } catch (e) {

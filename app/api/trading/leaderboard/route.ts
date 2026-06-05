@@ -1,65 +1,71 @@
-import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { NextRequest, NextResponse } from "next/server";
+import { supabaseAnon } from "../lib/executor";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
-  try {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
-    );
+export async function GET(req: NextRequest) {
+  const authHeader = req.headers.get("Authorization");
+  const token = authHeader?.replace("Bearer ", "");
+  if (!token) {
+    return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+  }
+  const db = supabaseAnon();
+  const { data: { user }, error: authError } = await db.auth.getUser(token);
+  if (authError || !user) {
+    return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+  }
 
-    // Fetch all lambdas
-    const { data: lambdas, error: lambdaError } = await supabase
+  try {
+    const { data: lambdas, error: lambdaError } = await db
       .from("trading_lambdas")
       .select("*")
+      .eq("user_id", user.id)
       .order("created_at", { ascending: false });
-
     if (lambdaError) throw lambdaError;
 
-    // Fetch all trades
-    const { data: trades, error: tradeError } = await supabase
-      .from("lambda_trades")
-      .select("*")
-      .order("entry_time", { ascending: true });
-
-    if (tradeError) throw tradeError;
+    const lambdaIds = (lambdas ?? []).map((l) => l.id);
+    let trades: Record<string, unknown>[] = [];
+    if (lambdaIds.length > 0) {
+      const { data: tradeData, error: tradeError } = await db
+        .from("lambda_trades")
+        .select("*")
+        .in("lambda_id", lambdaIds)
+        .order("entry_time", { ascending: true });
+      if (tradeError) throw tradeError;
+      trades = tradeData ?? [];
+    }
 
     // Aggregate stats per lambda
     const leaderboard = (lambdas ?? []).map((lambda) => {
-      const lambdaTrades = (trades ?? []).filter((t) => t.lambda_id === lambda.id);
+      const lambdaTrades = trades.filter((t) => t.lambda_id === lambda.id);
       const closedTrades = lambdaTrades.filter((t) => t.status === "closed");
       const openTrade = lambdaTrades.find((t) => t.status === "open") ?? null;
 
-      const totalPnl = closedTrades.reduce((sum, t) => sum + (t.pnl ?? 0), 0);
+      const totalPnl = closedTrades.reduce((sum, t) => sum + ((t.pnl as number) ?? 0), 0);
       const totalPnlPercent = (totalPnl / lambda.initial_capital) * 100;
-      const wins = closedTrades.filter((t) => (t.pnl ?? 0) > 0);
-      const losses = closedTrades.filter((t) => (t.pnl ?? 0) <= 0);
+      const wins = closedTrades.filter((t) => ((t.pnl as number) ?? 0) > 0);
+      const losses = closedTrades.filter((t) => ((t.pnl as number) ?? 0) <= 0);
       const winRate = closedTrades.length > 0 ? (wins.length / closedTrades.length) * 100 : 0;
-      const avgWin = wins.length > 0 ? wins.reduce((s, t) => s + (t.pnl ?? 0), 0) / wins.length : 0;
-      const avgLoss = losses.length > 0 ? losses.reduce((s, t) => s + (t.pnl ?? 0), 0) / losses.length : 0;
+      const avgWin = wins.length > 0 ? wins.reduce((s, t) => s + ((t.pnl as number) ?? 0), 0) / wins.length : 0;
+      const avgLoss = losses.length > 0 ? losses.reduce((s, t) => s + ((t.pnl as number) ?? 0), 0) / losses.length : 0;
       const profitFactor = Math.abs(avgLoss) > 0 ? Math.abs(avgWin * wins.length) / Math.abs(avgLoss * losses.length) : 0;
 
-      // Build equity curve
       let equity = lambda.initial_capital;
       const equityCurve = closedTrades.map((t) => {
-        equity += t.pnl ?? 0;
+        equity += (t.pnl as number) ?? 0;
         return { time: t.exit_time, equity };
       });
 
-      // Max drawdown
       let peak = lambda.initial_capital;
       let maxDrawdown = 0;
       let runningEquity = lambda.initial_capital;
       for (const t of closedTrades) {
-        runningEquity += t.pnl ?? 0;
+        runningEquity += (t.pnl as number) ?? 0;
         if (runningEquity > peak) peak = runningEquity;
         const dd = peak - runningEquity;
         if (dd > maxDrawdown) maxDrawdown = dd;
       }
 
-      // Last activity
       const lastTrade = closedTrades[closedTrades.length - 1] ?? null;
 
       return {
@@ -83,12 +89,10 @@ export async function GET() {
       };
     });
 
-    // Sort by total P&L descending
     leaderboard.sort((a, b) => b.stats.totalPnl - a.stats.totalPnl);
 
     return NextResponse.json({ success: true, leaderboard });
   } catch (error) {
-    console.error("Leaderboard error:", error);
     return NextResponse.json(
       { success: false, error: error instanceof Error ? error.message : "Failed to load leaderboard" },
       { status: 500 }

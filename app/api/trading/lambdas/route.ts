@@ -70,6 +70,7 @@ export async function GET(req: NextRequest) {
     const { data, error } = await db
       .from("trading_lambdas")
       .select("*")
+      .eq("user_id", user.id)
       .order("created_at", { ascending: false });
 
     if (error) throw error;

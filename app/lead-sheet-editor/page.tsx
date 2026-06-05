@@ -21,7 +21,12 @@ export default function LeadSheetList() {
   }, [user]);
 
   async function loadSheets() {
-    const { data } = await getSb().from("lead_sheets").select("*").order("updated_at", { ascending: false });
+    if (!user) return;
+    const { data } = await getSb()
+      .from("lead_sheets")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("updated_at", { ascending: false });
     setSheets(data ?? []);
   }
 

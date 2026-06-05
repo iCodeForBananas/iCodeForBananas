@@ -25,6 +25,7 @@ export async function POST(req: NextRequest) {
     .from("trading_lambdas")
     .select("*")
     .eq("id", id)
+    .eq("user_id", user.id)
     .single();
 
   if (stratErr || !strategy)

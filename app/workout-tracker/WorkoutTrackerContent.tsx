@@ -104,11 +104,15 @@ export default function WorkoutTrackerContent() {
   const [page, setPage] = useState(0);
   const PAGE_SIZE = 10;
   const reload = useCallback(async () => {
+    if (!user) return;
     const sb = getSupabase();
     if (!sb) return;
-    const { data } = await sb.from("workout_logs").select("id, user_id, exercise, date, weight");
+    const { data } = await sb
+      .from("workout_logs")
+      .select("id, user_id, exercise, date, weight")
+      .eq("user_id", user.id);
     setLogs((data as LogEntry[]) ?? []);
-  }, []);
+  }, [user]);
   useEffect(() => {
     reload();
   }, [reload]);
@@ -133,8 +137,8 @@ export default function WorkoutTrackerContent() {
 
   const remove = async (id: string) => {
     const sb = getSupabase();
-    if (!sb) return;
-    await sb.from("workout_logs").delete().eq("id", id);
+    if (!sb || !user) return;
+    await sb.from("workout_logs").delete().eq("id", id).eq("user_id", user.id);
     setPage((p) => Math.max(0, p));
     reload();
   };
