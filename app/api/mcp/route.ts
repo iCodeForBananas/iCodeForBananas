@@ -794,10 +794,13 @@ function makeServer(token: string | null): McpServer {
 async function handleMcpRequest(request: Request): Promise<Response> {
   const token = extractToken(request);
   if (!token) {
+    const proto = request.headers.get("x-forwarded-proto") ?? "https";
+    const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host") ?? "www.icodeforbananas.com";
+    const resourceMetadata = `${proto}://${host}/.well-known/oauth-protected-resource`;
     return new Response(JSON.stringify({ error: "unauthorized" }), {
       status: 401,
       headers: {
-        "WWW-Authenticate": `Bearer realm="${baseUrl}"`,
+        "WWW-Authenticate": `Bearer resource_metadata="${resourceMetadata}"`,
         "Content-Type": "application/json",
       },
     });

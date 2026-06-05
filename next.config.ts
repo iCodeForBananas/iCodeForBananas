@@ -13,6 +13,10 @@ const nextConfig: NextConfig = {
         source: "/.well-known/oauth-authorization-server",
         destination: "/api/oauth/well-known",
       },
+      {
+        source: "/.well-known/oauth-protected-resource",
+        destination: "/api/oauth/protected-resource",
+      },
     ];
   },
 };
