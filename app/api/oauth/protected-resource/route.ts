@@ -8,7 +8,7 @@ export async function GET(req: NextRequest) {
   const authServer = `${proto}://${host}`;
 
   return NextResponse.json({
-    resource: "https://icodeforbananas.com/api/mcp",
+    resource: `${authServer}/api/mcp`,
     authorization_servers: [authServer],
     scopes_supported: ["mcp"],
   });
