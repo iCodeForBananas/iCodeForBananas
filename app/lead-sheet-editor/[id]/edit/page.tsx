@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, use } from "react";
+import { useState, useEffect, useLayoutEffect, useRef, use } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/app/hooks/useAuth";
@@ -151,12 +151,16 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
   const [dirty, setDirty] = useState(false);
   const sbRef = useRef<ReturnType<typeof createClient> | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const el = textareaRef.current;
+    const container = scrollContainerRef.current;
     if (!el) return;
+    const savedScroll = container?.scrollTop ?? 0;
     el.style.height = "auto";
     el.style.height = el.scrollHeight + "px";
+    if (container) container.scrollTop = savedScroll;
   }, [rawText]);
 
   const getSb = () => {
@@ -280,7 +284,7 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
           </div>
 
           {/* Editor */}
-          <div className="flex-1 overflow-auto">
+          <div ref={scrollContainerRef} className="flex-1 overflow-auto">
             <div className="max-w-3xl mx-auto px-6 py-8">
               <textarea
                 ref={textareaRef}
