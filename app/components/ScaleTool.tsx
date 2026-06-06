@@ -152,7 +152,7 @@ export default function ScaleTool() {
 
       {/* Fretboard */}
       <div className="overflow-x-auto rounded-xl" style={{ background: "#0f0800" }}>
-        <svg width={W} height={H} style={{ display: "block" }}>
+        <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ display: "block" }}>
           {/* Background */}
           <rect width={W} height={H} fill="#0f0800" />
 
