@@ -150,6 +150,14 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
   const sbRef = useRef<ReturnType<typeof createClient> | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = el.scrollHeight + "px";
+  }, [rawText]);
 
   const getSb = () => {
     if (!sbRef.current) sbRef.current = createClient();
@@ -275,12 +283,13 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
           <div className="flex-1 overflow-auto">
             <div className="max-w-3xl mx-auto px-6 py-8">
               <textarea
+                ref={textareaRef}
                 value={rawText}
                 onChange={(e) => handleChange(e.target.value)}
                 placeholder={PLACEHOLDER}
                 spellCheck={false}
                 className="w-full outline-none resize-none font-mono text-base leading-relaxed bg-transparent text-black"
-                style={{ minHeight: "calc(100vh - 160px)" }}
+                style={{ minHeight: "calc(100vh - 160px)", overflow: "hidden" }}
               />
             </div>
           </div>
