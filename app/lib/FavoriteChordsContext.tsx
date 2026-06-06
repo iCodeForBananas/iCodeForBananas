@@ -13,10 +13,11 @@ interface FavoriteChordsContextType {
   favorites: FavoriteChord[];
   toggle: (chord: FavoriteChord) => void;
   isFavorite: (id: string) => boolean;
+  clear: () => void;
 }
 
 const FavoriteChordsContext = createContext<FavoriteChordsContextType>({
-  favorites: [], toggle: () => {}, isFavorite: () => false,
+  favorites: [], toggle: () => {}, isFavorite: () => false, clear: () => {},
 });
 
 export const useFavoriteChords = () => useContext(FavoriteChordsContext);
@@ -42,8 +43,10 @@ export function FavoriteChordsProvider({ children }: { children: ReactNode }) {
 
   const isFavorite = (id: string) => favorites.some((f) => f.id === id);
 
+  const clear = () => setFavorites([]);
+
   return (
-    <FavoriteChordsContext.Provider value={{ favorites, toggle, isFavorite }}>
+    <FavoriteChordsContext.Provider value={{ favorites, toggle, isFavorite, clear }}>
       {children}
     </FavoriteChordsContext.Provider>
   );
