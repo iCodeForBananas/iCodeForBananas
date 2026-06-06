@@ -200,8 +200,10 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
           </div>
 
           {/* Scrollable content */}
-          <div className='flex-1 overflow-auto p-4 sm:p-6 flex flex-col'>
-            <SheetContent sheet={sheet} fullscreen={false} />
+          <div className='flex-1 overflow-auto'>
+            <div className='max-w-3xl mx-auto px-6 py-8'>
+              <SheetContent sheet={sheet} fullscreen={false} />
+            </div>
           </div>
         </div>
       </main>

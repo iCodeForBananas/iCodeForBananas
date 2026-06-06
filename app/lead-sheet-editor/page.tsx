@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/app/hooks/useAuth";
 import Link from "next/link";
-import { Plus, Trash2, Music, Eye } from "lucide-react";
+import { Plus, Trash2, Music, Eye, Pencil } from "lucide-react";
 import type { LeadSheet } from "./shared";
 import { makeSection } from "./shared";
 
@@ -132,12 +132,10 @@ export default function LeadSheetList() {
                 {sheets.map((sheet) => (
                   <div
                     key={sheet.id}
-                    className='flex items-center justify-between p-4 border border-[#373A40]/20 rounded-lg hover:border-black transition-colors group'
+                    className='flex items-center justify-between p-4 border border-[#373A40]/20 rounded-lg hover:border-black transition-colors group cursor-pointer'
+                    onClick={() => router.push(`/lead-sheet-editor/${sheet.id}/preview`)}
                   >
-                    <div
-                      className='flex-1 min-w-0 cursor-pointer'
-                      onClick={() => router.push(`/lead-sheet-editor/${sheet.id}/edit`)}
-                    >
+                    <div className='flex-1 min-w-0'>
                       <div className='font-semibold' style={{ color: "#000" }}>
                         {sheet.title || "Untitled"}
                       </div>
@@ -148,10 +146,17 @@ export default function LeadSheetList() {
                         <span>{new Date(sheet.updated_at).toLocaleDateString()}</span>
                       </div>
                     </div>
-                    <div className='flex items-center gap-1 ml-3 shrink-0'>
+                    <div className='flex items-center gap-1.5 ml-3 shrink-0'>
                       <button
-                        onClick={() => router.push(`/lead-sheet-editor/${sheet.id}/preview`)}
-                        className='flex items-center gap-1.5 rounded bg-black px-3 py-1.5 text-xs font-medium opacity-0 group-hover:opacity-100 transition-all'
+                        onClick={(e) => { e.stopPropagation(); router.push(`/lead-sheet-editor/${sheet.id}/edit`); }}
+                        className='flex items-center gap-1.5 rounded border border-[#373A40]/30 px-3 py-1.5 text-xs font-medium hover:border-black transition-colors'
+                      >
+                        <Pencil className='w-3.5 h-3.5' />
+                        Edit
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); router.push(`/lead-sheet-editor/${sheet.id}/preview`); }}
+                        className='flex items-center gap-1.5 rounded bg-black px-3 py-1.5 text-xs font-medium hover:bg-black/80 transition-colors'
                         style={{ color: "#facc15" }}
                       >
                         <Eye className='w-3.5 h-3.5' />
@@ -162,7 +167,7 @@ export default function LeadSheetList() {
                           e.stopPropagation();
                           if (confirm(`Delete "${sheet.title}"?`)) deleteSheet(sheet.id);
                         }}
-                        className='opacity-0 group-hover:opacity-100 p-1.5 text-[#373A40]/40 hover:text-red-500 transition-all'
+                        className='opacity-0 group-hover:opacity-100 p-1.5 text-[#373A40]/40 hover:text-red-500 transition-all ml-1'
                       >
                         <Trash2 className='w-4 h-4' />
                       </button>
