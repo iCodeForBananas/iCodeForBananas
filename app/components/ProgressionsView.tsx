@@ -115,13 +115,24 @@ export default function ProgressionsView() {
     ];
   });
 
-  const chordOptions = useMemo(
+  const sortedNotes = useMemo(() => [...allNotes].sort((a, b) => b.length - a.length), []);
+
+  const chordTypes = useMemo(
     () =>
-      Object.entries(chords).map(([name, notes]) => (
-        <option key={name} value={name}>{`${name} [${notes.join(", ")}]`}</option>
-      )),
+      Object.keys(chords)
+        .filter((n) => n.startsWith("C") && !n.startsWith("C#"))
+        .map((n) => ({ suffix: n.slice(1), label: n.slice(1).trim() })),
     [chords]
   );
+
+  const getRootNote = (chordName: string) =>
+    sortedNotes.find((n) => chordName.startsWith(n)) ?? "C";
+
+  const getChordSuffix = (chordName: string) => {
+    if (!chordName) return " Major";
+    const root = sortedNotes.find((n) => chordName.startsWith(n)) ?? "";
+    return chordName.slice(root.length);
+  };
 
   const updateChordInProgression = (index: number, field: string, value: string) => {
     const updated = [...chordProgression];
@@ -206,18 +217,48 @@ export default function ProgressionsView() {
               </option>
             ))}
           </select>
-          {chordProgression.map((entry, index) => (
-            <div key={index} className='flex items-center mb-2 gap-2'>
-              <select
-                className='flex-1 border rounded px-3 py-1 text-sm'
-                value={entry.name}
-                onChange={(e) => updateChordInProgression(index, "name", e.target.value)}
-              >
-                <option value=''>{`-- Select Chord ${index + 1} --`}</option>
-                {chordOptions}
-              </select>
-            </div>
-          ))}
+          {chordProgression.map((entry, index) => {
+            const rootNote = entry.name ? getRootNote(entry.name) : "C";
+            const suffix = entry.name ? getChordSuffix(entry.name) : " Major";
+            return (
+              <div key={index} className='flex items-center mb-2 gap-2'>
+                <span className='text-sm opacity-60 w-16 shrink-0'>Chord {index + 1}</span>
+                <select
+                  className='border rounded px-2 py-1 text-sm w-20 shrink-0'
+                  value={rootNote}
+                  onChange={(e) => {
+                    const newName = e.target.value + suffix;
+                    updateChordInProgression(index, "name", chords[newName] !== undefined ? newName : "");
+                  }}
+                >
+                  {allNotes.map((note) => (
+                    <option key={note} value={note}>{note}</option>
+                  ))}
+                </select>
+                <select
+                  className='flex-1 border rounded px-2 py-1 text-sm'
+                  value={suffix}
+                  onChange={(e) => {
+                    const newName = rootNote + e.target.value;
+                    updateChordInProgression(index, "name", chords[newName] !== undefined ? newName : "");
+                  }}
+                >
+                  {chordTypes.map(({ suffix: s, label }) => (
+                    <option key={s} value={s}>{label}</option>
+                  ))}
+                </select>
+                {entry.name && (
+                  <button
+                    className='opacity-40 hover:opacity-100 text-lg leading-none px-1'
+                    onClick={() => updateChordInProgression(index, "name", "")}
+                    title='Clear chord'
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+            );
+          })}
 
           <div className='mt-3'>
             <button
