@@ -143,7 +143,7 @@ const getInversions = (note: string, voicing: InvVoicing) => {
   return { root: map(t.root), first: map(t.first), second: map(t.second) };
 };
 
-// ── Chord diagram wrapper showing sub-label below ─────────────────────────────
+// ── Chord diagram card ────────────────────────────────────────────────────────
 
 function VoicingCard({
   shape,
@@ -161,9 +161,19 @@ function VoicingCard({
   return (
     <div className="flex flex-col items-center gap-1">
       <ChordDiagram shape={shape} label={chordLabel} useFlats={useFlats} />
-      <span className="text-xs font-medium text-[#1A1B1E]/60">{sublabel}</span>
-      {position && <span className="text-xs text-[#1A1B1E]/35">{position}</span>}
+      <span className="text-xs font-medium text-[#1A1B1E]/60 text-center">{sublabel}</span>
+      {position && <span className="text-xs text-[#1A1B1E]/35 text-center">{position}</span>}
     </div>
+  );
+}
+
+// ── Section heading ───────────────────────────────────────────────────────────
+
+function SectionHeading({ children }: { children: React.ReactNode }) {
+  return (
+    <h3 className="text-xs font-semibold text-[#1A1B1E]/50 uppercase tracking-wider mb-4">
+      {children}
+    </h3>
   );
 }
 
@@ -186,9 +196,7 @@ export default function ChordExplorerPage() {
     [selectedNote, invVoicing]
   );
 
-  const handleNoteClick = (note: string) => {
-    setSelectedNote(note);
-  };
+  const handleNoteClick = (note: string) => setSelectedNote(note);
 
   const handleFlatsToggle = () => {
     const next = !useFlats;
@@ -204,8 +212,11 @@ export default function ChordExplorerPage() {
 
   return (
     <BentoPageLayout title="Chord Explorer">
-      {/* ── Root note + type picker ─────────────────────────────────────────── */}
-      <div className="mb-8 flex flex-wrap items-start gap-6">
+
+      {/* ── Controls ───────────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+
+        {/* Root note */}
         <div>
           <p className="text-xs font-semibold text-[#1A1B1E]/50 uppercase tracking-wider mb-2">Root Note</p>
           <div className="flex flex-wrap gap-2">
@@ -225,7 +236,7 @@ export default function ChordExplorerPage() {
                 </button>
               );
             })}
-            <span className="mx-1 text-[#1A1B1E]/30">|</span>
+            <span className="mx-1 text-[#1A1B1E]/30 self-center">|</span>
             <button
               onClick={handleFlatsToggle}
               className={`px-3 py-1 rounded border text-sm transition-colors ${
@@ -237,9 +248,10 @@ export default function ChordExplorerPage() {
           </div>
         </div>
 
+        {/* Chord type */}
         <div>
           <p className="text-xs font-semibold text-[#1A1B1E]/50 uppercase tracking-wider mb-2">Chord Type</p>
-          <div className="flex flex-wrap gap-4">
+          <div className="grid grid-cols-2 gap-x-6 gap-y-3">
             {TYPE_GROUPS.map((group) => (
               <div key={group.label}>
                 <p className="text-xs text-[#1A1B1E]/40 mb-1.5">{group.label}</p>
@@ -271,12 +283,10 @@ export default function ChordExplorerPage() {
 
       {/* ── Voicings & Positions ─────────────────────────────────────────────── */}
       <section className="mb-10">
-        <h3 className="text-xs font-semibold text-[#1A1B1E]/50 uppercase tracking-wider mb-1">
-          Voicings &amp; Positions
-        </h3>
-        <p className="text-sm text-[#1A1B1E]/40 mb-5">Click a diagram to add it to your progression</p>
+        <SectionHeading>Voicings &amp; Positions</SectionHeading>
+        <p className="text-sm text-[#1A1B1E]/40 mb-5 -mt-2">Click a diagram to add it to your progression</p>
         {voicings.length > 0 ? (
-          <div className="flex flex-wrap gap-8">
+          <div className="grid gap-6" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))" }}>
             {voicings.map((v, i) => (
               <VoicingCard
                 key={i}
@@ -295,24 +305,22 @@ export default function ChordExplorerPage() {
 
       {/* ── Inversions ───────────────────────────────────────────────────────── */}
       <section className="mb-10">
-        <h3 className="text-xs font-semibold text-[#1A1B1E]/50 uppercase tracking-wider mb-1">Inversions</h3>
+        <SectionHeading>Inversions</SectionHeading>
         {inversions ? (
           <>
-            <p className="text-sm text-[#1A1B1E]/40 mb-5">
+            <p className="text-sm text-[#1A1B1E]/40 mb-5 -mt-2">
               Triad voicings on three-string sets — click any to favorite
             </p>
-            <div className="flex flex-col gap-8">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
               {[
                 { key: "root", title: "Root Position", subtitle: "1 – 3 – 5", items: inversions.root },
-                { key: "first", title: "1st Inversion", subtitle: "3 – 5 – 1 (3rd in bass)", items: inversions.first },
-                { key: "second", title: "2nd Inversion", subtitle: "5 – 1 – 3 (5th in bass)", items: inversions.second },
+                { key: "first", title: "1st Inversion", subtitle: "3 – 5 – 1", items: inversions.first },
+                { key: "second", title: "2nd Inversion", subtitle: "5 – 1 – 3", items: inversions.second },
               ].map((inv) => (
-                <div key={inv.key}>
-                  <div className="flex items-baseline gap-2 mb-3">
-                    <span className="text-sm font-semibold text-[#1A1B1E]">{inv.title}</span>
-                    <span className="text-xs text-[#1A1B1E]/40">{inv.subtitle}</span>
-                  </div>
-                  <div className="flex flex-wrap gap-6">
+                <div key={inv.key} className="flex flex-col gap-1">
+                  <span className="text-sm font-semibold text-[#1A1B1E]">{inv.title}</span>
+                  <span className="text-xs text-[#1A1B1E]/40 mb-4">{inv.subtitle}</span>
+                  <div className="grid gap-6" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))" }}>
                     {inv.items.map((item, i) => (
                       <VoicingCard
                         key={i}
@@ -328,7 +336,7 @@ export default function ChordExplorerPage() {
             </div>
           </>
         ) : (
-          <p className="text-sm text-[#1A1B1E]/40 mt-2">
+          <p className="text-sm text-[#1A1B1E]/40 -mt-2">
             Inversion voicings are available for Major and Minor chords. Select one to explore.
           </p>
         )}
@@ -336,12 +344,12 @@ export default function ChordExplorerPage() {
 
       {/* ── My Progression ───────────────────────────────────────────────────── */}
       <section>
-        <div className="flex items-center gap-3 mb-3">
-          <h3 className="text-xs font-semibold text-[#1A1B1E]/50 uppercase tracking-wider">My Progression</h3>
+        <div className="flex items-center gap-3 mb-4">
+          <SectionHeading>My Progression</SectionHeading>
           {favorites.length > 0 && (
             <button
               onClick={clear}
-              className="text-xs text-[#1A1B1E]/35 hover:text-red-400 transition-colors"
+              className="text-xs text-[#1A1B1E]/35 hover:text-red-400 transition-colors -mt-4"
             >
               Clear all
             </button>
@@ -352,7 +360,7 @@ export default function ChordExplorerPage() {
             Click any chord diagram above to add it here and build your progression.
           </p>
         ) : (
-          <div className="flex flex-wrap gap-5">
+          <div className="grid gap-6" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))" }}>
             {favorites.map((fav, i) => (
               <div key={fav.id} className="flex flex-col items-center gap-1">
                 <span className="text-xs font-mono text-[#1A1B1E]/30">{i + 1}</span>
@@ -362,6 +370,7 @@ export default function ChordExplorerPage() {
           </div>
         )}
       </section>
+
     </BentoPageLayout>
   );
 }
