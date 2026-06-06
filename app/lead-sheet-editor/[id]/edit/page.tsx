@@ -1,139 +1,142 @@
 "use client";
 
 import { useState, useEffect, useRef, use } from "react";
-import TextareaAutosize from "react-textarea-autosize";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/app/hooks/useAuth";
-import { Save, Trash2, ArrowLeft, ChevronDown, ChevronRight, Eye } from "lucide-react";
-import {
-  type LeadSheet,
-  type Section,
-  type SectionType,
-  SECTION_TYPES,
-  KEYS,
-  makeSection,
-  migrateSection,
-} from "../../shared";
+import { Save, ArrowLeft, Eye } from "lucide-react";
+import { type LeadSheet, type Section, type SectionType, migrateSection } from "../../shared";
 
-// ─── SectionBlock ─────────────────────────────────────────────────────────────
+// ─── Text ↔ LeadSheet ─────────────────────────────────────────────────────────
 
-interface SectionBlockProps {
-  section: Section;
-  isFirst: boolean;
-  isLast: boolean;
-  onChange: (updates: Partial<Section>) => void;
-  onMove: (dir: "up" | "down") => void;
-  onDelete: () => void;
+function inferSectionType(label: string): SectionType {
+  const l = label.toLowerCase();
+  if (l.includes("intro")) return "intro";
+  if (l.includes("pre-chorus") || l.includes("prechorus") || l.includes("pre chorus")) return "pre-chorus";
+  if (l.includes("chorus")) return "chorus";
+  if (l.includes("verse")) return "verse";
+  if (l.includes("bridge")) return "bridge";
+  if (l.includes("outro")) return "outro";
+  return "other";
 }
 
-function SectionBlock({ section, isFirst, isLast, onChange, onMove, onDelete }: SectionBlockProps) {
-  const [collapsed, setCollapsed] = useState(false);
-  const [showHelp, setShowHelp] = useState(false);
-
-  return (
-    <div className='border border-[#373A40]/20 rounded-lg overflow-hidden'>
-      <div className='flex items-center gap-2 px-3 py-2 bg-[#f8f9fa] border-b border-[#373A40]/20'>
-        <button onClick={() => setCollapsed((v) => !v)} className='text-[#373A40]/40 hover:text-black shrink-0'>
-          {collapsed ? <ChevronRight className='w-4 h-4' /> : <ChevronDown className='w-4 h-4' />}
-        </button>
-        <select
-          value={section.type}
-          onChange={(e) => onChange({ type: e.target.value as SectionType })}
-          className='text-xs font-bold uppercase tracking-wider bg-transparent border-0 outline-none cursor-pointer shrink-0'
-          style={{ color: "#ca8a04" }}
-        >
-          {SECTION_TYPES.map((t) => (
-            <option key={t} value={t}>
-              {t.toUpperCase()}
-            </option>
-          ))}
-        </select>
-        <input
-          type='text'
-          value={section.label}
-          onChange={(e) => onChange({ label: e.target.value })}
-          className='flex-1 text-sm font-medium bg-transparent border-0 outline-none min-w-0'
-          style={{ color: "#000" }}
-          placeholder='Label (e.g. Verse 1)'
-        />
-        <div className='flex items-center gap-0.5 ml-auto shrink-0'>
-          <button
-            disabled={isFirst}
-            onClick={() => onMove("up")}
-            className='p-1 text-[#373A40]/40 hover:text-black disabled:opacity-20 text-xs'
-          >
-            ▲
-          </button>
-          <button
-            disabled={isLast}
-            onClick={() => onMove("down")}
-            className='p-1 text-[#373A40]/40 hover:text-black disabled:opacity-20 text-xs'
-          >
-            ▼
-          </button>
-          <button onClick={onDelete} className='p-1 text-[#373A40]/40 hover:text-red-500 ml-1'>
-            <Trash2 className='w-3.5 h-3.5' />
-          </button>
-        </div>
-      </div>
-
-      {!collapsed && (
-        <div className='bg-white'>
-          <div className='p-3 pb-0'>
-            <div className='flex items-center justify-between mb-1'>
-              <label className='text-xs font-semibold uppercase tracking-wider text-[#373A40]/50'>
-                Chords &amp; Lyrics
-              </label>
-              <button
-                onClick={() => setShowHelp((v) => !v)}
-                className='text-xs text-[#373A40]/40 hover:text-black transition-colors'
-              >
-                {showHelp ? "hide help" : "how to add chords?"}
-              </button>
-            </div>
-
-            {showHelp && (
-              <div className='mb-2 p-3 bg-[#fffbeb] border border-[#fde68a] rounded text-xs font-mono text-[#92400e] leading-relaxed'>
-                <p className='font-bold mb-1'>Place a chord above any word using [Chord]word</p>
-                <p className='mb-2 text-[#78350f]/70'>Example input:</p>
-                <p className='mb-1'>[G]Here I [D]am Lord, [Em]is it [C]I Lord?</p>
-                <p className='mb-2 text-[#78350f]/70'>Renders as:</p>
-                <div className='mb-1'>
-                  <div style={{ color: "#ca8a04" }}>G D Em C</div>
-                  <div>Here I am Lord, is it I Lord?</div>
-                </div>
-                <p className='text-[#78350f]/60 mt-2'>Each line is independent. Blank lines create spacing.</p>
-              </div>
-            )}
-
-            <TextareaAutosize
-              value={section.content}
-              onChange={(e) => onChange({ content: e.target.value })}
-              placeholder={
-                "[G]Here I [D]am, [Em]Lord, is it [C]I, Lord?\n[G]I have heard you [D]calling in the [Em]night"
-              }
-              minRows={4}
-              spellCheck={false}
-              className='w-full font-mono text-sm border border-[#373A40]/30 rounded px-3 py-2 outline-none resize-none bg-white leading-relaxed'
-            />
-          </div>
-
-          <div className='px-3 pb-3'>
-            <label className='block text-xs font-semibold uppercase tracking-wider text-[#373A40]/50 mb-1'>Notes</label>
-            <TextareaAutosize
-              value={section.notes}
-              onChange={(e) => onChange({ notes: e.target.value })}
-              placeholder='Strum pattern, dynamics, capo position for this section...'
-              minRows={2}
-              className='w-full text-sm border border-[#373A40]/30 rounded px-3 py-2 outline-none resize-none bg-white italic text-[#373A40]/70'
-            />
-          </div>
-        </div>
-      )}
-    </div>
-  );
+// A standalone [text] line is a section header unless the text looks like a chord
+const CHORD_RE = /^[A-G][b#]?(m|maj|min|dim|aug|sus|add|dom)?(\d+)?(\/[A-G][b#]?)?$/;
+function asSectionHeader(line: string): string | null {
+  const m = line.match(/^\[([^\[\]]+)\]$/);
+  if (!m) return null;
+  const inner = m[1].trim();
+  return CHORD_RE.test(inner) ? null : inner;
 }
+
+function serializeSheet(sheet: LeadSheet): string {
+  const parts: string[] = [sheet.title || ""];
+
+  const meta: string[] = [];
+  if (sheet.key) meta.push(`Key: ${sheet.key}`);
+  if (sheet.tempo) meta.push(`Tempo: ${sheet.tempo}`);
+  if (meta.length) parts.push(meta.join("  "));
+
+  parts.push("");
+
+  if (sheet.general_notes) {
+    parts.push(sheet.general_notes);
+    parts.push("");
+  }
+
+  for (const section of sheet.sections) {
+    parts.push(`[${section.label || section.type}]`);
+    if (section.content) parts.push(section.content);
+    if (section.notes) {
+      for (const line of section.notes.split("\n")) {
+        parts.push(line.trim() ? `> ${line}` : "");
+      }
+    }
+    parts.push("");
+  }
+
+  return parts.join("\n").trimEnd();
+}
+
+function parseText(text: string): Partial<LeadSheet> {
+  const lines = text.split("\n");
+  let i = 0;
+
+  // Title: first non-empty line
+  while (i < lines.length && !lines[i].trim()) i++;
+  const title = i < lines.length ? lines[i++].trim() : "";
+
+  let key = "";
+  let tempo: number | null = null;
+  const preambleLines: string[] = [];
+
+  // Preamble: lines before first section header
+  while (i < lines.length && asSectionHeader(lines[i]) === null) {
+    const line = lines[i++];
+    const keyMatch = line.match(/Key:\s*([A-G][#b]?m?)\b/i);
+    const tempoMatch = line.match(/\bTempo:\s*(\d+)\b/i);
+    if (keyMatch) key = keyMatch[1];
+    if (tempoMatch) tempo = parseInt(tempoMatch[1]);
+    if (keyMatch || tempoMatch) {
+      const stripped = line
+        .replace(/Key:\s*[A-G][#b]?m?\b/gi, "")
+        .replace(/\bTempo:\s*\d+\b/gi, "")
+        .replace(/\|/g, "")
+        .trim();
+      if (stripped) preambleLines.push(stripped);
+    } else {
+      preambleLines.push(line);
+    }
+  }
+
+  const general_notes = preambleLines.join("\n").trim();
+
+  // Sections
+  const sections: Section[] = [];
+  while (i < lines.length) {
+    const label = asSectionHeader(lines[i]);
+    if (label !== null) {
+      i++;
+      const contentLines: string[] = [];
+      const notesLines: string[] = [];
+      while (i < lines.length && asSectionHeader(lines[i]) === null) {
+        const line = lines[i++];
+        if (line.startsWith("> ")) {
+          notesLines.push(line.slice(2));
+        } else {
+          contentLines.push(line);
+        }
+      }
+      while (contentLines.length > 0 && !contentLines[contentLines.length - 1].trim()) {
+        contentLines.pop();
+      }
+      sections.push({
+        id: crypto.randomUUID(),
+        type: inferSectionType(label),
+        label,
+        content: contentLines.join("\n"),
+        notes: notesLines.join("\n").trim(),
+      });
+    } else {
+      i++;
+    }
+  }
+
+  return { title, key, tempo, general_notes, sections };
+}
+
+const PLACEHOLDER = `Song Title
+Key: G  Tempo: 120
+
+Performance notes (capo, feel, strumming pattern)...
+
+[Verse 1]
+[G]Driving down an [D]empty road, [Em]windows down and [C]radio on
+[G]Nothing but the [D]open sky as [Em]far as I can [C]see
+> Use light fingerpicking
+
+[Chorus]
+[G]Take me [D]somewhere [Em]new`;
 
 // ─── Edit page ────────────────────────────────────────────────────────────────
 
@@ -141,12 +144,13 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
   const { id } = use(params);
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
-  const [current, setCurrent] = useState<LeadSheet | null>(null);
+  const [sheetId, setSheetId] = useState<string | null>(null);
+  const [rawText, setRawText] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
   const sbRef = useRef<ReturnType<typeof createClient> | null>(null);
-  const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const getSb = () => {
     if (!sbRef.current) sbRef.current = createClient();
     return sbRef.current!;
@@ -156,93 +160,45 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
     if (user) loadSheet();
   }, [user, id]);
 
-  // Autosave: debounce 1.5s after any dirty change
+  // Autosave: debounce 1.5s; rawText in deps gives a fresh closure on each change
   useEffect(() => {
-    if (!dirty || !current) return;
-    if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
-    autosaveTimerRef.current = setTimeout(saveSheet, 1500);
-    return () => {
-      if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
-    };
-  }, [current, dirty]);
+    if (!dirty || !sheetId) return;
+    const timer = setTimeout(saveSheet, 1500);
+    return () => clearTimeout(timer);
+  }, [rawText, dirty, sheetId]);
 
   async function loadSheet() {
     setLoading(true);
     const { data } = await getSb().from("lead_sheets").select("*").eq("id", id).single();
     if (data) {
-      setCurrent({
-        ...data,
-        sections: data.sections.map(migrateSection),
-      });
+      setSheetId(data.id);
+      const sheet: LeadSheet = { ...data, sections: data.sections.map(migrateSection) };
+      setRawText(serializeSheet(sheet));
     }
     setLoading(false);
   }
 
   async function saveSheet() {
-    if (!current) return;
+    if (!sheetId) return;
     setSaving(true);
-    const { data } = await getSb()
+    const parsed = parseText(rawText);
+    await getSb()
       .from("lead_sheets")
       .update({
-        title: current.title,
-        key: current.key,
-        tempo: current.tempo,
-        general_notes: current.general_notes,
-        sections: current.sections,
+        title: parsed.title ?? "",
+        key: parsed.key ?? "",
+        tempo: parsed.tempo ?? null,
+        general_notes: parsed.general_notes ?? "",
+        sections: parsed.sections ?? [],
         updated_at: new Date().toISOString(),
       })
-      .eq("id", current.id)
-      .select()
-      .single();
-    if (data) {
-      setCurrent(data);
-      setDirty(false);
-    }
+      .eq("id", sheetId);
+    setDirty(false);
     setSaving(false);
   }
 
-  function patch(updates: Partial<LeadSheet>) {
-    setCurrent((prev) => (prev ? { ...prev, ...updates } : prev));
-    setDirty(true);
-  }
-
-  function patchSection(sectionId: string, updates: Partial<Section>) {
-    setCurrent((prev) => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        sections: prev.sections.map((s) => (s.id === sectionId ? { ...s, ...updates } : s)),
-      };
-    });
-    setDirty(true);
-  }
-
-  function addSection(type: SectionType) {
-    setCurrent((prev) => {
-      if (!prev) return prev;
-      return { ...prev, sections: [...prev.sections, makeSection(type)] };
-    });
-    setDirty(true);
-  }
-
-  function removeSection(sectionId: string) {
-    setCurrent((prev) => {
-      if (!prev) return prev;
-      return { ...prev, sections: prev.sections.filter((s) => s.id !== sectionId) };
-    });
-    setDirty(true);
-  }
-
-  function moveSection(sectionId: string, dir: "up" | "down") {
-    setCurrent((prev) => {
-      if (!prev) return prev;
-      const idx = prev.sections.findIndex((s) => s.id === sectionId);
-      const swapIdx = dir === "up" ? idx - 1 : idx + 1;
-      if (swapIdx < 0 || swapIdx >= prev.sections.length) return prev;
-      const sections = [...prev.sections];
-      [sections[idx], sections[swapIdx]] = [sections[swapIdx], sections[idx]];
-      return { ...prev, sections };
-    });
+  function handleChange(value: string) {
+    setRawText(value);
     setDirty(true);
   }
 
@@ -258,28 +214,22 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
 
   if (authLoading || loading) {
     return (
-      <div className='flex flex-col flex-1 min-h-0'>
-        <main className='flex flex-col flex-1 min-h-0 p-2 sm:p-4'>
-          <div
-            className='flex flex-col flex-1 min-h-0 rounded-2xl overflow-hidden'
-            style={{ background: "#fff", border: "1px solid var(--border-color)" }}
-          >
-            <div className='flex-1 flex items-center justify-center text-[#373A40]/50'>Loading...</div>
+      <div className="flex flex-col flex-1 min-h-0">
+        <main className="flex flex-col flex-1 min-h-0 p-2 sm:p-4">
+          <div className="flex flex-col flex-1 min-h-0 rounded-2xl overflow-hidden" style={{ background: "#fff", border: "1px solid var(--border-color)" }}>
+            <div className="flex-1 flex items-center justify-center text-[#373A40]/50">Loading...</div>
           </div>
         </main>
       </div>
     );
   }
 
-  if (!user || !current) {
+  if (!user || !sheetId) {
     return (
-      <div className='flex flex-col flex-1 min-h-0'>
-        <main className='flex flex-col flex-1 min-h-0 p-2 sm:p-4'>
-          <div
-            className='flex flex-col flex-1 min-h-0 rounded-2xl overflow-hidden'
-            style={{ background: "#fff", border: "1px solid var(--border-color)" }}
-          >
-            <div className='flex-1 flex items-center justify-center text-[#373A40]/50'>Sheet not found.</div>
+      <div className="flex flex-col flex-1 min-h-0">
+        <main className="flex flex-col flex-1 min-h-0 p-2 sm:p-4">
+          <div className="flex flex-col flex-1 min-h-0 rounded-2xl overflow-hidden" style={{ background: "#fff", border: "1px solid var(--border-color)" }}>
+            <div className="flex-1 flex items-center justify-center text-[#373A40]/50">Sheet not found.</div>
           </div>
         </main>
       </div>
@@ -287,132 +237,51 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
   }
 
   return (
-    <div className='flex flex-col flex-1 min-h-0'>
-      <main className='flex flex-col flex-1 min-h-0 p-2 sm:p-4'>
-        <div
-          className='flex flex-col flex-1 min-h-0 rounded-2xl overflow-hidden'
-          style={{ background: "#fff", border: "1px solid var(--border-color)" }}
-        >
+    <div className="flex flex-col flex-1 min-h-0">
+      <main className="flex flex-col flex-1 min-h-0 p-2 sm:p-4">
+        <div className="flex flex-col flex-1 min-h-0 rounded-2xl overflow-hidden" style={{ background: "#fff", border: "1px solid var(--border-color)" }}>
           {/* Toolbar */}
-          <div className='border-b shrink-0' style={{ borderColor: "var(--border-color)" }}>
-            <div className='flex items-center justify-between px-4 py-3 sm:px-6 sm:py-4'>
+          <div className="border-b shrink-0" style={{ borderColor: "var(--border-color)" }}>
+            <div className="flex items-center justify-between px-4 py-3 sm:px-6 sm:py-4">
               <button
                 onClick={handleBack}
-                className='flex items-center gap-2 text-[#373A40]/50 hover:text-black transition-colors text-sm font-medium'
+                className="flex items-center gap-2 text-[#373A40]/50 hover:text-black transition-colors text-sm font-medium"
               >
-                <ArrowLeft className='w-4 h-4' />
+                <ArrowLeft className="w-4 h-4" />
                 All Sheets
               </button>
-              <div className='flex items-center gap-2'>
+              <div className="flex items-center gap-2">
                 <button
                   onClick={handlePreview}
-                  className='flex items-center gap-1.5 rounded border border-[#373A40]/30 px-3 py-2 text-sm font-medium hover:border-black hover:bg-black hover:text-[#facc15] transition-colors'
+                  className="flex items-center gap-1.5 rounded border border-[#373A40]/30 px-3 py-2 text-sm font-medium hover:border-black hover:bg-black hover:text-[#facc15] transition-colors"
                 >
-                  <Eye className='w-4 h-4' />
+                  <Eye className="w-4 h-4" />
                   Preview
                 </button>
                 <button
                   onClick={saveSheet}
                   disabled={!dirty || saving}
-                  className='flex items-center gap-2 rounded bg-black px-4 py-2 text-sm font-medium hover:bg-black/80 disabled:opacity-30 disabled:cursor-not-allowed transition-colors'
+                  className="flex items-center gap-2 rounded bg-black px-4 py-2 text-sm font-medium hover:bg-black/80 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                   style={{ color: "#facc15" }}
                 >
-                  <Save className='w-4 h-4' />
+                  <Save className="w-4 h-4" />
                   {saving ? "Saving..." : dirty ? "Save" : "Saved"}
                 </button>
               </div>
             </div>
           </div>
 
-          {/* Scrollable content */}
-          <div className='flex-1 overflow-auto p-4 sm:p-6 flex flex-col'>
-            {/* Title */}
-            <input
-              type='text'
-              value={current.title}
-              onChange={(e) => patch({ title: e.target.value })}
-              placeholder='Song Title'
-              className='w-full text-3xl font-bold border-0 border-b-2 border-[#373A40]/20 focus:border-black outline-none pb-2 mb-6 bg-transparent'
-              style={{ color: "#000" }}
-            />
-
-            {/* Metadata */}
-            <div className='grid grid-cols-2 gap-4 mb-6'>
-              <div>
-                <label className='block text-xs font-semibold uppercase tracking-wider text-[#373A40]/50 mb-1'>Key</label>
-                <select
-                  value={current.key}
-                  onChange={(e) => patch({ key: e.target.value })}
-                  className='w-full border border-[#373A40]/30 rounded px-3 py-2 outline-none bg-white text-sm'
-                >
-                  <option value=''>Select key...</option>
-                  {KEYS.map((k) => (
-                    <option key={k} value={k}>
-                      {k}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className='block text-xs font-semibold uppercase tracking-wider text-[#373A40]/50 mb-1'>
-                  Tempo (BPM)
-                </label>
-                <input
-                  type='number'
-                  value={current.tempo ?? ""}
-                  onChange={(e) => patch({ tempo: e.target.value ? Number(e.target.value) : null })}
-                  placeholder='120'
-                  min={20}
-                  max={300}
-                  className='w-full border border-[#373A40]/30 rounded px-3 py-2 outline-none bg-white text-sm'
-                />
-              </div>
-            </div>
-
-            {/* Performance Notes */}
-            <div className='mb-8'>
-              <label className='block text-xs font-semibold uppercase tracking-wider text-[#373A40]/50 mb-1'>
-                Performance Notes
-              </label>
-              <TextareaAutosize
-                value={current.general_notes}
-                onChange={(e) => patch({ general_notes: e.target.value })}
-                placeholder='Capo 3, fingerpicking pattern, dynamics, overall feel...'
-                minRows={2}
-                className='w-full border border-[#373A40]/30 rounded px-3 py-2 outline-none resize-none text-sm bg-white'
+          {/* Editor */}
+          <div className="flex-1 overflow-auto">
+            <div className="max-w-3xl mx-auto px-6 py-8">
+              <textarea
+                value={rawText}
+                onChange={(e) => handleChange(e.target.value)}
+                placeholder={PLACEHOLDER}
+                spellCheck={false}
+                className="w-full outline-none resize-none font-mono text-base leading-relaxed bg-transparent text-black"
+                style={{ minHeight: "calc(100vh - 160px)" }}
               />
-            </div>
-
-            {/* Sections */}
-            <div className='space-y-3 mb-6'>
-              <h2 className='text-xs font-semibold uppercase tracking-wider text-[#373A40]/50'>Sections</h2>
-              {current.sections.map((section, idx) => (
-                <SectionBlock
-                  key={section.id}
-                  section={section}
-                  isFirst={idx === 0}
-                  isLast={idx === current.sections.length - 1}
-                  onChange={(updates) => patchSection(section.id, updates)}
-                  onMove={(dir) => moveSection(section.id, dir)}
-                  onDelete={() => removeSection(section.id)}
-                />
-              ))}
-            </div>
-
-            {/* Add Section */}
-            <div>
-              <p className='text-xs font-semibold uppercase tracking-wider text-[#373A40]/50 mb-2'>Add Section</p>
-              <div className='flex flex-wrap gap-2'>
-                {SECTION_TYPES.map((type) => (
-                  <button
-                    key={type}
-                    onClick={() => addSection(type)}
-                    className='px-3 py-1.5 text-sm border border-[#373A40]/30 rounded hover:border-black hover:bg-black hover:text-[#facc15] transition-colors capitalize'
-                  >
-                    + {type}
-                  </button>
-                ))}
-              </div>
             </div>
           </div>
         </div>
