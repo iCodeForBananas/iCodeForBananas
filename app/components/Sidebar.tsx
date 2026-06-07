@@ -9,7 +9,7 @@ const MOBILE_BREAKPOINT = 1024;
 const isMobileDevice = () => window.innerWidth < MOBILE_BREAKPOINT;
 const SIDEBAR_OPEN_KEY = "sidebar-open";
 
-const NAV = [
+const NAV: { label: string; links: { href: string; text: string; auth?: boolean }[] }[] = [
   {
     label: "Music",
     links: [
@@ -39,6 +39,7 @@ const NAV = [
   {
     label: "Misc",
     links: [
+      { href: "/drm", text: "DRM", auth: true },
       { href: "/task-board", text: "Task Board" },
       { href: "/mermaid-flow", text: "Mermaid Flow" },
       { href: "/aaron-futures", text: "Aaron Futures" },
@@ -216,7 +217,7 @@ export default function Sidebar() {
                   </h3>
                 )}
                 <div className='flex flex-col gap-1'>
-                  {section.links.map(({ href, text }) => (
+                  {section.links.filter(({ auth }) => !auth || !!user).map(({ href, text }) => (
                     <Link
                       key={href}
                       href={href}
