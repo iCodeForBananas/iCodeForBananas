@@ -104,22 +104,8 @@ const TONES: Tone[] = [
 // ─── Page ─────────────────────────────────────────────────────
 
 export default function WordsmithPage() {
-  const [notes, setNotes] = useState<Note[]>(() => {
-    if (typeof window === 'undefined') return [];
-    const saved = localStorage.getItem('wordsmith-notes');
-    const parsedNotes = saved ? JSON.parse(saved) : [];
-    if (parsedNotes.length === 0) {
-      const welcomeNote: Note = {
-        id: uuidv4(),
-        title: 'Welcome to Wordsmith',
-        content:
-          'This is your new writing environment.\n\nType here to start writing.\nUse the AI on the right to help you edit, rewrite, or brainstorm.\n\nTry asking the AI: "Rewrite this to be more professional" or "Fix the grammar".',
-        updatedAt: new Date().toISOString(),
-      };
-      return [welcomeNote];
-    }
-    return parsedNotes;
-  });
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const [templates, setTemplates] = useState<Template[]>(() => {
     if (typeof window === 'undefined') return DEFAULT_TEMPLATES;
@@ -164,11 +150,6 @@ export default function WordsmithPage() {
     setActiveToneId(null);
   }, [activeNoteId]);
 
-  // Persist notes
-  useEffect(() => {
-    localStorage.setItem('wordsmith-notes', JSON.stringify(notes));
-  }, [notes]);
-
   // Persist templates
   useEffect(() => {
     localStorage.setItem('wordsmith-templates', JSON.stringify(templates));
@@ -177,13 +158,13 @@ export default function WordsmithPage() {
   const activeNote = notes.find((n) => n.id === activeNoteId) || null;
   const activeTone = TONES.find((t) => t.id === activeToneId);
 
-  // Load from Supabase on mount and merge with localStorage
+  // Load notes from Supabase on mount — DB is the source of truth
   useEffect(() => {
     const init = async () => {
       const supabase = createClient();
-      if (!supabase) return;
+      if (!supabase) { setLoading(false); return; }
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      if (!session) { setLoading(false); return; }
       const uid = session.user.id;
       setUserId(uid);
 
@@ -193,41 +174,64 @@ export default function WordsmithPage() {
         .eq('user_id', uid)
         .order('updated_at', { ascending: false });
 
-      if (!dbNotes) return;
+      // One-time migration: move any localStorage notes not yet in DB, then clear localStorage
+      const lsRaw = localStorage.getItem('wordsmith-notes');
+      if (lsRaw) {
+        try {
+          type LsNote = { id: string; title: string; content: string; prompt?: string; updatedAt: string };
+          const lsNotes: LsNote[] = JSON.parse(lsRaw);
+          const dbIds = new Set((dbNotes ?? []).map((n: { id: string }) => n.id));
+          const toMigrate = lsNotes.filter(n => !dbIds.has(n.id));
+          if (toMigrate.length > 0) {
+            await supabase.from('notes').upsert(
+              toMigrate.map(n => ({
+                id: n.id,
+                user_id: uid,
+                title: n.title,
+                content: n.content,
+                prompt: n.prompt ?? null,
+                updated_at: n.updatedAt,
+              })),
+              { onConflict: 'id' }
+            );
+          }
+        } catch { /* ignore malformed data */ }
+        localStorage.removeItem('wordsmith-notes');
+      }
 
-      setNotes(prev => {
-        const localIds = new Set(prev.map(n => n.id));
-        const dbIds = new Set(dbNotes.map((n: { id: string }) => n.id));
+      // Re-fetch after potential migration
+      const { data: allNotes } = await supabase
+        .from('notes')
+        .select('id, title, content, prompt, updated_at')
+        .eq('user_id', uid)
+        .order('updated_at', { ascending: false });
 
-        // Upsert localStorage-only notes to Supabase
-        const localOnly = prev.filter(n => !dbIds.has(n.id));
-        if (localOnly.length > 0) {
-          supabase.from('notes').upsert(
-            localOnly.map(n => ({
-              id: n.id,
-              user_id: uid,
-              title: n.title,
-              content: n.content,
-              prompt: n.prompt ?? null,
-              updated_at: n.updatedAt,
-            })),
-            { onConflict: 'id' }
-          );
-        }
-
-        // Add DB-only notes to local state
-        const dbOnly = dbNotes
-          .filter((n: { id: string }) => !localIds.has(n.id))
-          .map((n: { id: string; title: string; content: string; prompt?: string; updated_at: string }) => ({
-            id: n.id,
-            title: n.title,
-            content: n.content,
-            prompt: n.prompt || undefined,
-            updatedAt: n.updated_at,
-          }));
-
-        return dbOnly.length > 0 ? [...prev, ...dbOnly] : prev;
-      });
+      if (!allNotes || allNotes.length === 0) {
+        const welcomeNote: Note = {
+          id: uuidv4(),
+          title: 'Welcome to Wordsmith',
+          content:
+            'This is your new writing environment.\n\nType here to start writing.\nUse the AI on the right to help you edit, rewrite, or brainstorm.\n\nTry asking the AI: "Rewrite this to be more professional" or "Fix the grammar".',
+          updatedAt: new Date().toISOString(),
+        };
+        await supabase.from('notes').insert({
+          id: welcomeNote.id,
+          user_id: uid,
+          title: welcomeNote.title,
+          content: welcomeNote.content,
+          updated_at: welcomeNote.updatedAt,
+        });
+        setNotes([welcomeNote]);
+      } else {
+        setNotes(allNotes.map((n: { id: string; title: string; content: string; prompt?: string; updated_at: string }) => ({
+          id: n.id,
+          title: n.title,
+          content: n.content,
+          prompt: n.prompt || undefined,
+          updatedAt: n.updated_at,
+        })));
+      }
+      setLoading(false);
     };
     init();
   }, []);
@@ -474,6 +478,28 @@ Do not just print the new text in the chat. Wrap it in the tags so the system ca
   void versionTimeoutRef;
 
   // ─── Render ───────────────────────────────────────────────────
+
+  if (loading) {
+    return (
+      <div data-theme={theme} className="flex flex-col flex-1 items-center justify-center bg-slate-50 dark:bg-slate-950">
+        <p className="text-slate-400 dark:text-slate-500 text-sm">Loading your documents…</p>
+      </div>
+    );
+  }
+
+  if (!userId) {
+    return (
+      <div data-theme={theme} className="flex flex-col flex-1 items-center justify-center gap-4 bg-slate-50 dark:bg-slate-950">
+        <p className="text-slate-600 dark:text-slate-400 text-base">Sign in to access your Wordsmith documents.</p>
+        <a
+          href="/login?returnTo=/wordsmith"
+          className="px-6 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium text-sm"
+        >
+          Sign In
+        </a>
+      </div>
+    );
+  }
 
   return (
     <div data-theme={theme} className='flex flex-col flex-1'>
