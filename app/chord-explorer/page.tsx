@@ -17,6 +17,7 @@ import {
 } from "../lib/chordShapes";
 import ChordDiagram from "../components/ChordDiagram";
 import BentoPageLayout from "../components/BentoPageLayout";
+import ScaleTool from "../components/ScaleTool";
 import { useFavoriteChords } from "../lib/FavoriteChordsContext";
 
 // ── Chord type groups ─────────────────────────────────────────────────────────
@@ -369,6 +370,14 @@ export default function ChordExplorerPage() {
             ))}
           </div>
         )}
+      </section>
+
+      {/* ── Scale Tool ───────────────────────────────────────────────────────── */}
+      <section className="mt-10">
+        <div className="border-t border-[#1A1B1E]/10 pt-10">
+          <SectionHeading>Scale Tool</SectionHeading>
+          <ScaleTool />
+        </div>
       </section>
 
     </BentoPageLayout>
