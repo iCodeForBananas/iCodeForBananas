@@ -105,7 +105,7 @@ export function ChordLyricLine({
   if (!hasChords) {
     return (
       <p
-        className={`font-mono whitespace-pre ${large ? "text-2xl" : "text-base"} leading-relaxed`}
+        className={`font-mono whitespace-pre ${large ? "text-[1.5em]" : "text-[1em]"} leading-relaxed`}
         style={{ color: "#000" }}
       >
         {line || "\u00A0"}
@@ -114,7 +114,7 @@ export function ChordLyricLine({
   }
 
   return (
-    <p className={`font-mono whitespace-pre-wrap ${large ? "text-2xl" : "text-base"} leading-relaxed`}>
+    <p className={`font-mono whitespace-pre-wrap ${large ? "text-[1.5em]" : "text-[1em]"} leading-relaxed`}>
       {segments.map((seg, i) => (
         <span key={i}>
           {seg.chord && (

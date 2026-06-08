@@ -91,6 +91,29 @@ body {
   color: var(--selection-text);
 }
 
+/* ── Print layout ─────────────────────────────────────────────────────────
+   Lets pages render a hidden "print view" (className="hidden print:block")
+   that becomes the only visible content when printing — the app shell's
+   fixed-height/overflow constraints are relaxed so it can paginate naturally. */
+@media print {
+  @page {
+    margin: 1.5cm;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  #app-shell,
+  #main-content {
+    display: block !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+}
+
 /* Silent Metronome animated background */
 .metronome-bg {
   position: fixed;

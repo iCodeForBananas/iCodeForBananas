@@ -104,7 +104,7 @@ export default function Sidebar() {
       {!isOpen && (
         <button
           onClick={toggle}
-          className='fixed top-0 left-0 z-[60] px-3 flex items-center'
+          className='fixed top-0 left-0 z-[60] px-3 flex items-center print:hidden'
           style={{
             height: "42px",
             background: "#facc15",
@@ -125,10 +125,10 @@ export default function Sidebar() {
         </button>
       )}
 
-      {isOpen && isMobile && <div className='fixed inset-0 bg-black/50 z-30 lg:hidden' onClick={toggle} />}
+      {isOpen && isMobile && <div className='fixed inset-0 bg-black/50 z-30 lg:hidden print:hidden' onClick={toggle} />}
 
       <aside
-        className={`fixed lg:relative h-screen flex flex-col z-40 ${isOpen ? "w-64 translate-x-0" : "w-0 -translate-x-full lg:w-0 overflow-hidden"}`}
+        className={`fixed lg:relative h-screen flex flex-col z-40 print:hidden ${isOpen ? "w-64 translate-x-0" : "w-0 -translate-x-full lg:w-0 overflow-hidden"}`}
         style={{
           background: "#facc15",
           color: "var(--bg-secondary)",
