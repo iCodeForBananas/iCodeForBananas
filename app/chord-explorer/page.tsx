@@ -31,6 +31,29 @@ const TYPE_GROUPS = [
 
 type ChordType = (typeof TYPE_GROUPS)[number]["types"][number];
 
+const CHORD_TYPE_TOOLTIPS: Record<string, string> = {
+  Major: "Happy and bright — the most common chord type. A great starting point for any beginner",
+  Minor: "Darker and more emotional — perfect for moody or dramatic songs",
+  Maj7:  "A Major chord with an added major 7th — sounds rich and jazzy",
+  "7":   "A dominant 7th — bluesy and slightly tense, like a chord that 'wants' to move somewhere",
+  m7:    "A minor 7th — smooth and mellow, very common in jazz and R&B",
+  Sus2:  "Suspended: replaces the middle note with the 2nd — creates an open, floating sound",
+  Sus4:  "Suspended: replaces the middle note with the 4th — creates suspense that wants to resolve",
+  Add9:  "A major chord with an added 9th — lush and colorful without being too complex",
+  "6":   "A major chord with an added 6th — bright and sweet-sounding",
+  "9":   "A dominant 9th — colorful and jazzy, very common in funk",
+  Maj9:  "A major 7th with an added 9th — dreamy and lush",
+  "13":  "A dominant chord stacked high — very jazzy and full of color",
+  Maj13: "A major chord built all the way to the 13th — rich, complex jazz voicing",
+};
+
+const GROUP_TOOLTIPS: Record<string, string> = {
+  Triads:        "Three-note chords — the foundation of all harmony. Major and Minor are the two you'll use most",
+  "7th Chords":  "Four-note chords with an added 7th — common in jazz, blues, and R&B",
+  "Sus / Add":   "Chords that swap or add one note for an open, unresolved, or colorful sound",
+  Extended:      "Chords built by stacking more notes beyond the 7th — used in jazz for rich, sophisticated harmony",
+};
+
 // ── Format helpers ────────────────────────────────────────────────────────────
 
 const formatChordLabel = (note: string, type: string) => {
@@ -146,6 +169,12 @@ const getInversions = (note: string, voicing: InvVoicing) => {
 
 // ── Chord diagram card ────────────────────────────────────────────────────────
 
+const VOICING_LABEL_TOOLTIPS: Record<string, string> = {
+  "Open / Standard": "A standard open chord — uses open (unfretted) strings, typically the easiest to play",
+  "E-Shape Barre":   "A moveable barre chord using the E chord template — press all strings with your index finger and slide this shape up the neck to change the key",
+  "A-Shape Barre":   "A moveable barre chord using the A chord template — very common moveable shape for guitar",
+};
+
 function VoicingCard({
   shape,
   chordLabel,
@@ -159,20 +188,43 @@ function VoicingCard({
   position?: string;
   useFlats: boolean;
 }) {
+  const sublabelTitle =
+    VOICING_LABEL_TOOLTIPS[sublabel] ??
+    (sublabel.startsWith("Open Alt")
+      ? "An alternate open chord shape — a different fingering for the same chord near the nut"
+      : sublabel.startsWith("Strings ")
+      ? `A three-note voicing on ${sublabel.replace("Strings ", "strings ")} of the guitar`
+      : undefined);
+
+  const positionTitle = !position
+    ? undefined
+    : position === "Open"
+    ? "This shape starts at the open position, near the headstock of the guitar"
+    : `This shape starts at fret ${position.replace("fr", "")} — slide your fretting hand up the neck to this position`;
+
   return (
     <div className="flex flex-col items-center gap-1">
       <ChordDiagram shape={shape} label={chordLabel} useFlats={useFlats} />
-      <span className="text-xs font-medium text-[#1A1B1E]/60 text-center">{sublabel}</span>
-      {position && <span className="text-xs text-[#1A1B1E]/35 text-center">{position}</span>}
+      <span className="text-xs font-medium text-[#1A1B1E]/60 text-center" title={sublabelTitle}>
+        {sublabel}
+      </span>
+      {position && (
+        <span className="text-xs text-[#1A1B1E]/35 text-center" title={positionTitle}>
+          {position}
+        </span>
+      )}
     </div>
   );
 }
 
 // ── Section heading ───────────────────────────────────────────────────────────
 
-function SectionHeading({ children }: { children: React.ReactNode }) {
+function SectionHeading({ children, tooltip }: { children: React.ReactNode; tooltip?: string }) {
   return (
-    <h3 className="text-xs font-semibold text-[#1A1B1E]/50 uppercase tracking-wider mb-4">
+    <h3
+      className={`text-sm font-bold text-[#1A1B1E]/70 uppercase tracking-wide mb-4${tooltip ? " cursor-help" : ""}`}
+      title={tooltip}
+    >
       {children}
     </h3>
   );
@@ -214,78 +266,99 @@ export default function ChordExplorerPage() {
   return (
     <BentoPageLayout title="Chord Explorer">
 
-      {/* ── Controls ───────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+      {/* ── Controls card ──────────────────────────────────────────────────── */}
+      <div className="bg-gray-50 border border-gray-200 rounded-xl p-5 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-        {/* Root note */}
-        <div>
-          <p className="text-xs font-semibold text-[#1A1B1E]/50 uppercase tracking-wider mb-2">Root Note</p>
-          <div className="flex flex-wrap gap-2">
-            {displayNotes.map((note) => {
-              const active =
-                selectedNote === note ||
-                (flatToSharp[selectedNote] ?? selectedNote) === (flatToSharp[note] ?? note);
-              return (
-                <button
-                  key={note}
-                  onClick={() => handleNoteClick(note)}
-                  className={`px-3 py-1 rounded border text-sm transition-colors ${
-                    active ? "bg-accent/20 border-accent font-medium" : "border-border hover:bg-foreground/10"
-                  }`}
-                >
-                  {note}
-                </button>
-              );
-            })}
-            <span className="mx-1 text-[#1A1B1E]/30 self-center">|</span>
-            <button
-              onClick={handleFlatsToggle}
-              className={`px-3 py-1 rounded border text-sm transition-colors ${
-                useFlats ? "bg-accent/20 border-accent font-medium" : "border-border hover:bg-foreground/10"
-              }`}
+          {/* Root note */}
+          <div>
+            <p
+              className="text-xs font-semibold text-[#1A1B1E]/50 uppercase tracking-wider mb-2"
+              title="The starting note of your chord — this is what gives the chord its name (e.g. choosing C builds a C Major chord)"
             >
-              ♭ Flats
-            </button>
+              Root Note
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {displayNotes.map((note) => {
+                const active =
+                  selectedNote === note ||
+                  (flatToSharp[selectedNote] ?? selectedNote) === (flatToSharp[note] ?? note);
+                return (
+                  <button
+                    key={note}
+                    onClick={() => handleNoteClick(note)}
+                    title={`Select ${note} as your root note — builds a ${formatChordLabel(note, selectedType)} chord`}
+                    className={`px-3 py-1 rounded border text-sm transition-colors ${
+                      active ? "bg-accent/20 border-accent font-medium" : "border-border hover:bg-foreground/10"
+                    }`}
+                  >
+                    {note}
+                  </button>
+                );
+              })}
+              <span className="mx-1 text-[#1A1B1E]/30 self-center">|</span>
+              <button
+                onClick={handleFlatsToggle}
+                title="Toggle between sharp (♯) and flat (♭) note names — these are the same pitches written two different ways (e.g. F♯ and G♭ are the exact same note)"
+                className={`px-3 py-1 rounded border text-sm transition-colors ${
+                  useFlats ? "bg-accent/20 border-accent font-medium" : "border-border hover:bg-foreground/10"
+                }`}
+              >
+                ♭ Flats
+              </button>
+            </div>
           </div>
-        </div>
 
-        {/* Chord type */}
-        <div>
-          <p className="text-xs font-semibold text-[#1A1B1E]/50 uppercase tracking-wider mb-2">Chord Type</p>
-          <div className="grid grid-cols-2 gap-x-6 gap-y-3">
-            {TYPE_GROUPS.map((group) => (
-              <div key={group.label}>
-                <p className="text-xs text-[#1A1B1E]/40 mb-1.5">{group.label}</p>
-                <div className="flex flex-wrap gap-1">
-                  {group.types.map((type) => (
-                    <button
-                      key={type}
-                      onClick={() => setSelectedType(type)}
-                      className={`px-2.5 py-0.5 rounded border text-xs transition-colors ${
-                        selectedType === type
-                          ? "bg-accent/20 border-accent font-medium"
-                          : "border-border hover:bg-foreground/10"
-                      }`}
-                    >
-                      {type}
-                    </button>
-                  ))}
+          {/* Chord type */}
+          <div>
+            <p
+              className="text-xs font-semibold text-[#1A1B1E]/50 uppercase tracking-wider mb-2"
+              title="The flavor of the chord — different types have very different sounds. Major sounds happy, Minor sounds darker, and the rest add color and complexity"
+            >
+              Chord Type
+            </p>
+            <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+              {TYPE_GROUPS.map((group) => (
+                <div key={group.label}>
+                  <p
+                    className="text-xs text-[#1A1B1E]/40 mb-1.5"
+                    title={GROUP_TOOLTIPS[group.label]}
+                  >
+                    {group.label}
+                  </p>
+                  <div className="flex flex-wrap gap-1">
+                    {group.types.map((type) => (
+                      <button
+                        key={type}
+                        onClick={() => setSelectedType(type)}
+                        title={CHORD_TYPE_TOOLTIPS[type] ?? type}
+                        className={`px-2.5 py-0.5 rounded border text-xs transition-colors ${
+                          selectedType === type
+                            ? "bg-accent/20 border-accent font-medium"
+                            : "border-border hover:bg-foreground/10"
+                        }`}
+                      >
+                        {type}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
       </div>
 
       {/* ── Chord name ──────────────────────────────────────────────────────── */}
-      <h2 className="text-2xl font-bold mb-6" style={{ color: "#000" }}>
+      <h2 className="text-2xl font-bold mb-5 mt-1" style={{ color: "#000" }}>
         {chordLabel}
       </h2>
 
       {/* ── Voicings & Positions ─────────────────────────────────────────────── */}
-      <section className="mb-10">
-        <SectionHeading>Voicings &amp; Positions</SectionHeading>
-        <p className="text-sm text-[#1A1B1E]/40 mb-5 -mt-2">Click a diagram to add it to your progression</p>
+      <section className="bg-gray-50 border border-gray-200 rounded-xl p-5 mb-6">
+        <SectionHeading tooltip="Different ways to play this chord on the fretboard — each voicing has its own character and suits different musical situations. Click any diagram to add it to your progression.">
+          Voicings &amp; Positions
+        </SectionHeading>
         {voicings.length > 0 ? (
           <div className="grid gap-6" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))" }}>
             {voicings.map((v, i) => (
@@ -305,51 +378,79 @@ export default function ChordExplorerPage() {
       </section>
 
       {/* ── Inversions ───────────────────────────────────────────────────────── */}
-      <section className="mb-10">
-        <SectionHeading>Inversions</SectionHeading>
+      <section className="bg-gray-50 border border-gray-200 rounded-xl p-5 mb-6">
+        <SectionHeading tooltip="The same chord notes rearranged so a different note is on the bottom — inversions give the same chord a subtly different sound and feel. Shown as tight three-note voicings on adjacent string sets.">
+          Inversions
+        </SectionHeading>
         {inversions ? (
-          <>
-            <p className="text-sm text-[#1A1B1E]/40 mb-5 -mt-2">
-              Triad voicings on three-string sets — click any to favorite
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
-              {[
-                { key: "root", title: "Root Position", subtitle: "1 – 3 – 5", items: inversions.root },
-                { key: "first", title: "1st Inversion", subtitle: "3 – 5 – 1", items: inversions.first },
-                { key: "second", title: "2nd Inversion", subtitle: "5 – 1 – 3", items: inversions.second },
-              ].map((inv) => (
-                <div key={inv.key} className="flex flex-col gap-1">
-                  <span className="text-sm font-semibold text-[#1A1B1E]">{inv.title}</span>
-                  <span className="text-xs text-[#1A1B1E]/40 mb-4">{inv.subtitle}</span>
-                  <div className="grid gap-6" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))" }}>
-                    {inv.items.map((item, i) => (
-                      <VoicingCard
-                        key={i}
-                        shape={item.shape}
-                        chordLabel={`${chordLabel} ${inv.title}`}
-                        sublabel={item.strings}
-                        useFlats={useFlats}
-                      />
-                    ))}
-                  </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
+            {[
+              {
+                key: "root",
+                title: "Root Position",
+                subtitle: "1 – 3 – 5",
+                tooltip: "The chord in its natural order — the root note (the note that names the chord) is the lowest note played",
+                items: inversions.root,
+              },
+              {
+                key: "first",
+                title: "1st Inversion",
+                subtitle: "3 – 5 – 1",
+                tooltip: "The 3rd of the chord is now the lowest note — gives the chord a slightly lighter, softer feel",
+                items: inversions.first,
+              },
+              {
+                key: "second",
+                title: "2nd Inversion",
+                subtitle: "5 – 1 – 3",
+                tooltip: "The 5th of the chord is the lowest note — creates a more open, floating sound that works great as a passing chord",
+                items: inversions.second,
+              },
+            ].map((inv) => (
+              <div key={inv.key} className="flex flex-col gap-1">
+                <span
+                  className="text-sm font-semibold text-[#1A1B1E]"
+                  title={inv.tooltip}
+                >
+                  {inv.title}
+                </span>
+                <span
+                  className="text-xs text-[#1A1B1E]/40 mb-4"
+                  title="The scale degrees played from lowest to highest string — 1 is the root, 3 is the third, 5 is the fifth"
+                >
+                  {inv.subtitle}
+                </span>
+                <div className="grid gap-6" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))" }}>
+                  {inv.items.map((item, i) => (
+                    <VoicingCard
+                      key={i}
+                      shape={item.shape}
+                      chordLabel={`${chordLabel} ${inv.title}`}
+                      sublabel={item.strings}
+                      useFlats={useFlats}
+                    />
+                  ))}
                 </div>
-              ))}
-            </div>
-          </>
+              </div>
+            ))}
+          </div>
         ) : (
-          <p className="text-sm text-[#1A1B1E]/40 -mt-2">
+          <p className="text-sm text-[#1A1B1E]/40">
             Inversion voicings are available for Major and Minor chords. Select one to explore.
           </p>
         )}
       </section>
 
       {/* ── My Progression ───────────────────────────────────────────────────── */}
-      <section>
+      <section className="bg-gray-50 border border-gray-200 rounded-xl p-5 mb-6">
         <div className="flex items-center gap-3 mb-4">
-          <SectionHeading>My Progression</SectionHeading>
+          <SectionHeading tooltip="A sequence of chords played one after another — the backbone of most songs. Click any chord diagram above to add it here, then try playing through them in order.">
+            My Progression
+          </SectionHeading>
           {favorites.length > 0 && (
             <button
               onClick={clear}
+              title="Remove all chords from your progression and start fresh"
               className="text-xs text-[#1A1B1E]/35 hover:text-red-400 transition-colors -mt-4"
             >
               Clear all
@@ -364,7 +465,12 @@ export default function ChordExplorerPage() {
           <div className="grid gap-6" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))" }}>
             {favorites.map((fav, i) => (
               <div key={fav.id} className="flex flex-col items-center gap-1">
-                <span className="text-xs font-mono text-[#1A1B1E]/30">{i + 1}</span>
+                <span
+                  className="text-xs font-mono text-[#1A1B1E]/30"
+                  title={`Chord ${i + 1} in your progression`}
+                >
+                  {i + 1}
+                </span>
                 <ChordDiagram shape={fav.shape} label={fav.label} useFlats={useFlats} />
               </div>
             ))}
@@ -373,11 +479,11 @@ export default function ChordExplorerPage() {
       </section>
 
       {/* ── Scale Tool ───────────────────────────────────────────────────────── */}
-      <section className="mt-10">
-        <div className="border-t border-[#1A1B1E]/10 pt-10">
-          <SectionHeading>Scale Tool</SectionHeading>
-          <ScaleTool />
-        </div>
+      <section className="bg-gray-50 border border-gray-200 rounded-xl p-5">
+        <SectionHeading tooltip="See every note of a scale laid out across all six strings and every fret — great for understanding where you can solo or add a melody over your chord progression.">
+          Scale Tool
+        </SectionHeading>
+        <ScaleTool />
       </section>
 
     </BentoPageLayout>

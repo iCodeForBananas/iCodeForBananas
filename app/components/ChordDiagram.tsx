@@ -10,6 +10,15 @@ interface ChordDiagramProps {
   dotColor?: string;
 }
 
+const STRING_NAMES = [
+  "low E (6th string)",
+  "A (5th string)",
+  "D (4th string)",
+  "G (3rd string)",
+  "B (2nd string)",
+  "high e (1st string)",
+];
+
 export default function ChordDiagram({ shape, label, useFlats = false, dotColor = "#facc15" }: ChordDiagramProps) {
   const { toggle, isFavorite } = useFavoriteChords();
   const noteNames = useFlats ? flatNotes : sharpNotes;
@@ -36,8 +45,12 @@ export default function ChordDiagram({ shape, label, useFlats = false, dotColor 
   const diagramWidth = stringSpacing * 5 + 20;
   const diagramHeight = fretSpacing * displayFrets + 40;
 
+  const diagramTitle = label
+    ? `Click to ${favorited ? "remove" : "add"} "${label}" ${favorited ? "from" : "to"} your progression`
+    : "Click to add this chord to your progression";
+
   return (
-    <div className="flex flex-col items-center cursor-pointer group" onClick={handleClick}>
+    <div className="flex flex-col items-center cursor-pointer group" onClick={handleClick} title={diagramTitle}>
       {label && (
         <h6 className="text-center mb-1 font-semibold text-sm flex items-center gap-1 text-[#1A1B1E]">
           {label} <span className={`text-xs ${favorited ? "text-red-500" : "text-transparent group-hover:text-red-300"}`}>♥</span>
@@ -47,14 +60,23 @@ export default function ChordDiagram({ shape, label, useFlats = false, dotColor 
         {favorited && <div className="absolute -top-1 -right-1 w-4 h-4 text-red-500 text-xs z-10">♥</div>}
         <div className="relative" style={{ height: "16px", marginBottom: "2px" }}>
           {shape.frets.map((fret, i) => (
-            <span key={i} className="absolute text-center text-xs font-medium"
+            <span
+              key={i}
+              className="absolute text-center text-xs font-medium"
+              title={fret === -1 ? `Don't play the ${STRING_NAMES[i]} — mute this string` : undefined}
               style={{ left: `${i * stringSpacing + 10}px`, transform: "translateX(-50%)", color: fret === -1 ? "#000" : "transparent" }}>
               {fret === -1 ? "✕" : ""}
             </span>
           ))}
         </div>
         {startFret > 1 && (
-          <span className="absolute text-xs font-medium text-[#1A1B1E]/50" style={{ left: `${diagramWidth + 2}px`, top: "24px" }}>{startFret}fr</span>
+          <span
+            className="absolute text-xs font-medium text-[#1A1B1E]/50"
+            title={`This chord shape starts at fret ${startFret} — slide your fretting hand up the neck to this position`}
+            style={{ left: `${diagramWidth + 2}px`, top: "24px" }}
+          >
+            {startFret}fr
+          </span>
         )}
         {[0, 1, 2, 3, 4, 5].map((si) => (
           <div key={si} className="absolute bg-[#1A1B1E]/40" style={{ left: `${si * stringSpacing + 10}px`, top: "20px", width: "1px", height: `${fretSpacing * displayFrets}px`, zIndex: 1 }} />
@@ -69,16 +91,24 @@ export default function ChordDiagram({ shape, label, useFlats = false, dotColor 
           const dotSize = 18;
           if (fretNum === 0) {
             return (
-              <div key={si} className="absolute rounded-full flex items-center justify-center font-bold"
-                style={{ left: `${si * stringSpacing + 10 - dotSize / 2}px`, top: `${20 - dotSize - 2}px`, width: `${dotSize}px`, height: `${dotSize}px`, fontSize: "9px", zIndex: 2, backgroundColor: dotColor, border: `2px solid ${dotColor}`, color: "#1A1B1E" }}>
+              <div
+                key={si}
+                className="absolute rounded-full flex items-center justify-center font-bold"
+                title={`Play the ${STRING_NAMES[si]} open (no frets pressed) — sounds the note ${note}`}
+                style={{ left: `${si * stringSpacing + 10 - dotSize / 2}px`, top: `${20 - dotSize - 2}px`, width: `${dotSize}px`, height: `${dotSize}px`, fontSize: "9px", zIndex: 2, backgroundColor: dotColor, border: `2px solid ${dotColor}`, color: "#1A1B1E" }}
+              >
                 {note}
               </div>
             );
           }
           const displayPos = fretNum - startFret;
           return (
-            <div key={si} className="absolute rounded-full flex items-center justify-center font-bold"
-              style={{ left: `${si * stringSpacing + 10 - dotSize / 2}px`, top: `${20 + displayPos * fretSpacing + fretSpacing / 2 - dotSize / 2}px`, width: `${dotSize}px`, height: `${dotSize}px`, fontSize: "9px", zIndex: 2, backgroundColor: dotColor, color: "#1A1B1E" }}>
+            <div
+              key={si}
+              className="absolute rounded-full flex items-center justify-center font-bold"
+              title={`Press the ${STRING_NAMES[si]} at fret ${fretNum} — plays the note ${note}`}
+              style={{ left: `${si * stringSpacing + 10 - dotSize / 2}px`, top: `${20 + displayPos * fretSpacing + fretSpacing / 2 - dotSize / 2}px`, width: `${dotSize}px`, height: `${dotSize}px`, fontSize: "9px", zIndex: 2, backgroundColor: dotColor, color: "#1A1B1E" }}
+            >
               {note}
             </div>
           );

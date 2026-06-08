@@ -92,46 +92,49 @@ export default function ScaleTool() {
     <div className="flex flex-col gap-5 min-w-0">
       {/* Controls */}
       <div className="flex flex-wrap gap-4 items-end">
-        <label className="flex flex-col gap-1">
+        <label className="flex flex-col gap-1" title="The starting note of the scale — all other notes are built relative to this one">
           <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#888" }}>
             Root Key
           </span>
           <select
             value={rootKey}
             onChange={e => { setRootKey(e.target.value); localStorage.setItem("st-root", e.target.value); }}
+            title="Choose the root note — this is the 'home base' note that the scale is built around"
             style={selStyle}
           >
             {ROOT_KEYS.map(k => <option key={k} value={k}>{k}</option>)}
           </select>
         </label>
 
-        <label className="flex flex-col gap-1">
+        <label className="flex flex-col gap-1" title="The type of scale — each scale has a unique pattern of notes that gives it a distinctive sound and mood">
           <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#888" }}>
             Scale
           </span>
           <select
             value={scaleType}
             onChange={e => { setScaleType(e.target.value); localStorage.setItem("st-scale", e.target.value); }}
+            title="Choose a scale type — Major sounds bright and happy, Minor sounds darker, Pentatonic is great for beginners and soloing"
             style={selStyle}
           >
             {Object.keys(SCALE_TYPES).map(s => <option key={s} value={s}>{s}</option>)}
           </select>
         </label>
 
-        <label className="flex flex-col gap-1">
+        <label className="flex flex-col gap-1" title="How your guitar strings are tuned from low E to high e — Standard EADGBE is the most common tuning for beginners">
           <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#888" }}>
             Tuning
           </span>
           <select
             value={tuningName}
             onChange={e => { setTuningName(e.target.value); localStorage.setItem("st-tuning", e.target.value); }}
+            title="Choose your guitar's tuning — this changes which notes appear on each string and fret"
             style={selStyle}
           >
             {Object.keys(TUNINGS).map(t => <option key={t} value={t}>{t}</option>)}
           </select>
         </label>
 
-        <label className="flex flex-col gap-1.5">
+        <label className="flex flex-col gap-1.5" title="How many frets to display on the neck — drag to see more or fewer positions">
           <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#888" }}>
             Frets: {numFrets}
           </span>
@@ -145,6 +148,7 @@ export default function ScaleTool() {
               setNumFrets(v);
               localStorage.setItem("st-frets", String(v));
             }}
+            title="Drag to show more or fewer frets on the neck — higher frets = higher pitch"
             className="accent-yellow-400 w-36"
           />
         </label>
@@ -208,8 +212,12 @@ export default function ScaleTool() {
               const note = getNoteAt(openNote, col);
               if (!scaleNotes.has(note)) return null;
               const isRoot = note === rootKey;
+              const dotLabel = isRoot
+                ? `Root note — ${note} (the home base of the ${rootKey} ${scaleType} scale)${col === 0 ? ", open string" : `, fret ${col}`}`
+                : `Scale note — ${note}${col === 0 ? ", open string" : `, fret ${col}`}`;
               return (
                 <g key={`${s}-${col}`}>
+                  <title>{dotLabel}</title>
                   <circle
                     cx={cx(col)} cy={cy(s)} r={DR}
                     fill={isRoot ? "#f59e0b" : "#facc15"}
@@ -285,6 +293,11 @@ export default function ScaleTool() {
               <div
                 key={i}
                 className="flex flex-col items-center rounded-lg px-3 py-2"
+                title={
+                  note === rootKey
+                    ? `${note} — the root note (degree ${degree}), the 'home base' of this scale`
+                    : `${note} — scale degree ${degree}`
+                }
                 style={{
                   background: note === rootKey ? "#f59e0b" : "#facc15",
                   minWidth: 44,
