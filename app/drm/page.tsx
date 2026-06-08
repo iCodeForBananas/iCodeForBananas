@@ -46,10 +46,11 @@ interface Person {
 interface DateEntry {
   id: string;
   person_id: string;
-  date: string;
+  date: string | null;
   location: string | null;
   notes: string | null;
   rating: number | null;
+  is_planned: boolean;
   created_at: string;
 }
 
@@ -500,6 +501,16 @@ function PersonCard({
         </p>
       )}
 
+      {/* Planned date idea */}
+      {(() => {
+        const planned = person.dates.find((d) => d.is_planned);
+        return planned ? (
+          <p style={{ fontSize: 10, color: C.accent, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            ◈ {planned.location}{planned.date ? ` · ${format(parseISO(planned.date), "MMM d")}` : ""}
+          </p>
+        ) : null;
+      })()}
+
       {/* Accountability prompts */}
       {stagnant && (
         <p style={{ fontSize: 10, color: C.yellow, margin: 0, fontStyle: "italic" }}>
@@ -652,14 +663,20 @@ function DetailDrawer({
   onUpdate,
   onUpdateFlag,
   onAddDate,
+  onCompleteDate,
+  onDeleteDate,
   onDeletePerson,
+  dateIdeas,
 }: {
   person: PersonData;
   onClose: () => void;
   onUpdate: (id: string, fields: Partial<Person>) => Promise<void>;
   onUpdateFlag: (type: "green" | "red", flagId: string, checked: boolean) => Promise<void>;
   onAddDate: (entry: Omit<DateEntry, "id" | "person_id" | "created_at">) => Promise<void>;
+  onCompleteDate: (dateId: string, rating: number | null) => Promise<void>;
+  onDeleteDate: (dateId: string) => Promise<void>;
   onDeletePerson: (id: string) => Promise<void>;
+  dateIdeas: string[];
 }) {
   const compat = calcCompatibility(person);
   const momentum = getMomentum(person.last_contact, person.stage);
@@ -679,6 +696,15 @@ function DetailDrawer({
   const [dRating, setDRating] = useState<number | null>(null);
   const [savingDate, setSavingDate] = useState(false);
 
+  const [showPlanForm, setShowPlanForm] = useState(false);
+  const [planIdea, setPlanIdea] = useState("");
+  const [planDate, setPlanDate] = useState("");
+  const [planNotes, setPlanNotes] = useState("");
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [savingPlan, setSavingPlan] = useState(false);
+  const [completingId, setCompletingId] = useState<string | null>(null);
+  const [completeRating, setCompleteRating] = useState<number | null>(null);
+
   useEffect(() => {
     setProfileNotes(person.profile_notes ?? "");
     setReflNotes(person.reflection_notes ?? "");
@@ -689,7 +715,7 @@ function DetailDrawer({
   async function submitDate() {
     if (!dDate || savingDate) return;
     setSavingDate(true);
-    await onAddDate({ date: dDate, location: dLoc || null, notes: dNotes || null, rating: dRating });
+    await onAddDate({ date: dDate, location: dLoc || null, notes: dNotes || null, rating: dRating, is_planned: false });
     setDDate(today());
     setDLoc("");
     setDNotes("");
@@ -698,9 +724,38 @@ function DetailDrawer({
     setSavingDate(false);
   }
 
+  async function submitPlan() {
+    if (!planIdea.trim() || savingPlan) return;
+    setSavingPlan(true);
+    await onAddDate({
+      date: planDate || null,
+      location: planIdea.trim(),
+      notes: planNotes || null,
+      rating: null,
+      is_planned: true,
+    });
+    setPlanIdea("");
+    setPlanDate("");
+    setPlanNotes("");
+    setShowPlanForm(false);
+    setSavingPlan(false);
+  }
+
   const sortedDates = useMemo(
-    () => [...person.dates].sort((a, b) => b.date.localeCompare(a.date)),
+    () => [...person.dates].sort((a, b) => {
+      if (a.is_planned !== b.is_planned) return a.is_planned ? -1 : 1;
+      if (!a.date) return -1;
+      if (!b.date) return 1;
+      return b.date.localeCompare(a.date);
+    }),
     [person.dates],
+  );
+
+  const filteredSuggestions = useMemo(
+    () => planIdea.length > 0
+      ? dateIdeas.filter((s) => s.toLowerCase().includes(planIdea.toLowerCase()) && s.toLowerCase() !== planIdea.toLowerCase())
+      : dateIdeas,
+    [planIdea, dateIdeas],
   );
 
   return (
@@ -867,39 +922,85 @@ function DetailDrawer({
             />
           </section>
 
-          {/* Date log */}
+          {/* Dates */}
           <section>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
               <span style={{ ...sectionLabel, marginBottom: 0 }}>
-                Date Log ({person.dates.length})
+                Dates ({person.dates.length})
               </span>
-              <button
-                onClick={() => setShowDateForm((p) => !p)}
-                style={{
-                  ...btnBase,
-                  border: `1px solid ${C.border}`,
-                  color: C.muted,
-                  fontSize: 11,
-                  padding: "3px 9px",
-                }}
-              >
-                {showDateForm ? "Cancel" : "+ Log date"}
-              </button>
+              <div style={{ display: "flex", gap: 6 }}>
+                <button
+                  onClick={() => { setShowPlanForm((p) => !p); setShowDateForm(false); }}
+                  style={{ ...btnBase, border: `1px solid ${C.border}`, color: C.muted, fontSize: 11, padding: "3px 9px" }}
+                >
+                  {showPlanForm ? "Cancel" : "Plan date"}
+                </button>
+                <button
+                  onClick={() => { setShowDateForm((p) => !p); setShowPlanForm(false); }}
+                  style={{ ...btnBase, border: `1px solid ${C.border}`, color: C.muted, fontSize: 11, padding: "3px 9px" }}
+                >
+                  {showDateForm ? "Cancel" : "+ Log date"}
+                </button>
+              </div>
             </div>
 
+            {/* Plan date form */}
+            {showPlanForm && (
+              <div style={{ background: C.card, border: `1px solid ${C.accent}`, borderRadius: 10, padding: 14, marginBottom: 12, display: "flex", flexDirection: "column", gap: 10 }}>
+                <p style={{ fontSize: 11, color: C.accent, margin: 0, fontWeight: 600 }}>Plan a date idea</p>
+                <div style={{ position: "relative" }}>
+                  <input
+                    value={planIdea}
+                    onChange={(e) => { setPlanIdea(e.target.value); setShowSuggestions(true); }}
+                    onFocus={() => setShowSuggestions(true)}
+                    onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+                    placeholder="What's the idea? (e.g. jazz bar, hiking, cooking class)"
+                    style={{ ...inputBase }}
+                    autoFocus
+                  />
+                  {showSuggestions && filteredSuggestions.length > 0 && (
+                    <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 6, zIndex: 10, maxHeight: 140, overflowY: "auto", marginTop: 2 }}>
+                      {filteredSuggestions.map((s) => (
+                        <button
+                          key={s}
+                          onMouseDown={() => { setPlanIdea(s); setShowSuggestions(false); }}
+                          style={{ display: "block", width: "100%", textAlign: "left", background: "none", border: "none", color: C.text, fontSize: 12, padding: "7px 10px", cursor: "pointer", fontFamily: "inherit" }}
+                        >
+                          {s}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <input
+                    type="date"
+                    value={planDate}
+                    onChange={(e) => setPlanDate(e.target.value)}
+                    style={{ ...inputBase, flex: "0 0 auto", width: "auto" }}
+                  />
+                  <input
+                    value={planNotes}
+                    onChange={(e) => setPlanNotes(e.target.value)}
+                    placeholder="Any details…"
+                    style={{ ...inputBase }}
+                  />
+                </div>
+                <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                  <button
+                    onClick={submitPlan}
+                    disabled={!planIdea.trim() || savingPlan}
+                    style={{ ...btnBase, background: planIdea.trim() ? C.accent : C.border, color: planIdea.trim() ? "#fff" : C.dim, fontWeight: 600, padding: "7px 16px" }}
+                  >
+                    {savingPlan ? "Saving…" : "Save plan"}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Log date form */}
             {showDateForm && (
-              <div
-                style={{
-                  background: C.card,
-                  border: `1px solid ${C.accent}`,
-                  borderRadius: 10,
-                  padding: 14,
-                  marginBottom: 12,
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 10,
-                }}
-              >
+              <div style={{ background: C.card, border: `1px solid ${C.accent}`, borderRadius: 10, padding: 14, marginBottom: 12, display: "flex", flexDirection: "column", gap: 10 }}>
                 <div style={{ display: "flex", gap: 8 }}>
                   <input
                     type="date"
@@ -929,13 +1030,7 @@ function DetailDrawer({
                   <button
                     onClick={submitDate}
                     disabled={!dDate || savingDate}
-                    style={{
-                      ...btnBase,
-                      background: dDate ? C.accent : C.border,
-                      color: dDate ? "#fff" : C.dim,
-                      fontWeight: 600,
-                      padding: "7px 16px",
-                    }}
+                    style={{ ...btnBase, background: dDate ? C.accent : C.border, color: dDate ? "#fff" : C.dim, fontWeight: 600, padding: "7px 16px" }}
                   >
                     {savingDate ? "Saving…" : "Save"}
                   </button>
@@ -949,31 +1044,58 @@ function DetailDrawer({
                   key={d.id}
                   style={{
                     background: C.card,
-                    border: `1px solid ${C.border}`,
+                    border: d.is_planned ? `1px dashed ${C.accent}` : `1px solid ${C.border}`,
                     borderRadius: 8,
                     padding: "10px 12px",
                   }}
                 >
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: d.notes ? 4 : 0 }}>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: C.text }}>
-                      {format(parseISO(d.date), "MMM d, yyyy")}
-                      {d.location && (
-                        <span style={{ fontWeight: 400, color: C.muted }}> · {d.location}</span>
+                  {d.is_planned ? (
+                    <>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <span style={{ fontSize: 10, color: C.accent, fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase" }}>Planned</span>
+                          {d.date && <span style={{ fontSize: 11, color: C.muted }}>· {format(parseISO(d.date), "MMM d")}</span>}
+                        </div>
+                        <button onClick={() => onDeleteDate(d.id)} style={{ ...btnBase, color: C.dim, padding: "1px 4px", fontSize: 13 }}>✕</button>
+                      </div>
+                      <p style={{ fontSize: 13, color: C.text, margin: "0 0 6px", fontWeight: 600 }}>{d.location}</p>
+                      {d.notes && <p style={{ fontSize: 12, color: C.muted, margin: "0 0 8px", lineHeight: 1.5 }}>{d.notes}</p>}
+                      {completingId === d.id ? (
+                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                          <Stars value={completeRating} onChange={setCompleteRating} />
+                          <button
+                            onClick={async () => { await onCompleteDate(d.id, completeRating); setCompletingId(null); setCompleteRating(null); }}
+                            style={{ ...btnBase, background: C.green, color: "#fff", fontWeight: 600, fontSize: 11, padding: "4px 10px" }}
+                          >
+                            Confirm
+                          </button>
+                          <button onClick={() => { setCompletingId(null); setCompleteRating(null); }} style={{ ...btnBase, color: C.dim, fontSize: 11 }}>Cancel</button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setCompletingId(d.id)}
+                          style={{ ...btnBase, border: `1px solid ${C.green}`, color: C.green, fontSize: 11, padding: "4px 10px" }}
+                        >
+                          ✓ Mark done
+                        </button>
                       )}
-                    </span>
-                    {d.rating && (
-                      <span style={{ color: C.yellow, fontSize: 12 }}>{"★".repeat(d.rating)}</span>
-                    )}
-                  </div>
-                  {d.notes && (
-                    <p style={{ fontSize: 12, color: C.muted, margin: 0, lineHeight: 1.5 }}>{d.notes}</p>
+                    </>
+                  ) : (
+                    <>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: d.notes ? 4 : 0 }}>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: C.text }}>
+                          {d.date ? format(parseISO(d.date), "MMM d, yyyy") : "Date TBD"}
+                          {d.location && <span style={{ fontWeight: 400, color: C.muted }}> · {d.location}</span>}
+                        </span>
+                        {d.rating && <span style={{ color: C.yellow, fontSize: 12 }}>{"★".repeat(d.rating)}</span>}
+                      </div>
+                      {d.notes && <p style={{ fontSize: 12, color: C.muted, margin: 0, lineHeight: 1.5 }}>{d.notes}</p>}
+                    </>
                   )}
                 </div>
               ))}
               {person.dates.length === 0 && (
-                <p style={{ fontSize: 12, color: C.dim, fontStyle: "italic", margin: 0 }}>
-                  No dates logged yet.
-                </p>
+                <p style={{ fontSize: 12, color: C.dim, fontStyle: "italic", margin: 0 }}>No dates yet. Plan one above.</p>
               )}
             </div>
           </section>
@@ -1513,6 +1635,41 @@ export default function DRMPage() {
     [supabase],
   );
 
+  const completeDate = useCallback(
+    async (dateId: string, personId: string, rating: number | null) => {
+      if (!supabase) return;
+      const { data, error: err } = await supabase
+        .from("drm_dates")
+        .update({ is_planned: false, date: today(), rating })
+        .eq("id", dateId)
+        .select()
+        .single();
+      if (!err && data) {
+        setPeople((prev) =>
+          prev.map((p) =>
+            p.id === personId
+              ? { ...p, dates: p.dates.map((d) => (d.id === dateId ? (data as DateEntry) : d)) }
+              : p,
+          ),
+        );
+      }
+    },
+    [supabase],
+  );
+
+  const deleteDate = useCallback(
+    async (dateId: string, personId: string) => {
+      if (!supabase) return;
+      await supabase.from("drm_dates").delete().eq("id", dateId);
+      setPeople((prev) =>
+        prev.map((p) =>
+          p.id === personId ? { ...p, dates: p.dates.filter((d) => d.id !== dateId) } : p,
+        ),
+      );
+    },
+    [supabase],
+  );
+
   const addPerson = useCallback(
     async (name: string, avatar: string) => {
       if (!supabase || !user) return;
@@ -1821,7 +1978,10 @@ export default function DRMPage() {
           onUpdate={updatePerson}
           onUpdateFlag={updateFlag}
           onAddDate={(entry) => addDate(selectedPerson.id, entry)}
+          onCompleteDate={(dateId, rating) => completeDate(dateId, selectedPerson.id, rating)}
+          onDeleteDate={(dateId) => deleteDate(dateId, selectedPerson.id)}
           onDeletePerson={deletePerson}
+          dateIdeas={Array.from(new Set(people.flatMap((p) => p.dates.map((d) => d.location).filter(Boolean) as string[])))}
         />
       )}
 
