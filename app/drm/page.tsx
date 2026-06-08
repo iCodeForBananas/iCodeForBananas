@@ -171,10 +171,22 @@ function calcCompatibility(p: PersonData): number {
   return Math.max(0, Math.min(100, Math.round((g / total) * 100 - (r / total) * 30)));
 }
 
-function getMomentum(last: string | null): "green" | "yellow" | "red" {
+// [greenMax, redMin] thresholds in days — based on expert dating cadence research
+const MOMENTUM_THRESHOLDS: Record<Stage, [number, number]> = {
+  "Matched":         [2,  4],  // reply within 1-2 days or match fades
+  "Talking":         [2,  5],  // daily/every-other-day keeps interest alive
+  "First Date":      [3,  6],  // schedule next contact within 3-5 days
+  "Dating":          [5,  8],  // ~1 date/week; 7+ days without contact is a red flag
+  "Exclusive Dating":[7, 11],  // more established — up to a week is still healthy
+  "Unmatched":       [999, 999], // terminal stage — momentum not applicable
+};
+
+function getMomentum(last: string | null, stage: Stage): "green" | "yellow" | "red" {
+  if (stage === "Unmatched") return "green";
   if (!last) return "red";
   const d = differenceInDays(new Date(), parseISO(last));
-  return d < 3 ? "green" : d <= 7 ? "yellow" : "red";
+  const [greenMax, redMin] = MOMENTUM_THRESHOLDS[stage];
+  return d < greenMax ? "green" : d < redMin ? "yellow" : "red";
 }
 
 function isStagnant(p: Person): boolean {
@@ -315,7 +327,7 @@ function PersonCard({
   ghost?: boolean;
 }) {
   const compat = calcCompatibility(person);
-  const momentum = getMomentum(person.last_contact);
+  const momentum = getMomentum(person.last_contact, person.stage);
   const rChecked = person.red_flags.filter((f) => f.checked).length;
   const stagnant = isStagnant(person);
   const mColor = { green: C.green, yellow: C.yellow, red: C.red }[momentum];
@@ -649,7 +661,7 @@ function DetailDrawer({
   onDeletePerson: (id: string) => Promise<void>;
 }) {
   const compat = calcCompatibility(person);
-  const momentum = getMomentum(person.last_contact);
+  const momentum = getMomentum(person.last_contact, person.stage);
   const rChecked = person.red_flags.filter((f) => f.checked).length;
   const stagnant = isStagnant(person);
   const mColor = { green: C.green, yellow: C.yellow, red: C.red }[momentum];
@@ -1157,7 +1169,7 @@ function StatusReport({
           <tbody>
             {allPeople.map((p) => {
               const compat = calcCompatibility(p);
-              const momentum = getMomentum(p.last_contact);
+              const momentum = getMomentum(p.last_contact, p.stage);
               const mColor = { green: C.green, yellow: C.yellow, red: C.red }[momentum];
               const rFlags = p.red_flags.filter((f) => f.checked);
               const stagnant = isStagnant(p);
