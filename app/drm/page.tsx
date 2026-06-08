@@ -21,11 +21,11 @@ import { differenceInDays, parseISO, format } from "date-fns";
 
 type Stage =
   | "Matched"
-  | "First Date Scheduled"
-  | "First Date Done"
-  | "Momentum"
-  | "Exclusive Conversation"
-  | "Relationship";
+  | "Talking"
+  | "First Date"
+  | "Dating"
+  | "Exclusive Dating"
+  | "Unmatched";
 
 interface Person {
   id: string;
@@ -70,11 +70,11 @@ interface PersonData extends Person {
 
 const STAGES: Stage[] = [
   "Matched",
-  "First Date Scheduled",
-  "First Date Done",
-  "Momentum",
-  "Exclusive Conversation",
-  "Relationship",
+  "Talking",
+  "First Date",
+  "Dating",
+  "Exclusive Dating",
+  "Unmatched",
 ];
 
 const DEFAULT_GREEN_FLAGS = [
@@ -187,7 +187,7 @@ function stageIndex(s: Stage): number {
 }
 
 function showReflection(s: Stage): boolean {
-  return stageIndex(s) >= stageIndex("First Date Done");
+  return stageIndex(s) >= stageIndex("First Date");
 }
 
 function readinessScore(p: PersonData): number {
