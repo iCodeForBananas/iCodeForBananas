@@ -171,13 +171,14 @@ function calcCompatibility(p: PersonData): number {
   return Math.max(0, Math.min(100, Math.round((g / total) * 100 - (r / total) * 30)));
 }
 
-// [greenMax, redMin] thresholds in days — based on expert dating cadence research
+// [greenMax, redMin] thresholds in days
+// Sources: Teichmann et al. 2026 (n=500+, JSPR); Hinge Follow-Through Formula data
 const MOMENTUM_THRESHOLDS: Record<Stage, [number, number]> = {
-  "Matched":         [2,  4],  // reply within 1-2 days or match fades
-  "Talking":         [2,  5],  // daily/every-other-day keeps interest alive
-  "First Date":      [3,  6],  // schedule next contact within 3-5 days
-  "Dating":          [5,  8],  // ~1 date/week; 7+ days without contact is a red flag
-  "Exclusive Dating":[7, 11],  // more established — up to a week is still healthy
+  "Matched":         [1,  3],  // Hinge: 75% expect same-day or next-day contact; matches fade fast
+  "Talking":         [2,  4],  // daily/every-other-day keeps attraction building
+  "First Date":      [1,  3],  // Teichmann 2026: next-morning text peaks interest; 2-day delay causes sharp drop
+  "Dating":          [4,  7],  // 1 date/week cadence; 7+ days without contact is a documented red flag
+  "Exclusive Dating":[5, 10],  // more established — weekly contact still important, up to 10 days before it reads cold
   "Unmatched":       [999, 999], // terminal stage — momentum not applicable
 };
 
