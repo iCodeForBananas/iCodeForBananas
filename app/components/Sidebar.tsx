@@ -15,12 +15,9 @@ const NAV: { label: string; links: { href: string; text: string; auth?: boolean 
     links: [
       { href: "/circle-of-fifths", text: "Circle of Fifths" },
       { href: "/chord-progressions", text: "Chord Progressions" },
-      { href: "/inversion-picker", text: "Inversion Picker" },
       { href: "/chord-explorer", text: "Chord Explorer" },
       { href: "/chord-diagrams", text: "Chord Diagrams" },
-      { href: "/chord-voicings", text: "Chord Voicings" },
       { href: "/chord-finder", text: "Chord Finder" },
-      { href: "/chord-inversions", text: "Chord Inversions" },
       { href: "/chord-positions", text: "Chord Positions" },
       { href: "/note-map", text: "Note Map" },
       { href: "/scale-tool", text: "Scale Tool" },
