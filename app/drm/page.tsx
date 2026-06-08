@@ -23,8 +23,11 @@ type Stage =
   | "Matched"
   | "Talking"
   | "First Date"
-  | "Dating"
-  | "Exclusive Dating"
+  | "Dating (Non-Exclusive)"
+  | "Seeing Each Other (Exclusive-ish)"
+  | "Exclusive"
+  | "Relationship"
+  | "Partnership"
   | "Unmatched";
 
 interface Person {
@@ -73,10 +76,25 @@ const STAGES: Stage[] = [
   "Matched",
   "Talking",
   "First Date",
-  "Dating",
-  "Exclusive Dating",
+  "Dating (Non-Exclusive)",
+  "Seeing Each Other (Exclusive-ish)",
+  "Exclusive",
+  "Relationship",
+  "Partnership",
   "Unmatched",
 ];
+
+const STAGE_DESCRIPTIONS: Record<Stage, string> = {
+  "Matched": "You matched. The connection hasn't started yet.",
+  "Talking": "This is the early stage where two people are getting to know each other, typically through texting, messaging apps, or casual phone calls. Conversations are exploratory—light topics, jokes, shared interests, and light flirting. There is no commitment at this point, but there is mutual interest. Frequency and depth of communication are still low, and it's common for multiple people to be in this stage at once.",
+  "First Date": "The first in-person meeting. Both parties are evaluating chemistry, attraction, and compatibility. Conversations can be deeper, and there is more physical presence, but it's still exploratory. A first date doesn't imply exclusivity or strong commitment—it's a chance to see if the interest translates into real connection. Nerves, performance, and first impressions dominate this stage.",
+  "Dating (Non-Exclusive)": "You are actively going on dates and building a connection, but there is no exclusivity agreement. Both people may still be seeing others. There's growing emotional investment, physical intimacy may develop, and the relationship starts to take on more structure—making plans in advance, regular communication, and increased time together. The goal of this stage is to determine if you want to pursue something exclusive.",
+  "Seeing Each Other (Exclusive-ish)": "This is the grey zone between dating and official exclusivity. You may have had a conversation about not seeing other people, or it may just feel implied. You're spending significant time together, meeting friends, and integrating into each other's lives. However, the relationship hasn't been formally defined. There's higher emotional vulnerability here and the need for a DTR (Define The Relationship) conversation often arises.",
+  "Exclusive": "You have explicitly agreed to only see each other. This stage represents a clear mutual commitment to building a relationship. You are no longer exploring other options, and expectations for communication, time, and emotional investment increase significantly. There's a growing sense of partnership, but you may not yet consider yourselves in a full relationship—labels like 'boyfriend/girlfriend' may or may not have been established.",
+  "Relationship": "This is a fully committed, labeled romantic partnership. Both people identify as being in a relationship. There's deeper integration into each other's lives—families may be introduced, long-term plans may come up, and conflict resolution becomes more important. Emotional depth, trust, and consistency define this stage. You rely on each other in a real way and have established a shared identity as a couple.",
+  "Partnership": "This is the deepest stage of committed romantic connection. It goes beyond the typical 'relationship' label and implies a life-oriented bond. This could mean cohabitation, shared finances, engagement, marriage, or simply a deeply intentional long-term commitment. There is a high level of trust, interdependence, and shared vision for the future. Communication, values alignment, and intentional effort are key.",
+  "Unmatched": "It ended.",
+};
 
 const DEFAULT_GREEN_FLAGS = [
   "Emotionally available and self-aware",
@@ -115,17 +133,17 @@ const today = () => new Date().toISOString().split("T")[0];
 // ── Theme ──────────────────────────────────────────────────────────────────────
 
 const C = {
-  bg: "#0b0b14",
-  surface: "#111120",
-  card: "#16162a",
-  border: "#252540",
+  bg: "#f9fafb",
+  surface: "#ffffff",
+  card: "#f3f4f6",
+  border: "#e5e7eb",
   accent: "#e11d48",
-  text: "#f0f0f8",
-  muted: "#8080a8",
-  dim: "#484865",
-  green: "#22c55e",
-  yellow: "#eab308",
-  red: "#ef4444",
+  text: "#111827",
+  muted: "#6b7280",
+  dim: "#9ca3af",
+  green: "#16a34a",
+  yellow: "#d97706",
+  red: "#dc2626",
 } as const;
 
 const inputBase: React.CSSProperties = {
@@ -139,7 +157,7 @@ const inputBase: React.CSSProperties = {
   outline: "none",
   width: "100%",
   boxSizing: "border-box",
-  colorScheme: "dark",
+  colorScheme: "light",
 };
 
 const btnBase: React.CSSProperties = {
@@ -175,12 +193,15 @@ function calcCompatibility(p: PersonData): number {
 // [greenMax, redMin] thresholds in days
 // Sources: Teichmann et al. 2026 (n=500+, JSPR); Hinge Follow-Through Formula data
 const MOMENTUM_THRESHOLDS: Record<Stage, [number, number]> = {
-  "Matched":         [1,  3],  // Hinge: 75% expect same-day or next-day contact; matches fade fast
-  "Talking":         [2,  4],  // daily/every-other-day keeps attraction building
-  "First Date":      [1,  3],  // Teichmann 2026: next-morning text peaks interest; 2-day delay causes sharp drop
-  "Dating":          [4,  7],  // 1 date/week cadence; 7+ days without contact is a documented red flag
-  "Exclusive Dating":[5, 10],  // more established — weekly contact still important, up to 10 days before it reads cold
-  "Unmatched":       [999, 999], // terminal stage — momentum not applicable
+  "Matched":                           [1,   3],   // Hinge: 75% expect same-day or next-day contact; matches fade fast
+  "Talking":                           [2,   4],   // daily/every-other-day keeps attraction building
+  "First Date":                        [1,   3],   // Teichmann 2026: next-morning text peaks interest; 2-day delay causes sharp drop
+  "Dating (Non-Exclusive)":            [4,   7],   // 1 date/week cadence; 7+ days without contact is a documented red flag
+  "Seeing Each Other (Exclusive-ish)": [5,  10],   // more established — weekly contact still important, up to 10 days before it reads cold
+  "Exclusive":                         [5,  10],   // committed but still needs consistent contact
+  "Relationship":                      [7,  14],   // deeper bond; 2-week silence starts to register
+  "Partnership":                       [7,  14],   // life-partner level; cadence is more flexible but presence still matters
+  "Unmatched":                         [999, 999], // terminal stage — momentum not applicable
 };
 
 function getMomentum(last: string | null, stage: Stage): "green" | "yellow" | "red" {
@@ -869,6 +890,7 @@ function DetailDrawer({
               {STAGES.map((s) => (
                 <button
                   key={s}
+                  title={STAGE_DESCRIPTIONS[s]}
                   onClick={() => {
                     if (s !== person.stage) {
                       onUpdate(person.id, { stage: s, stage_entered_at: today() });
@@ -879,7 +901,7 @@ function DetailDrawer({
                     padding: "4px 9px",
                     borderRadius: 20,
                     border: `1px solid ${person.stage === s ? C.accent : C.border}`,
-                    background: person.stage === s ? "rgba(225,29,72,0.15)" : "transparent",
+                    background: person.stage === s ? "rgba(225,29,72,0.12)" : "transparent",
                     color: person.stage === s ? C.accent : C.muted,
                     cursor: "pointer",
                     fontFamily: "inherit",
