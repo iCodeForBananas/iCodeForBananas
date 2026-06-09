@@ -1,12 +1,15 @@
-"use client";
+import type { Metadata } from "next";
+import CircleOfFifthsPage from "./page-client";
 
-import CircleOfFifths from "../components/CircleOfFifths";
-import BentoPageLayout from "../components/BentoPageLayout";
+export const metadata: Metadata = {
+  title: "Circle of Fifths",
+  description: "Interactive circle of fifths for musicians. Explore key signatures, relative minors, and chord relationships.",
+  keywords: ["circle of fifths", "key signatures", "music theory", "relative minor", "chord relationships"],
+  openGraph: {
+    title: "Circle of Fifths",
+    description: "Interactive circle of fifths for musicians. Explore key signatures, relative minors, and chord relationships.",
+    type: "website",
+  },
+};
 
-export default function CircleOfFifthsPage() {
-  return (
-    <BentoPageLayout title='Circle of Fifths'>
-      <CircleOfFifths />
-    </BentoPageLayout>
-  );
-}
+export default CircleOfFifthsPage;
