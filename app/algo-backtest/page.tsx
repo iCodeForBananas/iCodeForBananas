@@ -1143,7 +1143,12 @@ export default function AlgoBacktestPage() {
                 </div>
 
                 {/* ── Results (bottom) ────────────────────────────────── */}
-                <div className='flex flex-col'>
+                {results.length === 0 && (
+                  <div className='flex items-center justify-center py-16'>
+                    <p className='text-sm text-gray-400'>Run a backtest to see results</p>
+                  </div>
+                )}
+                {results.length > 0 && <div className='flex flex-col'>
 
                   {/* Tabs for Multiple Results */}
                   {results.length > 1 && (
@@ -1404,7 +1409,7 @@ export default function AlgoBacktestPage() {
                       </div>
                     </div>
                   )}
-                </div>
+                </div>}
               </div>
             )}
           </div>
