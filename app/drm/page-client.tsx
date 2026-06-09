@@ -64,9 +64,25 @@ interface Flag {
   checked: boolean;
 }
 
+interface PillarEntry {
+  id: string;
+  pillar_id: string;
+  text: string;
+  polarity: "positive" | "negative";
+  created_at: string;
+}
+
+interface Pillar {
+  id: string;
+  person_id: string;
+  key: "directed_curiosity" | "reciprocal_investment" | "emotional_range";
+  rating: "strong" | "emerging" | "weak" | "absent" | null;
+  entries: PillarEntry[];
+}
+
 interface PersonData extends Person {
   dates: DateEntry[];
-  green_flags: Flag[];
+  pillars: Pillar[];
   red_flags: Flag[];
 }
 
@@ -96,18 +112,37 @@ const STAGE_DESCRIPTIONS: Record<Stage, string> = {
   "Unmatched": "It ended.",
 };
 
-const DEFAULT_GREEN_FLAGS = [
-  "Emotionally available and self-aware",
-  "Has her own life, interests, and friendships",
-  "Communicates directly without games",
-  "Makes me feel at ease, not performed around",
-  "Shares or respects my active lifestyle",
-  "Has a good relationship with fun and spontaneity",
-  "I am genuinely attracted to her (not just available)",
-  "She is kind — to me, to others, to strangers",
-  "We have natural, easy conversation",
-  "I look forward to seeing her (not just habit)",
+const PILLAR_DEFS: { key: Pillar["key"]; title: string; description: string }[] = [
+  {
+    key: "directed_curiosity",
+    title: "Directed Curiosity",
+    description: "Does she build a real model of me, or stay on the surface?",
+  },
+  {
+    key: "reciprocal_investment",
+    title: "Reciprocal Investment",
+    description: "Does she generate, or only respond?",
+  },
+  {
+    key: "emotional_range",
+    title: "Emotional Range Without Volatility",
+    description: "Is there depth to connect to, and can she hold it?",
+  },
 ];
+
+const RATING_OPTIONS: { value: NonNullable<Pillar["rating"]>; label: string }[] = [
+  { value: "strong", label: "Strong" },
+  { value: "emerging", label: "Emerging" },
+  { value: "weak", label: "Weak" },
+  { value: "absent", label: "Absent" },
+];
+
+const PILLAR_RATING_SCORES: Record<NonNullable<Pillar["rating"]>, number> = {
+  strong: 100,
+  emerging: 66,
+  weak: 33,
+  absent: 0,
+};
 
 const DEFAULT_RED_FLAGS = [
   "I feel more obligated than excited",
@@ -183,11 +218,14 @@ const sectionLabel: React.CSSProperties = {
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
 function calcCompatibility(p: PersonData): number {
-  const total = p.green_flags.length;
-  if (total === 0) return 0;
-  const g = p.green_flags.filter((f) => f.checked).length;
+  const rated = p.pillars.filter((pl) => pl.rating !== null);
+  const pillarScore =
+    rated.length === 0
+      ? 0
+      : rated.reduce((sum, pl) => sum + PILLAR_RATING_SCORES[pl.rating!], 0) / rated.length;
+  const totalRed = p.red_flags.length || 1;
   const r = p.red_flags.filter((f) => f.checked).length;
-  return Math.max(0, Math.min(100, Math.round((g / total) * 100 - (r / total) * 30)));
+  return Math.max(0, Math.min(100, Math.round(pillarScore - (r / totalRed) * 30)));
 }
 
 // [greenMax, redMin] thresholds in days
@@ -676,13 +714,140 @@ function StageColumn({
   );
 }
 
+// ── PillarCard ─────────────────────────────────────────────────────────────────
+
+function PillarCard({
+  pillar,
+  def,
+  onSetRating,
+  onAddEntry,
+}: {
+  pillar: Pillar;
+  def: { key: Pillar["key"]; title: string; description: string };
+  onSetRating: (rating: Pillar["rating"]) => Promise<void>;
+  onAddEntry: (text: string, polarity: "positive" | "negative") => Promise<void>;
+}) {
+  const [entryText, setEntryText] = useState("");
+  const [polarity, setPolarity] = useState<"positive" | "negative">("positive");
+  const [saving, setSaving] = useState(false);
+
+  const sortedEntries = useMemo(
+    () => [...pillar.entries].sort((a, b) => b.created_at.localeCompare(a.created_at)),
+    [pillar.entries],
+  );
+
+  async function submit() {
+    if (!entryText.trim() || saving) return;
+    setSaving(true);
+    await onAddEntry(entryText.trim(), polarity);
+    setEntryText("");
+    setSaving(false);
+  }
+
+  return (
+    <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 10, padding: 14 }}>
+      <div style={{ marginBottom: 10 }}>
+        <p style={{ fontSize: 13, fontWeight: 700, color: C.text, margin: 0 }}>{def.title}</p>
+        <p style={{ fontSize: 11, color: C.muted, margin: "2px 0 0", lineHeight: 1.5 }}>{def.description}</p>
+      </div>
+
+      {/* Rating selector */}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
+        {RATING_OPTIONS.map((opt) => (
+          <button
+            key={opt.value}
+            onClick={() => onSetRating(pillar.rating === opt.value ? null : opt.value)}
+            style={{
+              fontSize: 11,
+              padding: "4px 10px",
+              borderRadius: 20,
+              border: `1px solid ${pillar.rating === opt.value ? C.accent : C.border}`,
+              background: pillar.rating === opt.value ? "rgba(225,29,72,0.12)" : "transparent",
+              color: pillar.rating === opt.value ? C.accent : C.muted,
+              cursor: "pointer",
+              fontFamily: "inherit",
+              transition: "all 0.15s",
+            }}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Evidence log */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 10 }}>
+        {sortedEntries.map((e) => (
+          <div key={e.id} style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+            <span style={{ marginTop: 5 }}>
+              <Dot color={e.polarity === "positive" ? C.green : C.red} />
+            </span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ fontSize: 12, color: C.text, margin: 0, lineHeight: 1.5 }}>{e.text}</p>
+              <p style={{ fontSize: 10, color: C.dim, margin: 0 }}>
+                {format(parseISO(e.created_at), "MMM d, yyyy")}
+              </p>
+            </div>
+          </div>
+        ))}
+        {sortedEntries.length === 0 && (
+          <p style={{ fontSize: 12, color: C.dim, fontStyle: "italic", margin: 0 }}>No entries yet.</p>
+        )}
+      </div>
+
+      {/* Add entry */}
+      <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+        <input
+          value={entryText}
+          onChange={(e) => setEntryText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") submit();
+          }}
+          placeholder="What happened?"
+          style={{ ...inputBase, flex: 1 }}
+        />
+        <button
+          onClick={() => setPolarity((p) => (p === "positive" ? "negative" : "positive"))}
+          title="Toggle positive / negative"
+          style={{
+            ...btnBase,
+            border: `1px solid ${polarity === "positive" ? C.green : C.red}`,
+            color: polarity === "positive" ? C.green : C.red,
+            fontSize: 11,
+            padding: "6px 10px",
+            flexShrink: 0,
+          }}
+        >
+          {polarity === "positive" ? "Positive" : "Negative"}
+        </button>
+        <button
+          onClick={submit}
+          disabled={!entryText.trim() || saving}
+          style={{
+            ...btnBase,
+            background: entryText.trim() ? C.accent : C.border,
+            color: entryText.trim() ? "#fff" : C.dim,
+            fontWeight: 600,
+            fontSize: 11,
+            padding: "6px 12px",
+            flexShrink: 0,
+          }}
+        >
+          {saving ? "…" : "Add"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── DetailDrawer ───────────────────────────────────────────────────────────────
 
 function DetailDrawer({
   person,
   onClose,
   onUpdate,
-  onUpdateFlag,
+  onUpdateRedFlag,
+  onSetPillarRating,
+  onAddPillarEntry,
   onAddDate,
   onCompleteDate,
   onDeleteDate,
@@ -692,7 +857,9 @@ function DetailDrawer({
   person: PersonData;
   onClose: () => void;
   onUpdate: (id: string, fields: Partial<Person>) => Promise<void>;
-  onUpdateFlag: (type: "green" | "red", flagId: string, checked: boolean) => Promise<void>;
+  onUpdateRedFlag: (flagId: string, checked: boolean) => Promise<void>;
+  onSetPillarRating: (personId: string, key: Pillar["key"], rating: Pillar["rating"]) => Promise<void>;
+  onAddPillarEntry: (personId: string, key: Pillar["key"], text: string, polarity: "positive" | "negative") => Promise<void>;
   onAddDate: (entry: Omit<DateEntry, "id" | "person_id" | "created_at">) => Promise<void>;
   onCompleteDate: (dateId: string, rating: number | null) => Promise<void>;
   onDeleteDate: (dateId: string) => Promise<void>;
@@ -1122,28 +1289,22 @@ function DetailDrawer({
             </div>
           </section>
 
-          {/* Green flags */}
+          {/* Evidence pillars */}
           <section>
-            <span style={{ ...sectionLabel, color: C.green }}>
-              Green Flags ({person.green_flags.filter((f) => f.checked).length}/{person.green_flags.length})
-            </span>
-            <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-              {person.green_flags.map((flag) => (
-                <label
-                  key={flag.id}
-                  style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer" }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={flag.checked}
-                    onChange={() => onUpdateFlag("green", flag.id, !flag.checked)}
-                    style={{ marginTop: 2, accentColor: C.green, flexShrink: 0 }}
+            <span style={sectionLabel}>Evidence Pillars</span>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {PILLAR_DEFS.map((def) => {
+                const pillar = person.pillars.find((pl) => pl.key === def.key)!;
+                return (
+                  <PillarCard
+                    key={def.key}
+                    pillar={pillar}
+                    def={def}
+                    onSetRating={(rating) => onSetPillarRating(person.id, def.key, rating)}
+                    onAddEntry={(text, polarity) => onAddPillarEntry(person.id, def.key, text, polarity)}
                   />
-                  <span style={{ fontSize: 13, color: flag.checked ? C.text : C.muted, lineHeight: 1.5 }}>
-                    {flag.label}
-                  </span>
-                </label>
-              ))}
+                );
+              })}
             </div>
           </section>
 
@@ -1161,7 +1322,7 @@ function DetailDrawer({
                   <input
                     type="checkbox"
                     checked={flag.checked}
-                    onChange={() => onUpdateFlag("red", flag.id, !flag.checked)}
+                    onChange={() => onUpdateRedFlag(flag.id, !flag.checked)}
                     style={{ marginTop: 2, accentColor: C.red, flexShrink: 0 }}
                   />
                   <span style={{ fontSize: 13, color: flag.checked ? C.red : C.muted, lineHeight: 1.5 }}>
@@ -1576,22 +1737,42 @@ export default function DRMPage() {
 
       const ids = (rawPeople as Person[]).map((p) => p.id);
 
-      const [datesRes, greenRes, redRes] = await Promise.all([
+      const [datesRes, redRes, pillarsRes] = await Promise.all([
         supabase.from("drm_dates").select("*").in("person_id", ids).order("date", { ascending: false }),
-        supabase.from("drm_green_flags").select("*").in("person_id", ids),
         supabase.from("drm_red_flags").select("*").in("person_id", ids),
+        supabase.from("drm_pillars").select("*").in("person_id", ids),
       ]);
 
       const dates: DateEntry[] = (datesRes.data as DateEntry[]) || [];
-      const greens: Flag[] = (greenRes.data as Flag[]) || [];
       const reds: Flag[] = (redRes.data as Flag[]) || [];
+      const pillarRows: Omit<Pillar, "entries">[] = (pillarsRes.data as Omit<Pillar, "entries">[]) || [];
 
-      const merged: PersonData[] = (rawPeople as Person[]).map((p) => ({
-        ...p,
-        dates: dates.filter((d) => d.person_id === p.id),
-        green_flags: greens.filter((f) => f.person_id === p.id),
-        red_flags: reds.filter((f) => f.person_id === p.id),
-      }));
+      const pillarIds = pillarRows.map((pl) => pl.id);
+      let entries: PillarEntry[] = [];
+      if (pillarIds.length > 0) {
+        const { data: entryRows } = await supabase
+          .from("drm_pillar_entries")
+          .select("*")
+          .in("pillar_id", pillarIds);
+        entries = (entryRows as PillarEntry[]) || [];
+      }
+
+      const merged: PersonData[] = (rawPeople as Person[]).map((p) => {
+        const personPillars = pillarRows.filter((pl) => pl.person_id === p.id);
+        const pillars: Pillar[] = PILLAR_DEFS.map((def) => {
+          const existing = personPillars.find((pl) => pl.key === def.key);
+          if (existing) {
+            return { ...existing, entries: entries.filter((e) => e.pillar_id === existing.id) };
+          }
+          return { id: "", person_id: p.id, key: def.key, rating: null, entries: [] };
+        });
+        return {
+          ...p,
+          dates: dates.filter((d) => d.person_id === p.id),
+          pillars,
+          red_flags: reds.filter((f) => f.person_id === p.id),
+        };
+      });
 
       setPeople(merged);
       setLoading(false);
@@ -1616,26 +1797,107 @@ export default function DRMPage() {
     [supabase],
   );
 
-  const updateFlag = useCallback(
-    async (type: "green" | "red", flagId: string, checked: boolean) => {
-      const table = type === "green" ? "drm_green_flags" : "drm_red_flags";
+  const updateRedFlag = useCallback(
+    async (flagId: string, checked: boolean) => {
       setPeople((prev) =>
         prev.map((p) => ({
           ...p,
-          green_flags:
-            type === "green"
-              ? p.green_flags.map((f) => (f.id === flagId ? { ...f, checked } : f))
-              : p.green_flags,
-          red_flags:
-            type === "red"
-              ? p.red_flags.map((f) => (f.id === flagId ? { ...f, checked } : f))
-              : p.red_flags,
+          red_flags: p.red_flags.map((f) => (f.id === flagId ? { ...f, checked } : f)),
         })),
       );
       if (!supabase) return;
-      await supabase.from(table).update({ checked }).eq("id", flagId);
+      await supabase.from("drm_red_flags").update({ checked }).eq("id", flagId);
     },
     [supabase],
+  );
+
+  const setPillarRating = useCallback(
+    async (personId: string, key: Pillar["key"], rating: Pillar["rating"]) => {
+      if (!supabase) return;
+      const person = people.find((p) => p.id === personId);
+      const pillar = person?.pillars.find((pl) => pl.key === key);
+      if (!pillar) return;
+
+      if (pillar.id) {
+        setPeople((prev) =>
+          prev.map((p) =>
+            p.id === personId
+              ? { ...p, pillars: p.pillars.map((pl) => (pl.key === key ? { ...pl, rating } : pl)) }
+              : p,
+          ),
+        );
+        await supabase.from("drm_pillars").update({ rating }).eq("id", pillar.id);
+      } else {
+        const { data, error: err } = await supabase
+          .from("drm_pillars")
+          .insert({ person_id: personId, key, rating })
+          .select()
+          .single();
+        if (!err && data) {
+          setPeople((prev) =>
+            prev.map((p) =>
+              p.id === personId
+                ? {
+                    ...p,
+                    pillars: p.pillars.map((pl) =>
+                      pl.key === key ? { ...pl, id: data.id, rating: data.rating } : pl,
+                    ),
+                  }
+                : p,
+            ),
+          );
+        }
+      }
+    },
+    [supabase, people],
+  );
+
+  const addPillarEntry = useCallback(
+    async (personId: string, key: Pillar["key"], text: string, polarity: "positive" | "negative") => {
+      if (!supabase) return;
+      const person = people.find((p) => p.id === personId);
+      const pillar = person?.pillars.find((pl) => pl.key === key);
+      if (!pillar) return;
+
+      let pillarId = pillar.id;
+      if (!pillarId) {
+        const { data, error: err } = await supabase
+          .from("drm_pillars")
+          .insert({ person_id: personId, key, rating: null })
+          .select()
+          .single();
+        if (err || !data) return;
+        pillarId = data.id;
+        setPeople((prev) =>
+          prev.map((p) =>
+            p.id === personId
+              ? { ...p, pillars: p.pillars.map((pl) => (pl.key === key ? { ...pl, id: pillarId } : pl)) }
+              : p,
+          ),
+        );
+      }
+
+      const { data: entryData, error: entryErr } = await supabase
+        .from("drm_pillar_entries")
+        .insert({ pillar_id: pillarId, text, polarity })
+        .select()
+        .single();
+      if (!entryErr && entryData) {
+        setPeople((prev) =>
+          prev.map((p) =>
+            p.id === personId
+              ? {
+                  ...p,
+                  pillars: p.pillars.map((pl) =>
+                    pl.key === key ? { ...pl, entries: [...pl.entries, entryData as PillarEntry] } : pl,
+                  ),
+                }
+              : p,
+          ),
+        );
+      }
+    },
+    [supabase, people],
   );
 
   const addDate = useCallback(
@@ -1710,21 +1972,21 @@ export default function DRMPage() {
 
       if (pErr || !newPerson) return;
 
-      const [greenRes, redRes] = await Promise.all([
-        supabase
-          .from("drm_green_flags")
-          .insert(DEFAULT_GREEN_FLAGS.map((label) => ({ person_id: newPerson.id, label, checked: false })))
-          .select(),
-        supabase
-          .from("drm_red_flags")
-          .insert(DEFAULT_RED_FLAGS.map((label) => ({ person_id: newPerson.id, label, checked: false })))
-          .select(),
-      ]);
+      const redRes = await supabase
+        .from("drm_red_flags")
+        .insert(DEFAULT_RED_FLAGS.map((label) => ({ person_id: newPerson.id, label, checked: false })))
+        .select();
 
       const pd: PersonData = {
         ...(newPerson as Person),
         dates: [],
-        green_flags: (greenRes.data as Flag[]) || [],
+        pillars: PILLAR_DEFS.map((def) => ({
+          id: "",
+          person_id: newPerson.id,
+          key: def.key,
+          rating: null,
+          entries: [],
+        })),
         red_flags: (redRes.data as Flag[]) || [],
       };
 
@@ -1905,7 +2167,9 @@ export default function DRMPage() {
           person={selectedPerson}
           onClose={() => setSelectedPersonId(null)}
           onUpdate={updatePerson}
-          onUpdateFlag={updateFlag}
+          onUpdateRedFlag={updateRedFlag}
+          onSetPillarRating={setPillarRating}
+          onAddPillarEntry={addPillarEntry}
           onAddDate={(entry) => addDate(selectedPerson.id, entry)}
           onCompleteDate={(dateId, rating) => completeDate(dateId, selectedPerson.id, rating)}
           onDeleteDate={(dateId) => deleteDate(dateId, selectedPerson.id)}
