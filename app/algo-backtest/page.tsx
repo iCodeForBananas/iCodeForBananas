@@ -734,213 +734,212 @@ export default function AlgoBacktestPage() {
                 </div>
               </div>
             ) : (
-              <div className='flex flex-1 flex-col lg:flex-row'>
-                {/* Left Panel - Strategy & Parameters */}
-                <div className='w-full lg:w-[450px] flex-shrink-0 border-r border-gray-200 flex flex-col lg:sticky lg:top-0 lg:self-start lg:max-h-screen lg:overflow-y-auto'>
-                  {/* Dataset Selector - Multi-select */}
-                  <div className='p-4 border-b border-gray-200'>
-                    <div className='flex items-center justify-between mb-2'>
-                      <label className='text-sm text-gray-500'>Datasets</label>
-                      <div className='flex items-center gap-2'>
-                        <button
-                          onClick={() => setSelectedFiles(availableDatasets.map((ds) => ds.file))}
-                          className='text-xs text-blue-600 hover:text-blue-700 transition-colors'
-                        >
-                          Select All
-                        </button>
-                        <button
-                          onClick={() => setSelectedFiles([])}
-                          disabled={selectedFiles.length === 0}
-                          className='text-xs text-gray-500 hover:text-gray-700 disabled:text-gray-300 disabled:cursor-not-allowed transition-colors'
-                        >
-                          Deselect
-                        </button>
-                        <span className='text-xs text-gray-400'>
-                          {selectedFiles.length} selected
-                        </span>
+              <div className='flex flex-col flex-1 min-h-0'>
+
+                {/* ── Configuration (top) ─────────────────────────────── */}
+                <div className='shrink-0 border-b border-gray-200 px-4 py-3'>
+                  <div className='flex flex-row flex-wrap gap-4 items-end'>
+
+                    {/* Datasets */}
+                    <div className='flex flex-col gap-1 min-w-[160px]'>
+                      <div className='flex items-center justify-between'>
+                        <label className='text-xs text-gray-500'>Datasets</label>
+                        <div className='flex items-center gap-1.5'>
+                          <button
+                            onClick={() => setSelectedFiles(availableDatasets.map((ds) => ds.file))}
+                            className='text-xs text-blue-600 hover:text-blue-700 transition-colors'
+                          >
+                            All
+                          </button>
+                          <button
+                            onClick={() => setSelectedFiles([])}
+                            disabled={selectedFiles.length === 0}
+                            className='text-xs text-gray-400 hover:text-gray-600 disabled:text-gray-300 disabled:cursor-not-allowed transition-colors'
+                          >
+                            None
+                          </button>
+                          <span className='text-xs text-gray-400'>{selectedFiles.length} sel</span>
+                        </div>
                       </div>
-                    </div>
-                    <input
-                      type='text'
-                      value={datasetSearch}
-                      onChange={(e) => setDatasetSearch(e.target.value)}
-                      placeholder='Search by ticker…'
-                      className='w-full mb-2 bg-white border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500'
-                    />
-                    {uniqueTimeframes.length > 1 && (
-                      <div className='flex flex-wrap gap-1 mb-2'>
-                        {uniqueTimeframes.map((tf) => {
-                          const filesForTf = availableDatasets
-                            .filter((ds) => ds.timeframe === tf)
-                            .map((ds) => ds.file);
-                          const allSelected = filesForTf.every((f) => selectedFiles.includes(f));
-                          return (
-                            <button
-                              key={tf}
-                              onClick={() => toggleTimeframe(tf)}
-                              className={`px-2 py-0.5 text-xs rounded border transition-colors ${
-                                allSelected
-                                  ? 'bg-blue-600 border-blue-500 text-white'
-                                  : 'bg-white border-gray-300 text-gray-500 hover:border-blue-400 hover:text-blue-600'
-                              }`}
+                      <input
+                        type='text'
+                        value={datasetSearch}
+                        onChange={(e) => setDatasetSearch(e.target.value)}
+                        placeholder='Search ticker…'
+                        className='w-full bg-white border border-gray-300 rounded px-2 py-1 text-xs text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500'
+                      />
+                      {uniqueTimeframes.length > 1 && (
+                        <div className='flex flex-wrap gap-1'>
+                          {uniqueTimeframes.map((tf) => {
+                            const filesForTf = availableDatasets
+                              .filter((ds) => ds.timeframe === tf)
+                              .map((ds) => ds.file);
+                            const allSelected = filesForTf.every((f) => selectedFiles.includes(f));
+                            return (
+                              <button
+                                key={tf}
+                                onClick={() => toggleTimeframe(tf)}
+                                className={`px-1.5 py-0.5 text-[10px] rounded border transition-colors ${
+                                  allSelected
+                                    ? 'bg-blue-600 border-blue-500 text-white'
+                                    : 'bg-white border-gray-300 text-gray-500 hover:border-blue-400 hover:text-blue-600'
+                                }`}
+                              >
+                                {tf.toUpperCase()}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                      <div className='max-h-28 overflow-y-auto bg-white border border-gray-200 rounded p-1 space-y-0.5'>
+                        {availableDatasets
+                          .filter((ds) =>
+                            ds.symbol.toLowerCase().includes(datasetSearch.toLowerCase())
+                          )
+                          .map((ds) => (
+                            <label
+                              key={ds.file}
+                              className='flex items-center gap-1.5 px-1.5 py-0.5 hover:bg-gray-50 rounded cursor-pointer'
                             >
-                              {tf.toUpperCase()}
-                            </button>
+                              <input
+                                type='checkbox'
+                                checked={selectedFiles.includes(ds.file)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSelectedFiles((prev) => [...prev, ds.file]);
+                                  } else {
+                                    setSelectedFiles((prev) => prev.filter((f) => f !== ds.file));
+                                  }
+                                }}
+                                className='rounded border-gray-300 text-blue-500'
+                              />
+                              <span className='text-xs text-gray-900'>{ds.label}</span>
+                            </label>
+                          ))}
+                      </div>
+                      {selectedFiles.length === 0 && (
+                        <p className='text-xs text-amber-600'>Select at least one</p>
+                      )}
+                    </div>
+
+                    {/* Strategies */}
+                    <div className='flex flex-col gap-1 min-w-[160px]'>
+                      <div className='flex items-center justify-between'>
+                        <label className='text-xs text-gray-500'>Strategies</label>
+                        <div className='flex items-center gap-1.5'>
+                          <button
+                            onClick={() => {
+                              const allIds = Object.keys(AVAILABLE_STRATEGIES);
+                              if (selectedStrategyIds.length === allIds.length) {
+                                setSelectedStrategyIds([selectedStrategyId]);
+                              } else {
+                                setSelectedStrategyIds(allIds);
+                              }
+                            }}
+                            className='text-xs text-blue-600 hover:text-blue-700 transition-colors'
+                          >
+                            {selectedStrategyIds.length === Object.keys(AVAILABLE_STRATEGIES).length ? 'Clear' : 'All'}
+                          </button>
+                          <span className='text-xs text-gray-400'>{selectedStrategyIds.length} sel</span>
+                          <button
+                            onClick={() => setShowLambdaExport(true)}
+                            className='flex items-center gap-1 px-2 py-0.5 bg-amber-500 hover:bg-amber-400 text-white text-[10px] font-medium rounded transition-colors'
+                            title='Deploy this strategy to run automatically'
+                          >
+                            <svg className='w-3 h-3' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                              <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12' />
+                            </svg>
+                            Deploy
+                          </button>
+                        </div>
+                      </div>
+                      <div className='max-h-28 overflow-y-auto bg-white border border-gray-200 rounded p-1 space-y-0.5'>
+                        {Object.values(AVAILABLE_STRATEGIES).map((s) => {
+                          const isChecked = selectedStrategyIds.includes(s.id);
+                          const isActive = s.id === selectedStrategyId;
+                          return (
+                            <div
+                              key={s.id}
+                              className={`flex items-center gap-1.5 px-1.5 py-0.5 rounded cursor-pointer ${
+                                isActive ? 'bg-blue-50 ring-1 ring-blue-400' : 'hover:bg-gray-50'
+                              }`}
+                              onClick={() => {
+                                setSelectedStrategyId(s.id);
+                                setSelectedStrategyIds((prev) =>
+                                  prev.includes(s.id) ? prev : [...prev, s.id]
+                                );
+                              }}
+                            >
+                              <input
+                                type='checkbox'
+                                checked={isChecked}
+                                onChange={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedStrategyIds((prev) => {
+                                    if (e.target.checked)
+                                      return prev.includes(s.id) ? prev : [...prev, s.id];
+                                    const next = prev.filter((id) => id !== s.id);
+                                    if (s.id === selectedStrategyId && next.length > 0) {
+                                      setSelectedStrategyId(next[0]);
+                                    }
+                                    return next.length > 0 ? next : prev;
+                                  });
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                                className='rounded border-gray-300 text-blue-500'
+                              />
+                              <span className={`text-xs ${isActive ? 'text-blue-700 font-medium' : 'text-gray-900'}`}>
+                                {s.name}
+                              </span>
+                              {isActive && (
+                                <span className='ml-auto text-[10px] uppercase tracking-wide text-blue-600'>editing</span>
+                              )}
+                            </div>
                           );
                         })}
                       </div>
-                    )}
-                    <div className='max-h-48 overflow-y-auto bg-white border border-gray-200 rounded p-2 space-y-1'>
-                      {availableDatasets.filter((ds) =>
-                        ds.symbol.toLowerCase().includes(datasetSearch.toLowerCase())
-                      ).map((ds) => (
-                        <label
-                          key={ds.file}
-                          className='flex items-center gap-2 px-2 py-1 hover:bg-gray-50 rounded cursor-pointer'
-                        >
-                          <input
-                            type='checkbox'
-                            checked={selectedFiles.includes(ds.file)}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setSelectedFiles((prev) => [...prev, ds.file]);
-                              } else {
-                                setSelectedFiles((prev) => prev.filter((f) => f !== ds.file));
-                              }
-                            }}
-                            className='rounded border-gray-300 text-blue-500'
-                          />
-                          <span className='text-sm text-gray-900'>{ds.label}</span>
-                        </label>
-                      ))}
-                    </div>
-                    {selectedFiles.length === 0 && (
-                      <p className='text-xs text-amber-600 mt-1'>Select at least one dataset</p>
-                    )}
-                  </div>
-
-                  {/* Strategy Selector */}
-                  <div className='p-4 border-b border-gray-200'>
-                    <div className='flex items-center justify-between mb-2'>
-                      <label className='text-sm text-gray-500'>Strategies</label>
-                      <div className='flex items-center gap-2'>
-                        <button
-                          onClick={() => {
-                            const allIds = Object.keys(AVAILABLE_STRATEGIES);
-                            if (selectedStrategyIds.length === allIds.length) {
-                              setSelectedStrategyIds([selectedStrategyId]);
-                            } else {
-                              setSelectedStrategyIds(allIds);
-                            }
-                          }}
-                          className='text-xs text-blue-600 hover:text-blue-700 transition-colors'
-                        >
-                          {selectedStrategyIds.length === Object.keys(AVAILABLE_STRATEGIES).length ? 'Clear All' : 'Select All'}
-                        </button>
-                        <span className='text-xs text-gray-400'>{selectedStrategyIds.length} selected</span>
-                        <button
-                          onClick={() => setShowLambdaExport(true)}
-                          className='flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-white text-xs font-medium rounded transition-colors'
-                          title='Deploy this strategy to run automatically'
-                        >
-                          <svg className='w-3.5 h-3.5' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                            <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12' />
-                          </svg>
-                          Deploy
-                        </button>
-                      </div>
-                    </div>
-                    <div className='max-h-56 overflow-y-auto bg-white border border-gray-200 rounded p-2 space-y-1'>
-                      {Object.values(AVAILABLE_STRATEGIES).map((s) => {
-                        const isChecked = selectedStrategyIds.includes(s.id);
-                        const isActive = s.id === selectedStrategyId;
-                        return (
-                          <div
-                            key={s.id}
-                            className={`flex items-center gap-2 px-2 py-1 rounded cursor-pointer ${
-                              isActive ? 'bg-blue-50 ring-1 ring-blue-400' : 'hover:bg-gray-50'
-                            }`}
-                            onClick={() => {
-                              setSelectedStrategyId(s.id);
-                              setSelectedStrategyIds((prev) => prev.includes(s.id) ? prev : [...prev, s.id]);
-                            }}
-                          >
-                            <input
-                              type='checkbox'
-                              checked={isChecked}
-                              onChange={(e) => {
-                                e.stopPropagation();
-                                setSelectedStrategyIds((prev) => {
-                                  if (e.target.checked) return prev.includes(s.id) ? prev : [...prev, s.id];
-                                  const next = prev.filter((id) => id !== s.id);
-                                  if (s.id === selectedStrategyId && next.length > 0) {
-                                    setSelectedStrategyId(next[0]);
-                                  }
-                                  return next.length > 0 ? next : prev;
-                                });
-                              }}
-                              onClick={(e) => e.stopPropagation()}
-                              className='rounded border-gray-300 text-blue-500'
-                            />
-                            <span className={`text-sm ${isActive ? 'text-blue-700 font-medium' : 'text-gray-900'}`}>
-                              {s.name}
-                            </span>
-                            {isActive && (
-                              <span className='ml-auto text-[10px] uppercase tracking-wide text-blue-600'>editing</span>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                    <p className='text-xs text-gray-400 mt-2'>{strategy?.description}</p>
-                    {selectedStrategyIds.length > 1 && (
-                      <p className='text-xs text-amber-600 mt-1'>
-                        Editing parameters for <span className='font-semibold'>{strategy?.name}</span>. Other selected strategies use their saved settings.
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Risk Management Settings */}
-                  <div className='p-4 border-b border-gray-200'>
-                    <label className='text-sm text-gray-500 mb-3 block'>Risk Management</label>
-
-                    <div className='grid grid-cols-2 gap-2'>
-                      <div>
-                        <label className='block text-xs text-gray-500 mb-1'>Stop Loss %</label>
-                        <input
-                          type='number'
-                          value={stopLossPercent}
-                          min={0}
-                          step={0.5}
-                          onChange={(e) => {
-                            const v = parseFloat(e.target.value);
-                            setStopLossPercent(isNaN(v) ? 0 : Math.max(0, v));
-                          }}
-                          placeholder='0 = off'
-                          className='w-full bg-white border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-900'
-                        />
-                      </div>
-                      <div>
-                        <label className='block text-xs text-gray-500 mb-1'>Take Profit %</label>
-                        <input
-                          type='number'
-                          value={takeProfitPercent}
-                          min={0}
-                          step={0.5}
-                          onChange={(e) => {
-                            const v = parseFloat(e.target.value);
-                            setTakeProfitPercent(isNaN(v) ? 0 : Math.max(0, v));
-                          }}
-                          placeholder='0 = off'
-                          className='w-full bg-white border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-900'
-                        />
-                      </div>
+                      {strategy?.description && (
+                        <p className='text-[10px] text-gray-400 leading-tight'>{strategy.description}</p>
+                      )}
                     </div>
 
-                    <div className='mt-3'>
-                      <label className='block text-xs text-gray-500 mb-1'>
-                        Position Size % of Equity
-                      </label>
+                    {/* Stop Loss */}
+                    <div className='flex flex-col gap-1 min-w-[90px]'>
+                      <label className='text-xs text-gray-500'>Stop Loss %</label>
+                      <input
+                        type='number'
+                        value={stopLossPercent}
+                        min={0}
+                        step={0.5}
+                        onChange={(e) => {
+                          const v = parseFloat(e.target.value);
+                          setStopLossPercent(isNaN(v) ? 0 : Math.max(0, v));
+                        }}
+                        placeholder='0 = off'
+                        className='w-full bg-white border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-900'
+                      />
+                    </div>
+
+                    {/* Take Profit */}
+                    <div className='flex flex-col gap-1 min-w-[90px]'>
+                      <label className='text-xs text-gray-500'>Take Profit %</label>
+                      <input
+                        type='number'
+                        value={takeProfitPercent}
+                        min={0}
+                        step={0.5}
+                        onChange={(e) => {
+                          const v = parseFloat(e.target.value);
+                          setTakeProfitPercent(isNaN(v) ? 0 : Math.max(0, v));
+                        }}
+                        placeholder='0 = off'
+                        className='w-full bg-white border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-900'
+                      />
+                    </div>
+
+                    {/* Position Size */}
+                    <div className='flex flex-col gap-1 min-w-[90px]'>
+                      <label className='text-xs text-gray-500'>Position Size %</label>
                       <input
                         type='number'
                         value={positionSizePercent}
@@ -953,48 +952,44 @@ export default function AlgoBacktestPage() {
                         }}
                         className='w-full bg-white border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-900'
                       />
-                      <p className='text-xs text-gray-400 mt-1'>
-                        Shares are locked at entry — does not compound mid-trade.
-                      </p>
                     </div>
 
-                    <div className='grid grid-cols-2 gap-2 mt-3'>
-                      <div>
-                        <label className='block text-xs text-gray-500 mb-1'>Commission (bps)</label>
-                        <input
-                          type='number'
-                          value={commissionBps}
-                          min={0}
-                          step={0.5}
-                          onChange={(e) => {
-                            const v = parseFloat(e.target.value);
-                            setCommissionBps(isNaN(v) ? 0 : Math.max(0, v));
-                          }}
-                          placeholder='per fill'
-                          className='w-full bg-white border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-900'
-                        />
-                      </div>
-                      <div>
-                        <label className='block text-xs text-gray-500 mb-1'>Slippage (bps)</label>
-                        <input
-                          type='number'
-                          value={slippageBps}
-                          min={0}
-                          step={0.5}
-                          onChange={(e) => {
-                            const v = parseFloat(e.target.value);
-                            setSlippageBps(isNaN(v) ? 0 : Math.max(0, v));
-                          }}
-                          placeholder='per fill'
-                          className='w-full bg-white border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-900'
-                        />
-                      </div>
+                    {/* Commission */}
+                    <div className='flex flex-col gap-1 min-w-[90px]'>
+                      <label className='text-xs text-gray-500'>Commission (bps)</label>
+                      <input
+                        type='number'
+                        value={commissionBps}
+                        min={0}
+                        step={0.5}
+                        onChange={(e) => {
+                          const v = parseFloat(e.target.value);
+                          setCommissionBps(isNaN(v) ? 0 : Math.max(0, v));
+                        }}
+                        placeholder='per fill'
+                        className='w-full bg-white border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-900'
+                      />
                     </div>
-                    <p className='text-xs text-gray-400 mt-1'>
-                      1 bp = 0.01%. Commission deducts on entry + exit fills; slippage moves fill price against you.
-                    </p>
 
-                    <div className='mt-3'>
+                    {/* Slippage */}
+                    <div className='flex flex-col gap-1 min-w-[90px]'>
+                      <label className='text-xs text-gray-500'>Slippage (bps)</label>
+                      <input
+                        type='number'
+                        value={slippageBps}
+                        min={0}
+                        step={0.5}
+                        onChange={(e) => {
+                          const v = parseFloat(e.target.value);
+                          setSlippageBps(isNaN(v) ? 0 : Math.max(0, v));
+                        }}
+                        placeholder='per fill'
+                        className='w-full bg-white border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-900'
+                      />
+                    </div>
+
+                    {/* Enable Shorts */}
+                    <div className='flex flex-col justify-end pb-1.5'>
                       <label className='flex items-center gap-2 cursor-pointer'>
                         <input
                           type='checkbox'
@@ -1002,161 +997,124 @@ export default function AlgoBacktestPage() {
                           onChange={(e) => setEnableShorts(e.target.checked)}
                           className='w-4 h-4 rounded border-gray-300 text-blue-500 focus:ring-blue-500 focus:ring-offset-0'
                         />
-                        <span className='text-xs text-gray-500'>Enable Short Entries</span>
+                        <span className='text-xs text-gray-500'>Enable Shorts</span>
                       </label>
-                      {enableShorts && (
-                        <p className='text-xs text-amber-600 mt-1 ml-6'>
-                          Sell signals will open short positions when no position is active
-                        </p>
-                      )}
                     </div>
-                    {stopLossPercent > 0 && (
-                      <p className='text-xs text-blue-600 mt-2'>
-                        ✓ Entry on bar close, exit at SL/TP if hit within bar range
-                      </p>
-                    )}
-                  </div>
 
-                  {/* Parameter Configuration */}
-                  {selectedStrategyIds.length > 0 && (
-                    <div className='p-4 border-b border-gray-200 overflow-y-auto flex-shrink-0'>
-                      <div className='flex items-center justify-between mb-3'>
-                        <label className='text-sm text-gray-500'>Parameters</label>
-                        <span className='text-xs text-gray-400'>
-                          {`${selectedStrategyIds.length} ${selectedStrategyIds.length === 1 ? 'strategy' : 'strategies'} × ${selectedFiles.length} datasets`}
-                        </span>
-                      </div>
-
-                      {/* Active strategy — full editable block */}
-                      {strategy?.parameters && strategy.parameters.length > 0 && (
-                        <div className='mb-4 border border-blue-300 bg-blue-50/50 rounded p-3'>
-                          <div className='flex items-center justify-between mb-3'>
-                            <div>
-                              <span className='text-sm text-blue-700 font-semibold'>{strategy.name}</span>
-                              <span className='ml-2 text-[10px] uppercase tracking-wide text-blue-600'>editing</span>
-                            </div>
-                            <span className='text-xs text-gray-400'>{combinationCount} combinations</span>
-                          </div>
-
-                          {strategy.parameters
-                            .filter((param) => param.type === 'number')
-                            .map((param) => {
-                              const variation = paramVariations.find((v) => v.key === param.key);
-
-                              return (
-                                <div key={param.key} className='mb-3 bg-white border border-gray-200 rounded p-3'>
-                                  <div className='mb-2'>
-                                    <span className='text-sm text-gray-900 font-medium'>{param.name}</span>
-                                    <p className='text-xs text-gray-400'>{param.description}</p>
-                                  </div>
-
-                                  <div className='grid grid-cols-2 gap-2'>
-                                    <div>
-                                      <label className='block text-xs text-gray-500 mb-1'>Min</label>
-                                      <input
-                                        type='number'
-                                        value={variation?.min ?? param.min ?? Number(param.default)}
-                                        min={param.min}
-                                        max={param.max}
-                                        step={param.step}
-                                        onChange={(e) => {
-                                          const parsed = parseFloat(e.target.value);
-                                          const newMin = isNaN(parsed) ? Number(param.min ?? param.default) : parsed;
-                                          setParamVariations((prev) =>
-                                            prev.map((v) => (v.key === param.key ? { ...v, min: newMin } : v))
-                                          );
-                                        }}
-                                        className='w-full bg-gray-50 border border-gray-300 rounded px-2 py-1 text-sm text-gray-900'
-                                      />
-                                    </div>
-                                    <div>
-                                      <label className='block text-xs text-gray-500 mb-1'>Max</label>
-                                      <input
-                                        type='number'
-                                        value={variation?.max ?? param.max ?? Number(param.default)}
-                                        min={param.min}
-                                        max={param.max}
-                                        step={param.step}
-                                        onChange={(e) => {
-                                          const parsed = parseFloat(e.target.value);
-                                          const newMax = isNaN(parsed) ? Number(param.max ?? param.default) : parsed;
-                                          setParamVariations((prev) =>
-                                            prev.map((v) => (v.key === param.key ? { ...v, max: newMax } : v))
-                                          );
-                                        }}
-                                        className='w-full bg-gray-50 border border-gray-300 rounded px-2 py-1 text-sm text-gray-900'
-                                      />
-                                    </div>
-                                  </div>
-                                </div>
-                              );
-                            })}
+                    {/* Strategy Parameters */}
+                    {selectedStrategyIds.length > 0 && strategy?.parameters && strategy.parameters.filter((p) => p.type === 'number').length > 0 && (
+                      <>
+                        <div className='w-px self-stretch bg-gray-200 mx-1' />
+                        <div className='flex flex-col justify-end pb-1.5'>
+                          <span className='text-xs text-blue-700 font-semibold'>{strategy.name}</span>
+                          <span className='text-[10px] text-gray-400'>
+                            {selectedStrategyIds.length} {selectedStrategyIds.length === 1 ? 'strategy' : 'strategies'} × {selectedFiles.length} datasets
+                          </span>
                         </div>
-                      )}
-
-                      {/* Other selected strategies — read-only summary cards */}
-                      {mounted && selectedStrategyIds
-                        .filter((sid) => sid !== selectedStrategyId)
-                        .map((sid) => {
-                          const otherStrat = AVAILABLE_STRATEGIES[sid];
-                          if (!otherStrat) return null;
-                          const savedRun = buildSavedRun(sid);
-                          if (!savedRun) return null;
-                          const numericParams = otherStrat.parameters?.filter((p) => p.type === 'number') ?? [];
-                          const otherCombos = generateCombinations(savedRun.paramVariations).length;
-
-                          return (
-                            <div
-                              key={sid}
-                              onClick={() => setSelectedStrategyId(sid)}
-                              className='mb-3 border border-gray-200 hover:border-blue-400 bg-gray-50 rounded p-3 cursor-pointer transition-colors'
-                              title='Click to edit this strategy'
-                            >
-                              <div className='flex items-center justify-between mb-2'>
-                                <div>
-                                  <span className='text-sm text-gray-900 font-semibold'>{otherStrat.name}</span>
-                                  <span className='ml-2 text-[10px] uppercase tracking-wide text-gray-400'>saved</span>
+                        {strategy.parameters
+                          .filter((param) => param.type === 'number')
+                          .map((param) => {
+                            const variation = paramVariations.find((v) => v.key === param.key);
+                            return (
+                              <div key={param.key} className='flex flex-col gap-1'>
+                                <span className='text-xs text-gray-700 font-medium'>{param.name}</span>
+                                <div className='flex gap-1 items-center'>
+                                  <div>
+                                    <label className='block text-[10px] text-gray-500 mb-0.5'>Min</label>
+                                    <input
+                                      type='number'
+                                      value={variation?.min ?? param.min ?? Number(param.default)}
+                                      min={param.min}
+                                      max={param.max}
+                                      step={param.step}
+                                      onChange={(e) => {
+                                        const parsed = parseFloat(e.target.value);
+                                        const newMin = isNaN(parsed) ? Number(param.min ?? param.default) : parsed;
+                                        setParamVariations((prev) =>
+                                          prev.map((v) => (v.key === param.key ? { ...v, min: newMin } : v))
+                                        );
+                                      }}
+                                      className='w-20 bg-white border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-900'
+                                    />
+                                  </div>
+                                  <span className='text-gray-400 text-xs self-end pb-2'>→</span>
+                                  <div>
+                                    <label className='block text-[10px] text-gray-500 mb-0.5'>Max</label>
+                                    <input
+                                      type='number'
+                                      value={variation?.max ?? param.max ?? Number(param.default)}
+                                      min={param.min}
+                                      max={param.max}
+                                      step={param.step}
+                                      onChange={(e) => {
+                                        const parsed = parseFloat(e.target.value);
+                                        const newMax = isNaN(parsed) ? Number(param.max ?? param.default) : parsed;
+                                        setParamVariations((prev) =>
+                                          prev.map((v) => (v.key === param.key ? { ...v, max: newMax } : v))
+                                        );
+                                      }}
+                                      className='w-20 bg-white border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-900'
+                                    />
+                                  </div>
                                 </div>
-                                <span className='text-xs text-gray-400'>{otherCombos} combinations</span>
                               </div>
-                              {numericParams.length === 0 ? (
-                                <p className='text-xs text-gray-400'>No tunable parameters</p>
-                              ) : (
-                                <div className='space-y-1'>
-                                  {numericParams.map((param) => {
-                                    const variation = savedRun.paramVariations.find((v) => v.key === param.key);
-                                    const min = variation?.min ?? param.min ?? Number(param.default);
-                                    const max = variation?.max ?? param.max ?? Number(param.default);
-                                    const isRange = min !== max;
-                                    return (
-                                      <div key={param.key} className='flex items-center justify-between text-xs'>
-                                        <span className='text-gray-500'>{param.name}</span>
-                                        <span className='font-mono text-gray-700'>
-                                          {isRange ? `${min} → ${max}` : String(min)}
-                                        </span>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              )}
-                              <div className='mt-2 pt-2 border-t border-gray-200 flex items-center justify-between text-[11px] text-gray-400'>
-                                <span>
-                                  SL {savedRun.stopLossPercent > 0 ? `${savedRun.stopLossPercent}%` : 'off'}
-                                  {' · '}
-                                  TP {savedRun.takeProfitPercent > 0 ? `${savedRun.takeProfitPercent}%` : 'off'}
-                                  {savedRun.enableShorts ? ' · shorts on' : ''}
-                                </span>
-                                <span className='text-blue-600'>Click to edit →</span>
-                              </div>
+                            );
+                          })}
+                        <div className='flex flex-col justify-end pb-1.5'>
+                          <span className='text-xs text-gray-400'>{combinationCount} combos</span>
+                        </div>
+                      </>
+                    )}
+
+                    {/* Other selected strategies — compact read-only cards */}
+                    {mounted && selectedStrategyIds
+                      .filter((sid) => sid !== selectedStrategyId)
+                      .map((sid) => {
+                        const otherStrat = AVAILABLE_STRATEGIES[sid];
+                        if (!otherStrat) return null;
+                        const savedRun = buildSavedRun(sid);
+                        if (!savedRun) return null;
+                        const numericParams = otherStrat.parameters?.filter((p) => p.type === 'number') ?? [];
+                        const otherCombos = generateCombinations(savedRun.paramVariations).length;
+
+                        return (
+                          <div
+                            key={sid}
+                            onClick={() => setSelectedStrategyId(sid)}
+                            className='flex flex-col gap-1 border border-gray-200 hover:border-blue-400 bg-gray-50 rounded p-2 cursor-pointer transition-colors self-end'
+                            title='Click to edit this strategy'
+                          >
+                            <div className='flex items-center gap-2'>
+                              <span className='text-xs text-gray-900 font-semibold'>{otherStrat.name}</span>
+                              <span className='text-[10px] uppercase tracking-wide text-gray-400'>saved</span>
+                              <span className='text-xs text-gray-400'>{otherCombos} combos</span>
                             </div>
-                          );
-                        })}
+                            {numericParams.length > 0 && (
+                              <div className='flex items-center gap-3'>
+                                {numericParams.map((param) => {
+                                  const variation = savedRun.paramVariations.find((v) => v.key === param.key);
+                                  const min = variation?.min ?? param.min ?? Number(param.default);
+                                  const max = variation?.max ?? param.max ?? Number(param.default);
+                                  const isRange = min !== max;
+                                  return (
+                                    <span key={param.key} className='text-[10px] font-mono text-gray-700'>
+                                      {param.name}: {isRange ? `${min}→${max}` : String(min)}
+                                    </span>
+                                  );
+                                })}
+                              </div>
+                            )}
+                            <span className='text-[10px] text-blue-600'>Click to edit →</span>
+                          </div>
+                        );
+                      })}
 
-                      {/* Run Batch Button */}
+                    {/* Run Button */}
+                    <div className='ml-auto self-end'>
                       <button
                         onClick={runBatchBacktest}
                         disabled={isRunningBatch || selectedFiles.length === 0 || selectedStrategyIds.length === 0}
-                        className='w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed text-white font-medium py-2 px-4 rounded transition-colors'
+                        className='bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed text-white font-medium py-2 px-6 rounded transition-colors whitespace-nowrap'
                       >
                         {isRunningBatch
                           ? backtestProgress
@@ -1180,71 +1138,16 @@ export default function AlgoBacktestPage() {
                             })()}
                       </button>
                     </div>
-                  )}
 
-                  {/* Results Summary (when multiple results) */}
-                  {results.length > 1 && (
-                    <div className='flex-1 min-h-[200px] overflow-y-auto p-4'>
-                      <div className='text-sm text-gray-500 mb-2'>Results Comparison</div>
-                      <div className='space-y-2'>
-                        {results.map((result, idx) => (
-                          <button
-                            key={idx}
-                            onClick={() => setActiveResultTab(idx)}
-                            className={`w-full text-left p-3 rounded text-sm transition-colors border ${
-                              activeResultTab === idx
-                                ? "bg-blue-50 border-blue-400"
-                                : "bg-gray-50 hover:bg-gray-100 border-transparent"
-                            }`}
-                          >
-                            {result.strategyName && (
-                              <div className='text-xs text-purple-600 mb-1 truncate font-medium'>{result.strategyName}</div>
-                            )}
-                            {result.datasetLabel && (
-                              <div className='text-xs text-blue-600 mb-1 truncate'>{result.datasetLabel}</div>
-                            )}
-                            <div className='flex items-center justify-between'>
-                              <span className='font-mono text-xs text-gray-500 truncate max-w-[200px]'>{result.label}</span>
-                              <span
-                                className={`font-bold ${result.totalPnlPercent >= 0 ? "text-green-600" : "text-red-500"}`}
-                              >
-                                {result.totalPnlPercent >= 0 ? "+" : ""}
-                                {result.totalPnlPercent.toFixed(2)}%
-                              </span>
-                            </div>
-                            <div className='flex items-center justify-between mt-1 text-xs text-gray-400'>
-                              <span>
-                                {result.totalTrades} trades • {result.winRate.toFixed(0)}% win
-                              </span>
-                              <span>Sharpe: {result.sharpeRatio.toFixed(2)}</span>
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Strategy Info (when single result) */}
-                  {results.length <= 1 && (
-                    <div className='flex-1 flex flex-col overflow-hidden p-4'>
-                      <div className='bg-gray-50 rounded p-4 mb-3'>
-                        <h3 className='text-sm font-semibold text-gray-700 mb-2'>{strategy?.name}</h3>
-                        <p className='text-xs text-gray-500 mb-3'>{strategy?.description}</p>
-                        <div className='text-xs text-gray-400 border-t border-gray-200 pt-3'>
-                          <p className='mb-1'>✓ Type-safe strategy handler</p>
-                          <p className='mb-1'>✓ Configurable parameters</p>
-                          <p>✓ Batch optimization support</p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
+                  </div>
                 </div>
 
-                {/* Right Panel - Chart and Stats */}
-                <div className='flex-1 flex flex-col min-w-0'>
+                {/* ── Results (bottom) ────────────────────────────────── */}
+                <div className='flex-1 overflow-auto flex flex-col min-h-0'>
+
                   {/* Tabs for Multiple Results */}
                   {results.length > 1 && (
-                    <div className='flex border-b border-gray-200 bg-gray-50 overflow-x-auto'>
+                    <div className='flex border-b border-gray-200 bg-gray-50 overflow-x-auto shrink-0'>
                       {results.slice(0, 10).map((result, idx) => {
                         const uniqueStrategies = new Set(results.map((r) => r.strategyId).filter(Boolean));
                         const showStrategy = uniqueStrategies.size > 1 && result.strategyName;
@@ -1278,7 +1181,7 @@ export default function AlgoBacktestPage() {
 
                   {/* Active Result Label */}
                   {activeResult && results.length > 1 && (
-                    <div className='px-4 py-2 bg-gray-50 border-b border-gray-200 text-xs'>
+                    <div className='px-4 py-2 bg-gray-50 border-b border-gray-200 text-xs shrink-0'>
                       {activeResult.strategyName && (
                         <>
                           <span className='text-gray-500'>Strategy: </span>
@@ -1298,7 +1201,7 @@ export default function AlgoBacktestPage() {
 
                   {/* Stats Panel */}
                   {activeResult && (
-                    <div className='p-4 border-b border-gray-200 bg-gray-50'>
+                    <div className='p-4 border-b border-gray-200 bg-gray-50 shrink-0'>
                       <div className='grid grid-cols-6 gap-4 text-sm'>
                         <div className='bg-white border border-gray-200 rounded p-3'>
                           <div className='text-gray-500 text-xs mb-1'>Strategy P&L</div>
@@ -1419,7 +1322,7 @@ export default function AlgoBacktestPage() {
                   )}
 
                   {/* Charts Container */}
-                  <div className='flex flex-col'>
+                  <div className='flex flex-col shrink-0'>
                     {/* Price Chart */}
                     <div className='h-[640px]'>
                       <BacktestChart
@@ -1446,7 +1349,7 @@ export default function AlgoBacktestPage() {
 
                   {/* Trade Log */}
                   {activeResult && activeResult.trades.length > 0 && (
-                    <div className='h-96 border-t border-gray-200 overflow-hidden flex flex-col'>
+                    <div className='h-96 border-t border-gray-200 overflow-hidden flex flex-col shrink-0'>
                       <div className='px-4 py-2 bg-gray-50 text-sm font-semibold text-gray-900 border-b border-gray-200'>
                         Trade Log ({activeResult.trades.length} trades)
                       </div>
