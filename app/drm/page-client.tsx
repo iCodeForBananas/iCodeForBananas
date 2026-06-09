@@ -813,6 +813,7 @@ function DetailDrawer({
   onAddPillarEntry,
   onAddDate,
   onCompleteDate,
+  onUpdateDateField,
   onDeleteDate,
   onDeletePerson,
   dateIdeas,
@@ -824,6 +825,7 @@ function DetailDrawer({
   onAddPillarEntry: (personId: string, key: Pillar["key"], text: string, polarity: "positive" | "negative") => Promise<void>;
   onAddDate: (entry: Omit<DateEntry, "id" | "person_id" | "created_at">) => Promise<void>;
   onCompleteDate: (dateId: string, rating: number | null) => Promise<void>;
+  onUpdateDateField: (dateId: string, date: string | null) => Promise<void>;
   onDeleteDate: (dateId: string) => Promise<void>;
   onDeletePerson: (id: string) => Promise<void>;
   dateIdeas: string[];
@@ -852,6 +854,8 @@ function DetailDrawer({
   const [savingPlan, setSavingPlan] = useState(false);
   const [completingId, setCompletingId] = useState<string | null>(null);
   const [completeRating, setCompleteRating] = useState<number | null>(null);
+  const [editingDateId, setEditingDateId] = useState<string | null>(null);
+  const [editDateValue, setEditDateValue] = useState("");
 
   useEffect(() => {
     setProfileNotes(person.profile_notes ?? "");
@@ -1185,7 +1189,30 @@ function DetailDrawer({
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                           <span style={{ fontSize: 10, color: C.accent, fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase" }}>Planned</span>
-                          {d.date && <span style={{ fontSize: 11, color: C.muted }}>· {format(parseISO(d.date), "MMM d")}</span>}
+                          {editingDateId === d.id ? (
+                            <input
+                              type="date"
+                              value={editDateValue}
+                              autoFocus
+                              onChange={(e) => setEditDateValue(e.target.value)}
+                              onBlur={async () => {
+                                await onUpdateDateField(d.id, editDateValue || null);
+                                setEditingDateId(null);
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                                if (e.key === "Escape") setEditingDateId(null);
+                              }}
+                              style={{ ...inputBase, width: "auto", fontSize: 11, padding: "1px 4px" }}
+                            />
+                          ) : (
+                            <span
+                              onClick={() => { setEditingDateId(d.id); setEditDateValue(d.date ?? ""); }}
+                              style={{ fontSize: 11, color: C.muted, cursor: "pointer" }}
+                            >
+                              · {d.date ? format(parseISO(d.date), "MMM d") : "set date"}
+                            </span>
+                          )}
                         </div>
                         <button onClick={() => onDeleteDate(d.id)} style={{ ...btnBase, color: C.dim, padding: "1px 4px", fontSize: 13 }}>✕</button>
                       </div>
@@ -1801,6 +1828,28 @@ export default function DRMPage() {
     [supabase],
   );
 
+  const updateDateField = useCallback(
+    async (dateId: string, personId: string, date: string | null) => {
+      if (!supabase) return;
+      const { data, error: err } = await supabase
+        .from("drm_dates")
+        .update({ date })
+        .eq("id", dateId)
+        .select()
+        .single();
+      if (!err && data) {
+        setPeople((prev) =>
+          prev.map((p) =>
+            p.id === personId
+              ? { ...p, dates: p.dates.map((d) => (d.id === dateId ? (data as DateEntry) : d)) }
+              : p,
+          ),
+        );
+      }
+    },
+    [supabase],
+  );
+
   const deleteDate = useCallback(
     async (dateId: string, personId: string) => {
       if (!supabase) return;
@@ -2025,6 +2074,7 @@ export default function DRMPage() {
           onAddPillarEntry={addPillarEntry}
           onAddDate={(entry) => addDate(selectedPerson.id, entry)}
           onCompleteDate={(dateId, rating) => completeDate(dateId, selectedPerson.id, rating)}
+          onUpdateDateField={(dateId, date) => updateDateField(dateId, selectedPerson.id, date)}
           onDeleteDate={(dateId) => deleteDate(dateId, selectedPerson.id)}
           onDeletePerson={deletePerson}
           dateIdeas={Array.from(new Set(people.flatMap((p) => p.dates.map((d) => d.location).filter(Boolean) as string[])))}
