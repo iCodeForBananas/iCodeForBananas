@@ -5,13 +5,15 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/app/hooks/useAuth";
 import Link from "next/link";
-import { Plus, Trash2, Music, Eye, Pencil } from "lucide-react";
+import { Plus, Trash2, Music, Eye, Pencil, Copy, Check, Link2 } from "lucide-react";
 import type { LeadSheet } from "./shared";
-import { makeSection } from "./shared";
+import { makeSection, getPlainText } from "./shared";
 
 export default function LeadSheetList() {
   const { user, loading: authLoading } = useAuth();
   const [sheets, setSheets] = useState<LeadSheet[]>([]);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [sharedId, setSharedId] = useState<string | null>(null);
   const router = useRouter();
 
   const getSb = () => createClient()!;
@@ -45,6 +47,18 @@ export default function LeadSheetList() {
       .select()
       .single();
     if (data) router.push(`/lead-sheet-editor/${data.id}/edit`);
+  }
+
+  async function handleCopyText(sheet: LeadSheet) {
+    await navigator.clipboard.writeText(getPlainText(sheet));
+    setCopiedId(sheet.id);
+    setTimeout(() => setCopiedId(null), 2000);
+  }
+
+  async function handleShare(id: string) {
+    await navigator.clipboard.writeText(`${window.location.origin}/lead-sheet-editor/share/${id}`);
+    setSharedId(id);
+    setTimeout(() => setSharedId(null), 2000);
   }
 
   async function deleteSheet(id: string) {
@@ -147,6 +161,20 @@ export default function LeadSheetList() {
                       </div>
                     </div>
                     <div className='flex items-center gap-1.5 ml-3 shrink-0'>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleCopyText(sheet); }}
+                        className='flex items-center gap-1.5 rounded border border-[#373A40]/30 px-3 py-1.5 text-xs font-medium hover:border-black transition-colors'
+                      >
+                        {copiedId === sheet.id ? <Check className='w-3.5 h-3.5' /> : <Copy className='w-3.5 h-3.5' />}
+                        {copiedId === sheet.id ? "Copied!" : "Copy Text"}
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleShare(sheet.id); }}
+                        className='flex items-center gap-1.5 rounded border border-[#373A40]/30 px-3 py-1.5 text-xs font-medium hover:border-black transition-colors'
+                      >
+                        {sharedId === sheet.id ? <Check className='w-3.5 h-3.5' /> : <Link2 className='w-3.5 h-3.5' />}
+                        {sharedId === sheet.id ? "Copied!" : "Share"}
+                      </button>
                       <button
                         onClick={(e) => { e.stopPropagation(); router.push(`/lead-sheet-editor/${sheet.id}/edit`); }}
                         className='flex items-center gap-1.5 rounded border border-[#373A40]/30 px-3 py-1.5 text-xs font-medium hover:border-black transition-colors'

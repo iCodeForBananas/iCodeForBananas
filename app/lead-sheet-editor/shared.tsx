@@ -67,6 +67,23 @@ export function migrateSection(s: Section): Section {
   return { ...s, content: legacy, chords: undefined, lyrics: undefined };
 }
 
+export function getPlainText(sheet: LeadSheet): string {
+  const lines: string[] = [];
+  lines.push(sheet.title || "Untitled");
+  const meta: string[] = [];
+  if (sheet.key) meta.push(`Key: ${sheet.key}`);
+  if (sheet.tempo) meta.push(`Tempo: ${sheet.tempo} BPM`);
+  if (meta.length) lines.push(meta.join("  "));
+  if (sheet.general_notes) lines.push(sheet.general_notes);
+  for (const section of sheet.sections) {
+    lines.push("");
+    lines.push((section.label || section.type).toUpperCase());
+    lines.push(section.content ?? "");
+    if (section.notes) lines.push(`↳ ${section.notes}`);
+  }
+  return lines.join("\n").trimEnd();
+}
+
 // ─── ChordPro parser ──────────────────────────────────────────────────────────
 
 interface Segment {

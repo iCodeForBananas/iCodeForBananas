@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/app/hooks/useAuth";
 import { ArrowLeft, Pencil, Maximize2, Minimize2, Printer, Minus, Plus, Copy, Check, Link2 } from "lucide-react";
-import { type LeadSheet, type Section, migrateSection, ChordLyricLine } from "../../shared";
+import { type LeadSheet, type Section, migrateSection, ChordLyricLine, getPlainText } from "../../shared";
 
 const FONT_SCALE_KEY = "lead-sheet-print-font-scale";
 const MIN_SCALE = 70;
@@ -22,22 +22,6 @@ function loadFontScale(): number {
   return 100;
 }
 
-function getPlainText(sheet: LeadSheet): string {
-  const lines: string[] = [];
-  lines.push(sheet.title || "Untitled");
-  const meta: string[] = [];
-  if (sheet.key) meta.push(`Key: ${sheet.key}`);
-  if (sheet.tempo) meta.push(`Tempo: ${sheet.tempo} BPM`);
-  if (meta.length) lines.push(meta.join("  "));
-  if (sheet.general_notes) lines.push(sheet.general_notes);
-  for (const section of sheet.sections) {
-    lines.push("");
-    lines.push((section.label || section.type).toUpperCase());
-    lines.push(section.content ?? "");
-    if (section.notes) lines.push(`↳ ${section.notes}`);
-  }
-  return lines.join("\n").trimEnd();
-}
 
 function FontScaleControl({ scale, onChange }: { scale: number; onChange: (next: number) => void }) {
   return (
