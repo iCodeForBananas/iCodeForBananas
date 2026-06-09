@@ -1,15 +1,15 @@
-"use client";
+import type { Metadata } from "next";
+import FretboardQuizPage from "./FretboardQuizPage";
 
-import React from "react";
-import FretboardQuiz from "../components/FretboardQuiz";
-import BentoPageLayout from "../components/BentoPageLayout";
+export const metadata: Metadata = {
+  title: "Fretboard Quiz",
+  description: "Timed note identification quiz on the guitar fretboard. Test how fast you can name notes across all 6 strings and 24 frets to sharpen your fretboard knowledge.",
+  keywords: ["fretboard quiz", "note identification", "guitar notes", "fretboard memorization", "guitar practice", "music theory quiz", "note recognition"],
+  openGraph: {
+    title: "Fretboard Quiz",
+    description: "Timed note identification quiz across all 6 strings and 24 frets.",
+    type: "website",
+  },
+};
 
-export default function FretboardQuizPage() {
-  return (
-    <BentoPageLayout
-      title='Fretboard Quiz'
-    >
-      <FretboardQuiz />
-    </BentoPageLayout>
-  );
-}
+export default FretboardQuizPage;
