@@ -4,7 +4,7 @@ import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/app/hooks/useAuth";
-import { ArrowLeft, Pencil, Maximize2, Minimize2, Printer, Minus, Plus, Copy, Check } from "lucide-react";
+import { ArrowLeft, Pencil, Maximize2, Minimize2, Printer, Minus, Plus, Copy, Check, Link2 } from "lucide-react";
 import { type LeadSheet, type Section, migrateSection, ChordLyricLine } from "../../shared";
 
 const FONT_SCALE_KEY = "lead-sheet-print-font-scale";
@@ -140,6 +140,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
   const [fullscreen, setFullscreen] = useState(false);
   const [fontScale, setFontScale] = useState(loadFontScale);
   const [copied, setCopied] = useState(false);
+  const [shared, setShared] = useState(false);
 
   useEffect(() => {
     if (user) loadSheet();
@@ -150,6 +151,12 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
     await navigator.clipboard.writeText(getPlainText(sheet));
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleShare = async () => {
+    await navigator.clipboard.writeText(`${window.location.origin}/lead-sheet-editor/share/${id}`);
+    setShared(true);
+    setTimeout(() => setShared(false), 2000);
   };
 
   const updateFontScale = (next: number) => {
@@ -236,6 +243,13 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                     {copied ? "Copied!" : "Copy Text"}
                   </button>
                   <button
+                    onClick={handleShare}
+                    className='flex items-center gap-1.5 rounded border border-[#373A40]/30 px-3 py-2 text-sm font-medium hover:border-black hover:bg-black hover:text-[#facc15] transition-colors'
+                  >
+                    {shared ? <Check className='w-4 h-4' /> : <Link2 className='w-4 h-4' />}
+                    {shared ? "Link Copied!" : "Share"}
+                  </button>
+                  <button
                     onClick={() => window.print()}
                     className='flex items-center gap-1.5 rounded border border-[#373A40]/30 px-3 py-2 text-sm font-medium hover:border-black hover:bg-black hover:text-[#facc15] transition-colors'
                   >
@@ -286,6 +300,13 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                     >
                       {copied ? <Check className='w-4 h-4' /> : <Copy className='w-4 h-4' />}
                       {copied ? "Copied!" : "Copy Text"}
+                    </button>
+                    <button
+                      onClick={handleShare}
+                      className='flex items-center gap-1.5 rounded border border-[#373A40]/30 px-3 py-2 text-sm font-medium hover:border-black hover:bg-black hover:text-[#facc15] transition-colors'
+                    >
+                      {shared ? <Check className='w-4 h-4' /> : <Link2 className='w-4 h-4' />}
+                      {shared ? "Link Copied!" : "Share"}
                     </button>
                     <button
                       onClick={() => window.print()}

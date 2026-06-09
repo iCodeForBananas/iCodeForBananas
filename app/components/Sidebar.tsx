@@ -93,6 +93,8 @@ export default function Sidebar() {
     });
   };
 
+  if (pathname.startsWith("/lead-sheet-editor/share/")) return null;
+
   return (
     <>
       {!isOpen && (
