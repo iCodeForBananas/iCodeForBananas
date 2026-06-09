@@ -4,7 +4,7 @@ import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/app/hooks/useAuth";
-import { ArrowLeft, Pencil, Maximize2, Minimize2, Printer, Minus, Plus } from "lucide-react";
+import { ArrowLeft, Pencil, Maximize2, Minimize2, Printer, Minus, Plus, Copy, Check } from "lucide-react";
 import { type LeadSheet, type Section, migrateSection, ChordLyricLine } from "../../shared";
 
 const FONT_SCALE_KEY = "lead-sheet-print-font-scale";
@@ -20,6 +20,23 @@ function loadFontScale(): number {
     if (!isNaN(parsed)) return Math.min(MAX_SCALE, Math.max(MIN_SCALE, parsed));
   } catch {}
   return 100;
+}
+
+function getPlainText(sheet: LeadSheet): string {
+  const lines: string[] = [];
+  lines.push(sheet.title || "Untitled");
+  const meta: string[] = [];
+  if (sheet.key) meta.push(`Key: ${sheet.key}`);
+  if (sheet.tempo) meta.push(`Tempo: ${sheet.tempo} BPM`);
+  if (meta.length) lines.push(meta.join("  "));
+  if (sheet.general_notes) lines.push(sheet.general_notes);
+  for (const section of sheet.sections) {
+    lines.push("");
+    lines.push((section.label || section.type).toUpperCase());
+    lines.push(section.content ?? "");
+    if (section.notes) lines.push(`↳ ${section.notes}`);
+  }
+  return lines.join("\n").trimEnd();
 }
 
 function FontScaleControl({ scale, onChange }: { scale: number; onChange: (next: number) => void }) {
@@ -122,10 +139,18 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
   const [loading, setLoading] = useState(true);
   const [fullscreen, setFullscreen] = useState(false);
   const [fontScale, setFontScale] = useState(loadFontScale);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (user) loadSheet();
   }, [user, id]);
+
+  const handleCopy = async () => {
+    if (!sheet) return;
+    await navigator.clipboard.writeText(getPlainText(sheet));
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   const updateFontScale = (next: number) => {
     const clamped = Math.min(MAX_SCALE, Math.max(MIN_SCALE, next));
@@ -204,6 +229,13 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                 <div className='flex items-center gap-2'>
                   <FontScaleControl scale={fontScale} onChange={updateFontScale} />
                   <button
+                    onClick={handleCopy}
+                    className='flex items-center gap-1.5 rounded border border-[#373A40]/30 px-3 py-2 text-sm font-medium hover:border-black hover:bg-black hover:text-[#facc15] transition-colors'
+                  >
+                    {copied ? <Check className='w-4 h-4' /> : <Copy className='w-4 h-4' />}
+                    {copied ? "Copied!" : "Copy Text"}
+                  </button>
+                  <button
                     onClick={() => window.print()}
                     className='flex items-center gap-1.5 rounded border border-[#373A40]/30 px-3 py-2 text-sm font-medium hover:border-black hover:bg-black hover:text-[#facc15] transition-colors'
                   >
@@ -248,6 +280,13 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                   </button>
                   <div className='flex items-center gap-2'>
                     <FontScaleControl scale={fontScale} onChange={updateFontScale} />
+                    <button
+                      onClick={handleCopy}
+                      className='flex items-center gap-1.5 rounded border border-[#373A40]/30 px-3 py-2 text-sm font-medium hover:border-black hover:bg-black hover:text-[#facc15] transition-colors'
+                    >
+                      {copied ? <Check className='w-4 h-4' /> : <Copy className='w-4 h-4' />}
+                      {copied ? "Copied!" : "Copy Text"}
+                    </button>
                     <button
                       onClick={() => window.print()}
                       className='flex items-center gap-1.5 rounded border border-[#373A40]/30 px-3 py-2 text-sm font-medium hover:border-black hover:bg-black hover:text-[#facc15] transition-colors'
