@@ -74,16 +74,7 @@ function computeStats(lambda: TradingLambda, trades: Trade[]): StrategyStats {
     });
   }
 
-  return {
-    totalPnl,
-    totalPnlPct,
-    totalTrades: closed.length,
-    openTrades: open.length,
-    winRate,
-    wins: wins.length,
-    losses: losses.length,
-    equityCurve,
-  };
+  return { totalPnl, totalPnlPct, totalTrades: closed.length, openTrades: open.length, winRate, wins: wins.length, losses: losses.length, equityCurve };
 }
 
 const TIMEFRAME_LABELS: Record<string, string> = {
@@ -91,11 +82,7 @@ const TIMEFRAME_LABELS: Record<string, string> = {
 };
 
 const TIMEFRAME_MS: Record<string, number> = {
-  "5m": 5 * 60000,
-  "15m": 15 * 60000,
-  "1h": 60 * 60000,
-  "4h": 4 * 60 * 60000,
-  daily: 20 * 60 * 60000,
+  "5m": 5 * 60000, "15m": 15 * 60000, "1h": 60 * 60000, "4h": 4 * 60 * 60000, daily: 20 * 60 * 60000,
 };
 
 function nextRunLabel(lambda: TradingLambda): string {
@@ -111,38 +98,32 @@ function nextRunLabel(lambda: TradingLambda): string {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  active: "text-green-400 bg-green-400/10",
-  paused: "text-yellow-400 bg-yellow-400/10",
-  stopped: "text-slate-400 bg-slate-700",
+  active: "text-green-700 bg-green-100",
+  paused: "text-yellow-700 bg-yellow-100",
+  stopped: "text-gray-500 bg-gray-100",
 };
 
-function MiniChart({
-  data,
-  isPositive,
-}: {
-  data: { date: string; equity: number }[];
-  isPositive: boolean;
-}) {
+function MiniChart({ data, isPositive }: { data: { date: string; equity: number }[]; isPositive: boolean }) {
   if (data.length < 2) {
     return (
-      <div className="flex items-center justify-center h-full text-slate-600 text-xs">
+      <div className="flex items-center justify-center h-full text-gray-400 text-xs">
         No trades yet
       </div>
     );
   }
-  const color = isPositive ? "#4ade80" : "#f87171";
+  const color = isPositive ? "#16a34a" : "#ef4444";
   return (
     <ClientOnly>
     <ResponsiveContainer width="100%" height="100%">
       <LineChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+        <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
         <XAxis dataKey="date" hide />
         <YAxis domain={["auto", "auto"]} hide />
-        <ReferenceLine y={data[0]?.equity} stroke="#334155" strokeDasharray="3 3" />
+        <ReferenceLine y={data[0]?.equity} stroke="#e5e7eb" strokeDasharray="3 3" />
         <Tooltip
-          contentStyle={{ background: "#0f172a", border: "1px solid #334155", borderRadius: 8, fontSize: 11 }}
+          contentStyle={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 8, fontSize: 11 }}
           formatter={(v: number | undefined) => [`$${(v ?? 0).toLocaleString()}`, "Equity"]}
-          labelStyle={{ color: "#94a3b8" }}
+          labelStyle={{ color: "#6b7280" }}
         />
         <Line type="monotone" dataKey="equity" stroke={color} strokeWidth={2} dot={false} />
       </LineChart>
@@ -162,130 +143,112 @@ interface LambdaCardProps {
   onExpand: (id: string | null) => void;
 }
 
-function LambdaCard({
-  lambda,
-  lambdaTrades,
-  stats,
-  isExpanded,
-  executing,
-  onRun,
-  onToggle,
-  onExpand,
-}: LambdaCardProps) {
+function LambdaCard({ lambda, lambdaTrades, stats, isExpanded, executing, onRun, onToggle, onExpand }: LambdaCardProps) {
   const isPositive = stats.totalPnl >= 0;
 
   return (
-    <div className="bg-slate-800/60 border border-slate-700/60 rounded-xl overflow-hidden">
+    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
       {/* Top row */}
       <div className="flex items-start gap-4 p-4">
-        {/* Info */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-bold text-white text-sm">{lambda.name}</span>
+            <span className="font-bold text-gray-900 text-sm">{lambda.name}</span>
             <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${STATUS_COLORS[lambda.status]}`}>
               {lambda.status}
             </span>
             {lambda.is_sandbox && (
-              <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 font-semibold">paper</span>
+              <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 font-semibold">paper</span>
             )}
-            <span className="text-xs px-2 py-0.5 rounded-full bg-slate-700 text-slate-400 font-mono">
+            <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 font-mono">
               {TIMEFRAME_LABELS[lambda.timeframe] ?? lambda.timeframe}
             </span>
           </div>
           <div className="flex items-center gap-3 mt-1 flex-wrap">
-            <span className="text-xs text-slate-500">{lambda.strategy_name}</span>
-            <span className="text-xs text-slate-600">·</span>
-            <span className="text-xs text-slate-500">{lambda.symbol}</span>
-            <span className="text-xs text-slate-600">·</span>
-            <span className="text-xs text-slate-500">{lambda.position_size} shares</span>
-            <span className="text-xs text-slate-600">·</span>
-            <span className="text-xs text-slate-500">
-              next run: <span className="text-slate-400">{nextRunLabel(lambda)}</span>
+            <span className="text-xs text-gray-400">{lambda.strategy_name}</span>
+            <span className="text-xs text-gray-300">·</span>
+            <span className="text-xs text-gray-400">{lambda.symbol}</span>
+            <span className="text-xs text-gray-300">·</span>
+            <span className="text-xs text-gray-400">{lambda.position_size} shares</span>
+            <span className="text-xs text-gray-300">·</span>
+            <span className="text-xs text-gray-400">
+              next run: <span className="text-gray-600">{nextRunLabel(lambda)}</span>
             </span>
           </div>
         </div>
 
-        {/* Stats */}
         <div className="flex items-center gap-5 shrink-0">
           <div className="text-right">
-            <p className={`text-base font-black ${isPositive ? "text-green-400" : "text-red-400"}`}>
+            <p className={`text-base font-black ${isPositive ? "text-green-600" : "text-red-500"}`}>
               {isPositive ? "+" : ""}${stats.totalPnl.toFixed(0)}
             </p>
-            <p className={`text-xs ${isPositive ? "text-green-500" : "text-red-500"}`}>
+            <p className={`text-xs ${isPositive ? "text-green-500" : "text-red-400"}`}>
               {isPositive ? "+" : ""}{stats.totalPnlPct.toFixed(2)}%
             </p>
           </div>
           <div className="text-right hidden sm:block">
-            <p className="text-sm font-bold text-white">{stats.winRate.toFixed(0)}%</p>
-            <p className="text-xs text-slate-500">Win rate</p>
+            <p className="text-sm font-bold text-gray-800">{stats.winRate.toFixed(0)}%</p>
+            <p className="text-xs text-gray-400">Win rate</p>
           </div>
           <div className="text-right hidden sm:block">
-            <p className="text-sm font-bold text-white">{stats.totalTrades}</p>
-            <p className="text-xs text-slate-500">{stats.openTrades > 0 ? `${stats.openTrades} open` : "trades"}</p>
+            <p className="text-sm font-bold text-gray-800">{stats.totalTrades}</p>
+            <p className="text-xs text-gray-400">{stats.openTrades > 0 ? `${stats.openTrades} open` : "trades"}</p>
           </div>
         </div>
 
-        {/* Actions */}
         <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={() => onRun(lambda.id)}
             disabled={executing === lambda.id || lambda.status === "stopped"}
-            className="px-3 py-1.5 text-xs font-semibold bg-slate-700 hover:bg-slate-600 disabled:opacity-40 text-white rounded-lg transition-colors"
+            className="px-3 py-1.5 text-xs font-semibold bg-gray-100 hover:bg-gray-200 disabled:opacity-40 text-gray-700 rounded-lg transition-colors"
             title="Run now"
           >
             {executing === lambda.id ? "Running…" : "▶ Run"}
           </button>
           <button
             onClick={() => onToggle(lambda)}
-            className="px-3 py-1.5 text-xs font-semibold bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors"
+            className="px-3 py-1.5 text-xs font-semibold bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
           >
             {lambda.status === "active" ? "⏸ Pause" : "▶ Resume"}
           </button>
           <button
             onClick={() => onExpand(isExpanded ? null : lambda.id)}
-            className="px-2 py-1.5 text-xs text-slate-400 hover:text-white rounded-lg transition-colors"
+            className="px-2 py-1.5 text-xs text-gray-400 hover:text-gray-700 rounded-lg transition-colors"
           >
             {isExpanded ? "▲" : "▼"}
           </button>
         </div>
       </div>
 
-      {/* Equity chart */}
       <div className="px-4 pb-1 h-28">
         <MiniChart data={stats.equityCurve} isPositive={isPositive} />
       </div>
 
-      {/* Last run info bar */}
-      <div className="px-4 pb-2 flex items-center gap-3 text-xs text-slate-600">
+      <div className="px-4 pb-2 flex items-center gap-3 text-xs text-gray-400">
         {lambda.last_run_at ? (
-          <>
-            <span>Last run: {new Date(lambda.last_run_at).toLocaleString()}</span>
-          </>
+          <span>Last run: {new Date(lambda.last_run_at).toLocaleString()}</span>
         ) : (
           <span>Never run — click ▶ Run or wait for the scheduler</span>
         )}
       </div>
 
-      {/* Expanded: trade list */}
       {isExpanded && (
-        <div className="border-t border-slate-700/60 mx-0">
+        <div className="border-t border-gray-200">
           <div className="p-4">
-            {/* Params */}
             <div className="flex flex-wrap gap-1.5 mb-4">
               {Object.entries(lambda.params).map(([k, v]) => (
-                <span key={k} className="text-xs bg-slate-700 text-slate-300 px-2 py-0.5 rounded font-mono">
+                <span key={k} className="text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded font-mono">
                   {k}={String(v)}
                 </span>
               ))}
             </div>
 
             {lambdaTrades.length === 0 ? (
-              <p className="text-slate-500 text-sm">No trades yet — click Run to execute the strategy now.</p>
+              <p className="text-gray-500 text-sm">No trades yet — click Run to execute the strategy now.</p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-xs">
                   <thead>
-                    <tr className="text-slate-500 border-b border-slate-700">
+                    <tr className="text-gray-400 border-b border-gray-200">
                       <th className="pb-2 text-left font-semibold">Side</th>
                       <th className="pb-2 text-right font-semibold">Entry</th>
                       <th className="pb-2 text-right font-semibold">Exit</th>
@@ -296,23 +259,23 @@ function LambdaCard({
                   </thead>
                   <tbody>
                     {lambdaTrades.slice().reverse().map((t) => (
-                      <tr key={t.id} className="border-b border-slate-700/40 hover:bg-slate-700/20">
+                      <tr key={t.id} className="border-b border-gray-100 hover:bg-gray-50">
                         <td className="py-1.5">
-                          <span className={`px-1.5 py-0.5 rounded text-xs font-semibold ${t.status === "open" ? "bg-blue-500/20 text-blue-400" : t.side === "LONG" ? "bg-green-500/20 text-green-400" : "bg-red-500/20 text-red-400"}`}>
+                          <span className={`px-1.5 py-0.5 rounded text-xs font-semibold ${t.status === "open" ? "bg-blue-50 text-blue-600" : t.side === "LONG" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
                             {t.status === "open" ? "OPEN" : t.side}
                           </span>
                         </td>
-                        <td className="py-1.5 text-right text-slate-300 font-mono">${t.entry_price.toFixed(2)}</td>
-                        <td className="py-1.5 text-right text-slate-300 font-mono">
+                        <td className="py-1.5 text-right text-gray-700 font-mono">${t.entry_price.toFixed(2)}</td>
+                        <td className="py-1.5 text-right text-gray-700 font-mono">
                           {t.exit_price ? `$${t.exit_price.toFixed(2)}` : "—"}
                         </td>
-                        <td className={`py-1.5 text-right font-mono font-semibold ${t.pnl == null ? "text-slate-500" : t.pnl >= 0 ? "text-green-400" : "text-red-400"}`}>
+                        <td className={`py-1.5 text-right font-mono font-semibold ${t.pnl == null ? "text-gray-400" : t.pnl >= 0 ? "text-green-600" : "text-red-500"}`}>
                           {t.pnl == null ? "—" : `${t.pnl >= 0 ? "+" : ""}$${t.pnl.toFixed(2)}`}
                         </td>
-                        <td className={`py-1.5 text-right font-mono ${t.pnl_percent == null ? "text-slate-500" : t.pnl_percent >= 0 ? "text-green-400" : "text-red-400"}`}>
+                        <td className={`py-1.5 text-right font-mono ${t.pnl_percent == null ? "text-gray-400" : t.pnl_percent >= 0 ? "text-green-600" : "text-red-500"}`}>
                           {t.pnl_percent == null ? "—" : `${t.pnl_percent >= 0 ? "+" : ""}${t.pnl_percent.toFixed(2)}%`}
                         </td>
-                        <td className="py-1.5 pl-3 text-slate-400 truncate max-w-[200px]">{t.exit_reason ?? "—"}</td>
+                        <td className="py-1.5 pl-3 text-gray-400 truncate max-w-[200px]">{t.exit_reason ?? "—"}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -397,90 +360,85 @@ export default function PaperTradingPage() {
       body: JSON.stringify({ status: newStatus }),
     });
     setLambdas((prev) =>
-      prev.map((l) =>
-        l.id === lambda.id ? { ...l, status: newStatus as "active" | "paused" } : l
-      )
+      prev.map((l) => l.id === lambda.id ? { ...l, status: newStatus as "active" | "paused" } : l)
     );
   };
 
-  if (loading) {
-    return (
-      <div className="flex-1 min-h-screen p-4 sm:p-6 max-w-6xl mx-auto">
-        <PageHeader />
-        <div className="flex items-center justify-center h-64 text-slate-500">Loading strategies…</div>
-      </div>
-    );
-  }
-
-  if (!authToken) {
-    return (
-      <div className="flex-1 min-h-screen p-4 sm:p-6 max-w-6xl mx-auto">
-        <PageHeader />
-        <div className="flex flex-col items-center justify-center h-64 gap-4 text-center">
-          <div className="text-5xl">🔒</div>
-          <p className="text-slate-300 font-semibold">Sign in to view your strategies</p>
-          <p className="text-slate-500 text-sm">Only authorized users can view and manage deployed strategies.</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (lambdas.length === 0) {
-    return (
-      <div className="flex-1 min-h-screen p-4 sm:p-6 max-w-6xl mx-auto">
-        <PageHeader />
-        <div className="flex flex-col items-center justify-center h-64 gap-4 text-center">
-          <div className="text-5xl">🚀</div>
-          <p className="text-slate-300 font-semibold">No strategies deployed yet</p>
-          <p className="text-slate-500 text-sm max-w-xs">
-            Run a backtest in Algo Backtest, hit Deploy Strategy when it passes the readiness check.
-          </p>
-          <a
-            href="/algo-backtest"
-            className="px-5 py-2.5 bg-yellow-400 hover:bg-yellow-300 text-black font-bold rounded-lg text-sm transition-colors"
-          >
-            Open Algo Backtest
-          </a>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="flex-1 min-h-screen p-4 sm:p-6 max-w-6xl mx-auto">
-      <PageHeader />
-      <div className="flex flex-col gap-4">
-        {lambdas.map((lambda) => (
-          <LambdaCard
-            key={lambda.id}
-            lambda={lambda}
-            lambdaTrades={trades[lambda.id] ?? []}
-            stats={computeStats(lambda, trades[lambda.id] ?? [])}
-            isExpanded={expandedId === lambda.id}
-            executing={executing}
-            onRun={handleRun}
-            onToggle={handleToggleStatus}
-            onExpand={setExpandedId}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
+    <div className="flex flex-col flex-1 min-h-0">
+      <main className="flex flex-col flex-1 min-h-0 p-2 sm:p-4">
+        <div
+          className="flex flex-col flex-1 min-h-0 rounded-2xl overflow-hidden"
+          style={{ background: "#fff", border: "1px solid var(--border-color)" }}
+        >
+          {/* Header */}
+          <div className="border-b border-zinc-200 shrink-0">
+            <div className="px-4 pt-4 pb-3 sm:px-6 sm:pt-5 sm:pb-4 flex items-center justify-between flex-wrap gap-3">
+              <div>
+                <h1 className="text-2xl sm:text-3xl font-bold leading-tight" style={{ color: "#000" }}>
+                  Running Strategies
+                </h1>
+                <p className="text-sm text-gray-500 mt-0.5">Deployed strategies executing automatically against Tradier</p>
+              </div>
+              <a
+                href="/algo-backtest"
+                className="px-4 py-2 bg-yellow-400 hover:bg-yellow-300 text-black text-sm font-bold rounded-lg transition-colors"
+              >
+                + Deploy Strategy
+              </a>
+            </div>
+          </div>
 
-function PageHeader() {
-  return (
-    <div className="flex items-center justify-between mb-6">
-      <div>
-        <h1 className="text-2xl font-black text-white tracking-tight">Running Strategies</h1>
-        <p className="text-sm text-slate-400 mt-0.5">Deployed strategies executing automatically against Tradier</p>
-      </div>
-      <a
-        href="/algo-backtest"
-        className="px-4 py-2 bg-yellow-400 hover:bg-yellow-300 text-black text-sm font-bold rounded-lg transition-colors"
-      >
-        + Deploy Strategy
-      </a>
+          {/* Content */}
+          <div className="flex-1 overflow-auto p-4 sm:p-6">
+            {loading && (
+              <div className="flex items-center justify-center h-64 text-gray-400">Loading strategies…</div>
+            )}
+
+            {!loading && !authToken && (
+              <div className="flex flex-col items-center justify-center h-64 gap-4 text-center">
+                <div className="text-5xl">🔒</div>
+                <p className="text-gray-700 font-semibold">Sign in to view your strategies</p>
+                <p className="text-gray-500 text-sm">Only authorized users can view and manage deployed strategies.</p>
+              </div>
+            )}
+
+            {!loading && authToken && lambdas.length === 0 && (
+              <div className="flex flex-col items-center justify-center h-64 gap-4 text-center">
+                <div className="text-5xl">🚀</div>
+                <p className="text-gray-700 font-semibold">No strategies deployed yet</p>
+                <p className="text-gray-500 text-sm max-w-xs">
+                  Run a backtest in Algo Backtest, hit Deploy Strategy when it passes the readiness check.
+                </p>
+                <a
+                  href="/algo-backtest"
+                  className="px-5 py-2.5 bg-yellow-400 hover:bg-yellow-300 text-black font-bold rounded-lg text-sm transition-colors"
+                >
+                  Open Algo Backtest
+                </a>
+              </div>
+            )}
+
+            {!loading && authToken && lambdas.length > 0 && (
+              <div className="flex flex-col gap-4">
+                {lambdas.map((lambda) => (
+                  <LambdaCard
+                    key={lambda.id}
+                    lambda={lambda}
+                    lambdaTrades={trades[lambda.id] ?? []}
+                    stats={computeStats(lambda, trades[lambda.id] ?? [])}
+                    isExpanded={expandedId === lambda.id}
+                    executing={executing}
+                    onRun={handleRun}
+                    onToggle={handleToggleStatus}
+                    onExpand={setExpandedId}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </main>
     </div>
   );
 }

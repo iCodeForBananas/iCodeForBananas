@@ -52,12 +52,6 @@ interface Lambda {
   stats: LambdaStats;
 }
 
-const STATUS_COLORS: Record<string, string> = {
-  active: "#22c55e",
-  paused: "#f59e0b",
-  stopped: "#ef4444",
-};
-
 const STATUS_BG: Record<string, string> = {
   active: "bg-green-100 text-green-700",
   paused: "bg-amber-100 text-amber-700",
@@ -95,19 +89,13 @@ function MiniChart({ data, positive }: { data: { time: string; equity: number }[
     <ClientOnly>
     <ResponsiveContainer width="100%" height={64}>
       <LineChart data={data} margin={{ top: 4, right: 4, left: 4, bottom: 4 }}>
-        <Line
-          type="monotone"
-          dataKey="equity"
-          stroke={positive ? "#22c55e" : "#ef4444"}
-          strokeWidth={2}
-          dot={false}
-        />
+        <Line type="monotone" dataKey="equity" stroke={positive ? "#22c55e" : "#ef4444"} strokeWidth={2} dot={false} />
         <Tooltip
           content={({ active, payload }) => {
             if (!active || !payload?.length) return null;
             const p = payload[0].payload as { time: string; equity: number };
             return (
-              <div className="bg-gray-900 text-white text-xs px-2 py-1 rounded shadow">
+              <div className="bg-white border border-gray-200 text-gray-800 text-xs px-2 py-1 rounded shadow">
                 <div>${fmt(p.equity)}</div>
                 <div className="text-gray-400">{fmtTime(p.time)}</div>
               </div>
@@ -127,7 +115,6 @@ function LambdaCard({ lambda, rank }: { lambda: Lambda; rank: number }) {
 
   return (
     <div className={`bg-white rounded-xl border-2 transition-all ${positive ? "border-green-100" : "border-red-100"} shadow-sm hover:shadow-md`}>
-      {/* Header */}
       <div className="p-5">
         <div className="flex items-start justify-between gap-3 mb-3">
           <div className="flex items-center gap-3">
@@ -154,15 +141,12 @@ function LambdaCard({ lambda, rank }: { lambda: Lambda; rank: number }) {
           </span>
         </div>
 
-        {/* P&L */}
         <div className="mb-3">
           <PnlBadge value={stats.totalPnl} percent={stats.totalPnlPercent} />
         </div>
 
-        {/* Mini chart */}
         <MiniChart data={stats.equityCurve} positive={positive} />
 
-        {/* Stats row */}
         <div className="grid grid-cols-4 gap-2 mt-3 pt-3 border-t border-gray-100">
           <div className="text-center">
             <div className="text-xs text-gray-400 mb-0.5">Trades</div>
@@ -188,7 +172,6 @@ function LambdaCard({ lambda, rank }: { lambda: Lambda; rank: number }) {
           </div>
         </div>
 
-        {/* Open trade */}
         {stats.openTrade && (
           <div className="mt-3 p-2.5 bg-blue-50 rounded-lg border border-blue-100">
             <div className="flex items-center justify-between text-xs">
@@ -198,14 +181,12 @@ function LambdaCard({ lambda, rank }: { lambda: Lambda; rank: number }) {
           </div>
         )}
 
-        {/* Last trade */}
         {stats.lastTrade && !stats.openTrade && (
           <div className="mt-2 text-xs text-gray-400">
             Last trade: {fmtTime(stats.lastTrade.exit_time ?? stats.lastTrade.entry_time)}
           </div>
         )}
 
-        {/* Expand button */}
         <button
           onClick={() => setExpanded(!expanded)}
           className="w-full mt-3 text-xs text-gray-400 hover:text-gray-600 flex items-center justify-center gap-1"
@@ -214,7 +195,6 @@ function LambdaCard({ lambda, rank }: { lambda: Lambda; rank: number }) {
         </button>
       </div>
 
-      {/* Expanded details */}
       {expanded && (
         <div className="border-t border-gray-100 p-5 bg-gray-50 rounded-b-xl">
           <div className="grid grid-cols-2 gap-4 mb-4">
@@ -235,7 +215,6 @@ function LambdaCard({ lambda, rank }: { lambda: Lambda; rank: number }) {
               <div className="text-sm font-medium">${lambda.initial_capital.toLocaleString()}</div>
             </div>
           </div>
-
           <div className="text-xs text-gray-400 mb-2 font-medium">Strategy Parameters</div>
           <div className="flex flex-wrap gap-1.5">
             {Object.entries(lambda.params).map(([k, v]) => (
@@ -244,9 +223,7 @@ function LambdaCard({ lambda, rank }: { lambda: Lambda; rank: number }) {
               </span>
             ))}
           </div>
-          <div className="mt-3 text-xs text-gray-400">
-            Deployed {fmtDate(lambda.created_at)}
-          </div>
+          <div className="mt-3 text-xs text-gray-400">Deployed {fmtDate(lambda.created_at)}</div>
         </div>
       )}
     </div>
@@ -266,29 +243,11 @@ function FullEquityChart({ lambdas }: { lambdas: Lambda[] }) {
         <ResponsiveContainer width="100%" height="100%">
           <LineChart margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-            <XAxis
-              dataKey="time"
-              type="category"
-              allowDuplicatedCategory={false}
-              tickFormatter={(v) => new Date(v).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-              fontSize={11}
-            />
+            <XAxis dataKey="time" type="category" allowDuplicatedCategory={false} tickFormatter={(v) => new Date(v).toLocaleDateString("en-US", { month: "short", day: "numeric" })} fontSize={11} />
             <YAxis fontSize={11} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
-            <Tooltip
-              formatter={(value: number | undefined) => [`$${fmt(value ?? 0)}`, ""]}
-              labelFormatter={(v) => fmtTime(String(v))}
-            />
+            <Tooltip formatter={(value: number | undefined) => [`$${fmt(value ?? 0)}`, ""]} labelFormatter={(v) => fmtTime(String(v))} />
             {active.map((lambda, i) => (
-              <Line
-                key={lambda.id}
-                data={lambda.stats.equityCurve}
-                type="monotone"
-                dataKey="equity"
-                name={lambda.name}
-                stroke={colors[i % colors.length]}
-                strokeWidth={2}
-                dot={false}
-              />
+              <Line key={lambda.id} data={lambda.stats.equityCurve} type="monotone" dataKey="equity" name={lambda.name} stroke={colors[i % colors.length]} strokeWidth={2} dot={false} />
             ))}
           </LineChart>
         </ResponsiveContainer>
@@ -321,7 +280,7 @@ export default function LeaderboardPage() {
 
   useEffect(() => {
     load();
-    const interval = setInterval(load, 60_000); // refresh every minute
+    const interval = setInterval(load, 60_000);
     return () => clearInterval(interval);
   }, [load]);
 
@@ -334,35 +293,41 @@ export default function LeaderboardPage() {
     : 0;
 
   return (
-    <div className='flex flex-col flex-1'>
-      <main className='pr-4 py-4 flex-1'>
-        <div className='rounded-lg p-6 bg-white'>
+    <div className="flex flex-col flex-1 min-h-0">
+      <main className="flex flex-col flex-1 min-h-0 p-2 sm:p-4">
+        <div
+          className="flex flex-col flex-1 min-h-0 rounded-2xl overflow-hidden"
+          style={{ background: "#fff", border: "1px solid var(--border-color)" }}
+        >
           {/* Header */}
-          <div className="mb-8">
-            <div className="flex items-start justify-between flex-wrap gap-4">
+          <div className="border-b border-zinc-200 shrink-0">
+            <div className="px-4 pt-4 pb-3 sm:px-6 sm:pt-5 sm:pb-4 flex items-center justify-between flex-wrap gap-3">
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">📈 Trading Leaderboard</h1>
-                <p className="text-gray-500 mt-1">Live performance of all deployed algorithmic strategies</p>
+                <h1 className="text-2xl sm:text-3xl font-bold leading-tight" style={{ color: "#000" }}>
+                  Trading Leaderboard
+                </h1>
+                <p className="text-sm text-gray-500 mt-0.5">Live performance of all deployed algorithmic strategies</p>
               </div>
               <div className="flex items-center gap-3">
                 {lastUpdated && (
-                  <span className="text-xs text-gray-400">
-                    Updated {lastUpdated.toLocaleTimeString()}
-                  </span>
+                  <span className="text-xs text-gray-400">Updated {lastUpdated.toLocaleTimeString()}</span>
                 )}
                 <button
                   onClick={load}
                   disabled={loading}
-                  className="text-sm px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-white text-gray-600 disabled:opacity-50"
+                  className="text-sm px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-600 disabled:opacity-50 transition-colors"
                 >
                   {loading ? "Loading…" : "↻ Refresh"}
                 </button>
               </div>
             </div>
+          </div>
 
+          {/* Content */}
+          <div className="flex-1 overflow-auto p-4 sm:p-6">
             {/* Summary stats */}
             {lambdas.length > 0 && (
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
                 <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
                   <div className="text-xs text-gray-400 mb-1">Total P&L (all strategies)</div>
                   <div className={`text-xl font-bold ${totalPnl >= 0 ? "text-green-600" : "text-red-500"}`}>
@@ -385,49 +350,41 @@ export default function LeaderboardPage() {
                 </div>
               </div>
             )}
-          </div>
 
-          {/* Error */}
-          {error && (
-            <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 text-red-700 text-sm">
-              {error}
+            {error && (
+              <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 text-red-700 text-sm">{error}</div>
+            )}
+
+            {loading && lambdas.length === 0 && (
+              <div className="text-center py-20 text-gray-400">Loading strategies…</div>
+            )}
+
+            {lambdas.length > 0 && <FullEquityChart lambdas={lambdas} />}
+
+            {!loading && lambdas.length === 0 && !error && (
+              <div className="bg-white rounded-xl border border-dashed border-gray-300 p-12 text-center">
+                <div className="text-4xl mb-3">🚀</div>
+                <h3 className="text-lg font-semibold text-gray-700 mb-2">No strategies deployed yet</h3>
+                <p className="text-gray-400 text-sm max-w-sm mx-auto">
+                  Head to <a href="/algo-backtest" className="text-blue-500 underline">Algo Backtest</a>, find a strategy
+                  that performs well, then use <strong>Export Lambda</strong> to deploy it. Once running, its trades will
+                  appear here automatically.
+                </p>
+              </div>
+            )}
+
+            {lambdas.length > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {lambdas.map((lambda, i) => (
+                  <LambdaCard key={lambda.id} lambda={lambda} rank={i + 1} />
+                ))}
+              </div>
+            )}
+
+            <div className="mt-8 text-center text-xs text-gray-400">
+              Data refreshes automatically every 60 seconds · Strategies use Tradier API ·{" "}
+              <a href="/algo-backtest" className="underline hover:text-gray-600">Back to Backtest</a>
             </div>
-          )}
-
-          {/* Loading */}
-          {loading && lambdas.length === 0 && (
-            <div className="text-center py-20 text-gray-400">Loading strategies…</div>
-          )}
-
-          {/* Combined equity chart */}
-          {lambdas.length > 0 && <FullEquityChart lambdas={lambdas} />}
-
-          {/* Empty state */}
-          {!loading && lambdas.length === 0 && !error && (
-            <div className="bg-white rounded-xl border border-dashed border-gray-300 p-12 text-center">
-              <div className="text-4xl mb-3">🚀</div>
-              <h3 className="text-lg font-semibold text-gray-700 mb-2">No strategies deployed yet</h3>
-              <p className="text-gray-400 text-sm max-w-sm mx-auto">
-                Head to <a href="/algo-backtest" className="text-blue-500 underline">Algo Backtest</a>, find a strategy
-                that performs well, then use <strong>Export Lambda</strong> to deploy it. Once running, its trades will
-                appear here automatically.
-              </p>
-            </div>
-          )}
-
-          {/* Lambda cards grid */}
-          {lambdas.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {lambdas.map((lambda, i) => (
-                <LambdaCard key={lambda.id} lambda={lambda} rank={i + 1} />
-              ))}
-            </div>
-          )}
-
-          {/* Footer */}
-          <div className="mt-8 text-center text-xs text-gray-400">
-            Data refreshes automatically every 60 seconds · Strategies use Tradier API ·{" "}
-            <a href="/algo-backtest" className="underline hover:text-gray-600">Back to Backtest</a>
           </div>
         </div>
       </main>
