@@ -14,12 +14,9 @@ const NAV: { label: string; links: { href: string; text: string; auth?: boolean 
     label: "Music",
     links: [
       { href: "/circle-of-fifths", text: "Circle of Fifths" },
-      { href: "/chord-progressions", text: "Chord Progressions" },
       { href: "/chord-explorer", text: "Chord Explorer" },
-      { href: "/chord-diagrams", text: "Chord Diagrams" },
       { href: "/chord-finder", text: "Chord Finder" },
       { href: "/chord-positions", text: "Chord Positions" },
-      { href: "/note-map", text: "Note Map" },
       { href: "/scale-tool", text: "Scale Tool" },
       { href: "/fretboard-quiz", text: "Fretboard Quiz" },
       { href: "/lead-sheet-editor", text: "Lead Sheet Editor" },

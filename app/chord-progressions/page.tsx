@@ -1,15 +1,5 @@
-"use client";
-
-import React from "react";
-import ProgressionsView from "../components/ProgressionsView";
-import BentoPageLayout from "../components/BentoPageLayout";
+import { notFound } from "next/navigation";
 
 export default function ChordProgressionsPage() {
-  return (
-    <BentoPageLayout
-      title='Chord Progressions'
-    >
-      <ProgressionsView />
-    </BentoPageLayout>
-  );
+  notFound();
 }
