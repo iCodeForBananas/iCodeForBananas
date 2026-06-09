@@ -11,8 +11,6 @@ import {
   ZoomOut,
   RotateCcw,
   Move,
-  Sun,
-  Moon,
   Plus,
   Edit2,
   FileText,
@@ -43,7 +41,6 @@ export default function MermaidFlowPage() {
   const [copied, setCopied] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(480);
   const [zoom, setZoom] = useState(1);
-  const [theme, setTheme] = useState<"light" | "dark">("light");
   const [exportPixelRatio, setExportPixelRatio] = useState(5);
   const [editingTabId, setEditingTabId] = useState<string | null>(null);
   const [tempName, setTempName] = useState("");
@@ -54,7 +51,6 @@ export default function MermaidFlowPage() {
   const previewRef = useRef<HTMLDivElement>(null);
   const previewContainerRef = useRef<HTMLDivElement>(null);
 
-  // Initialize Mermaid + sidebar width on mount (client-only).
   useEffect(() => {
     mermaid.initialize({
       startOnLoad: true,
@@ -71,7 +67,6 @@ export default function MermaidFlowPage() {
     setSidebarWidth(window.innerWidth * 0.3);
   }, []);
 
-  // Load diagrams from IndexedDB on mount
   useEffect(() => {
     const init = async () => {
       const all = await storage.getAll();
@@ -168,7 +163,6 @@ export default function MermaidFlowPage() {
     setDiagrams((prev) => prev.map((d) => (d.id === activeId ? { ...d, code: newCode } : d)));
   };
 
-  // Auto-save active diagram with debounce
   useEffect(() => {
     if (!activeDiagram || !isLoaded) return;
 
@@ -187,7 +181,6 @@ export default function MermaidFlowPage() {
     y.set(0);
   };
 
-  // Mouse wheel zoom
   useEffect(() => {
     const container = previewContainerRef.current;
     if (!container) return;
@@ -233,40 +226,6 @@ export default function MermaidFlowPage() {
     };
   }, []);
 
-  // Re-initialize Mermaid when theme changes
-  useEffect(() => {
-    mermaid.initialize({
-      startOnLoad: true,
-      theme: theme === "dark" ? "dark" : "default",
-      securityLevel: "loose",
-      fontFamily: "Inter, sans-serif",
-      fontSize: 16,
-      flowchart: {
-        htmlLabels: false,
-        curve: "basis",
-        useMaxWidth: false,
-      },
-    });
-
-    const renderChart = async () => {
-      if (!activeDiagram?.code.trim()) return;
-      try {
-        const id = `mermaid-${Math.random().toString(36).substr(2, 9)}`;
-        const { svg } = await mermaid.render(id, activeDiagram.code);
-        const responsiveSvg = svg
-          .replace(/width="[^"]*"/, 'width="100%"')
-          .replace(/height="[^"]*"/, 'height="auto"');
-        setSvg(responsiveSvg);
-        setError(null);
-      } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : "Invalid Mermaid syntax";
-        setError(message);
-      }
-    };
-    renderChart();
-  }, [theme, activeDiagram?.id]);
-
-  // Render Mermaid on code change
   useEffect(() => {
     const renderChart = async () => {
       if (!activeDiagram?.code.trim()) {
@@ -292,7 +251,7 @@ export default function MermaidFlowPage() {
 
     const timeoutId = setTimeout(renderChart, 300);
     return () => clearTimeout(timeoutId);
-  }, [activeDiagram?.code, theme]);
+  }, [activeDiagram?.code]);
 
   const [isExporting, setIsExporting] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -318,7 +277,7 @@ export default function MermaidFlowPage() {
       try {
         setIsExporting(true);
         const dataUrl = await toPng(previewRef.current, {
-          backgroundColor: theme === "dark" ? "#18181b" : "#ffffff",
+          backgroundColor: "#ffffff",
           pixelRatio: exportPixelRatio,
           quality: 1,
           skipFonts: false,
@@ -355,464 +314,317 @@ export default function MermaidFlowPage() {
   };
 
   return (
-    <div
-      className={`mermaid-flow-root flex flex-col h-full font-sans overflow-hidden transition-colors duration-300 ${
-        theme === "dark" ? "bg-zinc-950 text-zinc-100" : "bg-zinc-50 text-zinc-900"
-      }`}
-    >
-      <style jsx global>{`
-        .mermaid-flow-root .custom-scrollbar::-webkit-scrollbar {
-          width: 4px;
-        }
-        .mermaid-flow-root .custom-scrollbar::-webkit-scrollbar-track {
-          background: transparent;
-        }
-        .mermaid-flow-root .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: rgba(110, 110, 110, 0.2);
-          border-radius: 10px;
-        }
-        .mermaid-flow-root .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: rgba(110, 110, 110, 0.4);
-        }
-        .mermaid-flow-root .mermaid text {
-          font-family: "Inter", sans-serif !important;
-        }
-      `}</style>
-
-      {/* Header */}
-      <header
-        className={`h-16 border-b flex items-center justify-between px-6 shrink-0 z-10 shadow-sm transition-colors duration-300 ${
-          theme === "dark" ? "bg-zinc-900 border-zinc-800" : "bg-white border-zinc-200"
-        }`}
-      >
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center text-white">
-            <Share2 size={18} />
-          </div>
-          <h1 className="text-xl font-semibold tracking-tight">Mermaid Flow</h1>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setTheme((prev) => (prev === "light" ? "dark" : "light"))}
-            className={`p-2 rounded-lg transition-colors ${
-              theme === "dark"
-                ? "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
-                : "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"
-            }`}
-            title={`Switch to ${theme === "light" ? "dark" : "light"} mode`}
-          >
-            {theme === "light" ? <Moon size={20} /> : <Sun size={20} />}
-          </button>
-
-          <div className={`w-px h-6 mx-1 ${theme === "dark" ? "bg-zinc-800" : "bg-zinc-200"}`} />
-
-          <button
-            onClick={handleShare}
-            className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-              theme === "dark"
-                ? "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
-                : "text-zinc-600 hover:bg-zinc-100"
-            }`}
-            title="Copy share link"
-          >
-            {copied ? <Check size={16} className="text-emerald-500" /> : <Share2 size={16} />}
-            {copied ? "Copied!" : "Share"}
-          </button>
-
-          <button
-            onClick={handleExportPng}
-            disabled={!!error || !svg || isExporting}
-            className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed ${
-              isExporting
-                ? "bg-emerald-500 text-white/80 cursor-wait"
-                : "bg-emerald-600 text-white hover:bg-emerald-700"
-            }`}
-          >
-            {isExporting ? (
-              <>
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                Exporting...
-              </>
-            ) : (
-              <>
-                <Download size={16} />
-                Export PNG
-              </>
-            )}
-          </button>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="flex flex-1 overflow-hidden">
-        {/* Editor Pane */}
+    <div className="flex flex-col flex-1 min-h-0">
+      <main className="flex flex-col flex-1 min-h-0 p-2 sm:p-4">
         <div
-          style={{ width: sidebarWidth }}
-          className={`flex flex-col border-r shrink-0 transition-colors duration-300 ${
-            theme === "dark" ? "bg-zinc-900 border-zinc-800" : "bg-white border-zinc-200"
-          }`}
+          className="flex flex-col flex-1 min-h-0 rounded-2xl overflow-hidden"
+          style={{ background: "#fff", border: "1px solid var(--border-color)" }}
         >
-          {/* Searchable Dropdown */}
-          <div
-            className={`flex flex-col border-b ${
-              theme === "dark" ? "bg-zinc-950/50 border-zinc-800" : "bg-zinc-50 border-zinc-200"
-            }`}
-          >
-            <div className="px-4 py-3">
-              <div className="relative" ref={dropdownRef}>
+          {/* Header */}
+          <div className="border-b border-zinc-200 shrink-0">
+            <div className="px-4 pt-4 pb-3 sm:px-6 sm:pt-5 sm:pb-4 flex items-center justify-between">
+              <h1 className="text-2xl sm:text-3xl font-bold leading-tight" style={{ color: "#000" }}>
+                Mermaid Flow
+              </h1>
+              <div className="flex items-center gap-2">
                 <button
-                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-lg border text-sm font-medium transition-all ${
-                    theme === "dark"
-                      ? "bg-zinc-900 border-zinc-800 text-zinc-200 hover:border-zinc-700"
-                      : "bg-white border-zinc-200 text-zinc-700 hover:border-zinc-300"
-                  }`}
+                  onClick={handleShare}
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg border border-zinc-200 text-zinc-600 hover:bg-zinc-50 transition-colors"
+                  title="Copy share link"
                 >
-                  <div className="flex items-center gap-2 truncate">
-                    <FileText size={14} className="text-emerald-500 shrink-0" />
-                    <span className="truncate">{activeDiagram?.name || "Select Diagram"}</span>
-                  </div>
-                  <RotateCcw
-                    size={12}
-                    className={`transition-transform duration-200 ${
-                      isDropdownOpen ? "rotate-180" : ""
-                    }`}
-                  />
+                  {copied ? <Check size={15} className="text-emerald-500" /> : <Share2 size={15} />}
+                  {copied ? "Copied!" : "Share"}
                 </button>
+                <button
+                  onClick={handleExportPng}
+                  disabled={!!error || !svg || isExporting}
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isExporting ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Exporting...
+                    </>
+                  ) : (
+                    <>
+                      <Download size={15} />
+                      Export PNG
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
 
-                <AnimatePresence>
-                  {isDropdownOpen && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 4 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 4 }}
-                      className={`absolute top-full left-0 right-0 mt-2 rounded-xl border shadow-xl z-50 overflow-hidden ${
-                        theme === "dark"
-                          ? "bg-zinc-900 border-zinc-800 shadow-black/50"
-                          : "bg-white border-zinc-200 shadow-zinc-200/50"
-                      }`}
+          {/* Editor + Preview */}
+          <div className="flex flex-1 min-h-0 overflow-hidden">
+            {/* Editor Pane */}
+            <div
+              style={{ width: sidebarWidth }}
+              className="flex flex-col border-r border-zinc-200 shrink-0 bg-white"
+            >
+              {/* Diagram selector */}
+              <div className="flex flex-col border-b border-zinc-200 bg-zinc-50">
+                <div className="px-4 py-3">
+                  <div className="relative" ref={dropdownRef}>
+                    <button
+                      onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                      className="w-full flex items-center justify-between px-3 py-2 rounded-lg border border-zinc-200 bg-white text-sm font-medium text-zinc-700 hover:border-zinc-300 transition-all"
                     >
-                      <div
-                        className={`p-2 border-b ${
-                          theme === "dark" ? "border-zinc-800" : "border-zinc-100"
-                        }`}
-                      >
-                        <div className="relative">
-                          <input
-                            autoFocus
-                            type="text"
-                            placeholder="Search diagrams..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className={`w-full pl-8 pr-3 py-1.5 text-xs rounded-md outline-none transition-colors ${
-                              theme === "dark"
-                                ? "bg-zinc-950 text-zinc-300 placeholder-zinc-600"
-                                : "bg-zinc-50 text-zinc-700 placeholder-zinc-400"
-                            }`}
-                          />
-                          <Share2
-                            size={12}
-                            className="absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-500"
-                          />
-                        </div>
+                      <div className="flex items-center gap-2 truncate">
+                        <FileText size={14} className="text-emerald-500 shrink-0" />
+                        <span className="truncate">{activeDiagram?.name || "Select Diagram"}</span>
                       </div>
+                      <RotateCcw
+                        size={12}
+                        className={`text-zinc-400 transition-transform duration-200 ${isDropdownOpen ? "rotate-180" : ""}`}
+                      />
+                    </button>
 
-                      <div className="max-h-[300px] overflow-y-auto custom-scrollbar p-1">
-                        {filteredDiagrams.length === 0 ? (
-                          <div className="px-3 py-4 text-center text-xs text-zinc-500">
-                            No diagrams found
-                          </div>
-                        ) : (
-                          filteredDiagrams.map((diagram) => (
-                            <div
-                              key={diagram.id}
-                              onClick={() => {
-                                setActiveId(diagram.id);
-                                setIsDropdownOpen(false);
-                                setSearchQuery("");
-                              }}
-                              className={`group flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-all ${
-                                activeId === diagram.id
-                                  ? "bg-emerald-500/10 text-emerald-500"
-                                  : "text-zinc-500 hover:bg-zinc-500/5 hover:text-zinc-200"
-                              }`}
-                            >
-                              <FileText
-                                size={14}
-                                className={
-                                  activeId === diagram.id ? "text-emerald-500" : "text-zinc-600"
-                                }
-                              />
-
-                              {editingTabId === diagram.id ? (
-                                <input
-                                  autoFocus
-                                  className="flex-1 bg-transparent outline-none text-xs font-medium"
-                                  value={tempName}
-                                  onChange={(e) => setTempName(e.target.value)}
-                                  onClick={(e) => e.stopPropagation()}
-                                  onBlur={() => handleRenameTab(diagram.id, tempName)}
-                                  onKeyDown={(e) => {
-                                    if (e.key === "Enter") handleRenameTab(diagram.id, tempName);
-                                    if (e.key === "Escape") setEditingTabId(null);
-                                  }}
-                                />
-                              ) : (
-                                <span className="flex-1 text-xs font-medium truncate">
-                                  {diagram.name}
-                                </span>
-                              )}
-
-                              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setEditingTabId(diagram.id);
-                                    setTempName(diagram.name);
-                                  }}
-                                  className="p-1 hover:text-emerald-500 transition-colors"
-                                >
-                                  <Edit2 size={12} />
-                                </button>
-                                {diagrams.length > 1 && (
-                                  <button
-                                    onClick={(e) => handleDeleteTab(e, diagram.id)}
-                                    className="p-1 hover:text-red-500 transition-colors"
-                                  >
-                                    <Trash2 size={12} />
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-                          ))
-                        )}
-                      </div>
-
-                      <div
-                        className={`p-1 border-t ${
-                          theme === "dark" ? "border-zinc-800" : "border-zinc-100"
-                        }`}
-                      >
-                        <button
-                          onClick={() => {
-                            handleCreateTab();
-                            setIsDropdownOpen(false);
-                          }}
-                          className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
-                            theme === "dark"
-                              ? "text-emerald-500 hover:bg-emerald-500/10"
-                              : "text-emerald-600 hover:bg-emerald-50"
-                          }`}
+                    <AnimatePresence>
+                      {isDropdownOpen && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 4 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: 4 }}
+                          className="absolute top-full left-0 right-0 mt-2 rounded-xl border border-zinc-200 bg-white shadow-xl z-50 overflow-hidden"
                         >
-                          <Plus size={14} />
-                          New Diagram
-                        </button>
-                      </div>
+                          <div className="p-2 border-b border-zinc-100">
+                            <div className="relative">
+                              <input
+                                autoFocus
+                                type="text"
+                                placeholder="Search diagrams..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="w-full pl-8 pr-3 py-1.5 text-xs rounded-md bg-zinc-50 text-zinc-700 placeholder-zinc-400 outline-none"
+                              />
+                              <Share2
+                                size={12}
+                                className="absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-400"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="max-h-[300px] overflow-y-auto p-1">
+                            {filteredDiagrams.length === 0 ? (
+                              <div className="px-3 py-4 text-center text-xs text-zinc-400">
+                                No diagrams found
+                              </div>
+                            ) : (
+                              filteredDiagrams.map((diagram) => (
+                                <div
+                                  key={diagram.id}
+                                  onClick={() => {
+                                    setActiveId(diagram.id);
+                                    setIsDropdownOpen(false);
+                                    setSearchQuery("");
+                                  }}
+                                  className={`group flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-all ${
+                                    activeId === diagram.id
+                                      ? "bg-emerald-50 text-emerald-600"
+                                      : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-700"
+                                  }`}
+                                >
+                                  <FileText
+                                    size={14}
+                                    className={activeId === diagram.id ? "text-emerald-500" : "text-zinc-400"}
+                                  />
+
+                                  {editingTabId === diagram.id ? (
+                                    <input
+                                      autoFocus
+                                      className="flex-1 bg-transparent outline-none text-xs font-medium"
+                                      value={tempName}
+                                      onChange={(e) => setTempName(e.target.value)}
+                                      onClick={(e) => e.stopPropagation()}
+                                      onBlur={() => handleRenameTab(diagram.id, tempName)}
+                                      onKeyDown={(e) => {
+                                        if (e.key === "Enter") handleRenameTab(diagram.id, tempName);
+                                        if (e.key === "Escape") setEditingTabId(null);
+                                      }}
+                                    />
+                                  ) : (
+                                    <span className="flex-1 text-xs font-medium truncate">
+                                      {diagram.name}
+                                    </span>
+                                  )}
+
+                                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setEditingTabId(diagram.id);
+                                        setTempName(diagram.name);
+                                      }}
+                                      className="p-1 hover:text-emerald-500 transition-colors"
+                                    >
+                                      <Edit2 size={12} />
+                                    </button>
+                                    {diagrams.length > 1 && (
+                                      <button
+                                        onClick={(e) => handleDeleteTab(e, diagram.id)}
+                                        className="p-1 hover:text-red-500 transition-colors"
+                                      >
+                                        <Trash2 size={12} />
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                              ))
+                            )}
+                          </div>
+
+                          <div className="p-1 border-t border-zinc-100">
+                            <button
+                              onClick={() => {
+                                handleCreateTab();
+                                setIsDropdownOpen(false);
+                              }}
+                              className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium text-emerald-600 hover:bg-emerald-50 transition-colors"
+                            >
+                              <Plus size={14} />
+                              New Diagram
+                            </button>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </div>
+              </div>
+
+              <div className="px-4 py-2 border-b border-zinc-200 bg-zinc-50 flex items-center">
+                <span className="text-xs font-bold uppercase tracking-wider text-zinc-400">
+                  Editor
+                </span>
+              </div>
+
+              <textarea
+                value={activeDiagram?.code || ""}
+                onChange={(e) => updateActiveCode(e.target.value)}
+                className="flex-1 p-6 font-mono text-sm resize-none focus:outline-none bg-white text-zinc-800 placeholder-zinc-400"
+                spellCheck={false}
+                placeholder="Enter mermaid code here..."
+              />
+            </div>
+
+            {/* Resizer Handle */}
+            <div
+              onMouseDown={startResizing}
+              className="w-1.5 hover:w-2 cursor-col-resize transition-all shrink-0 z-20 flex items-center justify-center group bg-zinc-100 hover:bg-emerald-400"
+            >
+              <div className="w-0.5 h-8 rounded-full bg-zinc-300 group-hover:bg-white transition-colors" />
+            </div>
+
+            {/* Preview Pane */}
+            <div className="flex-1 flex flex-col bg-zinc-50 overflow-hidden">
+              <div className="px-4 py-2 border-b border-zinc-200 bg-white flex items-center justify-between z-10 shrink-0">
+                <span className="text-xs font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-4">
+                  <span>Preview</span>
+                  <span className="flex items-center gap-3 font-normal normal-case tracking-normal text-zinc-300">
+                    <span className="flex items-center gap-1">
+                      <ZoomIn size={12} /> Scroll to Zoom
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Move size={12} /> Drag to Pan
+                    </span>
+                  </span>
+                </span>
+
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center border border-zinc-200 rounded-lg overflow-hidden shadow-sm bg-white">
+                    <div className="px-2 py-1 text-[10px] font-bold border-r border-zinc-200 text-zinc-400">
+                      EXPORT SCALE
+                    </div>
+                    <input
+                      type="number"
+                      min="1"
+                      max="20"
+                      value={exportPixelRatio}
+                      onChange={(e) =>
+                        setExportPixelRatio(Math.max(1, Math.min(20, parseInt(e.target.value) || 1)))
+                      }
+                      className="w-10 py-1 text-[10px] font-bold text-center focus:outline-none bg-white text-zinc-700"
+                      title="Export Pixel Ratio (1-20)"
+                    />
+                  </div>
+
+                  <div className="flex items-center border border-zinc-200 rounded-lg overflow-hidden shadow-sm bg-white">
+                    <button
+                      onClick={handleZoomOut}
+                      className="p-1.5 border-r border-zinc-200 hover:bg-zinc-50 text-zinc-500 transition-colors"
+                      title="Zoom Out"
+                    >
+                      <ZoomOut size={14} />
+                    </button>
+                    <div className="px-2 text-[10px] font-bold min-w-[45px] text-center text-zinc-500">
+                      {Math.round(zoom * 100)}%
+                    </div>
+                    <button
+                      onClick={handleZoomIn}
+                      className="p-1.5 border-l border-zinc-200 hover:bg-zinc-50 text-zinc-500 transition-colors"
+                      title="Zoom In"
+                    >
+                      <ZoomIn size={14} />
+                    </button>
+                  </div>
+
+                  <button
+                    onClick={handleResetZoom}
+                    className="p-1.5 border border-zinc-200 rounded-lg bg-white hover:bg-zinc-50 text-zinc-500 transition-colors shadow-sm"
+                    title="Reset Zoom & Pan"
+                  >
+                    <RotateCcw size={14} />
+                  </button>
+                </div>
+              </div>
+
+              <div
+                ref={previewContainerRef}
+                className="flex-1 relative overflow-hidden cursor-grab active:cursor-grabbing"
+              >
+                <AnimatePresence mode="wait">
+                  {error ? (
+                    <div className="absolute inset-0 flex items-center justify-center p-8">
+                      <motion.div
+                        key="error"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className="max-w-md p-4 border border-red-200 rounded-xl text-sm shadow-sm bg-red-50 text-red-600"
+                      >
+                        <p className="font-bold mb-1">Syntax Error</p>
+                        <p className="font-mono text-xs opacity-80">{error}</p>
+                      </motion.div>
+                    </div>
+                  ) : (
+                    <motion.div
+                      key="preview-container"
+                      className="absolute inset-0 flex items-center justify-center"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                    >
+                      <motion.div
+                        ref={previewRef}
+                        drag
+                        dragMomentum={false}
+                        dragElastic={0}
+                        style={{ x, y, scale: zoom }}
+                        transition={{
+                          type: "spring",
+                          damping: 30,
+                          stiffness: 300,
+                          scale: { type: "spring", damping: 20, stiffness: 150 },
+                        }}
+                        className="p-12 rounded-2xl shadow-2xl border border-zinc-200 min-w-[100px] min-h-[100px] flex items-center justify-center bg-white shadow-zinc-200/50"
+                        dangerouslySetInnerHTML={{ __html: svg }}
+                      />
                     </motion.div>
                   )}
                 </AnimatePresence>
               </div>
             </div>
-          </div>
-
-          <div
-            className={`px-4 py-2 border-b flex items-center justify-between ${
-              theme === "dark" ? "bg-zinc-900/50 border-zinc-800" : "bg-zinc-50 border-zinc-200"
-            }`}
-          >
-            <span
-              className={`text-xs font-bold uppercase tracking-wider ${
-                theme === "dark" ? "text-zinc-500" : "text-zinc-500"
-              }`}
-            >
-              Editor
-            </span>
-          </div>
-          <textarea
-            value={activeDiagram?.code || ""}
-            onChange={(e) => updateActiveCode(e.target.value)}
-            className={`flex-1 p-6 font-mono text-sm resize-none focus:outline-none transition-colors duration-300 ${
-              theme === "dark"
-                ? "bg-zinc-950/50 text-zinc-300 placeholder-zinc-700"
-                : "bg-zinc-50/30 text-zinc-800 placeholder-zinc-400"
-            }`}
-            spellCheck={false}
-            placeholder="Enter mermaid code here..."
-          />
-        </div>
-
-        {/* Resizer Handle */}
-        <div
-          onMouseDown={startResizing}
-          className={`w-1.5 hover:w-2 cursor-col-resize transition-all shrink-0 z-20 flex items-center justify-center group ${
-            theme === "dark" ? "bg-zinc-900 hover:bg-emerald-500" : "bg-zinc-100 hover:bg-emerald-400"
-          }`}
-        >
-          <div
-            className={`w-0.5 h-8 rounded-full transition-colors ${
-              theme === "dark" ? "bg-zinc-800 group-hover:bg-white" : "bg-zinc-300 group-hover:bg-white"
-            }`}
-          />
-        </div>
-
-        {/* Preview Pane */}
-        <div
-          className={`flex-1 flex flex-col relative overflow-hidden transition-colors duration-300 ${
-            theme === "dark" ? "bg-zinc-950" : "bg-zinc-100/50"
-          }`}
-        >
-          <div
-            className={`px-4 py-2 border-b flex items-center justify-between z-30 transition-colors duration-300 ${
-              theme === "dark" ? "bg-zinc-900 border-zinc-800" : "bg-zinc-50 border-zinc-200"
-            }`}
-          >
-            <span className="text-xs font-bold uppercase tracking-wider text-zinc-500 flex items-center gap-4">
-              <span className="flex items-center gap-1.5">Preview</span>
-              <div
-                className={`flex items-center gap-3 font-normal normal-case tracking-normal ${
-                  theme === "dark" ? "text-zinc-600" : "text-zinc-400"
-                }`}
-              >
-                <span className="flex items-center gap-1">
-                  <ZoomIn size={12} /> Scroll to Zoom
-                </span>
-                <span className="flex items-center gap-1">
-                  <Move size={12} /> Drag to Pan
-                </span>
-              </div>
-            </span>
-
-            <div className="flex items-center gap-2">
-              <div
-                className={`flex items-center border rounded-lg overflow-hidden shadow-sm transition-colors duration-300 ${
-                  theme === "dark" ? "bg-zinc-900 border-zinc-800" : "bg-white border-zinc-200"
-                }`}
-              >
-                <div
-                  className={`px-2 py-1 text-[10px] font-bold border-r transition-colors ${
-                    theme === "dark"
-                      ? "text-zinc-500 border-zinc-800"
-                      : "text-zinc-500 border-zinc-200"
-                  }`}
-                >
-                  EXPORT SCALE
-                </div>
-                <input
-                  type="number"
-                  min="1"
-                  max="20"
-                  value={exportPixelRatio}
-                  onChange={(e) =>
-                    setExportPixelRatio(Math.max(1, Math.min(20, parseInt(e.target.value) || 1)))
-                  }
-                  className={`w-10 py-1 text-[10px] font-bold text-center focus:outline-none transition-colors ${
-                    theme === "dark" ? "bg-zinc-900 text-zinc-300" : "bg-white text-zinc-700"
-                  }`}
-                  title="Export Pixel Ratio (1-20)"
-                />
-              </div>
-
-              <div
-                className={`flex items-center border rounded-lg overflow-hidden shadow-sm transition-colors duration-300 ${
-                  theme === "dark" ? "bg-zinc-900 border-zinc-800" : "bg-white border-zinc-200"
-                }`}
-              >
-                <button
-                  onClick={handleZoomOut}
-                  className={`p-1.5 border-r transition-colors ${
-                    theme === "dark"
-                      ? "hover:bg-zinc-800 text-zinc-400 border-zinc-800"
-                      : "hover:bg-zinc-50 text-zinc-600 border-zinc-200"
-                  }`}
-                  title="Zoom Out"
-                >
-                  <ZoomOut size={14} />
-                </button>
-                <div
-                  className={`px-2 text-[10px] font-bold min-w-[45px] text-center ${
-                    theme === "dark" ? "text-zinc-500" : "text-zinc-500"
-                  }`}
-                >
-                  {Math.round(zoom * 100)}%
-                </div>
-                <button
-                  onClick={handleZoomIn}
-                  className={`p-1.5 border-l transition-colors ${
-                    theme === "dark"
-                      ? "hover:bg-zinc-800 text-zinc-400 border-zinc-800"
-                      : "hover:bg-zinc-50 text-zinc-600 border-zinc-200"
-                  }`}
-                  title="Zoom In"
-                >
-                  <ZoomIn size={14} />
-                </button>
-              </div>
-              <button
-                onClick={handleResetZoom}
-                className={`p-1.5 border rounded-lg transition-colors shadow-sm ${
-                  theme === "dark"
-                    ? "bg-zinc-900 border-zinc-800 hover:bg-zinc-800 text-zinc-400"
-                    : "bg-white border-zinc-200 hover:bg-zinc-50 text-zinc-600"
-                }`}
-                title="Reset Zoom & Pan"
-              >
-                <RotateCcw size={14} />
-              </button>
-            </div>
-          </div>
-
-          <div
-            ref={previewContainerRef}
-            className="flex-1 relative overflow-hidden cursor-grab active:cursor-grabbing"
-          >
-            <AnimatePresence mode="wait">
-              {error ? (
-                <div className="absolute inset-0 flex items-center justify-center p-8">
-                  <motion.div
-                    key="error"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    className={`max-w-md p-4 border rounded-xl text-sm shadow-sm z-10 ${
-                      theme === "dark"
-                        ? "bg-red-950/30 border-red-900/50 text-red-400"
-                        : "bg-red-50 border-red-200 text-red-600"
-                    }`}
-                  >
-                    <p className="font-bold mb-1">Syntax Error</p>
-                    <p className="font-mono text-xs opacity-80">{error}</p>
-                  </motion.div>
-                </div>
-              ) : (
-                <motion.div
-                  key="preview-container"
-                  className="absolute inset-0 flex items-center justify-center"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                >
-                  <motion.div
-                    ref={previewRef}
-                    drag
-                    dragMomentum={false}
-                    dragElastic={0}
-                    style={{ x, y, scale: zoom }}
-                    transition={{
-                      type: "spring",
-                      damping: 30,
-                      stiffness: 300,
-                      scale: { type: "spring", damping: 20, stiffness: 150 },
-                    }}
-                    className={`p-12 rounded-2xl shadow-2xl border min-w-[100px] min-h-[100px] flex items-center justify-center transition-colors duration-300 ${
-                      theme === "dark"
-                        ? "bg-zinc-900 border-zinc-800 shadow-black/50"
-                        : "bg-white border-zinc-200 shadow-zinc-200/50"
-                    }`}
-                    dangerouslySetInnerHTML={{ __html: svg }}
-                  />
-                </motion.div>
-              )}
-            </AnimatePresence>
           </div>
         </div>
       </main>
