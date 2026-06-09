@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from 'react'
 import type * as THREE from 'three'
 import type { Object3D, BufferGeometry, Material } from 'three'
+import type { Metadata } from 'next'
+export const metadata: Metadata = { title: "Game World", description: "An interactive 3D game world experiment built with Three.js.", openGraph: { title: "Game World", description: "An interactive 3D game world experiment built with Three.js.", type: "website" } }
 
 const WS_URL = process.env.NEXT_PUBLIC_GAME_WS_URL ?? 'ws://localhost:8080'
 
