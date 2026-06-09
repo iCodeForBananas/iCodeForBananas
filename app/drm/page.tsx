@@ -1788,211 +1788,118 @@ export default function DRMPage() {
   const selectedPerson = people.find((p) => p.id === selectedPersonId) ?? null;
   const activePerson = people.find((p) => p.id === activeDragId) ?? null;
 
-  // ── Auth guards ───────────────────────────────────────────
-
-  if (authLoading) {
-    return (
-      <div
-        style={{
-          flex: 1,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: C.bg,
-        }}
-      >
-        <span style={{ color: C.muted, fontSize: 14 }}>Loading…</span>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return (
-      <div
-        style={{
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 14,
-          background: C.bg,
-        }}
-      >
-        <p style={{ color: C.muted, fontSize: 14, margin: 0 }}>Sign in to use the DRM tool.</p>
-        <a
-          href="/login"
-          style={{
-            fontSize: 14,
-            fontWeight: 700,
-            padding: "9px 22px",
-            borderRadius: 8,
-            background: C.accent,
-            color: "#fff",
-            textDecoration: "none",
-          }}
-        >
-          Sign In
-        </a>
-      </div>
-    );
-  }
-
   // ── Render ────────────────────────────────────────────────
 
   return (
     <div
-      style={{
-        flex: 1,
-        display: "flex",
-        flexDirection: "column",
-        background: C.bg,
-        minHeight: 0,
-        overflow: "hidden",
-        fontFamily: "var(--font-geist-sans), system-ui, sans-serif",
-      }}
+      className="flex flex-col flex-1 min-h-0"
+      style={{ fontFamily: "var(--font-geist-sans), system-ui, sans-serif" }}
     >
-      {/* Header */}
-      <header
-        style={{
-          padding: "14px 24px",
-          borderBottom: `1px solid ${C.border}`,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          flexShrink: 0,
-        }}
-      >
-        <div>
-          <h1
-            style={{
-              color: C.text,
-              fontSize: 22,
-              fontWeight: 900,
-              margin: 0,
-              letterSpacing: "-0.03em",
-            }}
-          >
-            DRM
-          </h1>
-          <p
-            style={{
-              color: C.dim,
-              fontSize: 10,
-              margin: 0,
-              marginTop: 1,
-              letterSpacing: "0.14em",
-              textTransform: "uppercase",
-            }}
-          >
-            Dating Relationship Management
-          </p>
-        </div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          {error && (
-            <span style={{ color: C.red, fontSize: 12, maxWidth: 200 }}>{error}</span>
-          )}
-          <button
-            onClick={() => setView(view === "pipeline" ? "report" : "pipeline")}
-            style={{
-              ...btnBase,
-              border: `1px solid ${C.border}`,
-              color: view === "report" ? C.accent : C.muted,
-              padding: "7px 14px",
-            }}
-          >
-            {view === "pipeline" ? "Review Mode" : "Pipeline"}
-          </button>
-          <button
-            onClick={() => setShowAdd(true)}
-            style={{
-              ...btnBase,
-              background: C.accent,
-              color: "#fff",
-              fontWeight: 700,
-              fontSize: 13,
-              padding: "7px 18px",
-            }}
-          >
-            + Add
-          </button>
-        </div>
-      </header>
-
-      {/* Content */}
-      {loading ? (
+      <main className="flex flex-col flex-1 min-h-0 p-2 sm:p-4">
         <div
-          style={{
-            flex: 1,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
+          className="flex flex-col flex-1 min-h-0 rounded-2xl overflow-hidden"
+          style={{ background: "#fff", border: "1px solid var(--border-color)" }}
         >
-          <span style={{ color: C.muted, fontSize: 14 }}>Loading pipeline…</span>
-        </div>
-      ) : view === "report" ? (
-        <StatusReport people={people} onSwitch={() => setView("pipeline")} />
-      ) : (
-        <DndContext
-          sensors={sensors}
-          onDragStart={handleDragStart}
-          onDragOver={handleDragOver}
-          onDragEnd={handleDragEnd}
-        >
+          {/* Header */}
           <div
-            style={{
-              flex: 1,
-              overflowX: "auto",
-              overflowY: "auto",
-              padding: "20px 24px 40px",
-            }}
+            className="shrink-0 flex items-center justify-between"
+            style={{ borderBottom: "1px solid var(--border-color)" }}
           >
-            <div
-              style={{
-                display: "flex",
-                gap: 20,
-                minWidth: "max-content",
-                alignItems: "flex-start",
-              }}
-            >
-              {STAGES.map((stage) => (
-                <StageColumn
-                  key={stage}
-                  stage={stage}
-                  people={people.filter((p) => p.stage === stage)}
-                  onCardOpen={setSelectedPersonId}
-                  onUpdateNote={(id, v) => updatePerson(id, { status_note: v || null })}
-                  onUpdateNextAction={(id, v) => updatePerson(id, { next_action: v || null })}
-                  isOver={overStage === stage}
-                />
-              ))}
+            <div className="px-4 pt-4 pb-3 sm:px-6 sm:pt-6 sm:pb-5">
+              <h1 className="text-2xl sm:text-3xl font-bold leading-tight" style={{ color: "#000" }}>
+                DRM
+              </h1>
+              <p style={{ color: C.dim, fontSize: 10, margin: 0, marginTop: 2, letterSpacing: "0.14em", textTransform: "uppercase" }}>
+                Dating Relationship Management
+              </p>
+            </div>
+            <div className="px-4 sm:px-6 flex gap-2 items-center">
+              {error && (
+                <span style={{ color: C.red, fontSize: 12, maxWidth: 200 }}>{error}</span>
+              )}
+              {user && (
+                <>
+                  <button
+                    onClick={() => setView(view === "pipeline" ? "report" : "pipeline")}
+                    style={{ ...btnBase, border: `1px solid ${C.border}`, color: view === "report" ? C.accent : C.muted, padding: "7px 14px" }}
+                  >
+                    {view === "pipeline" ? "Review Mode" : "Pipeline"}
+                  </button>
+                  <button
+                    onClick={() => setShowAdd(true)}
+                    style={{ ...btnBase, background: C.accent, color: "#fff", fontWeight: 700, fontSize: 13, padding: "7px 18px" }}
+                  >
+                    + Add
+                  </button>
+                </>
+              )}
             </div>
           </div>
 
-          <DragOverlay dropAnimation={{ duration: 150, easing: "ease" }}>
-            {activePerson && (
-              <div
-                style={{
-                  opacity: 0.92,
-                  transform: "scale(1.03) rotate(1.5deg)",
-                  pointerEvents: "none",
-                  width: 220,
-                }}
-              >
-                <PersonCard
-                  person={activePerson}
-                  onOpen={() => {}}
-                  onUpdateNote={() => {}}
-                  onUpdateNextAction={() => {}}
-                />
+          {/* Content */}
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden", background: C.bg }}>
+            {authLoading ? (
+              <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <span style={{ color: C.muted, fontSize: 14 }}>Loading…</span>
               </div>
-            )}
-          </DragOverlay>
-        </DndContext>
-      )}
+            ) : !user ? (
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14 }}>
+                <p style={{ color: C.muted, fontSize: 14, margin: 0 }}>Sign in to use the DRM tool.</p>
+                <a
+                  href="/login"
+                  style={{ fontSize: 14, fontWeight: 700, padding: "9px 22px", borderRadius: 8, background: C.accent, color: "#fff", textDecoration: "none" }}
+                >
+                  Sign In
+                </a>
+              </div>
+            ) : loading ? (
+              <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <span style={{ color: C.muted, fontSize: 14 }}>Loading pipeline…</span>
+              </div>
+            ) : view === "report" ? (
+              <StatusReport people={people} onSwitch={() => setView("pipeline")} />
+            ) : (
+              <DndContext
+                sensors={sensors}
+                onDragStart={handleDragStart}
+                onDragOver={handleDragOver}
+                onDragEnd={handleDragEnd}
+              >
+                <div style={{ flex: 1, overflowX: "auto", overflowY: "auto", padding: "20px 24px 40px" }}>
+                  <div style={{ display: "flex", gap: 20, minWidth: "max-content", alignItems: "flex-start" }}>
+                    {STAGES.map((stage) => (
+                      <StageColumn
+                        key={stage}
+                        stage={stage}
+                        people={people.filter((p) => p.stage === stage)}
+                        onCardOpen={setSelectedPersonId}
+                        onUpdateNote={(id, v) => updatePerson(id, { status_note: v || null })}
+                        onUpdateNextAction={(id, v) => updatePerson(id, { next_action: v || null })}
+                        isOver={overStage === stage}
+                      />
+                    ))}
+                  </div>
+                </div>
 
-      {/* Detail drawer */}
+                <DragOverlay dropAnimation={{ duration: 150, easing: "ease" }}>
+                  {activePerson && (
+                    <div style={{ opacity: 0.92, transform: "scale(1.03) rotate(1.5deg)", pointerEvents: "none", width: 220 }}>
+                      <PersonCard
+                        person={activePerson}
+                        onOpen={() => {}}
+                        onUpdateNote={() => {}}
+                        onUpdateNextAction={() => {}}
+                      />
+                    </div>
+                  )}
+                </DragOverlay>
+              </DndContext>
+            )}
+          </div>
+        </div>
+      </main>
+
+      {/* Fixed overlays — outside the card so z-index stacks correctly */}
       {selectedPerson && (
         <DetailDrawer
           person={selectedPerson}
@@ -2006,8 +1913,6 @@ export default function DRMPage() {
           dateIdeas={Array.from(new Set(people.flatMap((p) => p.dates.map((d) => d.location).filter(Boolean) as string[])))}
         />
       )}
-
-      {/* Add modal */}
       {showAdd && (
         <AddPersonModal onAdd={addPerson} onClose={() => setShowAdd(false)} />
       )}

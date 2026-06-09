@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import BacktestChart from "../components/BacktestChart";
@@ -164,10 +164,10 @@ function LambdaReadinessPanel({
     <div
       className={`mx-4 my-3 rounded-lg border p-3 ${
         allPass
-          ? "border-green-500/40 bg-green-950/30"
+          ? "border-green-400 bg-green-50"
           : mostPass
-          ? "border-amber-500/40 bg-amber-950/20"
-          : "border-slate-600/50 bg-slate-800/50"
+          ? "border-amber-400 bg-amber-50"
+          : "border-gray-200 bg-gray-50"
       }`}
     >
       <div className="flex items-center justify-between gap-4">
@@ -175,27 +175,27 @@ function LambdaReadinessPanel({
           <span
             className={`text-xs font-bold px-2 py-0.5 rounded-full ${
               allPass
-                ? "bg-green-500/20 text-green-400"
+                ? "bg-green-100 text-green-700"
                 : mostPass
-                ? "bg-amber-500/20 text-amber-400"
-                : "bg-slate-700 text-slate-400"
+                ? "bg-amber-100 text-amber-700"
+                : "bg-gray-100 text-gray-500"
             }`}
           >
             {allPass ? "✓ DEPLOY READY" : mostPass ? "⚠ ALMOST READY" : "✗ NOT READY"}
           </span>
-          <span className="text-xs text-slate-400">{passCount}/{results.length} criteria met</span>
+          <span className="text-xs text-gray-500">{passCount}/{results.length} criteria met</span>
         </div>
 
         <div className="flex items-center gap-3 flex-1 flex-wrap">
           {results.map((c) => (
             <div key={c.key} className="flex items-center gap-1 text-xs">
-              <span className={c.passing ? "text-green-400" : "text-red-400"}>
+              <span className={c.passing ? "text-green-600" : "text-red-500"}>
                 {c.passing ? "✓" : "✗"}
               </span>
-              <span className={c.passing ? "text-slate-300" : "text-slate-500"}>
+              <span className={c.passing ? "text-gray-700" : "text-gray-400"}>
                 {c.label}
               </span>
-              <span className={`font-mono font-bold ${c.passing ? "text-green-400" : "text-red-400"}`}>
+              <span className={`font-mono font-bold ${c.passing ? "text-green-600" : "text-red-500"}`}>
                 ({c.value(result)})
               </span>
             </div>
@@ -246,7 +246,7 @@ export default function AlgoBacktestPage() {
   // Per-dataset indicator data cache for batch mode (maps dataset file -> IndicatorData[])
   // useRef instead of useState to avoid React holding old+new copies simultaneously
   const datasetIndicatorCache = useRef<Record<string, IndicatorData[]>>({});
-  
+
   // Selected trade for chart highlighting
   const [selectedTradeId, setSelectedTradeId] = useState<string | null>(null);
 
@@ -664,854 +664,851 @@ export default function AlgoBacktestPage() {
     [activeResult]
   );
 
-  if (error) {
-    return (
-      <div className='flex flex-col h-screen bg-slate-900'>
-        <div className='flex-1 flex items-center justify-center text-red-400 p-8'>
-          <div className='text-center'>
-            <div className='text-xl mb-2'>Error</div>
-            <div>{error}</div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (isRunningBatch) {
-    const pct = backtestProgress && backtestProgress.total > 0
-      ? Math.round((backtestProgress.completed / backtestProgress.total) * 100)
-      : 0;
-    return (
-      <div className='flex flex-col flex-1 bg-slate-900 text-white items-center justify-center min-h-screen'>
-        <div className='w-full max-w-md mx-auto px-6 text-center'>
-          <div className='mb-6'>
-            <div className='inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-900/40 border border-blue-500/40 mb-4'>
-              <svg className='w-8 h-8 text-blue-400 animate-spin' fill='none' viewBox='0 0 24 24'>
-                <circle className='opacity-25' cx='12' cy='12' r='10' stroke='currentColor' strokeWidth='4' />
-                <path className='opacity-75' fill='currentColor' d='M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z' />
-              </svg>
-            </div>
-            <h2 className='text-xl font-semibold text-white mb-1'>Running Backtest</h2>
-            <p className='text-sm text-slate-400'>
-              {backtestProgress?.currentDataset
-                ? `Processing ${backtestProgress.currentDataset}…`
-                : 'Initialising…'}
-            </p>
-          </div>
-
-          {backtestProgress && backtestProgress.total > 0 && (
-            <div className='mb-6'>
-              <div className='flex items-center justify-between text-xs text-slate-400 mb-2'>
-                <span>{backtestProgress.completed} / {backtestProgress.total} datasets</span>
-                <span>{pct}%</span>
-              </div>
-              <div className='w-full h-2 bg-slate-700 rounded-full overflow-hidden'>
-                <div
-                  className='h-full bg-blue-500 rounded-full transition-all duration-300'
-                  style={{ width: `${pct}%` }}
-                />
-              </div>
-            </div>
-          )}
-
-          <button
-            onClick={() => {
-              cancelBacktest();
-              setIsRunningBatch(false);
-            }}
-            className='px-5 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 text-sm rounded transition-colors'
-          >
-            Cancel
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className='flex flex-col flex-1 bg-slate-900 text-white'>
-      <main className='pr-4 py-4 flex-1'>
-      <div className='flex-1 flex flex-col lg:flex-row'>
-        {/* Left Panel - Strategy & Parameters. On desktop it sticks so the
-            controls stay visible while the right column scrolls past it. */}
-        <div className='w-full lg:w-[450px] flex-shrink-0 border-r border-slate-700 flex flex-col lg:sticky lg:top-0 lg:self-start lg:max-h-screen lg:overflow-y-auto'>
-          {/* Dataset Selector - Multi-select */}
-          <div className='p-4 border-b border-slate-700'>
-            <div className='flex items-center justify-between mb-2'>
-              <label className='text-sm text-slate-400'>Datasets</label>
-              <div className='flex items-center gap-2'>
-                <button
-                  onClick={() => setSelectedFiles(availableDatasets.map((ds) => ds.file))}
-                  className='text-xs text-blue-400 hover:text-blue-300 transition-colors'
-                >
-                  Select All
-                </button>
-                <button
-                  onClick={() => setSelectedFiles([])}
-                  disabled={selectedFiles.length === 0}
-                  className='text-xs text-slate-400 hover:text-slate-200 disabled:text-slate-600 disabled:cursor-not-allowed transition-colors'
-                >
-                  Deselect
-                </button>
-                <span className='text-xs text-slate-500'>
-                  {selectedFiles.length} selected
-                </span>
-              </div>
+    <div className='flex flex-col flex-1 min-h-0'>
+      <main className='flex flex-col flex-1 min-h-0 p-2 sm:p-4'>
+        <div
+          className='flex flex-col flex-1 min-h-0 rounded-2xl overflow-hidden'
+          style={{ background: '#fff', border: '1px solid var(--border-color)' }}
+        >
+          {/* Header */}
+          <div className='border-b shrink-0' style={{ borderColor: 'var(--border-color)' }}>
+            <div className='px-4 pt-4 pb-3 sm:px-6 sm:pt-6 sm:pb-5'>
+              <h1 className='text-2xl sm:text-3xl font-bold leading-tight' style={{ color: '#000' }}>
+                Algo Backtest
+              </h1>
             </div>
-            <input
-              type='text'
-              value={datasetSearch}
-              onChange={(e) => setDatasetSearch(e.target.value)}
-              placeholder='Search by ticker…'
-              className='w-full mb-2 bg-slate-800 border border-slate-600 rounded px-2 py-1.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500'
-            />
-            {uniqueTimeframes.length > 1 && (
-              <div className='flex flex-wrap gap-1 mb-2'>
-                {uniqueTimeframes.map((tf) => {
-                  const filesForTf = availableDatasets
-                    .filter((ds) => ds.timeframe === tf)
-                    .map((ds) => ds.file);
-                  const allSelected = filesForTf.every((f) => selectedFiles.includes(f));
-                  return (
-                    <button
-                      key={tf}
-                      onClick={() => toggleTimeframe(tf)}
-                      className={`px-2 py-0.5 text-xs rounded border transition-colors ${
-                        allSelected
-                          ? 'bg-blue-600 border-blue-500 text-white'
-                          : 'bg-slate-800 border-slate-600 text-slate-400 hover:border-blue-500 hover:text-blue-300'
-                      }`}
-                    >
-                      {tf.toUpperCase()}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-            <div className='max-h-48 overflow-y-auto bg-slate-800 border border-slate-600 rounded p-2 space-y-1'>
-              {availableDatasets.filter((ds) =>
-                ds.symbol.toLowerCase().includes(datasetSearch.toLowerCase())
-              ).map((ds) => (
-                <label
-                  key={ds.file}
-                  className='flex items-center gap-2 px-2 py-1 hover:bg-slate-700 rounded cursor-pointer'
-                >
-                  <input
-                    type='checkbox'
-                    checked={selectedFiles.includes(ds.file)}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setSelectedFiles((prev) => [...prev, ds.file]);
-                      } else {
-                        setSelectedFiles((prev) => prev.filter((f) => f !== ds.file));
-                      }
-                    }}
-                    className='rounded border-slate-500 bg-slate-700 text-blue-500'
-                  />
-                  <span className='text-sm text-white'>{ds.label}</span>
-                </label>
-              ))}
-            </div>
-            {selectedFiles.length === 0 && (
-              <p className='text-xs text-amber-400 mt-1'>Select at least one dataset</p>
-            )}
           </div>
 
-          {/* Strategy Selector — multi-select with an "active" editor target */}
-          <div className='p-4 border-b border-slate-700'>
-            <div className='flex items-center justify-between mb-2'>
-              <label className='text-sm text-slate-400'>Strategies</label>
-              <div className='flex items-center gap-2'>
-                <button
-                  onClick={() => {
-                    const allIds = Object.keys(AVAILABLE_STRATEGIES);
-                    if (selectedStrategyIds.length === allIds.length) {
-                      // Clear all but keep the active one selected so the editor stays valid
-                      setSelectedStrategyIds([selectedStrategyId]);
-                    } else {
-                      setSelectedStrategyIds(allIds);
-                    }
-                  }}
-                  className='text-xs text-blue-400 hover:text-blue-300 transition-colors'
-                >
-                  {selectedStrategyIds.length === Object.keys(AVAILABLE_STRATEGIES).length ? 'Clear All' : 'Select All'}
-                </button>
-                <span className='text-xs text-slate-500'>{selectedStrategyIds.length} selected</span>
-                <button
-                  onClick={() => setShowLambdaExport(true)}
-                  className='flex items-center gap-1.5 px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white text-xs font-medium rounded transition-colors'
-                  title='Deploy this strategy to run automatically'
-                >
-                  <svg className='w-3.5 h-3.5' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                    <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12' />
-                  </svg>
-                  Deploy
-                </button>
+          {/* Content */}
+          <div className='flex-1 overflow-auto flex flex-col'>
+            {error ? (
+              <div className='flex-1 flex items-center justify-center text-red-500 p-8'>
+                <div className='text-center'>
+                  <div className='text-xl mb-2 font-semibold'>Error</div>
+                  <div className='text-gray-600'>{error}</div>
+                </div>
               </div>
-            </div>
-            <div className='max-h-56 overflow-y-auto bg-slate-800 border border-slate-600 rounded p-2 space-y-1'>
-              {Object.values(AVAILABLE_STRATEGIES).map((s) => {
-                const isChecked = selectedStrategyIds.includes(s.id);
-                const isActive = s.id === selectedStrategyId;
-                return (
-                  <div
-                    key={s.id}
-                    className={`flex items-center gap-2 px-2 py-1 rounded cursor-pointer ${
-                      isActive ? 'bg-blue-900/40 ring-1 ring-blue-500' : 'hover:bg-slate-700'
-                    }`}
+            ) : isRunningBatch ? (
+              <div className='flex-1 flex items-center justify-center p-8'>
+                <div className='w-full max-w-md mx-auto px-6 text-center'>
+                  <div className='mb-6'>
+                    <div className='inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-50 border border-blue-200 mb-4'>
+                      <svg className='w-8 h-8 text-blue-500 animate-spin' fill='none' viewBox='0 0 24 24'>
+                        <circle className='opacity-25' cx='12' cy='12' r='10' stroke='currentColor' strokeWidth='4' />
+                        <path className='opacity-75' fill='currentColor' d='M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z' />
+                      </svg>
+                    </div>
+                    <h2 className='text-xl font-semibold text-gray-900 mb-1'>Running Backtest</h2>
+                    <p className='text-sm text-gray-500'>
+                      {backtestProgress?.currentDataset
+                        ? `Processing ${backtestProgress.currentDataset}…`
+                        : 'Initialising…'}
+                    </p>
+                  </div>
+
+                  {backtestProgress && backtestProgress.total > 0 && (
+                    <div className='mb-6'>
+                      <div className='flex items-center justify-between text-xs text-gray-500 mb-2'>
+                        <span>{backtestProgress.completed} / {backtestProgress.total} datasets</span>
+                        <span>{Math.round((backtestProgress.completed / backtestProgress.total) * 100)}%</span>
+                      </div>
+                      <div className='w-full h-2 bg-gray-200 rounded-full overflow-hidden'>
+                        <div
+                          className='h-full bg-blue-500 rounded-full transition-all duration-300'
+                          style={{ width: `${Math.round((backtestProgress.completed / backtestProgress.total) * 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  <button
                     onClick={() => {
-                      // Clicking the row makes it the active editor. If it isn't
-                      // already selected for the run, also include it.
-                      setSelectedStrategyId(s.id);
-                      setSelectedStrategyIds((prev) => prev.includes(s.id) ? prev : [...prev, s.id]);
+                      cancelBacktest();
+                      setIsRunningBatch(false);
                     }}
+                    className='px-5 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 text-sm rounded transition-colors'
                   >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className='flex flex-1 flex-col lg:flex-row'>
+                {/* Left Panel - Strategy & Parameters */}
+                <div className='w-full lg:w-[450px] flex-shrink-0 border-r border-gray-200 flex flex-col lg:sticky lg:top-0 lg:self-start lg:max-h-screen lg:overflow-y-auto'>
+                  {/* Dataset Selector - Multi-select */}
+                  <div className='p-4 border-b border-gray-200'>
+                    <div className='flex items-center justify-between mb-2'>
+                      <label className='text-sm text-gray-500'>Datasets</label>
+                      <div className='flex items-center gap-2'>
+                        <button
+                          onClick={() => setSelectedFiles(availableDatasets.map((ds) => ds.file))}
+                          className='text-xs text-blue-600 hover:text-blue-700 transition-colors'
+                        >
+                          Select All
+                        </button>
+                        <button
+                          onClick={() => setSelectedFiles([])}
+                          disabled={selectedFiles.length === 0}
+                          className='text-xs text-gray-500 hover:text-gray-700 disabled:text-gray-300 disabled:cursor-not-allowed transition-colors'
+                        >
+                          Deselect
+                        </button>
+                        <span className='text-xs text-gray-400'>
+                          {selectedFiles.length} selected
+                        </span>
+                      </div>
+                    </div>
                     <input
-                      type='checkbox'
-                      checked={isChecked}
-                      onChange={(e) => {
-                        e.stopPropagation();
-                        setSelectedStrategyIds((prev) => {
-                          if (e.target.checked) return prev.includes(s.id) ? prev : [...prev, s.id];
-                          // Don't allow unchecking the active editor — switch
-                          // active to the first remaining selection if needed.
-                          const next = prev.filter((id) => id !== s.id);
-                          if (s.id === selectedStrategyId && next.length > 0) {
-                            setSelectedStrategyId(next[0]);
-                          }
-                          return next.length > 0 ? next : prev;
-                        });
-                      }}
-                      onClick={(e) => e.stopPropagation()}
-                      className='rounded border-slate-500 bg-slate-700 text-blue-500'
+                      type='text'
+                      value={datasetSearch}
+                      onChange={(e) => setDatasetSearch(e.target.value)}
+                      placeholder='Search by ticker…'
+                      className='w-full mb-2 bg-white border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500'
                     />
-                    <span className={`text-sm ${isActive ? 'text-blue-300 font-medium' : 'text-white'}`}>
-                      {s.name}
-                    </span>
-                    {isActive && (
-                      <span className='ml-auto text-[10px] uppercase tracking-wide text-blue-400'>editing</span>
+                    {uniqueTimeframes.length > 1 && (
+                      <div className='flex flex-wrap gap-1 mb-2'>
+                        {uniqueTimeframes.map((tf) => {
+                          const filesForTf = availableDatasets
+                            .filter((ds) => ds.timeframe === tf)
+                            .map((ds) => ds.file);
+                          const allSelected = filesForTf.every((f) => selectedFiles.includes(f));
+                          return (
+                            <button
+                              key={tf}
+                              onClick={() => toggleTimeframe(tf)}
+                              className={`px-2 py-0.5 text-xs rounded border transition-colors ${
+                                allSelected
+                                  ? 'bg-blue-600 border-blue-500 text-white'
+                                  : 'bg-white border-gray-300 text-gray-500 hover:border-blue-400 hover:text-blue-600'
+                              }`}
+                            >
+                              {tf.toUpperCase()}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                    <div className='max-h-48 overflow-y-auto bg-white border border-gray-200 rounded p-2 space-y-1'>
+                      {availableDatasets.filter((ds) =>
+                        ds.symbol.toLowerCase().includes(datasetSearch.toLowerCase())
+                      ).map((ds) => (
+                        <label
+                          key={ds.file}
+                          className='flex items-center gap-2 px-2 py-1 hover:bg-gray-50 rounded cursor-pointer'
+                        >
+                          <input
+                            type='checkbox'
+                            checked={selectedFiles.includes(ds.file)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedFiles((prev) => [...prev, ds.file]);
+                              } else {
+                                setSelectedFiles((prev) => prev.filter((f) => f !== ds.file));
+                              }
+                            }}
+                            className='rounded border-gray-300 text-blue-500'
+                          />
+                          <span className='text-sm text-gray-900'>{ds.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                    {selectedFiles.length === 0 && (
+                      <p className='text-xs text-amber-600 mt-1'>Select at least one dataset</p>
                     )}
                   </div>
-                );
-              })}
-            </div>
-            <p className='text-xs text-slate-500 mt-2'>{strategy?.description}</p>
-            {selectedStrategyIds.length > 1 && (
-              <p className='text-xs text-amber-400 mt-1'>
-                Editing parameters for <span className='font-semibold'>{strategy?.name}</span>. Other selected strategies use their saved settings.
-              </p>
-            )}
-          </div>
 
-          {/* Risk Management Settings */}
-          <div className='p-4 border-b border-slate-700'>
-            <label className='text-sm text-slate-400 mb-3 block'>Risk Management</label>
-
-            <div className='grid grid-cols-2 gap-2'>
-              <div>
-                <label className='block text-xs text-slate-400 mb-1'>Stop Loss %</label>
-                <input
-                  type='number'
-                  value={stopLossPercent}
-                  min={0}
-                  step={0.5}
-                  onChange={(e) => {
-                    const v = parseFloat(e.target.value);
-                    setStopLossPercent(isNaN(v) ? 0 : Math.max(0, v));
-                  }}
-                  placeholder='0 = off'
-                  className='w-full bg-slate-800 border border-slate-600 rounded px-2 py-1.5 text-sm text-white'
-                />
-              </div>
-              <div>
-                <label className='block text-xs text-slate-400 mb-1'>Take Profit %</label>
-                <input
-                  type='number'
-                  value={takeProfitPercent}
-                  min={0}
-                  step={0.5}
-                  onChange={(e) => {
-                    const v = parseFloat(e.target.value);
-                    setTakeProfitPercent(isNaN(v) ? 0 : Math.max(0, v));
-                  }}
-                  placeholder='0 = off'
-                  className='w-full bg-slate-800 border border-slate-600 rounded px-2 py-1.5 text-sm text-white'
-                />
-              </div>
-            </div>
-
-            <div className='mt-3'>
-              <label className='block text-xs text-slate-400 mb-1'>
-                Position Size % of Equity
-              </label>
-              <input
-                type='number'
-                value={positionSizePercent}
-                min={0}
-                max={100}
-                step={1}
-                onChange={(e) => {
-                  const v = parseFloat(e.target.value);
-                  setPositionSizePercent(isNaN(v) ? 100 : Math.max(0, Math.min(100, v)));
-                }}
-                className='w-full bg-slate-800 border border-slate-600 rounded px-2 py-1.5 text-sm text-white'
-              />
-              <p className='text-xs text-slate-500 mt-1'>
-                Shares are locked at entry — does not compound mid-trade.
-              </p>
-            </div>
-
-            <div className='grid grid-cols-2 gap-2 mt-3'>
-              <div>
-                <label className='block text-xs text-slate-400 mb-1'>Commission (bps)</label>
-                <input
-                  type='number'
-                  value={commissionBps}
-                  min={0}
-                  step={0.5}
-                  onChange={(e) => {
-                    const v = parseFloat(e.target.value);
-                    setCommissionBps(isNaN(v) ? 0 : Math.max(0, v));
-                  }}
-                  placeholder='per fill'
-                  className='w-full bg-slate-800 border border-slate-600 rounded px-2 py-1.5 text-sm text-white'
-                />
-              </div>
-              <div>
-                <label className='block text-xs text-slate-400 mb-1'>Slippage (bps)</label>
-                <input
-                  type='number'
-                  value={slippageBps}
-                  min={0}
-                  step={0.5}
-                  onChange={(e) => {
-                    const v = parseFloat(e.target.value);
-                    setSlippageBps(isNaN(v) ? 0 : Math.max(0, v));
-                  }}
-                  placeholder='per fill'
-                  className='w-full bg-slate-800 border border-slate-600 rounded px-2 py-1.5 text-sm text-white'
-                />
-              </div>
-            </div>
-            <p className='text-xs text-slate-500 mt-1'>
-              1 bp = 0.01%. Commission deducts on entry + exit fills; slippage moves fill price against you.
-            </p>
-
-            <div className='mt-3'>
-              <label className='flex items-center gap-2 cursor-pointer'>
-                <input
-                  type='checkbox'
-                  checked={enableShorts}
-                  onChange={(e) => setEnableShorts(e.target.checked)}
-                  className='w-4 h-4 rounded border-slate-600 bg-slate-800 text-blue-500 focus:ring-blue-500 focus:ring-offset-0'
-                />
-                <span className='text-xs text-slate-400'>Enable Short Entries</span>
-              </label>
-              {enableShorts && (
-                <p className='text-xs text-amber-400 mt-1 ml-6'>
-                  Sell signals will open short positions when no position is active
-                </p>
-              )}
-            </div>
-            {stopLossPercent > 0 && (
-              <p className='text-xs text-blue-400 mt-2'>
-                ✓ Entry on bar close, exit at SL/TP if hit within bar range
-              </p>
-            )}
-          </div>
-
-          {/* Parameter Configuration */}
-          {selectedStrategyIds.length > 0 && (
-            <div className='p-4 border-b border-slate-700 overflow-y-auto flex-shrink-0'>
-              <div className='flex items-center justify-between mb-3'>
-                <label className='text-sm text-slate-400'>Parameters</label>
-                <span className='text-xs text-slate-500'>
-                  {`${selectedStrategyIds.length} ${selectedStrategyIds.length === 1 ? 'strategy' : 'strategies'} × ${selectedFiles.length} datasets`}
-                </span>
-              </div>
-
-              {/* Active strategy — full editable block */}
-              {strategy?.parameters && strategy.parameters.length > 0 && (
-                <div className='mb-4 border border-blue-500/40 bg-blue-950/20 rounded p-3'>
-                  <div className='flex items-center justify-between mb-3'>
-                    <div>
-                      <span className='text-sm text-blue-300 font-semibold'>{strategy.name}</span>
-                      <span className='ml-2 text-[10px] uppercase tracking-wide text-blue-400'>editing</span>
+                  {/* Strategy Selector */}
+                  <div className='p-4 border-b border-gray-200'>
+                    <div className='flex items-center justify-between mb-2'>
+                      <label className='text-sm text-gray-500'>Strategies</label>
+                      <div className='flex items-center gap-2'>
+                        <button
+                          onClick={() => {
+                            const allIds = Object.keys(AVAILABLE_STRATEGIES);
+                            if (selectedStrategyIds.length === allIds.length) {
+                              setSelectedStrategyIds([selectedStrategyId]);
+                            } else {
+                              setSelectedStrategyIds(allIds);
+                            }
+                          }}
+                          className='text-xs text-blue-600 hover:text-blue-700 transition-colors'
+                        >
+                          {selectedStrategyIds.length === Object.keys(AVAILABLE_STRATEGIES).length ? 'Clear All' : 'Select All'}
+                        </button>
+                        <span className='text-xs text-gray-400'>{selectedStrategyIds.length} selected</span>
+                        <button
+                          onClick={() => setShowLambdaExport(true)}
+                          className='flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-white text-xs font-medium rounded transition-colors'
+                          title='Deploy this strategy to run automatically'
+                        >
+                          <svg className='w-3.5 h-3.5' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                            <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12' />
+                          </svg>
+                          Deploy
+                        </button>
+                      </div>
                     </div>
-                    <span className='text-xs text-slate-500'>{combinationCount} combinations</span>
+                    <div className='max-h-56 overflow-y-auto bg-white border border-gray-200 rounded p-2 space-y-1'>
+                      {Object.values(AVAILABLE_STRATEGIES).map((s) => {
+                        const isChecked = selectedStrategyIds.includes(s.id);
+                        const isActive = s.id === selectedStrategyId;
+                        return (
+                          <div
+                            key={s.id}
+                            className={`flex items-center gap-2 px-2 py-1 rounded cursor-pointer ${
+                              isActive ? 'bg-blue-50 ring-1 ring-blue-400' : 'hover:bg-gray-50'
+                            }`}
+                            onClick={() => {
+                              setSelectedStrategyId(s.id);
+                              setSelectedStrategyIds((prev) => prev.includes(s.id) ? prev : [...prev, s.id]);
+                            }}
+                          >
+                            <input
+                              type='checkbox'
+                              checked={isChecked}
+                              onChange={(e) => {
+                                e.stopPropagation();
+                                setSelectedStrategyIds((prev) => {
+                                  if (e.target.checked) return prev.includes(s.id) ? prev : [...prev, s.id];
+                                  const next = prev.filter((id) => id !== s.id);
+                                  if (s.id === selectedStrategyId && next.length > 0) {
+                                    setSelectedStrategyId(next[0]);
+                                  }
+                                  return next.length > 0 ? next : prev;
+                                });
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                              className='rounded border-gray-300 text-blue-500'
+                            />
+                            <span className={`text-sm ${isActive ? 'text-blue-700 font-medium' : 'text-gray-900'}`}>
+                              {s.name}
+                            </span>
+                            {isActive && (
+                              <span className='ml-auto text-[10px] uppercase tracking-wide text-blue-600'>editing</span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <p className='text-xs text-gray-400 mt-2'>{strategy?.description}</p>
+                    {selectedStrategyIds.length > 1 && (
+                      <p className='text-xs text-amber-600 mt-1'>
+                        Editing parameters for <span className='font-semibold'>{strategy?.name}</span>. Other selected strategies use their saved settings.
+                      </p>
+                    )}
                   </div>
 
-                  {strategy.parameters
-                    .filter((param) => param.type === 'number')
-                    .map((param) => {
-                      const variation = paramVariations.find((v) => v.key === param.key);
+                  {/* Risk Management Settings */}
+                  <div className='p-4 border-b border-gray-200'>
+                    <label className='text-sm text-gray-500 mb-3 block'>Risk Management</label>
 
-                      return (
-                        <div key={param.key} className='mb-3 bg-slate-800 rounded p-3'>
-                          <div className='mb-2'>
-                            <span className='text-sm text-white font-medium'>{param.name}</span>
-                            <p className='text-xs text-slate-500'>{param.description}</p>
-                          </div>
-
-                          <div className='grid grid-cols-2 gap-2'>
-                            <div>
-                              <label className='block text-xs text-slate-400 mb-1'>Min</label>
-                              <input
-                                type='number'
-                                value={variation?.min ?? param.min ?? Number(param.default)}
-                                min={param.min}
-                                max={param.max}
-                                step={param.step}
-                                onChange={(e) => {
-                                  const parsed = parseFloat(e.target.value);
-                                  const newMin = isNaN(parsed) ? Number(param.min ?? param.default) : parsed;
-                                  setParamVariations((prev) =>
-                                    prev.map((v) => (v.key === param.key ? { ...v, min: newMin } : v))
-                                  );
-                                }}
-                                className='w-full bg-slate-900 border border-slate-600 rounded px-2 py-1 text-sm text-white'
-                              />
-                            </div>
-                            <div>
-                              <label className='block text-xs text-slate-400 mb-1'>Max</label>
-                              <input
-                                type='number'
-                                value={variation?.max ?? param.max ?? Number(param.default)}
-                                min={param.min}
-                                max={param.max}
-                                step={param.step}
-                                onChange={(e) => {
-                                  const parsed = parseFloat(e.target.value);
-                                  const newMax = isNaN(parsed) ? Number(param.max ?? param.default) : parsed;
-                                  setParamVariations((prev) =>
-                                    prev.map((v) => (v.key === param.key ? { ...v, max: newMax } : v))
-                                  );
-                                }}
-                                className='w-full bg-slate-900 border border-slate-600 rounded px-2 py-1 text-sm text-white'
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                </div>
-              )}
-
-              {/* Other selected strategies — read-only summary cards (click to edit).
-                  Gated on `mounted` because buildSavedRun reads localStorage, which
-                  SSR can't see; rendering the cards on the server would mismatch hydration. */}
-              {mounted && selectedStrategyIds
-                .filter((sid) => sid !== selectedStrategyId)
-                .map((sid) => {
-                  const otherStrat = AVAILABLE_STRATEGIES[sid];
-                  if (!otherStrat) return null;
-                  const savedRun = buildSavedRun(sid);
-                  if (!savedRun) return null;
-                  const numericParams = otherStrat.parameters?.filter((p) => p.type === 'number') ?? [];
-                  const otherCombos = generateCombinations(savedRun.paramVariations).length;
-
-                  return (
-                    <div
-                      key={sid}
-                      onClick={() => setSelectedStrategyId(sid)}
-                      className='mb-3 border border-slate-700 hover:border-blue-500/60 bg-slate-800/50 rounded p-3 cursor-pointer transition-colors'
-                      title='Click to edit this strategy'
-                    >
-                      <div className='flex items-center justify-between mb-2'>
-                        <div>
-                          <span className='text-sm text-white font-semibold'>{otherStrat.name}</span>
-                          <span className='ml-2 text-[10px] uppercase tracking-wide text-slate-500'>saved</span>
-                        </div>
-                        <span className='text-xs text-slate-500'>{otherCombos} combinations</span>
+                    <div className='grid grid-cols-2 gap-2'>
+                      <div>
+                        <label className='block text-xs text-gray-500 mb-1'>Stop Loss %</label>
+                        <input
+                          type='number'
+                          value={stopLossPercent}
+                          min={0}
+                          step={0.5}
+                          onChange={(e) => {
+                            const v = parseFloat(e.target.value);
+                            setStopLossPercent(isNaN(v) ? 0 : Math.max(0, v));
+                          }}
+                          placeholder='0 = off'
+                          className='w-full bg-white border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-900'
+                        />
                       </div>
-                      {numericParams.length === 0 ? (
-                        <p className='text-xs text-slate-500'>No tunable parameters</p>
-                      ) : (
-                        <div className='space-y-1'>
-                          {numericParams.map((param) => {
-                            const variation = savedRun.paramVariations.find((v) => v.key === param.key);
-                            const min = variation?.min ?? param.min ?? Number(param.default);
-                            const max = variation?.max ?? param.max ?? Number(param.default);
-                            const isRange = min !== max;
-                            return (
-                              <div key={param.key} className='flex items-center justify-between text-xs'>
-                                <span className='text-slate-400'>{param.name}</span>
-                                <span className='font-mono text-slate-300'>
-                                  {isRange ? `${min} → ${max}` : String(min)}
-                                </span>
-                              </div>
-                            );
-                          })}
+                      <div>
+                        <label className='block text-xs text-gray-500 mb-1'>Take Profit %</label>
+                        <input
+                          type='number'
+                          value={takeProfitPercent}
+                          min={0}
+                          step={0.5}
+                          onChange={(e) => {
+                            const v = parseFloat(e.target.value);
+                            setTakeProfitPercent(isNaN(v) ? 0 : Math.max(0, v));
+                          }}
+                          placeholder='0 = off'
+                          className='w-full bg-white border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-900'
+                        />
+                      </div>
+                    </div>
+
+                    <div className='mt-3'>
+                      <label className='block text-xs text-gray-500 mb-1'>
+                        Position Size % of Equity
+                      </label>
+                      <input
+                        type='number'
+                        value={positionSizePercent}
+                        min={0}
+                        max={100}
+                        step={1}
+                        onChange={(e) => {
+                          const v = parseFloat(e.target.value);
+                          setPositionSizePercent(isNaN(v) ? 100 : Math.max(0, Math.min(100, v)));
+                        }}
+                        className='w-full bg-white border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-900'
+                      />
+                      <p className='text-xs text-gray-400 mt-1'>
+                        Shares are locked at entry — does not compound mid-trade.
+                      </p>
+                    </div>
+
+                    <div className='grid grid-cols-2 gap-2 mt-3'>
+                      <div>
+                        <label className='block text-xs text-gray-500 mb-1'>Commission (bps)</label>
+                        <input
+                          type='number'
+                          value={commissionBps}
+                          min={0}
+                          step={0.5}
+                          onChange={(e) => {
+                            const v = parseFloat(e.target.value);
+                            setCommissionBps(isNaN(v) ? 0 : Math.max(0, v));
+                          }}
+                          placeholder='per fill'
+                          className='w-full bg-white border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-900'
+                        />
+                      </div>
+                      <div>
+                        <label className='block text-xs text-gray-500 mb-1'>Slippage (bps)</label>
+                        <input
+                          type='number'
+                          value={slippageBps}
+                          min={0}
+                          step={0.5}
+                          onChange={(e) => {
+                            const v = parseFloat(e.target.value);
+                            setSlippageBps(isNaN(v) ? 0 : Math.max(0, v));
+                          }}
+                          placeholder='per fill'
+                          className='w-full bg-white border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-900'
+                        />
+                      </div>
+                    </div>
+                    <p className='text-xs text-gray-400 mt-1'>
+                      1 bp = 0.01%. Commission deducts on entry + exit fills; slippage moves fill price against you.
+                    </p>
+
+                    <div className='mt-3'>
+                      <label className='flex items-center gap-2 cursor-pointer'>
+                        <input
+                          type='checkbox'
+                          checked={enableShorts}
+                          onChange={(e) => setEnableShorts(e.target.checked)}
+                          className='w-4 h-4 rounded border-gray-300 text-blue-500 focus:ring-blue-500 focus:ring-offset-0'
+                        />
+                        <span className='text-xs text-gray-500'>Enable Short Entries</span>
+                      </label>
+                      {enableShorts && (
+                        <p className='text-xs text-amber-600 mt-1 ml-6'>
+                          Sell signals will open short positions when no position is active
+                        </p>
+                      )}
+                    </div>
+                    {stopLossPercent > 0 && (
+                      <p className='text-xs text-blue-600 mt-2'>
+                        ✓ Entry on bar close, exit at SL/TP if hit within bar range
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Parameter Configuration */}
+                  {selectedStrategyIds.length > 0 && (
+                    <div className='p-4 border-b border-gray-200 overflow-y-auto flex-shrink-0'>
+                      <div className='flex items-center justify-between mb-3'>
+                        <label className='text-sm text-gray-500'>Parameters</label>
+                        <span className='text-xs text-gray-400'>
+                          {`${selectedStrategyIds.length} ${selectedStrategyIds.length === 1 ? 'strategy' : 'strategies'} × ${selectedFiles.length} datasets`}
+                        </span>
+                      </div>
+
+                      {/* Active strategy — full editable block */}
+                      {strategy?.parameters && strategy.parameters.length > 0 && (
+                        <div className='mb-4 border border-blue-300 bg-blue-50/50 rounded p-3'>
+                          <div className='flex items-center justify-between mb-3'>
+                            <div>
+                              <span className='text-sm text-blue-700 font-semibold'>{strategy.name}</span>
+                              <span className='ml-2 text-[10px] uppercase tracking-wide text-blue-600'>editing</span>
+                            </div>
+                            <span className='text-xs text-gray-400'>{combinationCount} combinations</span>
+                          </div>
+
+                          {strategy.parameters
+                            .filter((param) => param.type === 'number')
+                            .map((param) => {
+                              const variation = paramVariations.find((v) => v.key === param.key);
+
+                              return (
+                                <div key={param.key} className='mb-3 bg-white border border-gray-200 rounded p-3'>
+                                  <div className='mb-2'>
+                                    <span className='text-sm text-gray-900 font-medium'>{param.name}</span>
+                                    <p className='text-xs text-gray-400'>{param.description}</p>
+                                  </div>
+
+                                  <div className='grid grid-cols-2 gap-2'>
+                                    <div>
+                                      <label className='block text-xs text-gray-500 mb-1'>Min</label>
+                                      <input
+                                        type='number'
+                                        value={variation?.min ?? param.min ?? Number(param.default)}
+                                        min={param.min}
+                                        max={param.max}
+                                        step={param.step}
+                                        onChange={(e) => {
+                                          const parsed = parseFloat(e.target.value);
+                                          const newMin = isNaN(parsed) ? Number(param.min ?? param.default) : parsed;
+                                          setParamVariations((prev) =>
+                                            prev.map((v) => (v.key === param.key ? { ...v, min: newMin } : v))
+                                          );
+                                        }}
+                                        className='w-full bg-gray-50 border border-gray-300 rounded px-2 py-1 text-sm text-gray-900'
+                                      />
+                                    </div>
+                                    <div>
+                                      <label className='block text-xs text-gray-500 mb-1'>Max</label>
+                                      <input
+                                        type='number'
+                                        value={variation?.max ?? param.max ?? Number(param.default)}
+                                        min={param.min}
+                                        max={param.max}
+                                        step={param.step}
+                                        onChange={(e) => {
+                                          const parsed = parseFloat(e.target.value);
+                                          const newMax = isNaN(parsed) ? Number(param.max ?? param.default) : parsed;
+                                          setParamVariations((prev) =>
+                                            prev.map((v) => (v.key === param.key ? { ...v, max: newMax } : v))
+                                          );
+                                        }}
+                                        className='w-full bg-gray-50 border border-gray-300 rounded px-2 py-1 text-sm text-gray-900'
+                                      />
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
                         </div>
                       )}
-                      <div className='mt-2 pt-2 border-t border-slate-700/60 flex items-center justify-between text-[11px] text-slate-500'>
-                        <span>
-                          SL {savedRun.stopLossPercent > 0 ? `${savedRun.stopLossPercent}%` : 'off'}
-                          {' · '}
-                          TP {savedRun.takeProfitPercent > 0 ? `${savedRun.takeProfitPercent}%` : 'off'}
-                          {savedRun.enableShorts ? ' · shorts on' : ''}
-                        </span>
-                        <span className='text-blue-400'>Click to edit →</span>
+
+                      {/* Other selected strategies — read-only summary cards */}
+                      {mounted && selectedStrategyIds
+                        .filter((sid) => sid !== selectedStrategyId)
+                        .map((sid) => {
+                          const otherStrat = AVAILABLE_STRATEGIES[sid];
+                          if (!otherStrat) return null;
+                          const savedRun = buildSavedRun(sid);
+                          if (!savedRun) return null;
+                          const numericParams = otherStrat.parameters?.filter((p) => p.type === 'number') ?? [];
+                          const otherCombos = generateCombinations(savedRun.paramVariations).length;
+
+                          return (
+                            <div
+                              key={sid}
+                              onClick={() => setSelectedStrategyId(sid)}
+                              className='mb-3 border border-gray-200 hover:border-blue-400 bg-gray-50 rounded p-3 cursor-pointer transition-colors'
+                              title='Click to edit this strategy'
+                            >
+                              <div className='flex items-center justify-between mb-2'>
+                                <div>
+                                  <span className='text-sm text-gray-900 font-semibold'>{otherStrat.name}</span>
+                                  <span className='ml-2 text-[10px] uppercase tracking-wide text-gray-400'>saved</span>
+                                </div>
+                                <span className='text-xs text-gray-400'>{otherCombos} combinations</span>
+                              </div>
+                              {numericParams.length === 0 ? (
+                                <p className='text-xs text-gray-400'>No tunable parameters</p>
+                              ) : (
+                                <div className='space-y-1'>
+                                  {numericParams.map((param) => {
+                                    const variation = savedRun.paramVariations.find((v) => v.key === param.key);
+                                    const min = variation?.min ?? param.min ?? Number(param.default);
+                                    const max = variation?.max ?? param.max ?? Number(param.default);
+                                    const isRange = min !== max;
+                                    return (
+                                      <div key={param.key} className='flex items-center justify-between text-xs'>
+                                        <span className='text-gray-500'>{param.name}</span>
+                                        <span className='font-mono text-gray-700'>
+                                          {isRange ? `${min} → ${max}` : String(min)}
+                                        </span>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                              <div className='mt-2 pt-2 border-t border-gray-200 flex items-center justify-between text-[11px] text-gray-400'>
+                                <span>
+                                  SL {savedRun.stopLossPercent > 0 ? `${savedRun.stopLossPercent}%` : 'off'}
+                                  {' · '}
+                                  TP {savedRun.takeProfitPercent > 0 ? `${savedRun.takeProfitPercent}%` : 'off'}
+                                  {savedRun.enableShorts ? ' · shorts on' : ''}
+                                </span>
+                                <span className='text-blue-600'>Click to edit →</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+
+                      {/* Run Batch Button */}
+                      <button
+                        onClick={runBatchBacktest}
+                        disabled={isRunningBatch || selectedFiles.length === 0 || selectedStrategyIds.length === 0}
+                        className='w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed text-white font-medium py-2 px-4 rounded transition-colors'
+                      >
+                        {isRunningBatch
+                          ? backtestProgress
+                            ? `Running ${backtestProgress.completed}/${backtestProgress.total}…`
+                            : "Running..."
+                          : !mounted
+                          ? `Run ${combinationCount * selectedFiles.length} Variations`
+                          : (() => {
+                              let totalRuns = combinationCount;
+                              for (const sid of selectedStrategyIds) {
+                                if (sid === selectedStrategyId) continue;
+                                const saved = buildSavedRun(sid);
+                                if (!saved) continue;
+                                totalRuns += generateCombinations(saved.paramVariations).length;
+                              }
+                              const totalRunsAcrossDatasets = totalRuns * selectedFiles.length;
+                              const stratLabel = selectedStrategyIds.length > 1
+                                ? ` across ${selectedStrategyIds.length} strategies`
+                                : '';
+                              return `Run ${totalRunsAcrossDatasets} Variations${stratLabel}`;
+                            })()}
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Results Summary (when multiple results) */}
+                  {results.length > 1 && (
+                    <div className='flex-1 min-h-[200px] overflow-y-auto p-4'>
+                      <div className='text-sm text-gray-500 mb-2'>Results Comparison</div>
+                      <div className='space-y-2'>
+                        {results.map((result, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => setActiveResultTab(idx)}
+                            className={`w-full text-left p-3 rounded text-sm transition-colors border ${
+                              activeResultTab === idx
+                                ? "bg-blue-50 border-blue-400"
+                                : "bg-gray-50 hover:bg-gray-100 border-transparent"
+                            }`}
+                          >
+                            {result.strategyName && (
+                              <div className='text-xs text-purple-600 mb-1 truncate font-medium'>{result.strategyName}</div>
+                            )}
+                            {result.datasetLabel && (
+                              <div className='text-xs text-blue-600 mb-1 truncate'>{result.datasetLabel}</div>
+                            )}
+                            <div className='flex items-center justify-between'>
+                              <span className='font-mono text-xs text-gray-500 truncate max-w-[200px]'>{result.label}</span>
+                              <span
+                                className={`font-bold ${result.totalPnlPercent >= 0 ? "text-green-600" : "text-red-500"}`}
+                              >
+                                {result.totalPnlPercent >= 0 ? "+" : ""}
+                                {result.totalPnlPercent.toFixed(2)}%
+                              </span>
+                            </div>
+                            <div className='flex items-center justify-between mt-1 text-xs text-gray-400'>
+                              <span>
+                                {result.totalTrades} trades • {result.winRate.toFixed(0)}% win
+                              </span>
+                              <span>Sharpe: {result.sharpeRatio.toFixed(2)}</span>
+                            </div>
+                          </button>
+                        ))}
                       </div>
                     </div>
-                  );
-                })}
+                  )}
 
-              {/* Run Batch Button — totals across every selected strategy */}
-              <button
-                onClick={runBatchBacktest}
-                disabled={isRunningBatch || selectedFiles.length === 0 || selectedStrategyIds.length === 0}
-                className='w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:cursor-not-allowed text-white font-medium py-2 px-4 rounded transition-colors'
-              >
-                {isRunningBatch
-                  ? backtestProgress
-                    ? `Running ${backtestProgress.completed}/${backtestProgress.total}…`
-                    : "Running..."
-                  : !mounted
-                  ? `Run ${combinationCount * selectedFiles.length} Variations`
-                  : (() => {
-                      // Active strategy uses the live editor; other strategies use their saved combos.
-                      let totalRuns = combinationCount;
-                      for (const sid of selectedStrategyIds) {
-                        if (sid === selectedStrategyId) continue;
-                        const saved = buildSavedRun(sid);
-                        if (!saved) continue;
-                        totalRuns += generateCombinations(saved.paramVariations).length;
-                      }
-                      const totalRunsAcrossDatasets = totalRuns * selectedFiles.length;
-                      const stratLabel = selectedStrategyIds.length > 1
-                        ? ` across ${selectedStrategyIds.length} strategies`
-                        : '';
-                      return `Run ${totalRunsAcrossDatasets} Variations${stratLabel}`;
-                    })()}
-              </button>
-            </div>
-          )}
-
-          {/* Results Summary (when multiple results) */}
-          {results.length > 1 && (
-            <div className='flex-1 min-h-[200px] overflow-y-auto p-4'>
-              <div className='text-sm text-slate-400 mb-2'>Results Comparison</div>
-              <div className='space-y-2'>
-                {results.map((result, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => setActiveResultTab(idx)}
-                    className={`w-full text-left p-3 rounded text-sm transition-colors ${
-                      activeResultTab === idx
-                        ? "bg-blue-600/20 border border-blue-500"
-                        : "bg-slate-800 hover:bg-slate-750 border border-transparent"
-                    }`}
-                  >
-                    {result.strategyName && (
-                      <div className='text-xs text-purple-400 mb-1 truncate font-medium'>{result.strategyName}</div>
-                    )}
-                    {result.datasetLabel && (
-                      <div className='text-xs text-blue-400 mb-1 truncate'>{result.datasetLabel}</div>
-                    )}
-                    <div className='flex items-center justify-between'>
-                      <span className='font-mono text-xs text-slate-400 truncate max-w-[200px]'>{result.label}</span>
-                      <span
-                        className={`font-bold ${result.totalPnlPercent >= 0 ? "text-green-400" : "text-red-400"}`}
-                      >
-                        {result.totalPnlPercent >= 0 ? "+" : ""}
-                        {result.totalPnlPercent.toFixed(2)}%
-                      </span>
+                  {/* Strategy Info (when single result) */}
+                  {results.length <= 1 && (
+                    <div className='flex-1 flex flex-col overflow-hidden p-4'>
+                      <div className='bg-gray-50 rounded p-4 mb-3'>
+                        <h3 className='text-sm font-semibold text-gray-700 mb-2'>{strategy?.name}</h3>
+                        <p className='text-xs text-gray-500 mb-3'>{strategy?.description}</p>
+                        <div className='text-xs text-gray-400 border-t border-gray-200 pt-3'>
+                          <p className='mb-1'>✓ Type-safe strategy handler</p>
+                          <p className='mb-1'>✓ Configurable parameters</p>
+                          <p>✓ Batch optimization support</p>
+                        </div>
+                      </div>
                     </div>
-                    <div className='flex items-center justify-between mt-1 text-xs text-slate-500'>
-                      <span>
-                        {result.totalTrades} trades • {result.winRate.toFixed(0)}% win
-                      </span>
-                      <span>Sharpe: {result.sharpeRatio.toFixed(2)}</span>
+                  )}
+                </div>
+
+                {/* Right Panel - Chart and Stats */}
+                <div className='flex-1 flex flex-col min-w-0'>
+                  {/* Tabs for Multiple Results */}
+                  {results.length > 1 && (
+                    <div className='flex border-b border-gray-200 bg-gray-50 overflow-x-auto'>
+                      {results.slice(0, 10).map((result, idx) => {
+                        const uniqueStrategies = new Set(results.map((r) => r.strategyId).filter(Boolean));
+                        const showStrategy = uniqueStrategies.size > 1 && result.strategyName;
+                        return (
+                          <button
+                            key={idx}
+                            onClick={() => setActiveResultTab(idx)}
+                            title={`${result.strategyName ?? ''} ${result.datasetLabel ?? ''} ${result.label}`.trim()}
+                            className={`px-4 py-2 text-xs font-medium whitespace-nowrap border-b-2 transition-colors ${
+                              activeResultTab === idx
+                                ? "border-blue-500 text-blue-600 bg-white"
+                                : "border-transparent text-gray-500 hover:text-gray-900 hover:bg-gray-100"
+                            }`}
+                          >
+                            #{idx + 1}{" "}
+                            {showStrategy && (
+                              <span className='text-purple-600 mr-1'>{result.strategyName}</span>
+                            )}
+                            <span className={result.totalPnlPercent >= 0 ? "text-green-600" : "text-red-500"}>
+                              {result.totalPnlPercent >= 0 ? "+" : ""}
+                              {result.totalPnlPercent.toFixed(1)}%
+                            </span>
+                          </button>
+                        );
+                      })}
+                      {results.length > 10 && (
+                        <span className='px-4 py-2 text-xs text-gray-400'>+{results.length - 10} more</span>
+                      )}
                     </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
+                  )}
 
-          {/* Strategy Info (when single result) */}
-          {results.length <= 1 && (
-            <div className='flex-1 flex flex-col overflow-hidden p-4'>
-              <div className='bg-slate-800 rounded p-4 mb-3'>
-                <h3 className='text-sm font-semibold text-slate-300 mb-2'>{strategy?.name}</h3>
-                <p className='text-xs text-slate-400 mb-3'>{strategy?.description}</p>
-                <div className='text-xs text-slate-500 border-t border-slate-700 pt-3'>
-                  <p className='mb-1'>✓ Type-safe strategy handler</p>
-                  <p className='mb-1'>✓ Configurable parameters</p>
-                  <p>✓ Batch optimization support</p>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
+                  {/* Active Result Label */}
+                  {activeResult && results.length > 1 && (
+                    <div className='px-4 py-2 bg-gray-50 border-b border-gray-200 text-xs'>
+                      {activeResult.strategyName && (
+                        <>
+                          <span className='text-gray-500'>Strategy: </span>
+                          <span className='text-purple-600 mr-3 font-medium'>{activeResult.strategyName}</span>
+                        </>
+                      )}
+                      {activeResult.datasetLabel && (
+                        <>
+                          <span className='text-gray-500'>Dataset: </span>
+                          <span className='text-blue-600 mr-3'>{activeResult.datasetLabel}</span>
+                        </>
+                      )}
+                      <span className='text-gray-500'>Parameters: </span>
+                      <span className='font-mono text-blue-600'>{activeResult.label}</span>
+                    </div>
+                  )}
 
-        {/* Right Panel - Chart and Stats. Auto-height — the whole page scrolls. */}
-        <div className='flex-1 flex flex-col min-w-0'>
-          {/* Tabs for Multiple Results */}
-          {results.length > 1 && (
-            <div className='flex border-b border-slate-700 bg-slate-800 overflow-x-auto'>
-              {results.slice(0, 10).map((result, idx) => {
-                const uniqueStrategies = new Set(results.map((r) => r.strategyId).filter(Boolean));
-                const showStrategy = uniqueStrategies.size > 1 && result.strategyName;
-                return (
-                  <button
-                    key={idx}
-                    onClick={() => setActiveResultTab(idx)}
-                    title={`${result.strategyName ?? ''} ${result.datasetLabel ?? ''} ${result.label}`.trim()}
-                    className={`px-4 py-2 text-xs font-medium whitespace-nowrap border-b-2 transition-colors ${
-                      activeResultTab === idx
-                        ? "border-blue-500 text-blue-400 bg-slate-900"
-                        : "border-transparent text-slate-400 hover:text-white hover:bg-slate-750"
-                    }`}
-                  >
-                    #{idx + 1}{" "}
-                    {showStrategy && (
-                      <span className='text-purple-400 mr-1'>{result.strategyName}</span>
-                    )}
-                    <span className={result.totalPnlPercent >= 0 ? "text-green-400" : "text-red-400"}>
-                      {result.totalPnlPercent >= 0 ? "+" : ""}
-                      {result.totalPnlPercent.toFixed(1)}%
-                    </span>
-                  </button>
-                );
-              })}
-              {results.length > 10 && (
-                <span className='px-4 py-2 text-xs text-slate-500'>+{results.length - 10} more</span>
-              )}
-            </div>
-          )}
+                  {/* Stats Panel */}
+                  {activeResult && (
+                    <div className='p-4 border-b border-gray-200 bg-gray-50'>
+                      <div className='grid grid-cols-6 gap-4 text-sm'>
+                        <div className='bg-white border border-gray-200 rounded p-3'>
+                          <div className='text-gray-500 text-xs mb-1'>Strategy P&L</div>
+                          <div
+                            className={`text-lg font-bold ${activeResult.totalPnlPercent >= 0 ? "text-green-600" : "text-red-500"}`}
+                          >
+                            {activeResult.totalPnlPercent >= 0 ? "+" : ""}{activeResult.totalPnlPercent.toFixed(2)}%
+                          </div>
+                        </div>
+                        <div className='bg-white border border-gray-200 rounded p-3'>
+                          <div className='text-gray-500 text-xs mb-1'>Buy & Hold</div>
+                          <div
+                            className={`text-lg font-bold ${activeResult.buyAndHoldPnlPercent >= 0 ? "text-green-600" : "text-red-500"}`}
+                          >
+                            {activeResult.buyAndHoldPnlPercent >= 0 ? "+" : ""}{activeResult.buyAndHoldPnlPercent.toFixed(2)}%
+                          </div>
+                        </div>
+                        <div className='bg-white border border-gray-200 rounded p-3'>
+                          <div className='text-gray-500 text-xs mb-1'>Win Rate</div>
+                          <div className='text-lg font-bold text-gray-900'>
+                            {activeResult.winRate.toFixed(1)}%
+                            <span className='text-sm text-gray-500 ml-1'>
+                              ({activeResult.winningTrades}W / {activeResult.losingTrades}L)
+                            </span>
+                          </div>
+                        </div>
+                        <div className='bg-white border border-gray-200 rounded p-3'>
+                          <div className='text-gray-500 text-xs mb-1'>Profit Factor</div>
+                          <div
+                            className={`text-lg font-bold ${(activeResult.profitFactor ?? 0) >= 1 ? "text-green-600" : "text-red-500"}`}
+                          >
+                            {activeResult.profitFactor == null ? "N/A" : activeResult.profitFactor === Infinity ? "∞" : activeResult.profitFactor.toFixed(2)}
+                          </div>
+                        </div>
+                        <div className='bg-white border border-gray-200 rounded p-3'>
+                          <div className='text-gray-500 text-xs mb-1'>Max Drawdown</div>
+                          <div className='text-lg font-bold text-red-500'>
+                            -{activeResult.maxDrawdownPercent.toFixed(2)}%
+                          </div>
+                        </div>
+                        <div className='bg-white border border-gray-200 rounded p-3'>
+                          <div className='text-gray-500 text-xs mb-1'>Sharpe Ratio</div>
+                          <div
+                            className={`text-lg font-bold ${activeResult.sharpeRatio >= 1 ? "text-green-600" : activeResult.sharpeRatio >= 0 ? "text-gray-700" : "text-red-500"}`}
+                          >
+                            {activeResult.sharpeRatio.toFixed(2)}
+                          </div>
+                        </div>
+                      </div>
 
-          {/* Active Result Label */}
-          {activeResult && results.length > 1 && (
-            <div className='px-4 py-2 bg-slate-850 border-b border-slate-700 text-xs'>
-              {activeResult.strategyName && (
-                <>
-                  <span className='text-slate-400'>Strategy: </span>
-                  <span className='text-purple-400 mr-3 font-medium'>{activeResult.strategyName}</span>
-                </>
-              )}
-              {activeResult.datasetLabel && (
-                <>
-                  <span className='text-slate-400'>Dataset: </span>
-                  <span className='text-blue-400 mr-3'>{activeResult.datasetLabel}</span>
-                </>
-              )}
-              <span className='text-slate-400'>Parameters: </span>
-              <span className='font-mono text-blue-400'>{activeResult.label}</span>
-            </div>
-          )}
+                      {/* Secondary stats */}
+                      <div className='flex items-center justify-between text-sm mt-2'>
+                        <div className='flex items-center gap-4'>
+                          <div className='text-center'>
+                            <span className='text-gray-500 text-xs'>Trades:</span>
+                            <span className='ml-1 text-gray-900'>{activeResult.totalTrades}</span>
+                          </div>
+                          <div className='text-center'>
+                            <span className='text-gray-500 text-xs'>Avg Win:</span>
+                            <span className='ml-1 text-green-600'>${activeResult.averageWin.toFixed(2)}</span>
+                          </div>
+                          <div className='text-center'>
+                            <span className='text-gray-500 text-xs'>Avg Loss:</span>
+                            <span className='ml-1 text-red-500'>-${activeResult.averageLoss.toFixed(2)}</span>
+                          </div>
+                          <div className='text-center'>
+                            <span className='text-gray-500 text-xs'>Alpha vs B&H:</span>
+                            <span
+                              className={`ml-1 font-bold ${activeResult.totalPnlPercent - activeResult.buyAndHoldPnlPercent >= 0 ? "text-green-600" : "text-red-500"}`}
+                            >
+                              {activeResult.totalPnlPercent - activeResult.buyAndHoldPnlPercent >= 0 ? "+" : ""}
+                              {(activeResult.totalPnlPercent - activeResult.buyAndHoldPnlPercent).toFixed(2)}%
+                            </span>
+                          </div>
+                        </div>
+                        <div className='flex items-center gap-3'>
+                          <label className='text-gray-500 text-xs cursor-pointer'>
+                            <input
+                              type='checkbox'
+                              checked={showEquityCurve}
+                              onChange={(e) => setShowEquityCurve(e.target.checked)}
+                              className='mr-1'
+                            />
+                            Equity Curve
+                          </label>
+                          <button
+                            onClick={copyReport}
+                            className='flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-medium rounded transition-colors'
+                            title='Copy backtest report as markdown for LLM review'
+                          >
+                            {copied ? (
+                              <>
+                                <svg className='w-3.5 h-3.5 text-green-600' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                                  <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M5 13l4 4L19 7' />
+                                </svg>
+                                <span className='text-green-600'>Copied!</span>
+                              </>
+                            ) : (
+                              <>
+                                <svg className='w-3.5 h-3.5' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                                  <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3' />
+                                </svg>
+                                Copy Report
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
-          {/* Stats Panel */}
-          {activeResult && (
-            <div className='p-4 border-b border-slate-700 bg-slate-800'>
-              <div className='grid grid-cols-6 gap-4 text-sm'>
-                <div className='bg-slate-900 rounded p-3'>
-                  <div className='text-slate-400 text-xs mb-1'>Strategy P&L</div>
-                  <div
-                    className={`text-lg font-bold ${activeResult.totalPnlPercent >= 0 ? "text-green-400" : "text-red-400"}`}
-                  >
-                    {activeResult.totalPnlPercent >= 0 ? "+" : ""}{activeResult.totalPnlPercent.toFixed(2)}%
-                  </div>
-                </div>
-                <div className='bg-slate-900 rounded p-3'>
-                  <div className='text-slate-400 text-xs mb-1'>Buy & Hold</div>
-                  <div
-                    className={`text-lg font-bold ${activeResult.buyAndHoldPnlPercent >= 0 ? "text-green-400" : "text-red-400"}`}
-                  >
-                    {activeResult.buyAndHoldPnlPercent >= 0 ? "+" : ""}{activeResult.buyAndHoldPnlPercent.toFixed(2)}%
-                  </div>
-                </div>
-                <div className='bg-slate-900 rounded p-3'>
-                  <div className='text-slate-400 text-xs mb-1'>Win Rate</div>
-                  <div className='text-lg font-bold text-white'>
-                    {activeResult.winRate.toFixed(1)}%
-                    <span className='text-sm text-slate-400 ml-1'>
-                      ({activeResult.winningTrades}W / {activeResult.losingTrades}L)
-                    </span>
-                  </div>
-                </div>
-                <div className='bg-slate-900 rounded p-3'>
-                  <div className='text-slate-400 text-xs mb-1'>Profit Factor</div>
-                  <div
-                    className={`text-lg font-bold ${(activeResult.profitFactor ?? 0) >= 1 ? "text-green-400" : "text-red-400"}`}
-                  >
-                    {activeResult.profitFactor == null ? "N/A" : activeResult.profitFactor === Infinity ? "∞" : activeResult.profitFactor.toFixed(2)}
-                  </div>
-                </div>
-                <div className='bg-slate-900 rounded p-3'>
-                  <div className='text-slate-400 text-xs mb-1'>Max Drawdown</div>
-                  <div className='text-lg font-bold text-red-400'>
-                    -{activeResult.maxDrawdownPercent.toFixed(2)}%
-                  </div>
-                </div>
-                <div className='bg-slate-900 rounded p-3'>
-                  <div className='text-slate-400 text-xs mb-1'>Sharpe Ratio</div>
-                  <div
-                    className={`text-lg font-bold ${activeResult.sharpeRatio >= 1 ? "text-green-400" : activeResult.sharpeRatio >= 0 ? "text-[#F8F9FA]" : "text-red-400"}`}
-                  >
-                    {activeResult.sharpeRatio.toFixed(2)}
-                  </div>
-                </div>
-              </div>
-
-              {/* Secondary stats */}
-              <div className='flex items-center justify-between text-sm mt-2'>
-                <div className='flex items-center gap-4'>
-                  <div className='text-center'>
-                    <span className='text-slate-400 text-xs'>Trades:</span>
-                    <span className='ml-1 text-white'>{activeResult.totalTrades}</span>
-                  </div>
-                  <div className='text-center'>
-                    <span className='text-slate-400 text-xs'>Avg Win:</span>
-                    <span className='ml-1 text-green-400'>${activeResult.averageWin.toFixed(2)}</span>
-                  </div>
-                  <div className='text-center'>
-                    <span className='text-slate-400 text-xs'>Avg Loss:</span>
-                    <span className='ml-1 text-red-400'>-${activeResult.averageLoss.toFixed(2)}</span>
-                  </div>
-                  <div className='text-center'>
-                    <span className='text-slate-400 text-xs'>Alpha vs B&H:</span>
-                    <span
-                      className={`ml-1 font-bold ${activeResult.totalPnlPercent - activeResult.buyAndHoldPnlPercent >= 0 ? "text-green-400" : "text-red-400"}`}
-                    >
-                      {activeResult.totalPnlPercent - activeResult.buyAndHoldPnlPercent >= 0 ? "+" : ""}
-                      {(activeResult.totalPnlPercent - activeResult.buyAndHoldPnlPercent).toFixed(2)}%
-                    </span>
-                  </div>
-                </div>
-                <div className='flex items-center gap-3'>
-                  <label className='text-slate-400 text-xs cursor-pointer'>
-                    <input
-                      type='checkbox'
-                      checked={showEquityCurve}
-                      onChange={(e) => setShowEquityCurve(e.target.checked)}
-                      className='mr-1'
+                  {/* Lambda Readiness Panel */}
+                  {activeResult && (
+                    <LambdaReadinessPanel
+                      result={activeResult}
+                      onExport={() => setShowLambdaExport(true)}
                     />
-                    Equity Curve
-                  </label>
-                  <button
-                    onClick={copyReport}
-                    className='flex items-center gap-1.5 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs font-medium rounded transition-colors'
-                    title='Copy backtest report as markdown for LLM review'
-                  >
-                    {copied ? (
-                      <>
-                        <svg className='w-3.5 h-3.5 text-green-400' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                          <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M5 13l4 4L19 7' />
-                        </svg>
-                        <span className='text-green-400'>Copied!</span>
-                      </>
-                    ) : (
-                      <>
-                        <svg className='w-3.5 h-3.5' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                          <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3' />
-                        </svg>
-                        Copy Report
-                      </>
+                  )}
+
+                  {/* Charts Container */}
+                  <div className='flex flex-col'>
+                    {/* Price Chart */}
+                    <div className='h-[640px]'>
+                      <BacktestChart
+                        data={indicatorData}
+                        trades={chartTrades}
+                        visibleCandles={visibleCandles}
+                        onVisibleCandlesChange={setVisibleCandles}
+                        selectedStrategyId={activeResult?.strategyId ?? selectedStrategyId}
+                        currentParams={activeResult?.params ?? currentParams}
+                        selectedTradeId={selectedTradeId}
+                      />
+                    </div>
+
+                    {/* Equity Curve Chart */}
+                    {showEquityCurve && activeResult && (
+                      <div className='h-48 border-t border-gray-200'>
+                        <EquityCurveChart
+                          equityCurve={activeResult.equityCurve}
+                          initialCapital={INITIAL_CAPITAL}
+                        />
+                      </div>
                     )}
-                  </button>
+                  </div>
+
+                  {/* Trade Log */}
+                  {activeResult && activeResult.trades.length > 0 && (
+                    <div className='h-96 border-t border-gray-200 overflow-hidden flex flex-col'>
+                      <div className='px-4 py-2 bg-gray-50 text-sm font-semibold text-gray-900 border-b border-gray-200'>
+                        Trade Log ({activeResult.trades.length} trades)
+                      </div>
+                      <div className='flex-1 overflow-y-auto'>
+                        <table className='w-full text-xs'>
+                          <thead className='bg-gray-50 sticky top-0'>
+                            <tr className='text-gray-500'>
+                              <th className='px-3 py-2 text-left'>Side</th>
+                              <th className='px-3 py-2 text-left'>Entry Time</th>
+                              <th className='px-3 py-2 text-right'>Entry Price</th>
+                              <th className='px-3 py-2 text-left'>Exit Time</th>
+                              <th className='px-3 py-2 text-right'>Exit Price</th>
+                              <th className='px-3 py-2 text-right'>P&amp;L</th>
+                              <th className='px-3 py-2 text-right'>P&amp;L %</th>
+                              <th className='px-3 py-2 text-left'>Reason</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {activeResult.trades.map((trade) => (
+                              <tr
+                                key={trade.id}
+                                className={`border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors ${selectedTradeId === trade.id ? 'bg-blue-50 ring-1 ring-blue-400' : ''}`}
+                                onClick={() => setSelectedTradeId(selectedTradeId === trade.id ? null : trade.id)}
+                              >
+                                <td
+                                  className={`px-3 py-2 font-semibold ${trade.side === "LONG" ? "text-green-600" : "text-red-500"}`}
+                                >
+                                  {trade.side}
+                                </td>
+                                <td className='px-3 py-2 text-gray-700'>{new Date(trade.entryTime).toLocaleString()}</td>
+                                <td className='px-3 py-2 text-right text-gray-700'>${trade.entryPrice.toFixed(2)}</td>
+                                <td className='px-3 py-2 text-gray-700'>{new Date(trade.exitTime).toLocaleString()}</td>
+                                <td className='px-3 py-2 text-right text-gray-700'>${trade.exitPrice.toFixed(2)}</td>
+                                <td
+                                  className={`px-3 py-2 text-right font-mono ${trade.pnl >= 0 ? "text-green-600" : "text-red-500"}`}
+                                >
+                                  {trade.pnl >= 0 ? "+" : ""}${trade.pnl.toFixed(2)}
+                                </td>
+                                <td
+                                  className={`px-3 py-2 text-right font-mono ${trade.pnlPercent >= 0 ? "text-green-600" : "text-red-500"}`}
+                                >
+                                  {trade.pnlPercent >= 0 ? "+" : ""}
+                                  {trade.pnlPercent.toFixed(2)}%
+                                </td>
+                                <td className='px-3 py-2 text-gray-500 truncate max-w-[200px]' title={trade.reason}>
+                                  {trade.reason}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </div>
-            </div>
-          )}
-
-          {/* Lambda Readiness Panel */}
-          {activeResult && (
-            <LambdaReadinessPanel
-              result={activeResult}
-              onExport={() => setShowLambdaExport(true)}
-            />
-          )}
-
-          {/* Charts Container — fixed-height blocks so the chart is comfortably
-              tall (was flex-1 inside an h-screen, which compressed it). */}
-          <div className='flex flex-col'>
-            {/* Price Chart */}
-            <div className='h-[640px]'>
-              <BacktestChart
-                data={indicatorData}
-                trades={chartTrades}
-                visibleCandles={visibleCandles}
-                onVisibleCandlesChange={setVisibleCandles}
-                selectedStrategyId={activeResult?.strategyId ?? selectedStrategyId}
-                currentParams={activeResult?.params ?? currentParams}
-                selectedTradeId={selectedTradeId}
-              />
-            </div>
-
-            {/* Equity Curve Chart (Separate) */}
-            {showEquityCurve && activeResult && (
-              <div className='h-48 border-t border-slate-700'>
-                <EquityCurveChart
-                  equityCurve={activeResult.equityCurve}
-                  initialCapital={INITIAL_CAPITAL}
-                />
               </div>
             )}
           </div>
-
-          {/* Trade Log */}
-          {activeResult && activeResult.trades.length > 0 && (
-            <div className='h-96 border-t border-slate-700 overflow-hidden flex flex-col'>
-              <div className='px-4 py-2 bg-slate-800 text-sm font-semibold border-b border-slate-700'>
-                Trade Log ({activeResult.trades.length} trades)
-              </div>
-              <div className='flex-1 overflow-y-auto'>
-                <table className='w-full text-xs'>
-                  <thead className='bg-slate-800 sticky top-0'>
-                    <tr className='text-slate-400'>
-                      <th className='px-3 py-2 text-left'>Side</th>
-                      <th className='px-3 py-2 text-left'>Entry Time</th>
-                      <th className='px-3 py-2 text-right'>Entry Price</th>
-                      <th className='px-3 py-2 text-left'>Exit Time</th>
-                      <th className='px-3 py-2 text-right'>Exit Price</th>
-                      <th className='px-3 py-2 text-right'>P&amp;L</th>
-                      <th className='px-3 py-2 text-right'>P&amp;L %</th>
-                      <th className='px-3 py-2 text-left'>Reason</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {activeResult.trades.map((trade) => (
-                      <tr
-                        key={trade.id}
-                        className={`border-b border-slate-800 hover:bg-slate-800/50 cursor-pointer transition-colors ${selectedTradeId === trade.id ? 'bg-blue-900/40 ring-1 ring-blue-500' : ''}`}
-                        onClick={() => setSelectedTradeId(selectedTradeId === trade.id ? null : trade.id)}
-                      >
-                        <td
-                          className={`px-3 py-2 font-semibold ${trade.side === "LONG" ? "text-green-400" : "text-red-400"}`}
-                        >
-                          {trade.side}
-                        </td>
-                        <td className='px-3 py-2 text-slate-300'>{new Date(trade.entryTime).toLocaleString()}</td>
-                        <td className='px-3 py-2 text-right text-slate-300'>${trade.entryPrice.toFixed(2)}</td>
-                        <td className='px-3 py-2 text-slate-300'>{new Date(trade.exitTime).toLocaleString()}</td>
-                        <td className='px-3 py-2 text-right text-slate-300'>${trade.exitPrice.toFixed(2)}</td>
-                        <td
-                          className={`px-3 py-2 text-right font-mono ${trade.pnl >= 0 ? "text-green-400" : "text-red-400"}`}
-                        >
-                          {trade.pnl >= 0 ? "+" : ""}${trade.pnl.toFixed(2)}
-                        </td>
-                        <td
-                          className={`px-3 py-2 text-right font-mono ${trade.pnlPercent >= 0 ? "text-green-400" : "text-red-400"}`}
-                        >
-                          {trade.pnlPercent >= 0 ? "+" : ""}
-                          {trade.pnlPercent.toFixed(2)}%
-                        </td>
-                        <td className='px-3 py-2 text-slate-400 truncate max-w-[200px]' title={trade.reason}>
-                          {trade.reason}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
         </div>
-      </div>
+      </main>
 
-      {/* Deploy Strategy Modal — deploys whichever strategy/params the user is currently viewing */}
+      {/* Deploy Strategy Modal — fixed overlay, outside main card */}
       <LambdaExportModal
         isOpen={showLambdaExport}
         onClose={() => setShowLambdaExport(false)}
@@ -1524,7 +1521,6 @@ export default function AlgoBacktestPage() {
         params={activeResult?.params ?? currentParams}
         authToken={authToken}
       />
-      </main>
     </div>
   );
 }
