@@ -1,7 +1,5 @@
 import type { Metadata } from 'next'
-import dynamic from 'next/dynamic'
-
-const GameWorldPageClient = dynamic(() => import('./page-client'), { ssr: false })
+import GameWorldPageClient from './page-client'
 
 export const metadata: Metadata = {
   title: 'Game World',
@@ -14,4 +12,6 @@ export const metadata: Metadata = {
   },
 }
 
-export default GameWorldPageClient
+export default function GameWorldPage() {
+  return <GameWorldPageClient />
+}
