@@ -57,13 +57,6 @@ interface DateEntry {
   created_at: string;
 }
 
-interface Flag {
-  id: string;
-  person_id: string;
-  label: string;
-  checked: boolean;
-}
-
 interface PillarEntry {
   id: string;
   pillar_id: string;
@@ -83,7 +76,6 @@ interface Pillar {
 interface PersonData extends Person {
   dates: DateEntry[];
   pillars: Pillar[];
-  red_flags: Flag[];
 }
 
 // ── Constants ──────────────────────────────────────────────────────────────────
@@ -144,23 +136,6 @@ const PILLAR_RATING_SCORES: Record<NonNullable<Pillar["rating"]>, number> = {
   absent: 0,
 };
 
-const DEFAULT_RED_FLAGS = [
-  "I feel more obligated than excited",
-  'I\'m avoiding the "this isn\'t working" conversation',
-  "I'm primarily attracted to the attention, not the person",
-  "I'm rationalizing incompatibilities instead of acknowledging them",
-  "I haven't been honest with her about my level of interest",
-  "Things haven't progressed in 3+ weeks and I haven't addressed it",
-  "I'm keeping her around as a backup",
-];
-
-const REFLECTION_QUESTIONS = [
-  "Would I be excited to introduce her to a close friend?",
-  "Does being around her add energy or drain it?",
-  "Am I attracted to who she actually is, or just who I want her to be?",
-  "If she asked where this was going, could I answer honestly?",
-];
-
 const AVATARS = ["🌸", "💐", "🌺", "🌻", "🌹", "🌷", "✨", "💫", "🦋", "🌙", "⭐", "🎵", "🎭", "🌊", "🍃", "🎀"];
 
 const today = () => new Date().toISOString().split("T")[0];
@@ -219,13 +194,10 @@ const sectionLabel: React.CSSProperties = {
 
 function calcCompatibility(p: PersonData): number {
   const rated = p.pillars.filter((pl) => pl.rating !== null);
+  if (rated.length === 0) return 0;
   const pillarScore =
-    rated.length === 0
-      ? 0
-      : rated.reduce((sum, pl) => sum + PILLAR_RATING_SCORES[pl.rating!], 0) / rated.length;
-  const totalRed = p.red_flags.length || 1;
-  const r = p.red_flags.filter((f) => f.checked).length;
-  return Math.max(0, Math.min(100, Math.round(pillarScore - (r / totalRed) * 30)));
+    rated.reduce((sum, pl) => sum + PILLAR_RATING_SCORES[pl.rating!], 0) / rated.length;
+  return Math.round(pillarScore);
 }
 
 // [greenMax, redMin] thresholds in days
@@ -257,10 +229,6 @@ function isStagnant(p: Person): boolean {
 
 function stageIndex(s: Stage): number {
   return STAGES.indexOf(s);
-}
-
-function showReflection(s: Stage): boolean {
-  return stageIndex(s) >= stageIndex("First Date");
 }
 
 function readinessScore(p: PersonData): number {
@@ -389,7 +357,6 @@ function PersonCard({
 }) {
   const compat = calcCompatibility(person);
   const momentum = getMomentum(person.last_contact, person.stage);
-  const rChecked = person.red_flags.filter((f) => f.checked).length;
   const stagnant = isStagnant(person);
   const mColor = { green: C.green, yellow: C.yellow, red: C.red }[momentum];
 
@@ -575,9 +542,6 @@ function PersonCard({
         <p style={{ fontSize: 10, color: C.yellow, margin: 0, fontStyle: "italic" }}>
           ⚠ 3+ weeks in this stage
         </p>
-      )}
-      {rChecked >= 2 && (
-        <p style={{ fontSize: 10, color: C.red, margin: 0 }}>⚑ {rChecked} red flags</p>
       )}
     </div>
   );
@@ -845,7 +809,6 @@ function DetailDrawer({
   person,
   onClose,
   onUpdate,
-  onUpdateRedFlag,
   onSetPillarRating,
   onAddPillarEntry,
   onAddDate,
@@ -857,7 +820,6 @@ function DetailDrawer({
   person: PersonData;
   onClose: () => void;
   onUpdate: (id: string, fields: Partial<Person>) => Promise<void>;
-  onUpdateRedFlag: (flagId: string, checked: boolean) => Promise<void>;
   onSetPillarRating: (personId: string, key: Pillar["key"], rating: Pillar["rating"]) => Promise<void>;
   onAddPillarEntry: (personId: string, key: Pillar["key"], text: string, polarity: "positive" | "negative") => Promise<void>;
   onAddDate: (entry: Omit<DateEntry, "id" | "person_id" | "created_at">) => Promise<void>;
@@ -868,12 +830,10 @@ function DetailDrawer({
 }) {
   const compat = calcCompatibility(person);
   const momentum = getMomentum(person.last_contact, person.stage);
-  const rChecked = person.red_flags.filter((f) => f.checked).length;
   const stagnant = isStagnant(person);
   const mColor = { green: C.green, yellow: C.yellow, red: C.red }[momentum];
 
   const [profileNotes, setProfileNotes] = useState(person.profile_notes ?? "");
-  const [reflNotes, setReflNotes] = useState(person.reflection_notes ?? "");
   const [nextAction, setNextAction] = useState(person.next_action ?? "");
   const [lastContact, setLastContact] = useState(person.last_contact ?? "");
 
@@ -895,7 +855,6 @@ function DetailDrawer({
 
   useEffect(() => {
     setProfileNotes(person.profile_notes ?? "");
-    setReflNotes(person.reflection_notes ?? "");
     setNextAction(person.next_action ?? "");
     setLastContact(person.last_contact ?? "");
   }, [person.id]);
@@ -1004,38 +963,21 @@ function DetailDrawer({
         </div>
 
         {/* Warnings */}
-        {(stagnant || rChecked >= 2) && (
+        {stagnant && (
           <div style={{ padding: "12px 20px", borderBottom: `1px solid ${C.border}`, display: "flex", flexDirection: "column", gap: 8 }}>
-            {stagnant && (
-              <div
-                style={{
-                  background: "rgba(234,179,8,0.07)",
-                  border: `1px solid rgba(234,179,8,0.2)`,
-                  borderRadius: 8,
-                  padding: "9px 12px",
-                  fontSize: 12,
-                  color: C.yellow,
-                  lineHeight: 1.5,
-                }}
-              >
-                You've been here a while. Is something being avoided?
-              </div>
-            )}
-            {rChecked >= 2 && (
-              <div
-                style={{
-                  background: "rgba(239,68,68,0.07)",
-                  border: `1px solid rgba(239,68,68,0.2)`,
-                  borderRadius: 8,
-                  padding: "9px 12px",
-                  fontSize: 12,
-                  color: C.red,
-                  lineHeight: 1.5,
-                }}
-              >
-                Some patterns here worth paying attention to. What's the honest read?
-              </div>
-            )}
+            <div
+              style={{
+                background: "rgba(234,179,8,0.07)",
+                border: `1px solid rgba(234,179,8,0.2)`,
+                borderRadius: 8,
+                padding: "9px 12px",
+                fontSize: 12,
+                color: C.yellow,
+                lineHeight: 1.5,
+              }}
+            >
+              You've been here a while. Is something being avoided?
+            </div>
           </div>
         )}
 
@@ -1308,65 +1250,6 @@ function DetailDrawer({
             </div>
           </section>
 
-          {/* Red flags */}
-          <section>
-            <span style={{ ...sectionLabel, color: C.red }}>
-              Red Flag / Pattern Check ({person.red_flags.filter((f) => f.checked).length}/{person.red_flags.length})
-            </span>
-            <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-              {person.red_flags.map((flag) => (
-                <label
-                  key={flag.id}
-                  style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer" }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={flag.checked}
-                    onChange={() => onUpdateRedFlag(flag.id, !flag.checked)}
-                    style={{ marginTop: 2, accentColor: C.red, flexShrink: 0 }}
-                  />
-                  <span style={{ fontSize: 13, color: flag.checked ? C.red : C.muted, lineHeight: 1.5 }}>
-                    {flag.label}
-                  </span>
-                </label>
-              ))}
-            </div>
-          </section>
-
-          {/* Compatibility prompts — First Date Done and beyond */}
-          {showReflection(person.stage) && (
-            <section>
-              <span style={sectionLabel}>Compatibility Prompts</span>
-              <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 12 }}>
-                {REFLECTION_QUESTIONS.map((q, i) => (
-                  <p
-                    key={i}
-                    style={{
-                      fontSize: 13,
-                      color: C.muted,
-                      margin: 0,
-                      padding: "9px 12px",
-                      background: C.card,
-                      borderRadius: 6,
-                      borderLeft: `2px solid ${C.border}`,
-                      lineHeight: 1.6,
-                    }}
-                  >
-                    {q}
-                  </p>
-                ))}
-              </div>
-              <textarea
-                value={reflNotes}
-                onChange={(e) => setReflNotes(e.target.value)}
-                onBlur={() => onUpdate(person.id, { reflection_notes: reflNotes || null })}
-                placeholder="Sit with these. Write anything that comes up…"
-                rows={3}
-                style={{ ...inputBase, resize: "vertical", lineHeight: 1.6, padding: "10px 12px" }}
-              />
-            </section>
-          )}
-
           {/* Next action */}
           <section style={{ borderTop: `1px solid ${C.border}`, paddingTop: 20 }}>
             <label style={{ ...sectionLabel, color: C.accent }}>→ Next Action</label>
@@ -1452,7 +1335,7 @@ function StatusReport({
         <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 700 }}>
           <thead>
             <tr>
-              {["Name", "Stage", "Mom.", "Compat.", "Readiness", "Last Contact", "Next Action", "Red Flags"].map((h) => (
+              {["Name", "Stage", "Mom.", "Compat.", "Readiness", "Last Contact", "Next Action", "Flags"].map((h) => (
                 <th
                   key={h}
                   style={{
@@ -1477,7 +1360,6 @@ function StatusReport({
               const compat = calcCompatibility(p);
               const momentum = getMomentum(p.last_contact, p.stage);
               const mColor = { green: C.green, yellow: C.yellow, red: C.red }[momentum];
-              const rFlags = p.red_flags.filter((f) => f.checked);
               const stagnant = isStagnant(p);
               const readiness = readinessScore(p);
 
@@ -1555,11 +1437,6 @@ function StatusReport({
                   </td>
                   <td style={{ padding: "12px 0 12px 0", borderBottom: `1px solid ${C.border}` }}>
                     <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                      {rFlags.map((f) => (
-                        <span key={f.id} style={{ fontSize: 10, color: C.red, whiteSpace: "nowrap" }}>
-                          ⚑ {f.label}
-                        </span>
-                      ))}
                       {stagnant && (
                         <span style={{ fontSize: 10, color: C.yellow, whiteSpace: "nowrap" }}>
                           ⚠ Stagnant
@@ -1737,14 +1614,12 @@ export default function DRMPage() {
 
       const ids = (rawPeople as Person[]).map((p) => p.id);
 
-      const [datesRes, redRes, pillarsRes] = await Promise.all([
+      const [datesRes, pillarsRes] = await Promise.all([
         supabase.from("drm_dates").select("*").in("person_id", ids).order("date", { ascending: false }),
-        supabase.from("drm_red_flags").select("*").in("person_id", ids),
         supabase.from("drm_pillars").select("*").in("person_id", ids),
       ]);
 
       const dates: DateEntry[] = (datesRes.data as DateEntry[]) || [];
-      const reds: Flag[] = (redRes.data as Flag[]) || [];
       const pillarRows: Omit<Pillar, "entries">[] = (pillarsRes.data as Omit<Pillar, "entries">[]) || [];
 
       const pillarIds = pillarRows.map((pl) => pl.id);
@@ -1770,7 +1645,6 @@ export default function DRMPage() {
           ...p,
           dates: dates.filter((d) => d.person_id === p.id),
           pillars,
-          red_flags: reds.filter((f) => f.person_id === p.id),
         };
       });
 
@@ -1793,20 +1667,6 @@ export default function DRMPage() {
         .from("drm_people")
         .update({ ...fields, updated_at: new Date().toISOString() })
         .eq("id", id);
-    },
-    [supabase],
-  );
-
-  const updateRedFlag = useCallback(
-    async (flagId: string, checked: boolean) => {
-      setPeople((prev) =>
-        prev.map((p) => ({
-          ...p,
-          red_flags: p.red_flags.map((f) => (f.id === flagId ? { ...f, checked } : f)),
-        })),
-      );
-      if (!supabase) return;
-      await supabase.from("drm_red_flags").update({ checked }).eq("id", flagId);
     },
     [supabase],
   );
@@ -1972,11 +1832,6 @@ export default function DRMPage() {
 
       if (pErr || !newPerson) return;
 
-      const redRes = await supabase
-        .from("drm_red_flags")
-        .insert(DEFAULT_RED_FLAGS.map((label) => ({ person_id: newPerson.id, label, checked: false })))
-        .select();
-
       const pd: PersonData = {
         ...(newPerson as Person),
         dates: [],
@@ -1987,7 +1842,6 @@ export default function DRMPage() {
           rating: null,
           entries: [],
         })),
-        red_flags: (redRes.data as Flag[]) || [],
       };
 
       setPeople((prev) => [...prev, pd]);
@@ -2167,7 +2021,6 @@ export default function DRMPage() {
           person={selectedPerson}
           onClose={() => setSelectedPersonId(null)}
           onUpdate={updatePerson}
-          onUpdateRedFlag={updateRedFlag}
           onSetPillarRating={setPillarRating}
           onAddPillarEntry={addPillarEntry}
           onAddDate={(entry) => addDate(selectedPerson.id, entry)}
