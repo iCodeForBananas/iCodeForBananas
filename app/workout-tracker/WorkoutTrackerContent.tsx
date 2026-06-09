@@ -5,6 +5,7 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianG
 import ClientOnly from "@/app/lib/ClientOnly";
 import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/app/hooks/useAuth";
+import BentoPageLayout from "@/app/components/BentoPageLayout";
 
 interface LogEntry {
   id: string;
@@ -209,19 +210,10 @@ export default function WorkoutTrackerContent() {
   }, [logs]);
 
   return (
-    <div className='flex flex-col flex-1'>
-      <main className='p-2 sm:p-4 flex-1 overflow-y-auto'>
-        <div className='rounded-2xl p-4 sm:p-6 bg-white'>
-          <div className='text-center mb-6 sm:mb-10'>
-            <h1 className='text-3xl sm:text-5xl font-bold drop-shadow-lg' style={{ color: "#000" }}>
-              🏋️ 5×5 Tracker
-            </h1>
-            <p className='text-base sm:text-lg mt-3' style={{ color: "#000" }}>
-              All exercises are 5 sets × 5 reps
-            </p>
-          </div>
+    <BentoPageLayout title="Workout Tracker">
+      <p className="text-sm text-[#000]/40 mb-6 -mt-2">All exercises are 5 sets × 5 reps</p>
 
-          {/* Log form */}
+      {/* Log form */}
           {user && (
             <div className='flex flex-col sm:flex-row sm:flex-wrap gap-3 sm:items-end mb-6 sm:mb-8 max-w-3xl mx-auto'>
               <input
@@ -475,8 +467,6 @@ export default function WorkoutTrackerContent() {
                 </div>
               );
             })()}
-        </div>
-      </main>
-    </div>
+    </BentoPageLayout>
   );
 }
