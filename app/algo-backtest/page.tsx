@@ -665,10 +665,10 @@ export default function AlgoBacktestPage() {
   );
 
   return (
-    <div className='flex flex-col flex-1 min-h-0'>
-      <main className='flex flex-col flex-1 min-h-0 p-2 sm:p-4'>
+    <div className='flex flex-col'>
+      <main className='flex flex-col p-2 sm:p-4'>
         <div
-          className='flex flex-col flex-1 min-h-0 rounded-2xl overflow-hidden'
+          className='flex flex-col rounded-2xl'
           style={{ background: '#fff', border: '1px solid var(--border-color)' }}
         >
           {/* Header */}
@@ -681,7 +681,7 @@ export default function AlgoBacktestPage() {
           </div>
 
           {/* Content */}
-          <div className='flex-1 overflow-auto flex flex-col'>
+          <div className='flex flex-col'>
             {error ? (
               <div className='flex-1 flex items-center justify-center text-red-500 p-8'>
                 <div className='text-center'>
@@ -734,7 +734,7 @@ export default function AlgoBacktestPage() {
                 </div>
               </div>
             ) : (
-              <div className='flex flex-col flex-1 min-h-0'>
+              <div className='flex flex-col'>
 
                 {/* ── Configuration (top) ─────────────────────────────── */}
                 <div className='shrink-0 border-b border-gray-200 px-4 py-3'>
@@ -1143,7 +1143,7 @@ export default function AlgoBacktestPage() {
                 </div>
 
                 {/* ── Results (bottom) ────────────────────────────────── */}
-                <div className='flex-1 overflow-auto flex flex-col min-h-0'>
+                <div className='flex flex-col'>
 
                   {/* Tabs for Multiple Results */}
                   {results.length > 1 && (
