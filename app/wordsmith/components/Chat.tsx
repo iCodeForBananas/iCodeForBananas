@@ -50,7 +50,6 @@ export function Chat({
     scrollToBottom();
   }, [messages, isGenerating]);
 
-  // Live Writing auto-submit logic
   useEffect(() => {
     if (isLiveWriting && input.trim() && !isGenerating) {
       if (timerRef.current) clearTimeout(timerRef.current);
@@ -66,7 +65,6 @@ export function Chat({
     };
   }, [input, isLiveWriting, isGenerating, onSendMessage]);
 
-  // Close menus when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (attachMenuRef.current && !attachMenuRef.current.contains(event.target as Node)) {
@@ -91,19 +89,19 @@ export function Chat({
   const activeTone = tones.find((t) => t.id === activeToneId);
 
   return (
-    <div className="w-80 bg-slate-50 dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 flex flex-col h-full transition-colors duration-300">
+    <div className="w-80 bg-slate-50 border-l border-slate-200 flex flex-col h-full">
       {/* Header */}
-      <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-between shadow-sm z-10">
+      <div className="p-4 border-b border-slate-200 bg-white flex items-center justify-between shadow-sm z-10">
         <div className="flex items-center gap-2">
-          <div className="p-1.5 bg-indigo-100 dark:bg-indigo-900/30 rounded-md text-indigo-600 dark:text-indigo-400">
+          <div className="p-1.5 bg-indigo-100 rounded-md text-indigo-600">
             <Sparkles size={18} />
           </div>
-          <h2 className="font-semibold text-slate-800 dark:text-slate-200">AI Assistant</h2>
+          <h2 className="font-semibold text-slate-800">AI Assistant</h2>
         </div>
         {messages.length > 0 && (
           <button
             onClick={onClearChat}
-            className="text-xs text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 transition-colors"
+            className="text-xs text-slate-400 hover:text-slate-600 transition-colors"
           >
             Clear
           </button>
@@ -114,11 +112,11 @@ export function Chat({
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.length === 0 && (
           <div className="text-center py-8 px-4">
-            <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/20 rounded-full flex items-center justify-center mx-auto mb-3 text-indigo-400 dark:text-indigo-500">
+            <div className="w-12 h-12 bg-indigo-50 rounded-full flex items-center justify-center mx-auto mb-3 text-indigo-400">
               <Bot size={24} />
             </div>
-            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mb-1">Here to help!</p>
-            <p className="text-xs text-slate-400 dark:text-slate-600">
+            <p className="text-sm text-slate-500 font-medium mb-1">Here to help!</p>
+            <p className="text-xs text-slate-400">
               Ask me to rewrite sections, fix grammar, or brainstorm ideas.
             </p>
           </div>
@@ -133,8 +131,8 @@ export function Chat({
               className={cn(
                 'w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5',
                 message.role === 'user'
-                  ? 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
-                  : 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
+                  ? 'bg-slate-200 text-slate-600'
+                  : 'bg-indigo-100 text-indigo-600'
               )}
             >
               {message.role === 'user' ? <User size={14} /> : <Bot size={14} />}
@@ -143,11 +141,11 @@ export function Chat({
               className={cn(
                 'rounded-2xl px-4 py-2.5 max-w-[85%] shadow-sm',
                 message.role === 'user'
-                  ? 'bg-slate-800 dark:bg-slate-700 text-white rounded-tr-none'
-                  : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-100 dark:border-slate-700 rounded-tl-none'
+                  ? 'bg-slate-800 text-white rounded-tr-none'
+                  : 'bg-white text-slate-700 border border-slate-100 rounded-tl-none'
               )}
             >
-              <div className="prose prose-sm max-w-none dark:prose-invert">
+              <div className="prose prose-sm max-w-none">
                 <ReactMarkdown>{message.content}</ReactMarkdown>
               </div>
             </div>
@@ -156,12 +154,12 @@ export function Chat({
 
         {isGenerating && (
           <div className="flex gap-3">
-            <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center flex-shrink-0 mt-0.5 animate-pulse">
+            <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center flex-shrink-0 mt-0.5 animate-pulse">
               <Bot size={14} />
             </div>
-            <div className="bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl rounded-tl-none px-4 py-3 shadow-sm flex items-center gap-2">
-              <Loader2 size={16} className="animate-spin text-indigo-500 dark:text-indigo-400" />
-              <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Thinking...</span>
+            <div className="bg-white border border-slate-100 rounded-2xl rounded-tl-none px-4 py-3 shadow-sm flex items-center gap-2">
+              <Loader2 size={16} className="animate-spin text-indigo-500" />
+              <span className="text-xs text-slate-500 font-medium">Thinking...</span>
             </div>
           </div>
         )}
@@ -169,7 +167,7 @@ export function Chat({
       </div>
 
       {/* Input area */}
-      <div className="p-4 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800">
+      <div className="p-4 bg-white border-t border-slate-200">
         {/* Attached notes & tone badges */}
         <div className="flex flex-wrap gap-2 mb-2">
           {attachedNoteIds.map((id) => {
@@ -178,21 +176,21 @@ export function Chat({
             return (
               <div
                 key={id}
-                className="flex items-center gap-1 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 text-xs px-2 py-1 rounded-md border border-indigo-100 dark:border-indigo-800"
+                className="flex items-center gap-1 bg-indigo-50 text-indigo-700 text-xs px-2 py-1 rounded-md border border-indigo-100"
               >
                 <FileText size={10} />
                 <span className="max-w-[100px] truncate">{note.title || 'Untitled'}</span>
-                <button onClick={() => onToggleAttachNote(id)} className="hover:text-indigo-900 dark:hover:text-indigo-100">
+                <button onClick={() => onToggleAttachNote(id)} className="hover:text-indigo-900">
                   <X size={10} />
                 </button>
               </div>
             );
           })}
           {activeTone && (
-            <div className="flex items-center gap-1 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 text-xs px-2 py-1 rounded-md border border-emerald-100 dark:border-emerald-800">
+            <div className="flex items-center gap-1 bg-emerald-50 text-emerald-700 text-xs px-2 py-1 rounded-md border border-emerald-100">
               <Mic size={10} />
               <span className="max-w-[100px] truncate">{activeTone.name}</span>
-              <button onClick={() => onSelectTone(null)} className="hover:text-emerald-900 dark:hover:text-emerald-100">
+              <button onClick={() => onSelectTone(null)} className="hover:text-emerald-900">
                 <X size={10} />
               </button>
             </div>
@@ -201,7 +199,7 @@ export function Chat({
 
         <form
           onSubmit={handleSubmit}
-          className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-1.5 focus-within:ring-2 focus-within:ring-indigo-500/20 focus-within:border-indigo-500 transition-all shadow-sm relative"
+          className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl p-1.5 focus-within:ring-2 focus-within:ring-indigo-500/20 focus-within:border-indigo-500 transition-all shadow-sm relative"
         >
           <div className="relative flex items-center gap-1">
             {/* Attach button */}
@@ -211,8 +209,8 @@ export function Chat({
               className={cn(
                 'p-2 rounded-lg transition-colors',
                 isAttaching || attachedNoteIds.length > 0
-                  ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30'
-                  : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+                  ? 'text-indigo-600 bg-indigo-50'
+                  : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'
               )}
               title="Attach context from other notes"
             >
@@ -226,8 +224,8 @@ export function Chat({
               className={cn(
                 'p-2 rounded-lg transition-colors',
                 isToneMenuOpen || activeToneId
-                  ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30'
-                  : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+                  ? 'text-emerald-600 bg-emerald-50'
+                  : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'
               )}
               title="Select Tone/Voice"
             >
@@ -238,14 +236,14 @@ export function Chat({
             {isAttaching && (
               <div
                 ref={attachMenuRef}
-                className="absolute bottom-full left-0 mb-2 w-64 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden z-50 flex flex-col max-h-64"
+                className="absolute bottom-full left-0 mb-2 w-64 bg-white rounded-xl shadow-xl border border-slate-200 overflow-hidden z-50 flex flex-col max-h-64"
               >
-                <div className="p-2 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 text-xs font-medium text-slate-500 dark:text-slate-400">
+                <div className="p-2 border-b border-slate-100 bg-slate-50 text-xs font-medium text-slate-500">
                   Add note to context
                 </div>
                 <div className="overflow-y-auto flex-1 p-1">
                   {availableNotes.length === 0 ? (
-                    <div className="p-3 text-center text-xs text-slate-400 dark:text-slate-500">No other notes available</div>
+                    <div className="p-3 text-center text-xs text-slate-400">No other notes available</div>
                   ) : (
                     availableNotes.map((note) => (
                       <button
@@ -258,13 +256,13 @@ export function Chat({
                         className={cn(
                           'w-full text-left px-3 py-2 text-sm rounded-lg flex items-center gap-2 transition-colors',
                           attachedNoteIds.includes(note.id)
-                            ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300'
-                            : 'hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300'
+                            ? 'bg-indigo-50 text-indigo-700'
+                            : 'hover:bg-slate-50 text-slate-700'
                         )}
                       >
                         <FileText
                           size={14}
-                          className={attachedNoteIds.includes(note.id) ? 'text-indigo-500 dark:text-indigo-400' : 'text-slate-400 dark:text-slate-500'}
+                          className={attachedNoteIds.includes(note.id) ? 'text-indigo-500' : 'text-slate-400'}
                         />
                         <span className="truncate flex-1">{note.title || 'Untitled Note'}</span>
                         {attachedNoteIds.includes(note.id) && <X size={12} />}
@@ -279,9 +277,9 @@ export function Chat({
             {isToneMenuOpen && (
               <div
                 ref={toneMenuRef}
-                className="absolute bottom-full left-8 mb-2 w-64 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden z-50 flex flex-col max-h-80"
+                className="absolute bottom-full left-8 mb-2 w-64 bg-white rounded-xl shadow-xl border border-slate-200 overflow-hidden z-50 flex flex-col max-h-80"
               >
-                <div className="p-2 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 text-xs font-medium text-slate-500 dark:text-slate-400">
+                <div className="p-2 border-b border-slate-100 bg-slate-50 text-xs font-medium text-slate-500">
                   Select Voice / Tone
                 </div>
                 <div className="overflow-y-auto flex-1 p-1">
@@ -296,18 +294,18 @@ export function Chat({
                       className={cn(
                         'w-full text-left px-3 py-2 text-sm rounded-lg flex flex-col gap-0.5 transition-colors',
                         activeToneId === tone.id
-                          ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-900 dark:text-emerald-100'
-                          : 'hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300'
+                          ? 'bg-emerald-50 text-emerald-900'
+                          : 'hover:bg-slate-50 text-slate-700'
                       )}
                     >
                       <div className="flex items-center justify-between w-full">
                         <span className="font-medium">{tone.name}</span>
-                        {activeToneId === tone.id && <X size={12} className="text-emerald-500 dark:text-emerald-400" />}
+                        {activeToneId === tone.id && <X size={12} className="text-emerald-500" />}
                       </div>
                       <span
                         className={cn(
                           'text-xs truncate w-full',
-                          activeToneId === tone.id ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400 dark:text-slate-500'
+                          activeToneId === tone.id ? 'text-emerald-600' : 'text-slate-400'
                         )}
                       >
                         {tone.description}
@@ -326,8 +324,8 @@ export function Chat({
             className={cn(
               'p-2 rounded-lg transition-colors',
               isLiveWriting
-                ? 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30'
-                : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+                ? 'text-amber-600 bg-amber-50'
+                : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'
             )}
             title="Live Writing: Auto-submit after 5s of inactivity"
           >
@@ -339,7 +337,7 @@ export function Chat({
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder={isLiveWriting ? 'Live writing active...' : 'Ask AI to edit...'}
-            className="flex-1 bg-transparent px-3 py-2 text-sm focus:outline-none text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-600"
+            className="flex-1 bg-transparent px-3 py-2 text-sm focus:outline-none text-slate-800 placeholder:text-slate-400"
             disabled={isGenerating}
           />
           <button

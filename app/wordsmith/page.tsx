@@ -121,21 +121,9 @@ export default function WordsmithPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
 
-  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-    if (typeof window === 'undefined') return 'light';
-    const saved = localStorage.getItem('wordsmith-theme');
-    if (saved === 'dark' || saved === 'light') return saved;
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-  });
-
   const versionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dbSyncRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
-
-  // Persist theme
-  useEffect(() => {
-    localStorage.setItem('wordsmith-theme', theme);
-  }, [theme]);
 
   // Select first note on load
   useEffect(() => {
@@ -481,16 +469,16 @@ Do not just print the new text in the chat. Wrap it in the tags so the system ca
 
   if (loading) {
     return (
-      <div data-theme={theme} className="flex flex-col flex-1 items-center justify-center bg-slate-50 dark:bg-slate-950">
-        <p className="text-slate-400 dark:text-slate-500 text-sm">Loading your documents…</p>
+      <div className="flex flex-col flex-1 items-center justify-center bg-slate-50">
+        <p className="text-slate-400 text-sm">Loading your documents…</p>
       </div>
     );
   }
 
   if (!userId) {
     return (
-      <div data-theme={theme} className="flex flex-col flex-1 items-center justify-center gap-4 bg-slate-50 dark:bg-slate-950">
-        <p className="text-slate-600 dark:text-slate-400 text-base">Sign in to access your Wordsmith documents.</p>
+      <div className="flex flex-col flex-1 items-center justify-center gap-4 bg-slate-50">
+        <p className="text-slate-600 text-base">Sign in to access your Wordsmith documents.</p>
         <a
           href="/login?returnTo=/wordsmith"
           className="px-6 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium text-sm"
@@ -502,55 +490,68 @@ Do not just print the new text in the chat. Wrap it in the tags so the system ca
   }
 
   return (
-    <div data-theme={theme} className='flex flex-col flex-1'>
-      <main className='pb-4 flex-1 flex min-h-0 overflow-hidden rounded-lg font-sans text-slate-900 dark:text-slate-100 bg-slate-50 dark:bg-slate-950 transition-colors duration-300'>
-        <Sidebar
-          notes={notes}
-          activeNoteId={activeNoteId}
-          onSelectNote={setActiveNoteId}
-          onAddNote={handleAddNote}
-          onDeleteNote={handleDeleteNote}
-          onOpenTemplates={() => setIsTemplateModalOpen(true)}
-          theme={theme}
-          onToggleTheme={() => setTheme((p) => (p === 'light' ? 'dark' : 'light'))}
-        />
+    <div className="flex flex-col flex-1 min-h-0">
+      <main className="flex flex-col flex-1 min-h-0 p-2 sm:p-4">
+        <div
+          className="flex flex-col flex-1 min-h-0 rounded-2xl overflow-hidden"
+          style={{ background: "#fff", border: "1px solid var(--border-color)" }}
+        >
+          {/* Header */}
+          <div className="border-b border-zinc-200 shrink-0">
+            <div className="px-4 pt-4 pb-3 sm:px-6 sm:pt-5 sm:pb-4">
+              <h1 className="text-2xl sm:text-3xl font-bold leading-tight" style={{ color: "#000" }}>
+                Wordsmith
+              </h1>
+            </div>
+          </div>
 
-        <div className="flex-1 flex flex-col min-w-0 bg-white dark:bg-slate-950 shadow-sm z-0 relative transition-colors duration-300 overflow-hidden">
-          <Editor note={activeNote} onUpdateNote={handleUpdateNote} onOpenHistory={() => setIsHistoryOpen(true)} />
+          {/* 3-pane app */}
+          <div className="flex flex-1 min-h-0 overflow-hidden font-sans">
+            <Sidebar
+              notes={notes}
+              activeNoteId={activeNoteId}
+              onSelectNote={setActiveNoteId}
+              onAddNote={handleAddNote}
+              onDeleteNote={handleDeleteNote}
+              onOpenTemplates={() => setIsTemplateModalOpen(true)}
+            />
+
+            <div className="flex-1 flex flex-col min-w-0 bg-white z-0 relative overflow-hidden">
+              <Editor note={activeNote} onUpdateNote={handleUpdateNote} onOpenHistory={() => setIsHistoryOpen(true)} />
+            </div>
+
+            <Chat
+              messages={messages}
+              onSendMessage={handleSendMessage}
+              onClearChat={() => setMessages([])}
+              isGenerating={isGenerating}
+              notes={notes}
+              activeNoteId={activeNoteId}
+              attachedNoteIds={attachedNoteIds}
+              onToggleAttachNote={handleToggleAttachNote}
+              tones={TONES}
+              activeToneId={activeToneId}
+              onSelectTone={setActiveToneId}
+            />
+          </div>
         </div>
-
-        <aside className="border-l border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 flex flex-col shadow-xl z-10 transition-colors duration-300">
-          <Chat
-            messages={messages}
-            onSendMessage={handleSendMessage}
-            onClearChat={() => setMessages([])}
-            isGenerating={isGenerating}
-            notes={notes}
-            activeNoteId={activeNoteId}
-            attachedNoteIds={attachedNoteIds}
-            onToggleAttachNote={handleToggleAttachNote}
-            tones={TONES}
-            activeToneId={activeToneId}
-            onSelectTone={setActiveToneId}
-          />
-        </aside>
-
-        <TemplateModal
-          isOpen={isTemplateModalOpen}
-          onClose={() => setIsTemplateModalOpen(false)}
-          templates={templates}
-          onCreateTemplate={handleCreateTemplate}
-          onDeleteTemplate={handleDeleteTemplate}
-          onUseTemplate={handleUseTemplate}
-        />
-
-        <VersionHistory
-          isOpen={isHistoryOpen}
-          onClose={() => setIsHistoryOpen(false)}
-          note={activeNote}
-          onRestoreVersion={handleRestoreVersion}
-        />
       </main>
+
+      <TemplateModal
+        isOpen={isTemplateModalOpen}
+        onClose={() => setIsTemplateModalOpen(false)}
+        templates={templates}
+        onCreateTemplate={handleCreateTemplate}
+        onDeleteTemplate={handleDeleteTemplate}
+        onUseTemplate={handleUseTemplate}
+      />
+
+      <VersionHistory
+        isOpen={isHistoryOpen}
+        onClose={() => setIsHistoryOpen(false)}
+        note={activeNote}
+        onRestoreVersion={handleRestoreVersion}
+      />
     </div>
   );
 }
