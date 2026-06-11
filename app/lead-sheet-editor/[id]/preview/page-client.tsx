@@ -1,16 +1,36 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
+import { useState, useEffect, useRef, use } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/app/hooks/useAuth";
-import { ArrowLeft, Pencil, Maximize2, Minimize2, Printer, Minus, Plus, Copy, Check, Link2 } from "lucide-react";
+import {
+  ArrowLeft,
+  Pencil,
+  Maximize2,
+  Minimize2,
+  Printer,
+  Minus,
+  Plus,
+  Copy,
+  Check,
+  Link2,
+  Play,
+  Pause,
+  RotateCcw,
+} from "lucide-react";
 import { type LeadSheet, type Section, migrateSection, ChordLyricLine, getPlainText } from "../../shared";
 
 const FONT_SCALE_KEY = "lead-sheet-print-font-scale";
 const MIN_SCALE = 70;
 const MAX_SCALE = 160;
 const SCALE_STEP = 10;
+
+const AUTOSCROLL_SPEED_KEY = "lead-sheet-autoscroll-speed";
+const MIN_AUTOSCROLL_SPEED = 10;
+const MAX_AUTOSCROLL_SPEED = 200;
+const AUTOSCROLL_SPEED_STEP = 10;
+const DEFAULT_AUTOSCROLL_SPEED = 40;
 
 function loadFontScale(): number {
   if (typeof window === "undefined") return 100;
@@ -20,6 +40,16 @@ function loadFontScale(): number {
     if (!isNaN(parsed)) return Math.min(MAX_SCALE, Math.max(MIN_SCALE, parsed));
   } catch {}
   return 100;
+}
+
+function loadAutoScrollSpeed(): number {
+  if (typeof window === "undefined") return DEFAULT_AUTOSCROLL_SPEED;
+  try {
+    const saved = localStorage.getItem(AUTOSCROLL_SPEED_KEY);
+    const parsed = saved ? parseInt(saved) : NaN;
+    if (!isNaN(parsed)) return Math.min(MAX_AUTOSCROLL_SPEED, Math.max(MIN_AUTOSCROLL_SPEED, parsed));
+  } catch {}
+  return DEFAULT_AUTOSCROLL_SPEED;
 }
 
 
@@ -45,6 +75,57 @@ function FontScaleControl({ scale, onChange }: { scale: number; onChange: (next:
       >
         <Plus className='w-3.5 h-3.5' />
       </button>
+    </div>
+  );
+}
+
+function AutoScrollControl({
+  isPlaying,
+  onTogglePlay,
+  onReset,
+  speed,
+  onSpeedChange,
+}: {
+  isPlaying: boolean;
+  onTogglePlay: () => void;
+  onReset: () => void;
+  speed: number;
+  onSpeedChange: (next: number) => void;
+}) {
+  return (
+    <div className='flex items-center gap-2 rounded border border-[#373A40]/30 px-2 py-1.5 print:hidden'>
+      <button
+        type='button'
+        onClick={onTogglePlay}
+        onDoubleClick={onReset}
+        className='p-1 text-[#373A40]/60 hover:text-black transition-colors'
+        aria-label={isPlaying ? "Pause auto-scroll" : "Play auto-scroll"}
+        title={isPlaying ? "Pause auto-scroll" : "Play auto-scroll"}
+      >
+        {isPlaying ? <Pause className='w-4 h-4' /> : <Play className='w-4 h-4' />}
+      </button>
+      <button
+        type='button'
+        onClick={onReset}
+        className='p-1 text-[#373A40]/60 hover:text-black transition-colors'
+        aria-label='Reset auto-scroll to top'
+        title='Reset to top'
+      >
+        <RotateCcw className='w-4 h-4' />
+      </button>
+      <label className='flex items-center gap-1.5 text-xs font-medium text-[#373A40]/60 select-none'>
+        Speed
+        <input
+          type='range'
+          min={MIN_AUTOSCROLL_SPEED}
+          max={MAX_AUTOSCROLL_SPEED}
+          step={AUTOSCROLL_SPEED_STEP}
+          value={speed}
+          onChange={(e) => onSpeedChange(Number(e.target.value))}
+          className='w-20 accent-black'
+          aria-label='Auto-scroll speed'
+        />
+      </label>
     </div>
   );
 }
@@ -125,10 +206,44 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
   const [fontScale, setFontScale] = useState(loadFontScale);
   const [copied, setCopied] = useState(false);
   const [shared, setShared] = useState(false);
+  const [autoScrollSpeed, setAutoScrollSpeed] = useState(loadAutoScrollSpeed);
+  const [isAutoScrolling, setIsAutoScrolling] = useState(false);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const autoScrollSpeedRef = useRef(autoScrollSpeed);
 
   useEffect(() => {
     if (user) loadSheet();
   }, [user, id]);
+
+  useEffect(() => {
+    autoScrollSpeedRef.current = autoScrollSpeed;
+  }, [autoScrollSpeed]);
+
+  useEffect(() => {
+    if (!isAutoScrolling) return;
+
+    let lastTime: number | null = null;
+    let rafId: number;
+
+    const step = (timestamp: number) => {
+      const container = scrollContainerRef.current;
+      if (container) {
+        if (lastTime !== null) {
+          const delta = (timestamp - lastTime) / 1000;
+          container.scrollTop += autoScrollSpeedRef.current * delta;
+          if (container.scrollTop + container.clientHeight >= container.scrollHeight - 1) {
+            setIsAutoScrolling(false);
+            return;
+          }
+        }
+        lastTime = timestamp;
+      }
+      rafId = requestAnimationFrame(step);
+    };
+
+    rafId = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(rafId);
+  }, [isAutoScrolling]);
 
   const handleCopy = async () => {
     if (!sheet) return;
@@ -149,6 +264,23 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
     try {
       localStorage.setItem(FONT_SCALE_KEY, String(clamped));
     } catch {}
+  };
+
+  const updateAutoScrollSpeed = (next: number) => {
+    const clamped = Math.min(MAX_AUTOSCROLL_SPEED, Math.max(MIN_AUTOSCROLL_SPEED, next));
+    setAutoScrollSpeed(clamped);
+    try {
+      localStorage.setItem(AUTOSCROLL_SPEED_KEY, String(clamped));
+    } catch {}
+  };
+
+  const toggleAutoScroll = () => setIsAutoScrolling((prev) => !prev);
+
+  const resetAutoScroll = () => {
+    setIsAutoScrolling(false);
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = 0;
+    }
   };
 
   async function loadSheet() {
@@ -206,7 +338,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
       {/* Screen view */}
       <div className='print:hidden flex flex-col flex-1 min-h-0'>
         {fullscreen ? (
-          <div className='fixed inset-0 z-50 bg-white overflow-y-auto'>
+          <div ref={scrollContainerRef} className='fixed inset-0 z-50 bg-white overflow-y-auto'>
             <div className='max-w-3xl mx-auto px-6 py-8'>
               {/* Toolbar */}
               <div className='flex flex-wrap items-center justify-between gap-3 mb-8'>
@@ -219,6 +351,13 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                 </button>
                 <div className='flex items-center gap-2'>
                   <FontScaleControl scale={fontScale} onChange={updateFontScale} />
+                  <AutoScrollControl
+                    isPlaying={isAutoScrolling}
+                    onTogglePlay={toggleAutoScroll}
+                    onReset={resetAutoScroll}
+                    speed={autoScrollSpeed}
+                    onSpeedChange={updateAutoScrollSpeed}
+                  />
                   <button
                     onClick={handleCopy}
                     className='flex items-center gap-1.5 rounded border border-[#373A40]/30 px-3 py-2 text-sm font-medium hover:border-black hover:bg-black hover:text-[#facc15] transition-colors'
@@ -278,6 +417,13 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                   </button>
                   <div className='flex items-center gap-2'>
                     <FontScaleControl scale={fontScale} onChange={updateFontScale} />
+                    <AutoScrollControl
+                      isPlaying={isAutoScrolling}
+                      onTogglePlay={toggleAutoScroll}
+                      onReset={resetAutoScroll}
+                      speed={autoScrollSpeed}
+                      onSpeedChange={updateAutoScrollSpeed}
+                    />
                     <button
                       onClick={handleCopy}
                       className='flex items-center gap-1.5 rounded border border-[#373A40]/30 px-3 py-2 text-sm font-medium hover:border-black hover:bg-black hover:text-[#facc15] transition-colors'
@@ -317,7 +463,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
               </div>
 
               {/* Scrollable content */}
-              <div className='flex-1 overflow-auto'>
+              <div ref={scrollContainerRef} className='flex-1 overflow-auto'>
                 <div className='max-w-3xl mx-auto px-6 py-8' style={{ fontSize: `${fontScale}%` }}>
                   <SheetContent sheet={sheet} fullscreen={false} />
                 </div>
