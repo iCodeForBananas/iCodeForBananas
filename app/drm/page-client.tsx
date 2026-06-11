@@ -26,8 +26,6 @@ type Stage =
   | "Dating (Non-Exclusive)"
   | "Seeing Each Other (Exclusive-ish)"
   | "Exclusive"
-  | "Relationship"
-  | "Partnership"
   | "Unmatched";
 
 interface Person {
@@ -87,8 +85,6 @@ const STAGES: Stage[] = [
   "Dating (Non-Exclusive)",
   "Seeing Each Other (Exclusive-ish)",
   "Exclusive",
-  "Relationship",
-  "Partnership",
   "Unmatched",
 ];
 
@@ -99,8 +95,6 @@ const STAGE_DESCRIPTIONS: Record<Stage, string> = {
   "Dating (Non-Exclusive)": "You are actively going on dates and building a connection, but there is no exclusivity agreement. Both people may still be seeing others. There's growing emotional investment, physical intimacy may develop, and the relationship starts to take on more structure—making plans in advance, regular communication, and increased time together. The goal of this stage is to determine if you want to pursue something exclusive.",
   "Seeing Each Other (Exclusive-ish)": "This is the grey zone between dating and official exclusivity. You may have had a conversation about not seeing other people, or it may just feel implied. You're spending significant time together, meeting friends, and integrating into each other's lives. However, the relationship hasn't been formally defined. There's higher emotional vulnerability here and the need for a DTR (Define The Relationship) conversation often arises.",
   "Exclusive": "You have explicitly agreed to only see each other. This stage represents a clear mutual commitment to building a relationship. You are no longer exploring other options, and expectations for communication, time, and emotional investment increase significantly. There's a growing sense of partnership, but you may not yet consider yourselves in a full relationship—labels like 'boyfriend/girlfriend' may or may not have been established.",
-  "Relationship": "This is a fully committed, labeled romantic partnership. Both people identify as being in a relationship. There's deeper integration into each other's lives—families may be introduced, long-term plans may come up, and conflict resolution becomes more important. Emotional depth, trust, and consistency define this stage. You rely on each other in a real way and have established a shared identity as a couple.",
-  "Partnership": "This is the deepest stage of committed romantic connection. It goes beyond the typical 'relationship' label and implies a life-oriented bond. This could mean cohabitation, shared finances, engagement, marriage, or simply a deeply intentional long-term commitment. There is a high level of trust, interdependence, and shared vision for the future. Communication, values alignment, and intentional effort are key.",
   "Unmatched": "It ended.",
 };
 
@@ -209,8 +203,6 @@ const MOMENTUM_THRESHOLDS: Record<Stage, [number, number]> = {
   "Dating (Non-Exclusive)":            [4,   7],   // 1 date/week cadence; 7+ days without contact is a documented red flag
   "Seeing Each Other (Exclusive-ish)": [5,  10],   // more established — weekly contact still important, up to 10 days before it reads cold
   "Exclusive":                         [5,  10],   // committed but still needs consistent contact
-  "Relationship":                      [7,  14],   // deeper bond; 2-week silence starts to register
-  "Partnership":                       [7,  14],   // life-partner level; cadence is more flexible but presence still matters
   "Unmatched":                         [999, 999], // terminal stage — momentum not applicable
 };
 
@@ -345,13 +337,11 @@ function Stars({
 function PersonCard({
   person,
   onOpen,
-  onUpdateNote,
   onUpdateNextAction,
   ghost,
 }: {
   person: PersonData;
   onOpen: () => void;
-  onUpdateNote: (v: string) => void;
   onUpdateNextAction: (v: string) => void;
   ghost?: boolean;
 }) {
@@ -360,14 +350,8 @@ function PersonCard({
   const stagnant = isStagnant(person);
   const mColor = { green: C.green, yellow: C.yellow, red: C.red }[momentum];
 
-  const [editNote, setEditNote] = useState(false);
-  const [noteVal, setNoteVal] = useState(person.status_note ?? "");
   const [editAction, setEditAction] = useState(false);
   const [actionVal, setActionVal] = useState(person.next_action ?? "");
-
-  useEffect(() => {
-    if (!editNote) setNoteVal(person.status_note ?? "");
-  }, [person.status_note, editNote]);
 
   useEffect(() => {
     if (!editAction) setActionVal(person.next_action ?? "");
@@ -410,59 +394,6 @@ function PersonCard({
             </span>
             <Dot color={mColor} />
           </div>
-
-          {/* Status note inline edit */}
-          {editNote ? (
-            <input
-              autoFocus
-              value={noteVal}
-              onChange={(e) => setNoteVal(e.target.value)}
-              onBlur={() => {
-                onUpdateNote(noteVal);
-                setEditNote(false);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === "Escape") {
-                  onUpdateNote(noteVal);
-                  setEditNote(false);
-                }
-              }}
-              onClick={(e) => e.stopPropagation()}
-              placeholder="Status note…"
-              style={{
-                background: "transparent",
-                border: "none",
-                borderBottom: `1px solid ${C.accent}`,
-                color: C.muted,
-                fontSize: 11,
-                width: "100%",
-                outline: "none",
-                padding: "1px 0",
-                fontFamily: "inherit",
-                marginTop: 2,
-              }}
-            />
-          ) : (
-            <p
-              onClick={(e) => {
-                e.stopPropagation();
-                setEditNote(true);
-              }}
-              style={{
-                fontSize: 11,
-                color: person.status_note ? C.muted : C.dim,
-                margin: 0,
-                marginTop: 2,
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-                fontStyle: person.status_note ? "normal" : "italic",
-                cursor: "text",
-              }}
-            >
-              {person.status_note || "Add note…"}
-            </p>
-          )}
         </div>
       </div>
 
@@ -550,12 +481,10 @@ function PersonCard({
 function DraggableCard({
   person,
   onOpen,
-  onUpdateNote,
   onUpdateNextAction,
 }: {
   person: PersonData;
   onOpen: () => void;
-  onUpdateNote: (v: string) => void;
   onUpdateNextAction: (v: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
@@ -568,7 +497,6 @@ function DraggableCard({
       <PersonCard
         person={person}
         onOpen={onOpen}
-        onUpdateNote={onUpdateNote}
         onUpdateNextAction={onUpdateNextAction}
         ghost={isDragging}
       />
@@ -582,14 +510,12 @@ function StageColumn({
   stage,
   people,
   onCardOpen,
-  onUpdateNote,
   onUpdateNextAction,
   isOver,
 }: {
   stage: Stage;
   people: PersonData[];
   onCardOpen: (id: string) => void;
-  onUpdateNote: (id: string, v: string) => void;
   onUpdateNextAction: (id: string, v: string) => void;
   isOver: boolean;
 }) {
@@ -653,7 +579,6 @@ function StageColumn({
             key={p.id}
             person={p}
             onOpen={() => onCardOpen(p.id)}
-            onUpdateNote={(v) => onUpdateNote(p.id, v)}
             onUpdateNextAction={(v) => onUpdateNextAction(p.id, v)}
           />
         ))}
@@ -923,7 +848,7 @@ function DetailDrawer({
           position: "fixed",
           top: 0,
           right: 0,
-          width: 420,
+          width: 540,
           height: "100dvh",
           background: C.surface,
           borderLeft: `1px solid ${C.border}`,
@@ -1974,9 +1899,6 @@ export default function DRMPage() {
               <h1 className="text-2xl sm:text-3xl font-bold leading-tight" style={{ color: "#000" }}>
                 DRM
               </h1>
-              <p style={{ color: C.dim, fontSize: 10, margin: 0, marginTop: 2, letterSpacing: "0.14em", textTransform: "uppercase" }}>
-                Dating Relationship Management
-              </p>
             </div>
             <div className="px-4 sm:px-6 flex gap-2 items-center">
               {error && (
@@ -2038,7 +1960,6 @@ export default function DRMPage() {
                         stage={stage}
                         people={people.filter((p) => p.stage === stage)}
                         onCardOpen={setSelectedPersonId}
-                        onUpdateNote={(id, v) => updatePerson(id, { status_note: v || null })}
                         onUpdateNextAction={(id, v) => updatePerson(id, { next_action: v || null })}
                         isOver={overStage === stage}
                       />
@@ -2052,7 +1973,6 @@ export default function DRMPage() {
                       <PersonCard
                         person={activePerson}
                         onOpen={() => {}}
-                        onUpdateNote={() => {}}
                         onUpdateNextAction={() => {}}
                       />
                     </div>
