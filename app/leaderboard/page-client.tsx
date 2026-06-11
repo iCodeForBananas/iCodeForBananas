@@ -306,7 +306,6 @@ export default function LeaderboardPage() {
                 <h1 className="text-2xl sm:text-3xl font-bold leading-tight" style={{ color: "#000" }}>
                   Trading Leaderboard
                 </h1>
-                <p className="text-sm text-gray-500 mt-0.5">Live performance of all deployed algorithmic strategies</p>
               </div>
               <div className="flex items-center gap-3">
                 {lastUpdated && (

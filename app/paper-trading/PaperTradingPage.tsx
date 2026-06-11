@@ -378,7 +378,6 @@ export default function PaperTradingPage() {
                 <h1 className="text-2xl sm:text-3xl font-bold leading-tight" style={{ color: "#000" }}>
                   Running Strategies
                 </h1>
-                <p className="text-sm text-gray-500 mt-0.5">Deployed strategies executing automatically against Tradier</p>
               </div>
               <a
                 href="/algo-backtest"

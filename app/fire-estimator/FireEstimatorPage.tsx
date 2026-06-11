@@ -201,8 +201,6 @@ export default function FireEstimatorPage() {
 
   return (
     <BentoPageLayout title="FIRE Estimator">
-      <p className="text-sm text-[#000]/40 mb-6 -mt-2">Rule of 25 · 4% Safe Withdrawal Rate · When can you reach financial independence?</p>
-
       <div className='flex flex-wrap gap-6 mb-6'>
         <label className='flex flex-col gap-1' title='Starting earlier means more years of compound growth — even a few years makes a big difference in when you can retire'>
           <span className='text-sm font-semibold'>Current Age</span>

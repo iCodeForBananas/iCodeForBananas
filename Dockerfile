@@ -8,5 +8,9 @@ COPY game-server.ts ./
 
 EXPOSE 8080
 ENV GAME_WS_PORT=8080
+ENV GAME_STATE_FILE=/data/game-state.json
+VOLUME ["/data"]
 
-CMD ["npx", "tsx", "game-server.ts"]
+# Run node directly (not via npx/npm) so SIGTERM reaches this process as PID 1,
+# letting the server save game state on `docker stop` before exiting.
+CMD ["node", "--import", "tsx", "game-server.ts"]

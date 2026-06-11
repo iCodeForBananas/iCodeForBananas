@@ -3731,6 +3731,20 @@ export default function GameWorldPage() {
       const remotePlayers = new Map<string, RemotePlayer>()
       let myId: string | null = null
 
+      // Persistent id so a server redeploy can restore this player's
+      // position, money and items once they reconnect.
+      const PLAYER_ID_KEY = 'gameWorldPlayerId'
+      let storedPlayerId: string
+      try {
+        storedPlayerId = localStorage.getItem(PLAYER_ID_KEY) ?? ''
+        if (!storedPlayerId) {
+          storedPlayerId = crypto.randomUUID()
+          localStorage.setItem(PLAYER_ID_KEY, storedPlayerId)
+        }
+      } catch {
+        storedPlayerId = crypto.randomUUID()
+      }
+
       // Server-authoritative position correction
       let serverX = 0, serverZ = 0
       // Display tracking vars (hoisted here so the WS handler can update them)
@@ -3752,6 +3766,7 @@ export default function GameWorldPage() {
 
         ws.addEventListener('open', () => {
           connected = true
+          ws?.send(JSON.stringify({ type: 'join', id: storedPlayerId }))
         })
 
         ws.addEventListener('message', (event) => {

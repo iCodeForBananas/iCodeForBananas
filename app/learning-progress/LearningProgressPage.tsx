@@ -555,8 +555,7 @@ export default function LearningProgressPage() {
   return (
     <BentoPageLayout title="Cai's Learning Progress">
         {/* Toolbar */}
-        <div className="mb-6 flex items-center justify-between flex-wrap gap-3">
-          <p className="text-sm text-gray-500">Common Core K–Grade 3 · Syllabus coverage tracker</p>
+        <div className="mb-6 flex items-center justify-end flex-wrap gap-3">
           <div className="flex items-center gap-3">
             {lastUpdated && (
               <span className="text-xs text-gray-400">Updated {lastUpdated.toLocaleTimeString()}</span>

@@ -211,8 +211,6 @@ export default function WorkoutTrackerContent() {
 
   return (
     <BentoPageLayout title="Workout Tracker">
-      <p className="text-sm text-[#000]/40 mb-6 -mt-2">All exercises are 5 sets × 5 reps</p>
-
       {/* Log form */}
           {user && (
             <div className='flex flex-col sm:flex-row sm:flex-wrap gap-3 sm:items-end mb-6 sm:mb-8 max-w-3xl mx-auto'>

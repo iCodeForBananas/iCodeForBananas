@@ -1,8 +1,10 @@
 import { WebSocketServer, WebSocket } from "ws";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 
 // ── Server ───────────────────────────────────────────────────────────────────
-const PORT    = parseInt(process.env.GAME_WS_PORT ?? "8080");
-const TICK_MS = 50; // 20 fps server tick
+const PORT       = parseInt(process.env.GAME_WS_PORT ?? "8080");
+const TICK_MS    = 50; // 20 fps server tick
+const STATE_FILE = process.env.GAME_STATE_FILE ?? "./game-state.json";
 
 // ── Player movement ──────────────────────────────────────────────────────────
 const WALK_SPEED       = 0.2900625;
@@ -461,6 +463,23 @@ interface Player {
   drugLabs: DrugLab[];
 }
 
+// Serializable subset of Player, persisted across restarts/redeploys
+type PlayerSnapshot = Pick<Player,
+  | "id" | "x" | "y" | "z" | "angle" | "stamina" | "health" | "money"
+  | "isDead" | "respawnTimer" | "hasPistol" | "hasMiniGun" | "hasUzi"
+  | "uziAmmo" | "uziReloading" | "uziReloadTimer" | "doorOpen" | "drugLabs"
+>;
+
+function serializePlayer(p: Player): PlayerSnapshot {
+  return {
+    id: p.id, x: p.x, y: p.y, z: p.z, angle: p.angle, stamina: p.stamina,
+    health: p.health, money: p.money, isDead: p.isDead, respawnTimer: p.respawnTimer,
+    hasPistol: p.hasPistol, hasMiniGun: p.hasMiniGun, hasUzi: p.hasUzi,
+    uziAmmo: p.uziAmmo, uziReloading: p.uziReloading, uziReloadTimer: p.uziReloadTimer,
+    doorOpen: p.doorOpen, drugLabs: p.drugLabs,
+  };
+}
+
 // ── World state ──────────────────────────────────────────────────────────────
 const players = new Map<WebSocket, Player>();
 
@@ -490,6 +509,48 @@ function initZombies(): Zombie[] {
   });
 }
 const zombies = initZombies();
+
+// ── Persisted state (survives graceful restarts/redeploys) ──────────────────
+const savedPlayers = new Map<string, PlayerSnapshot>();
+try {
+  if (existsSync(STATE_FILE)) {
+    const saved = JSON.parse(readFileSync(STATE_FILE, "utf8")) as {
+      players?: PlayerSnapshot[];
+      zombies?: Zombie[];
+      openGates?: string[];
+    };
+    for (const snap of saved.players ?? []) savedPlayers.set(snap.id, snap);
+    if (saved.zombies?.length === zombies.length) {
+      saved.zombies.forEach((z, i) => Object.assign(zombies[i], z));
+    }
+    for (const g of saved.openGates ?? []) openGates.add(g);
+    console.log(`[state] restored ${savedPlayers.size} player(s) from ${STATE_FILE}`);
+  }
+} catch (err) {
+  console.error("[state] failed to load saved state:", err);
+}
+
+function saveState() {
+  for (const p of players.values()) savedPlayers.set(p.id, serializePlayer(p));
+  const data = { players: [...savedPlayers.values()], zombies, openGates: [...openGates] };
+  writeFileSync(STATE_FILE, JSON.stringify(data));
+  console.log(`[state] saved ${data.players.length} player(s) to ${STATE_FILE}`);
+}
+
+let shuttingDown = false;
+function shutdown(signal: string) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  console.log(`[shutdown] received ${signal}, saving state...`);
+  try {
+    saveState();
+  } catch (err) {
+    console.error("[shutdown] failed to save state:", err);
+  }
+  process.exit(0);
+}
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT", () => shutdown("SIGINT"));
 
 function dist(ax: number, az: number, bx: number, bz: number) {
   return Math.sqrt((ax - bx) ** 2 + (az - bz) ** 2);
@@ -776,40 +837,6 @@ setInterval(() => {
 const wss = new WebSocketServer({ port: PORT });
 
 wss.on("connection", (ws) => {
-  const id = genId();
-  const player: Player = {
-    id,
-    ws,
-    x: 5 + (Math.random() - 0.5) * 2,
-    y: 0,
-    z: 52 + (Math.random() - 0.5) * 2,
-    angle: 0,
-    w: false,
-    s: false,
-    a: false,
-    d: false,
-    sprint: false,
-    stamina: 1,
-    health: 100,
-    money: PLAYER_START_MONEY,
-    isDead: false,
-    respawnTimer: 0,
-    lastDamageMs: 0,
-    hasPistol: false,
-    hasMiniGun: false,
-    hasUzi: false,
-    uziAmmo: UZI_AMMO,
-    uziReloading: false,
-    uziReloadTimer: 0,
-    mgCooldown: 0,
-    uziCooldown: 0,
-    doorOpen: false,
-    drugLabs: [],
-  };
-  players.set(ws, player);
-  ws.send(JSON.stringify({ type: "init", id }));
-  console.log(`[+] ${id} joined (${players.size} online)`);
-
   ws.on("message", (raw) => {
     let msg: Record<string, unknown>;
     try {
@@ -817,6 +844,53 @@ wss.on("connection", (ws) => {
     } catch {
       return;
     }
+
+    // First message from a connection: claim/restore a player identity.
+    // Clients send a persistent id (stored client-side) so a redeploy can
+    // restore position, money, items etc. once they reconnect.
+    if (msg.type === "join" && !players.has(ws)) {
+      const requestedId = typeof msg.id === "string" ? msg.id : null;
+      const idTaken = requestedId !== null &&
+        Array.from(players.values()).some((pl) => pl.id === requestedId);
+      const id = requestedId && !idTaken ? requestedId : genId();
+      const saved = savedPlayers.get(id);
+      savedPlayers.delete(id);
+
+      const player: Player = {
+        id,
+        ws,
+        x: saved?.x ?? 5 + (Math.random() - 0.5) * 2,
+        y: saved?.y ?? 0,
+        z: saved?.z ?? 52 + (Math.random() - 0.5) * 2,
+        angle: saved?.angle ?? 0,
+        w: false,
+        s: false,
+        a: false,
+        d: false,
+        sprint: false,
+        stamina: saved?.stamina ?? 1,
+        health: saved?.health ?? 100,
+        money: saved?.money ?? PLAYER_START_MONEY,
+        isDead: saved?.isDead ?? false,
+        respawnTimer: saved?.respawnTimer ?? 0,
+        lastDamageMs: 0,
+        hasPistol: saved?.hasPistol ?? false,
+        hasMiniGun: saved?.hasMiniGun ?? false,
+        hasUzi: saved?.hasUzi ?? false,
+        uziAmmo: saved?.uziAmmo ?? UZI_AMMO,
+        uziReloading: saved?.uziReloading ?? false,
+        uziReloadTimer: saved?.uziReloadTimer ?? 0,
+        mgCooldown: 0,
+        uziCooldown: 0,
+        doorOpen: saved?.doorOpen ?? false,
+        drugLabs: saved?.drugLabs ?? [],
+      };
+      players.set(ws, player);
+      ws.send(JSON.stringify({ type: "init", id }));
+      console.log(`[+] ${id} ${saved ? "rejoined" : "joined"} (${players.size} online)`);
+      return;
+    }
+
     const p = players.get(ws);
     if (!p) return;
 
@@ -915,7 +989,7 @@ wss.on("connection", (ws) => {
     broadcast(JSON.stringify({ type: "leave", id: p.id }));
   });
 
-  ws.on("error", (err) => console.error(`WS error [${id}]:`, err.message));
+  ws.on("error", (err) => console.error(`WS error [${players.get(ws)?.id ?? "?"}]:`, err.message));
 });
 
 wss.on("listening", () => console.log(`Game server on ws://localhost:${PORT}`));
