@@ -738,12 +738,12 @@ export default function AlgoBacktestPage() {
 
                 {/* ── Configuration (top) ─────────────────────────────── */}
                 <div className='shrink-0 border-b border-gray-200 px-4 py-3'>
-                  <div className='flex flex-row flex-wrap gap-4 items-end'>
+                  <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3'>
 
-                    {/* Datasets */}
-                    <div className='flex flex-col gap-1 min-w-[160px]'>
+                    {/* Data */}
+                    <div className='flex flex-col gap-2 rounded-lg border border-gray-200 bg-gray-50/60 p-3'>
                       <div className='flex items-center justify-between'>
-                        <label className='text-xs text-gray-500'>Datasets</label>
+                        <span className='text-[10px] font-semibold uppercase tracking-wide text-gray-400'>Data</span>
                         <div className='flex items-center gap-1.5'>
                           <button
                             onClick={() => setSelectedFiles(availableDatasets.map((ds) => ds.file))}
@@ -822,10 +822,10 @@ export default function AlgoBacktestPage() {
                       )}
                     </div>
 
-                    {/* Strategies */}
-                    <div className='flex flex-col gap-1 min-w-[160px]'>
+                    {/* Strategy */}
+                    <div className='flex flex-col gap-2 rounded-lg border border-gray-200 bg-gray-50/60 p-3'>
                       <div className='flex items-center justify-between'>
-                        <label className='text-xs text-gray-500'>Strategies</label>
+                        <span className='text-[10px] font-semibold uppercase tracking-wide text-gray-400'>Strategy</span>
                         <div className='flex items-center gap-1.5'>
                           <button
                             onClick={() => {
@@ -901,244 +901,252 @@ export default function AlgoBacktestPage() {
                       {strategy?.description && (
                         <p className='text-[10px] text-gray-400 leading-tight'>{strategy.description}</p>
                       )}
-                    </div>
 
-                    {/* Stop Loss */}
-                    <div className='flex flex-col gap-1 min-w-[90px]'>
-                      <label className='text-xs text-gray-500'>Stop Loss %</label>
-                      <input
-                        type='number'
-                        value={stopLossPercent}
-                        min={0}
-                        step={0.5}
-                        onChange={(e) => {
-                          const v = parseFloat(e.target.value);
-                          setStopLossPercent(isNaN(v) ? 0 : Math.max(0, v));
-                        }}
-                        placeholder='0 = off'
-                        className='w-full bg-white border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-900'
-                      />
-                    </div>
-
-                    {/* Take Profit */}
-                    <div className='flex flex-col gap-1 min-w-[90px]'>
-                      <label className='text-xs text-gray-500'>Take Profit %</label>
-                      <input
-                        type='number'
-                        value={takeProfitPercent}
-                        min={0}
-                        step={0.5}
-                        onChange={(e) => {
-                          const v = parseFloat(e.target.value);
-                          setTakeProfitPercent(isNaN(v) ? 0 : Math.max(0, v));
-                        }}
-                        placeholder='0 = off'
-                        className='w-full bg-white border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-900'
-                      />
-                    </div>
-
-                    {/* Position Size */}
-                    <div className='flex flex-col gap-1 min-w-[90px]'>
-                      <label className='text-xs text-gray-500'>Position Size %</label>
-                      <input
-                        type='number'
-                        value={positionSizePercent}
-                        min={0}
-                        max={100}
-                        step={1}
-                        onChange={(e) => {
-                          const v = parseFloat(e.target.value);
-                          setPositionSizePercent(isNaN(v) ? 100 : Math.max(0, Math.min(100, v)));
-                        }}
-                        className='w-full bg-white border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-900'
-                      />
-                    </div>
-
-                    {/* Commission */}
-                    <div className='flex flex-col gap-1 min-w-[90px]'>
-                      <label className='text-xs text-gray-500'>Commission (bps)</label>
-                      <input
-                        type='number'
-                        value={commissionBps}
-                        min={0}
-                        step={0.5}
-                        onChange={(e) => {
-                          const v = parseFloat(e.target.value);
-                          setCommissionBps(isNaN(v) ? 0 : Math.max(0, v));
-                        }}
-                        placeholder='per fill'
-                        className='w-full bg-white border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-900'
-                      />
-                    </div>
-
-                    {/* Slippage */}
-                    <div className='flex flex-col gap-1 min-w-[90px]'>
-                      <label className='text-xs text-gray-500'>Slippage (bps)</label>
-                      <input
-                        type='number'
-                        value={slippageBps}
-                        min={0}
-                        step={0.5}
-                        onChange={(e) => {
-                          const v = parseFloat(e.target.value);
-                          setSlippageBps(isNaN(v) ? 0 : Math.max(0, v));
-                        }}
-                        placeholder='per fill'
-                        className='w-full bg-white border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-900'
-                      />
-                    </div>
-
-                    {/* Enable Shorts */}
-                    <div className='flex flex-col justify-end pb-1.5'>
-                      <label className='flex items-center gap-2 cursor-pointer'>
-                        <input
-                          type='checkbox'
-                          checked={enableShorts}
-                          onChange={(e) => setEnableShorts(e.target.checked)}
-                          className='w-4 h-4 rounded border-gray-300 text-blue-500 focus:ring-blue-500 focus:ring-offset-0'
-                        />
-                        <span className='text-xs text-gray-500'>Enable Shorts</span>
-                      </label>
-                    </div>
-
-                    {/* Strategy Parameters */}
-                    {selectedStrategyIds.length > 0 && strategy?.parameters && strategy.parameters.filter((p) => p.type === 'number').length > 0 && (
-                      <>
-                        <div className='w-px self-stretch bg-gray-200 mx-1' />
-                        <div className='flex flex-col justify-end pb-1.5'>
-                          <span className='text-xs text-blue-700 font-semibold'>{strategy.name}</span>
-                          <span className='text-[10px] text-gray-400'>
-                            {selectedStrategyIds.length} {selectedStrategyIds.length === 1 ? 'strategy' : 'strategies'} × {selectedFiles.length} datasets
-                          </span>
-                        </div>
-                        {strategy.parameters
-                          .filter((param) => param.type === 'number')
-                          .map((param) => {
-                            const variation = paramVariations.find((v) => v.key === param.key);
-                            return (
-                              <div key={param.key} className='flex flex-col gap-1'>
-                                <span className='text-xs text-gray-700 font-medium'>{param.name}</span>
-                                <div className='flex gap-1 items-center'>
-                                  <div>
-                                    <label className='block text-[10px] text-gray-500 mb-0.5'>Min</label>
-                                    <input
-                                      type='number'
-                                      value={variation?.min ?? param.min ?? Number(param.default)}
-                                      min={param.min}
-                                      max={param.max}
-                                      step={param.step}
-                                      onChange={(e) => {
-                                        const parsed = parseFloat(e.target.value);
-                                        const newMin = isNaN(parsed) ? Number(param.min ?? param.default) : parsed;
-                                        setParamVariations((prev) =>
-                                          prev.map((v) => (v.key === param.key ? { ...v, min: newMin } : v))
-                                        );
-                                      }}
-                                      className='w-20 bg-white border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-900'
-                                    />
-                                  </div>
-                                  <span className='text-gray-400 text-xs self-end pb-2'>→</span>
-                                  <div>
-                                    <label className='block text-[10px] text-gray-500 mb-0.5'>Max</label>
-                                    <input
-                                      type='number'
-                                      value={variation?.max ?? param.max ?? Number(param.default)}
-                                      min={param.min}
-                                      max={param.max}
-                                      step={param.step}
-                                      onChange={(e) => {
-                                        const parsed = parseFloat(e.target.value);
-                                        const newMax = isNaN(parsed) ? Number(param.max ?? param.default) : parsed;
-                                        setParamVariations((prev) =>
-                                          prev.map((v) => (v.key === param.key ? { ...v, max: newMax } : v))
-                                        );
-                                      }}
-                                      className='w-20 bg-white border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-900'
-                                    />
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        <div className='flex flex-col justify-end pb-1.5'>
-                          <span className='text-xs text-gray-400'>{combinationCount} combos</span>
-                        </div>
-                      </>
-                    )}
-
-                    {/* Other selected strategies — compact read-only cards */}
-                    {mounted && selectedStrategyIds
-                      .filter((sid) => sid !== selectedStrategyId)
-                      .map((sid) => {
-                        const otherStrat = AVAILABLE_STRATEGIES[sid];
-                        if (!otherStrat) return null;
-                        const savedRun = buildSavedRun(sid);
-                        if (!savedRun) return null;
-                        const numericParams = otherStrat.parameters?.filter((p) => p.type === 'number') ?? [];
-                        const otherCombos = generateCombinations(savedRun.paramVariations).length;
-
-                        return (
-                          <div
-                            key={sid}
-                            onClick={() => setSelectedStrategyId(sid)}
-                            className='flex flex-col gap-1 border border-gray-200 hover:border-blue-400 bg-gray-50 rounded p-2 cursor-pointer transition-colors self-end'
-                            title='Click to edit this strategy'
-                          >
-                            <div className='flex items-center gap-2'>
-                              <span className='text-xs text-gray-900 font-semibold'>{otherStrat.name}</span>
-                              <span className='text-[10px] uppercase tracking-wide text-gray-400'>saved</span>
-                              <span className='text-xs text-gray-400'>{otherCombos} combos</span>
-                            </div>
-                            {numericParams.length > 0 && (
-                              <div className='flex items-center gap-3'>
-                                {numericParams.map((param) => {
-                                  const variation = savedRun.paramVariations.find((v) => v.key === param.key);
-                                  const min = variation?.min ?? param.min ?? Number(param.default);
-                                  const max = variation?.max ?? param.max ?? Number(param.default);
-                                  const isRange = min !== max;
-                                  return (
-                                    <span key={param.key} className='text-[10px] font-mono text-gray-700'>
-                                      {param.name}: {isRange ? `${min}→${max}` : String(min)}
-                                    </span>
-                                  );
-                                })}
-                              </div>
-                            )}
-                            <span className='text-[10px] text-blue-600'>Click to edit →</span>
+                      {/* Strategy Parameters — inline min/max ranges */}
+                      {selectedStrategyIds.length > 0 && strategy?.parameters && strategy.parameters.filter((p) => p.type === 'number').length > 0 && (
+                        <div className='flex flex-col gap-1.5 pt-2 border-t border-gray-200'>
+                          <div className='flex items-center justify-between'>
+                            <span className='text-[10px] text-gray-400'>
+                              {selectedStrategyIds.length} {selectedStrategyIds.length === 1 ? 'strategy' : 'strategies'} × {selectedFiles.length} datasets
+                            </span>
+                            <span className='text-xs text-gray-400'>{combinationCount} combos</span>
                           </div>
-                        );
-                      })}
+                          <div className='flex flex-wrap gap-3'>
+                            {strategy.parameters
+                              .filter((param) => param.type === 'number')
+                              .map((param) => {
+                                const variation = paramVariations.find((v) => v.key === param.key);
+                                return (
+                                  <div key={param.key} className='flex flex-col gap-1'>
+                                    <span className='text-xs text-gray-700 font-medium'>{param.name}</span>
+                                    <div className='flex gap-1 items-center'>
+                                      <div>
+                                        <label className='block text-[10px] text-gray-500 mb-0.5'>Min</label>
+                                        <input
+                                          type='number'
+                                          value={variation?.min ?? param.min ?? Number(param.default)}
+                                          min={param.min}
+                                          max={param.max}
+                                          step={param.step}
+                                          onChange={(e) => {
+                                            const parsed = parseFloat(e.target.value);
+                                            const newMin = isNaN(parsed) ? Number(param.min ?? param.default) : parsed;
+                                            setParamVariations((prev) =>
+                                              prev.map((v) => (v.key === param.key ? { ...v, min: newMin } : v))
+                                            );
+                                          }}
+                                          className='w-20 bg-white border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-900'
+                                        />
+                                      </div>
+                                      <span className='text-gray-400 text-xs self-end pb-2'>→</span>
+                                      <div>
+                                        <label className='block text-[10px] text-gray-500 mb-0.5'>Max</label>
+                                        <input
+                                          type='number'
+                                          value={variation?.max ?? param.max ?? Number(param.default)}
+                                          min={param.min}
+                                          max={param.max}
+                                          step={param.step}
+                                          onChange={(e) => {
+                                            const parsed = parseFloat(e.target.value);
+                                            const newMax = isNaN(parsed) ? Number(param.max ?? param.default) : parsed;
+                                            setParamVariations((prev) =>
+                                              prev.map((v) => (v.key === param.key ? { ...v, max: newMax } : v))
+                                            );
+                                          }}
+                                          className='w-20 bg-white border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-900'
+                                        />
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                          </div>
+                        </div>
+                      )}
 
-                    {/* Run Button */}
-                    <div className='ml-auto self-end'>
-                      <button
-                        onClick={runBatchBacktest}
-                        disabled={isRunningBatch || selectedFiles.length === 0 || selectedStrategyIds.length === 0}
-                        className='bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed text-white font-medium py-2 px-6 rounded transition-colors whitespace-nowrap'
-                      >
-                        {isRunningBatch
-                          ? backtestProgress
-                            ? `Running ${backtestProgress.completed}/${backtestProgress.total}…`
-                            : "Running..."
-                          : !mounted
-                          ? `Run ${combinationCount * selectedFiles.length} Variations`
-                          : (() => {
-                              let totalRuns = combinationCount;
-                              for (const sid of selectedStrategyIds) {
-                                if (sid === selectedStrategyId) continue;
-                                const saved = buildSavedRun(sid);
-                                if (!saved) continue;
-                                totalRuns += generateCombinations(saved.paramVariations).length;
-                              }
-                              const totalRunsAcrossDatasets = totalRuns * selectedFiles.length;
-                              const stratLabel = selectedStrategyIds.length > 1
-                                ? ` across ${selectedStrategyIds.length} strategies`
-                                : '';
-                              return `Run ${totalRunsAcrossDatasets} Variations${stratLabel}`;
-                            })()}
-                      </button>
+                      {/* Other selected strategies — compact read-only cards */}
+                      {mounted && selectedStrategyIds.filter((sid) => sid !== selectedStrategyId).length > 0 && (
+                        <div className='flex flex-wrap gap-2 pt-2 border-t border-gray-200'>
+                          {selectedStrategyIds
+                            .filter((sid) => sid !== selectedStrategyId)
+                            .map((sid) => {
+                              const otherStrat = AVAILABLE_STRATEGIES[sid];
+                              if (!otherStrat) return null;
+                              const savedRun = buildSavedRun(sid);
+                              if (!savedRun) return null;
+                              const numericParams = otherStrat.parameters?.filter((p) => p.type === 'number') ?? [];
+                              const otherCombos = generateCombinations(savedRun.paramVariations).length;
+
+                              return (
+                                <div
+                                  key={sid}
+                                  onClick={() => setSelectedStrategyId(sid)}
+                                  className='flex flex-col gap-1 border border-gray-200 hover:border-blue-400 bg-white rounded p-2 cursor-pointer transition-colors'
+                                  title='Click to edit this strategy'
+                                >
+                                  <div className='flex items-center gap-2'>
+                                    <span className='text-xs text-gray-900 font-semibold'>{otherStrat.name}</span>
+                                    <span className='text-[10px] uppercase tracking-wide text-gray-400'>saved</span>
+                                    <span className='text-xs text-gray-400'>{otherCombos} combos</span>
+                                  </div>
+                                  {numericParams.length > 0 && (
+                                    <div className='flex items-center gap-3'>
+                                      {numericParams.map((param) => {
+                                        const variation = savedRun.paramVariations.find((v) => v.key === param.key);
+                                        const min = variation?.min ?? param.min ?? Number(param.default);
+                                        const max = variation?.max ?? param.max ?? Number(param.default);
+                                        const isRange = min !== max;
+                                        return (
+                                          <span key={param.key} className='text-[10px] font-mono text-gray-700'>
+                                            {param.name}: {isRange ? `${min}→${max}` : String(min)}
+                                          </span>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                  <span className='text-[10px] text-blue-600'>Click to edit →</span>
+                                </div>
+                              );
+                            })}
+                        </div>
+                      )}
                     </div>
 
+                    {/* Risk */}
+                    <div className='flex flex-col gap-2 rounded-lg border border-gray-200 bg-gray-50/60 p-3'>
+                      <span className='text-[10px] font-semibold uppercase tracking-wide text-gray-400'>Risk</span>
+                      <div className='flex flex-wrap gap-2'>
+                        <div className='flex flex-col gap-1 flex-1 min-w-[90px]'>
+                          <label className='text-xs text-gray-500'>Stop Loss %</label>
+                          <input
+                            type='number'
+                            value={stopLossPercent}
+                            min={0}
+                            step={0.5}
+                            onChange={(e) => {
+                              const v = parseFloat(e.target.value);
+                              setStopLossPercent(isNaN(v) ? 0 : Math.max(0, v));
+                            }}
+                            placeholder='0 = off'
+                            className='w-full bg-white border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-900'
+                          />
+                        </div>
+
+                        <div className='flex flex-col gap-1 flex-1 min-w-[90px]'>
+                          <label className='text-xs text-gray-500'>Take Profit %</label>
+                          <input
+                            type='number'
+                            value={takeProfitPercent}
+                            min={0}
+                            step={0.5}
+                            onChange={(e) => {
+                              const v = parseFloat(e.target.value);
+                              setTakeProfitPercent(isNaN(v) ? 0 : Math.max(0, v));
+                            }}
+                            placeholder='0 = off'
+                            className='w-full bg-white border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-900'
+                          />
+                        </div>
+
+                        <div className='flex flex-col gap-1 flex-1 min-w-[90px]'>
+                          <label className='text-xs text-gray-500'>Position Size %</label>
+                          <input
+                            type='number'
+                            value={positionSizePercent}
+                            min={0}
+                            max={100}
+                            step={1}
+                            onChange={(e) => {
+                              const v = parseFloat(e.target.value);
+                              setPositionSizePercent(isNaN(v) ? 100 : Math.max(0, Math.min(100, v)));
+                            }}
+                            className='w-full bg-white border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-900'
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Execution */}
+                    <div className='flex flex-col gap-2 rounded-lg border border-gray-200 bg-gray-50/60 p-3'>
+                      <span className='text-[10px] font-semibold uppercase tracking-wide text-gray-400'>Execution</span>
+                      <div className='flex flex-wrap gap-2 items-end'>
+                        <div className='flex flex-col gap-1 flex-1 min-w-[90px]'>
+                          <label className='text-xs text-gray-500'>Commission (bps)</label>
+                          <input
+                            type='number'
+                            value={commissionBps}
+                            min={0}
+                            step={0.5}
+                            onChange={(e) => {
+                              const v = parseFloat(e.target.value);
+                              setCommissionBps(isNaN(v) ? 0 : Math.max(0, v));
+                            }}
+                            placeholder='per fill'
+                            className='w-full bg-white border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-900'
+                          />
+                        </div>
+
+                        <div className='flex flex-col gap-1 flex-1 min-w-[90px]'>
+                          <label className='text-xs text-gray-500'>Slippage (bps)</label>
+                          <input
+                            type='number'
+                            value={slippageBps}
+                            min={0}
+                            step={0.5}
+                            onChange={(e) => {
+                              const v = parseFloat(e.target.value);
+                              setSlippageBps(isNaN(v) ? 0 : Math.max(0, v));
+                            }}
+                            placeholder='per fill'
+                            className='w-full bg-white border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-900'
+                          />
+                        </div>
+
+                        <div className='flex flex-col justify-end pb-1.5'>
+                          <label className='flex items-center gap-2 cursor-pointer'>
+                            <input
+                              type='checkbox'
+                              checked={enableShorts}
+                              onChange={(e) => setEnableShorts(e.target.checked)}
+                              className='w-4 h-4 rounded border-gray-300 text-blue-500 focus:ring-blue-500 focus:ring-offset-0'
+                            />
+                            <span className='text-xs text-gray-500'>Enable Shorts</span>
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+
+                  </div>
+
+                  {/* Run Button */}
+                  <div className='mt-3 flex justify-end'>
+                    <button
+                      onClick={runBatchBacktest}
+                      disabled={isRunningBatch || selectedFiles.length === 0 || selectedStrategyIds.length === 0}
+                      className='w-full sm:w-auto bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed text-white font-semibold py-2.5 px-8 rounded-lg transition-colors whitespace-nowrap text-sm shadow-sm'
+                    >
+                      {isRunningBatch
+                        ? backtestProgress
+                          ? `Running ${backtestProgress.completed}/${backtestProgress.total}…`
+                          : "Running..."
+                        : !mounted
+                        ? `Run ${combinationCount * selectedFiles.length} Variations`
+                        : (() => {
+                            let totalRuns = combinationCount;
+                            for (const sid of selectedStrategyIds) {
+                              if (sid === selectedStrategyId) continue;
+                              const saved = buildSavedRun(sid);
+                              if (!saved) continue;
+                              totalRuns += generateCombinations(saved.paramVariations).length;
+                            }
+                            const totalRunsAcrossDatasets = totalRuns * selectedFiles.length;
+                            const stratLabel = selectedStrategyIds.length > 1
+                              ? ` across ${selectedStrategyIds.length} strategies`
+                              : '';
+                            return `Run ${totalRunsAcrossDatasets} Variations${stratLabel}`;
+                          })()}
+                    </button>
                   </div>
                 </div>
 
