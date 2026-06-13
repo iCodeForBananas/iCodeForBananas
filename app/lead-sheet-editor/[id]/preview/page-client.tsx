@@ -19,6 +19,7 @@ import {
   Play,
   Pause,
   RotateCcw,
+  Square,
 } from "lucide-react";
 import { type LeadSheet, type Section, migrateSection, ChordLyricLine, getPlainText } from "../../shared";
 
@@ -32,6 +33,11 @@ const MIN_AUTOSCROLL_SPEED = 10;
 const MAX_AUTOSCROLL_SPEED = 200;
 const AUTOSCROLL_SPEED_STEP = 10;
 const DEFAULT_AUTOSCROLL_SPEED = 40;
+
+const MIN_BPM = 20;
+const MAX_BPM = 300;
+const DEFAULT_BPM = 120;
+const BEAT_FLASH_DURATION_MS = 80;
 
 function loadFontScale(): number {
   if (typeof window === "undefined") return 100;
@@ -125,6 +131,56 @@ function AutoScrollControl({
           onChange={(e) => onSpeedChange(Number(e.target.value))}
           className='w-20 accent-black'
           aria-label='Auto-scroll speed'
+        />
+      </label>
+    </div>
+  );
+}
+
+function ToolbarDivider() {
+  return <div className='hidden sm:block h-6 w-px bg-[#373A40]/20 print:hidden' aria-hidden='true' />;
+}
+
+function MetronomeControl({
+  playing,
+  onTogglePlay,
+  bpm,
+  onBpmChange,
+  beatFlash,
+}: {
+  playing: boolean;
+  onTogglePlay: () => void;
+  bpm: number;
+  onBpmChange: (next: number) => void;
+  beatFlash: boolean;
+}) {
+  return (
+    <div className='flex items-center gap-2 rounded border border-[#373A40]/30 px-2 py-1.5 print:hidden'>
+      <button
+        type='button'
+        onClick={onTogglePlay}
+        className='p-1 text-[#373A40]/60 hover:text-black transition-colors'
+        aria-label={playing ? "Stop metronome" : "Start metronome"}
+        title={playing ? "Stop metronome" : "Start metronome"}
+      >
+        {playing ? <Square className='w-4 h-4' /> : <Play className='w-4 h-4' />}
+      </button>
+      <div
+        className={`w-10 h-10 rounded-full transition-colors duration-75 ${
+          playing && beatFlash ? "bg-blue-500" : "bg-blue-200"
+        }`}
+        aria-hidden='true'
+      />
+      <label className='flex items-center gap-1.5 text-xs font-medium text-[#373A40]/60 select-none'>
+        BPM
+        <input
+          type='number'
+          min={MIN_BPM}
+          max={MAX_BPM}
+          value={bpm}
+          onChange={(e) => onBpmChange(Number(e.target.value))}
+          className='w-16 rounded border border-[#373A40]/30 px-1.5 py-1 text-xs text-black'
+          aria-label='Metronome BPM'
         />
       </label>
     </div>
@@ -234,6 +290,9 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
   const [isAutoScrolling, setIsAutoScrolling] = useState(false);
   const [setIds, setSetIds] = useState<string[] | null>(null);
   const [setPos, setSetPos] = useState(0);
+  const [metronomePlaying, setMetronomePlaying] = useState(false);
+  const [bpm, setBpm] = useState(DEFAULT_BPM);
+  const [beatFlash, setBeatFlash] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const autoScrollSpeedRef = useRef(autoScrollSpeed);
 
@@ -284,6 +343,27 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
     return () => cancelAnimationFrame(rafId);
   }, [isAutoScrolling]);
 
+  useEffect(() => {
+    if (!metronomePlaying) {
+      setBeatFlash(false);
+      return;
+    }
+
+    let flashTimeout: ReturnType<typeof setTimeout>;
+    const tick = () => {
+      setBeatFlash(true);
+      flashTimeout = setTimeout(() => setBeatFlash(false), BEAT_FLASH_DURATION_MS);
+    };
+
+    tick();
+    const intervalId = setInterval(tick, (60 / bpm) * 1000);
+
+    return () => {
+      clearInterval(intervalId);
+      clearTimeout(flashTimeout);
+    };
+  }, [metronomePlaying, bpm]);
+
   const handleCopy = async () => {
     if (!sheet) return;
     await navigator.clipboard.writeText(getPlainText(sheet));
@@ -314,6 +394,13 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
   };
 
   const toggleAutoScroll = () => setIsAutoScrolling((prev) => !prev);
+
+  const toggleMetronome = () => setMetronomePlaying((prev) => !prev);
+
+  const updateBpm = (next: number) => {
+    if (isNaN(next)) return;
+    setBpm(Math.min(MAX_BPM, Math.max(MIN_BPM, next)));
+  };
 
   const resetAutoScroll = () => {
     setIsAutoScrolling(false);
@@ -397,6 +484,14 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                     speed={autoScrollSpeed}
                     onSpeedChange={updateAutoScrollSpeed}
                   />
+                  <ToolbarDivider />
+                  <MetronomeControl
+                    playing={metronomePlaying}
+                    onTogglePlay={toggleMetronome}
+                    bpm={bpm}
+                    onBpmChange={updateBpm}
+                    beatFlash={beatFlash}
+                  />
                   <button
                     onClick={handleCopy}
                     className='flex items-center gap-1.5 rounded border border-[#373A40]/30 px-3 py-2 text-sm font-medium hover:border-black hover:bg-black hover:text-[#facc15] transition-colors'
@@ -463,6 +558,14 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                       onReset={resetAutoScroll}
                       speed={autoScrollSpeed}
                       onSpeedChange={updateAutoScrollSpeed}
+                    />
+                    <ToolbarDivider />
+                    <MetronomeControl
+                      playing={metronomePlaying}
+                      onTogglePlay={toggleMetronome}
+                      bpm={bpm}
+                      onBpmChange={updateBpm}
+                      beatFlash={beatFlash}
                     />
                     <button
                       onClick={handleCopy}
