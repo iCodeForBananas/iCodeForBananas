@@ -232,6 +232,8 @@ export default function AlgoBacktestPage() {
   // drives the parameter editor; other selected strategies use their saved
   // per-strategy settings at run time.
   const [selectedStrategyIds, setSelectedStrategyIds] = useState<string[]>(["ema-crossover"]);
+  // Accordion expand/collapse state for the strategy list — purely UI, not persisted.
+  const [expandedStrategyIds, setExpandedStrategyIds] = useState<string[]>(["ema-crossover"]);
   // Mounted flag — gates render branches that read localStorage to avoid
   // SSR/CSR hydration mismatches (React #418).
   const [mounted, setMounted] = useState(false);
@@ -653,7 +655,6 @@ export default function AlgoBacktestPage() {
   }, [activeResultTab, results]);
 
   const activeResult = results[activeResultTab];
-  const strategy = AVAILABLE_STRATEGIES[selectedStrategyId];
 
   const chartTrades = useMemo(
     () =>
@@ -853,164 +854,146 @@ export default function AlgoBacktestPage() {
                           </button>
                         </div>
                       </div>
-                      <div className='max-h-40 overflow-y-auto bg-white border border-gray-200 rounded p-1 space-y-0.5'>
+                      <div className='flex flex-col gap-0.5 max-h-56 overflow-y-auto bg-white border border-gray-200 rounded p-1'>
                         {Object.values(AVAILABLE_STRATEGIES).map((s) => {
                           const isChecked = selectedStrategyIds.includes(s.id);
                           const isActive = s.id === selectedStrategyId;
+                          const isExpanded = expandedStrategyIds.includes(s.id);
+                          const numericParams = s.parameters?.filter((p) => p.type === 'number') ?? [];
+                          const hasParams = numericParams.length > 0;
+                          const savedRun = mounted && !isActive ? buildSavedRun(s.id) : null;
+
+                          const toggleExpand = () => {
+                            setExpandedStrategyIds((prev) =>
+                              prev.includes(s.id) ? prev.filter((id) => id !== s.id) : [...prev, s.id]
+                            );
+                            setSelectedStrategyId(s.id);
+                          };
+
                           return (
-                            <div
-                              key={s.id}
-                              className={`flex items-center gap-1.5 px-2 py-1 rounded cursor-pointer ${
-                                isActive ? 'bg-blue-50 ring-1 ring-blue-400' : 'hover:bg-gray-50'
-                              }`}
-                              onClick={() => {
-                                setSelectedStrategyId(s.id);
-                                setSelectedStrategyIds((prev) =>
-                                  prev.includes(s.id) ? prev : [...prev, s.id]
-                                );
-                              }}
-                            >
-                              <input
-                                type='checkbox'
-                                checked={isChecked}
-                                onChange={(e) => {
-                                  e.stopPropagation();
-                                  setSelectedStrategyIds((prev) => {
-                                    if (e.target.checked)
-                                      return prev.includes(s.id) ? prev : [...prev, s.id];
-                                    const next = prev.filter((id) => id !== s.id);
-                                    if (s.id === selectedStrategyId && next.length > 0) {
-                                      setSelectedStrategyId(next[0]);
-                                    }
-                                    return next.length > 0 ? next : prev;
-                                  });
-                                }}
-                                onClick={(e) => e.stopPropagation()}
-                                className='rounded border-gray-300 text-blue-500'
-                              />
-                              <span className={`text-xs ${isActive ? 'text-blue-700 font-medium' : 'text-gray-900'}`}>
-                                {s.name}
-                              </span>
-                              {isActive && (
-                                <span className='ml-auto text-[10px] uppercase tracking-wide text-blue-600'>editing</span>
+                            <div key={s.id} className='rounded'>
+                              <div
+                                className={`flex items-center gap-1.5 py-1.5 px-2 text-sm rounded ${
+                                  isChecked ? 'bg-blue-50' : 'hover:bg-gray-50'
+                                }`}
+                              >
+                                <input
+                                  type='checkbox'
+                                  checked={isChecked}
+                                  onChange={(e) => {
+                                    setSelectedStrategyIds((prev) => {
+                                      if (e.target.checked)
+                                        return prev.includes(s.id) ? prev : [...prev, s.id];
+                                      const next = prev.filter((id) => id !== s.id);
+                                      if (s.id === selectedStrategyId && next.length > 0) {
+                                        setSelectedStrategyId(next[0]);
+                                      }
+                                      return next.length > 0 ? next : prev;
+                                    });
+                                  }}
+                                  className='rounded border-gray-300 text-blue-500'
+                                />
+                                <span
+                                  className={`flex-1 ${hasParams ? 'cursor-pointer' : ''} ${isActive ? 'text-blue-700 font-medium' : 'text-gray-900'}`}
+                                  onClick={() => {
+                                    if (hasParams) toggleExpand();
+                                  }}
+                                >
+                                  {s.name}
+                                </span>
+                                {hasParams && (
+                                  <button
+                                    onClick={toggleExpand}
+                                    className='text-gray-400 hover:text-gray-600 px-1'
+                                    title={isExpanded ? 'Collapse settings' : 'Expand settings'}
+                                  >
+                                    <span className={`inline-block transition-transform ${isExpanded ? 'rotate-180' : ''}`}>▾</span>
+                                  </button>
+                                )}
+                              </div>
+
+                              {isExpanded && hasParams && (
+                                <div className='bg-gray-50 border-l-2 border-gray-200 ml-4 pl-3 py-2'>
+                                  {isActive ? (
+                                    <div className='flex flex-wrap gap-3'>
+                                      {numericParams.map((param) => {
+                                        const variation = paramVariations.find((v) => v.key === param.key);
+                                        return (
+                                          <div key={param.key} className='flex flex-col gap-1'>
+                                            <span className='text-xs text-gray-700 font-medium'>{param.name}</span>
+                                            <div className='flex gap-1 items-center'>
+                                              <div>
+                                                <label className='block text-[10px] text-gray-500 mb-0.5'>Min</label>
+                                                <input
+                                                  type='number'
+                                                  value={variation?.min ?? param.min ?? Number(param.default)}
+                                                  min={param.min}
+                                                  max={param.max}
+                                                  step={param.step}
+                                                  onChange={(e) => {
+                                                    const parsed = parseFloat(e.target.value);
+                                                    const newMin = isNaN(parsed) ? Number(param.min ?? param.default) : parsed;
+                                                    setParamVariations((prev) =>
+                                                      prev.map((v) => (v.key === param.key ? { ...v, min: newMin } : v))
+                                                    );
+                                                  }}
+                                                  className='w-20 bg-white border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-900'
+                                                />
+                                              </div>
+                                              <span className='text-gray-400 text-xs self-end pb-2'>→</span>
+                                              <div>
+                                                <label className='block text-[10px] text-gray-500 mb-0.5'>Max</label>
+                                                <input
+                                                  type='number'
+                                                  value={variation?.max ?? param.max ?? Number(param.default)}
+                                                  min={param.min}
+                                                  max={param.max}
+                                                  step={param.step}
+                                                  onChange={(e) => {
+                                                    const parsed = parseFloat(e.target.value);
+                                                    const newMax = isNaN(parsed) ? Number(param.max ?? param.default) : parsed;
+                                                    setParamVariations((prev) =>
+                                                      prev.map((v) => (v.key === param.key ? { ...v, max: newMax } : v))
+                                                    );
+                                                  }}
+                                                  className='w-20 bg-white border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-900'
+                                                />
+                                              </div>
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  ) : (
+                                    <div className='flex flex-wrap items-end gap-3'>
+                                      {numericParams.map((param) => {
+                                        const variation = savedRun?.paramVariations.find((v) => v.key === param.key);
+                                        const min = variation?.min ?? param.min ?? Number(param.default);
+                                        const max = variation?.max ?? param.max ?? Number(param.default);
+                                        const isRange = min !== max;
+                                        return (
+                                          <div key={param.key} className='flex flex-col gap-1'>
+                                            <span className='text-xs text-gray-700 font-medium'>{param.name}</span>
+                                            <span className='text-xs font-mono text-gray-500'>
+                                              {isRange ? `${min} → ${max}` : String(min)}
+                                            </span>
+                                          </div>
+                                        );
+                                      })}
+                                      <button
+                                        onClick={() => setSelectedStrategyId(s.id)}
+                                        className='text-[10px] text-blue-600 hover:text-blue-700'
+                                      >
+                                        Edit →
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
                               )}
                             </div>
                           );
                         })}
                       </div>
-                      {strategy?.description && (
-                        <p className='text-[10px] text-gray-400 leading-tight'>{strategy.description}</p>
-                      )}
-
-                      {/* Strategy Parameters — inline min/max ranges */}
-                      {selectedStrategyIds.length > 0 && strategy?.parameters && strategy.parameters.filter((p) => p.type === 'number').length > 0 && (
-                        <div className='flex flex-col gap-1.5 pt-2 border-t border-gray-200'>
-                          <div className='flex items-center justify-between'>
-                            <span className='text-[10px] text-gray-400'>
-                              {selectedStrategyIds.length} {selectedStrategyIds.length === 1 ? 'strategy' : 'strategies'} × {selectedFiles.length} datasets
-                            </span>
-                            <span className='text-xs text-gray-400'>{combinationCount} combos</span>
-                          </div>
-                          <div className='flex flex-wrap gap-3'>
-                            {strategy.parameters
-                              .filter((param) => param.type === 'number')
-                              .map((param) => {
-                                const variation = paramVariations.find((v) => v.key === param.key);
-                                return (
-                                  <div key={param.key} className='flex flex-col gap-1'>
-                                    <span className='text-xs text-gray-700 font-medium'>{param.name}</span>
-                                    <div className='flex gap-1 items-center'>
-                                      <div>
-                                        <label className='block text-[10px] text-gray-500 mb-0.5'>Min</label>
-                                        <input
-                                          type='number'
-                                          value={variation?.min ?? param.min ?? Number(param.default)}
-                                          min={param.min}
-                                          max={param.max}
-                                          step={param.step}
-                                          onChange={(e) => {
-                                            const parsed = parseFloat(e.target.value);
-                                            const newMin = isNaN(parsed) ? Number(param.min ?? param.default) : parsed;
-                                            setParamVariations((prev) =>
-                                              prev.map((v) => (v.key === param.key ? { ...v, min: newMin } : v))
-                                            );
-                                          }}
-                                          className='w-20 bg-white border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-900'
-                                        />
-                                      </div>
-                                      <span className='text-gray-400 text-xs self-end pb-2'>→</span>
-                                      <div>
-                                        <label className='block text-[10px] text-gray-500 mb-0.5'>Max</label>
-                                        <input
-                                          type='number'
-                                          value={variation?.max ?? param.max ?? Number(param.default)}
-                                          min={param.min}
-                                          max={param.max}
-                                          step={param.step}
-                                          onChange={(e) => {
-                                            const parsed = parseFloat(e.target.value);
-                                            const newMax = isNaN(parsed) ? Number(param.max ?? param.default) : parsed;
-                                            setParamVariations((prev) =>
-                                              prev.map((v) => (v.key === param.key ? { ...v, max: newMax } : v))
-                                            );
-                                          }}
-                                          className='w-20 bg-white border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-900'
-                                        />
-                                      </div>
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Other selected strategies — compact read-only cards */}
-                      {mounted && selectedStrategyIds.filter((sid) => sid !== selectedStrategyId).length > 0 && (
-                        <div className='flex flex-wrap gap-2 pt-2 border-t border-gray-200'>
-                          {selectedStrategyIds
-                            .filter((sid) => sid !== selectedStrategyId)
-                            .map((sid) => {
-                              const otherStrat = AVAILABLE_STRATEGIES[sid];
-                              if (!otherStrat) return null;
-                              const savedRun = buildSavedRun(sid);
-                              if (!savedRun) return null;
-                              const numericParams = otherStrat.parameters?.filter((p) => p.type === 'number') ?? [];
-                              const otherCombos = generateCombinations(savedRun.paramVariations).length;
-
-                              return (
-                                <div
-                                  key={sid}
-                                  onClick={() => setSelectedStrategyId(sid)}
-                                  className='flex flex-col gap-1 border border-gray-200 hover:border-blue-400 bg-white rounded p-2 cursor-pointer transition-colors'
-                                  title='Click to edit this strategy'
-                                >
-                                  <div className='flex items-center gap-2'>
-                                    <span className='text-xs text-gray-900 font-semibold'>{otherStrat.name}</span>
-                                    <span className='text-[10px] uppercase tracking-wide text-gray-400'>saved</span>
-                                    <span className='text-xs text-gray-400'>{otherCombos} combos</span>
-                                  </div>
-                                  {numericParams.length > 0 && (
-                                    <div className='flex items-center gap-3'>
-                                      {numericParams.map((param) => {
-                                        const variation = savedRun.paramVariations.find((v) => v.key === param.key);
-                                        const min = variation?.min ?? param.min ?? Number(param.default);
-                                        const max = variation?.max ?? param.max ?? Number(param.default);
-                                        const isRange = min !== max;
-                                        return (
-                                          <span key={param.key} className='text-[10px] font-mono text-gray-700'>
-                                            {param.name}: {isRange ? `${min}→${max}` : String(min)}
-                                          </span>
-                                        );
-                                      })}
-                                    </div>
-                                  )}
-                                  <span className='text-[10px] text-blue-600'>Click to edit →</span>
-                                </div>
-                              );
-                            })}
-                        </div>
-                      )}
                     </div>
 
                     {/* Risk */}
