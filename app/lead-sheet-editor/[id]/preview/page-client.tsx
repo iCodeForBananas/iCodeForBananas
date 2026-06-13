@@ -105,7 +105,7 @@ function AutoScrollControl({
         type='button'
         onClick={onTogglePlay}
         onDoubleClick={onReset}
-        className='p-1 text-[#373A40]/60 hover:text-black transition-colors'
+        className='p-1 min-h-9 min-w-9 flex items-center justify-center text-[#373A40]/60 hover:text-black transition-colors'
         aria-label={isPlaying ? "Pause auto-scroll" : "Play auto-scroll"}
         title={isPlaying ? "Pause auto-scroll" : "Play auto-scroll"}
       >
@@ -114,7 +114,7 @@ function AutoScrollControl({
       <button
         type='button'
         onClick={onReset}
-        className='p-1 text-[#373A40]/60 hover:text-black transition-colors'
+        className='p-1 min-h-9 min-w-9 flex items-center justify-center text-[#373A40]/60 hover:text-black transition-colors'
         aria-label='Reset auto-scroll to top'
         title='Reset to top'
       >
@@ -129,7 +129,7 @@ function AutoScrollControl({
           step={AUTOSCROLL_SPEED_STEP}
           value={speed}
           onChange={(e) => onSpeedChange(Number(e.target.value))}
-          className='w-20 accent-black'
+          className='w-20 min-w-[80px] accent-black'
           aria-label='Auto-scroll speed'
         />
       </label>
@@ -138,7 +138,7 @@ function AutoScrollControl({
 }
 
 function ToolbarDivider() {
-  return <div className='hidden sm:block h-6 w-px bg-[#373A40]/20 print:hidden' aria-hidden='true' />;
+  return <div className='hidden md:block h-6 w-px bg-[#373A40]/20 print:hidden' aria-hidden='true' />;
 }
 
 function MetronomeControl({
@@ -159,14 +159,14 @@ function MetronomeControl({
       <button
         type='button'
         onClick={onTogglePlay}
-        className='p-1 text-[#373A40]/60 hover:text-black transition-colors'
+        className='p-1 min-h-9 min-w-9 flex items-center justify-center text-[#373A40]/60 hover:text-black transition-colors'
         aria-label={playing ? "Stop metronome" : "Start metronome"}
         title={playing ? "Stop metronome" : "Start metronome"}
       >
         {playing ? <Square className='w-4 h-4' /> : <Play className='w-4 h-4' />}
       </button>
       <div
-        className={`w-10 h-10 rounded-full transition-colors duration-75 ${
+        className={`w-10 h-10 min-h-9 rounded-full transition-colors duration-75 ${
           playing && beatFlash ? "bg-blue-500" : "bg-blue-200"
         }`}
         aria-hidden='true'
@@ -179,7 +179,7 @@ function MetronomeControl({
           max={MAX_BPM}
           value={bpm}
           onChange={(e) => onBpmChange(Number(e.target.value))}
-          className='w-16 rounded border border-[#373A40]/30 px-1.5 py-1 text-xs text-black'
+          className='w-16 h-8 rounded border border-[#373A40]/30 px-1.5 text-xs text-black'
           aria-label='Metronome BPM'
         />
       </label>
@@ -475,23 +475,28 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                   <ArrowLeft className='w-4 h-4' />
                   Exit Fullscreen
                 </button>
-                <div className='flex items-center gap-2'>
+                <div className='flex flex-wrap items-center gap-2'>
                   <FontScaleControl scale={fontScale} onChange={updateFontScale} />
-                  <AutoScrollControl
-                    isPlaying={isAutoScrolling}
-                    onTogglePlay={toggleAutoScroll}
-                    onReset={resetAutoScroll}
-                    speed={autoScrollSpeed}
-                    onSpeedChange={updateAutoScrollSpeed}
-                  />
-                  <ToolbarDivider />
-                  <MetronomeControl
-                    playing={metronomePlaying}
-                    onTogglePlay={toggleMetronome}
-                    bpm={bpm}
-                    onBpmChange={updateBpm}
-                    beatFlash={beatFlash}
-                  />
+                  <div className='flex flex-col gap-2 md:flex-row md:items-center'>
+                    <AutoScrollControl
+                      isPlaying={isAutoScrolling}
+                      onTogglePlay={toggleAutoScroll}
+                      onReset={resetAutoScroll}
+                      speed={autoScrollSpeed}
+                      onSpeedChange={updateAutoScrollSpeed}
+                    />
+                    <div className='flex flex-wrap items-center gap-2'>
+                      <ToolbarDivider />
+                      <MetronomeControl
+                        playing={metronomePlaying}
+                        onTogglePlay={toggleMetronome}
+                        bpm={bpm}
+                        onBpmChange={updateBpm}
+                        beatFlash={beatFlash}
+                      />
+                      {setIds && <NextSongControl setIds={setIds} pos={setPos} onNext={goToNextSong} />}
+                    </div>
+                  </div>
                   <button
                     onClick={handleCopy}
                     className='flex items-center gap-1.5 rounded border border-[#373A40]/30 px-3 py-2 text-sm font-medium hover:border-black hover:bg-black hover:text-[#facc15] transition-colors'
@@ -526,7 +531,6 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                     <Pencil className='w-4 h-4' />
                     Edit
                   </button>
-                  {setIds && <NextSongControl setIds={setIds} pos={setPos} onNext={goToNextSong} />}
                 </div>
               </div>
               <div style={{ fontSize: `${fontScale}%` }}>
@@ -542,7 +546,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
             >
               {/* Toolbar */}
               <div className='border-b shrink-0' style={{ borderColor: "var(--border-color)" }}>
-                <div className='flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-4'>
+                <div className='flex flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-6 sm:py-4'>
                   <button
                     onClick={() => router.push("/lead-sheet-editor")}
                     className='flex items-center gap-2 text-[#373A40]/50 hover:text-black transition-colors text-sm font-medium'
@@ -550,23 +554,28 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                     <ArrowLeft className='w-4 h-4' />
                     All Sheets
                   </button>
-                  <div className='flex items-center gap-2'>
+                  <div className='flex flex-wrap items-center gap-2'>
                     <FontScaleControl scale={fontScale} onChange={updateFontScale} />
-                    <AutoScrollControl
-                      isPlaying={isAutoScrolling}
-                      onTogglePlay={toggleAutoScroll}
-                      onReset={resetAutoScroll}
-                      speed={autoScrollSpeed}
-                      onSpeedChange={updateAutoScrollSpeed}
-                    />
-                    <ToolbarDivider />
-                    <MetronomeControl
-                      playing={metronomePlaying}
-                      onTogglePlay={toggleMetronome}
-                      bpm={bpm}
-                      onBpmChange={updateBpm}
-                      beatFlash={beatFlash}
-                    />
+                    <div className='flex flex-col gap-2 md:flex-row md:items-center'>
+                      <AutoScrollControl
+                        isPlaying={isAutoScrolling}
+                        onTogglePlay={toggleAutoScroll}
+                        onReset={resetAutoScroll}
+                        speed={autoScrollSpeed}
+                        onSpeedChange={updateAutoScrollSpeed}
+                      />
+                      <div className='flex flex-wrap items-center gap-2'>
+                        <ToolbarDivider />
+                        <MetronomeControl
+                          playing={metronomePlaying}
+                          onTogglePlay={toggleMetronome}
+                          bpm={bpm}
+                          onBpmChange={updateBpm}
+                          beatFlash={beatFlash}
+                        />
+                        {setIds && <NextSongControl setIds={setIds} pos={setPos} onNext={goToNextSong} />}
+                      </div>
+                    </div>
                     <button
                       onClick={handleCopy}
                       className='flex items-center gap-1.5 rounded border border-[#373A40]/30 px-3 py-2 text-sm font-medium hover:border-black hover:bg-black hover:text-[#facc15] transition-colors'
@@ -601,7 +610,6 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                       <Pencil className='w-4 h-4' />
                       Edit
                     </button>
-                    {setIds && <NextSongControl setIds={setIds} pos={setPos} onNext={goToNextSong} />}
                   </div>
                 </div>
               </div>
