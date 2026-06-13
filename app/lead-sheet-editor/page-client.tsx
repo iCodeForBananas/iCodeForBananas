@@ -120,7 +120,7 @@ export default function LeadSheetList() {
           style={{ background: "#fff", border: "1px solid var(--border-color)" }}
         >
           <div className='border-b shrink-0' style={{ borderColor: "var(--border-color)" }}>
-            <div className='flex items-center justify-between px-4 pt-4 pb-3 sm:px-6 sm:pt-6 sm:pb-5'>
+            <div className='flex flex-col gap-3 px-4 pt-4 pb-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:pt-6 sm:pb-5'>
               <h1 className='text-2xl sm:text-3xl font-bold leading-tight' style={{ color: "#000" }}>
                 Lead Sheet Editor
               </h1>
@@ -155,7 +155,7 @@ export default function LeadSheetList() {
                 {sheets.map((sheet) => (
                   <div
                     key={sheet.id}
-                    className='flex items-center justify-between p-4 border border-[#373A40]/20 rounded-lg hover:border-black transition-colors group cursor-pointer'
+                    className='flex flex-col md:flex-row md:items-center md:justify-between gap-2 p-4 border border-[#373A40]/20 rounded-lg hover:border-black transition-colors group cursor-pointer'
                     onClick={() => router.push(`/lead-sheet-editor/${sheet.id}/preview`)}
                   >
                     <div className='flex-1 min-w-0'>
@@ -169,31 +169,31 @@ export default function LeadSheetList() {
                         <span>{new Date(sheet.updated_at).toLocaleDateString()}</span>
                       </div>
                     </div>
-                    <div className='flex items-center gap-1.5 ml-3 shrink-0'>
+                    <div className='flex flex-wrap items-center gap-1.5 md:ml-3 shrink-0'>
                       <button
                         onClick={(e) => { e.stopPropagation(); handleCopyText(sheet); }}
-                        className='flex items-center gap-1.5 rounded border border-[#373A40]/30 px-3 py-1.5 text-xs font-medium hover:border-black transition-colors'
+                        className='flex items-center gap-1.5 rounded border border-[#373A40]/30 px-2 py-1 md:px-3 md:py-1.5 text-xs font-medium hover:border-black transition-colors'
                       >
                         {copiedId === sheet.id ? <Check className='w-3.5 h-3.5' /> : <Copy className='w-3.5 h-3.5' />}
                         {copiedId === sheet.id ? "Copied!" : "Copy Text"}
                       </button>
                       <button
                         onClick={(e) => { e.stopPropagation(); handleShare(sheet.id); }}
-                        className='flex items-center gap-1.5 rounded border border-[#373A40]/30 px-3 py-1.5 text-xs font-medium hover:border-black transition-colors'
+                        className='flex items-center gap-1.5 rounded border border-[#373A40]/30 px-2 py-1 md:px-3 md:py-1.5 text-xs font-medium hover:border-black transition-colors'
                       >
                         {sharedId === sheet.id ? <Check className='w-3.5 h-3.5' /> : <Link2 className='w-3.5 h-3.5' />}
                         {sharedId === sheet.id ? "Copied!" : "Share"}
                       </button>
                       <button
                         onClick={(e) => { e.stopPropagation(); router.push(`/lead-sheet-editor/${sheet.id}/edit`); }}
-                        className='flex items-center gap-1.5 rounded border border-[#373A40]/30 px-3 py-1.5 text-xs font-medium hover:border-black transition-colors'
+                        className='flex items-center gap-1.5 rounded border border-[#373A40]/30 px-2 py-1 md:px-3 md:py-1.5 text-xs font-medium hover:border-black transition-colors'
                       >
                         <Pencil className='w-3.5 h-3.5' />
                         Edit
                       </button>
                       <button
                         onClick={(e) => { e.stopPropagation(); router.push(`/lead-sheet-editor/${sheet.id}/preview`); }}
-                        className='flex items-center gap-1.5 rounded bg-black px-3 py-1.5 text-xs font-medium hover:bg-black/80 transition-colors'
+                        className='flex items-center gap-1.5 rounded bg-black px-2 py-1 md:px-3 md:py-1.5 text-xs font-medium hover:bg-black/80 transition-colors'
                         style={{ color: "#facc15" }}
                       >
                         <Eye className='w-3.5 h-3.5' />
@@ -204,7 +204,7 @@ export default function LeadSheetList() {
                           e.stopPropagation();
                           if (confirm(`Delete "${sheet.title}"?`)) deleteSheet(sheet.id);
                         }}
-                        className='opacity-0 group-hover:opacity-100 p-1.5 text-[#373A40]/40 hover:text-red-500 transition-all ml-1'
+                        className='opacity-100 md:opacity-0 md:group-hover:opacity-100 p-1.5 text-[#373A40]/40 hover:text-red-500 transition-all ml-1'
                       >
                         <Trash2 className='w-4 h-4' />
                       </button>
