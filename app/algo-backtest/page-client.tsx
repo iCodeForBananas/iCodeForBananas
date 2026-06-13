@@ -791,7 +791,7 @@ export default function AlgoBacktestPage() {
                           })}
                         </div>
                       )}
-                      <div className='max-h-28 overflow-y-auto bg-white border border-gray-200 rounded p-1 space-y-0.5'>
+                      <div className='max-h-40 overflow-y-auto bg-white border border-gray-200 rounded p-1 space-y-0.5'>
                         {availableDatasets
                           .filter((ds) =>
                             ds.symbol.toLowerCase().includes(datasetSearch.toLowerCase())
@@ -853,14 +853,14 @@ export default function AlgoBacktestPage() {
                           </button>
                         </div>
                       </div>
-                      <div className='max-h-28 overflow-y-auto bg-white border border-gray-200 rounded p-1 space-y-0.5'>
+                      <div className='max-h-40 overflow-y-auto bg-white border border-gray-200 rounded p-1 space-y-0.5'>
                         {Object.values(AVAILABLE_STRATEGIES).map((s) => {
                           const isChecked = selectedStrategyIds.includes(s.id);
                           const isActive = s.id === selectedStrategyId;
                           return (
                             <div
                               key={s.id}
-                              className={`flex items-center gap-1.5 px-1.5 py-0.5 rounded cursor-pointer ${
+                              className={`flex items-center gap-1.5 px-2 py-1 rounded cursor-pointer ${
                                 isActive ? 'bg-blue-50 ring-1 ring-blue-400' : 'hover:bg-gray-50'
                               }`}
                               onClick={() => {
