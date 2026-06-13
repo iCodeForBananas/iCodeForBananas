@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/app/hooks/useAuth";
 import Link from "next/link";
-import { Plus, Trash2, Music, Eye, Pencil, Copy, Check, Link2 } from "lucide-react";
+import { Plus, Trash2, Music, Eye, Pencil, Copy, Check, Link2, ListMusic } from "lucide-react";
 import type { LeadSheet } from "./shared";
 import { makeSection, getPlainText } from "./shared";
 
@@ -124,14 +124,23 @@ export default function LeadSheetList() {
               <h1 className='text-2xl sm:text-3xl font-bold leading-tight' style={{ color: "#000" }}>
                 Lead Sheet Editor
               </h1>
-              <button
-                onClick={createSheet}
-                className='flex items-center gap-2 rounded bg-black px-4 py-2 text-sm font-medium hover:bg-black/80 transition-colors'
-                style={{ color: "#facc15" }}
-              >
-                <Plus className='w-4 h-4' />
-                New Sheet
-              </button>
+              <div className='flex items-center gap-2'>
+                <Link
+                  href='/lead-sheet-editor/setlists'
+                  className='flex items-center gap-2 rounded border border-[#373A40]/30 px-4 py-2 text-sm font-medium hover:border-black transition-colors'
+                >
+                  <ListMusic className='w-4 h-4' />
+                  Setlists
+                </Link>
+                <button
+                  onClick={createSheet}
+                  className='flex items-center gap-2 rounded bg-black px-4 py-2 text-sm font-medium hover:bg-black/80 transition-colors'
+                  style={{ color: "#facc15" }}
+                >
+                  <Plus className='w-4 h-4' />
+                  New Sheet
+                </button>
+              </div>
             </div>
           </div>
 

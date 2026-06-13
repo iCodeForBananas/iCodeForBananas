@@ -6,6 +6,7 @@ import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/app/hooks/useAuth";
 import {
   ArrowLeft,
+  ArrowRight,
   Pencil,
   Maximize2,
   Minimize2,
@@ -130,6 +131,29 @@ function AutoScrollControl({
   );
 }
 
+function NextSongControl({
+  setIds,
+  pos,
+  onNext,
+}: {
+  setIds: string[];
+  pos: number;
+  onNext: (nextId: string, nextPos: number) => void;
+}) {
+  const isLast = pos >= setIds.length - 1;
+  return (
+    <button
+      type='button'
+      onClick={() => !isLast && onNext(setIds[pos + 1], pos + 1)}
+      disabled={isLast}
+      className='flex items-center gap-1.5 rounded border border-[#373A40]/30 px-3 py-2 text-sm font-medium hover:border-black hover:bg-black hover:text-[#facc15] transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:border-[#373A40]/30 disabled:hover:bg-transparent disabled:hover:text-current print:hidden'
+    >
+      {isLast ? "End of Set" : "Next"}
+      {!isLast && <ArrowRight className='w-4 h-4' />}
+    </button>
+  );
+}
+
 function SheetContent({ sheet, fullscreen }: { sheet: LeadSheet; fullscreen: boolean }) {
   return (
     <div>
@@ -208,12 +232,27 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
   const [shared, setShared] = useState(false);
   const [autoScrollSpeed, setAutoScrollSpeed] = useState(loadAutoScrollSpeed);
   const [isAutoScrolling, setIsAutoScrolling] = useState(false);
+  const [setIds, setSetIds] = useState<string[] | null>(null);
+  const [setPos, setSetPos] = useState(0);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const autoScrollSpeedRef = useRef(autoScrollSpeed);
 
   useEffect(() => {
     if (user) loadSheet();
   }, [user, id]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const set = params.get("set");
+    const pos = params.get("pos");
+    setSetIds(set ? set.split(",").filter(Boolean) : null);
+    setSetPos(pos ? parseInt(pos) || 0 : 0);
+  }, [id]);
+
+  const goToNextSong = (nextId: string, nextPos: number) => {
+    if (!setIds) return;
+    router.push(`/lead-sheet-editor/${nextId}/preview?set=${setIds.join(",")}&pos=${nextPos}`);
+  };
 
   useEffect(() => {
     autoScrollSpeedRef.current = autoScrollSpeed;
@@ -392,6 +431,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                     <Pencil className='w-4 h-4' />
                     Edit
                   </button>
+                  {setIds && <NextSongControl setIds={setIds} pos={setPos} onNext={goToNextSong} />}
                 </div>
               </div>
               <div style={{ fontSize: `${fontScale}%` }}>
@@ -458,6 +498,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                       <Pencil className='w-4 h-4' />
                       Edit
                     </button>
+                    {setIds && <NextSongControl setIds={setIds} pos={setPos} onNext={goToNextSong} />}
                   </div>
                 </div>
               </div>
