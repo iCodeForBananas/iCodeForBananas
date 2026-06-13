@@ -3,7 +3,6 @@
 import { useState, useRef } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { useRouter, useSearchParams } from "next/navigation";
-import BentoPageLayout from "@/app/components/BentoPageLayout";
 
 export default function LoginForm() {
   const [email, setEmail] = useState("");
@@ -44,33 +43,41 @@ export default function LoginForm() {
   };
 
   return (
-    <BentoPageLayout title='Sign In' maxWidth='max-w-sm'>
-      <form onSubmit={handleLogin} className='w-full space-y-4 py-8'>
-        {error && <p className='text-red-500 text-sm text-center'>{error}</p>}
-        <input
-          type='email'
-          placeholder='Email'
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          className='w-full border border-[#373A40]/30 rounded px-3 py-2 text-sm'
-        />
-        <input
-          type='password'
-          placeholder='Password'
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          className='w-full border border-[#373A40]/30 rounded px-3 py-2 text-sm'
-        />
-        <button
-          type='submit'
-          disabled={loading}
-          className='w-full rounded bg-black px-5 py-2 text-sm font-medium text-[#facc15] hover:bg-black/80 disabled:opacity-50'
-        >
-          {loading ? "Signing in…" : "Sign In"}
-        </button>
-      </form>
-    </BentoPageLayout>
+    <div className='flex items-center justify-center min-h-screen p-4'>
+      <div
+        className='w-full max-w-sm rounded-2xl p-8 sm:p-10'
+        style={{ background: "#fff", border: "1px solid var(--border-color)" }}
+      >
+        <h1 className='text-lg sm:text-xl font-bold leading-tight mb-6' style={{ color: "#000" }}>
+          Sign In
+        </h1>
+        <form onSubmit={handleLogin} className='space-y-4'>
+          {error && <p className='text-red-500 text-sm text-center'>{error}</p>}
+          <input
+            type='email'
+            placeholder='Email'
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            className='w-full border border-[#373A40]/30 rounded px-3 py-2 text-sm'
+          />
+          <input
+            type='password'
+            placeholder='Password'
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            className='w-full border border-[#373A40]/30 rounded px-3 py-2 text-sm'
+          />
+          <button
+            type='submit'
+            disabled={loading}
+            className='w-full rounded bg-black px-5 py-2 text-sm font-medium text-[#facc15] hover:bg-black/80 disabled:opacity-50'
+          >
+            {loading ? "Signing in…" : "Sign In"}
+          </button>
+        </form>
+      </div>
+    </div>
   );
 }
