@@ -79,7 +79,7 @@ export default function SetlistList() {
           >
             <div className='border-b shrink-0' style={{ borderColor: "var(--border-color)" }}>
               <div className='px-4 pt-4 pb-3 sm:px-6 sm:pt-6 sm:pb-5'>
-                <h1 className='text-2xl sm:text-3xl font-bold leading-tight' style={{ color: "#000" }}>
+                <h1 className='text-lg sm:text-xl font-bold leading-tight' style={{ color: "#000" }}>
                   Setlists
                 </h1>
               </div>
@@ -117,7 +117,7 @@ export default function SetlistList() {
                   <ArrowLeft className='w-4 h-4' />
                   All Sheets
                 </Link>
-                <h1 className='text-2xl sm:text-3xl font-bold leading-tight' style={{ color: "#000" }}>
+                <h1 className='text-lg sm:text-xl font-bold leading-tight' style={{ color: "#000" }}>
                   Setlists
                 </h1>
               </div>

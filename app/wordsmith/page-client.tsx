@@ -499,7 +499,7 @@ Do not just print the new text in the chat. Wrap it in the tags so the system ca
           {/* Header */}
           <div className="border-b border-zinc-200 shrink-0">
             <div className="px-4 pt-4 pb-3 sm:px-6 sm:pt-5 sm:pb-4">
-              <h1 className="text-2xl sm:text-3xl font-bold leading-tight" style={{ color: "#000" }}>
+              <h1 className="text-lg sm:text-xl font-bold leading-tight" style={{ color: "#000" }}>
                 Wordsmith
               </h1>
             </div>

@@ -163,7 +163,7 @@ export default function SetlistDetail({ params }: { params: Promise<{ id: string
                   <ArrowLeft className='w-4 h-4' />
                   Setlists
                 </Link>
-                <h1 className='text-2xl sm:text-3xl font-bold leading-tight truncate' style={{ color: "#000" }}>
+                <h1 className='text-lg sm:text-xl font-bold leading-tight truncate' style={{ color: "#000" }}>
                   {name}
                 </h1>
               </div>
