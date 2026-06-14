@@ -141,9 +141,10 @@ interface LambdaCardProps {
   onRun: (id: string) => void;
   onToggle: (lambda: TradingLambda) => void;
   onExpand: (id: string | null) => void;
+  onRemove: (lambda: TradingLambda) => void;
 }
 
-function LambdaCard({ lambda, lambdaTrades, stats, isExpanded, executing, onRun, onToggle, onExpand }: LambdaCardProps) {
+function LambdaCard({ lambda, lambdaTrades, stats, isExpanded, executing, onRun, onToggle, onExpand, onRemove }: LambdaCardProps) {
   const isPositive = stats.totalPnl >= 0;
 
   return (
@@ -215,6 +216,13 @@ function LambdaCard({ lambda, lambdaTrades, stats, isExpanded, executing, onRun,
             className="px-2 py-1.5 text-xs text-gray-400 hover:text-gray-700 rounded-lg transition-colors"
           >
             {isExpanded ? "▲" : "▼"}
+          </button>
+          <button
+            onClick={() => onRemove(lambda)}
+            className="px-2 py-1.5 text-xs text-gray-400 hover:text-red-600 rounded-lg transition-colors"
+            title="Remove deployment"
+          >
+            🗑
           </button>
         </div>
       </div>
@@ -351,6 +359,30 @@ export default function PaperTradingPage() {
     setExecuting(null);
   };
 
+  const handleRemove = async (lambda: TradingLambda) => {
+    if (!authToken) return;
+    if (!confirm(`Remove "${lambda.name}"? This deletes the deployment and its trade history.`)) return;
+    try {
+      const res = await fetch(`/api/trading/lambdas/${lambda.id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${authToken}` },
+      });
+      const json = await res.json();
+      if (!json.success) {
+        alert("Remove failed: " + json.error);
+        return;
+      }
+      setLambdas((prev) => prev.filter((l) => l.id !== lambda.id));
+      setTrades((prev) => {
+        const next = { ...prev };
+        delete next[lambda.id];
+        return next;
+      });
+    } catch (e) {
+      alert("Remove error: " + (e instanceof Error ? e.message : "unknown"));
+    }
+  };
+
   const handleToggleStatus = async (lambda: TradingLambda) => {
     if (!authToken) return;
     const newStatus = lambda.status === "active" ? "paused" : "active";
@@ -431,6 +463,7 @@ export default function PaperTradingPage() {
                     onRun={handleRun}
                     onToggle={handleToggleStatus}
                     onExpand={setExpandedId}
+                    onRemove={handleRemove}
                   />
                 ))}
               </div>
