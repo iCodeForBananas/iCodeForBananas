@@ -62,25 +62,25 @@ function loadAutoScrollSpeed(): number {
 
 function FontScaleControl({ scale, onChange }: { scale: number; onChange: (next: number) => void }) {
   return (
-    <div className='flex items-center gap-1 rounded border border-[#373A40]/30 print:hidden'>
+    <div className='flex items-center gap-1 print:hidden'>
       <button
         type='button'
         onClick={() => onChange(scale - SCALE_STEP)}
         disabled={scale <= MIN_SCALE}
-        className='p-2 text-[#373A40]/60 hover:text-black disabled:opacity-30 disabled:cursor-not-allowed transition-colors'
+        className='h-10 w-10 flex items-center justify-center rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-gray-100'
         aria-label='Decrease text size'
       >
-        <Minus className='w-3.5 h-3.5' />
+        <Minus className='w-4 h-4' />
       </button>
-      <span className='text-xs font-medium w-10 text-center text-[#373A40]/60 select-none'>{scale}%</span>
+      <span className='text-sm font-medium w-12 text-center text-gray-700 select-none'>{scale}%</span>
       <button
         type='button'
         onClick={() => onChange(scale + SCALE_STEP)}
         disabled={scale >= MAX_SCALE}
-        className='p-2 text-[#373A40]/60 hover:text-black disabled:opacity-30 disabled:cursor-not-allowed transition-colors'
+        className='h-10 w-10 flex items-center justify-center rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-gray-100'
         aria-label='Increase text size'
       >
-        <Plus className='w-3.5 h-3.5' />
+        <Plus className='w-4 h-4' />
       </button>
     </div>
   );
@@ -100,12 +100,14 @@ function AutoScrollControl({
   onSpeedChange: (next: number) => void;
 }) {
   return (
-    <div className='flex items-center gap-2 rounded border border-[#373A40]/30 px-2 py-1.5 print:hidden'>
+    <div className='flex items-center flex-wrap gap-2 print:hidden'>
       <button
         type='button'
         onClick={onTogglePlay}
         onDoubleClick={onReset}
-        className='p-1 min-h-9 min-w-9 flex items-center justify-center text-[#373A40]/60 hover:text-black transition-colors'
+        className={`h-10 w-10 flex items-center justify-center rounded-lg font-medium transition-colors duration-150 ${
+          isPlaying ? "bg-blue-100 hover:bg-blue-200 text-blue-700" : "bg-gray-100 hover:bg-gray-200 text-gray-700"
+        }`}
         aria-label={isPlaying ? "Pause auto-scroll" : "Play auto-scroll"}
         title={isPlaying ? "Pause auto-scroll" : "Play auto-scroll"}
       >
@@ -114,13 +116,13 @@ function AutoScrollControl({
       <button
         type='button'
         onClick={onReset}
-        className='p-1 min-h-9 min-w-9 flex items-center justify-center text-[#373A40]/60 hover:text-black transition-colors'
+        className='h-10 w-10 flex items-center justify-center rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium transition-colors duration-150'
         aria-label='Reset auto-scroll to top'
         title='Reset to top'
       >
         <RotateCcw className='w-4 h-4' />
       </button>
-      <label className='flex items-center gap-1.5 text-xs font-medium text-[#373A40]/60 select-none'>
+      <label className='flex items-center gap-2 h-10 px-3 rounded-lg bg-gray-100 text-sm font-medium text-gray-700 select-none'>
         Speed
         <input
           type='range'
@@ -129,7 +131,7 @@ function AutoScrollControl({
           step={AUTOSCROLL_SPEED_STEP}
           value={speed}
           onChange={(e) => onSpeedChange(Number(e.target.value))}
-          className='w-20 min-w-[80px] accent-black'
+          className='min-w-[100px] accent-blue-600'
           aria-label='Auto-scroll speed'
         />
       </label>
@@ -155,23 +157,25 @@ function MetronomeControl({
   beatFlash: boolean;
 }) {
   return (
-    <div className='flex items-center gap-2 rounded border border-[#373A40]/30 px-2 py-1.5 print:hidden'>
+    <div className='flex items-center flex-wrap gap-2 print:hidden'>
       <button
         type='button'
         onClick={onTogglePlay}
-        className='p-1 min-h-9 min-w-9 flex items-center justify-center text-[#373A40]/60 hover:text-black transition-colors'
+        className={`h-10 w-10 flex items-center justify-center rounded-lg font-medium transition-colors duration-150 ${
+          playing ? "bg-blue-100 hover:bg-blue-200 text-blue-700" : "bg-gray-100 hover:bg-gray-200 text-gray-700"
+        }`}
         aria-label={playing ? "Stop metronome" : "Start metronome"}
         title={playing ? "Stop metronome" : "Start metronome"}
       >
         {playing ? <Square className='w-4 h-4' /> : <Play className='w-4 h-4' />}
       </button>
       <div
-        className={`w-10 h-10 min-h-9 rounded-full transition-colors duration-75 ${
+        className={`w-10 h-10 rounded-full transition-colors duration-75 ${
           playing && beatFlash ? "bg-blue-500" : "bg-blue-200"
         }`}
         aria-hidden='true'
       />
-      <label className='flex items-center gap-1.5 text-xs font-medium text-[#373A40]/60 select-none'>
+      <label className='flex items-center gap-2 h-10 px-3 rounded-lg bg-gray-100 text-sm font-medium text-gray-700 select-none'>
         BPM
         <input
           type='number'
@@ -179,7 +183,7 @@ function MetronomeControl({
           max={MAX_BPM}
           value={bpm}
           onChange={(e) => onBpmChange(Number(e.target.value))}
-          className='w-16 h-8 rounded border border-[#373A40]/30 px-1.5 text-xs text-black'
+          className='w-16 h-8 rounded border border-gray-300 px-1.5 text-sm text-gray-900 bg-white'
           aria-label='Metronome BPM'
         />
       </label>
@@ -202,7 +206,7 @@ function NextSongControl({
       type='button'
       onClick={() => !isLast && onNext(setIds[pos + 1], pos + 1)}
       disabled={isLast}
-      className='flex items-center gap-1.5 rounded border border-[#373A40]/30 px-3 py-2 text-sm font-medium hover:border-black hover:bg-black hover:text-[#facc15] transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:border-[#373A40]/30 disabled:hover:bg-transparent disabled:hover:text-current print:hidden'
+      className='h-10 flex items-center gap-1.5 px-3 rounded-lg text-sm font-medium bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-gray-100 print:hidden'
     >
       {isLast ? "End of Set" : "Next"}
       {!isLast && <ArrowRight className='w-4 h-4' />}
@@ -470,7 +474,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
               <div className='flex flex-wrap items-center justify-between gap-3 mb-8'>
                 <button
                   onClick={() => setFullscreen(false)}
-                  className='flex items-center gap-2 text-[#373A40]/50 hover:text-black transition-colors text-sm font-medium'
+                  className='h-10 flex items-center gap-2 px-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors duration-150 text-sm font-medium'
                 >
                   <ArrowLeft className='w-4 h-4' />
                   Exit Fullscreen
@@ -499,33 +503,37 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                   </div>
                   <button
                     onClick={handleCopy}
-                    className='flex items-center gap-1.5 rounded border border-[#373A40]/30 px-3 py-2 text-sm font-medium hover:border-black hover:bg-black hover:text-[#facc15] transition-colors'
+                    className={`h-10 flex items-center gap-1.5 px-3 rounded-lg text-sm font-medium transition-colors duration-150 ${
+                      copied ? "bg-blue-100 hover:bg-blue-200 text-blue-700" : "bg-gray-100 hover:bg-gray-200 text-gray-700"
+                    }`}
                   >
                     {copied ? <Check className='w-4 h-4' /> : <Copy className='w-4 h-4' />}
                     {copied ? "Copied!" : "Copy Text"}
                   </button>
                   <button
                     onClick={handleShare}
-                    className='flex items-center gap-1.5 rounded border border-[#373A40]/30 px-3 py-2 text-sm font-medium hover:border-black hover:bg-black hover:text-[#facc15] transition-colors'
+                    className={`h-10 flex items-center gap-1.5 px-3 rounded-lg text-sm font-medium transition-colors duration-150 ${
+                      shared ? "bg-blue-100 hover:bg-blue-200 text-blue-700" : "bg-gray-100 hover:bg-gray-200 text-gray-700"
+                    }`}
                   >
                     {shared ? <Check className='w-4 h-4' /> : <Link2 className='w-4 h-4' />}
                     {shared ? "Link Copied!" : "Share"}
                   </button>
                   <button
                     onClick={() => window.print()}
-                    className='flex items-center gap-1.5 rounded border border-[#373A40]/30 px-3 py-2 text-sm font-medium hover:border-black hover:bg-black hover:text-[#facc15] transition-colors'
+                    className='h-10 flex items-center gap-1.5 px-3 rounded-lg text-sm font-medium bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors duration-150'
                   >
                     <Printer className='w-4 h-4' /> Print
                   </button>
                   <button
                     onClick={() => setFullscreen(false)}
-                    className='flex items-center gap-1.5 rounded border border-[#373A40]/30 px-3 py-2 text-sm font-medium hover:border-black hover:bg-black hover:text-[#facc15] transition-colors'
+                    className='h-10 flex items-center gap-1.5 px-3 rounded-lg text-sm font-medium bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors duration-150'
                   >
                     <Minimize2 className='w-4 h-4' /> Exit
                   </button>
                   <button
                     onClick={() => router.push(`/lead-sheet-editor/${id}/edit`)}
-                    className='flex items-center gap-1.5 rounded bg-black px-4 py-2 text-sm font-medium hover:bg-black/80 transition-colors'
+                    className='h-10 flex items-center gap-1.5 px-3 rounded-lg text-sm font-medium bg-black hover:bg-black/80 transition-colors duration-150'
                     style={{ color: "#facc15" }}
                   >
                     <Pencil className='w-4 h-4' />
@@ -549,7 +557,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                 <div className='flex flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-6 sm:py-4'>
                   <button
                     onClick={() => router.push("/lead-sheet-editor")}
-                    className='flex items-center gap-2 text-[#373A40]/50 hover:text-black transition-colors text-sm font-medium'
+                    className='h-10 flex items-center gap-2 px-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors duration-150 text-sm font-medium'
                   >
                     <ArrowLeft className='w-4 h-4' />
                     All Sheets
@@ -578,33 +586,37 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                     </div>
                     <button
                       onClick={handleCopy}
-                      className='flex items-center gap-1.5 rounded border border-[#373A40]/30 px-3 py-2 text-sm font-medium hover:border-black hover:bg-black hover:text-[#facc15] transition-colors'
+                      className={`h-10 flex items-center gap-1.5 px-3 rounded-lg text-sm font-medium transition-colors duration-150 ${
+                        copied ? "bg-blue-100 hover:bg-blue-200 text-blue-700" : "bg-gray-100 hover:bg-gray-200 text-gray-700"
+                      }`}
                     >
                       {copied ? <Check className='w-4 h-4' /> : <Copy className='w-4 h-4' />}
                       {copied ? "Copied!" : "Copy Text"}
                     </button>
                     <button
                       onClick={handleShare}
-                      className='flex items-center gap-1.5 rounded border border-[#373A40]/30 px-3 py-2 text-sm font-medium hover:border-black hover:bg-black hover:text-[#facc15] transition-colors'
+                      className={`h-10 flex items-center gap-1.5 px-3 rounded-lg text-sm font-medium transition-colors duration-150 ${
+                        shared ? "bg-blue-100 hover:bg-blue-200 text-blue-700" : "bg-gray-100 hover:bg-gray-200 text-gray-700"
+                      }`}
                     >
                       {shared ? <Check className='w-4 h-4' /> : <Link2 className='w-4 h-4' />}
                       {shared ? "Link Copied!" : "Share"}
                     </button>
                     <button
                       onClick={() => window.print()}
-                      className='flex items-center gap-1.5 rounded border border-[#373A40]/30 px-3 py-2 text-sm font-medium hover:border-black hover:bg-black hover:text-[#facc15] transition-colors'
+                      className='h-10 flex items-center gap-1.5 px-3 rounded-lg text-sm font-medium bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors duration-150'
                     >
                       <Printer className='w-4 h-4' /> Print
                     </button>
                     <button
                       onClick={() => setFullscreen(true)}
-                      className='flex items-center gap-1.5 rounded border border-[#373A40]/30 px-3 py-2 text-sm font-medium hover:border-black hover:bg-black hover:text-[#facc15] transition-colors'
+                      className='h-10 flex items-center gap-1.5 px-3 rounded-lg text-sm font-medium bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors duration-150'
                     >
                       <Maximize2 className='w-4 h-4' /> Fullscreen
                     </button>
                     <button
                       onClick={() => router.push(`/lead-sheet-editor/${id}/edit`)}
-                      className='flex items-center gap-1.5 rounded bg-black px-4 py-2 text-sm font-medium hover:bg-black/80 transition-colors'
+                      className='h-10 flex items-center gap-1.5 px-3 rounded-lg text-sm font-medium bg-black hover:bg-black/80 transition-colors duration-150'
                       style={{ color: "#facc15" }}
                     >
                       <Pencil className='w-4 h-4' />
