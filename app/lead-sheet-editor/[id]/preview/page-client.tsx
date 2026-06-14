@@ -28,11 +28,11 @@ const MIN_SCALE = 70;
 const MAX_SCALE = 160;
 const SCALE_STEP = 10;
 
-const AUTOSCROLL_SPEED_KEY = "lead-sheet-autoscroll-speed";
-const MIN_AUTOSCROLL_SPEED = 10;
-const MAX_AUTOSCROLL_SPEED = 200;
-const AUTOSCROLL_SPEED_STEP = 10;
-const DEFAULT_AUTOSCROLL_SPEED = 40;
+const AUTOSCROLL_SPEED_KEY = "leadSheetScrollSpeed";
+const MIN_AUTOSCROLL_SPEED = 0.1;
+const MAX_AUTOSCROLL_SPEED = 3.0;
+const AUTOSCROLL_SPEED_STEP = 0.1;
+const DEFAULT_AUTOSCROLL_SPEED = 0.5;
 
 const MIN_BPM = 20;
 const MAX_BPM = 300;
@@ -53,7 +53,7 @@ function loadAutoScrollSpeed(): number {
   if (typeof window === "undefined") return DEFAULT_AUTOSCROLL_SPEED;
   try {
     const saved = localStorage.getItem(AUTOSCROLL_SPEED_KEY);
-    const parsed = saved ? parseInt(saved) : NaN;
+    const parsed = saved ? parseFloat(saved) : NaN;
     if (!isNaN(parsed)) return Math.min(MAX_AUTOSCROLL_SPEED, Math.max(MIN_AUTOSCROLL_SPEED, parsed));
   } catch {}
   return DEFAULT_AUTOSCROLL_SPEED;
@@ -122,19 +122,28 @@ function AutoScrollControl({
       >
         <RotateCcw className='w-4 h-4' />
       </button>
-      <label className='flex items-center gap-2 h-10 px-3 rounded-lg bg-gray-100 text-sm font-medium text-gray-700 select-none'>
-        Speed
-        <input
-          type='range'
-          min={MIN_AUTOSCROLL_SPEED}
-          max={MAX_AUTOSCROLL_SPEED}
-          step={AUTOSCROLL_SPEED_STEP}
-          value={speed}
-          onChange={(e) => onSpeedChange(Number(e.target.value))}
-          className='min-w-[100px] accent-blue-600'
-          aria-label='Auto-scroll speed'
-        />
-      </label>
+      <div className='flex items-center gap-1'>
+        <span className='text-sm font-medium text-gray-700 select-none'>Speed</span>
+        <button
+          type='button'
+          onClick={() => onSpeedChange(speed - AUTOSCROLL_SPEED_STEP)}
+          disabled={speed <= MIN_AUTOSCROLL_SPEED}
+          className='h-10 w-10 flex items-center justify-center rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-gray-100'
+          aria-label='Decrease auto-scroll speed'
+        >
+          <Minus className='w-4 h-4' />
+        </button>
+        <span className='text-sm font-medium w-12 text-center text-gray-700 select-none'>{speed.toFixed(1)}</span>
+        <button
+          type='button'
+          onClick={() => onSpeedChange(speed + AUTOSCROLL_SPEED_STEP)}
+          disabled={speed >= MAX_AUTOSCROLL_SPEED}
+          className='h-10 w-10 flex items-center justify-center rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-gray-100'
+          aria-label='Increase auto-scroll speed'
+        >
+          <Plus className='w-4 h-4' />
+        </button>
+      </div>
     </div>
   );
 }
@@ -332,7 +341,8 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
       if (container) {
         if (lastTime !== null) {
           const delta = (timestamp - lastTime) / 1000;
-          container.scrollTop += autoScrollSpeedRef.current * delta;
+          // autoScrollSpeedRef is px/frame at a 60fps reference rate
+          container.scrollTop += autoScrollSpeedRef.current * 60 * delta;
           if (container.scrollTop + container.clientHeight >= container.scrollHeight - 1) {
             setIsAutoScrolling(false);
             return;
@@ -390,7 +400,8 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
   };
 
   const updateAutoScrollSpeed = (next: number) => {
-    const clamped = Math.min(MAX_AUTOSCROLL_SPEED, Math.max(MIN_AUTOSCROLL_SPEED, next));
+    const rounded = Math.round(next * 10) / 10;
+    const clamped = Math.min(MAX_AUTOSCROLL_SPEED, Math.max(MIN_AUTOSCROLL_SPEED, rounded));
     setAutoScrollSpeed(clamped);
     try {
       localStorage.setItem(AUTOSCROLL_SPEED_KEY, String(clamped));
