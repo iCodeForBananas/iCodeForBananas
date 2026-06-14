@@ -451,7 +451,7 @@ export default function ChordExplorerPage() {
             <button
               onClick={clear}
               title="Remove all chords from your progression and start fresh"
-              className="text-xs text-[#1A1B1E]/35 hover:text-red-400 transition-colors -mt-4"
+              className="text-xs text-[#1A1B1E]/35 hover:text-red-700 transition-colors -mt-4"
             >
               Clear all
             </button>

@@ -178,12 +178,12 @@ function LambdaReadinessPanel({
                 ? "bg-green-100 text-green-700"
                 : mostPass
                 ? "bg-amber-100 text-amber-700"
-                : "bg-gray-100 text-gray-500"
+                : "bg-gray-100 text-gray-600"
             }`}
           >
             {allPass ? "✓ DEPLOY READY" : mostPass ? "⚠ ALMOST READY" : "✗ NOT READY"}
           </span>
-          <span className="text-xs text-gray-500">{passCount}/{results.length} criteria met</span>
+          <span className="text-xs text-gray-600">{passCount}/{results.length} criteria met</span>
         </div>
 
         <div className="flex items-center gap-3 flex-1 flex-wrap">
@@ -192,7 +192,7 @@ function LambdaReadinessPanel({
               <span className={c.passing ? "text-green-600" : "text-red-500"}>
                 {c.passing ? "✓" : "✗"}
               </span>
-              <span className={c.passing ? "text-gray-700" : "text-gray-400"}>
+              <span className={c.passing ? "text-gray-700" : "text-gray-600"}>
                 {c.label}
               </span>
               <span className={`font-mono font-bold ${c.passing ? "text-green-600" : "text-red-500"}`}>
@@ -701,7 +701,7 @@ export default function AlgoBacktestPage() {
                       </svg>
                     </div>
                     <h2 className='text-xl font-semibold text-gray-900 mb-1'>Running Backtest</h2>
-                    <p className='text-sm text-gray-500'>
+                    <p className='text-sm text-gray-600'>
                       {backtestProgress?.currentDataset
                         ? `Processing ${backtestProgress.currentDataset}…`
                         : 'Initialising…'}
@@ -710,7 +710,7 @@ export default function AlgoBacktestPage() {
 
                   {backtestProgress && backtestProgress.total > 0 && (
                     <div className='mb-6'>
-                      <div className='flex items-center justify-between text-xs text-gray-500 mb-2'>
+                      <div className='flex items-center justify-between text-xs text-gray-600 mb-2'>
                         <span>{backtestProgress.completed} / {backtestProgress.total} datasets</span>
                         <span>{Math.round((backtestProgress.completed / backtestProgress.total) * 100)}%</span>
                       </div>
@@ -744,7 +744,7 @@ export default function AlgoBacktestPage() {
                     {/* Data */}
                     <div className='flex flex-col gap-2 rounded-lg border border-gray-200 bg-gray-50/60 p-3'>
                       <div className='flex items-center justify-between'>
-                        <span className='text-[10px] font-semibold uppercase tracking-wide text-gray-400'>Data</span>
+                        <span className='text-[10px] font-semibold uppercase tracking-wide text-gray-600'>Data</span>
                         <div className='flex items-center gap-1.5'>
                           <button
                             onClick={() => setSelectedFiles(availableDatasets.map((ds) => ds.file))}
@@ -755,11 +755,11 @@ export default function AlgoBacktestPage() {
                           <button
                             onClick={() => setSelectedFiles([])}
                             disabled={selectedFiles.length === 0}
-                            className='text-xs text-gray-400 hover:text-gray-600 disabled:text-gray-300 disabled:cursor-not-allowed transition-colors'
+                            className='text-xs text-gray-600 disabled:text-gray-300 disabled:cursor-not-allowed transition-colors'
                           >
                             None
                           </button>
-                          <span className='text-xs text-gray-400'>{selectedFiles.length} sel</span>
+                          <span className='text-xs text-gray-600'>{selectedFiles.length} sel</span>
                         </div>
                       </div>
                       <input
@@ -783,7 +783,7 @@ export default function AlgoBacktestPage() {
                                 className={`px-1.5 py-0.5 text-[10px] rounded border transition-colors ${
                                   allSelected
                                     ? 'bg-blue-600 border-blue-500 text-white'
-                                    : 'bg-white border-gray-300 text-gray-500 hover:border-blue-400 hover:text-blue-600'
+                                    : 'bg-white border-gray-300 text-gray-600 hover:border-blue-400 hover:text-blue-600'
                                 }`}
                               >
                                 {tf.toUpperCase()}
@@ -826,7 +826,7 @@ export default function AlgoBacktestPage() {
                     {/* Strategy */}
                     <div className='flex flex-col gap-2 rounded-lg border border-gray-200 bg-gray-50/60 p-3'>
                       <div className='flex items-center justify-between'>
-                        <span className='text-[10px] font-semibold uppercase tracking-wide text-gray-400'>Strategy</span>
+                        <span className='text-[10px] font-semibold uppercase tracking-wide text-gray-600'>Strategy</span>
                         <div className='flex items-center gap-1.5'>
                           <button
                             onClick={() => {
@@ -841,7 +841,7 @@ export default function AlgoBacktestPage() {
                           >
                             {selectedStrategyIds.length === Object.keys(AVAILABLE_STRATEGIES).length ? 'Clear' : 'All'}
                           </button>
-                          <span className='text-xs text-gray-400'>{selectedStrategyIds.length} sel</span>
+                          <span className='text-xs text-gray-600'>{selectedStrategyIds.length} sel</span>
                           <button
                             onClick={() => setShowLambdaExport(true)}
                             className='flex items-center gap-1 px-2 py-0.5 bg-amber-500 hover:bg-amber-400 text-white text-[10px] font-medium rounded transition-colors'
@@ -904,7 +904,7 @@ export default function AlgoBacktestPage() {
                                 {hasParams && (
                                   <button
                                     onClick={toggleExpand}
-                                    className='text-gray-400 hover:text-gray-600 px-1'
+                                    className='text-gray-600 px-1'
                                     title={isExpanded ? 'Collapse settings' : 'Expand settings'}
                                   >
                                     <span className={`inline-block transition-transform ${isExpanded ? 'rotate-180' : ''}`}>▾</span>
@@ -923,7 +923,7 @@ export default function AlgoBacktestPage() {
                                             <span className='text-xs text-gray-700 font-medium'>{param.name}</span>
                                             <div className='flex gap-1 items-center'>
                                               <div>
-                                                <label className='block text-[10px] text-gray-500 mb-0.5'>Min</label>
+                                                <label className='block text-[10px] text-gray-600 mb-0.5'>Min</label>
                                                 <input
                                                   type='number'
                                                   value={variation?.min ?? param.min ?? Number(param.default)}
@@ -940,9 +940,9 @@ export default function AlgoBacktestPage() {
                                                   className='w-20 bg-white border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-900'
                                                 />
                                               </div>
-                                              <span className='text-gray-400 text-xs self-end pb-2'>→</span>
+                                              <span className='text-gray-600 text-xs self-end pb-2'>→</span>
                                               <div>
-                                                <label className='block text-[10px] text-gray-500 mb-0.5'>Max</label>
+                                                <label className='block text-[10px] text-gray-600 mb-0.5'>Max</label>
                                                 <input
                                                   type='number'
                                                   value={variation?.max ?? param.max ?? Number(param.default)}
@@ -974,7 +974,7 @@ export default function AlgoBacktestPage() {
                                         return (
                                           <div key={param.key} className='flex flex-col gap-1'>
                                             <span className='text-xs text-gray-700 font-medium'>{param.name}</span>
-                                            <span className='text-xs font-mono text-gray-500'>
+                                            <span className='text-xs font-mono text-gray-600'>
                                               {isRange ? `${min} → ${max}` : String(min)}
                                             </span>
                                           </div>
@@ -998,10 +998,10 @@ export default function AlgoBacktestPage() {
 
                     {/* Risk */}
                     <div className='flex flex-col gap-2 rounded-lg border border-gray-200 bg-gray-50/60 p-3'>
-                      <span className='text-[10px] font-semibold uppercase tracking-wide text-gray-400'>Risk</span>
+                      <span className='text-[10px] font-semibold uppercase tracking-wide text-gray-600'>Risk</span>
                       <div className='flex flex-wrap gap-2'>
                         <div className='flex flex-col gap-1 flex-1 min-w-[90px]'>
-                          <label className='text-xs text-gray-500'>Stop Loss %</label>
+                          <label className='text-xs text-gray-600'>Stop Loss %</label>
                           <input
                             type='number'
                             value={stopLossPercent}
@@ -1017,7 +1017,7 @@ export default function AlgoBacktestPage() {
                         </div>
 
                         <div className='flex flex-col gap-1 flex-1 min-w-[90px]'>
-                          <label className='text-xs text-gray-500'>Take Profit %</label>
+                          <label className='text-xs text-gray-600'>Take Profit %</label>
                           <input
                             type='number'
                             value={takeProfitPercent}
@@ -1033,7 +1033,7 @@ export default function AlgoBacktestPage() {
                         </div>
 
                         <div className='flex flex-col gap-1 flex-1 min-w-[90px]'>
-                          <label className='text-xs text-gray-500'>Position Size %</label>
+                          <label className='text-xs text-gray-600'>Position Size %</label>
                           <input
                             type='number'
                             value={positionSizePercent}
@@ -1052,10 +1052,10 @@ export default function AlgoBacktestPage() {
 
                     {/* Execution */}
                     <div className='flex flex-col gap-2 rounded-lg border border-gray-200 bg-gray-50/60 p-3'>
-                      <span className='text-[10px] font-semibold uppercase tracking-wide text-gray-400'>Execution</span>
+                      <span className='text-[10px] font-semibold uppercase tracking-wide text-gray-600'>Execution</span>
                       <div className='flex flex-wrap gap-2 items-end'>
                         <div className='flex flex-col gap-1 flex-1 min-w-[90px]'>
-                          <label className='text-xs text-gray-500'>Commission (bps)</label>
+                          <label className='text-xs text-gray-600'>Commission (bps)</label>
                           <input
                             type='number'
                             value={commissionBps}
@@ -1071,7 +1071,7 @@ export default function AlgoBacktestPage() {
                         </div>
 
                         <div className='flex flex-col gap-1 flex-1 min-w-[90px]'>
-                          <label className='text-xs text-gray-500'>Slippage (bps)</label>
+                          <label className='text-xs text-gray-600'>Slippage (bps)</label>
                           <input
                             type='number'
                             value={slippageBps}
@@ -1094,7 +1094,7 @@ export default function AlgoBacktestPage() {
                               onChange={(e) => setEnableShorts(e.target.checked)}
                               className='w-4 h-4 rounded border-gray-300 text-blue-500 focus:ring-blue-500 focus:ring-offset-0'
                             />
-                            <span className='text-xs text-gray-500'>Enable Shorts</span>
+                            <span className='text-xs text-gray-600'>Enable Shorts</span>
                           </label>
                         </div>
                       </div>
@@ -1136,7 +1136,7 @@ export default function AlgoBacktestPage() {
                 {/* ── Results (bottom) ────────────────────────────────── */}
                 {results.length === 0 && (
                   <div className='flex items-center justify-center py-16'>
-                    <p className='text-sm text-gray-400'>Run a backtest to see results</p>
+                    <p className='text-sm text-gray-600'>Run a backtest to see results</p>
                   </div>
                 )}
                 {results.length > 0 && <div className='flex flex-col'>
@@ -1155,7 +1155,7 @@ export default function AlgoBacktestPage() {
                             className={`px-4 py-2 text-xs font-medium whitespace-nowrap border-b-2 transition-colors ${
                               activeResultTab === idx
                                 ? "border-blue-500 text-blue-600 bg-white"
-                                : "border-transparent text-gray-500 hover:text-gray-900 hover:bg-gray-100"
+                                : "border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-100"
                             }`}
                           >
                             #{idx + 1}{" "}
@@ -1170,7 +1170,7 @@ export default function AlgoBacktestPage() {
                         );
                       })}
                       {results.length > 10 && (
-                        <span className='px-4 py-2 text-xs text-gray-400'>+{results.length - 10} more</span>
+                        <span className='px-4 py-2 text-xs text-gray-600'>+{results.length - 10} more</span>
                       )}
                     </div>
                   )}
@@ -1180,17 +1180,17 @@ export default function AlgoBacktestPage() {
                     <div className='px-4 py-2 bg-gray-50 border-b border-gray-200 text-xs shrink-0'>
                       {activeResult.strategyName && (
                         <>
-                          <span className='text-gray-500'>Strategy: </span>
+                          <span className='text-gray-600'>Strategy: </span>
                           <span className='text-purple-600 mr-3 font-medium'>{activeResult.strategyName}</span>
                         </>
                       )}
                       {activeResult.datasetLabel && (
                         <>
-                          <span className='text-gray-500'>Dataset: </span>
+                          <span className='text-gray-600'>Dataset: </span>
                           <span className='text-blue-600 mr-3'>{activeResult.datasetLabel}</span>
                         </>
                       )}
-                      <span className='text-gray-500'>Parameters: </span>
+                      <span className='text-gray-600'>Parameters: </span>
                       <span className='font-mono text-blue-600'>{activeResult.label}</span>
                     </div>
                   )}
@@ -1200,7 +1200,7 @@ export default function AlgoBacktestPage() {
                     <div className='p-4 border-b border-gray-200 bg-gray-50 shrink-0'>
                       <div className='grid grid-cols-6 gap-4 text-sm'>
                         <div className='bg-white border border-gray-200 rounded p-3'>
-                          <div className='text-gray-500 text-xs mb-1'>Strategy P&L</div>
+                          <div className='text-gray-600 text-xs mb-1'>Strategy P&L</div>
                           <div
                             className={`text-lg font-bold ${activeResult.totalPnlPercent >= 0 ? "text-green-600" : "text-red-500"}`}
                           >
@@ -1208,7 +1208,7 @@ export default function AlgoBacktestPage() {
                           </div>
                         </div>
                         <div className='bg-white border border-gray-200 rounded p-3'>
-                          <div className='text-gray-500 text-xs mb-1'>Buy & Hold</div>
+                          <div className='text-gray-600 text-xs mb-1'>Buy & Hold</div>
                           <div
                             className={`text-lg font-bold ${activeResult.buyAndHoldPnlPercent >= 0 ? "text-green-600" : "text-red-500"}`}
                           >
@@ -1216,16 +1216,16 @@ export default function AlgoBacktestPage() {
                           </div>
                         </div>
                         <div className='bg-white border border-gray-200 rounded p-3'>
-                          <div className='text-gray-500 text-xs mb-1'>Win Rate</div>
+                          <div className='text-gray-600 text-xs mb-1'>Win Rate</div>
                           <div className='text-lg font-bold text-gray-900'>
                             {activeResult.winRate.toFixed(1)}%
-                            <span className='text-sm text-gray-500 ml-1'>
+                            <span className='text-sm text-gray-600 ml-1'>
                               ({activeResult.winningTrades}W / {activeResult.losingTrades}L)
                             </span>
                           </div>
                         </div>
                         <div className='bg-white border border-gray-200 rounded p-3'>
-                          <div className='text-gray-500 text-xs mb-1'>Profit Factor</div>
+                          <div className='text-gray-600 text-xs mb-1'>Profit Factor</div>
                           <div
                             className={`text-lg font-bold ${(activeResult.profitFactor ?? 0) >= 1 ? "text-green-600" : "text-red-500"}`}
                           >
@@ -1233,13 +1233,13 @@ export default function AlgoBacktestPage() {
                           </div>
                         </div>
                         <div className='bg-white border border-gray-200 rounded p-3'>
-                          <div className='text-gray-500 text-xs mb-1'>Max Drawdown</div>
+                          <div className='text-gray-600 text-xs mb-1'>Max Drawdown</div>
                           <div className='text-lg font-bold text-red-500'>
                             -{activeResult.maxDrawdownPercent.toFixed(2)}%
                           </div>
                         </div>
                         <div className='bg-white border border-gray-200 rounded p-3'>
-                          <div className='text-gray-500 text-xs mb-1'>Sharpe Ratio</div>
+                          <div className='text-gray-600 text-xs mb-1'>Sharpe Ratio</div>
                           <div
                             className={`text-lg font-bold ${activeResult.sharpeRatio >= 1 ? "text-green-600" : activeResult.sharpeRatio >= 0 ? "text-gray-700" : "text-red-500"}`}
                           >
@@ -1252,19 +1252,19 @@ export default function AlgoBacktestPage() {
                       <div className='flex items-center justify-between text-sm mt-2'>
                         <div className='flex items-center gap-4'>
                           <div className='text-center'>
-                            <span className='text-gray-500 text-xs'>Trades:</span>
+                            <span className='text-gray-600 text-xs'>Trades:</span>
                             <span className='ml-1 text-gray-900'>{activeResult.totalTrades}</span>
                           </div>
                           <div className='text-center'>
-                            <span className='text-gray-500 text-xs'>Avg Win:</span>
+                            <span className='text-gray-600 text-xs'>Avg Win:</span>
                             <span className='ml-1 text-green-600'>${activeResult.averageWin.toFixed(2)}</span>
                           </div>
                           <div className='text-center'>
-                            <span className='text-gray-500 text-xs'>Avg Loss:</span>
+                            <span className='text-gray-600 text-xs'>Avg Loss:</span>
                             <span className='ml-1 text-red-500'>-${activeResult.averageLoss.toFixed(2)}</span>
                           </div>
                           <div className='text-center'>
-                            <span className='text-gray-500 text-xs'>Alpha vs B&H:</span>
+                            <span className='text-gray-600 text-xs'>Alpha vs B&H:</span>
                             <span
                               className={`ml-1 font-bold ${activeResult.totalPnlPercent - activeResult.buyAndHoldPnlPercent >= 0 ? "text-green-600" : "text-red-500"}`}
                             >
@@ -1274,7 +1274,7 @@ export default function AlgoBacktestPage() {
                           </div>
                         </div>
                         <div className='flex items-center gap-3'>
-                          <label className='text-gray-500 text-xs cursor-pointer'>
+                          <label className='text-gray-600 text-xs cursor-pointer'>
                             <input
                               type='checkbox'
                               checked={showEquityCurve}
@@ -1352,7 +1352,7 @@ export default function AlgoBacktestPage() {
                       <div className='flex-1 overflow-y-auto'>
                         <table className='w-full text-xs'>
                           <thead className='bg-gray-50 sticky top-0'>
-                            <tr className='text-gray-500'>
+                            <tr className='text-gray-600'>
                               <th className='px-3 py-2 text-left'>Side</th>
                               <th className='px-3 py-2 text-left'>Entry Time</th>
                               <th className='px-3 py-2 text-right'>Entry Price</th>
@@ -1390,7 +1390,7 @@ export default function AlgoBacktestPage() {
                                   {trade.pnlPercent >= 0 ? "+" : ""}
                                   {trade.pnlPercent.toFixed(2)}%
                                 </td>
-                                <td className='px-3 py-2 text-gray-500 truncate max-w-[200px]' title={trade.reason}>
+                                <td className='px-3 py-2 text-gray-600 truncate max-w-[200px]' title={trade.reason}>
                                   {trade.reason}
                                 </td>
                               </tr>
