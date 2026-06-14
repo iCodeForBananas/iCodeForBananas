@@ -1,10 +1,19 @@
 import { WebSocketServer, WebSocket } from "ws";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { createClient } from "@supabase/supabase-js";
 
 // ── Server ───────────────────────────────────────────────────────────────────
-const PORT       = parseInt(process.env.GAME_WS_PORT ?? "8080");
-const TICK_MS    = 50; // 20 fps server tick
-const STATE_FILE = process.env.GAME_STATE_FILE ?? "./game-state.json";
+const PORT    = parseInt(process.env.GAME_WS_PORT ?? "8080");
+const TICK_MS = 50; // 20 fps server tick
+
+// ── Persistence (Supabase) ──────────────────────────────────────────────────
+const GAME_STATE_ROW_ID = "main";
+const supabase =
+  process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY
+    ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY)
+    : null;
+if (!supabase) {
+  console.warn("[state] SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY not set — game state will not persist");
+}
 
 // ── Player movement ──────────────────────────────────────────────────────────
 const WALK_SPEED       = 0.2900625;
@@ -512,45 +521,58 @@ const zombies = initZombies();
 
 // ── Persisted state (survives graceful restarts/redeploys) ──────────────────
 const savedPlayers = new Map<string, PlayerSnapshot>();
-try {
-  if (existsSync(STATE_FILE)) {
-    const saved = JSON.parse(readFileSync(STATE_FILE, "utf8")) as {
+if (supabase) {
+  try {
+    const { data, error } = await supabase
+      .from("game_state")
+      .select("data")
+      .eq("id", GAME_STATE_ROW_ID)
+      .maybeSingle();
+    if (error) throw error;
+    const saved = data?.data as {
       players?: PlayerSnapshot[];
       zombies?: Zombie[];
       openGates?: string[];
-    };
-    for (const snap of saved.players ?? []) savedPlayers.set(snap.id, snap);
-    if (saved.zombies?.length === zombies.length) {
+    } | undefined;
+    for (const snap of saved?.players ?? []) savedPlayers.set(snap.id, snap);
+    if (saved?.zombies?.length === zombies.length) {
       saved.zombies.forEach((z, i) => Object.assign(zombies[i], z));
     }
-    for (const g of saved.openGates ?? []) openGates.add(g);
-    console.log(`[state] restored ${savedPlayers.size} player(s) from ${STATE_FILE}`);
+    for (const g of saved?.openGates ?? []) openGates.add(g);
+    console.log(`[state] restored ${savedPlayers.size} player(s) from Supabase`);
+  } catch (err) {
+    console.error("[state] failed to load saved state:", err);
   }
-} catch (err) {
-  console.error("[state] failed to load saved state:", err);
 }
 
-function saveState() {
+async function saveState() {
   for (const p of players.values()) savedPlayers.set(p.id, serializePlayer(p));
   const data = { players: [...savedPlayers.values()], zombies, openGates: [...openGates] };
-  writeFileSync(STATE_FILE, JSON.stringify(data));
-  console.log(`[state] saved ${data.players.length} player(s) to ${STATE_FILE}`);
+  if (!supabase) {
+    console.warn("[state] Supabase not configured, skipping save");
+    return;
+  }
+  const { error } = await supabase
+    .from("game_state")
+    .upsert({ id: GAME_STATE_ROW_ID, data, updated_at: new Date().toISOString() });
+  if (error) throw error;
+  console.log(`[state] saved ${data.players.length} player(s) to Supabase`);
 }
 
 let shuttingDown = false;
-function shutdown(signal: string) {
+async function shutdown(signal: string) {
   if (shuttingDown) return;
   shuttingDown = true;
   console.log(`[shutdown] received ${signal}, saving state...`);
   try {
-    saveState();
+    await saveState();
   } catch (err) {
     console.error("[shutdown] failed to save state:", err);
   }
   process.exit(0);
 }
-process.on("SIGTERM", () => shutdown("SIGTERM"));
-process.on("SIGINT", () => shutdown("SIGINT"));
+process.on("SIGTERM", () => void shutdown("SIGTERM"));
+process.on("SIGINT", () => void shutdown("SIGINT"));
 
 function dist(ax: number, az: number, bx: number, bz: number) {
   return Math.sqrt((ax - bx) ** 2 + (az - bz) ** 2);

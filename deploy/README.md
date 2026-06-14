@@ -29,6 +29,17 @@ SSH in (wait ~1-2 min after launch for cloud-init to finish):
 ssh -i deploy/game-server-key.pem ec2-user@<PUBLIC_IP>
 git clone https://github.com/iCodeForBananas/iCodeForBananas.git app
 cd app
+```
+
+Create `deploy/.env` (not committed) with the Supabase credentials the
+server uses to persist game state:
+```
+SUPABASE_URL=https://<project>.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=<service role key>
+```
+
+Then run:
+```
 bash deploy/redeploy.sh
 ```
 
@@ -48,8 +59,8 @@ will block a plain `ws://<ip>:8080` connection (mixed content). Either:
 ## 4. Redeploying after code changes
 
 Game state (player position, money, items, zombie/gate state) is saved to
-`game-data/game-state.json` on the host whenever the container is stopped,
-and reloaded on the next start — players reconnect with their persistent
+the `game_state` table in Supabase whenever the container is stopped, and
+reloaded on the next start — players reconnect with their persistent
 client-side id and resume where they left off.
 
 ```
