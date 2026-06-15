@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseAnon } from "../lib/executor";
+import { supabaseAnon, supabaseService } from "../lib/executor";
 
 export const dynamic = "force-dynamic";
 
@@ -11,8 +11,7 @@ export async function POST(req: NextRequest) {
   if (!token) {
     return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
   }
-  const db = supabaseAnon();
-  const { data: { user }, error: authError } = await db.auth.getUser(token);
+  const { data: { user }, error: authError } = await supabaseAnon().auth.getUser(token);
   if (authError || !user) {
     return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
   }
@@ -25,7 +24,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: "Missing required fields" }, { status: 400 });
     }
 
-    const { data, error } = await db
+    const { data, error } = await supabaseService()
       .from("trading_lambdas")
       .insert({
         name: name || `${strategy_name} on ${symbol}`,
@@ -60,14 +59,13 @@ export async function GET(req: NextRequest) {
   if (!token) {
     return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
   }
-  const db = supabaseAnon();
-  const { data: { user }, error: authError } = await db.auth.getUser(token);
+  const { data: { user }, error: authError } = await supabaseAnon().auth.getUser(token);
   if (authError || !user) {
     return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
   }
 
   try {
-    const { data, error } = await db
+    const { data, error } = await supabaseService()
       .from("trading_lambdas")
       .select("*")
       .eq("user_id", user.id)

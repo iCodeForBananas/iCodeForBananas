@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseAnon } from "../../lib/executor";
+import { supabaseAnon, supabaseService } from "../../lib/executor";
 
 export const dynamic = "force-dynamic";
 
@@ -10,8 +10,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (!token) {
     return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
   }
-  const db = supabaseAnon();
-  const { data: { user }, error: authError } = await db.auth.getUser(token);
+  const { data: { user }, error: authError } = await supabaseAnon().auth.getUser(token);
   if (authError || !user) {
     return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
   }
@@ -19,7 +18,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   try {
     const { id } = await params;
     const body = await req.json();
-    const { error } = await db
+    const { error } = await supabaseService()
       .from("trading_lambdas")
       .update({ ...body, updated_at: new Date().toISOString() })
       .eq("id", id)
@@ -41,15 +40,14 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   if (!token) {
     return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
   }
-  const db = supabaseAnon();
-  const { data: { user }, error: authError } = await db.auth.getUser(token);
+  const { data: { user }, error: authError } = await supabaseAnon().auth.getUser(token);
   if (authError || !user) {
     return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
   }
 
   try {
     const { id } = await params;
-    const { error } = await db
+    const { error } = await supabaseService()
       .from("trading_lambdas")
       .delete()
       .eq("id", id)
