@@ -284,7 +284,7 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
           </div>
 
           {/* Editor */}
-          <div ref={scrollContainerRef} className="flex-1 overflow-auto">
+          <div ref={scrollContainerRef} className="flex-1 overflow-auto overscroll-y-contain">
             <div className="max-w-3xl mx-auto px-6 py-8">
               <textarea
                 ref={textareaRef}

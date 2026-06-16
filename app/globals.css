@@ -2,6 +2,7 @@
 
 #main-content {
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: none;
 }
 
 /* Dark mode variant for wordsmith (data-theme="dark" on a wrapper element) */
@@ -81,6 +82,7 @@ body {
   font-family: Arial, Helvetica, sans-serif;
   margin: 0;
   padding: 0;
+  overscroll-behavior-y: none;
   transition:
     background-color 0.3s ease,
     color 0.3s ease;

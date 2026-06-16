@@ -42,10 +42,14 @@ self.addEventListener('fetch', e => {
   }
 
   // Everything else: network-first, fall back to cache
+  // HTML documents are excluded from caching — stale HTML causes Next.js to
+  // load mismatched JS chunks, which can trigger hard reloads.
   e.respondWith(
     fetch(request)
       .then(res => {
-        if (res.ok && res.type === 'basic') {
+        const isDocument = request.destination === 'document' ||
+          res.headers.get('content-type')?.includes('text/html');
+        if (res.ok && res.type === 'basic' && !isDocument) {
           const toCache = res.clone();
           caches.open(CACHE).then(c => c.put(request, toCache));
         }
