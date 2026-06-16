@@ -11,7 +11,7 @@ import {
   ParameterizedResult,
 } from "@/app/strategies";
 import LambdaExportModal from "../components/LambdaExportModal";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "@/utils/supabase/client";
 import {
   generateCombinations,
   ParameterVariationConfig,
@@ -286,15 +286,22 @@ export default function AlgoBacktestPage() {
   // Lambda export modal state
   const [showLambdaExport, setShowLambdaExport] = useState(false);
   const [authToken, setAuthToken] = useState<string | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
 
   useEffect(() => {
-    const sb = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
-    );
+    const sb = createClient();
+    if (!sb) {
+      setAuthLoading(false);
+      return;
+    }
     sb.auth.getSession().then(({ data }) => {
       setAuthToken(data.session?.access_token ?? null);
+      setAuthLoading(false);
     });
+    const { data: { subscription } } = sb.auth.onAuthStateChange((_event, session) => {
+      setAuthToken(session?.access_token ?? null);
+    });
+    return () => subscription.unsubscribe();
   }, []);
 
   // Copy report state
@@ -1451,6 +1458,7 @@ export default function AlgoBacktestPage() {
         }
         params={activeResult?.params ?? currentParams}
         authToken={authToken}
+        authLoading={authLoading}
       />
     </div>
   );

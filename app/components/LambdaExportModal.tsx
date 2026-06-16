@@ -17,6 +17,7 @@ interface DeployStrategyModalProps {
   strategyName: string;
   params: Record<string, number | boolean | string>;
   authToken: string | null;
+  authLoading?: boolean;
 }
 
 export default function LambdaExportModal({
@@ -26,6 +27,7 @@ export default function LambdaExportModal({
   strategyName,
   params,
   authToken,
+  authLoading = false,
 }: DeployStrategyModalProps) {
   const [symbol, setSymbol] = useState("SPY");
   const [positionSize, setPositionSize] = useState(100);
@@ -121,7 +123,7 @@ export default function LambdaExportModal({
           </div>
         ) : (
           <div className="p-5 space-y-4">
-            {!authToken && (
+            {!authLoading && !authToken && (
               <div className="bg-yellow-900/40 border border-yellow-700/50 rounded-lg px-3 py-2 text-sm text-yellow-300">
                 Sign in to deploy strategies.
               </div>
@@ -206,10 +208,10 @@ export default function LambdaExportModal({
 
             <button
               onClick={handleDeploy}
-              disabled={saving || !symbol || !strategyDisplayName || !authToken}
+              disabled={saving || authLoading || !symbol || !strategyDisplayName || !authToken}
               className="w-full py-3 bg-yellow-400 hover:bg-yellow-300 disabled:bg-slate-600 disabled:cursor-not-allowed text-black font-bold rounded-lg transition-colors text-sm"
             >
-              {saving ? "Deploying…" : "🚀 Deploy Strategy"}
+              {authLoading ? "Loading…" : saving ? "Deploying…" : "🚀 Deploy Strategy"}
             </button>
           </div>
         )}

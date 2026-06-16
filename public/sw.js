@@ -1,4 +1,4 @@
-const CACHE = 'icfb-v1';
+const CACHE = 'icfb-v2';
 const PRECACHE = ['/', '/manifest.json', '/icon.svg'];
 
 self.addEventListener('install', e => {
@@ -51,6 +51,6 @@ self.addEventListener('fetch', e => {
         }
         return res;
       })
-      .catch(() => caches.match(request).then(r => r || Response.error()))
+      .catch(() => caches.match(request).then(r => r ?? new Response('Network error', { status: 503 })))
   );
 });
