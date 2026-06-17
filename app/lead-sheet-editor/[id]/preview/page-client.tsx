@@ -361,7 +361,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
       <div className='print:hidden flex flex-col flex-1 min-h-0'>
         {fullscreen ? (
           <div className='fixed inset-0 z-50 bg-white overflow-y-auto'>
-            <div className='max-w-3xl mx-auto px-6 py-8'>
+            <div className='max-w-3xl mx-auto py-8'>
               {/* Toolbar */}
               <div className='flex flex-wrap items-center justify-between gap-3 mb-8'>
                 <button
@@ -486,7 +486,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
 
               {/* Scrollable content */}
               <div className='flex-1 overflow-auto'>
-                <div className='max-w-3xl mx-auto px-6 py-8' style={{ fontSize: `${fontScale}%` }}>
+                <div className='max-w-3xl mx-auto py-8' style={{ fontSize: `${fontScale}%` }}>
                   <SheetContent sheet={sheet} fullscreen={false} columnCount={columnCount} columnWidthVw={columnWidthVw} />
                 </div>
               </div>
