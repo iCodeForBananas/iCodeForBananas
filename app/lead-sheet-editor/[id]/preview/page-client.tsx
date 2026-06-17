@@ -185,9 +185,10 @@ function NextSongControl({
 }
 
 function SheetContent({ sheet, fullscreen, columnCount, columnWidthVw }: { sheet: LeadSheet; fullscreen: boolean; columnCount?: number; columnWidthVw?: number }) {
+  const columnsActive = !!(columnCount || columnWidthVw);
   return (
     <div>
-      <div className='mb-8 border-b-2 border-black pb-6'>
+      <div className={`mb-8 border-b-2 border-black pb-6 ${columnsActive ? "max-w-3xl mx-auto" : ""}`}>
         <h1
           className={`font-bold leading-tight mb-3 ${fullscreen ? "text-[3em]" : "text-[2.25em]"}`}
           style={{ color: "#000" }}
@@ -217,7 +218,22 @@ function SheetContent({ sheet, fullscreen, columnCount, columnWidthVw }: { sheet
 
       <div
         className='space-y-10'
-        style={(columnCount || columnWidthVw) ? { columnCount, columnWidth: columnWidthVw ? `${columnWidthVw}vw` : undefined, columnGap: "2rem" } : undefined}
+        style={
+          columnsActive
+            ? {
+                columnCount,
+                columnWidth: columnWidthVw ? `${columnWidthVw}vw` : undefined,
+                columnGap: "2rem",
+                width:
+                  columnWidthVw && columnCount
+                    ? `calc(${columnCount} * ${columnWidthVw}vw + ${(columnCount - 1) * 2}rem)`
+                    : undefined,
+                maxWidth: "100%",
+                marginLeft: "auto",
+                marginRight: "auto",
+              }
+            : undefined
+        }
       >
         {sheet.sections.map((section: Section) => {
           const lines = (section.content ?? "").split("\n");
@@ -386,8 +402,9 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
       <div className='print:hidden flex flex-col flex-1 min-h-0'>
         {fullscreen ? (
           <div className='fixed inset-0 z-50 bg-white overflow-y-auto'>
-            <div className='max-w-3xl mx-auto py-8'>
-              {/* Toolbar */}
+            <div className='w-full py-8'>
+              {/* Toolbar (kept constrained while content below goes full-width) */}
+              <div className='max-w-3xl mx-auto px-4'>
               {isOfflineCopy && (
                 <div className='flex items-center gap-1.5 mb-4 px-3 py-1.5 rounded-lg text-xs font-medium bg-amber-50 border border-amber-200 text-amber-700 print:hidden'>
                   <WifiOff className='w-3 h-3 shrink-0' />
@@ -446,6 +463,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                     Edit
                   </button>
                 </div>
+              </div>
               </div>
               <div style={{ fontSize: `${fontScale}%` }}>
                 <SheetContent sheet={sheet} fullscreen columnCount={columnCount} columnWidthVw={columnWidthVw} />
@@ -525,7 +543,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
 
               {/* Scrollable content */}
               <div className='flex-1 overflow-auto'>
-                <div className='max-w-3xl mx-auto py-8' style={{ fontSize: `${fontScale}%` }}>
+                <div className='w-full py-8' style={{ fontSize: `${fontScale}%` }}>
                   <SheetContent sheet={sheet} fullscreen={false} columnCount={columnCount} columnWidthVw={columnWidthVw} />
                 </div>
               </div>
