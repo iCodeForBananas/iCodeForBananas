@@ -19,16 +19,20 @@ import {
 } from "lucide-react";
 import { type LeadSheet, type Section, migrateSection, ChordLyricLine, getPlainText } from "../../shared";
 
-// Per-song localStorage keys: leadSheet:${id}:fontScale, leadSheet:${id}:columnWidth
+// Per-song localStorage keys: leadSheet:${id}:fontScale, leadSheet:${id}:columnCount, leadSheet:${id}:columnWidthVw
 
 const MIN_SCALE = 70;
 const MAX_SCALE = 160;
 const SCALE_STEP = 10;
 
-const MIN_COLUMN_WIDTH = 200;
-const MAX_COLUMN_WIDTH = 600;
-const COLUMN_WIDTH_STEP = 20;
-const DEFAULT_COLUMN_WIDTH = 320;
+const MIN_COLUMN_COUNT = 1;
+const MAX_COLUMN_COUNT = 4;
+const DEFAULT_COLUMN_COUNT = 2;
+
+const MIN_COLUMN_WIDTH_VW = 15;
+const MAX_COLUMN_WIDTH_VW = 50;
+const COLUMN_WIDTH_VW_STEP = 5;
+const DEFAULT_COLUMN_WIDTH_VW = 30;
 
 function loadFontScale(id: string): number {
   if (typeof window === "undefined") return 100;
@@ -40,14 +44,51 @@ function loadFontScale(id: string): number {
   return 100;
 }
 
-function loadColumnWidth(id: string): number {
-  if (typeof window === "undefined") return DEFAULT_COLUMN_WIDTH;
+function loadColumnCount(id: string): number {
+  if (typeof window === "undefined") return DEFAULT_COLUMN_COUNT;
   try {
-    const saved = localStorage.getItem(`leadSheet:${id}:columnWidth`);
+    const saved = localStorage.getItem(`leadSheet:${id}:columnCount`);
     const parsed = saved ? parseInt(saved) : NaN;
-    if (!isNaN(parsed)) return Math.min(MAX_COLUMN_WIDTH, Math.max(MIN_COLUMN_WIDTH, parsed));
+    if (!isNaN(parsed)) return Math.min(MAX_COLUMN_COUNT, Math.max(MIN_COLUMN_COUNT, parsed));
   } catch {}
-  return DEFAULT_COLUMN_WIDTH;
+  return DEFAULT_COLUMN_COUNT;
+}
+
+function loadColumnWidthVw(id: string): number {
+  if (typeof window === "undefined") return DEFAULT_COLUMN_WIDTH_VW;
+  try {
+    const saved = localStorage.getItem(`leadSheet:${id}:columnWidthVw`);
+    const parsed = saved ? parseInt(saved) : NaN;
+    if (!isNaN(parsed)) return Math.min(MAX_COLUMN_WIDTH_VW, Math.max(MIN_COLUMN_WIDTH_VW, parsed));
+  } catch {}
+  return DEFAULT_COLUMN_WIDTH_VW;
+}
+
+function ColumnCountControl({ count, onChange }: { count: number; onChange: (next: number) => void }) {
+  return (
+    <div className='flex items-center gap-1 print:hidden'>
+      <span className='text-sm font-medium text-gray-700 select-none'>Cols</span>
+      <button
+        type='button'
+        onClick={() => onChange(count - 1)}
+        disabled={count <= MIN_COLUMN_COUNT}
+        className='h-10 w-10 flex items-center justify-center rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-gray-100'
+        aria-label='Decrease column count'
+      >
+        <Minus className='w-4 h-4' />
+      </button>
+      <span className='text-sm font-medium w-6 text-center text-gray-700 select-none'>{count}</span>
+      <button
+        type='button'
+        onClick={() => onChange(count + 1)}
+        disabled={count >= MAX_COLUMN_COUNT}
+        className='h-10 w-10 flex items-center justify-center rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-gray-100'
+        aria-label='Increase column count'
+      >
+        <Plus className='w-4 h-4' />
+      </button>
+    </div>
+  );
 }
 
 function ColumnWidthControl({ width, onChange }: { width: number; onChange: (next: number) => void }) {
@@ -56,18 +97,18 @@ function ColumnWidthControl({ width, onChange }: { width: number; onChange: (nex
       <span className='text-sm font-medium text-gray-700 select-none'>Width</span>
       <button
         type='button'
-        onClick={() => onChange(width - COLUMN_WIDTH_STEP)}
-        disabled={width <= MIN_COLUMN_WIDTH}
+        onClick={() => onChange(width - COLUMN_WIDTH_VW_STEP)}
+        disabled={width <= MIN_COLUMN_WIDTH_VW}
         className='h-10 w-10 flex items-center justify-center rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-gray-100'
         aria-label='Decrease column width'
       >
         <Minus className='w-4 h-4' />
       </button>
-      <span className='text-sm font-medium w-14 text-center text-gray-700 select-none'>{width}px</span>
+      <span className='text-sm font-medium w-14 text-center text-gray-700 select-none'>{width}vw</span>
       <button
         type='button'
-        onClick={() => onChange(width + COLUMN_WIDTH_STEP)}
-        disabled={width >= MAX_COLUMN_WIDTH}
+        onClick={() => onChange(width + COLUMN_WIDTH_VW_STEP)}
+        disabled={width >= MAX_COLUMN_WIDTH_VW}
         className='h-10 w-10 flex items-center justify-center rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-gray-100'
         aria-label='Increase column width'
       >
@@ -126,7 +167,7 @@ function NextSongControl({
   );
 }
 
-function SheetContent({ sheet, fullscreen, columnWidth }: { sheet: LeadSheet; fullscreen: boolean; columnWidth?: number }) {
+function SheetContent({ sheet, fullscreen, columnCount, columnWidthVw }: { sheet: LeadSheet; fullscreen: boolean; columnCount?: number; columnWidthVw?: number }) {
   return (
     <div>
       <div className='mb-8 border-b-2 border-black pb-6'>
@@ -159,7 +200,7 @@ function SheetContent({ sheet, fullscreen, columnWidth }: { sheet: LeadSheet; fu
 
       <div
         className='space-y-10'
-        style={columnWidth ? { columnWidth: `${columnWidth}px`, columnGap: "2rem" } : undefined}
+        style={(columnCount || columnWidthVw) ? { columnCount, columnWidth: columnWidthVw ? `${columnWidthVw}vw` : undefined, columnGap: "2rem" } : undefined}
       >
         {sheet.sections.map((section: Section) => {
           const lines = (section.content ?? "").split("\n");
@@ -205,7 +246,8 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
   const [fontScale, setFontScale] = useState(() => loadFontScale(id));
   const [copied, setCopied] = useState(false);
   const [shared, setShared] = useState(false);
-  const [columnWidth, setColumnWidth] = useState(() => loadColumnWidth(id));
+  const [columnCount, setColumnCount] = useState(() => loadColumnCount(id));
+  const [columnWidthVw, setColumnWidthVw] = useState(() => loadColumnWidthVw(id));
   const [setIds, setSetIds] = useState<string[] | null>(null);
   const [setPos, setSetPos] = useState(0);
 
@@ -247,11 +289,19 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
     } catch {}
   };
 
-  const updateColumnWidth = (next: number) => {
-    const clamped = Math.min(MAX_COLUMN_WIDTH, Math.max(MIN_COLUMN_WIDTH, next));
-    setColumnWidth(clamped);
+  const updateColumnCount = (next: number) => {
+    const clamped = Math.min(MAX_COLUMN_COUNT, Math.max(MIN_COLUMN_COUNT, next));
+    setColumnCount(clamped);
     try {
-      localStorage.setItem(`leadSheet:${id}:columnWidth`, String(clamped));
+      localStorage.setItem(`leadSheet:${id}:columnCount`, String(clamped));
+    } catch {}
+  };
+
+  const updateColumnWidthVw = (next: number) => {
+    const clamped = Math.min(MAX_COLUMN_WIDTH_VW, Math.max(MIN_COLUMN_WIDTH_VW, next));
+    setColumnWidthVw(clamped);
+    try {
+      localStorage.setItem(`leadSheet:${id}:columnWidthVw`, String(clamped));
     } catch {}
   };
 
@@ -323,7 +373,8 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                 </button>
                 <div className='flex flex-wrap items-center gap-2'>
                   <FontScaleControl scale={fontScale} onChange={updateFontScale} />
-                  <ColumnWidthControl width={columnWidth} onChange={updateColumnWidth} />
+                  <ColumnCountControl count={columnCount} onChange={updateColumnCount} />
+                  <ColumnWidthControl width={columnWidthVw} onChange={updateColumnWidthVw} />
                   {setIds && <NextSongControl setIds={setIds} pos={setPos} onNext={goToNextSong} />}
                   <button
                     onClick={handleCopy}
@@ -366,7 +417,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                 </div>
               </div>
               <div style={{ fontSize: `${fontScale}%` }}>
-                <SheetContent sheet={sheet} fullscreen columnWidth={columnWidth} />
+                <SheetContent sheet={sheet} fullscreen columnCount={columnCount} columnWidthVw={columnWidthVw} />
               </div>
             </div>
           </div>
@@ -388,7 +439,8 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                   </button>
                   <div className='flex flex-wrap items-center gap-2'>
                     <FontScaleControl scale={fontScale} onChange={updateFontScale} />
-                    <ColumnWidthControl width={columnWidth} onChange={updateColumnWidth} />
+                    <ColumnCountControl count={columnCount} onChange={updateColumnCount} />
+                    <ColumnWidthControl width={columnWidthVw} onChange={updateColumnWidthVw} />
                     {setIds && <NextSongControl setIds={setIds} pos={setPos} onNext={goToNextSong} />}
                     <button
                       onClick={handleCopy}
@@ -435,7 +487,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
               {/* Scrollable content */}
               <div className='flex-1 overflow-auto'>
                 <div className='max-w-3xl mx-auto px-6 py-8' style={{ fontSize: `${fontScale}%` }}>
-                  <SheetContent sheet={sheet} fullscreen={false} columnWidth={columnWidth} />
+                  <SheetContent sheet={sheet} fullscreen={false} columnCount={columnCount} columnWidthVw={columnWidthVw} />
                 </div>
               </div>
             </div>
