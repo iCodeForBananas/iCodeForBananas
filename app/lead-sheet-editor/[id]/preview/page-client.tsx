@@ -493,14 +493,14 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
   if (authLoading || loading) {
     return (
       <div className='flex flex-col flex-1 min-h-0'>
-        <main className='flex flex-col flex-1 min-h-0 p-2 sm:p-4'>
+        <div className='flex flex-col flex-1 min-h-0 p-2 sm:p-4'>
           <div
             className='flex flex-col flex-1 min-h-0 rounded-2xl overflow-hidden'
             style={{ background: "#fff", border: "1px solid var(--border-color)" }}
           >
             <div className='flex-1 flex items-center justify-center text-[#373A40]/50'>Loading...</div>
           </div>
-        </main>
+        </div>
       </div>
     );
   }
@@ -508,14 +508,14 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
   if (!user || !sheet) {
     return (
       <div className='flex flex-col flex-1 min-h-0'>
-        <main className='flex flex-col flex-1 min-h-0 p-2 sm:p-4'>
+        <div className='flex flex-col flex-1 min-h-0 p-2 sm:p-4'>
           <div
             className='flex flex-col flex-1 min-h-0 rounded-2xl overflow-hidden'
             style={{ background: "#fff", border: "1px solid var(--border-color)" }}
           >
             <div className='flex-1 flex items-center justify-center text-[#373A40]/50'>Sheet not found.</div>
           </div>
-        </main>
+        </div>
       </div>
     );
   }
@@ -613,7 +613,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
             </div>
           </div>
         ) : (
-          <main className='flex flex-col flex-1 min-h-0 p-2 sm:p-4'>
+          <div className='flex flex-col flex-1 min-h-0 p-2 sm:p-4'>
             <div
               className='flex flex-col flex-1 min-h-0 rounded-2xl overflow-hidden'
               style={{ background: "#fff", border: "1px solid var(--border-color)" }}
@@ -700,7 +700,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                 </div>
               </div>
             </div>
-          </main>
+          </div>
         )}
       </div>
     </>
