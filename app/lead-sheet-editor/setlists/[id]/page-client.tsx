@@ -94,20 +94,15 @@ export default function SetlistDetail({ params }: { params: Promise<{ id: string
     [reordered[index], reordered[targetIndex]] = [reordered[targetIndex], reordered[index]];
     setSongs(reordered);
 
-    const a = reordered[index];
-    const b = reordered[targetIndex];
     const sb = getSb();
-    await Promise.all([
-      sb.from("setlist_songs").update({ position: index }).eq("id", b.id),
-      sb.from("setlist_songs").update({ position: targetIndex }).eq("id", a.id),
+    const [r1, r2] = await Promise.all([
+      sb.from("setlist_songs").update({ position: index }).eq("id", reordered[index].id),
+      sb.from("setlist_songs").update({ position: targetIndex }).eq("id", reordered[targetIndex].id),
     ]);
-    setSongs((prev) =>
-      prev.map((s) => {
-        if (s.id === a.id) return { ...s, position: targetIndex };
-        if (s.id === b.id) return { ...s, position: index };
-        return s;
-      }),
-    );
+    if (r1.error || r2.error) {
+      setSongs(songs);
+      console.error("Failed to save order:", r1.error ?? r2.error);
+    }
   }
 
   function startSet() {
