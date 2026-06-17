@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, use } from "react";
+import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/app/hooks/useAuth";
@@ -16,85 +16,60 @@ import {
   Copy,
   Check,
   Link2,
-  Play,
-  Pause,
-  RotateCcw,
-  Square,
 } from "lucide-react";
 import { type LeadSheet, type Section, migrateSection, ChordLyricLine, getPlainText } from "../../shared";
 
-const FONT_SCALE_KEY = "lead-sheet-print-font-scale";
+// Per-song localStorage keys: leadSheet:${id}:fontScale, leadSheet:${id}:columnWidth
+
 const MIN_SCALE = 70;
 const MAX_SCALE = 160;
 const SCALE_STEP = 10;
 
-const AUTOSCROLL_SPEED_KEY = "leadSheetScrollSpeed";
-const MIN_AUTOSCROLL_SPEED = 0.1;
-const MAX_AUTOSCROLL_SPEED = 3.0;
-const AUTOSCROLL_SPEED_STEP = 0.1;
-const DEFAULT_AUTOSCROLL_SPEED = 0.5;
+const MIN_COLUMN_WIDTH = 200;
+const MAX_COLUMN_WIDTH = 600;
+const COLUMN_WIDTH_STEP = 20;
+const DEFAULT_COLUMN_WIDTH = 320;
 
-const COLUMN_COUNT_KEY = "leadSheetColumnCount";
-const MIN_COLUMNS = 1;
-const MAX_COLUMNS = 4;
-const DEFAULT_COLUMNS = 1;
-
-const MIN_BPM = 20;
-const MAX_BPM = 300;
-const DEFAULT_BPM = 120;
-const BEAT_FLASH_DURATION_MS = 80;
-
-function loadFontScale(): number {
+function loadFontScale(id: string): number {
   if (typeof window === "undefined") return 100;
   try {
-    const saved = localStorage.getItem(FONT_SCALE_KEY);
+    const saved = localStorage.getItem(`leadSheet:${id}:fontScale`);
     const parsed = saved ? parseInt(saved) : NaN;
     if (!isNaN(parsed)) return Math.min(MAX_SCALE, Math.max(MIN_SCALE, parsed));
   } catch {}
   return 100;
 }
 
-function loadAutoScrollSpeed(): number {
-  if (typeof window === "undefined") return DEFAULT_AUTOSCROLL_SPEED;
+function loadColumnWidth(id: string): number {
+  if (typeof window === "undefined") return DEFAULT_COLUMN_WIDTH;
   try {
-    const saved = localStorage.getItem(AUTOSCROLL_SPEED_KEY);
-    const parsed = saved ? parseFloat(saved) : NaN;
-    if (!isNaN(parsed)) return Math.min(MAX_AUTOSCROLL_SPEED, Math.max(MIN_AUTOSCROLL_SPEED, parsed));
-  } catch {}
-  return DEFAULT_AUTOSCROLL_SPEED;
-}
-
-function loadColumnCount(): number {
-  if (typeof window === "undefined") return DEFAULT_COLUMNS;
-  try {
-    const saved = localStorage.getItem(COLUMN_COUNT_KEY);
+    const saved = localStorage.getItem(`leadSheet:${id}:columnWidth`);
     const parsed = saved ? parseInt(saved) : NaN;
-    if (!isNaN(parsed)) return Math.min(MAX_COLUMNS, Math.max(MIN_COLUMNS, parsed));
+    if (!isNaN(parsed)) return Math.min(MAX_COLUMN_WIDTH, Math.max(MIN_COLUMN_WIDTH, parsed));
   } catch {}
-  return DEFAULT_COLUMNS;
+  return DEFAULT_COLUMN_WIDTH;
 }
 
-
-function ColumnControl({ count, onChange }: { count: number; onChange: (next: number) => void }) {
+function ColumnWidthControl({ width, onChange }: { width: number; onChange: (next: number) => void }) {
   return (
     <div className='flex items-center gap-1 print:hidden'>
-      <span className='text-sm font-medium text-gray-700 select-none'>Cols</span>
+      <span className='text-sm font-medium text-gray-700 select-none'>Width</span>
       <button
         type='button'
-        onClick={() => onChange(count - 1)}
-        disabled={count <= MIN_COLUMNS}
+        onClick={() => onChange(width - COLUMN_WIDTH_STEP)}
+        disabled={width <= MIN_COLUMN_WIDTH}
         className='h-10 w-10 flex items-center justify-center rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-gray-100'
-        aria-label='Fewer columns'
+        aria-label='Decrease column width'
       >
         <Minus className='w-4 h-4' />
       </button>
-      <span className='text-sm font-medium w-6 text-center text-gray-700 select-none'>{count}</span>
+      <span className='text-sm font-medium w-14 text-center text-gray-700 select-none'>{width}px</span>
       <button
         type='button'
-        onClick={() => onChange(count + 1)}
-        disabled={count >= MAX_COLUMNS}
+        onClick={() => onChange(width + COLUMN_WIDTH_STEP)}
+        disabled={width >= MAX_COLUMN_WIDTH}
         className='h-10 w-10 flex items-center justify-center rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-gray-100'
-        aria-label='More columns'
+        aria-label='Increase column width'
       >
         <Plus className='w-4 h-4' />
       </button>
@@ -128,120 +103,6 @@ function FontScaleControl({ scale, onChange }: { scale: number; onChange: (next:
   );
 }
 
-function AutoScrollControl({
-  isPlaying,
-  onTogglePlay,
-  onReset,
-  speed,
-  onSpeedChange,
-}: {
-  isPlaying: boolean;
-  onTogglePlay: () => void;
-  onReset: () => void;
-  speed: number;
-  onSpeedChange: (next: number) => void;
-}) {
-  return (
-    <div className='flex items-center flex-wrap gap-2 print:hidden'>
-      <button
-        type='button'
-        onClick={onTogglePlay}
-        onDoubleClick={onReset}
-        className={`h-10 w-10 flex items-center justify-center rounded-lg font-medium transition-colors duration-150 ${
-          isPlaying ? "bg-blue-100 hover:bg-blue-200 text-blue-700" : "bg-gray-100 hover:bg-gray-200 text-gray-700"
-        }`}
-        aria-label={isPlaying ? "Pause auto-scroll" : "Play auto-scroll"}
-        title={isPlaying ? "Pause auto-scroll" : "Play auto-scroll"}
-      >
-        {isPlaying ? <Pause className='w-4 h-4' /> : <Play className='w-4 h-4' />}
-      </button>
-      <button
-        type='button'
-        onClick={onReset}
-        className='h-10 w-10 flex items-center justify-center rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium transition-colors duration-150'
-        aria-label='Reset auto-scroll to top'
-        title='Reset to top'
-      >
-        <RotateCcw className='w-4 h-4' />
-      </button>
-      <div className='flex items-center gap-1'>
-        <span className='text-sm font-medium text-gray-700 select-none'>Speed</span>
-        <button
-          type='button'
-          onClick={() => onSpeedChange(speed - AUTOSCROLL_SPEED_STEP)}
-          disabled={speed <= MIN_AUTOSCROLL_SPEED}
-          className='h-10 w-10 flex items-center justify-center rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-gray-100'
-          aria-label='Decrease auto-scroll speed'
-        >
-          <Minus className='w-4 h-4' />
-        </button>
-        <span className='text-sm font-medium w-12 text-center text-gray-700 select-none'>{speed.toFixed(1)}</span>
-        <button
-          type='button'
-          onClick={() => onSpeedChange(speed + AUTOSCROLL_SPEED_STEP)}
-          disabled={speed >= MAX_AUTOSCROLL_SPEED}
-          className='h-10 w-10 flex items-center justify-center rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-gray-100'
-          aria-label='Increase auto-scroll speed'
-        >
-          <Plus className='w-4 h-4' />
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function ToolbarDivider() {
-  return <div className='hidden md:block h-6 w-px bg-[#373A40]/20 print:hidden' aria-hidden='true' />;
-}
-
-function MetronomeControl({
-  playing,
-  onTogglePlay,
-  bpm,
-  onBpmChange,
-  beatFlash,
-}: {
-  playing: boolean;
-  onTogglePlay: () => void;
-  bpm: number;
-  onBpmChange: (next: number) => void;
-  beatFlash: boolean;
-}) {
-  return (
-    <div className='flex items-center flex-wrap gap-2 print:hidden'>
-      <button
-        type='button'
-        onClick={onTogglePlay}
-        className={`h-10 w-10 flex items-center justify-center rounded-lg font-medium transition-colors duration-150 ${
-          playing ? "bg-blue-100 hover:bg-blue-200 text-blue-700" : "bg-gray-100 hover:bg-gray-200 text-gray-700"
-        }`}
-        aria-label={playing ? "Stop metronome" : "Start metronome"}
-        title={playing ? "Stop metronome" : "Start metronome"}
-      >
-        {playing ? <Square className='w-4 h-4' /> : <Play className='w-4 h-4' />}
-      </button>
-      <div
-        className={`w-10 h-10 rounded-full transition-colors duration-75 ${
-          playing && beatFlash ? "bg-blue-500" : "bg-blue-200"
-        }`}
-        aria-hidden='true'
-      />
-      <label className='flex items-center gap-2 h-10 px-3 rounded-lg bg-gray-100 text-sm font-medium text-gray-700 select-none'>
-        BPM
-        <input
-          type='number'
-          min={MIN_BPM}
-          max={MAX_BPM}
-          value={bpm}
-          onChange={(e) => onBpmChange(Number(e.target.value))}
-          className='w-16 h-8 rounded border border-gray-300 px-1.5 text-sm text-gray-900 bg-white'
-          aria-label='Metronome BPM'
-        />
-      </label>
-    </div>
-  );
-}
-
 function NextSongControl({
   setIds,
   pos,
@@ -265,7 +126,7 @@ function NextSongControl({
   );
 }
 
-function SheetContent({ sheet, fullscreen, columnCount = 1 }: { sheet: LeadSheet; fullscreen: boolean; columnCount?: number }) {
+function SheetContent({ sheet, fullscreen, columnWidth }: { sheet: LeadSheet; fullscreen: boolean; columnWidth?: number }) {
   return (
     <div>
       <div className='mb-8 border-b-2 border-black pb-6'>
@@ -298,7 +159,7 @@ function SheetContent({ sheet, fullscreen, columnCount = 1 }: { sheet: LeadSheet
 
       <div
         className='space-y-10'
-        style={columnCount > 1 ? { columnCount, columnGap: "2rem" } : undefined}
+        style={columnWidth ? { columnWidth: `${columnWidth}px`, columnGap: "2rem" } : undefined}
       >
         {sheet.sections.map((section: Section) => {
           const lines = (section.content ?? "").split("\n");
@@ -341,19 +202,12 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
   const [sheet, setSheet] = useState<LeadSheet | null>(null);
   const [loading, setLoading] = useState(true);
   const [fullscreen, setFullscreen] = useState(false);
-  const [fontScale, setFontScale] = useState(loadFontScale);
+  const [fontScale, setFontScale] = useState(() => loadFontScale(id));
   const [copied, setCopied] = useState(false);
   const [shared, setShared] = useState(false);
-  const [autoScrollSpeed, setAutoScrollSpeed] = useState(loadAutoScrollSpeed);
-  const [isAutoScrolling, setIsAutoScrolling] = useState(false);
-  const [columnCount, setColumnCount] = useState(loadColumnCount);
+  const [columnWidth, setColumnWidth] = useState(() => loadColumnWidth(id));
   const [setIds, setSetIds] = useState<string[] | null>(null);
   const [setPos, setSetPos] = useState(0);
-  const [metronomePlaying, setMetronomePlaying] = useState(false);
-  const [bpm, setBpm] = useState(DEFAULT_BPM);
-  const [beatFlash, setBeatFlash] = useState(false);
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const autoScrollSpeedRef = useRef(autoScrollSpeed);
 
   useEffect(() => {
     if (user) loadSheet();
@@ -372,58 +226,6 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
     router.push(`/lead-sheet-editor/${nextId}/preview?set=${setIds.join(",")}&pos=${nextPos}`);
   };
 
-  useEffect(() => {
-    autoScrollSpeedRef.current = autoScrollSpeed;
-  }, [autoScrollSpeed]);
-
-  useEffect(() => {
-    if (!isAutoScrolling) return;
-
-    let lastTime: number | null = null;
-    let rafId: number;
-
-    const step = (timestamp: number) => {
-      const container = scrollContainerRef.current;
-      if (container) {
-        if (lastTime !== null) {
-          const delta = (timestamp - lastTime) / 1000;
-          // autoScrollSpeedRef is px/frame at a 60fps reference rate
-          container.scrollTop += autoScrollSpeedRef.current * 60 * delta;
-          if (container.scrollTop + container.clientHeight >= container.scrollHeight - 1) {
-            setIsAutoScrolling(false);
-            return;
-          }
-        }
-        lastTime = timestamp;
-      }
-      rafId = requestAnimationFrame(step);
-    };
-
-    rafId = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(rafId);
-  }, [isAutoScrolling]);
-
-  useEffect(() => {
-    if (!metronomePlaying) {
-      setBeatFlash(false);
-      return;
-    }
-
-    let flashTimeout: ReturnType<typeof setTimeout>;
-    const tick = () => {
-      setBeatFlash(true);
-      flashTimeout = setTimeout(() => setBeatFlash(false), BEAT_FLASH_DURATION_MS);
-    };
-
-    tick();
-    const intervalId = setInterval(tick, (60 / bpm) * 1000);
-
-    return () => {
-      clearInterval(intervalId);
-      clearTimeout(flashTimeout);
-    };
-  }, [metronomePlaying, bpm]);
-
   const handleCopy = async () => {
     if (!sheet) return;
     await navigator.clipboard.writeText(getPlainText(sheet));
@@ -441,41 +243,16 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
     const clamped = Math.min(MAX_SCALE, Math.max(MIN_SCALE, next));
     setFontScale(clamped);
     try {
-      localStorage.setItem(FONT_SCALE_KEY, String(clamped));
+      localStorage.setItem(`leadSheet:${id}:fontScale`, String(clamped));
     } catch {}
   };
 
-  const updateColumnCount = (next: number) => {
-    const clamped = Math.min(MAX_COLUMNS, Math.max(MIN_COLUMNS, next));
-    setColumnCount(clamped);
+  const updateColumnWidth = (next: number) => {
+    const clamped = Math.min(MAX_COLUMN_WIDTH, Math.max(MIN_COLUMN_WIDTH, next));
+    setColumnWidth(clamped);
     try {
-      localStorage.setItem(COLUMN_COUNT_KEY, String(clamped));
+      localStorage.setItem(`leadSheet:${id}:columnWidth`, String(clamped));
     } catch {}
-  };
-
-  const updateAutoScrollSpeed = (next: number) => {
-    const rounded = Math.round(next * 10) / 10;
-    const clamped = Math.min(MAX_AUTOSCROLL_SPEED, Math.max(MIN_AUTOSCROLL_SPEED, rounded));
-    setAutoScrollSpeed(clamped);
-    try {
-      localStorage.setItem(AUTOSCROLL_SPEED_KEY, String(clamped));
-    } catch {}
-  };
-
-  const toggleAutoScroll = () => setIsAutoScrolling((prev) => !prev);
-
-  const toggleMetronome = () => setMetronomePlaying((prev) => !prev);
-
-  const updateBpm = (next: number) => {
-    if (isNaN(next)) return;
-    setBpm(Math.min(MAX_BPM, Math.max(MIN_BPM, next)));
-  };
-
-  const resetAutoScroll = () => {
-    setIsAutoScrolling(false);
-    if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollTop = 0;
-    }
   };
 
   async function loadSheet() {
@@ -533,7 +310,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
       {/* Screen view */}
       <div className='print:hidden flex flex-col flex-1 min-h-0'>
         {fullscreen ? (
-          <div ref={scrollContainerRef} className='fixed inset-0 z-50 bg-white overflow-y-auto'>
+          <div className='fixed inset-0 z-50 bg-white overflow-y-auto'>
             <div className='max-w-3xl mx-auto px-6 py-8'>
               {/* Toolbar */}
               <div className='flex flex-wrap items-center justify-between gap-3 mb-8'>
@@ -546,27 +323,8 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                 </button>
                 <div className='flex flex-wrap items-center gap-2'>
                   <FontScaleControl scale={fontScale} onChange={updateFontScale} />
-                  <ColumnControl count={columnCount} onChange={updateColumnCount} />
-                  <div className='flex flex-col gap-2 md:flex-row md:items-center'>
-                    <AutoScrollControl
-                      isPlaying={isAutoScrolling}
-                      onTogglePlay={toggleAutoScroll}
-                      onReset={resetAutoScroll}
-                      speed={autoScrollSpeed}
-                      onSpeedChange={updateAutoScrollSpeed}
-                    />
-                    <div className='flex flex-wrap items-center gap-2'>
-                      <ToolbarDivider />
-                      <MetronomeControl
-                        playing={metronomePlaying}
-                        onTogglePlay={toggleMetronome}
-                        bpm={bpm}
-                        onBpmChange={updateBpm}
-                        beatFlash={beatFlash}
-                      />
-                      {setIds && <NextSongControl setIds={setIds} pos={setPos} onNext={goToNextSong} />}
-                    </div>
-                  </div>
+                  <ColumnWidthControl width={columnWidth} onChange={updateColumnWidth} />
+                  {setIds && <NextSongControl setIds={setIds} pos={setPos} onNext={goToNextSong} />}
                   <button
                     onClick={handleCopy}
                     className={`h-10 flex items-center gap-1.5 px-3 rounded-lg text-sm font-medium transition-colors duration-150 ${
@@ -608,7 +366,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                 </div>
               </div>
               <div style={{ fontSize: `${fontScale}%` }}>
-                <SheetContent sheet={sheet} fullscreen columnCount={columnCount} />
+                <SheetContent sheet={sheet} fullscreen columnWidth={columnWidth} />
               </div>
             </div>
           </div>
@@ -630,27 +388,8 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                   </button>
                   <div className='flex flex-wrap items-center gap-2'>
                     <FontScaleControl scale={fontScale} onChange={updateFontScale} />
-                    <ColumnControl count={columnCount} onChange={updateColumnCount} />
-                    <div className='flex flex-col gap-2 md:flex-row md:items-center'>
-                      <AutoScrollControl
-                        isPlaying={isAutoScrolling}
-                        onTogglePlay={toggleAutoScroll}
-                        onReset={resetAutoScroll}
-                        speed={autoScrollSpeed}
-                        onSpeedChange={updateAutoScrollSpeed}
-                      />
-                      <div className='flex flex-wrap items-center gap-2'>
-                        <ToolbarDivider />
-                        <MetronomeControl
-                          playing={metronomePlaying}
-                          onTogglePlay={toggleMetronome}
-                          bpm={bpm}
-                          onBpmChange={updateBpm}
-                          beatFlash={beatFlash}
-                        />
-                        {setIds && <NextSongControl setIds={setIds} pos={setPos} onNext={goToNextSong} />}
-                      </div>
-                    </div>
+                    <ColumnWidthControl width={columnWidth} onChange={updateColumnWidth} />
+                    {setIds && <NextSongControl setIds={setIds} pos={setPos} onNext={goToNextSong} />}
                     <button
                       onClick={handleCopy}
                       className={`h-10 flex items-center gap-1.5 px-3 rounded-lg text-sm font-medium transition-colors duration-150 ${
@@ -694,9 +433,9 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
               </div>
 
               {/* Scrollable content */}
-              <div ref={scrollContainerRef} className='flex-1 overflow-auto'>
+              <div className='flex-1 overflow-auto'>
                 <div className='max-w-3xl mx-auto px-6 py-8' style={{ fontSize: `${fontScale}%` }}>
-                  <SheetContent sheet={sheet} fullscreen={false} columnCount={columnCount} />
+                  <SheetContent sheet={sheet} fullscreen={false} columnWidth={columnWidth} />
                 </div>
               </div>
             </div>
