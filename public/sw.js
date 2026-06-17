@@ -1,4 +1,4 @@
-const CACHE = 'icfb-v2';
+const CACHE = 'icfb-v3';
 const PRECACHE = ['/', '/manifest.json', '/icon.svg'];
 
 self.addEventListener('install', e => {
@@ -41,15 +41,24 @@ self.addEventListener('fetch', e => {
     return;
   }
 
+  // Lead-sheet-editor routes cache their HTML documents for offline use.
+  // Safe to do with strict network-first because:
+  //   1. Online users always get a fresh response (cache is only the offline fallback).
+  //   2. The cache-version bump on each deploy (icfb-v3 etc.) purges old HTML and its
+  //      matching chunk set together, so a cached HTML page will never reference
+  //      chunk hashes from a different deploy.
+  // All other HTML documents remain excluded to avoid the stale-chunk-reload bug
+  // that motivated the original exclusion.
+  const isLeadSheetRoute = url.pathname.startsWith('/lead-sheet-editor');
+
   // Everything else: network-first, fall back to cache
-  // HTML documents are excluded from caching — stale HTML causes Next.js to
-  // load mismatched JS chunks, which can trigger hard reloads.
   e.respondWith(
     fetch(request)
       .then(res => {
         const isDocument = request.destination === 'document' ||
           res.headers.get('content-type')?.includes('text/html');
-        if (res.ok && res.type === 'basic' && !isDocument) {
+        const shouldCache = res.ok && res.type === 'basic' && (!isDocument || isLeadSheetRoute);
+        if (shouldCache) {
           const toCache = res.clone();
           caches.open(CACHE).then(c => c.put(request, toCache));
         }
