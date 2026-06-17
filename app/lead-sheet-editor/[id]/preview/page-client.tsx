@@ -34,6 +34,11 @@ const MAX_AUTOSCROLL_SPEED = 3.0;
 const AUTOSCROLL_SPEED_STEP = 0.1;
 const DEFAULT_AUTOSCROLL_SPEED = 0.5;
 
+const COLUMN_COUNT_KEY = "leadSheetColumnCount";
+const MIN_COLUMNS = 1;
+const MAX_COLUMNS = 4;
+const DEFAULT_COLUMNS = 1;
+
 const MIN_BPM = 20;
 const MAX_BPM = 300;
 const DEFAULT_BPM = 120;
@@ -59,6 +64,43 @@ function loadAutoScrollSpeed(): number {
   return DEFAULT_AUTOSCROLL_SPEED;
 }
 
+function loadColumnCount(): number {
+  if (typeof window === "undefined") return DEFAULT_COLUMNS;
+  try {
+    const saved = localStorage.getItem(COLUMN_COUNT_KEY);
+    const parsed = saved ? parseInt(saved) : NaN;
+    if (!isNaN(parsed)) return Math.min(MAX_COLUMNS, Math.max(MIN_COLUMNS, parsed));
+  } catch {}
+  return DEFAULT_COLUMNS;
+}
+
+
+function ColumnControl({ count, onChange }: { count: number; onChange: (next: number) => void }) {
+  return (
+    <div className='flex items-center gap-1 print:hidden'>
+      <span className='text-sm font-medium text-gray-700 select-none'>Cols</span>
+      <button
+        type='button'
+        onClick={() => onChange(count - 1)}
+        disabled={count <= MIN_COLUMNS}
+        className='h-10 w-10 flex items-center justify-center rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-gray-100'
+        aria-label='Fewer columns'
+      >
+        <Minus className='w-4 h-4' />
+      </button>
+      <span className='text-sm font-medium w-6 text-center text-gray-700 select-none'>{count}</span>
+      <button
+        type='button'
+        onClick={() => onChange(count + 1)}
+        disabled={count >= MAX_COLUMNS}
+        className='h-10 w-10 flex items-center justify-center rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-gray-100'
+        aria-label='More columns'
+      >
+        <Plus className='w-4 h-4' />
+      </button>
+    </div>
+  );
+}
 
 function FontScaleControl({ scale, onChange }: { scale: number; onChange: (next: number) => void }) {
   return (
@@ -223,7 +265,7 @@ function NextSongControl({
   );
 }
 
-function SheetContent({ sheet, fullscreen }: { sheet: LeadSheet; fullscreen: boolean }) {
+function SheetContent({ sheet, fullscreen, columnCount = 1 }: { sheet: LeadSheet; fullscreen: boolean; columnCount?: number }) {
   return (
     <div>
       <div className='mb-8 border-b-2 border-black pb-6'>
@@ -254,7 +296,10 @@ function SheetContent({ sheet, fullscreen }: { sheet: LeadSheet; fullscreen: boo
         )}
       </div>
 
-      <div className='space-y-10'>
+      <div
+        className='space-y-10'
+        style={columnCount > 1 ? { columnCount, columnGap: "2rem" } : undefined}
+      >
         {sheet.sections.map((section: Section) => {
           const lines = (section.content ?? "").split("\n");
           return (
@@ -301,6 +346,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
   const [shared, setShared] = useState(false);
   const [autoScrollSpeed, setAutoScrollSpeed] = useState(loadAutoScrollSpeed);
   const [isAutoScrolling, setIsAutoScrolling] = useState(false);
+  const [columnCount, setColumnCount] = useState(loadColumnCount);
   const [setIds, setSetIds] = useState<string[] | null>(null);
   const [setPos, setSetPos] = useState(0);
   const [metronomePlaying, setMetronomePlaying] = useState(false);
@@ -399,6 +445,14 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
     } catch {}
   };
 
+  const updateColumnCount = (next: number) => {
+    const clamped = Math.min(MAX_COLUMNS, Math.max(MIN_COLUMNS, next));
+    setColumnCount(clamped);
+    try {
+      localStorage.setItem(COLUMN_COUNT_KEY, String(clamped));
+    } catch {}
+  };
+
   const updateAutoScrollSpeed = (next: number) => {
     const rounded = Math.round(next * 10) / 10;
     const clamped = Math.min(MAX_AUTOSCROLL_SPEED, Math.max(MIN_AUTOSCROLL_SPEED, rounded));
@@ -492,6 +546,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                 </button>
                 <div className='flex flex-wrap items-center gap-2'>
                   <FontScaleControl scale={fontScale} onChange={updateFontScale} />
+                  <ColumnControl count={columnCount} onChange={updateColumnCount} />
                   <div className='flex flex-col gap-2 md:flex-row md:items-center'>
                     <AutoScrollControl
                       isPlaying={isAutoScrolling}
@@ -553,7 +608,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                 </div>
               </div>
               <div style={{ fontSize: `${fontScale}%` }}>
-                <SheetContent sheet={sheet} fullscreen />
+                <SheetContent sheet={sheet} fullscreen columnCount={columnCount} />
               </div>
             </div>
           </div>
@@ -575,6 +630,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                   </button>
                   <div className='flex flex-wrap items-center gap-2'>
                     <FontScaleControl scale={fontScale} onChange={updateFontScale} />
+                    <ColumnControl count={columnCount} onChange={updateColumnCount} />
                     <div className='flex flex-col gap-2 md:flex-row md:items-center'>
                       <AutoScrollControl
                         isPlaying={isAutoScrolling}
@@ -640,7 +696,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
               {/* Scrollable content */}
               <div ref={scrollContainerRef} className='flex-1 overflow-auto'>
                 <div className='max-w-3xl mx-auto px-6 py-8' style={{ fontSize: `${fontScale}%` }}>
-                  <SheetContent sheet={sheet} fullscreen={false} />
+                  <SheetContent sheet={sheet} fullscreen={false} columnCount={columnCount} />
                 </div>
               </div>
             </div>
