@@ -33,7 +33,6 @@ const NAV: { label: string; links: { href: string; text: string; auth?: boolean 
   {
     label: "Misc",
     links: [
-      { href: "/drm", text: "DRM", auth: true },
       { href: "/task-board", text: "Task Board" },
       { href: "/mermaid-flow", text: "Mermaid Flow" },
       { href: "/aaron-futures", text: "Aaron Futures" },
