@@ -5,8 +5,8 @@
   overscroll-behavior-y: none;
 }
 
-/* Dark mode variant for wordsmith (data-theme="dark" on a wrapper element) */
-@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+/* Class-based dark mode — .dark on <html> activates dark: variants */
+@custom-variant dark (&:where(.dark, .dark *));
 
 /* Banana yellow + black theme */
 :root {
@@ -39,6 +39,22 @@
   --muted: var(--text-secondary);
 
   /* Selection colors */
+  --selection-bg: #facc15;
+  --selection-text: #000000;
+}
+
+/* ── Dark mode overrides ──────────────────────────────────────────────── */
+.dark {
+  --bg-primary: #111111;
+  --bg-secondary: #1e1e1e;
+  --text-primary: #facc15;
+  --text-secondary: #856e00;
+  --accent: #facc15;
+  --border-color: #2a2a2a;
+  --border-dark: #3a3a3a;
+  --background: #111111;
+  --foreground: #facc15;
+  --muted: #856e00;
   --selection-bg: #facc15;
   --selection-text: #000000;
 }
@@ -86,6 +102,10 @@ body {
   transition:
     background-color 0.3s ease,
     color 0.3s ease;
+}
+
+.dark body {
+  background: #111111;
 }
 
 ::selection {

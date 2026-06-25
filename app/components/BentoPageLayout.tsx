@@ -11,12 +11,12 @@ export default function BentoPageLayout({ title, maxWidth, children }: BentoPage
     <div className='flex flex-col flex-1 min-h-0'>
       <main className='flex flex-col flex-1 min-h-0 p-2 sm:p-4'>
         <div
-          className={`flex flex-col flex-1 min-h-0 rounded-2xl overflow-hidden${maxWidth ? ` ${maxWidth} mx-auto` : ""}`}
-          style={{ background: "#fff", border: "1px solid var(--border-color)" }}
+          className={`flex flex-col flex-1 min-h-0 rounded-2xl overflow-hidden bg-white dark:bg-neutral-900${maxWidth ? ` ${maxWidth} mx-auto` : ""}`}
+          style={{ border: "1px solid var(--border-color)" }}
         >
           <div className='border-b shrink-0' style={{ borderColor: "var(--border-color)" }}>
             <div className='px-4 pt-2 pb-1.5 sm:px-6 sm:pt-3 sm:pb-2.5'>
-              <h1 className='text-lg sm:text-xl font-bold leading-tight' style={{ color: "#000" }}>
+              <h1 className='text-lg sm:text-xl font-bold leading-tight text-black dark:text-yellow-400'>
                 {title}
               </h1>
             </div>

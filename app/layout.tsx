@@ -9,6 +9,7 @@ import "./components/fretboard.css";
 import { ThemeProvider } from "./lib/ThemeContext";
 import { FavoriteChordsProvider } from "./lib/FavoriteChordsContext";
 import Sidebar from "./components/Sidebar";
+import Header from "./components/Header";
 import MusicFavoritesBar from "./components/MusicFavoritesBar";
 import PwaRegistration from "./components/PwaRegistration";
 import PathnameTitleSync from "./components/PathnameTitleSync";
@@ -42,8 +43,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang='en'>
+    <html lang='en' suppressHydrationWarning>
       <head>
+        {/* Inline theme init — runs before paint to prevent flash */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('theme');var d=window.matchMedia('(prefers-color-scheme:dark)').matches;if(t==='dark'||(t===null&&d)){document.documentElement.classList.add('dark')}}catch(e){}})()`,
+          }}
+        />
         <Script async src='https://www.googletagmanager.com/gtag/js?id=G-P12WB5Q85R' strategy='afterInteractive' />
         <Script id='google-analytics' strategy='afterInteractive'>
           {`
@@ -60,6 +67,7 @@ export default function RootLayout({
             <div id='app-shell' className='flex h-dvh overflow-hidden font-sans'>
               <Sidebar />
               <div id='main-content' className='flex-1 min-w-0 overflow-y-auto flex flex-col'>
+                <Header />
                 <MusicFavoritesBar />
                 {children}
               </div>
