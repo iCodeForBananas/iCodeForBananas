@@ -9,7 +9,6 @@ import "./components/fretboard.css";
 import { ThemeProvider } from "./lib/ThemeContext";
 import { FavoriteChordsProvider } from "./lib/FavoriteChordsContext";
 import Sidebar from "./components/Sidebar";
-import Header from "./components/Header";
 import MusicFavoritesBar from "./components/MusicFavoritesBar";
 import PwaRegistration from "./components/PwaRegistration";
 import PathnameTitleSync from "./components/PathnameTitleSync";
@@ -67,7 +66,6 @@ export default function RootLayout({
             <div id='app-shell' className='flex h-dvh overflow-hidden font-sans'>
               <Sidebar />
               <div id='main-content' className='flex-1 min-w-0 overflow-y-auto flex flex-col'>
-                <Header />
                 <MusicFavoritesBar />
                 {children}
               </div>
