@@ -205,11 +205,11 @@ function VoicingCard({
   return (
     <div className="flex flex-col items-center gap-1">
       <ChordDiagram shape={shape} label={chordLabel} useFlats={useFlats} />
-      <span className="text-xs font-medium text-[#1A1B1E]/60 text-center" title={sublabelTitle}>
+      <span className="text-xs font-medium text-black/60 dark:text-neutral-400 text-center" title={sublabelTitle}>
         {sublabel}
       </span>
       {position && (
-        <span className="text-xs text-[#1A1B1E]/35 text-center" title={positionTitle}>
+        <span className="text-xs text-black/35 dark:text-neutral-500 text-center" title={positionTitle}>
           {position}
         </span>
       )}
@@ -222,7 +222,7 @@ function VoicingCard({
 function SectionHeading({ children, tooltip }: { children: React.ReactNode; tooltip?: string }) {
   return (
     <h3
-      className={`text-sm font-bold text-[#1A1B1E]/70 uppercase tracking-wide mb-4${tooltip ? " cursor-help" : ""}`}
+      className={`text-sm font-bold text-black/70 dark:text-yellow-400/70 uppercase tracking-wide mb-4${tooltip ? " cursor-help" : ""}`}
       title={tooltip}
     >
       {children}
@@ -267,13 +267,13 @@ export default function ChordExplorerPage() {
     <BentoPageLayout title="Chord Explorer">
 
       {/* ── Controls card ──────────────────────────────────────────────────── */}
-      <div className="bg-gray-50 border border-gray-200 rounded-xl p-5 mb-6">
+      <div className="bg-gray-50 dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-xl p-5 mb-6 shadow-sm">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
           {/* Root note */}
           <div>
             <p
-              className="text-xs font-semibold text-[#1A1B1E]/50 uppercase tracking-wider mb-2"
+              className="text-xs font-semibold text-black/50 dark:text-white/50 uppercase tracking-wider mb-2"
               title="The starting note of your chord — this is what gives the chord its name (e.g. choosing C builds a C Major chord)"
             >
               Root Note
@@ -296,7 +296,7 @@ export default function ChordExplorerPage() {
                   </button>
                 );
               })}
-              <span className="mx-1 text-[#1A1B1E]/30 self-center">|</span>
+              <span className="mx-1 text-black/30 dark:text-white/30 self-center">|</span>
               <button
                 onClick={handleFlatsToggle}
                 title="Toggle between sharp (♯) and flat (♭) note names — these are the same pitches written two different ways (e.g. F♯ and G♭ are the exact same note)"
@@ -312,7 +312,7 @@ export default function ChordExplorerPage() {
           {/* Chord type */}
           <div>
             <p
-              className="text-xs font-semibold text-[#1A1B1E]/50 uppercase tracking-wider mb-2"
+              className="text-xs font-semibold text-black/50 dark:text-white/50 uppercase tracking-wider mb-2"
               title="The flavor of the chord — different types have very different sounds. Major sounds happy, Minor sounds darker, and the rest add color and complexity"
             >
               Chord Type
@@ -321,7 +321,7 @@ export default function ChordExplorerPage() {
               {TYPE_GROUPS.map((group) => (
                 <div key={group.label}>
                   <p
-                    className="text-xs text-[#1A1B1E]/40 mb-1.5"
+                    className="text-xs text-black/40 dark:text-white/40 mb-1.5"
                     title={GROUP_TOOLTIPS[group.label]}
                   >
                     {group.label}
@@ -350,12 +350,12 @@ export default function ChordExplorerPage() {
       </div>
 
       {/* ── Chord name ──────────────────────────────────────────────────────── */}
-      <h2 className="text-2xl font-bold mb-5 mt-1" style={{ color: "#000" }}>
+      <h2 className="text-2xl font-bold mb-5 mt-1 text-black dark:text-yellow-400">
         {chordLabel}
       </h2>
 
       {/* ── Voicings & Positions ─────────────────────────────────────────────── */}
-      <section className="bg-gray-50 border border-gray-200 rounded-xl p-5 mb-6">
+      <section className="bg-gray-50 dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-xl p-5 mb-6 shadow-sm">
         <SectionHeading tooltip="Different ways to play this chord on the fretboard — each voicing has its own character and suits different musical situations. Click any diagram to add it to your progression.">
           Voicings &amp; Positions
         </SectionHeading>
@@ -373,17 +373,17 @@ export default function ChordExplorerPage() {
             ))}
           </div>
         ) : (
-          <p className="text-sm text-[#1A1B1E]/40">No voicings available for this chord.</p>
+          <p className="text-sm text-black/40 dark:text-neutral-500">No voicings available for this chord.</p>
         )}
       </section>
 
       {/* ── Inversions ───────────────────────────────────────────────────────── */}
-      <section className="bg-gray-50 border border-gray-200 rounded-xl p-5 mb-6">
+      <section className="bg-gray-50 dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-xl p-5 mb-6 shadow-sm">
         <SectionHeading tooltip="The same chord notes rearranged so a different note is on the bottom — inversions give the same chord a subtly different sound and feel. Shown as tight three-note voicings on adjacent string sets.">
           Inversions
         </SectionHeading>
         {inversions ? (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-gray-200 dark:divide-neutral-700 -mx-5 px-5">
             {[
               {
                 key: "root",
@@ -406,16 +406,16 @@ export default function ChordExplorerPage() {
                 tooltip: "The 5th of the chord is the lowest note — creates a more open, floating sound that works great as a passing chord",
                 items: inversions.second,
               },
-            ].map((inv) => (
-              <div key={inv.key} className="flex flex-col gap-1">
+            ].map((inv, idx) => (
+              <div key={inv.key} className={`flex flex-col gap-1 pt-6 sm:pt-0${idx === 0 ? "" : " sm:pl-6"}${idx === 2 ? "" : " sm:pr-6"}`}>
                 <span
-                  className="text-sm font-semibold text-[#1A1B1E]"
+                  className="text-sm font-semibold text-black dark:text-white"
                   title={inv.tooltip}
                 >
                   {inv.title}
                 </span>
                 <span
-                  className="text-xs text-[#1A1B1E]/40 mb-4"
+                  className="text-xs text-black/40 dark:text-neutral-500 mb-4"
                   title="The scale degrees played from lowest to highest string — 1 is the root, 3 is the third, 5 is the fifth"
                 >
                   {inv.subtitle}
@@ -435,14 +435,14 @@ export default function ChordExplorerPage() {
             ))}
           </div>
         ) : (
-          <p className="text-sm text-[#1A1B1E]/40">
+          <p className="text-sm text-black/40 dark:text-neutral-500">
             Inversion voicings are available for Major and Minor chords. Select one to explore.
           </p>
         )}
       </section>
 
       {/* ── My Progression ───────────────────────────────────────────────────── */}
-      <section className="bg-gray-50 border border-gray-200 rounded-xl p-5 mb-6">
+      <section className="bg-gray-50 dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-xl p-5 mb-6 shadow-sm">
         <div className="flex items-center gap-3 mb-4">
           <SectionHeading tooltip="A sequence of chords played one after another — the backbone of most songs. Click any chord diagram above to add it here, then try playing through them in order.">
             My Progression
@@ -451,14 +451,14 @@ export default function ChordExplorerPage() {
             <button
               onClick={clear}
               title="Remove all chords from your progression and start fresh"
-              className="text-xs text-[#1A1B1E]/35 hover:text-red-700 transition-colors -mt-4"
+              className="text-xs text-black/35 dark:text-neutral-500 hover:text-red-700 dark:hover:text-red-400 transition-colors -mt-4"
             >
               Clear all
             </button>
           )}
         </div>
         {favorites.length === 0 ? (
-          <p className="text-sm text-[#1A1B1E]/40">
+          <p className="text-sm text-black/40 dark:text-neutral-500">
             Click any chord diagram above to add it here and build your progression.
           </p>
         ) : (
@@ -466,7 +466,7 @@ export default function ChordExplorerPage() {
             {favorites.map((fav, i) => (
               <div key={fav.id} className="flex flex-col items-center gap-1">
                 <span
-                  className="text-xs font-mono text-[#1A1B1E]/30"
+                  className="text-xs font-mono text-black/30 dark:text-neutral-600"
                   title={`Chord ${i + 1} in your progression`}
                 >
                   {i + 1}
@@ -479,7 +479,7 @@ export default function ChordExplorerPage() {
       </section>
 
       {/* ── Scale Tool ───────────────────────────────────────────────────────── */}
-      <section className="bg-gray-50 border border-gray-200 rounded-xl p-5">
+      <section className="bg-gray-50 dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-xl p-5 shadow-sm">
         <SectionHeading tooltip="See every note of a scale laid out across all six strings and every fret — great for understanding where you can solo or add a melody over your chord progression.">
           Scale Tool
         </SectionHeading>
