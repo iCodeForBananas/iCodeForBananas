@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
+import { LogIn, LogOut, Moon, Sun } from "lucide-react";
 import { useAuth } from "@/app/hooks/useAuth";
+import { useTheme } from "@/app/lib/ThemeContext";
 
 const MOBILE_BREAKPOINT = 1024;
 const isMobileDevice = () => window.innerWidth < MOBILE_BREAKPOINT;
@@ -55,6 +57,7 @@ export default function Sidebar() {
   const [isOpen, setIsOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const { user, signOut } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const [clickCounts, setClickCounts] = useState<Record<string, number>>({});
   const [mounted, setMounted] = useState(false);
 
@@ -210,43 +213,67 @@ export default function Sidebar() {
             iCodeForBananas
           </Link>
 
-          {user ? (
-            <button
-              onClick={signOut}
-              className='w-full text-sm font-semibold rounded px-3 py-2 mt-1 mb-1 whitespace-nowrap transition-colors'
-              style={{ border: "1px solid #373A40", color: "#F8F9FA", background: "#1A1B1E" }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = "#facc15";
-                e.currentTarget.style.color = "#1A1B1E";
-                e.currentTarget.style.borderColor = "#facc15";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "#1A1B1E";
-                e.currentTarget.style.color = "#F8F9FA";
-                e.currentTarget.style.borderColor = "#373A40";
-              }}
-            >
-              Sign Out
-            </button>
-          ) : (
-            <Link
-              href='/login'
-              className='w-full text-sm font-semibold rounded px-3 py-2 mt-1 mb-1 whitespace-nowrap transition-colors block text-center'
-              style={{ border: "1px solid #373A40", color: "#F8F9FA", background: "#1A1B1E" }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = "#facc15";
-                e.currentTarget.style.color = "#1A1B1E";
-                e.currentTarget.style.borderColor = "#facc15";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "#1A1B1E";
-                e.currentTarget.style.color = "#F8F9FA";
-                e.currentTarget.style.borderColor = "#373A40";
-              }}
-            >
-              Sign In
-            </Link>
-          )}
+          <div className='flex gap-2 mt-1 mb-1'>
+            {mounted && (
+              <button
+                onClick={toggleTheme}
+                className='rounded p-2 transition-colors'
+                style={{ border: "1px solid #373A40", color: "#F8F9FA", background: "#1A1B1E" }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "#facc15";
+                  e.currentTarget.style.color = "#1A1B1E";
+                  e.currentTarget.style.borderColor = "#facc15";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "#1A1B1E";
+                  e.currentTarget.style.color = "#F8F9FA";
+                  e.currentTarget.style.borderColor = "#373A40";
+                }}
+                aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+              >
+                {theme === "dark" ? <Sun className='h-4 w-4' /> : <Moon className='h-4 w-4' />}
+              </button>
+            )}
+            {user ? (
+              <button
+                onClick={signOut}
+                className='rounded p-2 transition-colors'
+                style={{ border: "1px solid #373A40", color: "#F8F9FA", background: "#1A1B1E" }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "#facc15";
+                  e.currentTarget.style.color = "#1A1B1E";
+                  e.currentTarget.style.borderColor = "#facc15";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "#1A1B1E";
+                  e.currentTarget.style.color = "#F8F9FA";
+                  e.currentTarget.style.borderColor = "#373A40";
+                }}
+                aria-label='Sign out'
+              >
+                <LogOut className='h-4 w-4' />
+              </button>
+            ) : (
+              <Link
+                href='/login'
+                className='rounded p-2 transition-colors inline-flex items-center justify-center'
+                style={{ border: "1px solid #373A40", color: "#F8F9FA", background: "#1A1B1E" }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "#facc15";
+                  e.currentTarget.style.color = "#1A1B1E";
+                  e.currentTarget.style.borderColor = "#facc15";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "#1A1B1E";
+                  e.currentTarget.style.color = "#F8F9FA";
+                  e.currentTarget.style.borderColor = "#373A40";
+                }}
+                aria-label='Sign in'
+              >
+                <LogIn className='h-4 w-4' />
+              </Link>
+            )}
+          </div>
 
           <nav className='flex flex-col gap-4 mt-6'>
             {topLinks.length > 0 && (
