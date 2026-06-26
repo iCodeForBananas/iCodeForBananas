@@ -10,47 +10,29 @@ import { useTheme } from "@/app/lib/ThemeContext";
 const MOBILE_BREAKPOINT = 1024;
 const isMobileDevice = () => window.innerWidth < MOBILE_BREAKPOINT;
 const SIDEBAR_OPEN_KEY = "sidebar-open";
-const CLICK_COUNTS_KEY = "sidebarClickCounts";
 
 const LINKS: { href: string; text: string; auth?: boolean }[] = [
-  { href: "/circle-of-fifths", text: "Circle of Fifths" },
+  { href: "/aaron-futures", text: "Aaron Futures" },
+  { href: "/algo-backtest", text: "Algo Backtest" },
   { href: "/chord-explorer", text: "Chord Explorer" },
   { href: "/chord-finder", text: "Chord Finder" },
   { href: "/chord-positions", text: "Chord Positions" },
-  { href: "/scale-tool", text: "Scale Tool" },
+  { href: "/circle-of-fifths", text: "Circle of Fifths" },
+  { href: "/decode-dash", text: "Decode Dash" },
+  { href: "/fire-estimator", text: "FIRE Estimator" },
   { href: "/fretboard-quiz", text: "Fretboard Quiz" },
   { href: "/lead-sheet-editor", text: "Lead Sheet Editor" },
-  { href: "/space-math", text: "Space Math" },
-  { href: "/decode-dash", text: "Decode Dash" },
   { href: "/learning-progress", text: "Learning Progress" },
-  { href: "/task-board", text: "Task Board" },
   { href: "/mermaid-flow", text: "Mermaid Flow" },
-  { href: "/aaron-futures", text: "Aaron Futures" },
-  { href: "/workout-tracker", text: "Workout Tracker" },
-  { href: "/wordsmith", text: "Wordsmith" },
-  { href: "/algo-backtest", text: "Algo Backtest" },
   { href: "/paper-trading", text: "Paper Trading" },
-  { href: "/leaderboard", text: "Trading Leaderboard" },
-  { href: "/fire-estimator", text: "FIRE Estimator" },
+  { href: "/scale-tool", text: "Scale Tool" },
+  { href: "/space-math", text: "Space Math" },
+  { href: "/task-board", text: "Task Board" },
   { href: "/territory", text: "Territory", auth: true },
+  { href: "/leaderboard", text: "Trading Leaderboard" },
+  { href: "/wordsmith", text: "Wordsmith" },
+  { href: "/workout-tracker", text: "Workout Tracker" },
 ];
-
-function readClickCounts(): Record<string, number> {
-  try {
-    const raw = localStorage.getItem(CLICK_COUNTS_KEY);
-    return raw ? (JSON.parse(raw) as Record<string, number>) : {};
-  } catch {
-    return {};
-  }
-}
-
-function writeClickCounts(counts: Record<string, number>) {
-  try {
-    localStorage.setItem(CLICK_COUNTS_KEY, JSON.stringify(counts));
-  } catch {
-    // localStorage may be disabled (private mode)
-  }
-}
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -58,7 +40,6 @@ export default function Sidebar() {
   const [isMobile, setIsMobile] = useState(false);
   const { user, signOut } = useAuth();
   const { theme, toggleTheme } = useTheme();
-  const [clickCounts, setClickCounts] = useState<Record<string, number>>({});
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -73,7 +54,6 @@ export default function Sidebar() {
       const stored = localStorage.getItem(SIDEBAR_OPEN_KEY);
       setIsOpen(stored === null ? true : stored === "true");
     }
-    setClickCounts(readClickCounts());
     setMounted(true);
   }, []);
 
@@ -102,32 +82,20 @@ export default function Sidebar() {
     });
   };
 
-  const handleLinkClick = (href: string) => {
-    setClickCounts((prev) => {
-      const next = { ...prev, [href]: (prev[href] ?? 0) + 1 };
-      writeClickCounts(next);
-      return next;
-    });
+  const handleLinkClick = () => {
     if (isMobile) setIsOpen(false);
   };
-
-  // Top-5 by click count, client-only to avoid SSR/hydration mismatch.
-  const topLinks = mounted
-    ? LINKS.filter(({ href, auth }) => (clickCounts[href] ?? 0) > 0 && (!auth || !!user))
-        .sort((a, b) => (clickCounts[b.href] ?? 0) - (clickCounts[a.href] ?? 0))
-        .slice(0, 5)
-    : [];
 
   if (pathname.startsWith("/lead-sheet-editor/share/")) return null;
 
   const navLinkStyle = (href: string) =>
     pathname === href ? { background: "#000000", color: "#ffffff" } : { color: "#000000" };
 
-  const renderLink = (href: string, text: string, keyPrefix: string) => (
+  const renderLink = (href: string, text: string) => (
     <Link
-      key={keyPrefix + href}
+      key={href}
       href={href}
-      onClick={() => handleLinkClick(href)}
+      onClick={handleLinkClick}
       className='px-3 py-2 rounded whitespace-nowrap transition-colors font-medium text-sm'
       style={navLinkStyle(href)}
       onMouseEnter={(e) => {
@@ -276,23 +244,9 @@ export default function Sidebar() {
           </div>
 
           <nav className='flex flex-col gap-4 mt-6'>
-            {topLinks.length > 0 && (
-              <div>
-                <h3
-                  className='text-xs font-bold mb-2 uppercase tracking-wider whitespace-nowrap'
-                  style={{ color: "#000000" }}
-                >
-                  Recently Used
-                </h3>
-                <div className='flex flex-col gap-1'>
-                  {topLinks.map(({ href, text }) => renderLink(href, text, "recent-"))}
-                </div>
-              </div>
-            )}
-
             <div className='flex flex-col gap-1'>
               {LINKS.filter(({ auth }) => !auth || !!user).map(({ href, text }) =>
-                renderLink(href, text, "all-")
+                renderLink(href, text)
               )}
             </div>
           </nav>
