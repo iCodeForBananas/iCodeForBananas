@@ -277,8 +277,8 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
     return (
       <div className="flex flex-col flex-1 min-h-0">
         <main className="flex flex-col flex-1 min-h-0 p-2 sm:p-4">
-          <div className="flex flex-col flex-1 min-h-0 rounded-2xl overflow-hidden" style={{ background: "#fff", border: "1px solid var(--border-color)" }}>
-            <div className="flex-1 flex items-center justify-center text-[#373A40]/50">Loading...</div>
+          <div className="flex flex-col flex-1 min-h-0 rounded-2xl overflow-hidden bg-white dark:bg-neutral-900" style={{ border: "1px solid var(--border-color)" }}>
+            <div className="flex-1 flex items-center justify-center text-[#373A40]/50 dark:text-white/50">Loading...</div>
           </div>
         </main>
       </div>
@@ -289,8 +289,8 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
     return (
       <div className="flex flex-col flex-1 min-h-0">
         <main className="flex flex-col flex-1 min-h-0 p-2 sm:p-4">
-          <div className="flex flex-col flex-1 min-h-0 rounded-2xl overflow-hidden" style={{ background: "#fff", border: "1px solid var(--border-color)" }}>
-            <div className="flex-1 flex items-center justify-center text-[#373A40]/50">Sheet not found.</div>
+          <div className="flex flex-col flex-1 min-h-0 rounded-2xl overflow-hidden bg-white dark:bg-neutral-900" style={{ border: "1px solid var(--border-color)" }}>
+            <div className="flex-1 flex items-center justify-center text-[#373A40]/50 dark:text-white/50">Sheet not found.</div>
           </div>
         </main>
       </div>
@@ -300,27 +300,27 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
   return (
     <div className="flex flex-col flex-1 min-h-0">
       <main className="flex flex-col flex-1 min-h-0 p-2 sm:p-4">
-        <div className="flex flex-col flex-1 min-h-0 rounded-2xl overflow-hidden" style={{ background: "#fff", border: "1px solid var(--border-color)" }}>
+        <div className="flex flex-col flex-1 min-h-0 rounded-2xl overflow-hidden bg-white dark:bg-neutral-900" style={{ border: "1px solid var(--border-color)" }}>
           {/* Toolbar */}
           <div className="border-b shrink-0" style={{ borderColor: "var(--border-color)" }}>
             <div className="flex items-center justify-between px-4 py-3 sm:px-6 sm:py-4">
               <button
                 onClick={handleBack}
-                className="flex items-center gap-2 text-[#373A40]/50 hover:text-black transition-colors text-sm font-medium"
+                className="flex items-center gap-2 text-[#373A40]/50 dark:text-white/50 hover:text-black dark:hover:text-white transition-colors text-sm font-medium"
               >
                 <ArrowLeft className="w-4 h-4" />
                 All Sheets
               </button>
               <div className="flex items-center gap-2">
                 {saveError && (
-                  <span className="flex items-center gap-1 text-xs font-medium text-amber-600">
+                  <span className="flex items-center gap-1 text-xs font-medium text-amber-600 dark:text-amber-400">
                     <WifiOff className="w-3 h-3 shrink-0" />
                     Offline — changes won&apos;t be saved
                   </span>
                 )}
                 <button
                   onClick={handlePreview}
-                  className="flex items-center gap-1.5 rounded border border-[#373A40]/30 px-3 py-2 text-sm font-medium hover:border-black hover:bg-black hover:text-[#facc15] transition-colors"
+                  className="flex items-center gap-1.5 rounded border border-[#373A40]/30 dark:border-white/30 px-3 py-2 text-sm font-medium text-black dark:text-white/80 hover:border-black dark:hover:border-white hover:bg-black hover:text-yellow-400 transition-colors"
                 >
                   <Eye className="w-4 h-4" />
                   Preview
@@ -328,8 +328,7 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
                 <button
                   onClick={saveSheet}
                   disabled={!dirty || saving}
-                  className="flex items-center gap-2 rounded bg-black px-4 py-2 text-sm font-medium hover:bg-black/80 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                  style={{ color: "#facc15" }}
+                  className="flex items-center gap-2 rounded bg-black px-4 py-2 text-sm font-medium text-yellow-400 hover:bg-black/80 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                 >
                   <Save className="w-4 h-4" />
                   {saving ? "Saving..." : dirty ? "Save" : "Saved"}
@@ -340,7 +339,7 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
 
           {/* Offline notice */}
           {isOfflineCopy && (
-            <div className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-medium bg-amber-50 border-b border-amber-200 text-amber-700 shrink-0">
+            <div className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-medium bg-amber-50 dark:bg-amber-950 border-b border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300 shrink-0">
               <WifiOff className="w-3 h-3 shrink-0" />
               Offline — loaded from saved copy. Changes won&apos;t be saved until you&apos;re back online.
             </div>
@@ -355,7 +354,7 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
                 onChange={(e) => handleChange(e.target.value)}
                 placeholder={PLACEHOLDER}
                 spellCheck={false}
-                className="w-full outline-none resize-none font-mono text-base leading-relaxed bg-transparent text-black"
+                className="w-full outline-none resize-none font-mono text-base leading-relaxed bg-transparent text-black dark:text-white placeholder:text-[#373A40]/30 dark:placeholder:text-white/30"
                 style={{ minHeight: "calc(100vh - 160px)", overflow: "hidden" }}
               />
             </div>

@@ -23,26 +23,26 @@ function loadFontScale(): number {
 function SheetContent({ sheet }: { sheet: LeadSheet }) {
   return (
     <div>
-      <div className='mb-8 border-b-2 border-black pb-6'>
-        <h1 className='font-bold leading-tight mb-3 text-[2.25em]' style={{ color: "#000" }}>
+      <div className='mb-8 border-b-2 border-black dark:border-white/30 pb-6'>
+        <h1 className='font-bold leading-tight mb-3 text-[2.25em] text-black dark:text-white'>
           {sheet.title || "Untitled"}
         </h1>
         <div className='flex flex-wrap gap-6 text-[0.875em]'>
           {sheet.key && (
             <span>
-              <span className='uppercase tracking-wider text-[0.75em] text-[#373A40]/40 mr-1'>Key</span>
-              <span className='font-bold text-black text-[1em]'>{sheet.key}</span>
+              <span className='uppercase tracking-wider text-[0.75em] text-[#373A40]/40 dark:text-white/40 mr-1'>Key</span>
+              <span className='font-bold text-black dark:text-white text-[1em]'>{sheet.key}</span>
             </span>
           )}
           {sheet.tempo && (
             <span>
-              <span className='uppercase tracking-wider text-[0.75em] text-[#373A40]/40 mr-1'>Tempo</span>
-              <span className='font-bold text-black text-[1em]'>{sheet.tempo} BPM</span>
+              <span className='uppercase tracking-wider text-[0.75em] text-[#373A40]/40 dark:text-white/40 mr-1'>Tempo</span>
+              <span className='font-bold text-black dark:text-white text-[1em]'>{sheet.tempo} BPM</span>
             </span>
           )}
         </div>
         {sheet.general_notes && (
-          <p className='mt-3 italic text-[#373A40]/60 text-[0.875em]'>{sheet.general_notes}</p>
+          <p className='mt-3 italic text-[#373A40]/60 dark:text-white/60 text-[0.875em]'>{sheet.general_notes}</p>
         )}
       </div>
 
@@ -69,7 +69,7 @@ function SheetContent({ sheet }: { sheet: LeadSheet }) {
                 )}
               </div>
               {section.notes && (
-                <p className='mt-3 italic text-[#373A40]/50 text-[0.875em]'>↳ {section.notes}</p>
+                <p className='mt-3 italic text-[#373A40]/50 dark:text-white/50 text-[0.875em]'>↳ {section.notes}</p>
               )}
             </div>
           );
@@ -106,16 +106,16 @@ export default function ShareLeadSheet({ params }: { params: Promise<{ id: strin
 
   if (loading) {
     return (
-      <div className='min-h-screen bg-white flex items-center justify-center'>
-        <span className='text-[#373A40]/50 text-sm'>Loading...</span>
+      <div className='min-h-screen bg-white dark:bg-neutral-900 flex items-center justify-center'>
+        <span className='text-[#373A40]/50 dark:text-white/50 text-sm'>Loading...</span>
       </div>
     );
   }
 
   if (!sheet) {
     return (
-      <div className='min-h-screen bg-white flex items-center justify-center'>
-        <span className='text-[#373A40]/50 text-sm'>Sheet not found.</span>
+      <div className='min-h-screen bg-white dark:bg-neutral-900 flex items-center justify-center'>
+        <span className='text-[#373A40]/50 dark:text-white/50 text-sm'>Sheet not found.</span>
       </div>
     );
   }
@@ -130,31 +130,31 @@ export default function ShareLeadSheet({ params }: { params: Promise<{ id: strin
       </div>
 
       {/* Screen view */}
-      <div className='print:hidden min-h-screen bg-white'>
+      <div className='print:hidden min-h-screen bg-white dark:bg-neutral-900'>
         <div className='max-w-3xl mx-auto px-6 pt-8'>
           <div className='flex items-center justify-between mb-8'>
-            <span className='text-xs text-[#373A40]/40 font-medium tracking-wider uppercase'>
+            <span className='text-xs text-[#373A40]/40 dark:text-white/40 font-medium tracking-wider uppercase'>
               iCodeForBananas
             </span>
             <div className='flex items-center gap-2'>
-              <div className='flex items-center gap-1 rounded border border-[#373A40]/20'>
+              <div className='flex items-center gap-1 rounded border border-[#373A40]/20 dark:border-white/20'>
                 <button
                   type='button'
                   onClick={() => updateFontScale(fontScale - SCALE_STEP)}
                   disabled={fontScale <= MIN_SCALE}
-                  className='p-2 text-[#373A40]/50 hover:text-black disabled:opacity-30 disabled:cursor-not-allowed transition-colors'
+                  className='p-2 text-[#373A40]/50 dark:text-white/50 hover:text-black dark:hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors'
                   aria-label='Decrease text size'
                 >
                   <Minus className='w-3.5 h-3.5' />
                 </button>
-                <span className='text-xs font-medium w-10 text-center text-[#373A40]/50 select-none'>
+                <span className='text-xs font-medium w-10 text-center text-[#373A40]/50 dark:text-white/50 select-none'>
                   {fontScale}%
                 </span>
                 <button
                   type='button'
                   onClick={() => updateFontScale(fontScale + SCALE_STEP)}
                   disabled={fontScale >= MAX_SCALE}
-                  className='p-2 text-[#373A40]/50 hover:text-black disabled:opacity-30 disabled:cursor-not-allowed transition-colors'
+                  className='p-2 text-[#373A40]/50 dark:text-white/50 hover:text-black dark:hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors'
                   aria-label='Increase text size'
                 >
                   <Plus className='w-3.5 h-3.5' />
@@ -162,7 +162,7 @@ export default function ShareLeadSheet({ params }: { params: Promise<{ id: strin
               </div>
               <button
                 onClick={() => window.print()}
-                className='flex items-center gap-1.5 rounded border border-[#373A40]/20 px-3 py-2 text-sm font-medium text-[#373A40]/60 hover:border-black hover:bg-black hover:text-[#facc15] transition-colors'
+                className='flex items-center gap-1.5 rounded border border-[#373A40]/20 dark:border-white/20 px-3 py-2 text-sm font-medium text-[#373A40]/60 dark:text-white/60 hover:border-black dark:hover:border-white hover:bg-black hover:text-yellow-400 transition-colors'
               >
                 <Printer className='w-4 h-4' /> Print
               </button>
