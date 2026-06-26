@@ -4,8 +4,6 @@
   "private": true,
   "scripts": {
     "dev": "cross-env NODE_OPTIONS=--max-old-space-size=4096 next dev",
-    "dev:game-server": "npx tsx watch game-server.mts",
-    "start:game-server": "npx tsx game-server.mts",
     "build": "cross-env NODE_OPTIONS=--max-old-space-size=4096 next build",
     "start": "next start",
     "lint": "eslint",
@@ -27,7 +25,6 @@
     "@tiptap/react": "^3.23.1",
     "@tiptap/starter-kit": "^3.23.1",
     "@types/canvas-confetti": "^1.9.0",
-    "@types/three": "^0.184.1",
     "@types/uuid": "^10.0.0",
     "@vercel/analytics": "^1.6.1",
     "@vercel/speed-insights": "^1.3.1",
@@ -54,9 +51,7 @@
     "react-textarea-autosize": "^8.5.9",
     "recharts": "^3.7.0",
     "tailwind-merge": "^3.5.0",
-    "three": "^0.184.0",
     "uuid": "^13.0.0",
-    "ws": "^8.21.0",
     "yahoo-finance2": "^3.13.0",
     "zod": "^4.4.3"
   },
@@ -66,12 +61,10 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@types/ws": "^8.18.1",
     "cross-env": "^10.1.0",
     "eslint": "^9",
     "eslint-config-next": "16.1.1",
     "tailwindcss": "^4",
-    "tsx": "^4.22.4",
     "typescript": "5.9.3"
   }
 }

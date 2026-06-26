@@ -30,7 +30,6 @@ const LINKS: { href: string; text: string; auth?: boolean }[] = [
   { href: "/paper-trading", text: "Paper Trading" },
   { href: "/leaderboard", text: "Trading Leaderboard" },
   { href: "/fire-estimator", text: "FIRE Estimator" },
-  { href: "/game-world", text: "Game World" },
 ];
 
 function readClickCounts(): Record<string, number> {
