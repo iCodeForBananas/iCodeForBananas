@@ -8,50 +8,55 @@ import { useAuth } from "@/app/hooks/useAuth";
 const MOBILE_BREAKPOINT = 1024;
 const isMobileDevice = () => window.innerWidth < MOBILE_BREAKPOINT;
 const SIDEBAR_OPEN_KEY = "sidebar-open";
+const CLICK_COUNTS_KEY = "sidebarClickCounts";
 
-const NAV: { label: string; links: { href: string; text: string; auth?: boolean }[] }[] = [
-  {
-    label: "Music",
-    links: [
-      { href: "/circle-of-fifths", text: "Circle of Fifths" },
-      { href: "/chord-explorer", text: "Chord Explorer" },
-      { href: "/chord-finder", text: "Chord Finder" },
-      { href: "/chord-positions", text: "Chord Positions" },
-      { href: "/scale-tool", text: "Scale Tool" },
-      { href: "/fretboard-quiz", text: "Fretboard Quiz" },
-      { href: "/lead-sheet-editor", text: "Lead Sheet Editor" },
-    ],
-  },
-  {
-    label: "Learning Games",
-    links: [
-      { href: "/space-math", text: "Space Math" },
-      { href: "/decode-dash", text: "Decode Dash" },
-      { href: "/learning-progress", text: "Learning Progress" },
-    ],
-  },
-  {
-    label: "Misc",
-    links: [
-      { href: "/task-board", text: "Task Board" },
-      { href: "/mermaid-flow", text: "Mermaid Flow" },
-      { href: "/aaron-futures", text: "Aaron Futures" },
-      { href: "/workout-tracker", text: "Workout Tracker" },
-      { href: "/wordsmith", text: "Wordsmith" },
-      { href: "/algo-backtest", text: "Algo Backtest" },
-      { href: "/paper-trading", text: "Paper Trading" },
-      { href: "/leaderboard", text: "Trading Leaderboard" },
-      { href: "/fire-estimator", text: "FIRE Estimator" },
-      { href: "/game-world", text: "Game World" },
-    ],
-  },
+const LINKS: { href: string; text: string; auth?: boolean }[] = [
+  { href: "/circle-of-fifths", text: "Circle of Fifths" },
+  { href: "/chord-explorer", text: "Chord Explorer" },
+  { href: "/chord-finder", text: "Chord Finder" },
+  { href: "/chord-positions", text: "Chord Positions" },
+  { href: "/scale-tool", text: "Scale Tool" },
+  { href: "/fretboard-quiz", text: "Fretboard Quiz" },
+  { href: "/lead-sheet-editor", text: "Lead Sheet Editor" },
+  { href: "/space-math", text: "Space Math" },
+  { href: "/decode-dash", text: "Decode Dash" },
+  { href: "/learning-progress", text: "Learning Progress" },
+  { href: "/task-board", text: "Task Board" },
+  { href: "/mermaid-flow", text: "Mermaid Flow" },
+  { href: "/aaron-futures", text: "Aaron Futures" },
+  { href: "/workout-tracker", text: "Workout Tracker" },
+  { href: "/wordsmith", text: "Wordsmith" },
+  { href: "/algo-backtest", text: "Algo Backtest" },
+  { href: "/paper-trading", text: "Paper Trading" },
+  { href: "/leaderboard", text: "Trading Leaderboard" },
+  { href: "/fire-estimator", text: "FIRE Estimator" },
+  { href: "/game-world", text: "Game World" },
 ];
+
+function readClickCounts(): Record<string, number> {
+  try {
+    const raw = localStorage.getItem(CLICK_COUNTS_KEY);
+    return raw ? (JSON.parse(raw) as Record<string, number>) : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeClickCounts(counts: Record<string, number>) {
+  try {
+    localStorage.setItem(CLICK_COUNTS_KEY, JSON.stringify(counts));
+  } catch {
+    // localStorage may be disabled (private mode)
+  }
+}
 
 export default function Sidebar() {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const { user, signOut } = useAuth();
+  const [clickCounts, setClickCounts] = useState<Record<string, number>>({});
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     const mobile = isMobileDevice();
@@ -65,6 +70,8 @@ export default function Sidebar() {
       const stored = localStorage.getItem(SIDEBAR_OPEN_KEY);
       setIsOpen(stored === null ? true : stored === "true");
     }
+    setClickCounts(readClickCounts());
+    setMounted(true);
   }, []);
 
   useEffect(() => {
@@ -92,7 +99,50 @@ export default function Sidebar() {
     });
   };
 
+  const handleLinkClick = (href: string) => {
+    setClickCounts((prev) => {
+      const next = { ...prev, [href]: (prev[href] ?? 0) + 1 };
+      writeClickCounts(next);
+      return next;
+    });
+    if (isMobile) setIsOpen(false);
+  };
+
+  // Top-5 by click count, client-only to avoid SSR/hydration mismatch.
+  const topLinks = mounted
+    ? LINKS.filter(({ href, auth }) => (clickCounts[href] ?? 0) > 0 && (!auth || !!user))
+        .sort((a, b) => (clickCounts[b.href] ?? 0) - (clickCounts[a.href] ?? 0))
+        .slice(0, 5)
+    : [];
+
   if (pathname.startsWith("/lead-sheet-editor/share/")) return null;
+
+  const navLinkStyle = (href: string) =>
+    pathname === href ? { background: "#000000", color: "#ffffff" } : { color: "#000000" };
+
+  const renderLink = (href: string, text: string, keyPrefix: string) => (
+    <Link
+      key={keyPrefix + href}
+      href={href}
+      onClick={() => handleLinkClick(href)}
+      className='px-3 py-2 rounded whitespace-nowrap transition-colors font-medium text-sm'
+      style={navLinkStyle(href)}
+      onMouseEnter={(e) => {
+        if (pathname !== href) {
+          e.currentTarget.style.background = "#000000";
+          e.currentTarget.style.color = "#ffffff";
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (pathname !== href) {
+          e.currentTarget.style.background = "transparent";
+          e.currentTarget.style.color = "#000000";
+        }
+      }}
+    >
+      {text}
+    </Link>
+  );
 
   return (
     <>
@@ -151,9 +201,7 @@ export default function Sidebar() {
           </svg>
         </button>
 
-        <div
-          className={`flex-1 p-6 overflow-y-auto ${isOpen ? "opacity-100" : "opacity-0"}`}
-        >
+        <div className={`flex-1 p-6 overflow-y-auto ${isOpen ? "opacity-100" : "opacity-0"}`}>
           <Link
             href='/'
             className='font-black uppercase mb-3 block w-full'
@@ -201,48 +249,26 @@ export default function Sidebar() {
           )}
 
           <nav className='flex flex-col gap-4 mt-6'>
-            {NAV.map((section) => (
-              <div key={section.label ?? "main"}>
-                {section.label && (
-                  <h3
-                    className='text-xs font-bold mb-2 uppercase tracking-wider whitespace-nowrap'
-                    style={{ color: "#000000" }}
-                  >
-                    {section.label}
-                  </h3>
-                )}
+            {topLinks.length > 0 && (
+              <div>
+                <h3
+                  className='text-xs font-bold mb-2 uppercase tracking-wider whitespace-nowrap'
+                  style={{ color: "#000000" }}
+                >
+                  Recently Used
+                </h3>
                 <div className='flex flex-col gap-1'>
-                  {section.links.filter(({ auth }) => !auth || !!user).map(({ href, text }) => (
-                    <Link
-                      key={href}
-                      href={href}
-                      onClick={() => isMobile && setIsOpen(false)}
-                      className='px-3 py-2 rounded whitespace-nowrap transition-colors font-medium text-sm'
-                      style={
-                        pathname === href
-                          ? { background: "#000000", color: "#ffffff" }
-                          : { color: "#000000" }
-                      }
-                      onMouseEnter={(e) => {
-                        if (pathname !== href) {
-                          e.currentTarget.style.background = "#000000";
-                          e.currentTarget.style.color = "#ffffff";
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        if (pathname !== href) {
-                          e.currentTarget.style.background = "transparent";
-                          e.currentTarget.style.color = "#000000";
-                        }
-                      }}
-                    >
-                      {text}
-                    </Link>
-                  ))}
+                  {topLinks.map(({ href, text }) => renderLink(href, text, "recent-"))}
                 </div>
               </div>
-            ))}
-                </nav>
+            )}
+
+            <div className='flex flex-col gap-1'>
+              {LINKS.filter(({ auth }) => !auth || !!user).map(({ href, text }) =>
+                renderLink(href, text, "all-")
+              )}
+            </div>
+          </nav>
         </div>
       </aside>
     </>
