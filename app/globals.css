@@ -104,8 +104,9 @@ body {
     color 0.3s ease;
 }
 
+/* Dark mode keeps the banana-yellow page background; only containers darken. */
 .dark body {
-  background: #111111;
+  background: linear-gradient(135deg, #facc15 0%, #fde047 100%);
 }
 
 ::selection {
