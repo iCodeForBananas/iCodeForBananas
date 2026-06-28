@@ -11,27 +11,35 @@ const MOBILE_BREAKPOINT = 1024;
 const isMobileDevice = () => window.innerWidth < MOBILE_BREAKPOINT;
 const SIDEBAR_OPEN_KEY = "sidebar-open";
 
-const LINKS: { href: string; text: string; auth?: boolean }[] = [
-  { href: "/aaron-futures", text: "Aaron Futures" },
-  { href: "/algo-backtest", text: "Algo Backtest" },
-  { href: "/chord-explorer", text: "Chord Explorer" },
-  { href: "/chord-finder", text: "Chord Finder" },
-  { href: "/chord-positions", text: "Chord Positions" },
-  { href: "/circle-of-fifths", text: "Circle of Fifths" },
-  { href: "/decode-dash", text: "Decode Dash" },
-  { href: "/fire-estimator", text: "FIRE Estimator" },
-  { href: "/fretboard-quiz", text: "Fretboard Quiz" },
-  { href: "/lead-sheet-editor", text: "Lead Sheet Editor" },
-  { href: "/learning-progress", text: "Learning Progress" },
-  { href: "/mermaid-flow", text: "Mermaid Flow" },
-  { href: "/paper-trading", text: "Paper Trading" },
-  { href: "/scale-tool", text: "Scale Tool" },
-  { href: "/space-math", text: "Space Math" },
-  { href: "/task-board", text: "Task Board" },
-  { href: "/territory", text: "Territory", auth: true },
-  { href: "/leaderboard", text: "Trading Leaderboard" },
-  { href: "/wordsmith", text: "Wordsmith" },
-  { href: "/workout-tracker", text: "Workout Tracker" },
+type Category = "Music" | "Tools" | "Education" | "Experiments";
+
+const CATEGORIES: Category[] = ["Music", "Tools", "Education", "Experiments"];
+
+const LINKS: { href: string; text: string; category: Category; auth?: boolean }[] = [
+  // Music
+  { href: "/chord-explorer", text: "Chord Explorer", category: "Music" },
+  { href: "/chord-finder", text: "Chord Finder", category: "Music" },
+  { href: "/chord-positions", text: "Chord Positions", category: "Music" },
+  { href: "/circle-of-fifths", text: "Circle of Fifths", category: "Music" },
+  { href: "/fretboard-quiz", text: "Fretboard Quiz", category: "Music" },
+  { href: "/lead-sheet-editor", text: "Lead Sheet Editor", category: "Music" },
+  { href: "/scale-tool", text: "Scale Tool", category: "Music" },
+  // Tools
+  { href: "/aaron-futures", text: "Aaron Futures", category: "Tools" },
+  { href: "/algo-backtest", text: "Algo Backtest", category: "Tools" },
+  { href: "/fire-estimator", text: "FIRE Estimator", category: "Tools" },
+  { href: "/mermaid-flow", text: "Mermaid Flow", category: "Tools" },
+  { href: "/paper-trading", text: "Paper Trading", category: "Tools" },
+  { href: "/task-board", text: "Task Board", category: "Tools" },
+  { href: "/leaderboard", text: "Trading Leaderboard", category: "Tools" },
+  { href: "/wordsmith", text: "Wordsmith", category: "Tools" },
+  { href: "/workout-tracker", text: "Workout Tracker", category: "Tools" },
+  // Education
+  { href: "/decode-dash", text: "Decode Dash", category: "Education" },
+  { href: "/learning-progress", text: "Learning Progress", category: "Education" },
+  { href: "/space-math", text: "Space Math", category: "Education" },
+  // Experiments
+  { href: "/territory", text: "Territory", category: "Experiments", auth: true },
 ];
 
 export default function Sidebar() {
@@ -243,12 +251,24 @@ export default function Sidebar() {
             )}
           </div>
 
-          <nav className='flex flex-col gap-4 mt-6'>
-            <div className='flex flex-col gap-1'>
-              {LINKS.filter(({ auth }) => !auth || !!user).map(({ href, text }) =>
-                renderLink(href, text)
-              )}
-            </div>
+          <nav className='flex flex-col gap-5 mt-6'>
+            {CATEGORIES.map((category) => {
+              const items = LINKS.filter(
+                (link) => link.category === category && (!link.auth || !!user)
+              );
+              if (items.length === 0) return null;
+              return (
+                <div key={category} className='flex flex-col gap-1'>
+                  <p
+                    className='px-3 mb-1 text-[11px] font-bold uppercase tracking-wider'
+                    style={{ color: "rgba(0, 0, 0, 0.45)" }}
+                  >
+                    {category}
+                  </p>
+                  {items.map(({ href, text }) => renderLink(href, text))}
+                </div>
+              );
+            })}
           </nav>
         </div>
       </aside>
