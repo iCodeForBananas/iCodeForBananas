@@ -25,7 +25,6 @@ const LINKS: { href: string; text: string; category: Category; auth?: boolean }[
   { href: "/lead-sheet-editor", text: "Lead Sheet Editor", category: "Music" },
   { href: "/scale-tool", text: "Scale Tool", category: "Music" },
   // Tools
-  { href: "/aaron-futures", text: "Aaron Futures", category: "Tools" },
   { href: "/algo-backtest", text: "Algo Backtest", category: "Tools" },
   { href: "/fire-estimator", text: "FIRE Estimator", category: "Tools" },
   { href: "/mermaid-flow", text: "Mermaid Flow", category: "Tools" },
@@ -39,6 +38,7 @@ const LINKS: { href: string; text: string; category: Category; auth?: boolean }[
   { href: "/learning-progress", text: "Learning Progress", category: "Education" },
   { href: "/space-math", text: "Space Math", category: "Education" },
   // Experiments
+  { href: "/aaron-futures", text: "Aaron Futures", category: "Experiments" },
   { href: "/territory", text: "Territory", category: "Experiments", auth: true },
 ];
 
