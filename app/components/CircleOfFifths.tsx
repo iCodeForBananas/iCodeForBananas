@@ -96,7 +96,7 @@ const formatChordLabel = (note: string, type: string) => {
   return `${note} ${type}`;
 };
 
-export default function CircleOfFifths() {
+export default function CircleOfFifths({ showChordPanel = true }: { showChordPanel?: boolean } = {}) {
   const [hoveredKey, setHoveredKey] = useState<{
     chord: string;
     frets: (number | null)[];
@@ -232,6 +232,7 @@ export default function CircleOfFifths() {
         </svg>
       </div>
 
+      {showChordPanel && (
       <div className='chord-column'>
         {activeKey && rootNote ? (
           <div className='chord-display'>
@@ -278,6 +279,7 @@ export default function CircleOfFifths() {
           </div>
         )}
       </div>
+      )}
     </div>
   );
 }

@@ -18,6 +18,7 @@ import {
 import ChordDiagram from "../components/ChordDiagram";
 import BentoPageLayout from "../components/BentoPageLayout";
 import ScaleTool from "../components/ScaleTool";
+import CircleOfFifths from "../components/CircleOfFifths";
 import { useFavoriteChords } from "../lib/FavoriteChordsContext";
 
 // ── Chord type groups ─────────────────────────────────────────────────────────
@@ -240,6 +241,7 @@ export default function ChordExplorerPage() {
   const [selectedNote, setSelectedNote] = useState("C");
   const [selectedType, setSelectedType] = useState<ChordType>("Major");
   const [useFlats, setUseFlats] = useState(false);
+  const [showCircle, setShowCircle] = useState(false);
   const { favorites, clear } = useFavoriteChords();
 
   const displayNotes = useFlats ? flatNotes : sharpNotes;
@@ -354,32 +356,54 @@ export default function ChordExplorerPage() {
       </div>
 
       {/* ── Chord name ──────────────────────────────────────────────────────── */}
-      <h2 className="text-2xl font-bold mb-5 pt-8 border-t border-gray-200 dark:border-neutral-700 text-black dark:text-yellow-400">
-        {chordLabel}
-      </h2>
+      <div className="flex items-center justify-between gap-4 mb-5 pt-8 border-t border-gray-200 dark:border-neutral-700">
+        <h2 className="text-2xl font-bold text-black dark:text-yellow-400">
+          {chordLabel}
+        </h2>
+        <button
+          onClick={() => setShowCircle((v) => !v)}
+          title="Show the Circle of Fifths alongside the chord voicings"
+          className={`${TOUCH_BUTTON} ${
+            showCircle ? "bg-accent/20 border-accent" : "border-border hover:bg-foreground/10"
+          }`}
+        >
+          {showCircle ? "Hide" : "Show"} Circle of Fifths
+        </button>
+      </div>
 
-      {/* ── Voicings & Positions ─────────────────────────────────────────────── */}
-      <section className="mb-8">
-        <SectionHeading tooltip="Different ways to play this chord on the fretboard — each voicing has its own character and suits different musical situations. Click any diagram to add it to your progression.">
-          Voicings &amp; Positions
-        </SectionHeading>
-        {voicings.length > 0 ? (
-          <div className="grid gap-6" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))" }}>
-            {voicings.map((v, i) => (
-              <VoicingCard
-                key={i}
-                shape={v.shape}
-                chordLabel={chordLabel}
-                sublabel={v.label}
-                position={v.position}
-                useFlats={useFlats}
-              />
-            ))}
-          </div>
-        ) : (
-          <p className="text-sm text-black/40 dark:text-neutral-500">No voicings available for this chord.</p>
+      {/* ── Voicings & Positions (+ optional Circle of Fifths) ───────────────── */}
+      <div className={showCircle ? "flex flex-col xl:flex-row xl:gap-8" : ""}>
+        <section className={`mb-8 ${showCircle ? "xl:flex-1 xl:min-w-0" : ""}`}>
+          <SectionHeading tooltip="Different ways to play this chord on the fretboard — each voicing has its own character and suits different musical situations. Click any diagram to add it to your progression.">
+            Voicings &amp; Positions
+          </SectionHeading>
+          {voicings.length > 0 ? (
+            <div className="grid gap-6" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))" }}>
+              {voicings.map((v, i) => (
+                <VoicingCard
+                  key={i}
+                  shape={v.shape}
+                  chordLabel={chordLabel}
+                  sublabel={v.label}
+                  position={v.position}
+                  useFlats={useFlats}
+                />
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-black/40 dark:text-neutral-500">No voicings available for this chord.</p>
+          )}
+        </section>
+
+        {showCircle && (
+          <aside className="mb-8 xl:w-[460px] xl:shrink-0">
+            <SectionHeading tooltip="The Circle of Fifths — keys close together on the wheel share the most notes and sound natural played in sequence. Hover a key to preview it.">
+              Circle of Fifths
+            </SectionHeading>
+            <CircleOfFifths showChordPanel={false} />
+          </aside>
         )}
-      </section>
+      </div>
 
       {/* ── Inversions ───────────────────────────────────────────────────────── */}
       <section className="mb-8 pt-8 border-t border-gray-200 dark:border-neutral-700">
