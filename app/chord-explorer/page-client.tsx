@@ -61,6 +61,10 @@ const formatChordLabel = (note: string, type: string) => {
   return `${note} ${type}`;
 };
 
+// Uniform, touch-friendly control button (≥44px tap target for iPad use)
+const TOUCH_BUTTON =
+  "min-h-[44px] min-w-[44px] px-4 rounded-lg border text-sm font-medium inline-flex items-center justify-center transition-colors";
+
 // ── Voicings ─────────────────────────────────────────────────────────────────
 
 interface LabeledShape {
@@ -288,8 +292,8 @@ export default function ChordExplorerPage() {
                     key={note}
                     onClick={() => handleNoteClick(note)}
                     title={`Select ${note} as your root note — builds a ${formatChordLabel(note, selectedType)} chord`}
-                    className={`px-3 py-1 rounded border text-sm transition-colors ${
-                      active ? "bg-accent/20 border-accent font-medium" : "border-border hover:bg-foreground/10"
+                    className={`${TOUCH_BUTTON} ${
+                      active ? "bg-accent/20 border-accent" : "border-border hover:bg-foreground/10"
                     }`}
                   >
                     {note}
@@ -300,8 +304,8 @@ export default function ChordExplorerPage() {
               <button
                 onClick={handleFlatsToggle}
                 title="Toggle between sharp (♯) and flat (♭) note names — these are the same pitches written two different ways (e.g. F♯ and G♭ are the exact same note)"
-                className={`px-3 py-1 rounded border text-sm transition-colors ${
-                  useFlats ? "bg-accent/20 border-accent font-medium" : "border-border hover:bg-foreground/10"
+                className={`${TOUCH_BUTTON} ${
+                  useFlats ? "bg-accent/20 border-accent" : "border-border hover:bg-foreground/10"
                 }`}
               >
                 ♭ Flats
@@ -326,15 +330,15 @@ export default function ChordExplorerPage() {
                   >
                     {group.label}
                   </p>
-                  <div className="flex flex-wrap gap-1">
+                  <div className="flex flex-wrap gap-2">
                     {group.types.map((type) => (
                       <button
                         key={type}
                         onClick={() => setSelectedType(type)}
                         title={CHORD_TYPE_TOOLTIPS[type] ?? type}
-                        className={`px-2.5 py-0.5 rounded border text-xs transition-colors ${
+                        className={`${TOUCH_BUTTON} ${
                           selectedType === type
-                            ? "bg-accent/20 border-accent font-medium"
+                            ? "bg-accent/20 border-accent"
                             : "border-border hover:bg-foreground/10"
                         }`}
                       >
