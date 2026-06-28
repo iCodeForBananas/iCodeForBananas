@@ -266,8 +266,8 @@ export default function ChordExplorerPage() {
   return (
     <BentoPageLayout title="Chord Explorer">
 
-      {/* ── Controls card ──────────────────────────────────────────────────── */}
-      <div className="bg-gray-50 dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-xl p-5 mb-6 shadow-sm">
+      {/* ── Controls ───────────────────────────────────────────────────────── */}
+      <div className="mb-8">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
           {/* Root note */}
@@ -350,12 +350,12 @@ export default function ChordExplorerPage() {
       </div>
 
       {/* ── Chord name ──────────────────────────────────────────────────────── */}
-      <h2 className="text-2xl font-bold mb-5 mt-1 text-black dark:text-yellow-400">
+      <h2 className="text-2xl font-bold mb-5 pt-8 border-t border-gray-200 dark:border-neutral-700 text-black dark:text-yellow-400">
         {chordLabel}
       </h2>
 
       {/* ── Voicings & Positions ─────────────────────────────────────────────── */}
-      <section className="bg-gray-50 dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-xl p-5 mb-6 shadow-sm">
+      <section className="mb-8">
         <SectionHeading tooltip="Different ways to play this chord on the fretboard — each voicing has its own character and suits different musical situations. Click any diagram to add it to your progression.">
           Voicings &amp; Positions
         </SectionHeading>
@@ -378,12 +378,12 @@ export default function ChordExplorerPage() {
       </section>
 
       {/* ── Inversions ───────────────────────────────────────────────────────── */}
-      <section className="bg-gray-50 dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-xl p-5 mb-6 shadow-sm">
+      <section className="mb-8 pt-8 border-t border-gray-200 dark:border-neutral-700">
         <SectionHeading tooltip="The same chord notes rearranged so a different note is on the bottom — inversions give the same chord a subtly different sound and feel. Shown as tight three-note voicings on adjacent string sets.">
           Inversions
         </SectionHeading>
         {inversions ? (
-          <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-gray-200 dark:divide-neutral-700 -mx-5 px-5">
+          <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-gray-200 dark:divide-neutral-700">
             {[
               {
                 key: "root",
@@ -442,7 +442,7 @@ export default function ChordExplorerPage() {
       </section>
 
       {/* ── My Progression ───────────────────────────────────────────────────── */}
-      <section className="bg-gray-50 dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-xl p-5 mb-6 shadow-sm">
+      <section className="mb-8 pt-8 border-t border-gray-200 dark:border-neutral-700">
         <div className="flex items-center gap-3 mb-4">
           <SectionHeading tooltip="A sequence of chords played one after another — the backbone of most songs. Click any chord diagram above to add it here, then try playing through them in order.">
             My Progression
@@ -479,7 +479,7 @@ export default function ChordExplorerPage() {
       </section>
 
       {/* ── Scale Tool ───────────────────────────────────────────────────────── */}
-      <section className="bg-gray-50 dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-xl p-5 shadow-sm">
+      <section className="pt-8 border-t border-gray-200 dark:border-neutral-700">
         <SectionHeading tooltip="See every note of a scale laid out across all six strings and every fret — great for understanding where you can solo or add a melody over your chord progression.">
           Scale Tool
         </SectionHeading>

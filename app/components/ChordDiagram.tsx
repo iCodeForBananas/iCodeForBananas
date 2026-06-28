@@ -52,7 +52,7 @@ export default function ChordDiagram({ shape, label, useFlats = false, dotColor 
   return (
     <div className="flex flex-col items-center cursor-pointer group" onClick={handleClick} title={diagramTitle}>
       {label && (
-        <h6 className="text-center mb-1 font-semibold text-sm flex items-center gap-1 text-[#1A1B1E]">
+        <h6 className="text-center mb-1 font-semibold text-sm flex items-center gap-1" style={{ color: "var(--chord-ink)" }}>
           {label} <span className={`text-xs ${favorited ? "text-red-500" : "text-transparent group-hover:text-red-300"}`}>♥</span>
         </h6>
       )}
@@ -64,26 +64,26 @@ export default function ChordDiagram({ shape, label, useFlats = false, dotColor 
               key={i}
               className="absolute text-center text-xs font-medium"
               title={fret === -1 ? `Don't play the ${STRING_NAMES[i]} — mute this string` : undefined}
-              style={{ left: `${i * stringSpacing + 10}px`, transform: "translateX(-50%)", color: fret === -1 ? "#000" : "transparent" }}>
+              style={{ left: `${i * stringSpacing + 10}px`, transform: "translateX(-50%)", color: fret === -1 ? "var(--chord-ink)" : "transparent" }}>
               {fret === -1 ? "✕" : ""}
             </span>
           ))}
         </div>
         {startFret > 1 && (
           <span
-            className="absolute text-xs font-medium text-[#1A1B1E]/50"
+            className="absolute text-xs font-medium"
             title={`This chord shape starts at fret ${startFret} — slide your fretting hand up the neck to this position`}
-            style={{ left: `${diagramWidth + 2}px`, top: "24px" }}
+            style={{ left: `${diagramWidth + 2}px`, top: "24px", color: "color-mix(in srgb, var(--chord-ink) 50%, transparent)" }}
           >
             {startFret}fr
           </span>
         )}
         {[0, 1, 2, 3, 4, 5].map((si) => (
-          <div key={si} className="absolute bg-[#1A1B1E]/40" style={{ left: `${si * stringSpacing + 10}px`, top: "20px", width: "1px", height: `${fretSpacing * displayFrets}px`, zIndex: 1 }} />
+          <div key={si} className="absolute" style={{ left: `${si * stringSpacing + 10}px`, top: "20px", width: "1px", height: `${fretSpacing * displayFrets}px`, zIndex: 1, backgroundColor: "color-mix(in srgb, var(--chord-ink) 40%, transparent)" }} />
         ))}
         {Array.from({ length: displayFrets + 1 }, (_, i) => i).map((f) => (
-          <div key={f} className={`absolute ${f === 0 && startFret <= 1 ? "bg-[#1A1B1E]" : "bg-[#1A1B1E]/40"}`}
-            style={{ left: "6px", top: `${20 + f * fretSpacing}px`, width: `${stringSpacing * 5 + 8}px`, height: f === 0 && startFret <= 1 ? "3px" : "1px", zIndex: 1 }} />
+          <div key={f} className="absolute"
+            style={{ left: "6px", top: `${20 + f * fretSpacing}px`, width: `${stringSpacing * 5 + 8}px`, height: f === 0 && startFret <= 1 ? "3px" : "1px", zIndex: 1, backgroundColor: f === 0 && startFret <= 1 ? "var(--chord-ink)" : "color-mix(in srgb, var(--chord-ink) 40%, transparent)" }} />
         ))}
         {shape.frets.map((fretNum, si) => {
           if (fretNum === -1) return null;
