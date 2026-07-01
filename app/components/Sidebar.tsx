@@ -26,6 +26,7 @@ const LINKS: { href: string; text: string; category: Category; auth?: boolean }[
   { href: "/scale-tool", text: "Scale Tool", category: "Music" },
   // Tools
   { href: "/algo-backtest", text: "Algo Backtest", category: "Tools" },
+  { href: "/drm", text: "DRM", category: "Tools", auth: true },
   { href: "/fire-estimator", text: "FIRE Estimator", category: "Tools" },
   { href: "/mermaid-flow", text: "Mermaid Flow", category: "Tools" },
   { href: "/paper-trading", text: "Paper Trading", category: "Tools" },
