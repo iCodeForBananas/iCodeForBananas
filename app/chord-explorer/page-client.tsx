@@ -16,10 +16,10 @@ import {
   semitoneFromA,
 } from "../lib/chordShapes";
 import ChordDiagram from "../components/ChordDiagram";
-import BentoPageLayout from "../components/BentoPageLayout";
+import BentoBoard, { type BentoPanel } from "../components/BentoBoard";
 import ScaleTool from "../components/ScaleTool";
 import CircleOfFifths from "../components/CircleOfFifths";
-import { useFavoriteChords } from "../lib/FavoriteChordsContext";
+import { Shuffle } from "lucide-react";
 
 // ── Chord type groups ─────────────────────────────────────────────────────────
 
@@ -172,6 +172,86 @@ const getInversions = (note: string, voicing: InvVoicing) => {
   return { root: map(t.root), first: map(t.first), second: map(t.second) };
 };
 
+// ── Progression generator ─────────────────────────────────────────────────────
+
+interface DiatonicChordDef {
+  roman: string;
+  degree: number; // semitones above the key root
+  quality: "Major" | "Minor";
+}
+
+// Natural major/minor diatonic triads. vii°/ii° (diminished) are omitted — no
+// diminished shapes exist in chordShapes, and pop-style progressions rarely lean on them.
+const MAJOR_KEY_CHORDS: DiatonicChordDef[] = [
+  { roman: "I", degree: 0, quality: "Major" },
+  { roman: "ii", degree: 2, quality: "Minor" },
+  { roman: "iii", degree: 4, quality: "Minor" },
+  { roman: "IV", degree: 5, quality: "Major" },
+  { roman: "V", degree: 7, quality: "Major" },
+  { roman: "vi", degree: 9, quality: "Minor" },
+];
+
+const MINOR_KEY_CHORDS: DiatonicChordDef[] = [
+  { roman: "i", degree: 0, quality: "Minor" },
+  { roman: "III", degree: 3, quality: "Major" },
+  { roman: "iv", degree: 5, quality: "Minor" },
+  { roman: "v", degree: 7, quality: "Minor" },
+  { roman: "VI", degree: 8, quality: "Major" },
+  { roman: "VII", degree: 10, quality: "Major" },
+];
+
+const noteAtSemitone = (rootNote: string, semitones: number, useFlats: boolean) => {
+  const canonical = flatToSharp[rootNote] ?? rootNote;
+  const idx = (sharpNotes.indexOf(canonical) + semitones + 12) % 12;
+  const sharpName = sharpNotes[idx];
+  return useFlats ? sharpToFlat[sharpName] ?? sharpName : sharpName;
+};
+
+const pickWeighted = <T,>(options: { item: T; weight: number }[]): T => {
+  const total = options.reduce((sum, o) => sum + o.weight, 0);
+  let roll = Math.random() * total;
+  for (const o of options) {
+    if (roll < o.weight) return o.item;
+    roll -= o.weight;
+  }
+  return options[options.length - 1].item;
+};
+
+interface GeneratedChord {
+  roman: string;
+  note: string;
+  quality: "Major" | "Minor";
+}
+
+// Picks 4 diatonic chords, weighting each next chord toward strong
+// circle-of-fifths root motion (down a fifth / up a fourth from the previous chord).
+const generateProgression = (rootNote: string, isMinorKey: boolean, useFlats: boolean): GeneratedChord[] => {
+  const keyChords = isMinorKey ? MINOR_KEY_CHORDS : MAJOR_KEY_CHORDS;
+  const progression: GeneratedChord[] = [];
+  let prevDegree: number | null = null;
+
+  for (let i = 0; i < 4; i++) {
+    const next: DiatonicChordDef =
+      prevDegree === null
+        ? keyChords[Math.floor(Math.random() * keyChords.length)]
+        : pickWeighted(
+            keyChords.map((c) => {
+              const interval = (c.degree - prevDegree! + 12) % 12;
+              const weight = interval === 5 ? 6 : interval === 7 ? 2 : 1;
+              return { item: c, weight };
+            })
+          );
+    progression.push({
+      roman: next.roman,
+      note: noteAtSemitone(rootNote, next.degree, useFlats),
+      quality: next.quality,
+    });
+    prevDegree = next.degree;
+  }
+
+  return progression;
+};
+
 // ── Chord diagram card ────────────────────────────────────────────────────────
 
 const VOICING_LABEL_TOOLTIPS: Record<string, string> = {
@@ -222,16 +302,57 @@ function VoicingCard({
   );
 }
 
-// ── Section heading ───────────────────────────────────────────────────────────
+function ProgressionChordCard({
+  roman,
+  note,
+  quality,
+  voicingIndex,
+  useFlats,
+  onVoicingChange,
+}: {
+  roman: string;
+  note: string;
+  quality: "Major" | "Minor";
+  voicingIndex: number;
+  useFlats: boolean;
+  onVoicingChange: (voicingIndex: number) => void;
+}) {
+  const voicings = useMemo(() => getVoicings(note, quality), [note, quality]);
+  const clampedIndex = Math.min(voicingIndex, Math.max(0, voicings.length - 1));
+  const shape = voicings[clampedIndex]?.shape ?? null;
+  const label = formatChordLabel(note, quality);
 
-function SectionHeading({ children, tooltip }: { children: React.ReactNode; tooltip?: string }) {
   return (
-    <h3
-      className={`text-sm font-bold text-black/70 dark:text-yellow-400/70 uppercase tracking-wide mb-4${tooltip ? " cursor-help" : ""}`}
-      title={tooltip}
+    <div
+      className="flex flex-col items-center gap-2 rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-neutral-700 dark:bg-neutral-800"
     >
-      {children}
-    </h3>
+      <span
+        className="text-xs font-semibold uppercase tracking-wider text-black/40 dark:text-white/40"
+        title="Scale degree of this chord within the key"
+      >
+        {roman}
+      </span>
+      {shape ? (
+        <ChordDiagram shape={shape} label={label} useFlats={useFlats} />
+      ) : (
+        <p className="text-xs text-black/40 dark:text-neutral-500">No voicing available.</p>
+      )}
+      {voicings.length > 0 && (
+        <select
+          value={clampedIndex}
+          onChange={(e) => onVoicingChange(Number(e.target.value))}
+          title="Swap the voicing or chord shape used for this chord"
+          className="w-full max-w-[150px] rounded-lg border border-border bg-transparent px-2 py-1.5 text-xs dark:border-neutral-600 dark:bg-neutral-900"
+        >
+          {voicings.map((v, i) => (
+            <option key={i} value={i}>
+              {v.label}
+              {v.position ? ` (${v.position})` : ""}
+            </option>
+          ))}
+        </select>
+      )}
+    </div>
   );
 }
 
@@ -241,8 +362,6 @@ export default function ChordExplorerPage() {
   const [selectedNote, setSelectedNote] = useState("C");
   const [selectedType, setSelectedType] = useState<ChordType>("Major");
   const [useFlats, setUseFlats] = useState(false);
-  const [showCircle, setShowCircle] = useState(false);
-  const { favorites, clear } = useFavoriteChords();
 
   const displayNotes = useFlats ? flatNotes : sharpNotes;
   const chordLabel = formatChordLabel(selectedNote, selectedType);
@@ -254,6 +373,22 @@ export default function ChordExplorerPage() {
     () => (invVoicing ? getInversions(selectedNote, invVoicing) : null),
     [selectedNote, invVoicing]
   );
+
+  const isMinorKey = selectedType === "Minor" || selectedType === "m7";
+  const [progression, setProgression] = useState<(GeneratedChord & { voicingIndex: number })[] | null>(null);
+
+  const handleGenerateProgression = () => {
+    const chords = generateProgression(selectedNote, isMinorKey, useFlats).map((c) => {
+      const chordVoicings = getVoicings(c.note, c.quality);
+      const voicingIndex = chordVoicings.length > 0 ? Math.floor(Math.random() * chordVoicings.length) : 0;
+      return { ...c, voicingIndex };
+    });
+    setProgression(chords);
+  };
+
+  const handleProgressionVoicingChange = (index: number, voicingIndex: number) => {
+    setProgression((prev) => (prev ? prev.map((c, i) => (i === index ? { ...c, voicingIndex } : c)) : prev));
+  };
 
   const handleNoteClick = (note: string) => setSelectedNote(note);
 
@@ -269,251 +404,255 @@ export default function ChordExplorerPage() {
     }
   };
 
-  return (
-    <BentoPageLayout title="Chord Explorer">
+  // ── Panel contents ──────────────────────────────────────────────────────────
 
-      {/* ── Controls ───────────────────────────────────────────────────────── */}
-      <div className="mb-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+  const voicingsContent =
+    voicings.length > 0 ? (
+      <div className="grid gap-6" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))" }}>
+        {voicings.map((v, i) => (
+          <VoicingCard
+            key={i}
+            shape={v.shape}
+            chordLabel={chordLabel}
+            sublabel={v.label}
+            position={v.position}
+            useFlats={useFlats}
+          />
+        ))}
+      </div>
+    ) : (
+      <p className="text-sm text-black/40 dark:text-neutral-500">No voicings available for this chord.</p>
+    );
 
-          {/* Root note */}
-          <div>
-            <p
-              className="text-xs font-semibold text-black/50 dark:text-white/50 uppercase tracking-wider mb-2"
-              title="The starting note of your chord — this is what gives the chord its name (e.g. choosing C builds a C Major chord)"
-            >
-              Root Note
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {displayNotes.map((note) => {
-                const active =
-                  selectedNote === note ||
-                  (flatToSharp[selectedNote] ?? selectedNote) === (flatToSharp[note] ?? note);
-                return (
-                  <button
-                    key={note}
-                    onClick={() => handleNoteClick(note)}
-                    title={`Select ${note} as your root note — builds a ${formatChordLabel(note, selectedType)} chord`}
-                    className={`${TOUCH_BUTTON} ${
-                      active ? "bg-accent/20 border-accent" : "border-border hover:bg-foreground/10"
-                    }`}
-                  >
-                    {note}
-                  </button>
-                );
-              })}
-              <span className="mx-1 text-black/30 dark:text-white/30 self-center">|</span>
-              <button
-                onClick={handleFlatsToggle}
-                title="Toggle between sharp (♯) and flat (♭) note names — these are the same pitches written two different ways (e.g. F♯ and G♭ are the exact same note)"
-                className={`${TOUCH_BUTTON} ${
-                  useFlats ? "bg-accent/20 border-accent" : "border-border hover:bg-foreground/10"
-                }`}
-              >
-                ♭ Flats
-              </button>
-            </div>
-          </div>
-
-          {/* Chord type */}
-          <div>
-            <p
-              className="text-xs font-semibold text-black/50 dark:text-white/50 uppercase tracking-wider mb-2"
-              title="The flavor of the chord — different types have very different sounds. Major sounds happy, Minor sounds darker, and the rest add color and complexity"
-            >
-              Chord Type
-            </p>
-            <div className="grid grid-cols-4 gap-x-4 gap-y-3">
-              {TYPE_GROUPS.map((group) => (
-                <div key={group.label}>
-                  <p
-                    className="text-xs text-black/40 dark:text-white/40 mb-1.5"
-                    title={GROUP_TOOLTIPS[group.label]}
-                  >
-                    {group.label}
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {group.types.map((type) => (
-                      <button
-                        key={type}
-                        onClick={() => setSelectedType(type)}
-                        title={CHORD_TYPE_TOOLTIPS[type] ?? type}
-                        className={`${TOUCH_BUTTON} ${
-                          selectedType === type
-                            ? "bg-accent/20 border-accent"
-                            : "border-border hover:bg-foreground/10"
-                        }`}
-                      >
-                        {type}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
+  const inversionsContent = inversions ? (
+    <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-gray-200 dark:divide-neutral-700">
+      {[
+        {
+          key: "root",
+          title: "Root Position",
+          subtitle: "1 – 3 – 5",
+          tooltip: "The chord in its natural order — the root note (the note that names the chord) is the lowest note played",
+          items: inversions.root,
+        },
+        {
+          key: "first",
+          title: "1st Inversion",
+          subtitle: "3 – 5 – 1",
+          tooltip: "The 3rd of the chord is now the lowest note — gives the chord a slightly lighter, softer feel",
+          items: inversions.first,
+        },
+        {
+          key: "second",
+          title: "2nd Inversion",
+          subtitle: "5 – 1 – 3",
+          tooltip: "The 5th of the chord is the lowest note — creates a more open, floating sound that works great as a passing chord",
+          items: inversions.second,
+        },
+      ].map((inv, idx) => (
+        <div key={inv.key} className={`flex flex-col gap-1 pt-6 sm:pt-0${idx === 0 ? "" : " sm:pl-6"}${idx === 2 ? "" : " sm:pr-6"}`}>
+          <span className="text-sm font-semibold text-black dark:text-white" title={inv.tooltip}>
+            {inv.title}
+          </span>
+          <span
+            className="text-xs text-black/40 dark:text-neutral-500 mb-4"
+            title="The scale degrees played from lowest to highest string — 1 is the root, 3 is the third, 5 is the fifth"
+          >
+            {inv.subtitle}
+          </span>
+          <div className="grid gap-6" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))" }}>
+            {inv.items.map((item, i) => (
+              <VoicingCard
+                key={i}
+                shape={item.shape}
+                chordLabel={`${chordLabel} ${inv.title}`}
+                sublabel={item.strings}
+                useFlats={useFlats}
+              />
+            ))}
           </div>
         </div>
-      </div>
+      ))}
+    </div>
+  ) : (
+    <p className="text-sm text-black/40 dark:text-neutral-500">
+      Inversion voicings are available for Major and Minor chords. Select one to explore.
+    </p>
+  );
 
-      {/* ── Chord name ──────────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between gap-4 mb-5 pt-8 border-t border-gray-200 dark:border-neutral-700">
-        <h2 className="text-2xl font-bold text-black dark:text-yellow-400">
-          {chordLabel}
-        </h2>
+  const progressionContent = (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-black/50 dark:text-white/50">
+          Random 4-chord ideas in {selectedNote} {isMinorKey ? "minor" : "major"}, biased toward strong
+          circle-of-fifths root motion.
+        </p>
         <button
-          onClick={() => setShowCircle((v) => !v)}
-          title="Show the Circle of Fifths alongside the chord voicings"
-          className={`${TOUCH_BUTTON} ${
-            showCircle ? "bg-accent/20 border-accent" : "border-border hover:bg-foreground/10"
-          }`}
+          onClick={handleGenerateProgression}
+          title="Generate a random 4-chord progression diatonic to the selected key"
+          className={`${TOUCH_BUTTON} gap-2 border-accent bg-accent/20 hover:bg-accent/30`}
         >
-          {showCircle ? "Hide" : "Show"} Circle of Fifths
+          <Shuffle size={16} />
+          Generate
         </button>
       </div>
 
-      {/* ── Voicings & Positions (+ optional Circle of Fifths) ───────────────── */}
-      <div className={showCircle ? "flex flex-col xl:flex-row xl:gap-8" : ""}>
-        <section className={`mb-8 ${showCircle ? "xl:flex-1 xl:min-w-0" : ""}`}>
-          <SectionHeading tooltip="Different ways to play this chord on the fretboard — each voicing has its own character and suits different musical situations. Click any diagram to add it to your progression.">
-            Voicings &amp; Positions
-          </SectionHeading>
-          {voicings.length > 0 ? (
-            <div className="grid gap-6" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))" }}>
-              {voicings.map((v, i) => (
-                <VoicingCard
-                  key={i}
-                  shape={v.shape}
-                  chordLabel={chordLabel}
-                  sublabel={v.label}
-                  position={v.position}
-                  useFlats={useFlats}
-                />
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-black/40 dark:text-neutral-500">No voicings available for this chord.</p>
-          )}
-        </section>
+      {progression ? (
+        <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))" }}>
+          {progression.map((c, i) => (
+            <ProgressionChordCard
+              key={i}
+              roman={c.roman}
+              note={c.note}
+              quality={c.quality}
+              voicingIndex={c.voicingIndex}
+              useFlats={useFlats}
+              onVoicingChange={(voicingIndex) => handleProgressionVoicingChange(i, voicingIndex)}
+            />
+          ))}
+        </div>
+      ) : (
+        <p className="text-sm text-black/40 dark:text-neutral-500">
+          Click Generate to create a 4-chord progression idea for the current key.
+        </p>
+      )}
+    </div>
+  );
 
-        {showCircle && (
-          <aside className="mb-8 xl:w-[460px] xl:shrink-0">
-            <SectionHeading tooltip="The Circle of Fifths — keys close together on the wheel share the most notes and sound natural played in sequence. Hover a key to preview it.">
-              Circle of Fifths
-            </SectionHeading>
-            <CircleOfFifths showChordPanel={false} />
-          </aside>
-        )}
-      </div>
+  const panels: BentoPanel[] = [
+    {
+      id: "voicings",
+      title: "Voicings & Positions",
+      tooltip:
+        "Different ways to play this chord on the fretboard — each voicing has its own character and suits different musical situations. Click any diagram to add it to your progression.",
+      defaultColSpan: 7,
+      defaultRowSpan: 4,
+      content: voicingsContent,
+    },
+    {
+      id: "circle",
+      title: "Circle of Fifths",
+      tooltip:
+        "The Circle of Fifths — keys close together on the wheel share the most notes and sound natural played in sequence. Hover a key to preview it.",
+      defaultColSpan: 5,
+      defaultRowSpan: 4,
+      content: <CircleOfFifths showChordPanel={false} />,
+    },
+    {
+      id: "inversions",
+      title: "Inversions",
+      tooltip:
+        "The same chord notes rearranged so a different note is on the bottom — inversions give the same chord a subtly different sound and feel. Shown as tight three-note voicings on adjacent string sets.",
+      defaultColSpan: 12,
+      defaultRowSpan: 4,
+      content: inversionsContent,
+    },
+    {
+      id: "scale",
+      title: "Scale Tool",
+      tooltip:
+        "See every note of a scale laid out across all six strings and every fret — great for understanding where you can solo or add a melody over your chord progression.",
+      defaultColSpan: 12,
+      defaultRowSpan: 5,
+      content: <ScaleTool />,
+    },
+    {
+      id: "progression-generator",
+      title: "Progression Generator",
+      tooltip:
+        "Generates a random 4-chord progression diatonic to the selected key, weighted toward strong circle-of-fifths root motion (e.g. V→I). Use each card's dropdown to swap in a different voicing.",
+      defaultColSpan: 12,
+      defaultRowSpan: 4,
+      content: progressionContent,
+    },
+  ];
 
-      {/* ── Inversions ───────────────────────────────────────────────────────── */}
-      <section className="mb-8 pt-8 border-t border-gray-200 dark:border-neutral-700">
-        <SectionHeading tooltip="The same chord notes rearranged so a different note is on the bottom — inversions give the same chord a subtly different sound and feel. Shown as tight three-note voicings on adjacent string sets.">
-          Inversions
-        </SectionHeading>
-        {inversions ? (
-          <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-gray-200 dark:divide-neutral-700">
-            {[
-              {
-                key: "root",
-                title: "Root Position",
-                subtitle: "1 – 3 – 5",
-                tooltip: "The chord in its natural order — the root note (the note that names the chord) is the lowest note played",
-                items: inversions.root,
-              },
-              {
-                key: "first",
-                title: "1st Inversion",
-                subtitle: "3 – 5 – 1",
-                tooltip: "The 3rd of the chord is now the lowest note — gives the chord a slightly lighter, softer feel",
-                items: inversions.first,
-              },
-              {
-                key: "second",
-                title: "2nd Inversion",
-                subtitle: "5 – 1 – 3",
-                tooltip: "The 5th of the chord is the lowest note — creates a more open, floating sound that works great as a passing chord",
-                items: inversions.second,
-              },
-            ].map((inv, idx) => (
-              <div key={inv.key} className={`flex flex-col gap-1 pt-6 sm:pt-0${idx === 0 ? "" : " sm:pl-6"}${idx === 2 ? "" : " sm:pr-6"}`}>
-                <span
-                  className="text-sm font-semibold text-black dark:text-white"
-                  title={inv.tooltip}
+  return (
+    <div className="flex flex-1 min-h-0 flex-col p-4 sm:p-6">
+
+      {/* ── Controls — two rows in a bento card, pinned at top ───────────────── */}
+      <div
+        className="mb-4 flex flex-col gap-4 rounded-2xl bg-white dark:bg-neutral-900 p-4 sm:p-5"
+        style={{ border: "1px solid var(--border-color)" }}
+      >
+
+        {/* Row 1: Root note */}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <p
+            className="text-xs font-semibold text-black/50 dark:text-white/50 uppercase tracking-wider shrink-0"
+            title="The starting note of your chord — this is what gives the chord its name (e.g. choosing C builds a C Major chord)"
+          >
+            Root Note
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {displayNotes.map((note) => {
+              const active =
+                selectedNote === note ||
+                (flatToSharp[selectedNote] ?? selectedNote) === (flatToSharp[note] ?? note);
+              return (
+                <button
+                  key={note}
+                  onClick={() => handleNoteClick(note)}
+                  title={`Select ${note} as your root note — builds a ${formatChordLabel(note, selectedType)} chord`}
+                  className={`${TOUCH_BUTTON} ${
+                    active ? "bg-accent/20 border-accent" : "border-border hover:bg-foreground/10"
+                  }`}
                 >
-                  {inv.title}
-                </span>
-                <span
-                  className="text-xs text-black/40 dark:text-neutral-500 mb-4"
-                  title="The scale degrees played from lowest to highest string — 1 is the root, 3 is the third, 5 is the fifth"
-                >
-                  {inv.subtitle}
-                </span>
-                <div className="grid gap-6" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))" }}>
-                  {inv.items.map((item, i) => (
-                    <VoicingCard
-                      key={i}
-                      shape={item.shape}
-                      chordLabel={`${chordLabel} ${inv.title}`}
-                      sublabel={item.strings}
-                      useFlats={useFlats}
-                    />
+                  {note}
+                </button>
+              );
+            })}
+            <span className="mx-1 text-black/30 dark:text-white/30 self-center">|</span>
+            <button
+              onClick={handleFlatsToggle}
+              title="Toggle between sharp (♯) and flat (♭) note names — these are the same pitches written two different ways (e.g. F♯ and G♭ are the exact same note)"
+              className={`${TOUCH_BUTTON} ${
+                useFlats ? "bg-accent/20 border-accent" : "border-border hover:bg-foreground/10"
+              }`}
+            >
+              ♭ Flats
+            </button>
+          </div>
+        </div>
+
+        {/* Row 2: Chord type */}
+        <div className="flex flex-wrap items-start gap-x-4 gap-y-2">
+          <p
+            className="text-xs font-semibold text-black/50 dark:text-white/50 uppercase tracking-wider shrink-0 pt-1"
+            title="The flavor of the chord — different types have very different sounds. Major sounds happy, Minor sounds darker, and the rest add color and complexity"
+          >
+            Chord Type
+          </p>
+          <div className="flex flex-wrap gap-x-6 gap-y-3">
+            {TYPE_GROUPS.map((group) => (
+              <div key={group.label}>
+                <p className="text-xs text-black/40 dark:text-white/40 mb-1.5" title={GROUP_TOOLTIPS[group.label]}>
+                  {group.label}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {group.types.map((type) => (
+                    <button
+                      key={type}
+                      onClick={() => setSelectedType(type)}
+                      title={CHORD_TYPE_TOOLTIPS[type] ?? type}
+                      className={`${TOUCH_BUTTON} ${
+                        selectedType === type
+                          ? "bg-accent/20 border-accent"
+                          : "border-border hover:bg-foreground/10"
+                      }`}
+                    >
+                      {type}
+                    </button>
                   ))}
                 </div>
               </div>
             ))}
           </div>
-        ) : (
-          <p className="text-sm text-black/40 dark:text-neutral-500">
-            Inversion voicings are available for Major and Minor chords. Select one to explore.
-          </p>
-        )}
-      </section>
-
-      {/* ── My Progression ───────────────────────────────────────────────────── */}
-      <section className="mb-8 pt-8 border-t border-gray-200 dark:border-neutral-700">
-        <div className="flex items-center gap-3 mb-4">
-          <SectionHeading tooltip="A sequence of chords played one after another — the backbone of most songs. Click any chord diagram above to add it here, then try playing through them in order.">
-            My Progression
-          </SectionHeading>
-          {favorites.length > 0 && (
-            <button
-              onClick={clear}
-              title="Remove all chords from your progression and start fresh"
-              className="text-xs text-black/35 dark:text-neutral-500 hover:text-red-700 dark:hover:text-red-400 transition-colors -mt-4"
-            >
-              Clear all
-            </button>
-          )}
         </div>
-        {favorites.length === 0 ? (
-          <p className="text-sm text-black/40 dark:text-neutral-500">
-            Click any chord diagram above to add it here and build your progression.
-          </p>
-        ) : (
-          <div className="grid gap-6" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))" }}>
-            {favorites.map((fav, i) => (
-              <div key={fav.id} className="flex flex-col items-center gap-1">
-                <span
-                  className="text-xs font-mono text-black/30 dark:text-neutral-600"
-                  title={`Chord ${i + 1} in your progression`}
-                >
-                  {i + 1}
-                </span>
-                <ChordDiagram shape={fav.shape} label={fav.label} useFlats={useFlats} />
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
+      </div>
 
-      {/* ── Scale Tool ───────────────────────────────────────────────────────── */}
-      <section className="pt-8 border-t border-gray-200 dark:border-neutral-700">
-        <SectionHeading tooltip="See every note of a scale laid out across all six strings and every fret — great for understanding where you can solo or add a melody over your chord progression.">
-          Scale Tool
-        </SectionHeading>
-        <ScaleTool />
-      </section>
+      {/* ── Bento board — drag to rearrange, drag a corner to resize ──────────── */}
+      <BentoBoard storageKey="chord-explorer-bento-v1" panels={panels} />
 
-    </BentoPageLayout>
+    </div>
   );
 }
