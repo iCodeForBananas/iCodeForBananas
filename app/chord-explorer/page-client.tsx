@@ -8,6 +8,7 @@ import {
   sharpToFlat,
   flatToSharp,
   chordShapes,
+  chordTypes,
   buildChordKey,
   eShapeTemplates,
   aShapeTemplates,
@@ -302,6 +303,62 @@ function VoicingCard({
   );
 }
 
+const VOICING_OPTION_ORDER = ["Open / Standard", "E-Shape Barre", "A-Shape Barre"];
+
+function ChordTypeCard({
+  note,
+  type,
+  useFlats,
+}: {
+  note: string;
+  type: string;
+  useFlats: boolean;
+}) {
+  const [voicingIndex, setVoicingIndex] = useState(0);
+
+  const options = useMemo(() => {
+    const all = getVoicings(note, type);
+    return VOICING_OPTION_ORDER.map((label) => all.find((v) => v.label === label)).filter(
+      (v): v is LabeledShape => Boolean(v)
+    );
+  }, [note, type]);
+
+  const clampedIndex = Math.min(voicingIndex, Math.max(0, options.length - 1));
+  const selected = options[clampedIndex];
+  const chordLabel = formatChordLabel(note, type);
+
+  return (
+    <div className="flex flex-col items-center gap-2 rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-neutral-700 dark:bg-neutral-800">
+      <span
+        className="text-xs font-semibold uppercase tracking-wider text-black/50 dark:text-white/50"
+        title={CHORD_TYPE_TOOLTIPS[type] ?? type}
+      >
+        {type}
+      </span>
+      {selected ? (
+        <ChordDiagram shape={selected.shape} label={chordLabel} useFlats={useFlats} />
+      ) : (
+        <p className="text-xs text-black/40 dark:text-neutral-500">No voicing available.</p>
+      )}
+      {options.length > 0 && (
+        <select
+          value={clampedIndex}
+          onChange={(e) => setVoicingIndex(Number(e.target.value))}
+          title="Swap the voicing or chord shape used for this chord"
+          className="w-full max-w-[150px] rounded-lg border border-border bg-transparent px-2 py-1.5 text-xs dark:border-neutral-600 dark:bg-neutral-900"
+        >
+          {options.map((v, i) => (
+            <option key={i} value={i}>
+              {v.label}
+              {v.position ? ` (${v.position})` : ""}
+            </option>
+          ))}
+        </select>
+      )}
+    </div>
+  );
+}
+
 function ProgressionChordCard({
   roman,
   note,
@@ -366,8 +423,6 @@ export default function ChordExplorerPage() {
   const displayNotes = useFlats ? flatNotes : sharpNotes;
   const chordLabel = formatChordLabel(selectedNote, selectedType);
 
-  const voicings = useMemo(() => getVoicings(selectedNote, selectedType), [selectedNote, selectedType]);
-
   const invVoicing: InvVoicing | null = selectedType === "Major" ? "Major" : selectedType === "Minor" ? "Minor" : null;
   const inversions = useMemo(
     () => (invVoicing ? getInversions(selectedNote, invVoicing) : null),
@@ -406,23 +461,13 @@ export default function ChordExplorerPage() {
 
   // ── Panel contents ──────────────────────────────────────────────────────────
 
-  const voicingsContent =
-    voicings.length > 0 ? (
-      <div className="grid gap-6" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))" }}>
-        {voicings.map((v, i) => (
-          <VoicingCard
-            key={i}
-            shape={v.shape}
-            chordLabel={chordLabel}
-            sublabel={v.label}
-            position={v.position}
-            useFlats={useFlats}
-          />
-        ))}
-      </div>
-    ) : (
-      <p className="text-sm text-black/40 dark:text-neutral-500">No voicings available for this chord.</p>
-    );
+  const chordTypeCardsContent = (
+    <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))" }}>
+      {chordTypes.map((type) => (
+        <ChordTypeCard key={type} note={selectedNote} type={type} useFlats={useFlats} />
+      ))}
+    </div>
+  );
 
   const inversionsContent = inversions ? (
     <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-gray-200 dark:divide-neutral-700">
@@ -521,12 +566,12 @@ export default function ChordExplorerPage() {
   const panels: BentoPanel[] = [
     {
       id: "voicings",
-      title: "Voicings & Positions",
+      title: "Chord Types",
       tooltip:
-        "Different ways to play this chord on the fretboard — each voicing has its own character and suits different musical situations. Click any diagram to add it to your progression.",
+        "Every chord type available for this root note — each card shows a fretboard diagram, and its dropdown lets you switch between Open/Standard, E-Shape Barre, and A-Shape Barre voicings.",
       defaultColSpan: 7,
       defaultRowSpan: 4,
-      content: voicingsContent,
+      content: chordTypeCardsContent,
     },
     {
       id: "circle",
