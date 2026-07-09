@@ -1,4 +1,4 @@
-const CACHE = 'icfb-v3';
+const CACHE = 'icfb-v4';
 const PRECACHE = ['/', '/manifest.json', '/icon.svg'];
 
 self.addEventListener('install', e => {
@@ -22,6 +22,10 @@ self.addEventListener('fetch', e => {
 
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
+
+  // Local development: never serve from cache. Turbopack reuses stable chunk
+  // paths, so cache-first would hand back stale dev bundles after an edit.
+  if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') return;
 
   // API routes: network only
   if (url.pathname.startsWith('/api/')) return;
