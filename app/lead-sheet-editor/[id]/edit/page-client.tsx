@@ -4,7 +4,7 @@ import { useState, useEffect, useLayoutEffect, useRef, use } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/app/hooks/useAuth";
-import { Save, ArrowLeft, Eye, WifiOff } from "lucide-react";
+import { Save, ArrowLeft, Eye } from "lucide-react";
 import { type LeadSheet, type Section, type SectionType, migrateSection } from "../../shared";
 
 // ─── Text ↔ LeadSheet ─────────────────────────────────────────────────────────
@@ -138,22 +138,6 @@ Performance notes (capo, feel, strumming pattern)...
 [Chorus]
 [G]Take me [D]somewhere [Em]new`;
 
-// ─── Offline cache ────────────────────────────────────────────────────────────
-
-const offlineCacheKey = (songId: string) => `leadSheet:offlineCache:${songId}`;
-
-function saveOfflineCache(songId: string, data: unknown) {
-  try { localStorage.setItem(offlineCacheKey(songId), JSON.stringify(data)); } catch {}
-}
-
-function loadOfflineCache(songId: string): LeadSheet | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = localStorage.getItem(offlineCacheKey(songId));
-    return raw ? JSON.parse(raw) : null;
-  } catch { return null; }
-}
-
 // ─── Edit page ────────────────────────────────────────────────────────────────
 
 export default function EditLeadSheet({ params }: { params: Promise<{ id: string }> }) {
@@ -165,7 +149,6 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
-  const [isOfflineCopy, setIsOfflineCopy] = useState(false);
   const [saveError, setSaveError] = useState(false);
   const sbRef = useRef<ReturnType<typeof createClient> | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -202,36 +185,16 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
     try {
       const { data } = await getSb().from("lead_sheets").select("*").eq("id", id).single();
       if (data) {
-        saveOfflineCache(id, data);
         setSheetId(data.id);
         const sheet: LeadSheet = { ...data, sections: data.sections.map(migrateSection) };
         setRawText(serializeSheet(sheet));
-        setIsOfflineCopy(false);
-      } else {
-        const cached = loadOfflineCache(id);
-        if (cached) {
-          setSheetId(cached.id);
-          setRawText(serializeSheet({ ...cached, sections: cached.sections.map(migrateSection) }));
-          setIsOfflineCopy(true);
-        }
       }
-    } catch {
-      const cached = loadOfflineCache(id);
-      if (cached) {
-        setSheetId(cached.id);
-        setRawText(serializeSheet({ ...cached, sections: cached.sections.map(migrateSection) }));
-        setIsOfflineCopy(true);
-      }
-    }
+    } catch {}
     setLoading(false);
   }
 
   async function saveSheet() {
     if (!sheetId) return;
-    if (!navigator.onLine) {
-      setSaveError(true);
-      return;
-    }
     setSaving(true);
     setSaveError(false);
     const parsed = parseText(rawText);
@@ -250,7 +213,6 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
       if (error) throw error;
       setDirty(false);
       setSaveError(false);
-      setIsOfflineCopy(false);
     } catch {
       setSaveError(true);
     } finally {
@@ -314,8 +276,7 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
               <div className="flex items-center gap-2">
                 {saveError && (
                   <span className="flex items-center gap-1 text-xs font-medium text-amber-600 dark:text-amber-400">
-                    <WifiOff className="w-3 h-3 shrink-0" />
-                    Offline — changes won&apos;t be saved
+                    Save failed
                   </span>
                 )}
                 <button
@@ -336,14 +297,6 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
               </div>
             </div>
           </div>
-
-          {/* Offline notice */}
-          {isOfflineCopy && (
-            <div className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-medium bg-amber-50 dark:bg-amber-950 border-b border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300 shrink-0">
-              <WifiOff className="w-3 h-3 shrink-0" />
-              Offline — loaded from saved copy. Changes won&apos;t be saved until you&apos;re back online.
-            </div>
-          )}
 
           {/* Editor */}
           <div ref={scrollContainerRef} className="flex-1 overflow-auto">

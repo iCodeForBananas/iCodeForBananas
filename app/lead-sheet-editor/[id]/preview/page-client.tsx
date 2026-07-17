@@ -16,7 +16,6 @@ import {
   Copy,
   Check,
   Link2,
-  WifiOff,
 } from "lucide-react";
 import { type LeadSheet, type Section, migrateSection, ChordLyricLine, getPlainText } from "../../shared";
 
@@ -63,22 +62,6 @@ function loadColumnWidthVw(id: string): number {
     if (!isNaN(parsed)) return Math.min(MAX_COLUMN_WIDTH_VW, Math.max(MIN_COLUMN_WIDTH_VW, parsed));
   } catch {}
   return DEFAULT_COLUMN_WIDTH_VW;
-}
-
-const offlineCacheKey = (songId: string) => `leadSheet:offlineCache:${songId}`;
-
-function saveOfflineCache(songId: string, data: unknown) {
-  try { localStorage.setItem(offlineCacheKey(songId), JSON.stringify(data)); } catch {}
-}
-
-function loadOfflineCache(songId: string): LeadSheet | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = localStorage.getItem(offlineCacheKey(songId));
-    if (!raw) return null;
-    const data = JSON.parse(raw);
-    return { ...data, sections: data.sections.map(migrateSection) };
-  } catch { return null; }
 }
 
 function ColumnCountControl({ count, onChange }: { count: number; onChange: (next: number) => void }) {
@@ -216,13 +199,12 @@ function SheetContent({ sheet, fullscreen, columnCount, columnWidthVw }: { sheet
       </div>
 
       <div
-        className='space-y-10'
+        className={`space-y-10 ${columnsActive ? "leadsheet-columns" : ""}`}
         style={
           columnsActive
-            ? {
-                columnCount,
-                columnWidth: columnWidthVw ? `${columnWidthVw}vw` : undefined,
-                columnGap: "2rem",
+            ? ({
+                "--leadsheet-col-count": columnCount,
+                "--leadsheet-col-width": columnWidthVw ? `${columnWidthVw}vw` : undefined,
                 width:
                   columnWidthVw && columnCount
                     ? `calc(${columnCount} * ${columnWidthVw}vw + ${(columnCount - 1) * 2}rem)`
@@ -230,7 +212,7 @@ function SheetContent({ sheet, fullscreen, columnCount, columnWidthVw }: { sheet
                 maxWidth: "100%",
                 marginLeft: "auto",
                 marginRight: "auto",
-              }
+              } as React.CSSProperties)
             : undefined
         }
       >
@@ -282,7 +264,6 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
   const [columnWidthVw, setColumnWidthVw] = useState(() => loadColumnWidthVw(id));
   const [setIds, setSetIds] = useState<string[] | null>(null);
   const [setPos, setSetPos] = useState(0);
-  const [isOfflineCopy, setIsOfflineCopy] = useState(false);
 
   useEffect(() => {
     if (user) loadSheet();
@@ -343,17 +324,9 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
     try {
       const { data } = await createClient()!.from("lead_sheets").select("*").eq("id", id).single();
       if (data) {
-        saveOfflineCache(id, data);
         setSheet({ ...data, sections: data.sections.map(migrateSection) });
-        setIsOfflineCopy(false);
-      } else {
-        const cached = loadOfflineCache(id);
-        if (cached) { setSheet(cached); setIsOfflineCopy(true); }
       }
-    } catch {
-      const cached = loadOfflineCache(id);
-      if (cached) { setSheet(cached); setIsOfflineCopy(true); }
-    }
+    } catch {}
     setLoading(false);
   }
 
@@ -404,12 +377,6 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
             <div className='w-full py-8'>
               {/* Toolbar (kept constrained while content below goes full-width) */}
               <div className='max-w-3xl mx-auto px-4'>
-              {isOfflineCopy && (
-                <div className='flex items-center gap-1.5 mb-4 px-3 py-1.5 rounded-lg text-xs font-medium bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300 print:hidden'>
-                  <WifiOff className='w-3 h-3 shrink-0' />
-                  Offline — showing saved copy
-                </div>
-              )}
               <div className='flex flex-wrap items-center justify-between gap-3 mb-8'>
                 <button
                   onClick={() => setFullscreen(false)}
@@ -537,14 +504,6 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                   </div>
                 </div>
               </div>
-
-              {/* Offline notice */}
-              {isOfflineCopy && (
-                <div className='flex items-center gap-1.5 px-4 py-1.5 text-xs font-medium bg-amber-50 dark:bg-amber-950 border-b border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300 shrink-0 print:hidden'>
-                  <WifiOff className='w-3 h-3 shrink-0' />
-                  Offline — showing saved copy
-                </div>
-              )}
 
               {/* Scrollable content */}
               <div className='flex-1 overflow-auto'>

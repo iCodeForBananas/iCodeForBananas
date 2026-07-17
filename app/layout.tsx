@@ -10,7 +10,6 @@ import { ThemeProvider } from "./lib/ThemeContext";
 import { FavoriteChordsProvider } from "./lib/FavoriteChordsContext";
 import Sidebar from "./components/Sidebar";
 import MusicFavoritesBar from "./components/MusicFavoritesBar";
-import PwaRegistration from "./components/PwaRegistration";
 import PathnameTitleSync from "./components/PathnameTitleSync";
 import CopyPageHandler from "./components/CopyPageHandler";
 
@@ -74,7 +73,6 @@ export default function RootLayout({
         </ThemeProvider>
         <Analytics />
         <SpeedInsights />
-        <PwaRegistration />
         <PathnameTitleSync />
         <CopyPageHandler />
       </body>

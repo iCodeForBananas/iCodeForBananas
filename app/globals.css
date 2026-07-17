@@ -143,6 +143,24 @@ body {
   }
 }
 
+/* ── Lead sheet multi-column layout ──────────────────────────────────────
+   Uses native CSS columns driven by custom properties set inline. Forced
+   back to a single column below the `sm` breakpoint so narrow screens never
+   get a fixed-width, horizontally-scrolling layout. */
+.leadsheet-columns {
+  column-count: var(--leadsheet-col-count, 1);
+  column-width: var(--leadsheet-col-width, auto);
+  column-gap: 2rem;
+}
+
+@media (max-width: 639px) {
+  .leadsheet-columns {
+    column-count: 1 !important;
+    column-width: auto !important;
+    width: auto !important;
+  }
+}
+
 /* Silent Metronome animated background */
 .metronome-bg {
   position: fixed;
