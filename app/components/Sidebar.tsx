@@ -29,6 +29,7 @@ const LINKS: { href: string; text: string; category: Category; auth?: boolean }[
   { href: "/fire-estimator", text: "FIRE Estimator", category: "Tools" },
   { href: "/mermaid-flow", text: "Mermaid Flow", category: "Tools" },
   { href: "/paper-trading", text: "Paper Trading", category: "Tools" },
+  { href: "/seattle-events-mcp", text: "Seattle Events MCP", category: "Tools" },
   { href: "/task-board", text: "Task Board", category: "Tools" },
   { href: "/leaderboard", text: "Trading Leaderboard", category: "Tools" },
   { href: "/wordsmith", text: "Wordsmith", category: "Tools" },
