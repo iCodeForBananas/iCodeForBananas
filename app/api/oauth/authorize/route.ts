@@ -83,7 +83,6 @@ h1{font-size:1.2rem;font-weight:600;margin-bottom:.5rem}
   <h1>Authorize Claude.ai</h1>
   <p class="sub">Claude.ai is requesting access to your iCodeForBananas data.</p>
   <div class="scopes">
-    <div class="scope">Notes (Wordsmith)</div>
     <div class="scope">Tasks (Task Board)</div>
     <div class="scope">Trading strategies &amp; trades</div>
     <div class="scope">Space Math progress</div>

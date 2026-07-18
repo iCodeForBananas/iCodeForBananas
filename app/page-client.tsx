@@ -145,16 +145,6 @@ const MODULES: Module[] = [
     metric: "65 questions · 4 domains",
     size: "small",
   },
-  {
-    slug: "wordsmith",
-    title: "Wordsmith",
-    category: "AI Writing Tools",
-    description:
-      "AI-powered note editor with tone rewriting, version history, template library, and context-aware Gemini assistant.",
-    stack: ["Gemini AI", "React", "TypeScript", "localStorage"],
-    metric: "Multi-tone · version history",
-    size: "small",
-  },
 ];
 
 const AI_STEPS = [
@@ -569,14 +559,6 @@ export default function Home() {
                     anim: { y: [0, 8, 0] },
                     dur: 3.2,
                     delay: 1.5,
-                  },
-                  {
-                    label: "Wordsmith",
-                    href: "/wordsmith",
-                    pos: "absolute -bottom-20 left-1/4",
-                    anim: { x: [0, 8, 0] },
-                    dur: 3.6,
-                    delay: 0.7,
                   },
                   {
                     label: "Circle of Fifths",

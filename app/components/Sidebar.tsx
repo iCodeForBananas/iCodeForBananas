@@ -32,7 +32,6 @@ const LINKS: { href: string; text: string; category: Category; auth?: boolean }[
   { href: "/seattle-events-mcp", text: "Seattle Events MCP", category: "Tools" },
   { href: "/task-board", text: "Task Board", category: "Tools" },
   { href: "/leaderboard", text: "Trading Leaderboard", category: "Tools" },
-  { href: "/wordsmith", text: "Wordsmith", category: "Tools" },
   { href: "/workout-tracker", text: "Workout Tracker", category: "Tools" },
   // Education
   { href: "/decode-dash", text: "Decode Dash", category: "Education" },
@@ -40,7 +39,6 @@ const LINKS: { href: string; text: string; category: Category; auth?: boolean }[
   { href: "/space-math", text: "Space Math", category: "Education" },
   // Experiments
   { href: "/aaron-futures", text: "Aaron Futures", category: "Experiments" },
-  { href: "/territory", text: "Territory", category: "Experiments", auth: true },
 ];
 
 export default function Sidebar() {

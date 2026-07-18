@@ -4,7 +4,6 @@ Personal dashboard built with Next.js 16, React 19, TypeScript, Supabase, and Ve
 
 ## Features
 
-- **Wordsmith** — AI-powered writing assistant with note management
 - **Task Board** — Kanban board (backlog / in-progress / done)
 - **Algorithmic Trading** — Deploy and monitor trading strategies via Tradier
 - **Space Math** — Cai's math practice progress dashboard
@@ -18,12 +17,6 @@ The app exposes a remote MCP (Model Context Protocol) server at `/api/mcp`, allo
 
 | # | Tool | Feature | Auth |
 |---|------|---------|------|
-| 1 | `list_notes` | Wordsmith | required |
-| 2 | `get_note` | Wordsmith | required |
-| 3 | `create_note` | Wordsmith | required |
-| 4 | `update_note` | Wordsmith | required |
-| 5 | `delete_note` | Wordsmith | required |
-| 6 | `search_notes` | Wordsmith | required |
 | 7 | `list_tasks` | Task Board | required |
 | 8 | `create_task` | Task Board | required |
 | 9 | `update_task` | Task Board | required |
@@ -67,8 +60,6 @@ supabase db push
 # or apply manually: supabase/migrations/20260528_create_notes.sql
 ```
 
-This creates the `notes` table used by the Wordsmith MCP tools.
-
 **3. Deploy**
 
 Push to `main` — Vercel deploys automatically. Confirm the route is live:
@@ -95,12 +86,6 @@ OAuth flow summary: Claude.ai discovers endpoints via `/.well-known/oauth-author
 ### Smoke tests
 
 Run these prompts in Claude.ai after connecting:
-
-**Wordsmith**
-- "List all my notes"
-- "Create a note called 'MCP Test' with content 'Hello from Claude'"
-- "Search my notes for [keyword]"
-- "Delete the MCP Test note"
 
 **Task Board**
 - "List all my tasks"
