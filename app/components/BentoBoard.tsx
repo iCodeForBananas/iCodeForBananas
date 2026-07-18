@@ -128,7 +128,7 @@ function PanelShell({
       >
         {dragHandle}
         <h3
-          className={`text-xs font-bold uppercase tracking-wide text-black/70 dark:text-yellow-400/70${tooltip ? " cursor-help" : ""}`}
+          className={`text-xs font-bold uppercase tracking-wide text-black/70 dark:text-yellow-400/70 ${tooltip ? "cursor-help" : ""}`}
           title={tooltip}
         >
           {title}
