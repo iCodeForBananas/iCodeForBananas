@@ -11,9 +11,9 @@ const MOBILE_BREAKPOINT = 1024;
 const isMobileDevice = () => window.innerWidth < MOBILE_BREAKPOINT;
 const SIDEBAR_OPEN_KEY = "sidebar-open";
 
-type Category = "Music" | "Tools" | "Education" | "Experiments";
+type Category = "Music" | "Tools" | "Education" | "Experiments" | "Admin";
 
-const CATEGORIES: Category[] = ["Music", "Tools", "Education", "Experiments"];
+const CATEGORIES: Category[] = ["Music", "Tools", "Education", "Experiments", "Admin"];
 
 const LINKS: { href: string; text: string; category: Category; auth?: boolean }[] = [
   // Music
@@ -39,6 +39,8 @@ const LINKS: { href: string; text: string; category: Category; auth?: boolean }[
   { href: "/space-math", text: "Space Math", category: "Education" },
   // Experiments
   { href: "/aaron-futures", text: "Aaron Futures", category: "Experiments" },
+  // Admin
+  { href: "/admin/scraper", text: "Scraper Admin", category: "Admin", auth: true },
 ];
 
 export default function Sidebar() {

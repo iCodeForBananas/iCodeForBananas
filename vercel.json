@@ -7,6 +7,10 @@
     {
       "path": "/api/task-reminder",
       "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/scraper/run",
+      "schedule": "0 6 * * *"
     }
   ]
 }
