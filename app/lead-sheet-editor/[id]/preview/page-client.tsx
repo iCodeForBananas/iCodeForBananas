@@ -440,10 +440,10 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
             </div>
           </div>
         ) : (
-          <div className='flex flex-col flex-1 min-h-0 p-2 sm:p-4'>
+          <div className='flex flex-col flex-1 min-h-0 p-0 sm:p-4'>
             <div
-              className='flex flex-col flex-1 min-h-0 rounded-2xl overflow-hidden bg-white dark:bg-neutral-900'
-              style={{ border: "1px solid var(--border-color)" }}
+              className='flex flex-col flex-1 min-h-0 rounded-none sm:rounded-2xl overflow-hidden bg-white dark:bg-neutral-900 border-0 sm:border'
+              style={{ borderColor: "var(--border-color)" }}
             >
               {/* Toolbar */}
               <div className='border-b shrink-0' style={{ borderColor: "var(--border-color)" }}>
@@ -507,7 +507,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
 
               {/* Scrollable content */}
               <div className='flex-1 overflow-auto'>
-                <div className='w-full py-8' style={{ fontSize: `${fontScale}%` }}>
+                <div className='w-full py-8 px-4 sm:px-0' style={{ fontSize: `${fontScale}%` }}>
                   <SheetContent sheet={sheet} fullscreen={false} columnCount={columnCount} columnWidthVw={columnWidthVw} />
                 </div>
               </div>
