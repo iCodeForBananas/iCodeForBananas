@@ -14,7 +14,7 @@ export default function FavoriteChordsBar() {
         {favorites.map((fav) => (
           <div
             key={fav.id}
-            className="shrink-0 bg-white rounded-lg p-2 cursor-pointer hover:opacity-60 transition-opacity"
+            className="shrink-0 bg-white dark:bg-neutral-800 rounded-lg p-2 cursor-pointer hover:opacity-60 transition-opacity"
             onClick={() => toggle(fav)}
           >
             <div className="pointer-events-none">
