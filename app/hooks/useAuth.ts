@@ -21,7 +21,15 @@ export function useAuth() {
           setLoading(false);
         });
       });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => setUser(session?.user ?? null));
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
+      // Supabase re-emits auth state (with a fresh user object) on tab focus,
+      // e.g. for token refresh. Keep referential stability when the identity
+      // hasn't changed so consumers keyed on `user` in a dep array don't refetch.
+      setUser((prev) => {
+        const next = session?.user ?? null;
+        return prev?.id === next?.id ? prev : next;
+      });
+    });
     return () => subscription.unsubscribe();
   }, []);
 
