@@ -30,7 +30,6 @@ const TITLES: Record<string, string> = {
   "/spelling-bee":                        "Spelling Bee | iCodeForBananas",
   "/task-board":                          "Task Board | iCodeForBananas",
   "/workout-tracker":                     "Workout Tracker | iCodeForBananas",
-  "/aaron-futures":                       "Aaron Futures | iCodeForBananas",
   "/mermaid-flow":                        "Mermaid Flow | iCodeForBananas",
   "/websites/seattle-concrete":           "Seattle Concrete | iCodeForBananas",
   "/websites/seattle-concrete/estimate":  "Concrete Estimate | iCodeForBananas",

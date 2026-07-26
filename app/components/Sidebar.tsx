@@ -37,8 +37,6 @@ const LINKS: { href: string; text: string; category: Category; auth?: boolean }[
   { href: "/decode-dash", text: "Decode Dash", category: "Education" },
   { href: "/learning-progress", text: "Learning Progress", category: "Education" },
   { href: "/space-math", text: "Space Math", category: "Education" },
-  // Experiments
-  { href: "/aaron-futures", text: "Aaron Futures", category: "Experiments" },
   // Admin
   { href: "/admin/scraper", text: "Scraper Admin", category: "Admin", auth: true },
 ];
