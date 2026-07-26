@@ -9,9 +9,9 @@ interface BentoPageLayoutProps {
 export default function BentoPageLayout({ title, maxWidth, children }: BentoPageLayoutProps) {
   return (
     <div className='flex flex-col flex-1 min-h-0'>
-      <main className='flex flex-col flex-1 min-h-0 p-2 sm:p-4'>
+      <main className='flex flex-col flex-1 min-h-0 pl-2 pt-2 pr-0 pb-0 sm:pl-4 sm:pt-4 sm:pr-0 sm:pb-0'>
         <div
-          className={`flex flex-col flex-1 min-h-0 rounded-2xl overflow-hidden bg-white dark:bg-neutral-900${maxWidth ? ` ${maxWidth} mx-auto` : ""}`}
+          className={`flex flex-col flex-1 min-h-0 rounded-tl-2xl rounded-tr-none rounded-bl-none rounded-br-none overflow-hidden bg-white dark:bg-neutral-900${maxWidth ? ` ${maxWidth} mx-auto` : ""}`}
           style={{ border: "1px solid var(--border-color)" }}
         >
           <div className='border-b shrink-0' style={{ borderColor: "var(--border-color)" }}>
