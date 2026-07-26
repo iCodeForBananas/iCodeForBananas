@@ -300,8 +300,6 @@ export default function BentoBoard({
     );
   }, []);
 
-  const resetLayout = () => setLayout(defaultLayout(panels));
-
   const narrow = width > 0 && width < NARROW_BREAKPOINT;
   const colUnit = width > 0 ? (width - (COLS - 1) * GAP_PX) / COLS + GAP_PX : 96;
 
@@ -311,20 +309,6 @@ export default function BentoBoard({
 
   return (
     <div ref={containerRef} className="flex flex-col gap-3">
-      {!narrow && (
-        <div className="flex items-center justify-end gap-3 text-xs text-black/40 dark:text-white/40">
-          <span className="hidden sm:inline">Drag the ⠿ handle to rearrange · drag a corner to resize</span>
-          <button
-            type="button"
-            onClick={resetLayout}
-            className="rounded-md border border-border px-2.5 py-1 font-medium transition-colors hover:bg-foreground/10"
-            title="Restore the default panel arrangement"
-          >
-            Reset layout
-          </button>
-        </div>
-      )}
-
       {narrow ? (
         // Stacked, full-width panels on small screens — drag/resize disabled.
         <div className="flex flex-col gap-4">
