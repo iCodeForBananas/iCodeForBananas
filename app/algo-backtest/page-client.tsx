@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import BacktestChart from "../components/BacktestChart";
 import EquityCurveChart from "../components/EquityCurveChart";
+import BentoPageLayout from "../components/BentoPageLayout";
 import { IndicatorData, PositionSide } from "@/app/types";
 import {
   AVAILABLE_STRATEGIES,
@@ -705,23 +706,7 @@ export default function AlgoBacktestPage() {
   );
 
   return (
-    <div className='flex flex-col'>
-      <main className='flex flex-col p-2 sm:p-4'>
-        <div
-          className='flex flex-col rounded-2xl'
-          style={{ background: '#fff', border: '1px solid var(--border-color)' }}
-        >
-          {/* Header */}
-          <div className='border-b shrink-0' style={{ borderColor: 'var(--border-color)' }}>
-            <div className='px-4 pt-4 pb-3 sm:px-6 sm:pt-6 sm:pb-5'>
-              <h1 className='text-lg sm:text-xl font-bold leading-tight' style={{ color: '#000' }}>
-                Algo Backtest
-              </h1>
-            </div>
-          </div>
-
-          {/* Content */}
-          <div className='flex flex-col'>
+    <BentoPageLayout title='Algo Backtest'>
             {error ? (
               <div className='flex-1 flex items-center justify-center text-red-500 p-8'>
                 <div className='text-center'>
@@ -1442,9 +1427,6 @@ export default function AlgoBacktestPage() {
                 </div>}
               </div>
             )}
-          </div>
-        </div>
-      </main>
 
       {/* Deploy Strategy Modal — fixed overlay, outside main card */}
       <LambdaExportModal
@@ -1460,6 +1442,6 @@ export default function AlgoBacktestPage() {
         authToken={authToken}
         authLoading={authLoading}
       />
-    </div>
+    </BentoPageLayout>
   );
 }
