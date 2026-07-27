@@ -20,13 +20,13 @@ export default function Home() {
   }, []);
 
   return (
-    <main className='min-h-screen w-full flex flex-col items-center justify-center gap-8 px-4 py-10 sm:px-8 bg-black'>
-      <div className='grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-3 justify-items-center mx-auto max-w-4xl'>
+    <main className='h-screen w-full bg-yellow-400'>
+      <div className='grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 auto-rows-fr h-full w-full gap-0'>
         {tools.map(({ href, text }, index) => (
           <Fragment key={href}>
             {index === bananaIndex && (
               <div
-                className='w-[140px] h-[140px] flex items-center justify-center text-center select-none text-[4rem] leading-none'
+                className='w-full h-full flex items-center justify-center text-center select-none text-6xl sm:text-7xl leading-none'
                 aria-hidden='true'
               >
                 🍌
@@ -35,7 +35,7 @@ export default function Home() {
             <Link
               href={href}
               onClick={() => handleTap(href)}
-              className={`w-[140px] h-[140px] flex items-center justify-center text-center rounded-none bg-black border border-neutral-700 text-white font-semibold text-sm px-2 select-none transition-transform ${
+              className={`w-full h-full flex items-center justify-center text-center rounded-none bg-black border border-yellow-400 text-white font-semibold text-sm px-2 select-none transition-transform ${
                 tappedHref === href ? "btn-tap-active" : ""
               }`}
             >
