@@ -141,6 +141,12 @@ body {
     height: auto !important;
     overflow: visible !important;
   }
+
+  .leadsheet-columns,
+  .leadsheet-chord,
+  .leadsheet-lyric {
+    color: #000 !important;
+  }
 }
 
 /* ── Lead sheet multi-column layout ──────────────────────────────────────
