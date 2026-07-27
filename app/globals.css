@@ -493,6 +493,28 @@ body {
   height: 0;
 }
 
+/* ── Homepage tool launcher — tap feedback ──────────────────────────────── */
+@keyframes btn-tap {
+  0% {
+    transform: scale(1);
+    outline-color: transparent;
+  }
+  35% {
+    transform: scale(0.95);
+    outline-color: #facc15;
+  }
+  100% {
+    transform: scale(1);
+    outline-color: transparent;
+  }
+}
+
+.btn-tap-active {
+  animation: btn-tap 300ms ease-out;
+  outline: 3px solid transparent;
+  outline-offset: 2px;
+}
+
 /* ── PavePlan Pro component classes ──────────────────────────────────────── */
 .ppp-card {
   @apply bg-white border border-brand-primary/10 rounded-xl shadow-sm overflow-hidden;

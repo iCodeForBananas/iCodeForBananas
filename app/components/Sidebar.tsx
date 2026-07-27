@@ -11,11 +11,11 @@ const MOBILE_BREAKPOINT = 1024;
 const isMobileDevice = () => window.innerWidth < MOBILE_BREAKPOINT;
 const SIDEBAR_OPEN_KEY = "sidebar-open";
 
-type Category = "Music" | "Tools" | "Education" | "Experiments" | "Admin";
+export type Category = "Music" | "Tools" | "Education" | "Experiments" | "Admin";
 
 const CATEGORIES: Category[] = ["Music", "Tools", "Education", "Experiments", "Admin"];
 
-const LINKS: { href: string; text: string; category: Category; auth?: boolean }[] = [
+export const LINKS: { href: string; text: string; category: Category; auth?: boolean }[] = [
   // Music
   { href: "/chord-explorer", text: "Chord Explorer", category: "Music" },
   { href: "/chord-finder", text: "Chord Finder", category: "Music" },
@@ -93,7 +93,7 @@ export default function Sidebar() {
     if (isMobile) setIsOpen(false);
   };
 
-  if (pathname.startsWith("/lead-sheet-editor/share/")) return null;
+  if (pathname === "/" || pathname.startsWith("/lead-sheet-editor/share/")) return null;
 
   const navLinkStyle = (href: string) =>
     pathname === href ? { background: "#000000", color: "#ffffff" } : { color: "#000000" };
