@@ -239,7 +239,7 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
     return (
       <div className="flex flex-col flex-1 min-h-0">
         <main className="flex flex-col flex-1 min-h-0 p-2 sm:p-4">
-          <div className="flex flex-col flex-1 min-h-0 rounded-2xl overflow-hidden bg-white dark:bg-neutral-900" style={{ border: "1px solid var(--border-color)" }}>
+          <div className="flex flex-col flex-1 min-h-0 rounded-2xl overflow-hidden">
             <div className="flex-1 flex items-center justify-center text-[#373A40]/50 dark:text-white/50">Loading...</div>
           </div>
         </main>
@@ -251,7 +251,7 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
     return (
       <div className="flex flex-col flex-1 min-h-0">
         <main className="flex flex-col flex-1 min-h-0 p-2 sm:p-4">
-          <div className="flex flex-col flex-1 min-h-0 rounded-2xl overflow-hidden bg-white dark:bg-neutral-900" style={{ border: "1px solid var(--border-color)" }}>
+          <div className="flex flex-col flex-1 min-h-0 rounded-2xl overflow-hidden">
             <div className="flex-1 flex items-center justify-center text-[#373A40]/50 dark:text-white/50">Sheet not found.</div>
           </div>
         </main>
@@ -262,7 +262,7 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
   return (
     <div className="flex flex-col flex-1 min-h-0">
       <main className="flex flex-col flex-1 min-h-0 p-2 sm:p-4">
-        <div className="flex flex-col flex-1 min-h-0 rounded-2xl overflow-hidden bg-white dark:bg-neutral-900" style={{ border: "1px solid var(--border-color)" }}>
+        <div className="flex flex-col flex-1 min-h-0 rounded-2xl overflow-hidden">
           {/* Toolbar */}
           <div className="border-b shrink-0" style={{ borderColor: "var(--border-color)" }}>
             <div className="flex items-center justify-between px-4 py-3 sm:px-6 sm:py-4">

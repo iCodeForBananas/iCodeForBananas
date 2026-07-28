@@ -71,8 +71,7 @@ export default function LeadSheetList() {
       <div className='flex flex-col flex-1 min-h-0'>
         <main className='flex flex-col flex-1 min-h-0 p-2 sm:p-4'>
           <div
-            className='flex flex-col flex-1 min-h-0 rounded-2xl overflow-hidden bg-white dark:bg-neutral-900'
-            style={{ border: "1px solid var(--border-color)" }}
+            className='flex flex-col flex-1 min-h-0 rounded-2xl overflow-hidden'
           >
             <div className='flex-1 flex items-center justify-center text-[#373A40]/50 dark:text-white/50'>Loading...</div>
           </div>
@@ -86,8 +85,7 @@ export default function LeadSheetList() {
       <div className='flex flex-col flex-1 min-h-0'>
         <main className='flex flex-col flex-1 min-h-0 p-2 sm:p-4'>
           <div
-            className='flex flex-col flex-1 min-h-0 rounded-2xl overflow-hidden bg-white dark:bg-neutral-900'
-            style={{ border: "1px solid var(--border-color)" }}
+            className='flex flex-col flex-1 min-h-0 rounded-2xl overflow-hidden'
           >
             <div className='border-b shrink-0' style={{ borderColor: "var(--border-color)" }}>
               <div className='px-4 pt-4 pb-3 sm:px-6 sm:pt-6 sm:pb-5'>
@@ -115,8 +113,7 @@ export default function LeadSheetList() {
     <div className='flex flex-col flex-1 min-h-0'>
       <main className='flex flex-col flex-1 min-h-0 p-2 sm:p-4'>
         <div
-          className='flex flex-col flex-1 min-h-0 rounded-2xl overflow-hidden bg-white dark:bg-neutral-900'
-          style={{ border: "1px solid var(--border-color)" }}
+          className='flex flex-col flex-1 min-h-0 rounded-2xl overflow-hidden'
         >
           <div className='border-b shrink-0' style={{ borderColor: "var(--border-color)" }}>
             <div className='flex flex-col gap-3 px-4 pt-4 pb-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:pt-6 sm:pb-5'>

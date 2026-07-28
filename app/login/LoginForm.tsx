@@ -46,7 +46,6 @@ export default function LoginForm() {
     <div className='flex items-center justify-center min-h-screen p-4'>
       <div
         className='w-full max-w-sm rounded-2xl p-8 sm:p-10'
-        style={{ background: "#fff", border: "1px solid var(--border-color)" }}
       >
         <h1 className='text-lg sm:text-xl font-bold leading-tight mb-6' style={{ color: "#000" }}>
           Sign In

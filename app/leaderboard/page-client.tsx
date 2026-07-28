@@ -297,7 +297,6 @@ export default function LeaderboardPage() {
       <main className="flex flex-col flex-1 min-h-0 p-2 sm:p-4">
         <div
           className="flex flex-col flex-1 min-h-0 rounded-2xl overflow-hidden"
-          style={{ background: "#fff", border: "1px solid var(--border-color)" }}
         >
           {/* Header */}
           <div className="border-b border-zinc-200 shrink-0">
