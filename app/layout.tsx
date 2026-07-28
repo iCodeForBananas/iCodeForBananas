@@ -64,7 +64,7 @@ export default function RootLayout({
           <FavoriteChordsProvider>
             <div id='app-shell' className='flex h-dvh overflow-hidden font-sans'>
               <Sidebar />
-              <div id='main-content' className='flex-1 min-w-0 overflow-y-auto flex flex-col'>
+              <div id='main-content' className='flex-1 min-w-0 overflow-y-auto flex flex-col bg-black'>
                 <MusicFavoritesBar />
                 {children}
               </div>

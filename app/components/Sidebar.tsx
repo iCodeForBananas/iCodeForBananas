@@ -103,7 +103,7 @@ export default function Sidebar() {
       key={href}
       href={href}
       onClick={handleLinkClick}
-      className='px-3 py-2 rounded whitespace-nowrap transition-colors font-medium text-sm'
+      className='px-3 py-2 whitespace-nowrap transition-colors font-medium text-sm'
       style={navLinkStyle(href)}
       onMouseEnter={(e) => {
         if (pathname !== href) {
@@ -257,7 +257,7 @@ export default function Sidebar() {
               );
               if (items.length === 0) return null;
               return (
-                <div key={category} className='flex flex-col gap-1'>
+                <div key={category} className='flex flex-col'>
                   <p
                     className='px-3 mb-1 text-[11px] font-bold uppercase tracking-wider'
                     style={{ color: "rgba(0, 0, 0, 0.45)" }}
