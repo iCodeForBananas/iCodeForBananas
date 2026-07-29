@@ -35,14 +35,14 @@ export default function Home() {
   }, []);
 
   return (
-    <div className='flex flex-col flex-1 min-h-0 bg-yellow-400'>
+    <div className='flex flex-col flex-1 min-h-0 bg-black'>
       <BentoPageLayout title='iCodeForBananas' boxClassName='bg-black' titleClassName='text-yellow-400'>
         <div className='grid grid-cols-3 sm:grid-cols-5 auto-rows-fr flex-1 min-h-0 w-full gap-2'>
           {tools.map(({ href, text }, index) => (
             <Fragment key={href}>
               {index === bananaIndex && (
                 <div
-                  className='w-full h-full flex items-center justify-center text-center select-none text-6xl sm:text-7xl leading-none'
+                  className='w-full h-full flex items-center justify-center text-center select-none text-7xl sm:text-8xl leading-none rounded-none bg-yellow-300'
                   aria-hidden='true'
                 >
                   🍌
@@ -51,7 +51,7 @@ export default function Home() {
               <Link
                 href={href}
                 onClick={() => handleTap(href)}
-                className={`w-full h-full flex items-center justify-center text-center rounded-none bg-black border border-yellow-400 text-white font-semibold text-sm px-2 select-none transition-transform ${
+                className={`w-full h-full flex items-center justify-center text-center rounded-none bg-yellow-400 text-black font-bold text-sm px-2 select-none transition-transform hover:bg-yellow-300 ${
                   tappedHref === href ? "btn-tap-active" : ""
                 }`}
               >
