@@ -34,8 +34,17 @@ export default function Home() {
   }, []);
 
   return (
-    <main className='h-screen w-full bg-yellow-400'>
-      <div className='grid grid-cols-3 sm:grid-cols-5 auto-rows-fr h-full w-full gap-2'>
+    <main className='relative h-screen w-full bg-yellow-400 overflow-hidden'>
+      <div
+        className='absolute inset-0'
+        aria-hidden='true'
+        style={{
+          backgroundImage:
+            "linear-gradient(rgba(0,0,0,0.12) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.12) 1px, transparent 1px), linear-gradient(rgba(0,0,0,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.06) 1px, transparent 1px)",
+          backgroundSize: "80px 80px, 80px 80px, 16px 16px, 16px 16px",
+        }}
+      />
+      <div className='relative grid grid-cols-3 sm:grid-cols-5 auto-rows-fr h-full w-full gap-2'>
         {tools.map(({ href, text }, index) => (
           <Fragment key={href}>
             {index === bananaIndex && (
@@ -49,7 +58,7 @@ export default function Home() {
             <Link
               href={href}
               onClick={() => handleTap(href)}
-              className={`w-full h-full flex items-center justify-center text-center rounded-none bg-black border border-yellow-400 text-white font-semibold text-sm px-2 select-none transition-transform ${
+              className={`w-full h-full flex items-center justify-center text-center rounded-none bg-black/50 backdrop-blur-sm border border-yellow-400 text-white font-semibold text-sm px-2 select-none transition-transform ${
                 tappedHref === href ? "btn-tap-active" : ""
               }`}
             >
