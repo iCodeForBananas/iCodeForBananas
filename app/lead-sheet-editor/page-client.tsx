@@ -71,9 +71,9 @@ export default function LeadSheetList() {
       <div className='flex flex-col flex-1 min-h-0'>
         <main className='flex flex-col flex-1 min-h-0 p-2 sm:p-4'>
           <div
-            className='flex flex-col flex-1 min-h-0 rounded-2xl overflow-hidden'
+            className='flex flex-col flex-1 min-h-0 rounded-none border-none bg-black overflow-hidden'
           >
-            <div className='flex-1 flex items-center justify-center text-[#373A40]/50 dark:text-white/50'>Loading...</div>
+            <div className='flex-1 flex items-center justify-center text-white/50'>Loading...</div>
           </div>
         </main>
       </div>
@@ -85,17 +85,17 @@ export default function LeadSheetList() {
       <div className='flex flex-col flex-1 min-h-0'>
         <main className='flex flex-col flex-1 min-h-0 p-2 sm:p-4'>
           <div
-            className='flex flex-col flex-1 min-h-0 rounded-2xl overflow-hidden'
+            className='flex flex-col flex-1 min-h-0 rounded-none border-none bg-black overflow-hidden'
           >
-            <div className='border-b shrink-0' style={{ borderColor: "var(--border-color)" }}>
+            <div className='shrink-0'>
               <div className='px-4 pt-4 pb-3 sm:px-6 sm:pt-6 sm:pb-5'>
-                <h1 className='text-lg sm:text-xl font-bold leading-tight text-black dark:text-yellow-400'>
+                <h1 className='text-lg sm:text-xl font-bold leading-tight text-yellow-400'>
                   Lead Sheet Editor
                 </h1>
               </div>
             </div>
             <div className='flex-1 overflow-auto p-4 sm:p-6 flex flex-col items-center justify-center text-center'>
-              <p className='text-[#373A40]/60 dark:text-white/60 mb-6'>Sign in to create and manage your lead sheets.</p>
+              <p className='text-white/60 mb-6'>Sign in to create and manage your lead sheets.</p>
               <Link
                 href='/login'
                 className='inline-block rounded bg-black px-6 py-2 text-sm font-medium text-yellow-400'
@@ -113,17 +113,17 @@ export default function LeadSheetList() {
     <div className='flex flex-col flex-1 min-h-0'>
       <main className='flex flex-col flex-1 min-h-0 p-2 sm:p-4'>
         <div
-          className='flex flex-col flex-1 min-h-0 rounded-2xl overflow-hidden'
+          className='flex flex-col flex-1 min-h-0 rounded-none border-none bg-black overflow-hidden'
         >
-          <div className='border-b shrink-0' style={{ borderColor: "var(--border-color)" }}>
+          <div className='shrink-0'>
             <div className='flex flex-col gap-3 px-4 pt-4 pb-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:pt-6 sm:pb-5'>
-              <h1 className='text-lg sm:text-xl font-bold leading-tight text-black dark:text-yellow-400'>
+              <h1 className='text-lg sm:text-xl font-bold leading-tight text-yellow-400'>
                 Lead Sheet Editor
               </h1>
               <div className='flex items-center gap-2'>
                 <Link
                   href='/lead-sheet-editor/setlists'
-                  className='flex items-center gap-2 rounded border border-[#373A40]/30 dark:border-white/30 px-4 py-2 text-sm font-medium text-black dark:text-white/80 hover:border-black dark:hover:border-white transition-colors'
+                  className='flex items-center gap-2 rounded border border-white/30 px-4 py-2 text-sm font-medium text-white/80 hover:border-white transition-colors'
                 >
                   <ListMusic className='w-4 h-4' />
                   Setlists

@@ -116,9 +116,9 @@ export default function SetlistDetail({ params }: { params: Promise<{ id: string
       <div className='flex flex-col flex-1 min-h-0'>
         <main className='flex flex-col flex-1 min-h-0 p-2 sm:p-4'>
           <div
-            className='flex flex-col flex-1 min-h-0 rounded-2xl overflow-hidden'
+            className='flex flex-col flex-1 min-h-0 rounded-none border-none bg-black overflow-hidden'
           >
-            <div className='flex-1 flex items-center justify-center text-[#373A40]/50 dark:text-white/50'>Loading...</div>
+            <div className='flex-1 flex items-center justify-center text-white/50'>Loading...</div>
           </div>
         </main>
       </div>
@@ -130,9 +130,9 @@ export default function SetlistDetail({ params }: { params: Promise<{ id: string
       <div className='flex flex-col flex-1 min-h-0'>
         <main className='flex flex-col flex-1 min-h-0 p-2 sm:p-4'>
           <div
-            className='flex flex-col flex-1 min-h-0 rounded-2xl overflow-hidden'
+            className='flex flex-col flex-1 min-h-0 rounded-none border-none bg-black overflow-hidden'
           >
-            <div className='flex-1 flex items-center justify-center text-[#373A40]/50 dark:text-white/50'>Setlist not found.</div>
+            <div className='flex-1 flex items-center justify-center text-white/50'>Setlist not found.</div>
           </div>
         </main>
       </div>
@@ -143,19 +143,19 @@ export default function SetlistDetail({ params }: { params: Promise<{ id: string
     <div className='flex flex-col flex-1 min-h-0'>
       <main className='flex flex-col flex-1 min-h-0 p-2 sm:p-4'>
         <div
-          className='flex flex-col flex-1 min-h-0 rounded-2xl overflow-hidden'
+          className='flex flex-col flex-1 min-h-0 rounded-none border-none bg-black overflow-hidden'
         >
-          <div className='border-b shrink-0' style={{ borderColor: "var(--border-color)" }}>
+          <div className='shrink-0'>
             <div className='flex flex-wrap items-center justify-between gap-3 px-4 pt-4 pb-3 sm:px-6 sm:pt-6 sm:pb-5'>
               <div className='flex items-center gap-3 min-w-0'>
                 <Link
                   href='/lead-sheet-editor/setlists'
-                  className='flex items-center gap-2 text-[#373A40]/50 dark:text-white/50 hover:text-black dark:hover:text-white transition-colors text-sm font-medium shrink-0'
+                  className='flex items-center gap-2 text-white/50 hover:text-black dark:hover:text-white transition-colors text-sm font-medium shrink-0'
                 >
                   <ArrowLeft className='w-4 h-4' />
                   Setlists
                 </Link>
-                <h1 className='text-lg sm:text-xl font-bold leading-tight truncate text-black dark:text-yellow-400'>
+                <h1 className='text-lg sm:text-xl font-bold leading-tight truncate text-yellow-400'>
                   {name}
                 </h1>
               </div>
@@ -181,7 +181,7 @@ export default function SetlistDetail({ params }: { params: Promise<{ id: string
 
           <div className='flex-1 overflow-auto p-4 sm:p-6 flex flex-col'>
             {songs.length === 0 ? (
-              <div className='flex-1 flex flex-col items-center justify-center text-[#373A40]/40 dark:text-white/40'>
+              <div className='flex-1 flex flex-col items-center justify-center text-white/40'>
                 <Music className='w-12 h-12 mb-3 opacity-40' />
                 <p>No songs yet. Add one to get started!</p>
               </div>
@@ -193,12 +193,12 @@ export default function SetlistDetail({ params }: { params: Promise<{ id: string
                     className='flex items-center justify-between p-4 border border-[#373A40]/20 dark:border-white/20 rounded-lg'
                   >
                     <div className='flex items-center gap-3 min-w-0'>
-                      <span className='text-sm font-mono text-[#373A40]/40 dark:text-white/40 w-6 text-right shrink-0'>{index + 1}</span>
+                      <span className='text-sm font-mono text-white/40 w-6 text-right shrink-0'>{index + 1}</span>
                       <div className='min-w-0'>
                         <div className='font-semibold truncate text-black dark:text-white'>
                           {song.lead_sheets?.title || "Untitled"}
                         </div>
-                        <div className='text-sm text-[#373A40]/50 dark:text-white/50 flex flex-wrap gap-3 mt-0.5'>
+                        <div className='text-sm text-white/50 flex flex-wrap gap-3 mt-0.5'>
                           {song.lead_sheets?.key && <span>Key: {song.lead_sheets.key}</span>}
                           {song.lead_sheets?.tempo && <span>{song.lead_sheets.tempo} BPM</span>}
                         </div>
@@ -208,7 +208,7 @@ export default function SetlistDetail({ params }: { params: Promise<{ id: string
                       <button
                         onClick={() => moveSong(index, -1)}
                         disabled={index === 0}
-                        className='p-1.5 text-[#373A40]/40 dark:text-white/40 hover:text-black dark:hover:text-white disabled:opacity-20 disabled:cursor-not-allowed transition-colors'
+                        className='p-1.5 text-white/40 hover:text-black dark:hover:text-white disabled:opacity-20 disabled:cursor-not-allowed transition-colors'
                         aria-label='Move up'
                       >
                         <ArrowUp className='w-4 h-4' />
@@ -216,14 +216,14 @@ export default function SetlistDetail({ params }: { params: Promise<{ id: string
                       <button
                         onClick={() => moveSong(index, 1)}
                         disabled={index === songs.length - 1}
-                        className='p-1.5 text-[#373A40]/40 dark:text-white/40 hover:text-black dark:hover:text-white disabled:opacity-20 disabled:cursor-not-allowed transition-colors'
+                        className='p-1.5 text-white/40 hover:text-black dark:hover:text-white disabled:opacity-20 disabled:cursor-not-allowed transition-colors'
                         aria-label='Move down'
                       >
                         <ArrowDown className='w-4 h-4' />
                       </button>
                       <button
                         onClick={() => removeSong(song.id)}
-                        className='p-1.5 text-[#373A40]/40 dark:text-white/40 hover:text-red-500 transition-colors ml-1'
+                        className='p-1.5 text-white/40 hover:text-red-500 transition-colors ml-1'
                         aria-label='Remove song'
                       >
                         <Trash2 className='w-4 h-4' />
@@ -253,7 +253,7 @@ export default function SetlistDetail({ params }: { params: Promise<{ id: string
               </h2>
               <button
                 onClick={() => setShowPicker(false)}
-                className='p-1 text-[#373A40]/50 dark:text-white/50 hover:text-black dark:hover:text-white transition-colors'
+                className='p-1 text-white/50 hover:text-black dark:hover:text-white transition-colors'
                 aria-label='Close'
               >
                 <X className='w-4 h-4' />
@@ -261,7 +261,7 @@ export default function SetlistDetail({ params }: { params: Promise<{ id: string
             </div>
             <div className='flex-1 overflow-auto p-2'>
               {available.length === 0 ? (
-                <div className='p-6 text-center text-[#373A40]/40 dark:text-white/40'>All your lead sheets are already in this set.</div>
+                <div className='p-6 text-center text-white/40'>All your lead sheets are already in this set.</div>
               ) : (
                 available.map((sheet) => (
                   <button
@@ -273,12 +273,12 @@ export default function SetlistDetail({ params }: { params: Promise<{ id: string
                       <div className='font-semibold truncate text-black dark:text-white'>
                         {sheet.title || "Untitled"}
                       </div>
-                      <div className='text-sm text-[#373A40]/50 dark:text-white/50 flex flex-wrap gap-3 mt-0.5'>
+                      <div className='text-sm text-white/50 flex flex-wrap gap-3 mt-0.5'>
                         {sheet.key && <span>Key: {sheet.key}</span>}
                         {sheet.tempo && <span>{sheet.tempo} BPM</span>}
                       </div>
                     </div>
-                    <Plus className='w-4 h-4 text-[#373A40]/40 dark:text-white/40 shrink-0' />
+                    <Plus className='w-4 h-4 text-white/40 shrink-0' />
                   </button>
                 ))
               )}

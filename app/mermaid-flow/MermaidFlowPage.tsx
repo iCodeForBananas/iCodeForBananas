@@ -317,12 +317,12 @@ export default function MermaidFlowPage() {
     <div className="flex flex-col flex-1 min-h-0">
       <main className="flex flex-col flex-1 min-h-0 p-2 sm:p-4">
         <div
-          className="flex flex-col flex-1 min-h-0 rounded-2xl overflow-hidden"
+          className="flex flex-col flex-1 min-h-0 rounded-none border-none bg-black overflow-hidden"
         >
           {/* Header */}
-          <div className="border-b border-zinc-200 shrink-0">
+          <div className="shrink-0">
             <div className="px-4 pt-4 pb-3 sm:px-6 sm:pt-5 sm:pb-4 flex items-center justify-between">
-              <h1 className="text-lg sm:text-xl font-bold leading-tight" style={{ color: "#000" }}>
+              <h1 className="text-lg sm:text-xl font-bold leading-tight text-yellow-400">
                 Mermaid Flow
               </h1>
               <div className="flex items-center gap-2">

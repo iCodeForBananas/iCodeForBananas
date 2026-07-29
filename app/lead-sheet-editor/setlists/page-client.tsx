@@ -59,9 +59,9 @@ export default function SetlistList() {
       <div className='flex flex-col flex-1 min-h-0'>
         <main className='flex flex-col flex-1 min-h-0 p-2 sm:p-4'>
           <div
-            className='flex flex-col flex-1 min-h-0 rounded-2xl overflow-hidden'
+            className='flex flex-col flex-1 min-h-0 rounded-none border-none bg-black overflow-hidden'
           >
-            <div className='flex-1 flex items-center justify-center text-[#373A40]/50 dark:text-white/50'>Loading...</div>
+            <div className='flex-1 flex items-center justify-center text-white/50'>Loading...</div>
           </div>
         </main>
       </div>
@@ -73,17 +73,17 @@ export default function SetlistList() {
       <div className='flex flex-col flex-1 min-h-0'>
         <main className='flex flex-col flex-1 min-h-0 p-2 sm:p-4'>
           <div
-            className='flex flex-col flex-1 min-h-0 rounded-2xl overflow-hidden'
+            className='flex flex-col flex-1 min-h-0 rounded-none border-none bg-black overflow-hidden'
           >
-            <div className='border-b shrink-0' style={{ borderColor: "var(--border-color)" }}>
+            <div className='shrink-0'>
               <div className='px-4 pt-4 pb-3 sm:px-6 sm:pt-6 sm:pb-5'>
-                <h1 className='text-lg sm:text-xl font-bold leading-tight text-black dark:text-yellow-400'>
+                <h1 className='text-lg sm:text-xl font-bold leading-tight text-yellow-400'>
                   Setlists
                 </h1>
               </div>
             </div>
             <div className='flex-1 overflow-auto p-4 sm:p-6 flex flex-col items-center justify-center text-center'>
-              <p className='text-[#373A40]/60 dark:text-white/60 mb-6'>Sign in to create and manage your setlists.</p>
+              <p className='text-white/60 mb-6'>Sign in to create and manage your setlists.</p>
               <Link
                 href='/login'
                 className='inline-block rounded bg-black px-6 py-2 text-sm font-medium text-yellow-400'
@@ -101,19 +101,19 @@ export default function SetlistList() {
     <div className='flex flex-col flex-1 min-h-0'>
       <main className='flex flex-col flex-1 min-h-0 p-2 sm:p-4'>
         <div
-          className='flex flex-col flex-1 min-h-0 rounded-2xl overflow-hidden'
+          className='flex flex-col flex-1 min-h-0 rounded-none border-none bg-black overflow-hidden'
         >
-          <div className='border-b shrink-0' style={{ borderColor: "var(--border-color)" }}>
+          <div className='shrink-0'>
             <div className='flex items-center justify-between px-4 pt-4 pb-3 sm:px-6 sm:pt-6 sm:pb-5'>
               <div className='flex items-center gap-3'>
                 <Link
                   href='/lead-sheet-editor'
-                  className='flex items-center gap-2 text-[#373A40]/50 dark:text-white/50 hover:text-black dark:hover:text-white transition-colors text-sm font-medium'
+                  className='flex items-center gap-2 text-white/50 hover:text-black dark:hover:text-white transition-colors text-sm font-medium'
                 >
                   <ArrowLeft className='w-4 h-4' />
                   All Sheets
                 </Link>
-                <h1 className='text-lg sm:text-xl font-bold leading-tight text-black dark:text-yellow-400'>
+                <h1 className='text-lg sm:text-xl font-bold leading-tight text-yellow-400'>
                   Setlists
                 </h1>
               </div>
@@ -164,7 +164,7 @@ export default function SetlistList() {
 
           <div className='flex-1 overflow-auto p-4 sm:p-6 flex flex-col'>
             {setlists.length === 0 ? (
-              <div className='flex-1 flex flex-col items-center justify-center text-[#373A40]/40 dark:text-white/40'>
+              <div className='flex-1 flex flex-col items-center justify-center text-white/40'>
                 <ListMusic className='w-12 h-12 mb-3 opacity-40' />
                 <p>No setlists yet. Create your first one!</p>
               </div>
@@ -180,7 +180,7 @@ export default function SetlistList() {
                       <div className='font-semibold text-black dark:text-white'>
                         {setlist.name}
                       </div>
-                      <div className='text-sm text-[#373A40]/50 dark:text-white/50 flex flex-wrap gap-3 mt-0.5'>
+                      <div className='text-sm text-white/50 flex flex-wrap gap-3 mt-0.5'>
                         <span>{setlist.setlist_songs?.[0]?.count ?? 0} songs</span>
                         <span>{new Date(setlist.created_at).toLocaleDateString()}</span>
                       </div>
@@ -191,7 +191,7 @@ export default function SetlistList() {
                           e.stopPropagation();
                           if (confirm(`Delete "${setlist.name}"?`)) deleteSetlist(setlist.id);
                         }}
-                        className='opacity-0 group-hover:opacity-100 p-1.5 text-[#373A40]/40 dark:text-white/40 hover:text-red-500 transition-all ml-1'
+                        className='opacity-0 group-hover:opacity-100 p-1.5 text-white/40 hover:text-red-500 transition-all ml-1'
                       >
                         <Trash2 className='w-4 h-4' />
                       </button>

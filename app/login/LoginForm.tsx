@@ -45,9 +45,9 @@ export default function LoginForm() {
   return (
     <div className='flex items-center justify-center min-h-screen p-4'>
       <div
-        className='w-full max-w-sm rounded-2xl p-8 sm:p-10'
+        className='w-full max-w-sm rounded-none border-none bg-black p-8 sm:p-10'
       >
-        <h1 className='text-lg sm:text-xl font-bold leading-tight mb-6' style={{ color: "#000" }}>
+        <h1 className='text-lg sm:text-xl font-bold leading-tight mb-6 text-yellow-400'>
           Sign In
         </h1>
         <form onSubmit={handleLogin} className='space-y-4'>
