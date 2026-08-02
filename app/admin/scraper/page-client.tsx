@@ -18,6 +18,34 @@ interface ScraperSource {
   updated_at: string;
 }
 
+interface ScrapeResult {
+  id: string;
+  name: string;
+  url: string;
+  status: "success" | "error";
+  error?: string;
+  detail?: string;
+}
+
+interface RunReport {
+  summary: { total: number; succeeded: number; failed: number } | null;
+  results: ScrapeResult[];
+  fatalError: string | null;
+  stack?: string;
+}
+
+// The route always answers with JSON, but a crash upstream (proxy, build error, auth redirect)
+// can still return HTML. Surface that body instead of a bare "Unexpected token '<'".
+async function parseJsonResponse(res: Response): Promise<Record<string, unknown>> {
+  const text = await res.text();
+  try {
+    return JSON.parse(text) as Record<string, unknown>;
+  } catch {
+    const snippet = text.trim().slice(0, 500) || "(empty response body)";
+    throw new Error(`HTTP ${res.status} ${res.statusText} — server returned non-JSON: ${snippet}`);
+  }
+}
+
 function fmtTime(s: string | null): string {
   if (!s) return "Never";
   const d = new Date(s);
@@ -31,6 +59,26 @@ function fmtTime(s: string | null): string {
   });
 }
 
+// Plain-text version of the run report, for pasting into a bug report or an LLM.
+function formatRunReport(report: RunReport): string {
+  const lines: string[] = [];
+  if (report.summary) {
+    lines.push(
+      `Scrape run: ${report.summary.succeeded}/${report.summary.total} succeeded, ${report.summary.failed} failed`
+    );
+  }
+  if (report.fatalError) {
+    lines.push(`FATAL: ${report.fatalError}`);
+    if (report.stack) lines.push(report.stack);
+  }
+  for (const r of report.results) {
+    lines.push(`[${r.status}] ${r.name} — ${r.url}`);
+    if (r.error) lines.push(`  ${r.error}`);
+    if (r.detail) lines.push(`  ${r.detail}`);
+  }
+  return lines.join("\n");
+}
+
 export default function ScraperAdminPage() {
   const { user, loading: authLoading } = useAuth();
   const [authToken, setAuthToken] = useState<string | null>(null);
@@ -39,6 +87,7 @@ export default function ScraperAdminPage() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [running, setRunning] = useState(false);
+  const [runReport, setRunReport] = useState<RunReport | null>(null);
 
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -58,9 +107,10 @@ export default function ScraperAdminPage() {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Success toasts auto-dismiss; errors stay put so they can be read and copied.
   const showMessage = (type: "success" | "error", text: string) => {
     setMessage({ type, text });
-    setTimeout(() => setMessage(null), 4000);
+    if (type === "success") setTimeout(() => setMessage(null), 4000);
   };
 
   const load = useCallback(async (token: string | null) => {
@@ -71,9 +121,9 @@ export default function ScraperAdminPage() {
     setLoading(true);
     try {
       const res = await fetch("/api/scraper/sources", { headers: { Authorization: `Bearer ${token}` } });
-      const data = await res.json();
-      if (!data.success) throw new Error(data.error ?? "Failed to load sources");
-      setSources(data.sources ?? []);
+      const data = await parseJsonResponse(res);
+      if (!data.success) throw new Error((data.error as string) ?? "Failed to load sources");
+      setSources((data.sources as ScraperSource[]) ?? []);
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load sources");
@@ -124,8 +174,8 @@ export default function ScraperAdminPage() {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
         body: JSON.stringify({ name: formName.trim(), url: formUrl.trim(), enabled: formEnabled }),
       });
-      const data = await res.json();
-      if (!data.success) throw new Error(data.error ?? "Failed to save source");
+      const data = await parseJsonResponse(res);
+      if (!data.success) throw new Error((data.error as string) ?? "Failed to save source");
       closeForm();
       showMessage("success", editingId ? "Source updated." : "Source added.");
       load(authToken);
@@ -145,8 +195,8 @@ export default function ScraperAdminPage() {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
         body: JSON.stringify({ enabled: !source.enabled }),
       });
-      const data = await res.json();
-      if (!data.success) throw new Error(data.error ?? "Failed to update source");
+      const data = await parseJsonResponse(res);
+      if (!data.success) throw new Error((data.error as string) ?? "Failed to update source");
     } catch (e) {
       setSources((prev) => prev.map((s) => (s.id === source.id ? { ...s, enabled: source.enabled } : s)));
       showMessage("error", e instanceof Error ? e.message : "Failed to update source");
@@ -161,8 +211,8 @@ export default function ScraperAdminPage() {
         method: "DELETE",
         headers: { Authorization: `Bearer ${authToken}` },
       });
-      const data = await res.json();
-      if (!data.success) throw new Error(data.error ?? "Failed to delete source");
+      const data = await parseJsonResponse(res);
+      if (!data.success) throw new Error((data.error as string) ?? "Failed to delete source");
       setSources((prev) => prev.filter((s) => s.id !== source.id));
       showMessage("success", "Source deleted.");
     } catch (e) {
@@ -173,17 +223,40 @@ export default function ScraperAdminPage() {
   const runNow = async () => {
     if (!authToken) return;
     setRunning(true);
+    setRunReport(null);
+    setMessage(null);
     try {
       const res = await fetch("/api/scraper/run", {
         method: "POST",
         headers: { Authorization: `Bearer ${authToken}` },
       });
-      const data = await res.json();
-      if (!data.success) throw new Error(data.error ?? "Scrape run failed");
-      showMessage("success", `Scrape run complete: ${data.summary.succeeded}/${data.summary.total} succeeded.`);
+      const data = await parseJsonResponse(res);
+
+      if (!data.success) {
+        setRunReport({
+          summary: null,
+          results: [],
+          fatalError: (data.error as string) ?? `Scrape run failed (HTTP ${res.status} ${res.statusText})`,
+          stack: data.stack as string | undefined,
+        });
+        return;
+      }
+
+      const summary = data.summary as RunReport["summary"];
+      const results = (data.results as ScrapeResult[]) ?? [];
+      setRunReport({ summary, results, fatalError: null });
+
+      if (summary && summary.failed === 0) {
+        showMessage("success", `Scrape run complete: ${summary.succeeded}/${summary.total} succeeded.`);
+      }
       load(authToken);
     } catch (e) {
-      showMessage("error", e instanceof Error ? e.message : "Scrape run failed");
+      setRunReport({
+        summary: null,
+        results: [],
+        fatalError: e instanceof Error ? e.message : "Scrape run failed",
+        stack: e instanceof Error ? e.stack : undefined,
+      });
     } finally {
       setRunning(false);
     }
@@ -255,6 +328,81 @@ export default function ScraperAdminPage() {
       {error && (
         <div className='rounded-lg p-3 mb-4 text-sm' style={{ background: "#fef2f2", color: "#b91c1c", border: "1px solid #fecaca" }}>
           {error}
+        </div>
+      )}
+
+      {runReport && (
+        <div
+          className='rounded-lg mb-4 overflow-hidden'
+          style={
+            runReport.fatalError || runReport.results.some((r) => r.status === "error")
+              ? { border: "1px solid #fecaca", background: "#fef2f2" }
+              : { border: "1px solid #bbf7d0", background: "#f0fdf4" }
+          }
+        >
+          <div className='flex items-start justify-between gap-3 px-3 py-2' style={{ borderBottom: "1px solid rgba(0,0,0,0.08)" }}>
+            <h2 className='text-sm font-bold' style={{ color: runReport.fatalError ? "#b91c1c" : "#111" }}>
+              {runReport.fatalError
+                ? "Scrape run failed"
+                : `Scrape run: ${runReport.summary?.succeeded ?? 0} succeeded, ${runReport.summary?.failed ?? 0} failed`}
+            </h2>
+            <div className='flex items-center gap-2 shrink-0'>
+              <button
+                onClick={() => navigator.clipboard.writeText(formatRunReport(runReport))}
+                className='text-xs underline text-black/60 hover:text-black'
+              >
+                Copy
+              </button>
+              <button onClick={() => setRunReport(null)} className='text-black/50 hover:text-black' aria-label='Dismiss'>
+                <X className='w-4 h-4' />
+              </button>
+            </div>
+          </div>
+
+          {runReport.fatalError && (
+            <pre className='px-3 py-2 text-xs whitespace-pre-wrap break-words' style={{ color: "#b91c1c" }}>
+              {runReport.fatalError}
+              {runReport.stack ? `\n\n${runReport.stack}` : ""}
+            </pre>
+          )}
+
+          {runReport.results.length > 0 && (
+            <ul className='divide-y' style={{ borderColor: "rgba(0,0,0,0.08)" }}>
+              {runReport.results.map((r) => (
+                <li key={r.id} className='px-3 py-2'>
+                  <div className='flex items-center gap-2 text-sm'>
+                    <span
+                      className='inline-block rounded px-1.5 py-0.5 text-xs font-medium shrink-0'
+                      style={
+                        r.status === "success"
+                          ? { background: "#dcfce7", color: "#15803d" }
+                          : { background: "#fee2e2", color: "#b91c1c" }
+                      }
+                    >
+                      {r.status}
+                    </span>
+                    <span className='font-medium text-black truncate'>{r.name}</span>
+                    <span className='text-xs text-black/50 truncate'>{r.url}</span>
+                  </div>
+                  {r.error && (
+                    <pre
+                      className='mt-1 text-xs whitespace-pre-wrap break-words'
+                      style={{ color: "#b91c1c" }}
+                    >
+                      {r.error}
+                      {r.detail ? `\n${r.detail}` : ""}
+                    </pre>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {!runReport.fatalError && runReport.results.length === 0 && (
+            <p className='px-3 py-2 text-xs text-black/60'>
+              No enabled sources to scrape. Enable at least one source below.
+            </p>
+          )}
         </div>
       )}
 
@@ -370,19 +518,25 @@ export default function ScraperAdminPage() {
                     </button>
                   </td>
                   <td className={`${cellStyle} whitespace-nowrap`}>{fmtTime(source.last_scraped_at)}</td>
-                  <td className={cellStyle}>
+                  <td className={`${cellStyle} max-w-[24rem]`}>
                     {source.last_status ? (
-                      <span
-                        className='inline-block rounded px-2 py-0.5 text-xs font-medium'
-                        style={
-                          source.last_status === "success"
-                            ? { background: "#f0fdf4", color: "#15803d" }
-                            : { background: "#fef2f2", color: "#b91c1c" }
-                        }
-                        title={source.last_error ?? undefined}
-                      >
-                        {source.last_status}
-                      </span>
+                      <>
+                        <span
+                          className='inline-block rounded px-2 py-0.5 text-xs font-medium'
+                          style={
+                            source.last_status === "success"
+                              ? { background: "#f0fdf4", color: "#15803d" }
+                              : { background: "#fef2f2", color: "#b91c1c" }
+                          }
+                        >
+                          {source.last_status}
+                        </span>
+                        {source.last_error && (
+                          <pre className='mt-1 text-xs whitespace-pre-wrap break-words text-red-600 dark:text-red-400'>
+                            {source.last_error}
+                          </pre>
+                        )}
+                      </>
                     ) : (
                       <span className='text-xs text-black/40 dark:text-white/40'>—</span>
                     )}
