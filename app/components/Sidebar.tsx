@@ -11,9 +11,9 @@ const MOBILE_BREAKPOINT = 1024;
 const isMobileDevice = () => window.innerWidth < MOBILE_BREAKPOINT;
 const SIDEBAR_OPEN_KEY = "sidebar-open";
 
-export type Category = "Music" | "Tools" | "Education" | "Experiments" | "Admin";
+export type Category = "Music" | "Trading" | "Tools" | "Education" | "Experiments" | "Admin";
 
-const CATEGORIES: Category[] = ["Music", "Tools", "Education", "Experiments", "Admin"];
+const CATEGORIES: Category[] = ["Music", "Trading", "Tools", "Education", "Experiments", "Admin"];
 
 export const LINKS: { href: string; text: string; category: Category; auth?: boolean }[] = [
   // Music
@@ -24,14 +24,15 @@ export const LINKS: { href: string; text: string; category: Category; auth?: boo
   { href: "/fretboard-quiz", text: "Fretboard Quiz", category: "Music" },
   { href: "/lead-sheet-editor", text: "Lead Sheet Editor", category: "Music" },
   { href: "/scale-tool", text: "Scale Tool", category: "Music" },
+  // Trading
+  { href: "/algo-backtest", text: "Algo Backtest", category: "Trading" },
+  { href: "/paper-trading", text: "Paper Trading", category: "Trading" },
+  { href: "/leaderboard", text: "Trading Leaderboard", category: "Trading" },
   // Tools
-  { href: "/algo-backtest", text: "Algo Backtest", category: "Tools" },
   { href: "/fire-estimator", text: "FIRE Estimator", category: "Tools" },
   { href: "/mermaid-flow", text: "Mermaid Flow", category: "Tools" },
-  { href: "/paper-trading", text: "Paper Trading", category: "Tools" },
   { href: "/seattle-events-mcp", text: "Seattle Events MCP", category: "Tools" },
   { href: "/task-board", text: "Task Board", category: "Tools" },
-  { href: "/leaderboard", text: "Trading Leaderboard", category: "Tools" },
   { href: "/workout-tracker", text: "Workout Tracker", category: "Tools" },
   // Education
   { href: "/decode-dash", text: "Decode Dash", category: "Education" },
