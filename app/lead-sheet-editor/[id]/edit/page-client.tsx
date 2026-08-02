@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect, useLayoutEffect, useRef, use } from "react";
+import { useState, useEffect, useLayoutEffect, useMemo, useRef, use } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/app/hooks/useAuth";
-import { Save, ArrowLeft, Eye } from "lucide-react";
+import { Save, ArrowLeft, Eye, Replace, X } from "lucide-react";
 import { type LeadSheet, type Section, type SectionType, migrateSection } from "../../shared";
 
 // ─── Text ↔ LeadSheet ─────────────────────────────────────────────────────────
@@ -27,6 +27,37 @@ function asSectionHeader(line: string): string | null {
   if (!m) return null;
   const inner = m[1].trim();
   return CHORD_RE.test(inner) ? null : inner;
+}
+
+// ─── Bulk chord replace ───────────────────────────────────────────────────────
+
+// Every inline [X] that reads as a chord, with how often it appears. Section
+// headers ([Chorus]) are skipped so they can never be renamed by a replace.
+function collectChords(text: string): { chord: string; count: number }[] {
+  const counts = new Map<string, number>();
+  for (const line of text.split("\n")) {
+    if (asSectionHeader(line) !== null) continue;
+    for (const m of line.matchAll(/\[([^\[\]]*)\]/g)) {
+      const inner = m[1].trim();
+      if (!CHORD_RE.test(inner)) continue;
+      counts.set(inner, (counts.get(inner) ?? 0) + 1);
+    }
+  }
+  return [...counts.entries()]
+    .map(([chord, count]) => ({ chord, count }))
+    .sort((a, b) => a.chord.localeCompare(b.chord));
+}
+
+function replaceChord(text: string, from: string, to: string): string {
+  return text
+    .split("\n")
+    .map((line) => {
+      if (asSectionHeader(line) !== null) return line;
+      return line.replace(/\[([^\[\]]*)\]/g, (full, inner) =>
+        inner.trim() === from ? `[${to}]` : full
+      );
+    })
+    .join("\n");
 }
 
 function serializeSheet(sheet: LeadSheet): string {
@@ -150,9 +181,23 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [saveError, setSaveError] = useState(false);
+  const [replaceOpen, setReplaceOpen] = useState(false);
+  const [findChord, setFindChord] = useState("");
+  const [replaceWith, setReplaceWith] = useState("");
+  const [replaceResult, setReplaceResult] = useState("");
   const sbRef = useRef<ReturnType<typeof createClient> | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const replaceInputRef = useRef<HTMLInputElement>(null);
+
+  const chordsInSheet = useMemo(
+    () => (replaceOpen ? collectChords(rawText) : []),
+    [replaceOpen, rawText]
+  );
+  const findCount = chordsInSheet.find((c) => c.chord === findChord)?.count ?? 0;
+  const newChord = replaceWith.trim().replace(/^\[|\]$/g, "").trim();
+  const canReplace =
+    findCount > 0 && newChord.length > 0 && newChord !== findChord && !/[\[\]]/.test(newChord);
 
   useLayoutEffect(() => {
     const el = textareaRef.current;
@@ -225,6 +270,38 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
     setDirty(true);
   }
 
+  function openReplace() {
+    const chords = collectChords(rawText);
+    setFindChord(chords[0]?.chord ?? "");
+    setReplaceWith("");
+    setReplaceResult("");
+    setReplaceOpen(true);
+    setTimeout(() => replaceInputRef.current?.focus(), 0);
+  }
+
+  function closeReplace() {
+    setReplaceOpen(false);
+    setReplaceResult("");
+  }
+
+  function applyReplace() {
+    if (!canReplace) return;
+    const count = findCount;
+    const next = replaceChord(rawText, findChord, newChord);
+    handleChange(next);
+    setReplaceResult(
+      `Replaced ${count} ${count === 1 ? "instance" : "instances"} of [${findChord}] with [${newChord}]`
+    );
+    // Keep the dropdown pointed at something real — an unrecognized chord name
+    // won't come back from collectChords.
+    const remaining = collectChords(next);
+    setFindChord(
+      remaining.some((c) => c.chord === newChord) ? newChord : remaining[0]?.chord ?? ""
+    );
+    setReplaceWith("");
+    replaceInputRef.current?.focus();
+  }
+
   async function handlePreview() {
     if (dirty) await saveSheet();
     router.push(`/lead-sheet-editor/${id}/preview`);
@@ -280,6 +357,17 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
                   </span>
                 )}
                 <button
+                  onClick={replaceOpen ? closeReplace : openReplace}
+                  className={`flex items-center gap-1.5 rounded border px-3 py-2 text-sm font-medium transition-colors ${
+                    replaceOpen
+                      ? "border-black dark:border-white bg-black text-yellow-400"
+                      : "border-[#373A40]/30 dark:border-white/30 text-black dark:text-white/80 hover:border-black dark:hover:border-white hover:bg-black hover:text-yellow-400"
+                  }`}
+                >
+                  <Replace className="w-4 h-4" />
+                  Replace Chord
+                </button>
+                <button
                   onClick={handlePreview}
                   className="flex items-center gap-1.5 rounded border border-[#373A40]/30 dark:border-white/30 px-3 py-2 text-sm font-medium text-black dark:text-white/80 hover:border-black dark:hover:border-white hover:bg-black hover:text-yellow-400 transition-colors"
                 >
@@ -296,6 +384,71 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
                 </button>
               </div>
             </div>
+
+            {replaceOpen && (
+              <div className="border-t border-white/10 px-4 py-3 sm:px-6">
+                <div className="max-w-3xl mx-auto flex flex-wrap items-center gap-2">
+                  {chordsInSheet.length === 0 ? (
+                    <span className="text-sm text-white/50">No chords in this sheet yet.</span>
+                  ) : (
+                    <>
+                      <select
+                        value={findChord}
+                        onChange={(e) => {
+                          setFindChord(e.target.value);
+                          setReplaceResult("");
+                        }}
+                        className="rounded border border-white/30 bg-black px-2 py-2 text-sm font-mono text-white outline-none focus:border-white"
+                      >
+                        {chordsInSheet.map(({ chord, count }) => (
+                          <option key={chord} value={chord}>
+                            [{chord}] — {count}
+                          </option>
+                        ))}
+                      </select>
+                      <span className="text-white/40 text-sm">→</span>
+                      <input
+                        ref={replaceInputRef}
+                        value={replaceWith}
+                        onChange={(e) => {
+                          setReplaceWith(e.target.value);
+                          setReplaceResult("");
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            applyReplace();
+                          } else if (e.key === "Escape") {
+                            e.preventDefault();
+                            closeReplace();
+                          }
+                        }}
+                        placeholder="New chord"
+                        spellCheck={false}
+                        className="w-32 rounded border border-white/30 bg-black px-2 py-2 text-sm font-mono text-white placeholder:text-white/30 outline-none focus:border-white"
+                      />
+                      <button
+                        onClick={applyReplace}
+                        disabled={!canReplace}
+                        className="rounded bg-black border border-white/30 px-3 py-2 text-sm font-medium text-yellow-400 hover:border-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                      >
+                        Replace All
+                      </button>
+                      {replaceResult && (
+                        <span className="text-xs text-white/50">{replaceResult}</span>
+                      )}
+                    </>
+                  )}
+                  <button
+                    onClick={closeReplace}
+                    className="ml-auto text-white/50 hover:text-white transition-colors"
+                    aria-label="Close replace"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Editor */}
