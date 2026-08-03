@@ -16,7 +16,6 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@google/genai": "^1.41.0",
-    "@modelcontextprotocol/sdk": "^1.29.0",
     "@supabase/ssr": "^0.10.2",
     "@supabase/supabase-js": "^2.103.0",
     "@tiptap/extension-image": "^3.23.1",
@@ -52,8 +51,7 @@
     "recharts": "^3.7.0",
     "tailwind-merge": "^3.5.0",
     "uuid": "^13.0.0",
-    "yahoo-finance2": "^3.13.0",
-    "zod": "^4.4.3"
+    "yahoo-finance2": "^3.13.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

@@ -11,9 +11,9 @@ const MOBILE_BREAKPOINT = 1024;
 const isMobileDevice = () => window.innerWidth < MOBILE_BREAKPOINT;
 const SIDEBAR_OPEN_KEY = "sidebar-open";
 
-export type Category = "Music" | "Trading" | "Tools" | "Education" | "Experiments" | "Admin";
+export type Category = "Music" | "Trading" | "Tools" | "Education" | "Experiments";
 
-const CATEGORIES: Category[] = ["Music", "Trading", "Tools", "Education", "Experiments", "Admin"];
+const CATEGORIES: Category[] = ["Music", "Trading", "Tools", "Education", "Experiments"];
 
 export const LINKS: { href: string; text: string; category: Category; auth?: boolean }[] = [
   // Music
@@ -31,15 +31,12 @@ export const LINKS: { href: string; text: string; category: Category; auth?: boo
   // Tools
   { href: "/fire-estimator", text: "FIRE Estimator", category: "Tools" },
   { href: "/mermaid-flow", text: "Mermaid Flow", category: "Tools" },
-  { href: "/seattle-events-mcp", text: "Seattle Events MCP", category: "Tools" },
   { href: "/task-board", text: "Task Board", category: "Tools" },
   { href: "/workout-tracker", text: "Workout Tracker", category: "Tools" },
   // Education
   { href: "/decode-dash", text: "Decode Dash", category: "Education" },
   { href: "/learning-progress", text: "Learning Progress", category: "Education" },
   { href: "/space-math", text: "Space Math", category: "Education" },
-  // Admin
-  { href: "/admin/scraper", text: "Scraper Admin", category: "Admin", auth: true },
 ];
 
 export default function Sidebar() {
