@@ -5,7 +5,6 @@ Personal dashboard built with Next.js 16, React 19, TypeScript, Supabase, and Ve
 ## Features
 
 - **Task Board** — Kanban board (backlog / in-progress / done)
-- **Algorithmic Trading** — Deploy and monitor trading strategies via Tradier
 - **Space Math** — Cai's math practice progress dashboard
 - **Lead Sheets** — Jazz lead sheet editor
 
