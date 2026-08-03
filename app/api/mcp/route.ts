@@ -3,6 +3,14 @@ import { createClient } from "@supabase/supabase-js";
 
 export const dynamic = "force-dynamic";
 
+// No auth of any kind — this endpoint must be callable unauthenticated by
+// remote MCP clients (e.g. claude.ai connectors), hence the CORS headers below.
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, Mcp-Session-Id, Mcp-Protocol-Version",
+};
+
 // Public, read-only MCP server over the lead_sheets table. Uses the anon key —
 // relies on the "Public read" RLS policy on lead_sheets to permit selects.
 function getSupabase() {
@@ -68,11 +76,15 @@ interface JsonRpcRequest {
 }
 
 function rpcResult(id: string | number | null | undefined, result: unknown) {
-  return NextResponse.json({ jsonrpc: "2.0", id: id ?? null, result });
+  return NextResponse.json({ jsonrpc: "2.0", id: id ?? null, result }, { headers: CORS_HEADERS });
 }
 
 function rpcError(id: string | number | null | undefined, code: number, message: string) {
-  return NextResponse.json({ jsonrpc: "2.0", id: id ?? null, error: { code, message } });
+  return NextResponse.json({ jsonrpc: "2.0", id: id ?? null, error: { code, message } }, { headers: CORS_HEADERS });
+}
+
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: CORS_HEADERS });
 }
 
 export async function POST(request: NextRequest) {
@@ -87,7 +99,7 @@ export async function POST(request: NextRequest) {
 
   // Notifications carry no id and get no response body.
   if (id === undefined) {
-    return new NextResponse(null, { status: 202 });
+    return new NextResponse(null, { status: 202, headers: CORS_HEADERS });
   }
 
   if (method === "initialize") {
