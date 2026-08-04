@@ -25,7 +25,6 @@ export const LINKS: { href: string; text: string; category: Category; auth?: boo
   { href: "/lead-sheet-editor", text: "Lead Sheet Editor", category: "Music" },
   { href: "/scale-tool", text: "Scale Tool", category: "Music" },
   // Tools
-  { href: "/fire-estimator", text: "FIRE Estimator", category: "Tools" },
   { href: "/task-board", text: "Task Board", category: "Tools" },
   { href: "/workout-tracker", text: "Workout Tracker", category: "Tools" },
   // Education
