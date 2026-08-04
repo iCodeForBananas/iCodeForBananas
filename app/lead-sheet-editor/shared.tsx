@@ -1,5 +1,7 @@
 "use client";
 
+import ChordHoverPopover from "../components/ChordHoverPopover";
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type SectionType =
@@ -134,9 +136,11 @@ export function ChordLyricLine({
       {segments.map((seg, i) => (
         <span key={i}>
           {seg.chord && (
-            <span className="leadsheet-chord font-bold text-amber-600 dark:text-yellow-400">
-              [{seg.chord}]
-            </span>
+            <ChordHoverPopover chord={seg.chord}>
+              <span className="leadsheet-chord font-bold text-amber-600 dark:text-yellow-400">
+                [{seg.chord}]
+              </span>
+            </ChordHoverPopover>
           )}
           <span className="leadsheet-lyric text-black dark:text-white">{seg.lyric}</span>
         </span>

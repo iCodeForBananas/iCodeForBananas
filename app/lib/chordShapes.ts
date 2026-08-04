@@ -279,6 +279,54 @@ export const resolveChordShape = (note: string, type: string): ChordShape | null
   return null;
 };
 
+// ── Free-text chord name parsing (e.g. lead sheet chord tokens) ────────────────
+
+const suffixToType: Record<string, string> = {
+  "": "Major",
+  maj: "Major",
+  major: "Major",
+  m: "Minor",
+  min: "Minor",
+  minor: "Minor",
+  "-": "Minor",
+  maj7: "Maj7",
+  ma7: "Maj7",
+  m7: "m7",
+  min7: "m7",
+  "-7": "m7",
+  "7": "7",
+  dom7: "7",
+  6: "6",
+  maj9: "Maj9",
+  ma9: "Maj9",
+  9: "9",
+  maj13: "Maj13",
+  13: "13",
+  sus2: "Sus2",
+  sus4: "Sus4",
+  sus: "Sus4",
+  add9: "Add9",
+};
+
+/**
+ * Parse a free-text chord token (as written in a lead sheet, e.g. "Am7",
+ * "F#maj7", "Bb/D", "Csus4") into a {note, type} pair usable with
+ * resolveChordShape. Returns null if the token isn't a recognizable chord.
+ */
+export const parseChordName = (raw: string): { note: string; type: string } | null => {
+  if (!raw) return null;
+  const withoutBass = raw.trim().split("/")[0];
+  const match = withoutBass.match(/^([A-Ga-g])([#b]?)(.*)$/);
+  if (!match) return null;
+  const [, letter, accidental, rest] = match;
+  const note = letter.toUpperCase() + accidental;
+  if (!sharpNotes.includes(note) && !flatNotes.includes(note)) return null;
+  const suffixKey = rest.trim().toLowerCase();
+  const type = suffixToType[suffixKey];
+  if (!type) return null;
+  return { note, type };
+};
+
 /**
  * Return semitones from E (low E string, fret 0) to the given note.
  * E.g. E→0, F→1, G→3, A→5, C→8, etc.
