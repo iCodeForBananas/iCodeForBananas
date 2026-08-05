@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/app/hooks/useAuth";
 import { Save, ArrowLeft, Eye, Replace, X } from "lucide-react";
-import { type LeadSheet, type Section, type SectionType, migrateSection } from "../../shared";
+import { type LeadSheet, type Section, type SectionType, migrateSection, OfflineBadge } from "../../shared";
+import { cacheSheet, getCachedSheet } from "../../offlineCache";
 
 // ─── Text ↔ LeadSheet ─────────────────────────────────────────────────────────
 
@@ -181,6 +182,7 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [saveError, setSaveError] = useState(false);
+  const [offline, setOffline] = useState(false);
   const [replaceOpen, setReplaceOpen] = useState(false);
   const [findChord, setFindChord] = useState("");
   const [replaceWith, setReplaceWith] = useState("");
@@ -228,13 +230,24 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
   async function loadSheet() {
     setLoading(true);
     try {
-      const { data } = await getSb().from("lead_sheets").select("*").eq("id", id).single();
+      const { data, error } = await getSb().from("lead_sheets").select("*").eq("id", id).single();
+      if (error) throw error;
       if (data) {
         setSheetId(data.id);
         const sheet: LeadSheet = { ...data, sections: data.sections.map(migrateSection) };
         setRawText(serializeSheet(sheet));
+        setOffline(false);
+        await cacheSheet(data);
       }
-    } catch {}
+    } catch {
+      const cached = await getCachedSheet(id);
+      if (cached) {
+        setSheetId(cached.id);
+        const sheet: LeadSheet = { ...cached, sections: cached.sections.map(migrateSection) };
+        setRawText(serializeSheet(sheet));
+        setOffline(true);
+      }
+    }
     setLoading(false);
   }
 
@@ -351,6 +364,7 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
                 All Sheets
               </button>
               <div className="flex items-center gap-2">
+                {offline && <OfflineBadge />}
                 {saveError && (
                   <span className="flex items-center gap-1 text-xs font-medium text-amber-600 dark:text-amber-400">
                     Save failed

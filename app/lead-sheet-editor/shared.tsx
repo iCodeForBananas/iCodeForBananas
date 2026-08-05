@@ -1,5 +1,6 @@
 "use client";
 
+import { WifiOff } from "lucide-react";
 import ChordHoverPopover from "../components/ChordHoverPopover";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -50,6 +51,17 @@ export const KEYS = [
   "C","C#","D","D#","E","F","F#","G","G#","A","A#","B",
   "Cm","C#m","Dm","D#m","Em","Fm","F#m","Gm","G#m","Am","A#m","Bm",
 ];
+
+// ─── Offline indicator ────────────────────────────────────────────────────────
+
+export function OfflineBadge() {
+  return (
+    <span className="flex items-center gap-1.5 text-xs font-medium text-amber-600 dark:text-amber-400">
+      <WifiOff className="w-3.5 h-3.5" />
+      Offline — showing cached version
+    </span>
+  );
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

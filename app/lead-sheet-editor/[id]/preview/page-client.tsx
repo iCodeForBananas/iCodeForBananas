@@ -17,7 +17,8 @@ import {
   Check,
   Link2,
 } from "lucide-react";
-import { type LeadSheet, type Section, migrateSection, ChordLyricLine, getPlainText } from "../../shared";
+import { type LeadSheet, type Section, migrateSection, ChordLyricLine, getPlainText, OfflineBadge } from "../../shared";
+import { cacheSheet, getCachedSheet } from "../../offlineCache";
 
 // Per-song localStorage keys: leadSheet:${id}:fontScale, leadSheet:${id}:columnCount, leadSheet:${id}:columnWidthVw
 
@@ -256,6 +257,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
   const router = useRouter();
   const [sheet, setSheet] = useState<LeadSheet | null>(null);
   const [loading, setLoading] = useState(true);
+  const [offline, setOffline] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   const [fontScale, setFontScale] = useState(() => loadFontScale(id));
   const [copied, setCopied] = useState(false);
@@ -322,11 +324,20 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
   async function loadSheet() {
     setLoading(true);
     try {
-      const { data } = await createClient()!.from("lead_sheets").select("*").eq("id", id).single();
+      const { data, error } = await createClient()!.from("lead_sheets").select("*").eq("id", id).single();
+      if (error) throw error;
       if (data) {
         setSheet({ ...data, sections: data.sections.map(migrateSection) });
+        setOffline(false);
+        await cacheSheet(data);
       }
-    } catch {}
+    } catch {
+      const cached = await getCachedSheet(id);
+      if (cached) {
+        setSheet({ ...cached, sections: cached.sections.map(migrateSection) });
+        setOffline(true);
+      }
+    }
     setLoading(false);
   }
 
@@ -383,6 +394,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                   <ArrowLeft className='w-4 h-4' />
                   Exit Fullscreen
                 </button>
+                {offline && <OfflineBadge />}
                 <div className='flex flex-wrap items-center gap-2'>
                   <FontScaleControl scale={fontScale} onChange={updateFontScale} />
                   <ColumnCountControl count={columnCount} onChange={updateColumnCount} />
@@ -452,6 +464,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                     <ArrowLeft className='w-4 h-4' />
                     All Sheets
                   </button>
+                  {offline && <OfflineBadge />}
                   <div className='flex flex-wrap items-center gap-2'>
                     <FontScaleControl scale={fontScale} onChange={updateFontScale} />
                     <ColumnCountControl count={columnCount} onChange={updateColumnCount} />

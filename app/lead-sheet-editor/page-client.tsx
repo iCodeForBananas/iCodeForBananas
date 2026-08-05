@@ -7,13 +7,15 @@ import { useAuth } from "@/app/hooks/useAuth";
 import Link from "next/link";
 import { Plus, Trash2, Music, Eye, Pencil, Copy, Check, Link2, ListMusic } from "lucide-react";
 import type { LeadSheet } from "./shared";
-import { makeSection, getPlainText } from "./shared";
+import { makeSection, getPlainText, OfflineBadge } from "./shared";
+import { cacheSheetList, getCachedSheetList } from "./offlineCache";
 
 export default function LeadSheetList() {
   const { user, loading: authLoading } = useAuth();
   const [sheets, setSheets] = useState<LeadSheet[]>([]);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [sharedId, setSharedId] = useState<string | null>(null);
+  const [offline, setOffline] = useState(false);
   const router = useRouter();
 
   const getSb = () => createClient()!;
@@ -24,12 +26,21 @@ export default function LeadSheetList() {
 
   async function loadSheets() {
     if (!user) return;
-    const { data } = await getSb()
-      .from("lead_sheets")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("updated_at", { ascending: false });
-    setSheets(data ?? []);
+    try {
+      const { data, error } = await getSb()
+        .from("lead_sheets")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("updated_at", { ascending: false });
+      if (error) throw error;
+      setSheets(data ?? []);
+      setOffline(false);
+      await cacheSheetList(data ?? []);
+    } catch {
+      const cached = await getCachedSheetList();
+      setSheets(cached ?? []);
+      setOffline(true);
+    }
   }
 
   async function createSheet() {
@@ -117,9 +128,12 @@ export default function LeadSheetList() {
         >
           <div className='shrink-0'>
             <div className='flex flex-col gap-3 px-4 pt-4 pb-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:pt-6 sm:pb-5'>
-              <h1 className='text-lg sm:text-xl font-bold leading-tight text-yellow-400'>
-                Lead Sheet Editor
-              </h1>
+              <div className='flex items-center gap-3'>
+                <h1 className='text-lg sm:text-xl font-bold leading-tight text-yellow-400'>
+                  Lead Sheet Editor
+                </h1>
+                {offline && <OfflineBadge />}
+              </div>
               <div className='flex items-center gap-2'>
                 <Link
                   href='/lead-sheet-editor/setlists'
