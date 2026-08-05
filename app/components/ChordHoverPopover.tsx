@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import ChordDiagram from "./ChordDiagram";
 import { parseChordName, resolveChordShape } from "../lib/chordShapes";
 
 export default function ChordHoverPopover({ chord, children }: { chord: string; children: ReactNode }) {
-  const [hovered, setHovered] = useState(false);
+  const [rect, setRect] = useState<DOMRect | null>(null);
+  const anchorRef = useRef<HTMLSpanElement>(null);
 
   const parsed = parseChordName(chord);
   const shape = parsed ? resolveChordShape(parsed.note, parsed.type) : null;
@@ -14,24 +16,32 @@ export default function ChordHoverPopover({ chord, children }: { chord: string; 
 
   return (
     <span
+      ref={anchorRef}
       className="relative inline-block"
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      onMouseEnter={() => setRect(anchorRef.current?.getBoundingClientRect() ?? null)}
+      onMouseLeave={() => setRect(null)}
     >
       {children}
-      {hovered && (
-        <span
-          className="absolute z-50 left-1/2 -translate-x-1/2 bottom-full mb-2 not-italic normal-case tracking-normal font-normal"
-          style={{ width: "max-content" }}
-        >
+      {rect &&
+        createPortal(
           <span
-            className="block rounded-lg shadow-xl p-2"
-            style={{ background: "var(--background)", border: "1px solid color-mix(in srgb, var(--chord-ink) 25%, transparent)" }}
+            className="fixed z-50 not-italic normal-case tracking-normal font-normal"
+            style={{
+              left: rect.left + rect.width / 2,
+              top: rect.top,
+              transform: "translate(-50%, calc(-100% - 8px))",
+              width: "max-content",
+            }}
           >
-            <ChordDiagram shape={shape} label={chord} />
-          </span>
-        </span>
-      )}
+            <span
+              className="block rounded-lg shadow-xl p-2"
+              style={{ background: "var(--background)", border: "1px solid color-mix(in srgb, var(--chord-ink) 25%, transparent)" }}
+            >
+              <ChordDiagram shape={shape} label={chord} />
+            </span>
+          </span>,
+          document.body
+        )}
     </span>
   );
 }
