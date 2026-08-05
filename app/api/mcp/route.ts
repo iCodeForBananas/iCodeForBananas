@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 // remote MCP clients (e.g. claude.ai connectors), hence the CORS headers below.
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization, Mcp-Session-Id, Mcp-Protocol-Version",
 };
 
@@ -83,8 +83,55 @@ function rpcError(id: string | number | null | undefined, code: number, message:
   return NextResponse.json({ jsonrpc: "2.0", id: id ?? null, error: { code, message } }, { headers: CORS_HEADERS });
 }
 
+export async function GET(request: NextRequest) {
+  const accept = request.headers.get("accept") ?? "";
+  if (!accept.includes("text/event-stream")) {
+    return NextResponse.json(
+      { name: "icodeforbananas-songs", version: "1.0.0", protocol: "MCP/2025-03-26" },
+      { headers: CORS_HEADERS }
+    );
+  }
+
+  // Streamable HTTP transport — open SSE channel
+  const sessionId = request.headers.get("mcp-session-id") ?? crypto.randomUUID();
+  let intervalId: ReturnType<typeof setInterval>;
+  const stream = new ReadableStream({
+    start(controller) {
+      const enc = new TextEncoder();
+      controller.enqueue(enc.encode(": connected\n\n"));
+      intervalId = setInterval(() => {
+        try {
+          controller.enqueue(enc.encode(": keep-alive\n\n"));
+        } catch {
+          clearInterval(intervalId);
+        }
+      }, 15000);
+    },
+    cancel() {
+      clearInterval(intervalId);
+    },
+  });
+
+  return new NextResponse(stream, {
+    headers: {
+      ...CORS_HEADERS,
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache, no-transform",
+      "Connection": "keep-alive",
+      "X-Accel-Buffering": "no",
+      "Mcp-Session-Id": sessionId,
+    },
+  });
+}
+
 export async function OPTIONS() {
-  return new NextResponse(null, { status: 204, headers: CORS_HEADERS });
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      ...CORS_HEADERS,
+      "Access-Control-Allow-Headers": "Content-Type, Authorization, Mcp-Session-Id, Mcp-Protocol-Version, Accept",
+    },
+  });
 }
 
 export async function POST(request: NextRequest) {
@@ -104,7 +151,7 @@ export async function POST(request: NextRequest) {
 
   if (method === "initialize") {
     return rpcResult(id, {
-      protocolVersion: "2024-11-05",
+      protocolVersion: "2025-03-26",
       capabilities: { tools: {} },
       serverInfo: { name: "icodeforbananas-songs", version: "1.0.0" },
     });
