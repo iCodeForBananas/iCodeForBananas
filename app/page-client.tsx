@@ -5,6 +5,7 @@ import { Fragment, useCallback, useState } from "react";
 import { useAuth } from "@/app/hooks/useAuth";
 import { LINKS } from "./components/Sidebar";
 import BentoPageLayout from "./components/BentoPageLayout";
+import HomeGame from "./components/HomeGame";
 
 // Tablet+ breakpoint (sm and up) uses this many columns. Keeping it odd,
 // and padding the tile count to an odd multiple of it, guarantees a single
@@ -64,6 +65,9 @@ export default function Home() {
           ))}
         </div>
       </BentoPageLayout>
+      <div style={{ height: "100vh" }}>
+        <HomeGame />
+      </div>
     </div>
   );
 }
