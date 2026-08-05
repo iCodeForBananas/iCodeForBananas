@@ -13,7 +13,6 @@ const TITLES: Record<string, string> = {
   "/chord-progressions":                  "Chord Progressions | iCodeForBananas",
   "/chord-voicings":                      "Chord Voicings | iCodeForBananas",
   "/circle-of-fifths":                    "Circle of Fifths | iCodeForBananas",
-  "/decode-dash":                         "Decode Dash | iCodeForBananas",
   "/fretboard-architect":                 "Fretboard Architect | iCodeForBananas",
   "/fretboard-explorer":                  "Fretboard Explorer | iCodeForBananas",
   "/fretboard-quiz":                      "Fretboard Quiz | iCodeForBananas",

@@ -27,7 +27,6 @@ export const LINKS: { href: string; text: string; category: Category; auth?: boo
   // Tools
   { href: "/workout-tracker", text: "Workout Tracker", category: "Tools" },
   // Education
-  { href: "/decode-dash", text: "Decode Dash", category: "Education" },
   { href: "/learning-progress", text: "Learning Progress", category: "Education" },
   { href: "/space-math", text: "Space Math", category: "Education" },
 ];
