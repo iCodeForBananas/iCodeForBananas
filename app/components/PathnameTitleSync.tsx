@@ -24,7 +24,6 @@ const TITLES: Record<string, string> = {
   "/settings":                            "Settings | iCodeForBananas",
   "/space-math":                          "Space Math | iCodeForBananas",
   "/spelling-bee":                        "Spelling Bee | iCodeForBananas",
-  "/task-board":                          "Task Board | iCodeForBananas",
   "/workout-tracker":                     "Workout Tracker | iCodeForBananas",
   "/websites/seattle-concrete":           "Seattle Concrete | iCodeForBananas",
   "/websites/seattle-concrete/estimate":  "Concrete Estimate | iCodeForBananas",
