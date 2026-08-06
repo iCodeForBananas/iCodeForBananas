@@ -155,13 +155,23 @@ body {
 
   /* Fix semi-transparent white text that becomes invisible on white paper */
   [class*="text-white"] {
-    color: #444 !important;
+    color: #000 !important;
   }
 
   /* Section labels keep their yellow highlight */
   [class*="text-white"][style*="background"] {
     color: #000 !important;
   }
+}
+
+/* Lead sheet preview always renders on a white background regardless of
+   the app's dark mode, so lyric/chord text must stay dark even when the
+   shared ChordLyricLine component would otherwise switch to light text. */
+.leadsheet-force-light .leadsheet-lyric {
+  color: #000 !important;
+}
+.leadsheet-force-light .leadsheet-chord {
+  color: #d97706 !important;
 }
 
 /* ── Lead sheet multi-column layout ──────────────────────────────────────

@@ -70,23 +70,23 @@ function loadColumnWidthVw(id: string): number {
 
 function ColumnCountControl({ count, onChange }: { count: number; onChange: (next: number) => void }) {
   return (
-    <div className='flex items-center gap-1 rounded-lg border border-gray-200 dark:border-white/10 px-1.5 py-1 print:hidden'>
-      <span className='text-sm font-medium text-gray-700 dark:text-neutral-200 select-none'>Cols</span>
+    <div className='flex items-center gap-1 rounded-lg border border-gray-200 px-1.5 py-1 print:hidden'>
+      <span className='text-sm font-medium text-gray-700 select-none'>Cols</span>
       <button
         type='button'
         onClick={() => onChange(count - 1)}
         disabled={count <= MIN_COLUMN_COUNT}
-        className='h-10 w-10 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-gray-700 dark:text-neutral-200 font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-gray-100 dark:disabled:hover:bg-white/10'
+        className='h-10 w-10 flex items-center justify-center rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-gray-100'
         aria-label='Decrease column count'
       >
         <Minus className='w-4 h-4' />
       </button>
-      <span className='text-sm font-medium w-6 text-center text-gray-700 dark:text-neutral-200 select-none'>{count}</span>
+      <span className='text-sm font-medium w-6 text-center text-gray-700 select-none'>{count}</span>
       <button
         type='button'
         onClick={() => onChange(count + 1)}
         disabled={count >= MAX_COLUMN_COUNT}
-        className='h-10 w-10 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-gray-700 dark:text-neutral-200 font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-gray-100 dark:disabled:hover:bg-white/10'
+        className='h-10 w-10 flex items-center justify-center rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-gray-100'
         aria-label='Increase column count'
       >
         <Plus className='w-4 h-4' />
@@ -97,23 +97,23 @@ function ColumnCountControl({ count, onChange }: { count: number; onChange: (nex
 
 function ColumnWidthControl({ width, onChange }: { width: number; onChange: (next: number) => void }) {
   return (
-    <div className='flex items-center gap-1 rounded-lg border border-gray-200 dark:border-white/10 px-1.5 py-1 print:hidden'>
-      <span className='text-sm font-medium text-gray-700 dark:text-neutral-200 select-none'>Width</span>
+    <div className='flex items-center gap-1 rounded-lg border border-gray-200 px-1.5 py-1 print:hidden'>
+      <span className='text-sm font-medium text-gray-700 select-none'>Width</span>
       <button
         type='button'
         onClick={() => onChange(width - COLUMN_WIDTH_VW_STEP)}
         disabled={width <= MIN_COLUMN_WIDTH_VW}
-        className='h-10 w-10 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-gray-700 dark:text-neutral-200 font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-gray-100 dark:disabled:hover:bg-white/10'
+        className='h-10 w-10 flex items-center justify-center rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-gray-100'
         aria-label='Decrease column width'
       >
         <Minus className='w-4 h-4' />
       </button>
-      <span className='text-sm font-medium w-14 text-center text-gray-700 dark:text-neutral-200 select-none'>{width}vw</span>
+      <span className='text-sm font-medium w-14 text-center text-gray-700 select-none'>{width}vw</span>
       <button
         type='button'
         onClick={() => onChange(width + COLUMN_WIDTH_VW_STEP)}
         disabled={width >= MAX_COLUMN_WIDTH_VW}
-        className='h-10 w-10 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-gray-700 dark:text-neutral-200 font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-gray-100 dark:disabled:hover:bg-white/10'
+        className='h-10 w-10 flex items-center justify-center rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-gray-100'
         aria-label='Increase column width'
       >
         <Plus className='w-4 h-4' />
@@ -124,23 +124,23 @@ function ColumnWidthControl({ width, onChange }: { width: number; onChange: (nex
 
 function FontScaleControl({ scale, onChange }: { scale: number; onChange: (next: number) => void }) {
   return (
-    <div className='flex items-center gap-1 rounded-lg border border-gray-200 dark:border-white/10 px-1.5 py-1 print:hidden'>
-      <span className='text-sm font-medium text-gray-700 dark:text-neutral-200 select-none'>Size</span>
+    <div className='flex items-center gap-1 rounded-lg border border-gray-200 px-1.5 py-1 print:hidden'>
+      <span className='text-sm font-medium text-gray-700 select-none'>Size</span>
       <button
         type='button'
         onClick={() => onChange(scale - SCALE_STEP)}
         disabled={scale <= MIN_SCALE}
-        className='h-10 w-10 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-gray-700 dark:text-neutral-200 font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-gray-100 dark:disabled:hover:bg-white/10'
+        className='h-10 w-10 flex items-center justify-center rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-gray-100'
         aria-label='Decrease text size'
       >
         <Minus className='w-4 h-4' />
       </button>
-      <span className='text-sm font-medium w-12 text-center text-gray-700 dark:text-neutral-200 select-none'>{scale}%</span>
+      <span className='text-sm font-medium w-12 text-center text-gray-700 select-none'>{scale}%</span>
       <button
         type='button'
         onClick={() => onChange(scale + SCALE_STEP)}
         disabled={scale >= MAX_SCALE}
-        className='h-10 w-10 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-gray-700 dark:text-neutral-200 font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-gray-100 dark:disabled:hover:bg-white/10'
+        className='h-10 w-10 flex items-center justify-center rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-gray-100'
         aria-label='Increase text size'
       >
         <Plus className='w-4 h-4' />
@@ -152,17 +152,17 @@ function FontScaleControl({ scale, onChange }: { scale: number; onChange: (next:
 function TransposeControl({ steps, onChange }: { steps: number; onChange: (next: number) => void }) {
   const offsetLabel = steps > 0 ? `+${steps}` : steps < 0 ? `${steps}` : "±0";
   return (
-    <div className='flex items-center gap-1 rounded-lg border border-gray-200 dark:border-white/10 px-1.5 py-1 print:hidden'>
+    <div className='flex items-center gap-1 rounded-lg border border-gray-200 px-1.5 py-1 print:hidden'>
       <button
         type='button'
         onClick={() => onChange(steps - 1)}
         title='Transpose down one semitone'
         aria-label='Transpose down one semitone'
-        className='h-10 w-10 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-gray-700 dark:text-neutral-200 font-medium transition-colors duration-150'
+        className='h-10 w-10 flex items-center justify-center rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium transition-colors duration-150'
       >
         <ArrowDown className='w-4 h-4' />
       </button>
-      <span className='text-sm font-medium px-1 text-center text-gray-700 dark:text-neutral-200 select-none whitespace-nowrap'>
+      <span className='text-sm font-medium px-1 text-center text-gray-700 select-none whitespace-nowrap'>
         Transpose {offsetLabel}
       </span>
       <button
@@ -170,7 +170,7 @@ function TransposeControl({ steps, onChange }: { steps: number; onChange: (next:
         onClick={() => onChange(steps + 1)}
         title='Transpose up one semitone'
         aria-label='Transpose up one semitone'
-        className='h-10 w-10 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-gray-700 dark:text-neutral-200 font-medium transition-colors duration-150'
+        className='h-10 w-10 flex items-center justify-center rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium transition-colors duration-150'
       >
         <ArrowUp className='w-4 h-4' />
       </button>
@@ -193,7 +193,7 @@ function NextSongControl({
       type='button'
       onClick={() => !isLast && onNext(setIds[pos + 1], pos + 1)}
       disabled={isLast}
-      className='h-10 flex items-center gap-1.5 px-3 rounded-lg text-sm font-medium bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-gray-700 dark:text-neutral-200 transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-gray-100 dark:disabled:hover:bg-white/10 print:hidden'
+      className='h-10 flex items-center gap-1.5 px-3 rounded-lg text-sm font-medium bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-gray-100 print:hidden'
     >
       {isLast ? "End of Set" : "Next"}
       {!isLast && <ArrowRight className='w-4 h-4' />}
@@ -205,28 +205,28 @@ function SheetContent({ sheet, fullscreen, columnCount, columnWidthVw, transpose
   const columnsActive = !!(columnCount || columnWidthVw);
   return (
     <div>
-      <div className={`mb-8 border-b-2 border-black dark:border-white/30 pb-6 ${columnsActive ? "max-w-3xl mx-auto" : ""}`}>
+      <div className={`mb-8 border-b-2 border-black pb-6 ${columnsActive ? "max-w-3xl mx-auto" : ""}`}>
         <h1
-          className={`font-bold leading-tight mb-3 text-black dark:text-white ${fullscreen ? "text-[3em]" : "text-[2.25em]"}`}
+          className={`font-bold leading-tight mb-3 text-black ${fullscreen ? "text-[3em]" : "text-[2.25em]"}`}
         >
           {sheet.title || "Untitled"}
         </h1>
         <div className='flex flex-wrap gap-6 text-[0.875em]'>
           {sheet.key && (
             <span>
-              <span className='uppercase tracking-wider text-[0.75em] text-black/50 dark:text-white/40 mr-1'>Key</span>
-              <span className='font-bold text-black dark:text-white text-[1em]'>{sheet.key}</span>
+              <span className='uppercase tracking-wider text-[0.75em] text-black/50 mr-1'>Key</span>
+              <span className='font-bold text-black text-[1em]'>{sheet.key}</span>
             </span>
           )}
           {sheet.tempo && (
             <span>
-              <span className='uppercase tracking-wider text-[0.75em] text-black/50 dark:text-white/40 mr-1'>Tempo</span>
-              <span className='font-bold text-black dark:text-white text-[1em]'>{sheet.tempo} BPM</span>
+              <span className='uppercase tracking-wider text-[0.75em] text-black/50 mr-1'>Tempo</span>
+              <span className='font-bold text-black text-[1em]'>{sheet.tempo} BPM</span>
             </span>
           )}
         </div>
         {sheet.general_notes && (
-          <p className={`mt-3 italic text-black/60 dark:text-white/60 ${fullscreen ? "text-[1em]" : "text-[0.875em]"}`}>
+          <p className={`mt-3 italic text-black/60 ${fullscreen ? "text-[1em]" : "text-[0.875em]"}`}>
             {sheet.general_notes}
           </p>
         )}
@@ -276,7 +276,7 @@ function SheetContent({ sheet, fullscreen, columnCount, columnWidthVw, transpose
                 )}
               </div>
               {section.notes && (
-                <p className={`mt-3 italic text-black/50 dark:text-white/50 ${fullscreen ? "text-[1em]" : "text-[0.875em]"}`}>
+                <p className={`mt-3 italic text-black/50 ${fullscreen ? "text-[1em]" : "text-[0.875em]"}`}>
                   ↳ {section.notes}
                 </p>
               )}
@@ -381,12 +381,12 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
 
   if (authLoading || loading) {
     return (
-      <div className='flex flex-col flex-1 min-h-0'>
+      <div className='flex flex-col flex-1 min-h-0 bg-white'>
         <div className='flex flex-col flex-1 min-h-0 p-2 sm:p-4'>
           <div
             className='flex flex-col flex-1 min-h-0 rounded-none border-none bg-white overflow-hidden'
           >
-            <div className='flex-1 flex items-center justify-center text-white/50'>Loading...</div>
+            <div className='flex-1 flex items-center justify-center text-black/50'>Loading...</div>
           </div>
         </div>
       </div>
@@ -395,12 +395,12 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
 
   if (!user || !sheet) {
     return (
-      <div className='flex flex-col flex-1 min-h-0'>
+      <div className='flex flex-col flex-1 min-h-0 bg-white'>
         <div className='flex flex-col flex-1 min-h-0 p-2 sm:p-4'>
           <div
             className='flex flex-col flex-1 min-h-0 rounded-none border-none bg-white overflow-hidden'
           >
-            <div className='flex-1 flex items-center justify-center text-white/50'>Sheet not found.</div>
+            <div className='flex-1 flex items-center justify-center text-black/50'>Sheet not found.</div>
           </div>
         </div>
       </div>
@@ -412,7 +412,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
       {/* Print-only view: chrome-free layout that only renders when printing.
           The screen view below is hidden via print:hidden so only this prints. */}
       <div className='hidden print:block' style={{ background: "#fff", color: "#000" }}>
-        <div className='max-w-3xl mx-auto px-2 py-4' style={{ fontSize: `${fontScale}%` }}>
+        <div className='leadsheet-force-light max-w-3xl mx-auto px-2 py-4' style={{ fontSize: `${fontScale}%` }}>
           <SheetContent sheet={sheet} fullscreen={false} transposeSteps={transposeSteps} />
         </div>
       </div>
@@ -420,14 +420,14 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
       {/* Screen view */}
       <div className='print:hidden flex flex-col flex-1 min-h-0'>
         {fullscreen ? (
-          <div className='fixed inset-0 z-50 bg-white dark:bg-neutral-900 overflow-y-auto'>
+          <div className='fixed inset-0 z-50 bg-white overflow-y-auto'>
             <div className='w-full py-8'>
               {/* Toolbar (kept constrained while content below goes full-width) */}
               <div className='max-w-3xl mx-auto px-4'>
               <div className='flex flex-wrap items-center justify-between gap-3 mb-8'>
                 <button
                   onClick={() => setFullscreen(false)}
-                  className='h-10 flex items-center gap-2 px-3 rounded-lg bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-gray-700 dark:text-neutral-200 transition-colors duration-150 text-sm font-medium'
+                  className='h-10 flex items-center gap-2 px-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors duration-150 text-sm font-medium'
                 >
                   <ArrowLeft className='w-4 h-4' />
                   Exit Fullscreen
@@ -438,14 +438,14 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                   <ColumnCountControl count={columnCount} onChange={updateColumnCount} />
                   <ColumnWidthControl width={columnWidthVw} onChange={updateColumnWidthVw} />
                   <TransposeControl steps={transposeSteps} onChange={setTransposeSteps} />
-                  <div className='w-px self-stretch bg-gray-300 dark:bg-white/10' />
+                  <div className='w-px self-stretch bg-gray-300' />
                   {setIds && <NextSongControl setIds={setIds} pos={setPos} onNext={goToNextSong} />}
                   <button
                     onClick={handleCopy}
                     className={`h-10 flex items-center gap-1.5 px-3 rounded-lg text-sm font-medium transition-colors duration-150 ${
                       copied
-                        ? "bg-blue-100 dark:bg-blue-900/50 hover:bg-blue-200 dark:hover:bg-blue-900 text-blue-700 dark:text-blue-300"
-                        : "bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-gray-700 dark:text-neutral-200"
+                        ? "bg-blue-100 hover:bg-blue-200 text-blue-700"
+                        : "bg-gray-100 hover:bg-gray-200 text-gray-700"
                     }`}
                   >
                     {copied ? <Check className='w-4 h-4' /> : <Copy className='w-4 h-4' />}
@@ -455,8 +455,8 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                     onClick={handleShare}
                     className={`h-10 flex items-center gap-1.5 px-3 rounded-lg text-sm font-medium transition-colors duration-150 ${
                       shared
-                        ? "bg-blue-100 dark:bg-blue-900/50 hover:bg-blue-200 dark:hover:bg-blue-900 text-blue-700 dark:text-blue-300"
-                        : "bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-gray-700 dark:text-neutral-200"
+                        ? "bg-blue-100 hover:bg-blue-200 text-blue-700"
+                        : "bg-gray-100 hover:bg-gray-200 text-gray-700"
                     }`}
                   >
                     {shared ? <Check className='w-4 h-4' /> : <Link2 className='w-4 h-4' />}
@@ -464,17 +464,17 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                   </button>
                   <button
                     onClick={() => window.print()}
-                    className='h-10 flex items-center gap-1.5 px-3 rounded-lg text-sm font-medium bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-gray-700 dark:text-neutral-200 transition-colors duration-150'
+                    className='h-10 flex items-center gap-1.5 px-3 rounded-lg text-sm font-medium bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors duration-150'
                   >
                     <Printer className='w-4 h-4' /> Print
                   </button>
                   <button
                     onClick={() => setFullscreen(false)}
-                    className='h-10 flex items-center gap-1.5 px-3 rounded-lg text-sm font-medium bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-gray-700 dark:text-neutral-200 transition-colors duration-150'
+                    className='h-10 flex items-center gap-1.5 px-3 rounded-lg text-sm font-medium bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors duration-150'
                   >
                     <Minimize2 className='w-4 h-4' /> Exit
                   </button>
-                  <div className='w-px self-stretch bg-gray-300 dark:bg-white/10' />
+                  <div className='w-px self-stretch bg-gray-300' />
                   <button
                     onClick={() => router.push(`/lead-sheet-editor/${id}/edit`)}
                     className='h-10 flex items-center gap-1.5 px-3 rounded-lg text-sm font-medium bg-black hover:bg-black/80 text-yellow-400 transition-colors duration-150'
@@ -485,7 +485,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                 </div>
               </div>
               </div>
-              <div style={{ fontSize: `${fontScale}%` }}>
+              <div className='leadsheet-force-light' style={{ fontSize: `${fontScale}%` }}>
                 <SheetContent sheet={sheet} fullscreen columnCount={columnCount} columnWidthVw={columnWidthVw} transposeSteps={transposeSteps} />
               </div>
             </div>
@@ -500,7 +500,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                 <div className='flex flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-6 sm:py-4'>
                   <button
                     onClick={() => router.push("/lead-sheet-editor")}
-                    className='h-10 flex items-center gap-2 px-3 rounded-lg bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-gray-700 dark:text-neutral-200 transition-colors duration-150 text-sm font-medium'
+                    className='h-10 flex items-center gap-2 px-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors duration-150 text-sm font-medium'
                   >
                     <ArrowLeft className='w-4 h-4' />
                     All Sheets
@@ -511,14 +511,14 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                     <ColumnCountControl count={columnCount} onChange={updateColumnCount} />
                     <ColumnWidthControl width={columnWidthVw} onChange={updateColumnWidthVw} />
                     <TransposeControl steps={transposeSteps} onChange={setTransposeSteps} />
-                    <div className='w-px self-stretch bg-gray-300 dark:bg-white/10' />
+                    <div className='w-px self-stretch bg-gray-300' />
                     {setIds && <NextSongControl setIds={setIds} pos={setPos} onNext={goToNextSong} />}
                     <button
                       onClick={handleCopy}
                       className={`h-10 flex items-center gap-1.5 px-3 rounded-lg text-sm font-medium transition-colors duration-150 ${
                         copied
-                          ? "bg-blue-100 dark:bg-blue-900/50 hover:bg-blue-200 dark:hover:bg-blue-900 text-blue-700 dark:text-blue-300"
-                          : "bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-gray-700 dark:text-neutral-200"
+                          ? "bg-blue-100 hover:bg-blue-200 text-blue-700"
+                          : "bg-gray-100 hover:bg-gray-200 text-gray-700"
                       }`}
                     >
                       {copied ? <Check className='w-4 h-4' /> : <Copy className='w-4 h-4' />}
@@ -528,8 +528,8 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                       onClick={handleShare}
                       className={`h-10 flex items-center gap-1.5 px-3 rounded-lg text-sm font-medium transition-colors duration-150 ${
                         shared
-                          ? "bg-blue-100 dark:bg-blue-900/50 hover:bg-blue-200 dark:hover:bg-blue-900 text-blue-700 dark:text-blue-300"
-                          : "bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-gray-700 dark:text-neutral-200"
+                          ? "bg-blue-100 hover:bg-blue-200 text-blue-700"
+                          : "bg-gray-100 hover:bg-gray-200 text-gray-700"
                       }`}
                     >
                       {shared ? <Check className='w-4 h-4' /> : <Link2 className='w-4 h-4' />}
@@ -537,17 +537,17 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                     </button>
                     <button
                       onClick={() => window.print()}
-                      className='h-10 flex items-center gap-1.5 px-3 rounded-lg text-sm font-medium bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-gray-700 dark:text-neutral-200 transition-colors duration-150'
+                      className='h-10 flex items-center gap-1.5 px-3 rounded-lg text-sm font-medium bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors duration-150'
                     >
                       <Printer className='w-4 h-4' /> Print
                     </button>
                     <button
                       onClick={() => setFullscreen(true)}
-                      className='h-10 flex items-center gap-1.5 px-3 rounded-lg text-sm font-medium bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-gray-700 dark:text-neutral-200 transition-colors duration-150'
+                      className='h-10 flex items-center gap-1.5 px-3 rounded-lg text-sm font-medium bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors duration-150'
                     >
                       <Maximize2 className='w-4 h-4' /> Fullscreen
                     </button>
-                    <div className='w-px self-stretch bg-gray-300 dark:bg-white/10' />
+                    <div className='w-px self-stretch bg-gray-300' />
                     <button
                       onClick={() => router.push(`/lead-sheet-editor/${id}/edit`)}
                       className='h-10 flex items-center gap-1.5 px-3 rounded-lg text-sm font-medium bg-black hover:bg-black/80 text-yellow-400 transition-colors duration-150'
@@ -561,7 +561,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
 
               {/* Scrollable content */}
               <div className='flex-1 overflow-auto'>
-                <div className='w-full py-8 px-4 sm:px-0' style={{ fontSize: `${fontScale}%` }}>
+                <div className='leadsheet-force-light w-full py-8 px-4 sm:px-0' style={{ fontSize: `${fontScale}%` }}>
                   <SheetContent sheet={sheet} fullscreen={false} columnCount={columnCount} columnWidthVw={columnWidthVw} transposeSteps={transposeSteps} />
                 </div>
               </div>
