@@ -4,9 +4,10 @@ import { useState, useEffect, useLayoutEffect, useMemo, useRef, use } from "reac
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/app/hooks/useAuth";
-import { Save, ArrowLeft, Eye, Replace, X } from "lucide-react";
+import { Save, ArrowLeft, Eye, Replace, X, ArrowUp, ArrowDown } from "lucide-react";
 import { type LeadSheet, type Section, type SectionType, migrateSection, OfflineBadge } from "../../shared";
 import { cacheSheet, getCachedSheet } from "../../offlineCache";
+import { transposeText, transposeKey } from "../../../lib/transpose";
 
 // ─── Text ↔ LeadSheet ─────────────────────────────────────────────────────────
 
@@ -283,6 +284,21 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
     setDirty(true);
   }
 
+  function applyTranspose(semitones: number) {
+    const next = rawText
+      .split("\n")
+      .map((line) => {
+        if (asSectionHeader(line) !== null) return line;
+        const keyMatch = line.match(/Key:\s*([A-G][#b]?m?)\b/i);
+        if (keyMatch) {
+          return line.replace(keyMatch[1], transposeKey(keyMatch[1], semitones));
+        }
+        return transposeText(line, semitones);
+      })
+      .join("\n");
+    handleChange(next);
+  }
+
   function openReplace() {
     const chords = collectChords(rawText);
     setFindChord(chords[0]?.chord ?? "");
@@ -370,6 +386,22 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
                     Save failed
                   </span>
                 )}
+                <button
+                  onClick={() => applyTranspose(1)}
+                  title="Transpose up one semitone"
+                  className="flex items-center gap-1.5 rounded border border-[#373A40]/30 dark:border-white/30 px-3 py-2 text-sm font-medium text-black dark:text-white/80 hover:border-black dark:hover:border-white hover:bg-black hover:text-yellow-400 transition-colors"
+                >
+                  <ArrowUp className="w-4 h-4" />
+                  Transpose Up
+                </button>
+                <button
+                  onClick={() => applyTranspose(-1)}
+                  title="Transpose down one semitone"
+                  className="flex items-center gap-1.5 rounded border border-[#373A40]/30 dark:border-white/30 px-3 py-2 text-sm font-medium text-black dark:text-white/80 hover:border-black dark:hover:border-white hover:bg-black hover:text-yellow-400 transition-colors"
+                >
+                  <ArrowDown className="w-4 h-4" />
+                  Transpose Down
+                </button>
                 <button
                   onClick={replaceOpen ? closeReplace : openReplace}
                   className={`flex items-center gap-1.5 rounded border px-3 py-2 text-sm font-medium transition-colors ${
