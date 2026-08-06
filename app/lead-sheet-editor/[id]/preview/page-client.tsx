@@ -214,19 +214,19 @@ function SheetContent({ sheet, fullscreen, columnCount, columnWidthVw, transpose
         <div className='flex flex-wrap gap-6 text-[0.875em]'>
           {sheet.key && (
             <span>
-              <span className='uppercase tracking-wider text-[0.75em] text-white/40 mr-1'>Key</span>
+              <span className='uppercase tracking-wider text-[0.75em] text-black/50 dark:text-white/40 mr-1'>Key</span>
               <span className='font-bold text-black dark:text-white text-[1em]'>{sheet.key}</span>
             </span>
           )}
           {sheet.tempo && (
             <span>
-              <span className='uppercase tracking-wider text-[0.75em] text-white/40 mr-1'>Tempo</span>
+              <span className='uppercase tracking-wider text-[0.75em] text-black/50 dark:text-white/40 mr-1'>Tempo</span>
               <span className='font-bold text-black dark:text-white text-[1em]'>{sheet.tempo} BPM</span>
             </span>
           )}
         </div>
         {sheet.general_notes && (
-          <p className={`mt-3 italic text-white/60 ${fullscreen ? "text-[1em]" : "text-[0.875em]"}`}>
+          <p className={`mt-3 italic text-black/60 dark:text-white/60 ${fullscreen ? "text-[1em]" : "text-[0.875em]"}`}>
             {sheet.general_notes}
           </p>
         )}
@@ -276,7 +276,7 @@ function SheetContent({ sheet, fullscreen, columnCount, columnWidthVw, transpose
                 )}
               </div>
               {section.notes && (
-                <p className={`mt-3 italic text-white/50 ${fullscreen ? "text-[1em]" : "text-[0.875em]"}`}>
+                <p className={`mt-3 italic text-black/50 dark:text-white/50 ${fullscreen ? "text-[1em]" : "text-[0.875em]"}`}>
                   ↳ {section.notes}
                 </p>
               )}
@@ -384,7 +384,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
       <div className='flex flex-col flex-1 min-h-0'>
         <div className='flex flex-col flex-1 min-h-0 p-2 sm:p-4'>
           <div
-            className='flex flex-col flex-1 min-h-0 rounded-none border-none bg-black overflow-hidden'
+            className='flex flex-col flex-1 min-h-0 rounded-none border-none bg-white overflow-hidden'
           >
             <div className='flex-1 flex items-center justify-center text-white/50'>Loading...</div>
           </div>
@@ -398,7 +398,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
       <div className='flex flex-col flex-1 min-h-0'>
         <div className='flex flex-col flex-1 min-h-0 p-2 sm:p-4'>
           <div
-            className='flex flex-col flex-1 min-h-0 rounded-none border-none bg-black overflow-hidden'
+            className='flex flex-col flex-1 min-h-0 rounded-none border-none bg-white overflow-hidden'
           >
             <div className='flex-1 flex items-center justify-center text-white/50'>Sheet not found.</div>
           </div>
@@ -493,7 +493,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
         ) : (
           <div className='flex flex-col flex-1 min-h-0 p-0 sm:p-4'>
             <div
-              className='flex flex-col flex-1 min-h-0 rounded-none border-none bg-black overflow-hidden'
+              className='flex flex-col flex-1 min-h-0 rounded-none border-none bg-white overflow-hidden'
             >
               {/* Toolbar */}
               <div className='shrink-0'>

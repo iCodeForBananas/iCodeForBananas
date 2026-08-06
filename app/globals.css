@@ -147,6 +147,21 @@ body {
   .leadsheet-lyric {
     color: #000 !important;
   }
+
+  /* Force all containers to white — prevents dark/gray backgrounds from printing */
+  div, section, article, main, aside, header, footer {
+    background-color: transparent !important;
+  }
+
+  /* Fix semi-transparent white text that becomes invisible on white paper */
+  [class*="text-white"] {
+    color: #444 !important;
+  }
+
+  /* Section labels keep their yellow highlight */
+  [class*="text-white"][style*="background"] {
+    color: #000 !important;
+  }
 }
 
 /* ── Lead sheet multi-column layout ──────────────────────────────────────
