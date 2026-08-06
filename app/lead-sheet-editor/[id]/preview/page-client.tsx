@@ -67,7 +67,7 @@ function loadColumnWidthVw(id: string): number {
 
 function ColumnCountControl({ count, onChange }: { count: number; onChange: (next: number) => void }) {
   return (
-    <div className='flex items-center gap-1 print:hidden'>
+    <div className='flex items-center gap-1 rounded-lg border border-gray-200 dark:border-white/10 px-1.5 py-1 print:hidden'>
       <span className='text-sm font-medium text-gray-700 dark:text-neutral-200 select-none'>Cols</span>
       <button
         type='button'
@@ -94,7 +94,7 @@ function ColumnCountControl({ count, onChange }: { count: number; onChange: (nex
 
 function ColumnWidthControl({ width, onChange }: { width: number; onChange: (next: number) => void }) {
   return (
-    <div className='flex items-center gap-1 print:hidden'>
+    <div className='flex items-center gap-1 rounded-lg border border-gray-200 dark:border-white/10 px-1.5 py-1 print:hidden'>
       <span className='text-sm font-medium text-gray-700 dark:text-neutral-200 select-none'>Width</span>
       <button
         type='button'
@@ -121,7 +121,8 @@ function ColumnWidthControl({ width, onChange }: { width: number; onChange: (nex
 
 function FontScaleControl({ scale, onChange }: { scale: number; onChange: (next: number) => void }) {
   return (
-    <div className='flex items-center gap-1 print:hidden'>
+    <div className='flex items-center gap-1 rounded-lg border border-gray-200 dark:border-white/10 px-1.5 py-1 print:hidden'>
+      <span className='text-sm font-medium text-gray-700 dark:text-neutral-200 select-none'>Size</span>
       <button
         type='button'
         onClick={() => onChange(scale - SCALE_STEP)}
@@ -399,6 +400,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                   <FontScaleControl scale={fontScale} onChange={updateFontScale} />
                   <ColumnCountControl count={columnCount} onChange={updateColumnCount} />
                   <ColumnWidthControl width={columnWidthVw} onChange={updateColumnWidthVw} />
+                  <div className='w-px self-stretch bg-gray-300 dark:bg-white/10' />
                   {setIds && <NextSongControl setIds={setIds} pos={setPos} onNext={goToNextSong} />}
                   <button
                     onClick={handleCopy}
@@ -434,6 +436,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                   >
                     <Minimize2 className='w-4 h-4' /> Exit
                   </button>
+                  <div className='w-px self-stretch bg-gray-300 dark:bg-white/10' />
                   <button
                     onClick={() => router.push(`/lead-sheet-editor/${id}/edit`)}
                     className='h-10 flex items-center gap-1.5 px-3 rounded-lg text-sm font-medium bg-black hover:bg-black/80 text-yellow-400 transition-colors duration-150'
@@ -469,6 +472,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                     <FontScaleControl scale={fontScale} onChange={updateFontScale} />
                     <ColumnCountControl count={columnCount} onChange={updateColumnCount} />
                     <ColumnWidthControl width={columnWidthVw} onChange={updateColumnWidthVw} />
+                    <div className='w-px self-stretch bg-gray-300 dark:bg-white/10' />
                     {setIds && <NextSongControl setIds={setIds} pos={setPos} onNext={goToNextSong} />}
                     <button
                       onClick={handleCopy}
@@ -504,6 +508,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                     >
                       <Maximize2 className='w-4 h-4' /> Fullscreen
                     </button>
+                    <div className='w-px self-stretch bg-gray-300 dark:bg-white/10' />
                     <button
                       onClick={() => router.push(`/lead-sheet-editor/${id}/edit`)}
                       className='h-10 flex items-center gap-1.5 px-3 rounded-lg text-sm font-medium bg-black hover:bg-black/80 text-yellow-400 transition-colors duration-150'
