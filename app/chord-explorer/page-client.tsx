@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   type ChordShape,
   sharpNotes,
@@ -16,11 +16,16 @@ import {
   semitoneFromE,
   semitoneFromA,
 } from "../lib/chordShapes";
+import {
+  PROGRESSION_GROUPS,
+  parseRomanPattern,
+  noteAtDegree,
+  type ChordQuality,
+} from "../lib/chordProgressions";
 import ChordDiagram from "../components/ChordDiagram";
 import BentoBoard, { type BentoPanel } from "../components/BentoBoard";
 import ScaleTool from "../components/ScaleTool";
 import CircleOfFifths from "../components/CircleOfFifths";
-import { Shuffle } from "lucide-react";
 
 // ── Chord type groups ─────────────────────────────────────────────────────────
 
@@ -59,6 +64,7 @@ const GROUP_TOOLTIPS: Record<string, string> = {
 // ── Format helpers ────────────────────────────────────────────────────────────
 
 const formatChordLabel = (note: string, type: string) => {
+  if (type === "Diminished") return `${note}°`;
   if (["6", "7", "m7", "9", "13"].includes(type)) return `${note}${type}`;
   return `${note} ${type}`;
 };
@@ -171,86 +177,6 @@ const getInversions = (note: string, voicing: InvVoicing) => {
   const t = INV_TEMPLATES[voicing];
   const map = (arr: ChordShape[]) => arr.map((s, i) => ({ shape: shiftShape(s, shift), strings: STRING_SETS[i] }));
   return { root: map(t.root), first: map(t.first), second: map(t.second) };
-};
-
-// ── Progression generator ─────────────────────────────────────────────────────
-
-interface DiatonicChordDef {
-  roman: string;
-  degree: number; // semitones above the key root
-  quality: "Major" | "Minor";
-}
-
-// Natural major/minor diatonic triads. vii°/ii° (diminished) are omitted — no
-// diminished shapes exist in chordShapes, and pop-style progressions rarely lean on them.
-const MAJOR_KEY_CHORDS: DiatonicChordDef[] = [
-  { roman: "I", degree: 0, quality: "Major" },
-  { roman: "ii", degree: 2, quality: "Minor" },
-  { roman: "iii", degree: 4, quality: "Minor" },
-  { roman: "IV", degree: 5, quality: "Major" },
-  { roman: "V", degree: 7, quality: "Major" },
-  { roman: "vi", degree: 9, quality: "Minor" },
-];
-
-const MINOR_KEY_CHORDS: DiatonicChordDef[] = [
-  { roman: "i", degree: 0, quality: "Minor" },
-  { roman: "III", degree: 3, quality: "Major" },
-  { roman: "iv", degree: 5, quality: "Minor" },
-  { roman: "v", degree: 7, quality: "Minor" },
-  { roman: "VI", degree: 8, quality: "Major" },
-  { roman: "VII", degree: 10, quality: "Major" },
-];
-
-const noteAtSemitone = (rootNote: string, semitones: number, useFlats: boolean) => {
-  const canonical = flatToSharp[rootNote] ?? rootNote;
-  const idx = (sharpNotes.indexOf(canonical) + semitones + 12) % 12;
-  const sharpName = sharpNotes[idx];
-  return useFlats ? sharpToFlat[sharpName] ?? sharpName : sharpName;
-};
-
-const pickWeighted = <T,>(options: { item: T; weight: number }[]): T => {
-  const total = options.reduce((sum, o) => sum + o.weight, 0);
-  let roll = Math.random() * total;
-  for (const o of options) {
-    if (roll < o.weight) return o.item;
-    roll -= o.weight;
-  }
-  return options[options.length - 1].item;
-};
-
-interface GeneratedChord {
-  roman: string;
-  note: string;
-  quality: "Major" | "Minor";
-}
-
-// Picks 4 diatonic chords, weighting each next chord toward strong
-// circle-of-fifths root motion (down a fifth / up a fourth from the previous chord).
-const generateProgression = (rootNote: string, isMinorKey: boolean, useFlats: boolean): GeneratedChord[] => {
-  const keyChords = isMinorKey ? MINOR_KEY_CHORDS : MAJOR_KEY_CHORDS;
-  const progression: GeneratedChord[] = [];
-  let prevDegree: number | null = null;
-
-  for (let i = 0; i < 4; i++) {
-    const next: DiatonicChordDef =
-      prevDegree === null
-        ? keyChords[Math.floor(Math.random() * keyChords.length)]
-        : pickWeighted(
-            keyChords.map((c) => {
-              const interval = (c.degree - prevDegree! + 12) % 12;
-              const weight = interval === 5 ? 6 : interval === 7 ? 2 : 1;
-              return { item: c, weight };
-            })
-          );
-    progression.push({
-      roman: next.roman,
-      note: noteAtSemitone(rootNote, next.degree, useFlats),
-      quality: next.quality,
-    });
-    prevDegree = next.degree;
-  }
-
-  return progression;
 };
 
 // ── Chord diagram card ────────────────────────────────────────────────────────
@@ -369,7 +295,7 @@ function ProgressionChordCard({
 }: {
   roman: string;
   note: string;
-  quality: "Major" | "Minor";
+  quality: ChordQuality;
   voicingIndex: number;
   useFlats: boolean;
   onVoicingChange: (voicingIndex: number) => void;
@@ -384,15 +310,18 @@ function ProgressionChordCard({
       className="flex flex-col items-center gap-2 rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-neutral-700 dark:bg-neutral-800"
     >
       <span
-        className="text-xs font-semibold uppercase tracking-wider text-black/40 dark:text-white/40"
-        title="Scale degree of this chord within the key"
+        className="text-xs font-semibold tracking-wider text-black/40 dark:text-white/40"
+        title="Scale degree of this chord within the key — case shows major/minor (e.g. vi vs VI), ° shows diminished"
       >
         {roman}
       </span>
       {shape ? (
         <ChordDiagram shape={shape} label={label} useFlats={useFlats} />
       ) : (
-        <p className="text-xs text-black/40 dark:text-neutral-500">No voicing available.</p>
+        <div className="flex flex-col items-center gap-1 py-4">
+          <span className="text-sm font-semibold text-black dark:text-white">{label}</span>
+          <p className="text-xs text-black/40 dark:text-neutral-500">No voicing available.</p>
+        </div>
       )}
       {voicings.length > 0 && (
         <select
@@ -429,20 +358,32 @@ export default function ChordExplorerPage() {
     [selectedNote, invVoicing]
   );
 
-  const isMinorKey = selectedType === "Minor" || selectedType === "m7";
-  const [progression, setProgression] = useState<(GeneratedChord & { voicingIndex: number })[] | null>(null);
+  const [selectedProgressionName, setSelectedProgressionName] = useState(PROGRESSION_GROUPS[0].items[0].name);
+  const [progressionVoicingIndices, setProgressionVoicingIndices] = useState<Record<number, number>>({});
 
-  const handleGenerateProgression = () => {
-    const chords = generateProgression(selectedNote, isMinorKey, useFlats).map((c) => {
-      const chordVoicings = getVoicings(c.note, c.quality);
-      const voicingIndex = chordVoicings.length > 0 ? Math.floor(Math.random() * chordVoicings.length) : 0;
-      return { ...c, voicingIndex };
-    });
-    setProgression(chords);
-  };
+  const selectedProgressionDef = useMemo(
+    () =>
+      PROGRESSION_GROUPS.flatMap((g) => g.items).find((p) => p.name === selectedProgressionName) ??
+      PROGRESSION_GROUPS[0].items[0],
+    [selectedProgressionName]
+  );
+
+  const progressionChords = useMemo(
+    () =>
+      parseRomanPattern(selectedProgressionDef.pattern).map((c) => ({
+        ...c,
+        note: noteAtDegree(selectedNote, c.degree, useFlats),
+      })),
+    [selectedProgressionDef, selectedNote, useFlats]
+  );
+
+  // Reset voicing choices whenever the selected progression changes, but keep them across key changes.
+  useEffect(() => {
+    setProgressionVoicingIndices({});
+  }, [selectedProgressionName]);
 
   const handleProgressionVoicingChange = (index: number, voicingIndex: number) => {
-    setProgression((prev) => (prev ? prev.map((c, i) => (i === index ? { ...c, voicingIndex } : c)) : prev));
+    setProgressionVoicingIndices((prev) => ({ ...prev, [index]: voicingIndex }));
   };
 
   const handleNoteClick = (note: string) => setSelectedNote(note);
@@ -526,40 +467,56 @@ export default function ChordExplorerPage() {
 
   const progressionContent = (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-black/50 dark:text-white/50">
-          Random 4-chord ideas in {selectedNote} {isMinorKey ? "minor" : "major"}, biased toward strong
-          circle-of-fifths root motion.
-        </p>
-        <button
-          onClick={handleGenerateProgression}
-          title="Generate a random 4-chord progression diatonic to the selected key"
-          className={`${TOUCH_BUTTON} gap-2 border-accent bg-accent/20 hover:bg-accent/30`}
+      <div className="flex flex-wrap items-center gap-3">
+        <label
+          htmlFor="progression-select"
+          className="text-xs font-semibold text-black/50 dark:text-white/50 uppercase tracking-wider shrink-0"
+          title="Pick a named chord progression — the chords shown below update to match your currently selected root note"
         >
-          <Shuffle size={16} />
-          Generate
-        </button>
+          Progression
+        </label>
+        <select
+          id="progression-select"
+          value={selectedProgressionName}
+          onChange={(e) => setSelectedProgressionName(e.target.value)}
+          className="min-h-[44px] flex-1 min-w-[220px] max-w-sm rounded-lg border border-border bg-transparent px-3 py-2 text-sm dark:border-neutral-600 dark:bg-neutral-900"
+        >
+          {PROGRESSION_GROUPS.map((group) => (
+            <optgroup key={group.label} label={group.label}>
+              {group.items.map((p) => (
+                <option key={p.name} value={p.name}>
+                  {p.name} — {p.pattern}
+                </option>
+              ))}
+            </optgroup>
+          ))}
+        </select>
       </div>
 
-      {progression ? (
-        <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))" }}>
-          {progression.map((c, i) => (
-            <ProgressionChordCard
-              key={i}
-              roman={c.roman}
-              note={c.note}
-              quality={c.quality}
-              voicingIndex={c.voicingIndex}
-              useFlats={useFlats}
-              onVoicingChange={(voicingIndex) => handleProgressionVoicingChange(i, voicingIndex)}
-            />
-          ))}
-        </div>
-      ) : (
-        <p className="text-sm text-black/40 dark:text-neutral-500">
-          Click Generate to create a 4-chord progression idea for the current key.
+      <div className="flex flex-col gap-1">
+        <p className="text-sm font-semibold text-black dark:text-white">{selectedProgressionDef.name}</p>
+        <p className="text-sm text-black/50 dark:text-white/50">{selectedProgressionDef.description}</p>
+        <p
+          className="text-xs font-mono text-black/40 dark:text-neutral-500"
+          title="The Roman numeral pattern — each numeral represents a scale degree relative to the selected root note"
+        >
+          {selectedProgressionDef.pattern}
         </p>
-      )}
+      </div>
+
+      <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))" }}>
+        {progressionChords.map((c, i) => (
+          <ProgressionChordCard
+            key={i}
+            roman={c.roman}
+            note={c.note}
+            quality={c.quality}
+            voicingIndex={progressionVoicingIndices[i] ?? 0}
+            useFlats={useFlats}
+            onVoicingChange={(voicingIndex) => handleProgressionVoicingChange(i, voicingIndex)}
+          />
+        ))}
+      </div>
     </div>
   );
 
@@ -602,9 +559,9 @@ export default function ChordExplorerPage() {
     },
     {
       id: "progression-generator",
-      title: "Progression Generator",
+      title: "Chord Progressions",
       tooltip:
-        "Generates a random 4-chord progression diatonic to the selected key, weighted toward strong circle-of-fifths root motion (e.g. V→I). Use each card's dropdown to swap in a different voicing.",
+        "Pick a named, popular chord progression and see it rendered in the selected key — the Roman numeral pattern and feel description stay fixed while the actual chords update to match your root note. Use each card's dropdown to swap in a different voicing.",
       defaultColSpan: 12,
       defaultRowSpan: 4,
       content: progressionContent,
