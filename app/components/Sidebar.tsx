@@ -15,20 +15,20 @@ export type Category = "Music" | "Tools" | "Education" | "Experiments";
 
 const CATEGORIES: Category[] = ["Music", "Tools", "Education", "Experiments"];
 
-export const LINKS: { href: string; text: string; category: Category; auth?: boolean }[] = [
+export const LINKS: { href: string; text: string; category: Category; auth?: boolean; abbr?: string }[] = [
   // Music
-  { href: "/chord-explorer", text: "Chord Explorer", category: "Music" },
-  { href: "/chord-finder", text: "Chord Finder", category: "Music" },
-  { href: "/chord-positions", text: "Chord Positions", category: "Music" },
-  { href: "/circle-of-fifths", text: "Circle of Fifths", category: "Music" },
+  { href: "/chord-explorer", text: "Chord Explorer", category: "Music", abbr: "CE" },
+  { href: "/chord-finder", text: "Chord Finder", category: "Music", abbr: "CF" },
+  { href: "/chord-positions", text: "Chord Positions", category: "Music", abbr: "CP" },
+  { href: "/circle-of-fifths", text: "Circle of Fifths", category: "Music", abbr: "CI" },
   { href: "/fretboard-quiz", text: "Fretboard Quiz", category: "Music" },
-  { href: "/lead-sheet-editor", text: "Lead Sheet Editor", category: "Music" },
-  { href: "/scale-tool", text: "Scale Tool", category: "Music" },
+  { href: "/lead-sheet-editor", text: "Lead Sheet Editor", category: "Music", abbr: "LS" },
+  { href: "/scale-tool", text: "Scale Tool", category: "Music", abbr: "ST" },
   // Tools
   { href: "/workout-tracker", text: "Workout Tracker", category: "Tools" },
   // Education
-  { href: "/learning-progress", text: "Learning Progress", category: "Education" },
-  { href: "/space-math", text: "Space Math", category: "Education" },
+  { href: "/learning-progress", text: "Learning Progress", category: "Education", abbr: "LP" },
+  { href: "/space-math", text: "Space Math", category: "Education", abbr: "SP" },
 ];
 
 export default function Sidebar() {
@@ -83,7 +83,7 @@ export default function Sidebar() {
     if (isMobile) setIsOpen(false);
   };
 
-  if (pathname === "/" || pathname.startsWith("/lead-sheet-editor/share/")) return null;
+  if (pathname.startsWith("/lead-sheet-editor/share/")) return null;
 
   const navLinkStyle = (href: string) =>
     pathname === href ? { background: "#000000", color: "#ffffff" } : { color: "#000000" };
@@ -112,9 +112,37 @@ export default function Sidebar() {
     </Link>
   );
 
+  const renderRailLink = (href: string, text: string, abbr?: string) => (
+    <Link
+      key={href}
+      href={href}
+      onClick={handleLinkClick}
+      title={text}
+      aria-label={text}
+      className='w-full flex items-center justify-center font-bold text-xs transition-colors'
+      style={{ ...navLinkStyle(href), height: "40px" }}
+      onMouseEnter={(e) => {
+        if (pathname !== href) {
+          e.currentTarget.style.background = "#000000";
+          e.currentTarget.style.color = "#ffffff";
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (pathname !== href) {
+          e.currentTarget.style.background = "transparent";
+          e.currentTarget.style.color = "#000000";
+        }
+      }}
+    >
+      {abbr ?? text[0].toUpperCase()}
+    </Link>
+  );
+
+  const widthClass = isOpen ? "w-64 translate-x-0" : isMobile ? "w-0 -translate-x-full overflow-hidden" : "w-12 translate-x-0";
+
   return (
     <>
-      {!isOpen && (
+      {!isOpen && isMobile && (
         <button
           onClick={toggle}
           className='fixed top-0 left-0 z-[60] px-3 flex items-center print:hidden'
@@ -141,7 +169,7 @@ export default function Sidebar() {
       {isOpen && isMobile && <div className='fixed inset-0 bg-black/50 z-30 lg:hidden print:hidden' onClick={toggle} />}
 
       <aside
-        className={`fixed lg:relative h-screen flex flex-col z-40 print:hidden ${isOpen ? "w-64 translate-x-0" : "w-0 -translate-x-full lg:w-0 overflow-hidden"}`}
+        className={`fixed lg:relative h-screen flex flex-col z-40 print:hidden transition-[width] duration-200 ease-in-out ${widthClass}`}
         style={{
           background: "#facc15",
           color: "var(--bg-secondary)",
@@ -149,14 +177,14 @@ export default function Sidebar() {
       >
         <button
           onClick={toggle}
-          className={`w-full flex items-center justify-center shrink-0 ${isOpen ? "opacity-100" : "opacity-0"}`}
+          className='w-full flex items-center justify-center shrink-0'
           style={{
             height: "42px",
             background: "#facc15",
             color: "#000000",
             border: "none",
           }}
-          aria-label='Close sidebar'
+          aria-label={isOpen ? "Close sidebar" : "Open sidebar"}
         >
           <svg
             xmlns='http://www.w3.org/2000/svg'
@@ -169,7 +197,23 @@ export default function Sidebar() {
           </svg>
         </button>
 
-        <div className={`flex-1 p-6 overflow-y-auto ${isOpen ? "opacity-100" : "opacity-0"}`}>
+        {!isOpen && !isMobile && (
+          <nav className='flex-1 overflow-y-auto flex flex-col'>
+            {CATEGORIES.map((category, idx) => {
+              const items = LINKS.filter((link) => link.category === category && (!link.auth || !!user));
+              if (items.length === 0) return null;
+              return (
+                <div key={category} className='flex flex-col'>
+                  {idx !== 0 && <div style={{ borderTop: "1px solid rgba(0, 0, 0, 0.2)" }} />}
+                  {items.map(({ href, text, abbr }) => renderRailLink(href, text, abbr))}
+                </div>
+              );
+            })}
+          </nav>
+        )}
+
+        {isOpen && (
+          <div className='flex-1 p-6 overflow-y-auto'>
           <Link
             href='/'
             className='font-black uppercase mb-3 block w-full'
@@ -259,7 +303,8 @@ export default function Sidebar() {
               );
             })}
           </nav>
-        </div>
+          </div>
+        )}
       </aside>
     </>
   );
