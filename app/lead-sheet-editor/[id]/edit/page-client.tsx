@@ -4,10 +4,9 @@ import { useState, useEffect, useLayoutEffect, useMemo, useRef, use } from "reac
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/app/hooks/useAuth";
-import { Save, ArrowLeft, Eye, Replace, X, ArrowUp, ArrowDown, Sparkles } from "lucide-react";
+import { Save, ArrowLeft, Eye, Replace, X, Sparkles } from "lucide-react";
 import { type LeadSheet, type Section, type SectionType, migrateSection, OfflineBadge } from "../../shared";
 import { cacheSheet, getCachedSheet } from "../../offlineCache";
-import { transposeText, transposeKey } from "../../../lib/transpose";
 
 // ─── Text ↔ LeadSheet ─────────────────────────────────────────────────────────
 
@@ -319,21 +318,6 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
     setDirty(true);
   }
 
-  function applyTranspose(semitones: number) {
-    const next = rawText
-      .split("\n")
-      .map((line) => {
-        if (asSectionHeader(line) !== null) return line;
-        const keyMatch = line.match(/Key:\s*([A-G][#b]?m?)\b/i);
-        if (keyMatch) {
-          return line.replace(keyMatch[1], transposeKey(keyMatch[1], semitones));
-        }
-        return transposeText(line, semitones);
-      })
-      .join("\n");
-    handleChange(next);
-  }
-
   function openReplace() {
     const chords = collectChords(rawText);
     setFindChord(chords[0]?.chord ?? "");
@@ -438,31 +422,6 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
                     Save failed
                   </span>
                 )}
-
-                {/* Transpose group */}
-                <div className="flex items-center gap-0.5 rounded border border-[#373A40]/30 dark:border-white/30 bg-black/5 dark:bg-white/5 px-1 py-1">
-                  <button
-                    onClick={() => applyTranspose(-1)}
-                    title="Transpose down one semitone"
-                    aria-label="Transpose down one semitone"
-                    className="flex items-center justify-center rounded p-1.5 text-black dark:text-white/80 hover:bg-black hover:text-yellow-400 transition-colors"
-                  >
-                    <ArrowDown className="w-4 h-4" />
-                  </button>
-                  <span className="px-1.5 text-xs font-medium text-black/70 dark:text-white/60 select-none whitespace-nowrap">
-                    Transpose
-                  </span>
-                  <button
-                    onClick={() => applyTranspose(1)}
-                    title="Transpose up one semitone"
-                    aria-label="Transpose up one semitone"
-                    className="flex items-center justify-center rounded p-1.5 text-black dark:text-white/80 hover:bg-black hover:text-yellow-400 transition-colors"
-                  >
-                    <ArrowUp className="w-4 h-4" />
-                  </button>
-                </div>
-
-                <div className="w-px self-stretch bg-black/20 dark:bg-white/20" />
 
                 <button
                   onClick={replaceOpen ? closeReplace : openReplace}

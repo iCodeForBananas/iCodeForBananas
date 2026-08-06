@@ -7,6 +7,8 @@ import { useAuth } from "@/app/hooks/useAuth";
 import {
   ArrowLeft,
   ArrowRight,
+  ArrowUp,
+  ArrowDown,
   Pencil,
   Maximize2,
   Minimize2,
@@ -19,6 +21,7 @@ import {
 } from "lucide-react";
 import { type LeadSheet, type Section, migrateSection, ChordLyricLine, getPlainText, OfflineBadge } from "../../shared";
 import { cacheSheet, getCachedSheet } from "../../offlineCache";
+import { transposeText } from "../../../lib/transpose";
 
 // Per-song localStorage keys: leadSheet:${id}:fontScale, leadSheet:${id}:columnCount, leadSheet:${id}:columnWidthVw
 
@@ -146,6 +149,35 @@ function FontScaleControl({ scale, onChange }: { scale: number; onChange: (next:
   );
 }
 
+function TransposeControl({ steps, onChange }: { steps: number; onChange: (next: number) => void }) {
+  const offsetLabel = steps > 0 ? `+${steps}` : steps < 0 ? `${steps}` : "±0";
+  return (
+    <div className='flex items-center gap-1 rounded-lg border border-gray-200 dark:border-white/10 px-1.5 py-1 print:hidden'>
+      <button
+        type='button'
+        onClick={() => onChange(steps - 1)}
+        title='Transpose down one semitone'
+        aria-label='Transpose down one semitone'
+        className='h-10 w-10 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-gray-700 dark:text-neutral-200 font-medium transition-colors duration-150'
+      >
+        <ArrowDown className='w-4 h-4' />
+      </button>
+      <span className='text-sm font-medium px-1 text-center text-gray-700 dark:text-neutral-200 select-none whitespace-nowrap'>
+        Transpose {offsetLabel}
+      </span>
+      <button
+        type='button'
+        onClick={() => onChange(steps + 1)}
+        title='Transpose up one semitone'
+        aria-label='Transpose up one semitone'
+        className='h-10 w-10 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-gray-700 dark:text-neutral-200 font-medium transition-colors duration-150'
+      >
+        <ArrowUp className='w-4 h-4' />
+      </button>
+    </div>
+  );
+}
+
 function NextSongControl({
   setIds,
   pos,
@@ -169,7 +201,7 @@ function NextSongControl({
   );
 }
 
-function SheetContent({ sheet, fullscreen, columnCount, columnWidthVw }: { sheet: LeadSheet; fullscreen: boolean; columnCount?: number; columnWidthVw?: number }) {
+function SheetContent({ sheet, fullscreen, columnCount, columnWidthVw, transposeSteps = 0 }: { sheet: LeadSheet; fullscreen: boolean; columnCount?: number; columnWidthVw?: number; transposeSteps?: number }) {
   const columnsActive = !!(columnCount || columnWidthVw);
   return (
     <div>
@@ -235,7 +267,11 @@ function SheetContent({ sheet, fullscreen, columnCount, columnWidthVw }: { sheet
                   line.trim() === "" ? (
                     <div key={i} className='h-3' />
                   ) : (
-                    <ChordLyricLine key={i} line={line} large={fullscreen} />
+                    <ChordLyricLine
+                      key={i}
+                      line={transposeSteps !== 0 ? transposeText(line, transposeSteps) : line}
+                      large={fullscreen}
+                    />
                   ),
                 )}
               </div>
@@ -265,6 +301,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
   const [shared, setShared] = useState(false);
   const [columnCount, setColumnCount] = useState(() => loadColumnCount(id));
   const [columnWidthVw, setColumnWidthVw] = useState(() => loadColumnWidthVw(id));
+  const [transposeSteps, setTransposeSteps] = useState(0);
   const [setIds, setSetIds] = useState<string[] | null>(null);
   const [setPos, setSetPos] = useState(0);
 
@@ -376,7 +413,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
           The screen view below is hidden via print:hidden so only this prints. */}
       <div className='hidden print:block' style={{ background: "#fff", color: "#000" }}>
         <div className='max-w-3xl mx-auto px-2 py-4' style={{ fontSize: `${fontScale}%` }}>
-          <SheetContent sheet={sheet} fullscreen={false} />
+          <SheetContent sheet={sheet} fullscreen={false} transposeSteps={transposeSteps} />
         </div>
       </div>
 
@@ -400,6 +437,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                   <FontScaleControl scale={fontScale} onChange={updateFontScale} />
                   <ColumnCountControl count={columnCount} onChange={updateColumnCount} />
                   <ColumnWidthControl width={columnWidthVw} onChange={updateColumnWidthVw} />
+                  <TransposeControl steps={transposeSteps} onChange={setTransposeSteps} />
                   <div className='w-px self-stretch bg-gray-300 dark:bg-white/10' />
                   {setIds && <NextSongControl setIds={setIds} pos={setPos} onNext={goToNextSong} />}
                   <button
@@ -448,7 +486,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
               </div>
               </div>
               <div style={{ fontSize: `${fontScale}%` }}>
-                <SheetContent sheet={sheet} fullscreen columnCount={columnCount} columnWidthVw={columnWidthVw} />
+                <SheetContent sheet={sheet} fullscreen columnCount={columnCount} columnWidthVw={columnWidthVw} transposeSteps={transposeSteps} />
               </div>
             </div>
           </div>
@@ -472,6 +510,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                     <FontScaleControl scale={fontScale} onChange={updateFontScale} />
                     <ColumnCountControl count={columnCount} onChange={updateColumnCount} />
                     <ColumnWidthControl width={columnWidthVw} onChange={updateColumnWidthVw} />
+                    <TransposeControl steps={transposeSteps} onChange={setTransposeSteps} />
                     <div className='w-px self-stretch bg-gray-300 dark:bg-white/10' />
                     {setIds && <NextSongControl setIds={setIds} pos={setPos} onNext={goToNextSong} />}
                     <button
@@ -523,7 +562,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
               {/* Scrollable content */}
               <div className='flex-1 overflow-auto'>
                 <div className='w-full py-8 px-4 sm:px-0' style={{ fontSize: `${fontScale}%` }}>
-                  <SheetContent sheet={sheet} fullscreen={false} columnCount={columnCount} columnWidthVw={columnWidthVw} />
+                  <SheetContent sheet={sheet} fullscreen={false} columnCount={columnCount} columnWidthVw={columnWidthVw} transposeSteps={transposeSteps} />
                 </div>
               </div>
             </div>
