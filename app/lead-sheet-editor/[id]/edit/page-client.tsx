@@ -4,7 +4,7 @@ import { useState, useEffect, useLayoutEffect, useMemo, useRef, use } from "reac
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/app/hooks/useAuth";
-import { Save, ArrowLeft, Eye, Replace, X, ArrowUp, ArrowDown } from "lucide-react";
+import { Save, ArrowLeft, Eye, Replace, X, ArrowUp, ArrowDown, Sparkles } from "lucide-react";
 import { type LeadSheet, type Section, type SectionType, migrateSection, OfflineBadge } from "../../shared";
 import { cacheSheet, getCachedSheet } from "../../offlineCache";
 import { transposeText, transposeKey } from "../../../lib/transpose";
@@ -157,6 +157,41 @@ function parseText(text: string): Partial<LeadSheet> {
 
   return { title, key, tempo, general_notes, sections };
 }
+
+// ─── AI feedback ──────────────────────────────────────────────────────────────
+
+const FEEDBACK_OPTIONS: { label: string; prompt: string }[] = [
+  {
+    label: "Rhyme check",
+    prompt:
+      "Review this song's rhyme scheme. Do the rhymes land naturally, or do any feel forced? Suggest specific improvements where the rhyming could be stronger.",
+  },
+  {
+    label: "Lyric flow",
+    prompt:
+      "Analyze the lyric flow and rhythm of this song. Are there any lines that feel choppy, awkward, or hard to sing? Suggest smoother alternatives where needed.",
+  },
+  {
+    label: "Chord progression",
+    prompt:
+      "Review the chord progression in this song. Is it well-suited to the genre and emotional feel? Suggest any alternate progressions that might work better or add more interest.",
+  },
+  {
+    label: "Hook strength",
+    prompt:
+      "Evaluate the hook and chorus of this song. Is it memorable and earworm-worthy? What makes it stick (or not), and how could it be improved?",
+  },
+  {
+    label: "Overall songwriting",
+    prompt:
+      "Give me comprehensive feedback on this song as a complete piece — lyrics, chord progression, structure, hook, and overall feel. I'm going for something catchy and memorable.",
+  },
+  {
+    label: "Line rewrite suggestions",
+    prompt:
+      "Go through this song line by line and suggest at least 2–3 alternative versions for any lines that could be punchier, more vivid, or more singable.",
+  },
+];
 
 const PLACEHOLDER = `Song Title
 Key: G  Tempo: 120
@@ -331,6 +366,23 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
     replaceInputRef.current?.focus();
   }
 
+  function handleAiFeedback(e: React.ChangeEvent<HTMLSelectElement>) {
+    const label = e.target.value;
+    e.target.value = "";
+    const option = FEEDBACK_OPTIONS.find((o) => o.label === label);
+    if (!option) return;
+
+    const parsed = parseText(rawText);
+    const title = parsed.title || "Untitled";
+    const key = parsed.key || "Unknown";
+    const content = (parsed.sections ?? [])
+      .map((s) => `[${s.label}]\n${s.content}`.trim())
+      .join("\n\n");
+
+    const fullPrompt = `${option.prompt}\n\n---\nSong: ${title}\nKey: ${key}\n\n${content}`;
+    window.open(`https://claude.ai/new?q=${encodeURIComponent(fullPrompt)}`, "_blank");
+  }
+
   async function handlePreview() {
     if (dirty) await saveSheet();
     router.push(`/lead-sheet-editor/${id}/preview`);
@@ -379,29 +431,39 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
                 <ArrowLeft className="w-4 h-4" />
                 All Sheets
               </button>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap justify-end">
                 {offline && <OfflineBadge />}
                 {saveError && (
                   <span className="flex items-center gap-1 text-xs font-medium text-amber-600 dark:text-amber-400">
                     Save failed
                   </span>
                 )}
-                <button
-                  onClick={() => applyTranspose(1)}
-                  title="Transpose up one semitone"
-                  className="flex items-center gap-1.5 rounded border border-[#373A40]/30 dark:border-white/30 px-3 py-2 text-sm font-medium text-black dark:text-white/80 hover:border-black dark:hover:border-white hover:bg-black hover:text-yellow-400 transition-colors"
-                >
-                  <ArrowUp className="w-4 h-4" />
-                  Transpose Up
-                </button>
-                <button
-                  onClick={() => applyTranspose(-1)}
-                  title="Transpose down one semitone"
-                  className="flex items-center gap-1.5 rounded border border-[#373A40]/30 dark:border-white/30 px-3 py-2 text-sm font-medium text-black dark:text-white/80 hover:border-black dark:hover:border-white hover:bg-black hover:text-yellow-400 transition-colors"
-                >
-                  <ArrowDown className="w-4 h-4" />
-                  Transpose Down
-                </button>
+
+                {/* Transpose group */}
+                <div className="flex items-center gap-0.5 rounded border border-[#373A40]/30 dark:border-white/30 bg-black/5 dark:bg-white/5 px-1 py-1">
+                  <button
+                    onClick={() => applyTranspose(-1)}
+                    title="Transpose down one semitone"
+                    aria-label="Transpose down one semitone"
+                    className="flex items-center justify-center rounded p-1.5 text-black dark:text-white/80 hover:bg-black hover:text-yellow-400 transition-colors"
+                  >
+                    <ArrowDown className="w-4 h-4" />
+                  </button>
+                  <span className="px-1.5 text-xs font-medium text-black/70 dark:text-white/60 select-none whitespace-nowrap">
+                    Transpose
+                  </span>
+                  <button
+                    onClick={() => applyTranspose(1)}
+                    title="Transpose up one semitone"
+                    aria-label="Transpose up one semitone"
+                    className="flex items-center justify-center rounded p-1.5 text-black dark:text-white/80 hover:bg-black hover:text-yellow-400 transition-colors"
+                  >
+                    <ArrowUp className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="w-px self-stretch bg-black/20 dark:bg-white/20" />
+
                 <button
                   onClick={replaceOpen ? closeReplace : openReplace}
                   className={`flex items-center gap-1.5 rounded border px-3 py-2 text-sm font-medium transition-colors ${
@@ -420,6 +482,9 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
                   <Eye className="w-4 h-4" />
                   Preview
                 </button>
+
+                <div className="w-px self-stretch bg-black/20 dark:bg-white/20" />
+
                 <button
                   onClick={saveSheet}
                   disabled={!dirty || saving}
@@ -428,6 +493,28 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
                   <Save className="w-4 h-4" />
                   {saving ? "Saving..." : dirty ? "Save" : "Saved"}
                 </button>
+
+                <div className="w-px self-stretch bg-black/20 dark:bg-white/20" />
+
+                <div className="relative flex items-center gap-1.5 rounded border border-[#373A40]/30 dark:border-white/30 px-3 py-2 text-sm font-medium text-black dark:text-white/80 hover:border-black dark:hover:border-white hover:bg-black hover:text-yellow-400 transition-colors">
+                  <Sparkles className="w-4 h-4" />
+                  Get Feedback
+                  <select
+                    value=""
+                    onChange={handleAiFeedback}
+                    aria-label="Get AI Feedback"
+                    className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                  >
+                    <option value="" disabled>
+                      Get AI Feedback
+                    </option>
+                    {FEEDBACK_OPTIONS.map((o) => (
+                      <option key={o.label} value={o.label}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
 
