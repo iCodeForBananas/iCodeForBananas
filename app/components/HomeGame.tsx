@@ -456,6 +456,7 @@ export default function HomeGame() {
       active: false,
       startedAt: 0,
       screenY: 0,
+      hitIds: new Set<number>(),
     };
 
     const gainXp = (amount: number) => {
@@ -503,6 +504,7 @@ export default function HomeGame() {
         const depthDiff = Math.abs(enemy.depth - state.player.depth) * DEPTH_TO_WORLD;
         if (facingDx >= -15 && facingDx <= reach && depthDiff <= depthTol * DEPTH_TO_WORLD) {
           damageEnemy(enemy, dmg);
+          if (step === 2) enemy.worldX += state.player.facing * 90;
         }
       }
     };
@@ -532,13 +534,9 @@ export default function HomeGame() {
       carState.active = true;
       carState.startedAt = now;
       carState.screenY = psy;
-      state.attackReadyAt[3] = now + 4500;
+      carState.hitIds = new Set();
+      state.attackReadyAt[3] = now + 3000;
       state.shakeUntil = now + 500;
-      // AoE: damage enemies in same depth band
-      for (const e of state.enemies) {
-        if (e.dying) continue;
-        if (Math.abs(e.depth - state.player.depth) < 0.22) damageEnemy(e, 50);
-      }
     };
 
     const onKeyDown = (e: KeyboardEvent) => {
@@ -702,18 +700,21 @@ export default function HomeGame() {
           if (t >= 1) {
             parrot.phase = "grabbing";
             parrot.phaseStartedAt = nowTs;
-            tgt.stunUntil = nowTs + 1200;
           }
         }
       } else if (parrot.phase === "grabbing") {
         const tgt = state.enemies.find((e) => e.id === parrot.targetId);
         if (tgt && !tgt.dying) {
-          tgt.floatY = 32;
+          tgt.floatY = 30;
           parrot.pScreenX = tgt.worldX - cameraX;
           parrot.pScreenY = horizonY + tgt.depth * (floorBottom - horizonY) - 32 - 12 * ps;
         }
         if (nowTs - parrot.phaseStartedAt > 420) {
-          if (tgt && !tgt.dying) { damageEnemy(tgt, 40); tgt.floatY = 0; }
+          if (tgt && !tgt.dying) {
+            damageEnemy(tgt, 40);
+            tgt.floatY = 0;
+            if (!tgt.dying) tgt.stunUntil = nowTs + 1000;
+          }
           parrot.fromX = parrot.pScreenX;
           parrot.fromY = parrot.pScreenY;
           parrot.phase = "returning";
@@ -734,7 +735,23 @@ export default function HomeGame() {
         parrot.phase = "idle";
       }
 
-      if (carState.active && nowTs - carState.startedAt > 1600) carState.active = false;
+      let carDrawCx = 0;
+      let carDrawCy = 0;
+      if (carState.active) {
+        const carProgress = (nowTs - carState.startedAt) / 1600;
+        carDrawCx = -120 + (width + 240) * carProgress;
+        carDrawCy = carState.screenY - 14;
+        for (const e of state.enemies) {
+          if (e.dying || carState.hitIds.has(e.id)) continue;
+          const eesx = e.worldX - cameraX;
+          const eesy = horizonY + e.depth * (floorBottom - horizonY);
+          if (Math.abs(eesx - carDrawCx) < 50 && Math.abs(eesy - carDrawCy) < 100) {
+            damageEnemy(e, 50);
+            carState.hitIds.add(e.id);
+          }
+        }
+        if (carProgress >= 1) carState.active = false;
+      }
 
       // Screen shake
       let sx2 = 0, sy2 = 0;
@@ -1023,9 +1040,8 @@ export default function HomeGame() {
 
       // Goldfish car drive-by
       if (carState.active) {
-        const progress = (nowTs - carState.startedAt) / 1600;
-        const cx = -120 + (width + 240) * progress;
-        const cy = carState.screenY - 14;
+        const cx = carDrawCx;
+        const cy = carDrawCy;
         drawGoldfishCar(ctx, cx, cy);
         // Bullet spray
         ctx.save();
