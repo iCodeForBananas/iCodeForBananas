@@ -33,15 +33,19 @@ const HIGH_SCORE_KEY = "shoot-simulator-high-score";
 
 type PropType = "trashcan" | "dumpster" | "car";
 
-// Solid footprint per prop, in unscaled sprite units (multiplied by the prop's
-// draw scale). halfD is converted to depth units via DEPTH_TO_WORLD.
+// Where a prop actually touches the ground, in unscaled sprite pixels (multiplied
+// by the prop's draw scale). Deliberately just the base — not the sprite's bounding
+// box — so you can walk close behind or in front of a car instead of hitting an
+// invisible wall. halfD is screen pixels, converted to depth at collision time.
 const PROP_FOOTPRINT: Record<PropType, { halfW: number; halfD: number }> = {
-  trashcan: { halfW: 11, halfD: 6 },
-  dumpster: { halfW: 27, halfD: 10 },
-  car: { halfW: 35, halfD: 13 },
+  trashcan: { halfW: 9, halfD: 4 },
+  dumpster: { halfW: 24, halfD: 5 },
+  car: { halfW: 30, halfD: 6 },
 };
-const PLAYER_HALF_W = 9;
-const PLAYER_HALF_D = 5;
+// Player and enemies share a footprint — roughly the width of their stance
+const ACTOR_HALF_W = 7;
+const ACTOR_HALF_D = 3;
+const ENEMY_AVOID_DEPTH_SPEED = 0.5; // faster than their normal drift so they round a car promptly
 
 interface GroundProp {
   x: number;
@@ -49,7 +53,7 @@ interface GroundProp {
   type: PropType;
   color: string;
   size: number;
-  /** Collision half-extents, already scaled. halfW in world x, halfD in depth. */
+  /** Ground-footprint half-extents in screen pixels, already scaled. */
   halfW: number;
   halfD: number;
 }
@@ -77,6 +81,8 @@ interface Enemy {
   stunUntil: number;
   floatY: number;
   grabbed: boolean;
+  /** Which way they try to step around an obstacle that blocks their path. */
+  avoidDir: 1 | -1;
 }
 
 interface Pickup {
@@ -154,7 +160,7 @@ function generateChunk(index: number): Chunk {
       color: propColors[type][Math.floor(rand() * propColors[type].length)],
       size,
       halfW: fp.halfW * scale,
-      halfD: (fp.halfD * scale) / DEPTH_TO_WORLD,
+      halfD: fp.halfD * scale,
     });
   }
   // Props are solid, so keep them apart along x — two overlapping footprints
@@ -537,14 +543,20 @@ export default function HomeGame() {
       return chunks.get(i)!;
     };
 
-    // Solid-prop collision: axis-separated AABB test in (worldX, depth) space.
+    // Solid-prop collision: axis-separated AABB test between ground footprints.
+    // Both half-extents are screen pixels; depth is converted with the height of
+    // the walkable band so the boxes match what you see at any viewport size.
     const overlapsProp = (x: number, depth: number, halfW: number, halfD: number) => {
+      const depthSpan = height * (1 - HORIZON_RATIO);
       const ci = Math.floor(x / CHUNK_WIDTH);
       for (let i = ci - 1; i <= ci + 1; i++) {
         if (i < 0) continue;
         for (const prop of getChunk(i).props) {
           const px = i * CHUNK_WIDTH + prop.x;
-          if (Math.abs(x - px) < halfW + prop.halfW && Math.abs(depth - prop.depth) < halfD + prop.halfD) {
+          if (
+            Math.abs(x - px) < halfW + prop.halfW &&
+            Math.abs(depth - prop.depth) * depthSpan < halfD + prop.halfD
+          ) {
             return true;
           }
         }
@@ -579,8 +591,8 @@ export default function HomeGame() {
     // Don't start the player standing inside a prop
     {
       const s = MIN_SCALE + state.player.depth * (MAX_SCALE - MIN_SCALE);
-      const hw = PLAYER_HALF_W * s;
-      const hd = (PLAYER_HALF_D * s) / DEPTH_TO_WORLD;
+      const hw = ACTOR_HALF_W * s;
+      const hd = ACTOR_HALF_D * s;
       let guard = 0;
       while (overlapsProp(state.player.worldX, state.player.depth, hw, hd) && guard++ < 100) {
         state.player.worldX += 20;
@@ -1000,8 +1012,8 @@ export default function HomeGame() {
       const prevX = state.player.worldX;
       const prevDepth = state.player.depth;
       const pScale = MIN_SCALE + prevDepth * (MAX_SCALE - MIN_SCALE);
-      const pHalfW = PLAYER_HALF_W * pScale;
-      const pHalfD = (PLAYER_HALF_D * pScale) / DEPTH_TO_WORLD;
+      const pHalfW = ACTOR_HALF_W * pScale;
+      const pHalfD = ACTOR_HALF_D * pScale;
       // If we somehow start inside a prop, don't trap the player there.
       const startsInside = overlapsProp(prevX, prevDepth, pHalfW, pHalfD);
 
@@ -1014,8 +1026,8 @@ export default function HomeGame() {
       );
       // Footprint grows with depth, so test the step with the scale it will land at
       const nScale = MIN_SCALE + nextDepth * (MAX_SCALE - MIN_SCALE);
-      const nHalfW = PLAYER_HALF_W * nScale;
-      const nHalfD = (PLAYER_HALF_D * nScale) / DEPTH_TO_WORLD;
+      const nHalfW = ACTOR_HALF_W * nScale;
+      const nHalfD = ACTOR_HALF_D * nScale;
       if (startsInside || !overlapsProp(state.player.worldX, nextDepth, nHalfW, nHalfD)) {
         state.player.depth = nextDepth;
       }
@@ -1046,9 +1058,32 @@ export default function HomeGame() {
         if (nowTs < enemy.stunUntil) continue;
         const dxp = state.player.worldX - enemy.worldX;
         const ddp = state.player.depth - enemy.depth;
-        if (Math.abs(dxp) > 25) enemy.worldX += Math.sign(dxp) * ENEMY_SPEED * dt;
-        if (Math.abs(ddp) > 0.02) enemy.depth += Math.sign(ddp) * ENEMY_DEPTH_SPEED * dt;
-        enemy.depth = Math.max(MIN_PLAYER_DEPTH, Math.min(MAX_PLAYER_DEPTH, enemy.depth));
+        const eScale = MIN_SCALE + enemy.depth * (MAX_SCALE - MIN_SCALE);
+        const eHalfW = ACTOR_HALF_W * eScale;
+        const eHalfD = ACTOR_HALF_D * eScale;
+        // Same escape hatch as the player: never freeze an enemy inside a prop
+        const eInside = overlapsProp(enemy.worldX, enemy.depth, eHalfW, eHalfD);
+
+        let blockedX = false;
+        if (Math.abs(dxp) > 25) {
+          const enx = enemy.worldX + Math.sign(dxp) * ENEMY_SPEED * dt;
+          if (eInside || !overlapsProp(enx, enemy.depth, eHalfW, eHalfD)) enemy.worldX = enx;
+          else blockedX = true;
+        }
+
+        // Normally close the depth gap to the player; when a prop is in the way,
+        // step aside instead and flip direction whenever that route is shut too.
+        const depthStep = blockedX
+          ? enemy.avoidDir * ENEMY_AVOID_DEPTH_SPEED * dt
+          : Math.abs(ddp) > 0.02
+            ? Math.sign(ddp) * ENEMY_DEPTH_SPEED * dt
+            : 0;
+        const end = Math.max(MIN_PLAYER_DEPTH, Math.min(MAX_PLAYER_DEPTH, enemy.depth + depthStep));
+        const enScale = MIN_SCALE + end * (MAX_SCALE - MIN_SCALE);
+        const canDepth =
+          eInside || !overlapsProp(enemy.worldX, end, ACTOR_HALF_W * enScale, ACTOR_HALF_D * enScale);
+        if (canDepth && end !== enemy.depth) enemy.depth = end;
+        else if (blockedX) enemy.avoidDir = (enemy.avoidDir * -1) as 1 | -1;
       }
       state.enemies = state.enemies.filter((e) => {
         if (e.dying) return nowTs - (e.deathStartedAt ?? 0) < 260;
@@ -1065,6 +1100,7 @@ export default function HomeGame() {
           stunUntil: 0,
           floatY: 0,
           grabbed: false,
+          avoidDir: Math.random() < 0.5 ? 1 : -1,
         });
         state.nextSpawnAt = nowTs + 1400 + Math.random() * 900;
       }
