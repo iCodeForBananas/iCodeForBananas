@@ -18,8 +18,30 @@ const XP_THRESHOLDS = [100, 250, 500];
 const COMBO_WINDOW_MS = 600;
 const MIN_PLAYER_DEPTH = 0.32; // top of walkable road (~1/3 viewport from bottom)
 const MAX_PLAYER_DEPTH = 0.92; // bottom of walkable road
+const CAMERA_ZOOM = 1.4; // world is drawn in a smaller logical viewport, scaled up = tighter, cinematic framing
+
+const PARROT_LIFT_HEIGHT = 210; // how high the parrot hauls an enemy before dropping them
+const PARROT_LIFT_MS = 650;
+const PARROT_HANG_MS = 180;
+const PARROT_SLAM_MS = 260;
+const PARROT_SLAM_DAMAGE = 90;
+
+const SCORE_KILL = 100;
+const SCORE_PICKUP = 50;
+const PICKUP_LIFETIME_MS = 9000;
+const HIGH_SCORE_KEY = "shoot-simulator-high-score";
 
 type PropType = "trashcan" | "dumpster" | "car";
+
+// Solid footprint per prop, in unscaled sprite units (multiplied by the prop's
+// draw scale). halfD is converted to depth units via DEPTH_TO_WORLD.
+const PROP_FOOTPRINT: Record<PropType, { halfW: number; halfD: number }> = {
+  trashcan: { halfW: 11, halfD: 6 },
+  dumpster: { halfW: 27, halfD: 10 },
+  car: { halfW: 35, halfD: 13 },
+};
+const PLAYER_HALF_W = 9;
+const PLAYER_HALF_D = 5;
 
 interface GroundProp {
   x: number;
@@ -27,6 +49,9 @@ interface GroundProp {
   type: PropType;
   color: string;
   size: number;
+  /** Collision half-extents, already scaled. halfW in world x, halfD in depth. */
+  halfW: number;
+  halfD: number;
 }
 
 interface Building {
@@ -51,6 +76,21 @@ interface Enemy {
   deathStartedAt: number | null;
   stunUntil: number;
   floatY: number;
+  grabbed: boolean;
+}
+
+interface Pickup {
+  worldX: number;
+  depth: number;
+  spawnedAt: number;
+}
+
+interface Floater {
+  worldX: number;
+  depth: number;
+  text: string;
+  color: string;
+  startedAt: number;
 }
 
 function xpToNext(level: number) {
@@ -103,15 +143,31 @@ function generateChunk(index: number): Chunk {
   for (let i = 0; i < propCount; i++) {
     const roll = rand();
     const type: PropType = roll < 0.35 ? "trashcan" : roll < 0.65 ? "dumpster" : "car";
+    const depth = 0.34 + rand() * 0.54;
+    const size = 0.8 + rand() * 0.5;
+    const scale = (MIN_SCALE + depth * (MAX_SCALE - MIN_SCALE)) * size;
+    const fp = PROP_FOOTPRINT[type];
     props.push({
       x: rand() * CHUNK_WIDTH,
-      depth: 0.34 + rand() * 0.54,
+      depth,
       type,
       color: propColors[type][Math.floor(rand() * propColors[type].length)],
-      size: 0.8 + rand() * 0.5,
+      size,
+      halfW: fp.halfW * scale,
+      halfD: (fp.halfD * scale) / DEPTH_TO_WORLD,
     });
   }
-  return { buildings, props };
+  // Props are solid, so keep them apart along x — two overlapping footprints
+  // could span the whole road depth and wall the street off completely.
+  props.sort((a, b) => a.x - b.x);
+  const placed: GroundProp[] = [];
+  for (const prop of props) {
+    const prev = placed[placed.length - 1];
+    if (prev) prop.x = Math.max(prop.x, prev.x + prev.halfW + prop.halfW + 70);
+    if (prop.x + prop.halfW > CHUNK_WIDTH) break;
+    placed.push(prop);
+  }
+  return { buildings, props: placed };
 }
 
 function drawShadowAndSprite(
@@ -380,6 +436,35 @@ function drawGoldfishCar(ctx: CanvasRenderingContext2D, cx: number, cy: number) 
   ctx.restore();
 }
 
+function drawBanana(ctx: CanvasRenderingContext2D, s: number, spin: number) {
+  ctx.save();
+  ctx.scale(Math.cos(spin) >= 0 ? 1 : -1, 1);
+  // Crescent body
+  ctx.fillStyle = "#facc15";
+  ctx.beginPath();
+  ctx.moveTo(-11 * s, -4 * s);
+  ctx.quadraticCurveTo(0, 14 * s, 11 * s, -4 * s);
+  ctx.quadraticCurveTo(0, 6 * s, -11 * s, -4 * s);
+  ctx.closePath();
+  ctx.fill();
+  // Shading along the inner curve
+  ctx.strokeStyle = "rgba(180,120,0,0.55)";
+  ctx.lineWidth = 1.2 * s;
+  ctx.beginPath();
+  ctx.moveTo(-11 * s, -4 * s);
+  ctx.quadraticCurveTo(0, 14 * s, 11 * s, -4 * s);
+  ctx.stroke();
+  // Tips
+  ctx.fillStyle = "#78350f";
+  ctx.beginPath();
+  ctx.arc(-11 * s, -4 * s, 1.8 * s, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(11 * s, -4 * s, 1.8 * s, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
 function isTypingTarget(target: EventTarget | null) {
   if (!(target instanceof HTMLElement)) return false;
   if (target.isContentEditable) return true;
@@ -401,14 +486,18 @@ export default function HomeGame() {
     let height = 0;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
 
+    // Everything below draws in a logical viewport shrunk by CAMERA_ZOOM and
+    // scaled back up by the canvas transform — a straight camera zoom-in.
     const resize = () => {
-      width = container.clientWidth;
-      height = container.clientHeight;
-      canvas.width = Math.floor(width * dpr);
-      canvas.height = Math.floor(height * dpr);
-      canvas.style.width = `${width}px`;
-      canvas.style.height = `${height}px`;
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      const cssW = container.clientWidth;
+      const cssH = container.clientHeight;
+      width = cssW / CAMERA_ZOOM;
+      height = cssH / CAMERA_ZOOM;
+      canvas.width = Math.floor(cssW * dpr);
+      canvas.height = Math.floor(cssH * dpr);
+      canvas.style.width = `${cssW}px`;
+      canvas.style.height = `${cssH}px`;
+      ctx.setTransform(dpr * CAMERA_ZOOM, 0, 0, dpr * CAMERA_ZOOM, 0, 0);
     };
     resize();
     const resizeObserver = new ResizeObserver(resize);
@@ -422,8 +511,8 @@ export default function HomeGame() {
     const onCanvasClick = (e: MouseEvent) => {
       if (titlePhase !== "title") return;
       const rect = canvas.getBoundingClientRect();
-      const cx = e.clientX - rect.left;
-      const cy = e.clientY - rect.top;
+      const cx = (e.clientX - rect.left) / CAMERA_ZOOM;
+      const cy = (e.clientY - rect.top) / CAMERA_ZOOM;
       if (cx >= playBtn.x && cx <= playBtn.x + playBtn.w && cy >= playBtn.y && cy <= playBtn.y + playBtn.h) {
         titlePhase = "playing";
         canvas.style.cursor = "default";
@@ -432,8 +521,8 @@ export default function HomeGame() {
     const onCanvasMouseMove = (e: MouseEvent) => {
       if (titlePhase !== "title") return;
       const rect = canvas.getBoundingClientRect();
-      const cx = e.clientX - rect.left;
-      const cy = e.clientY - rect.top;
+      const cx = (e.clientX - rect.left) / CAMERA_ZOOM;
+      const cy = (e.clientY - rect.top) / CAMERA_ZOOM;
       canvas.style.cursor =
         cx >= playBtn.x && cx <= playBtn.x + playBtn.w && cy >= playBtn.y && cy <= playBtn.y + playBtn.h
           ? "pointer"
@@ -448,6 +537,28 @@ export default function HomeGame() {
       return chunks.get(i)!;
     };
 
+    // Solid-prop collision: axis-separated AABB test in (worldX, depth) space.
+    const overlapsProp = (x: number, depth: number, halfW: number, halfD: number) => {
+      const ci = Math.floor(x / CHUNK_WIDTH);
+      for (let i = ci - 1; i <= ci + 1; i++) {
+        if (i < 0) continue;
+        for (const prop of getChunk(i).props) {
+          const px = i * CHUNK_WIDTH + prop.x;
+          if (Math.abs(x - px) < halfW + prop.halfW && Math.abs(depth - prop.depth) < halfD + prop.halfD) {
+            return true;
+          }
+        }
+      }
+      return false;
+    };
+
+    let storedHigh = 0;
+    try {
+      storedHigh = Number(window.localStorage.getItem(HIGH_SCORE_KEY)) || 0;
+    } catch {
+      storedHigh = 0;
+    }
+
     const state = {
       player: { worldX: (width * ANCHOR_X_RATIO) || 300, depth: 0.6, facing: 1 as 1 | -1, level: 1, xp: 0 },
       selectedAttack: 1 as 1 | 2 | 3,
@@ -458,6 +569,36 @@ export default function HomeGame() {
       nextSpawnAt: 0,
       walkTime: 0,
       isMoving: false,
+      score: 0,
+      highScore: storedHigh,
+      scorePulseUntil: 0,
+      pickups: [] as Pickup[],
+      floaters: [] as Floater[],
+    };
+
+    // Don't start the player standing inside a prop
+    {
+      const s = MIN_SCALE + state.player.depth * (MAX_SCALE - MIN_SCALE);
+      const hw = PLAYER_HALF_W * s;
+      const hd = (PLAYER_HALF_D * s) / DEPTH_TO_WORLD;
+      let guard = 0;
+      while (overlapsProp(state.player.worldX, state.player.depth, hw, hd) && guard++ < 100) {
+        state.player.worldX += 20;
+      }
+    }
+
+    const addScore = (amount: number, worldX: number, depth: number, color: string, now: number) => {
+      state.score += amount;
+      state.scorePulseUntil = now + 260;
+      if (state.score > state.highScore) {
+        state.highScore = state.score;
+        try {
+          window.localStorage.setItem(HIGH_SCORE_KEY, String(state.highScore));
+        } catch {
+          /* storage unavailable — high score just won't persist */
+        }
+      }
+      state.floaters.push({ worldX, depth, text: `+${amount}`, color, startedAt: now });
     };
 
     // Combo state (attack 1: jab → hook → kick)
@@ -467,15 +608,16 @@ export default function HomeGame() {
       visual: null as { step: 0 | 1 | 2; startedAt: number; duration: number } | null,
     };
 
-    // Parrot state (attack 2)
+    // Parrot state (attack 2): fly out → carry the enemy way up → slam them down
     const parrot = {
-      phase: "idle" as "idle" | "flying-out" | "grabbing" | "returning" | "cooldown",
+      phase: "idle" as "idle" | "flying-out" | "lifting" | "slamming" | "returning" | "cooldown",
       phaseStartedAt: 0,
       targetId: null as number | null,
       fromX: 0,
       fromY: 0,
       pScreenX: 0,
       pScreenY: 0,
+      liftHeight: 0,
     };
 
     // Car state (attack 3)
@@ -500,9 +642,13 @@ export default function HomeGame() {
       if (enemy.dying) return;
       enemy.hp -= dmg;
       if (enemy.hp <= 0) {
+        const now = performance.now();
         enemy.dying = true;
-        enemy.deathStartedAt = performance.now();
+        enemy.deathStartedAt = now;
+        enemy.grabbed = false;
         gainXp(ENEMY_XP);
+        addScore(SCORE_KILL, enemy.worldX, enemy.depth, "#facc15", now);
+        state.pickups.push({ worldX: enemy.worldX, depth: enemy.depth, spawnedAt: now });
       }
     };
 
@@ -720,6 +866,46 @@ export default function HomeGame() {
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText("WASD / ARROWS · SPACE to attack · 1 / 2 / 3 switch attacks", width / 2, btnY + btnH + 28);
+      if (state.highScore > 0) {
+        ctx.fillStyle = "rgba(250,204,21,0.6)";
+        ctx.font = `bold ${Math.max(11, Math.min(14, width * 0.024))}px system-ui, sans-serif`;
+        ctx.fillText(`HIGH SCORE ${String(state.highScore).padStart(5, "0")}`, width / 2, btnY + btnH + 50);
+      }
+      ctx.restore();
+    };
+
+    const drawScore = (now: number) => {
+      const pad = 16;
+      const boxW = 168;
+      const boxH = 62;
+      const bx = width - pad - boxW;
+      const by = pad;
+      const pulse = now < state.scorePulseUntil ? 1 + 0.12 * ((state.scorePulseUntil - now) / 260) : 1;
+
+      ctx.save();
+      ctx.fillStyle = "rgba(0,0,0,0.6)";
+      ctx.fillRect(bx, by, boxW, boxH);
+      ctx.strokeStyle = "rgba(250,204,21,0.4)";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(bx, by, boxW, boxH);
+
+      ctx.textAlign = "right";
+      ctx.textBaseline = "alphabetic";
+      ctx.fillStyle = "rgba(250,204,21,0.7)";
+      ctx.font = "9px system-ui, sans-serif";
+      ctx.fillText("SCORE", bx + boxW - 10, by + 17);
+
+      ctx.save();
+      ctx.translate(bx + boxW - 10, by + 40);
+      ctx.scale(pulse, pulse);
+      ctx.fillStyle = "#facc15";
+      ctx.font = "bold 24px system-ui, sans-serif";
+      ctx.fillText(String(state.score).padStart(5, "0"), 0, 0);
+      ctx.restore();
+
+      ctx.fillStyle = "rgba(255,255,255,0.45)";
+      ctx.font = "10px system-ui, sans-serif";
+      ctx.fillText(`HIGH ${String(state.highScore).padStart(5, "0")}`, bx + boxW - 10, by + 55);
       ctx.restore();
     };
 
@@ -808,8 +994,31 @@ export default function HomeGame() {
 
       state.isMoving = vx !== 0 || vd !== 0;
       if (state.isMoving) state.walkTime += dt;
-      state.player.worldX = Math.max(0, state.player.worldX + vx * PLAYER_SPEED * dt);
-      state.player.depth = Math.max(MIN_PLAYER_DEPTH, Math.min(MAX_PLAYER_DEPTH, state.player.depth + vd * PLAYER_DEPTH_SPEED * dt));
+
+      // Move each axis on its own so obstacles block instead of stopping the
+      // player dead — you slide along a car rather than sticking to it.
+      const prevX = state.player.worldX;
+      const prevDepth = state.player.depth;
+      const pScale = MIN_SCALE + prevDepth * (MAX_SCALE - MIN_SCALE);
+      const pHalfW = PLAYER_HALF_W * pScale;
+      const pHalfD = (PLAYER_HALF_D * pScale) / DEPTH_TO_WORLD;
+      // If we somehow start inside a prop, don't trap the player there.
+      const startsInside = overlapsProp(prevX, prevDepth, pHalfW, pHalfD);
+
+      const nextX = Math.max(0, prevX + vx * PLAYER_SPEED * dt);
+      if (startsInside || !overlapsProp(nextX, prevDepth, pHalfW, pHalfD)) state.player.worldX = nextX;
+
+      const nextDepth = Math.max(
+        MIN_PLAYER_DEPTH,
+        Math.min(MAX_PLAYER_DEPTH, prevDepth + vd * PLAYER_DEPTH_SPEED * dt)
+      );
+      // Footprint grows with depth, so test the step with the scale it will land at
+      const nScale = MIN_SCALE + nextDepth * (MAX_SCALE - MIN_SCALE);
+      const nHalfW = PLAYER_HALF_W * nScale;
+      const nHalfD = (PLAYER_HALF_D * nScale) / DEPTH_TO_WORLD;
+      if (startsInside || !overlapsProp(state.player.worldX, nextDepth, nHalfW, nHalfD)) {
+        state.player.depth = nextDepth;
+      }
       if (vx !== 0) state.player.facing = vx > 0 ? 1 : -1;
 
       const anchorX = width * ANCHOR_X_RATIO;
@@ -832,7 +1041,7 @@ export default function HomeGame() {
 
       // Enemy update
       for (const enemy of state.enemies) {
-        if (enemy.dying) continue;
+        if (enemy.dying || enemy.grabbed) continue;
         if (enemy.floatY > 0) enemy.floatY = Math.max(0, enemy.floatY - 80 * dt);
         if (nowTs < enemy.stunUntil) continue;
         const dxp = state.player.worldX - enemy.worldX;
@@ -855,9 +1064,23 @@ export default function HomeGame() {
           deathStartedAt: null,
           stunUntil: 0,
           floatY: 0,
+          grabbed: false,
         });
         state.nextSpawnAt = nowTs + 1400 + Math.random() * 900;
       }
+
+      // Banana pickups dropped by fallen enemies
+      state.pickups = state.pickups.filter((pu) => {
+        if (nowTs - pu.spawnedAt > PICKUP_LIFETIME_MS) return false;
+        const dx = Math.abs(pu.worldX - state.player.worldX);
+        const dd = Math.abs(pu.depth - state.player.depth);
+        if (dx < 34 && dd < 0.07) {
+          addScore(SCORE_PICKUP, pu.worldX, pu.depth, "#fde68a", nowTs);
+          return false;
+        }
+        return pu.worldX >= cameraX - 400;
+      });
+      state.floaters = state.floaters.filter((f) => nowTs - f.startedAt < 900);
 
       // Parrot state machine
       if (parrot.phase === "flying-out") {
@@ -871,27 +1094,64 @@ export default function HomeGame() {
           parrot.pScreenX = parrot.fromX + (tSX - parrot.fromX) * t;
           parrot.pScreenY = parrot.fromY + (tSY - parrot.fromY) * t;
           if (t >= 1) {
-            parrot.phase = "grabbing";
+            parrot.phase = "lifting";
             parrot.phaseStartedAt = nowTs;
+            tgt.grabbed = true;
           }
         }
-      } else if (parrot.phase === "grabbing") {
+      } else if (parrot.phase === "lifting") {
         const tgt = state.enemies.find((e) => e.id === parrot.targetId);
-        if (tgt && !tgt.dying) {
-          tgt.floatY = 30;
-          parrot.pScreenX = tgt.worldX - cameraX;
-          parrot.pScreenY = horizonY + tgt.depth * (floorBottom - horizonY) - 32 - 12 * ps;
-        }
-        if (nowTs - parrot.phaseStartedAt > 420) {
-          if (tgt && !tgt.dying) {
-            damageEnemy(tgt, 40);
-            tgt.floatY = 0;
-            if (!tgt.dying) tgt.stunUntil = nowTs + 1000;
-          }
+        if (!tgt || tgt.dying) {
+          if (tgt) tgt.grabbed = false;
           parrot.fromX = parrot.pScreenX;
           parrot.fromY = parrot.pScreenY;
           parrot.phase = "returning";
           parrot.phaseStartedAt = nowTs;
+        } else {
+          const tgtGroundY = horizonY + tgt.depth * (floorBottom - horizonY);
+          // Lift as high as the street allows, stopping just under the horizon
+          parrot.liftHeight = Math.max(90, Math.min(PARROT_LIFT_HEIGHT, tgtGroundY - horizonY + 40));
+          const t = Math.min(1, (nowTs - parrot.phaseStartedAt) / PARROT_LIFT_MS);
+          tgt.grabbed = true;
+          tgt.stunUntil = nowTs + 200;
+          tgt.floatY = parrot.liftHeight * (1 - Math.pow(1 - t, 2)); // ease-out climb
+          parrot.pScreenX = tgt.worldX - cameraX;
+          parrot.pScreenY = tgtGroundY - tgt.floatY - 34 - 12 * ps;
+          if (t >= 1) {
+            parrot.phase = "slamming";
+            parrot.phaseStartedAt = nowTs;
+          }
+        }
+      } else if (parrot.phase === "slamming") {
+        const tgt = state.enemies.find((e) => e.id === parrot.targetId);
+        if (!tgt || tgt.dying) {
+          if (tgt) tgt.grabbed = false;
+          parrot.fromX = parrot.pScreenX;
+          parrot.fromY = parrot.pScreenY;
+          parrot.phase = "returning";
+          parrot.phaseStartedAt = nowTs;
+        } else {
+          const hang = Math.min(1, (nowTs - parrot.phaseStartedAt) / PARROT_HANG_MS);
+          const fallT = Math.max(0, (nowTs - parrot.phaseStartedAt - PARROT_HANG_MS) / PARROT_SLAM_MS);
+          const t = Math.min(1, fallT);
+          tgt.grabbed = true;
+          tgt.stunUntil = nowTs + 200;
+          tgt.floatY = parrot.liftHeight * (1 - t * t); // accelerating drop
+          // Parrot lets go at the apex and hovers there
+          parrot.pScreenX = tgt.worldX - cameraX;
+          parrot.pScreenY =
+            horizonY + tgt.depth * (floorBottom - horizonY) - parrot.liftHeight - 34 - 12 * ps - hang * 6;
+          if (t >= 1) {
+            tgt.floatY = 0;
+            tgt.grabbed = false;
+            damageEnemy(tgt, PARROT_SLAM_DAMAGE);
+            if (!tgt.dying) tgt.stunUntil = nowTs + 1200;
+            state.shakeUntil = nowTs + 320;
+            parrot.fromX = parrot.pScreenX;
+            parrot.fromY = parrot.pScreenY;
+            parrot.phase = "returning";
+            parrot.phaseStartedAt = nowTs;
+          }
         }
       } else if (parrot.phase === "returning") {
         const toX = psx + 14 * state.player.facing;
@@ -1169,6 +1429,34 @@ export default function HomeGame() {
         });
       }
 
+      for (const pu of state.pickups) {
+        const usx = pu.worldX - cameraX;
+        if (usx < -60 || usx > width + 60) continue;
+        const age = nowTs - pu.spawnedAt;
+        // Blink out over the last second of its life
+        const fading = age > PICKUP_LIFETIME_MS - 1200;
+        if (fading && Math.floor(age / 110) % 2 === 0) continue;
+        const usy = horizonY + pu.depth * (floorBottom - horizonY);
+        const usc = MIN_SCALE + pu.depth * (MAX_SCALE - MIN_SCALE);
+        const bob = Math.sin(nowTs * 0.005 + pu.worldX) * 4 * usc;
+        const spin = nowTs * 0.003 + pu.worldX;
+        entities.push({
+          depth: pu.depth,
+          draw: () => {
+            ctx.save();
+            ctx.fillStyle = "rgba(0,0,0,0.4)";
+            ctx.beginPath();
+            ctx.ellipse(usx, usy, 12 * usc, 4 * usc, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.translate(usx, usy - 14 * usc - bob);
+            ctx.shadowColor = "rgba(250,204,21,0.8)";
+            ctx.shadowBlur = 12;
+            drawBanana(ctx, usc, spin);
+            ctx.restore();
+          },
+        });
+      }
+
       // Combo visual state for player draw
       let comboHitStep: 0 | 1 | 2 | undefined;
       let comboProgress = 0;
@@ -1216,9 +1504,27 @@ export default function HomeGame() {
       for (const ent of entities) ent.draw();
 
       // Parrot in flight (over everything)
-      if (parrot.phase === "flying-out" || parrot.phase === "grabbing" || parrot.phase === "returning") {
+      if (parrot.phase !== "idle" && parrot.phase !== "cooldown") {
         const flyingRight = parrot.phase === "returning" ? false : state.player.facing === -1;
         drawParrot(ctx, parrot.pScreenX, parrot.pScreenY, ps * 0.9, false, flyingRight);
+      }
+
+      // Score floaters
+      for (const f of state.floaters) {
+        const t = (nowTs - f.startedAt) / 900;
+        const fx = f.worldX - cameraX;
+        const fy = horizonY + f.depth * (floorBottom - horizonY) - 60 - t * 40;
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, 1 - t);
+        ctx.fillStyle = f.color;
+        ctx.font = "bold 16px system-ui, sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "alphabetic";
+        ctx.strokeStyle = "rgba(0,0,0,0.7)";
+        ctx.lineWidth = 3;
+        ctx.strokeText(f.text, fx, fy);
+        ctx.fillText(f.text, fx, fy);
+        ctx.restore();
       }
 
       // Goldfish car drive-by
@@ -1242,6 +1548,7 @@ export default function HomeGame() {
 
       ctx.restore();
       drawHud();
+      drawScore(nowTs);
       rafId = requestAnimationFrame(loop);
     };
 
