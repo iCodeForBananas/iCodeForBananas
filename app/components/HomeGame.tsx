@@ -26,6 +26,9 @@ const PARROT_HANG_MS = 180;
 const PARROT_SLAM_MS = 260;
 const PARROT_SLAM_DAMAGE = 90;
 
+const CAR_DRIVEBY_MS = 2800; // how long the goldfish car takes to cross the street
+const CAR_COOLDOWN_MS = 3800;
+
 const SCORE_KILL = 100;
 const SCORE_PICKUP = 50;
 const PICKUP_LIFETIME_MS = 9000;
@@ -720,7 +723,7 @@ export default function HomeGame() {
       carState.startedAt = now;
       carState.screenY = psy;
       carState.hitIds = new Set();
-      state.attackReadyAt[3] = now + 3000;
+      state.attackReadyAt[3] = now + CAR_COOLDOWN_MS;
       state.shakeUntil = now + 500;
     };
 
@@ -1207,7 +1210,7 @@ export default function HomeGame() {
       let carDrawCx = 0;
       let carDrawCy = 0;
       if (carState.active) {
-        const carProgress = (nowTs - carState.startedAt) / 1600;
+        const carProgress = (nowTs - carState.startedAt) / CAR_DRIVEBY_MS;
         carDrawCx = -120 + (width + 240) * carProgress;
         carDrawCy = carState.screenY - 14;
         for (const e of state.enemies) {
