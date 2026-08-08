@@ -2,12 +2,12 @@
 
 import { useEffect, useRef } from "react";
 
-const HORIZON_RATIO = 0.4;
+const HORIZON_RATIO = 0.45;
 const CHUNK_WIDTH = 900;
 const PLAYER_SPEED = 260;
 const PLAYER_DEPTH_SPEED = 0.6;
-const MIN_SCALE = 0.35;
-const MAX_SCALE = 1.4;
+const MIN_SCALE = 0.45;
+const MAX_SCALE = 1.55;
 const ANCHOR_X_RATIO = 0.35;
 const DEPTH_TO_WORLD = 200;
 const ENEMY_SPEED = 55;
@@ -16,8 +16,8 @@ const MAX_ENEMIES = 5;
 const ENEMY_XP = 25;
 const XP_THRESHOLDS = [100, 250, 500];
 const COMBO_WINDOW_MS = 600;
-const MIN_PLAYER_DEPTH = 0.15; // top of walkable street (below curb)
-const MAX_PLAYER_DEPTH = 0.95; // bottom of walkable street
+const MIN_PLAYER_DEPTH = 0.32; // top of walkable road (~1/3 viewport from bottom)
+const MAX_PLAYER_DEPTH = 0.92; // bottom of walkable road
 
 type PropType = "trashcan" | "dumpster" | "car";
 
@@ -105,7 +105,7 @@ function generateChunk(index: number): Chunk {
     const type: PropType = roll < 0.35 ? "trashcan" : roll < 0.65 ? "dumpster" : "car";
     props.push({
       x: rand() * CHUNK_WIDTH,
-      depth: 0.15 + rand() * 0.8,
+      depth: 0.34 + rand() * 0.54,
       type,
       color: propColors[type][Math.floor(rand() * propColors[type].length)],
       size: 0.8 + rand() * 0.5,
@@ -415,6 +415,33 @@ export default function HomeGame() {
     resizeObserver.observe(container);
 
     const keys = new Set<string>();
+
+    // Title screen
+    let titlePhase: "title" | "playing" = "title";
+    const playBtn = { x: 0, y: 0, w: 0, h: 0 };
+    const onCanvasClick = (e: MouseEvent) => {
+      if (titlePhase !== "title") return;
+      const rect = canvas.getBoundingClientRect();
+      const cx = e.clientX - rect.left;
+      const cy = e.clientY - rect.top;
+      if (cx >= playBtn.x && cx <= playBtn.x + playBtn.w && cy >= playBtn.y && cy <= playBtn.y + playBtn.h) {
+        titlePhase = "playing";
+        canvas.style.cursor = "default";
+      }
+    };
+    const onCanvasMouseMove = (e: MouseEvent) => {
+      if (titlePhase !== "title") return;
+      const rect = canvas.getBoundingClientRect();
+      const cx = e.clientX - rect.left;
+      const cy = e.clientY - rect.top;
+      canvas.style.cursor =
+        cx >= playBtn.x && cx <= playBtn.x + playBtn.w && cy >= playBtn.y && cy <= playBtn.y + playBtn.h
+          ? "pointer"
+          : "default";
+    };
+    canvas.addEventListener("click", onCanvasClick);
+    canvas.addEventListener("mousemove", onCanvasMouseMove);
+
     const chunks = new Map<number, Chunk>();
     const getChunk = (i: number) => {
       if (!chunks.has(i)) chunks.set(i, generateChunk(i));
@@ -543,6 +570,11 @@ export default function HomeGame() {
       if (isTypingTarget(e.target)) return;
       const key = e.key.toLowerCase();
       if (["arrowleft", "arrowright", "arrowup", "arrowdown", "1", "2", "3", " "].includes(key)) e.preventDefault();
+      if (titlePhase === "title" && (key === " " || key === "enter")) {
+        titlePhase = "playing";
+        canvas.style.cursor = "default";
+        return;
+      }
       keys.add(key);
       if (key === "1" || key === "2" || key === "3") {
         const id = Number(key) as 1 | 2 | 3;
@@ -558,6 +590,138 @@ export default function HomeGame() {
     let lastTime = performance.now();
     let rafId = 0;
     let spaceWasDown = false;
+
+    const drawTitleScreen = (time: number) => {
+      // Sky
+      const skyG = ctx.createLinearGradient(0, 0, 0, height);
+      skyG.addColorStop(0, "#01010b");
+      skyG.addColorStop(0.6, "#0c0420");
+      skyG.addColorStop(1, "#180828");
+      ctx.fillStyle = skyG;
+      ctx.fillRect(0, 0, width, height);
+
+      // Stars (seeded — same positions every frame, brightness oscillates)
+      const starRng = mulberry32(42);
+      for (let i = 0; i < 90; i++) {
+        const sx = starRng() * width;
+        const sy = starRng() * height * 0.6;
+        const sa = 0.25 + 0.5 * Math.sin(time * 0.0018 + i * 2.7);
+        ctx.fillStyle = `rgba(255,255,255,${sa})`;
+        ctx.fillRect(sx, sy, 1.5, 1.5);
+      }
+
+      // City silhouette
+      const groundY = height * 0.6;
+      for (let ci = 0; ci <= Math.ceil(width / CHUNK_WIDTH) + 1; ci++) {
+        const ch = getChunk(ci);
+        const off = ci * CHUNK_WIDTH;
+        for (const b of ch.buildings) {
+          const bx = off + b.x;
+          if (bx + b.width < 0 || bx > width) continue;
+          ctx.fillStyle = b.color;
+          ctx.fillRect(bx, groundY - b.height, b.width, b.height);
+          for (const w of b.windows) {
+            ctx.fillStyle = w.lit ? "#facc15" : "rgba(255,255,255,0.04)";
+            ctx.fillRect(bx + w.x, groundY - b.height + w.y, 5, 7);
+          }
+        }
+      }
+
+      // Ground
+      const gGrad = ctx.createLinearGradient(0, groundY, 0, height);
+      gGrad.addColorStop(0, "#131318");
+      gGrad.addColorStop(1, "#06060a");
+      ctx.fillStyle = gGrad;
+      ctx.fillRect(0, groundY, width, height - groundY);
+
+      // Scanlines
+      for (let y = 0; y < height; y += 3) {
+        ctx.fillStyle = "rgba(0,0,0,0.09)";
+        ctx.fillRect(0, y, width, 1);
+      }
+
+      // Neon glow atmosphere at horizon
+      const horizonGlow = ctx.createLinearGradient(0, groundY - 18, 0, groundY + 12);
+      horizonGlow.addColorStop(0, "rgba(0,0,0,0)");
+      horizonGlow.addColorStop(0.5, "rgba(140,20,60,0.22)");
+      horizonGlow.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = horizonGlow;
+      ctx.fillRect(0, groundY - 18, width, 30);
+
+      const t = time * 0.001;
+      const flicker = Math.random() < 0.025 ? 0.5 : 1;
+      const pulse = 0.8 + 0.2 * Math.sin(t * 2.4);
+      const titleCY = height * 0.29;
+      const fs1 = Math.min(width * 0.17, 110);
+
+      // "SHOOT" — white text with red neon glow
+      ctx.save();
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.font = `900 ${fs1}px system-ui, sans-serif`;
+      ctx.shadowColor = "#ff1a1a";
+      ctx.shadowBlur = 70 * pulse * flicker;
+      ctx.fillStyle = `rgba(255,255,255,${flicker})`;
+      ctx.fillText("SHOOT", width / 2, titleCY);
+      ctx.shadowBlur = 110 * pulse * flicker;
+      ctx.fillStyle = `rgba(255,50,50,${0.35 * flicker})`;
+      ctx.fillText("SHOOT", width / 2, titleCY);
+      ctx.restore();
+
+      // "SIMULATOR" — red, slightly smaller
+      const fs2 = Math.min(width * 0.09, 64);
+      ctx.save();
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.font = `900 ${fs2}px system-ui, sans-serif`;
+      ctx.shadowColor = "#cc2020";
+      ctx.shadowBlur = 28 * pulse * flicker;
+      ctx.fillStyle = `rgba(215,55,55,${flicker})`;
+      ctx.fillText("SIMULATOR", width / 2, titleCY + fs1 * 0.88);
+      ctx.restore();
+
+      // PLAY button
+      const btnW = Math.min(220, width * 0.44);
+      const btnH = 60;
+      const btnX = width / 2 - btnW / 2;
+      const btnY = Math.min(height * 0.63, titleCY + fs1 * 0.88 + fs2 + 36);
+      playBtn.x = btnX; playBtn.y = btnY; playBtn.w = btnW; playBtn.h = btnH;
+
+      const bPulse = 0.75 + 0.25 * Math.sin(t * 3.8);
+      ctx.save();
+      ctx.shadowColor = "#facc15";
+      ctx.shadowBlur = 32 * bPulse;
+      const br = 10;
+      ctx.beginPath();
+      ctx.moveTo(btnX + br, btnY);
+      ctx.lineTo(btnX + btnW - br, btnY);
+      ctx.quadraticCurveTo(btnX + btnW, btnY, btnX + btnW, btnY + br);
+      ctx.lineTo(btnX + btnW, btnY + btnH - br);
+      ctx.quadraticCurveTo(btnX + btnW, btnY + btnH, btnX + btnW - br, btnY + btnH);
+      ctx.lineTo(btnX + br, btnY + btnH);
+      ctx.quadraticCurveTo(btnX, btnY + btnH, btnX, btnY + btnH - br);
+      ctx.lineTo(btnX, btnY + br);
+      ctx.quadraticCurveTo(btnX, btnY, btnX + br, btnY);
+      ctx.closePath();
+      ctx.fillStyle = "#facc15";
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = "#111";
+      ctx.font = `bold ${Math.min(btnH * 0.44, 24)}px system-ui, sans-serif`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("▶  PLAY", width / 2, btnY + btnH / 2);
+      ctx.restore();
+
+      // Controls hint
+      ctx.save();
+      ctx.fillStyle = "rgba(255,255,255,0.25)";
+      ctx.font = `${Math.max(10, Math.min(12, width * 0.02))}px system-ui, sans-serif`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("WASD / ARROWS · SPACE to attack · 1 / 2 / 3 switch attacks", width / 2, btnY + btnH + 28);
+      ctx.restore();
+    };
 
     const drawHud = () => {
       const { level, xp } = state.player;
@@ -626,6 +790,15 @@ export default function HomeGame() {
       const dt = Math.min((time - lastTime) / 1000, 0.05);
       lastTime = time;
       const nowTs = performance.now();
+
+      // Title screen — draw and bail out before any game logic
+      if (titlePhase === "title") {
+        ctx.save();
+        drawTitleScreen(time);
+        ctx.restore();
+        rafId = requestAnimationFrame(loop);
+        return;
+      }
 
       let vx = 0, vd = 0;
       if (keys.has("arrowleft") || keys.has("a")) vx -= 1;
@@ -791,52 +964,62 @@ export default function HomeGame() {
         }
       }
 
-      // Ground
-      const groundGrad = ctx.createLinearGradient(0, horizonY, 0, floorBottom);
-      groundGrad.addColorStop(0, "#1c1c22");
-      groundGrad.addColorStop(1, "#08080a");
-      ctx.fillStyle = groundGrad;
+      // Ground base
+      ctx.fillStyle = "#09090c";
       ctx.fillRect(0, horizonY, width, floorBottom - horizonY);
 
-      // Sidewalk / curb — marks the top boundary of the walkable street
+      // Sidewalk (above the walkable road)
       const curbY = horizonY + MIN_PLAYER_DEPTH * (floorBottom - horizonY);
-      ctx.fillStyle = "#2a2a30";
-      ctx.fillRect(0, curbY - 6, width, 8);
-      ctx.strokeStyle = "rgba(250,204,21,0.25)";
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.moveTo(0, curbY);
-      ctx.lineTo(width, curbY);
-      ctx.stroke();
-      // Road center line (dashed)
-      const midY = horizonY + 0.55 * (floorBottom - horizonY);
-      ctx.setLineDash([28, 18]);
-      ctx.strokeStyle = "rgba(255,255,255,0.06)";
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(0, midY);
-      ctx.lineTo(width, midY);
-      ctx.stroke();
+      const swGrad = ctx.createLinearGradient(0, horizonY, 0, curbY);
+      swGrad.addColorStop(0, "#222226");
+      swGrad.addColorStop(1, "#35353c");
+      ctx.fillStyle = swGrad;
+      ctx.fillRect(0, horizonY, width, curbY - horizonY);
+
+      // Sidewalk tile seams — horizontal
+      ctx.strokeStyle = "rgba(0,0,0,0.22)";
+      ctx.lineWidth = 1;
+      for (let d = 0.25; d < 1; d += 0.25) {
+        const ty = horizonY + d * (curbY - horizonY);
+        ctx.beginPath(); ctx.moveTo(0, ty); ctx.lineTo(width, ty); ctx.stroke();
+      }
+      // Sidewalk tile seams — vertical, scrolling with camera
+      const tileW = 68;
+      const tileOff = tileW - (cameraX * 0.55) % tileW;
+      for (let tx = tileOff - tileW; tx < width + tileW; tx += tileW) {
+        ctx.beginPath(); ctx.moveTo(tx, horizonY); ctx.lineTo(tx, curbY); ctx.stroke();
+      }
+
+      // Curb lip
+      ctx.fillStyle = "#505058";
+      ctx.fillRect(0, curbY - 5, width, 9);
+      ctx.fillStyle = "rgba(255,255,255,0.1)";
+      ctx.fillRect(0, curbY - 5, width, 2); // highlight top
+      ctx.fillStyle = "rgba(0,0,0,0.55)";
+      ctx.fillRect(0, curbY + 3, width, 2); // shadow bottom
+
+      // Road / asphalt
+      const roadGrad = ctx.createLinearGradient(0, curbY + 4, 0, floorBottom);
+      roadGrad.addColorStop(0, "#161619");
+      roadGrad.addColorStop(1, "#0b0b0d");
+      ctx.fillStyle = roadGrad;
+      ctx.fillRect(0, curbY + 4, width, floorBottom - curbY - 4);
+
+      // Road center dashed yellow line — scrolls with camera
+      const laneY = curbY + (floorBottom - curbY) * 0.5;
+      ctx.strokeStyle = "rgba(220,170,0,0.5)";
+      ctx.lineWidth = 3;
+      ctx.setLineDash([34, 24]);
+      ctx.lineDashOffset = -(cameraX * 0.4) % 58;
+      ctx.beginPath(); ctx.moveTo(0, laneY); ctx.lineTo(width, laneY); ctx.stroke();
       ctx.setLineDash([]);
 
-      // Perspective grid
-      ctx.strokeStyle = "rgba(250,204,21,0.12)";
-      ctx.lineWidth = 1;
-      const vx2 = width / 2;
-      for (let i = -10; i <= 10; i++) {
-        ctx.beginPath();
-        ctx.moveTo(vx2, horizonY);
-        ctx.lineTo(vx2 + i * (width / 10), floorBottom);
-        ctx.stroke();
-      }
-      for (let r = 1; r <= 14; r++) {
-        const t = r / 14;
-        const y = horizonY + t * t * (floorBottom - horizonY);
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(width, y);
-        ctx.stroke();
-      }
+      // Bottom vignette
+      const vigGrad = ctx.createLinearGradient(0, floorBottom - 28, 0, floorBottom);
+      vigGrad.addColorStop(0, "rgba(0,0,0,0)");
+      vigGrad.addColorStop(1, "rgba(0,0,0,0.65)");
+      ctx.fillStyle = vigGrad;
+      ctx.fillRect(0, floorBottom - 28, width, 28);
 
       // Depth-sorted entities
       type Entity = { depth: number; draw: () => void };
@@ -1069,6 +1252,8 @@ export default function HomeGame() {
       resizeObserver.disconnect();
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
+      canvas.removeEventListener("click", onCanvasClick);
+      canvas.removeEventListener("mousemove", onCanvasMouseMove);
     };
   }, []);
 
