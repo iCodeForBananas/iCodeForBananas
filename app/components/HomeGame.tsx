@@ -18,6 +18,9 @@ const XP_THRESHOLDS = [100, 250, 500];
 const COMBO_WINDOW_MS = 600;
 const MIN_PLAYER_DEPTH = 0.32; // top of walkable road (~1/3 viewport from bottom)
 const MAX_PLAYER_DEPTH = 0.92; // bottom of walkable road
+// Where the curb sits in the ground band. Kept well above the walk limit so the
+// sidewalk is a shallow strip in the distance rather than a slab up the screen.
+const SIDEWALK_DEPTH = 0.17;
 const CAMERA_ZOOM = 1.4; // world is drawn in a smaller logical viewport, scaled up = tighter, cinematic framing
 
 const PARROT_LIFT_HEIGHT = 210; // how high the parrot hauls an enemy before dropping them
@@ -1882,25 +1885,39 @@ export default function HomeGame() {
       ctx.fillRect(0, horizonY, width, floorBottom - horizonY);
 
       // Sidewalk (above the walkable road)
-      const curbY = horizonY + MIN_PLAYER_DEPTH * (floorBottom - horizonY);
+      const curbY = horizonY + SIDEWALK_DEPTH * (floorBottom - horizonY);
+      // Paving is hazier and lighter where it recedes, darker underfoot at the
+      // kerb — a wall would be lit the other way round
       const swGrad = ctx.createLinearGradient(0, horizonY, 0, curbY);
-      swGrad.addColorStop(0, "#222226");
-      swGrad.addColorStop(1, "#35353c");
+      swGrad.addColorStop(0, "#3b3b43");
+      swGrad.addColorStop(0.45, "#33333a");
+      swGrad.addColorStop(1, "#26262c");
       ctx.fillStyle = swGrad;
       ctx.fillRect(0, horizonY, width, curbY - horizonY);
+      // Shadow the buildings cast across the back of the paving
+      const wallShadow = ctx.createLinearGradient(0, horizonY, 0, horizonY + (curbY - horizonY) * 0.5);
+      wallShadow.addColorStop(0, "rgba(0,0,0,0.5)");
+      wallShadow.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = wallShadow;
+      ctx.fillRect(0, horizonY, width, (curbY - horizonY) * 0.5);
 
-      // Sidewalk tile seams — horizontal
+      // Sidewalk tile seams — horizontal, bunched toward the back so the strip
+      // reads as a surface receding away rather than a flat wall
       ctx.strokeStyle = "rgba(0,0,0,0.22)";
       ctx.lineWidth = 1;
-      for (let d = 0.25; d < 1; d += 0.25) {
+      for (const d of [0.4, 0.72]) {
         const ty = horizonY + d * (curbY - horizonY);
         ctx.beginPath(); ctx.moveTo(0, ty); ctx.lineTo(width, ty); ctx.stroke();
       }
-      // Sidewalk tile seams — vertical, scrolling with the street
-      const tileW = 68;
-      const tileOff = tileW - (cameraX * 0.92) % tileW;
+      // Sidewalk tile seams — splayed toward a vanishing point at screen centre,
+      // which is what actually sells it as ground you are looking across
+      const vanishX = width / 2;
+      const seamConverge = 0.74;
+      const tileW = 76;
+      const tileOff = tileW - cameraX % tileW;
       for (let tx = tileOff - tileW; tx < width + tileW; tx += tileW) {
-        ctx.beginPath(); ctx.moveTo(tx, horizonY); ctx.lineTo(tx, curbY); ctx.stroke();
+        const backX = vanishX + (tx - vanishX) * seamConverge;
+        ctx.beginPath(); ctx.moveTo(backX, horizonY); ctx.lineTo(tx, curbY); ctx.stroke();
       }
 
       // Warm light pooling on the sidewalk out of lit doorways and alleys
@@ -1942,20 +1959,22 @@ export default function HomeGame() {
       }
       ctx.restore();
 
-      // Curb lip
-      ctx.fillStyle = "#505058";
-      ctx.fillRect(0, curbY - 5, width, 9);
-      ctx.fillStyle = "rgba(255,255,255,0.1)";
-      ctx.fillRect(0, curbY - 5, width, 2); // highlight top
-      ctx.fillStyle = "rgba(0,0,0,0.55)";
-      ctx.fillRect(0, curbY + 3, width, 2); // shadow bottom
+      // Curb — a thin kerb top with a short face dropping to the asphalt
+      ctx.fillStyle = "#4c4c54";
+      ctx.fillRect(0, curbY - 3, width, 3); // top of the kerb, catching light
+      ctx.fillStyle = "rgba(255,255,255,0.16)";
+      ctx.fillRect(0, curbY - 3, width, 1);
+      ctx.fillStyle = "#26262c";
+      ctx.fillRect(0, curbY, width, 4); // shaded face of the step
+      ctx.fillStyle = "rgba(0,0,0,0.5)";
+      ctx.fillRect(0, curbY + 4, width, 2); // gutter shadow
 
       // Road / asphalt
-      const roadGrad = ctx.createLinearGradient(0, curbY + 4, 0, floorBottom);
+      const roadGrad = ctx.createLinearGradient(0, curbY + 5, 0, floorBottom);
       roadGrad.addColorStop(0, "#161619");
       roadGrad.addColorStop(1, "#0b0b0d");
       ctx.fillStyle = roadGrad;
-      ctx.fillRect(0, curbY + 4, width, floorBottom - curbY - 4);
+      ctx.fillRect(0, curbY + 5, width, floorBottom - curbY - 5);
 
       // Road center dashed yellow line — scrolls with camera
       const laneY = curbY + (floorBottom - curbY) * 0.5;
