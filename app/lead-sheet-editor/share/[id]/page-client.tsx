@@ -59,7 +59,7 @@ function SheetContent({ sheet }: { sheet: LeadSheet }) {
                   {section.label || section.type}
                 </span>
               </div>
-              <div className='space-y-3 overflow-x-auto'>
+              <div className='space-y-3'>
                 {lines.map((line, i) =>
                   line.trim() === "" ? (
                     <div key={i} className='h-3' />

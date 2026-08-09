@@ -92,23 +92,23 @@ function loadBeatsPerBar(id: string): number {
 
 function ColumnCountControl({ count, onChange }: { count: number; onChange: (next: number) => void }) {
   return (
-    <div className='flex items-center gap-1 rounded-lg border border-gray-200 dark:border-gray-700 px-1.5 py-1 print:hidden'>
-      <span className='text-sm font-medium text-gray-700 dark:text-gray-200 select-none'>Cols</span>
+    <div className='flex items-center gap-1 rounded-lg border border-gray-200 dark:border-neutral-700 px-1.5 py-1 print:hidden'>
+      <span className='text-sm font-medium text-gray-700 dark:text-neutral-200 select-none'>Cols</span>
       <button
         type='button'
         onClick={() => onChange(count - 1)}
         disabled={count <= MIN_COLUMN_COUNT}
-        className='h-10 w-10 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-gray-100 dark:disabled:hover:bg-gray-800'
+        className='h-10 w-10 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-neutral-800 hover:bg-gray-200 dark:hover:bg-neutral-700 text-gray-700 dark:text-neutral-200 font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-gray-100 dark:disabled:hover:bg-neutral-800'
         aria-label='Decrease column count'
       >
         <Minus className='w-4 h-4' />
       </button>
-      <span className='text-sm font-medium w-6 text-center text-gray-700 dark:text-gray-200 select-none'>{count}</span>
+      <span className='text-sm font-medium w-6 text-center text-gray-700 dark:text-neutral-200 select-none'>{count}</span>
       <button
         type='button'
         onClick={() => onChange(count + 1)}
         disabled={count >= MAX_COLUMN_COUNT}
-        className='h-10 w-10 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-gray-100 dark:disabled:hover:bg-gray-800'
+        className='h-10 w-10 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-neutral-800 hover:bg-gray-200 dark:hover:bg-neutral-700 text-gray-700 dark:text-neutral-200 font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-gray-100 dark:disabled:hover:bg-neutral-800'
         aria-label='Increase column count'
       >
         <Plus className='w-4 h-4' />
@@ -119,23 +119,23 @@ function ColumnCountControl({ count, onChange }: { count: number; onChange: (nex
 
 function ColumnWidthControl({ width, onChange }: { width: number; onChange: (next: number) => void }) {
   return (
-    <div className='flex items-center gap-1 rounded-lg border border-gray-200 dark:border-gray-700 px-1.5 py-1 print:hidden'>
-      <span className='text-sm font-medium text-gray-700 dark:text-gray-200 select-none'>Width</span>
+    <div className='flex items-center gap-1 rounded-lg border border-gray-200 dark:border-neutral-700 px-1.5 py-1 print:hidden'>
+      <span className='text-sm font-medium text-gray-700 dark:text-neutral-200 select-none'>Width</span>
       <button
         type='button'
         onClick={() => onChange(width - COLUMN_WIDTH_VW_STEP)}
         disabled={width <= MIN_COLUMN_WIDTH_VW}
-        className='h-10 w-10 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-gray-100 dark:disabled:hover:bg-gray-800'
+        className='h-10 w-10 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-neutral-800 hover:bg-gray-200 dark:hover:bg-neutral-700 text-gray-700 dark:text-neutral-200 font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-gray-100 dark:disabled:hover:bg-neutral-800'
         aria-label='Decrease column width'
       >
         <Minus className='w-4 h-4' />
       </button>
-      <span className='text-sm font-medium w-14 text-center text-gray-700 dark:text-gray-200 select-none'>{width}vw</span>
+      <span className='text-sm font-medium w-14 text-center text-gray-700 dark:text-neutral-200 select-none'>{width}vw</span>
       <button
         type='button'
         onClick={() => onChange(width + COLUMN_WIDTH_VW_STEP)}
         disabled={width >= MAX_COLUMN_WIDTH_VW}
-        className='h-10 w-10 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-gray-100 dark:disabled:hover:bg-gray-800'
+        className='h-10 w-10 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-neutral-800 hover:bg-gray-200 dark:hover:bg-neutral-700 text-gray-700 dark:text-neutral-200 font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-gray-100 dark:disabled:hover:bg-neutral-800'
         aria-label='Increase column width'
       >
         <Plus className='w-4 h-4' />
@@ -146,23 +146,23 @@ function ColumnWidthControl({ width, onChange }: { width: number; onChange: (nex
 
 function FontScaleControl({ scale, onChange }: { scale: number; onChange: (next: number) => void }) {
   return (
-    <div className='flex items-center gap-1 rounded-lg border border-gray-200 dark:border-gray-700 px-1.5 py-1 print:hidden'>
-      <span className='text-sm font-medium text-gray-700 dark:text-gray-200 select-none'>Size</span>
+    <div className='flex items-center gap-1 rounded-lg border border-gray-200 dark:border-neutral-700 px-1.5 py-1 print:hidden'>
+      <span className='text-sm font-medium text-gray-700 dark:text-neutral-200 select-none'>Size</span>
       <button
         type='button'
         onClick={() => onChange(scale - SCALE_STEP)}
         disabled={scale <= MIN_SCALE}
-        className='h-10 w-10 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-gray-100 dark:disabled:hover:bg-gray-800'
+        className='h-10 w-10 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-neutral-800 hover:bg-gray-200 dark:hover:bg-neutral-700 text-gray-700 dark:text-neutral-200 font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-gray-100 dark:disabled:hover:bg-neutral-800'
         aria-label='Decrease text size'
       >
         <Minus className='w-4 h-4' />
       </button>
-      <span className='text-sm font-medium w-12 text-center text-gray-700 dark:text-gray-200 select-none'>{scale}%</span>
+      <span className='text-sm font-medium w-12 text-center text-gray-700 dark:text-neutral-200 select-none'>{scale}%</span>
       <button
         type='button'
         onClick={() => onChange(scale + SCALE_STEP)}
         disabled={scale >= MAX_SCALE}
-        className='h-10 w-10 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-gray-100 dark:disabled:hover:bg-gray-800'
+        className='h-10 w-10 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-neutral-800 hover:bg-gray-200 dark:hover:bg-neutral-700 text-gray-700 dark:text-neutral-200 font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-gray-100 dark:disabled:hover:bg-neutral-800'
         aria-label='Increase text size'
       >
         <Plus className='w-4 h-4' />
@@ -174,17 +174,17 @@ function FontScaleControl({ scale, onChange }: { scale: number; onChange: (next:
 function TransposeControl({ steps, onChange }: { steps: number; onChange: (next: number) => void }) {
   const offsetLabel = steps > 0 ? `+${steps}` : steps < 0 ? `${steps}` : "±0";
   return (
-    <div className='flex items-center gap-1 rounded-lg border border-gray-200 dark:border-gray-700 px-1.5 py-1 print:hidden'>
+    <div className='flex items-center gap-1 rounded-lg border border-gray-200 dark:border-neutral-700 px-1.5 py-1 print:hidden'>
       <button
         type='button'
         onClick={() => onChange(steps - 1)}
         title='Transpose down one semitone'
         aria-label='Transpose down one semitone'
-        className='h-10 w-10 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 font-medium transition-colors duration-150'
+        className='h-10 w-10 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-neutral-800 hover:bg-gray-200 dark:hover:bg-neutral-700 text-gray-700 dark:text-neutral-200 font-medium transition-colors duration-150'
       >
         <ArrowDown className='w-4 h-4' />
       </button>
-      <span className='text-sm font-medium px-1 text-center text-gray-700 dark:text-gray-200 select-none whitespace-nowrap'>
+      <span className='text-sm font-medium px-1 text-center text-gray-700 dark:text-neutral-200 select-none whitespace-nowrap'>
         Transpose {offsetLabel}
       </span>
       <button
@@ -192,7 +192,7 @@ function TransposeControl({ steps, onChange }: { steps: number; onChange: (next:
         onClick={() => onChange(steps + 1)}
         title='Transpose up one semitone'
         aria-label='Transpose up one semitone'
-        className='h-10 w-10 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 font-medium transition-colors duration-150'
+        className='h-10 w-10 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-neutral-800 hover:bg-gray-200 dark:hover:bg-neutral-700 text-gray-700 dark:text-neutral-200 font-medium transition-colors duration-150'
       >
         <ArrowUp className='w-4 h-4' />
       </button>
@@ -224,7 +224,7 @@ function PlayControl({
       className={`h-10 flex items-center gap-1.5 px-3 rounded-lg text-sm font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed print:hidden ${
         open
           ? "bg-yellow-400 text-black hover:bg-yellow-300"
-          : "bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200"
+          : "bg-gray-100 dark:bg-neutral-800 hover:bg-gray-200 dark:hover:bg-neutral-700 text-gray-700 dark:text-neutral-200"
       }`}
     >
       <Play className='w-4 h-4' />
@@ -248,7 +248,7 @@ function NextSongControl({
       type='button'
       onClick={() => !isLast && onNext(setIds[pos + 1], pos + 1)}
       disabled={isLast}
-      className='h-10 flex items-center gap-1.5 px-3 rounded-lg text-sm font-medium bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-gray-100 dark:disabled:hover:bg-gray-800 print:hidden'
+      className='h-10 flex items-center gap-1.5 px-3 rounded-lg text-sm font-medium bg-gray-100 dark:bg-neutral-800 hover:bg-gray-200 dark:hover:bg-neutral-700 text-gray-700 dark:text-neutral-200 transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-gray-100 dark:disabled:hover:bg-neutral-800 print:hidden'
     >
       {isLast ? "End of Set" : "Next"}
       {!isLast && <ArrowRight className='w-4 h-4' />}
@@ -279,9 +279,9 @@ const SheetContent = memo(function SheetContent({
   const columnsActive = !!(columnCount || columnWidthVw);
   return (
     <div>
-      <div className={`mb-8 border-b-2 border-black dark:border-gray-600 pb-6 ${columnsActive ? "max-w-3xl mx-auto" : ""}`}>
+      <div className={`mb-8 border-b-2 border-black dark:border-neutral-600 pb-6 ${columnsActive ? "max-w-3xl mx-auto" : ""}`}>
         <h1
-          className={`font-bold leading-tight mb-3 text-black dark:text-gray-100 ${fullscreen ? "text-[3em]" : "text-[2.25em]"}`}
+          className={`font-bold leading-tight mb-3 text-black dark:text-neutral-100 ${fullscreen ? "text-[3em]" : "text-[2.25em]"}`}
         >
           {sheet.title || "Untitled"}
         </h1>
@@ -289,13 +289,13 @@ const SheetContent = memo(function SheetContent({
           {sheet.key && (
             <span>
               <span className='uppercase tracking-wider text-[0.75em] text-black/50 dark:text-white/40 mr-1'>Key</span>
-              <span className='font-bold text-black dark:text-gray-100 text-[1em]'>{sheet.key}</span>
+              <span className='font-bold text-black dark:text-neutral-100 text-[1em]'>{sheet.key}</span>
             </span>
           )}
           {sheet.tempo && (
             <span>
               <span className='uppercase tracking-wider text-[0.75em] text-black/50 dark:text-white/40 mr-1'>Tempo</span>
-              <span className='font-bold text-black dark:text-gray-100 text-[1em]'>{sheet.tempo} BPM</span>
+              <span className='font-bold text-black dark:text-neutral-100 text-[1em]'>{sheet.tempo} BPM</span>
             </span>
           )}
         </div>
@@ -336,7 +336,9 @@ const SheetContent = memo(function SheetContent({
                   {section.label || section.type}
                 </span>
               </div>
-              <div className='space-y-3 overflow-x-auto'>
+              {/* No overflow-x here: long lines wrap rather than scroll sideways,
+                  so nothing renders a horizontal scrollbar on screen or in print. */}
+              <div className='space-y-3'>
                 {lines.map((line, i) => {
                   if (line.trim() === "") return <div key={i} className='h-3' />;
                   const cueIndex = timeline?.lineCue.get(lineKey(sectionIndex, i));
@@ -350,7 +352,7 @@ const SheetContent = memo(function SheetContent({
                           ? () => onSeekToLine(sectionIndex, i)
                           : undefined
                       }
-                      className={`-mx-2 rounded px-2 transition-colors duration-150 ${
+                      className={`rounded px-2 transition-colors duration-150 ${
                         active
                           ? "bg-yellow-200/70 shadow-[inset_3px_0_0_0_#facc15] dark:bg-yellow-400/20"
                           : ""
@@ -558,7 +560,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
 
   if (authLoading || loading) {
     return (
-      <div className='flex flex-col flex-1 min-h-0 bg-white dark:bg-gray-900'>
+      <div className='flex flex-col flex-1 min-h-0 bg-white dark:bg-black'>
         <div className='flex flex-col flex-1 min-h-0 p-2 sm:p-4'>
           <div className='flex flex-col flex-1 min-h-0 rounded-none border-none overflow-hidden'>
             <div className='flex-1 flex items-center justify-center text-black/50 dark:text-white/40'>Loading...</div>
@@ -570,7 +572,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
 
   if (!user || !sheet) {
     return (
-      <div className='flex flex-col flex-1 min-h-0 bg-white dark:bg-gray-900'>
+      <div className='flex flex-col flex-1 min-h-0 bg-white dark:bg-black'>
         <div className='flex flex-col flex-1 min-h-0 p-2 sm:p-4'>
           <div className='flex flex-col flex-1 min-h-0 rounded-none border-none overflow-hidden'>
             <div className='flex-1 flex items-center justify-center text-black/50 dark:text-white/40'>Sheet not found.</div>
@@ -593,14 +595,14 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
       {/* Screen view */}
       <div className='print:hidden flex flex-col flex-1 min-h-0'>
         {fullscreen ? (
-          <div className='fixed inset-0 z-50 bg-white dark:bg-gray-900 overflow-y-auto'>
+          <div className='fixed inset-0 z-50 bg-white dark:bg-black overflow-y-auto overflow-x-hidden'>
             <div className='w-full py-8'>
               {/* Toolbar (kept constrained while content below goes full-width) */}
               <div className='max-w-3xl mx-auto px-4'>
               <div className='flex flex-wrap items-center justify-between gap-3 mb-8'>
                 <button
                   onClick={() => setFullscreen(false)}
-                  className='h-10 flex items-center gap-2 px-3 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 transition-colors duration-150 text-sm font-medium'
+                  className='h-10 flex items-center gap-2 px-3 rounded-lg bg-gray-100 dark:bg-neutral-800 hover:bg-gray-200 dark:hover:bg-neutral-700 text-gray-700 dark:text-neutral-200 transition-colors duration-150 text-sm font-medium'
                 >
                   <ArrowLeft className='w-4 h-4' />
                   Exit Fullscreen
@@ -620,7 +622,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                     onToggle={() => setMetronomeOn((on) => !on)}
                   />
                   <PlayControl hasTiming={hasTiming} open={playbackOpen} onOpen={openPlayback} onClose={closePlayback} />
-                  <div className='w-px self-stretch bg-gray-300 dark:bg-gray-600' />
+                  <div className='w-px self-stretch bg-gray-300 dark:bg-neutral-600' />
                   {setIds && <NextSongControl setIds={setIds} pos={setPos} onNext={goToNextSong} />}
                   <button
                     onClick={handleCopy}
@@ -646,17 +648,17 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                   </button>
                   <button
                     onClick={() => window.print()}
-                    className='h-10 flex items-center gap-1.5 px-3 rounded-lg text-sm font-medium bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 transition-colors duration-150'
+                    className='h-10 flex items-center gap-1.5 px-3 rounded-lg text-sm font-medium bg-gray-100 dark:bg-neutral-800 hover:bg-gray-200 dark:hover:bg-neutral-700 text-gray-700 dark:text-neutral-200 transition-colors duration-150'
                   >
                     <Printer className='w-4 h-4' /> Print
                   </button>
                   <button
                     onClick={() => setFullscreen(false)}
-                    className='h-10 flex items-center gap-1.5 px-3 rounded-lg text-sm font-medium bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 transition-colors duration-150'
+                    className='h-10 flex items-center gap-1.5 px-3 rounded-lg text-sm font-medium bg-gray-100 dark:bg-neutral-800 hover:bg-gray-200 dark:hover:bg-neutral-700 text-gray-700 dark:text-neutral-200 transition-colors duration-150'
                   >
                     <Minimize2 className='w-4 h-4' /> Exit
                   </button>
-                  <div className='w-px self-stretch bg-gray-300 dark:bg-gray-600' />
+                  <div className='w-px self-stretch bg-gray-300 dark:bg-neutral-600' />
                   <button
                     onClick={() => router.push(`/lead-sheet-editor/${id}/edit`)}
                     className='h-10 flex items-center gap-1.5 px-3 rounded-lg text-sm font-medium bg-black hover:bg-black/80 text-yellow-400 transition-colors duration-150'
@@ -685,14 +687,14 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
         ) : (
           <div className='flex flex-col flex-1 min-h-0 p-0 sm:p-4'>
             <div
-              className='flex flex-col flex-1 min-h-0 rounded-none border-none bg-white dark:bg-gray-900 overflow-hidden'
+              className='flex flex-col flex-1 min-h-0 rounded-none border-none bg-white dark:bg-black overflow-hidden'
             >
               {/* Toolbar */}
               <div className='shrink-0'>
                 <div className='flex flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-6 sm:py-4'>
                   <button
                     onClick={() => router.push("/lead-sheet-editor")}
-                    className='h-10 flex items-center gap-2 px-3 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 transition-colors duration-150 text-sm font-medium'
+                    className='h-10 flex items-center gap-2 px-3 rounded-lg bg-gray-100 dark:bg-neutral-800 hover:bg-gray-200 dark:hover:bg-neutral-700 text-gray-700 dark:text-neutral-200 transition-colors duration-150 text-sm font-medium'
                   >
                     <ArrowLeft className='w-4 h-4' />
                     All Sheets
@@ -712,7 +714,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                     onToggle={() => setMetronomeOn((on) => !on)}
                   />
                     <PlayControl hasTiming={hasTiming} open={playbackOpen} onOpen={openPlayback} onClose={closePlayback} />
-                    <div className='w-px self-stretch bg-gray-300 dark:bg-gray-600' />
+                    <div className='w-px self-stretch bg-gray-300 dark:bg-neutral-600' />
                     {setIds && <NextSongControl setIds={setIds} pos={setPos} onNext={goToNextSong} />}
                     <button
                       onClick={handleCopy}
@@ -738,17 +740,17 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                     </button>
                     <button
                       onClick={() => window.print()}
-                      className='h-10 flex items-center gap-1.5 px-3 rounded-lg text-sm font-medium bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 transition-colors duration-150'
+                      className='h-10 flex items-center gap-1.5 px-3 rounded-lg text-sm font-medium bg-gray-100 dark:bg-neutral-800 hover:bg-gray-200 dark:hover:bg-neutral-700 text-gray-700 dark:text-neutral-200 transition-colors duration-150'
                     >
                       <Printer className='w-4 h-4' /> Print
                     </button>
                     <button
                       onClick={() => setFullscreen(true)}
-                      className='h-10 flex items-center gap-1.5 px-3 rounded-lg text-sm font-medium bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 transition-colors duration-150'
+                      className='h-10 flex items-center gap-1.5 px-3 rounded-lg text-sm font-medium bg-gray-100 dark:bg-neutral-800 hover:bg-gray-200 dark:hover:bg-neutral-700 text-gray-700 dark:text-neutral-200 transition-colors duration-150'
                     >
                       <Maximize2 className='w-4 h-4' /> Fullscreen
                     </button>
-                    <div className='w-px self-stretch bg-gray-300 dark:bg-gray-600' />
+                    <div className='w-px self-stretch bg-gray-300 dark:bg-neutral-600' />
                     <button
                       onClick={() => router.push(`/lead-sheet-editor/${id}/edit`)}
                       className='h-10 flex items-center gap-1.5 px-3 rounded-lg text-sm font-medium bg-black hover:bg-black/80 text-yellow-400 transition-colors duration-150'
@@ -761,7 +763,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
               </div>
 
               {/* Scrollable content */}
-              <div className='flex-1 overflow-auto'>
+              <div className='flex-1 overflow-y-auto overflow-x-hidden'>
                 <div className='w-full py-8 px-4 sm:px-0' style={{ fontSize: `${fontScale}%` }}>
                   <SheetContent
                     sheet={sheet}

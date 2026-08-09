@@ -186,6 +186,19 @@ body {
   }
 }
 
+/* Fills the dial's ring over one beat so the next one can be anticipated
+   rather than only noticed. The ring sets pathLength="1", so this counts down
+   in fractions of a lap and stays correct at any radius. A var() here would be
+   dropped by the CSS pipeline, hence the literals. */
+@keyframes leadsheetBeatSweep {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
 @keyframes leadsheetBeatPulse {
   from {
     opacity: 1;

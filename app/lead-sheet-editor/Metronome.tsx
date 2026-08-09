@@ -13,6 +13,10 @@ export function clampBpm(value: number): number {
   return Math.min(MAX_BPM, Math.max(MIN_BPM, Math.round(value)));
 }
 
+// Radius of the beat-progress ring, in the dial's 100×100 viewBox. The ring is
+// drawn with pathLength="1" so its CSS sweep is radius-independent.
+const SWEEP_RADIUS = 44;
+
 /**
  * Absolute beat count since the metronome started, derived from the clock on
  * every frame rather than accumulated — a dropped frame shifts nothing.
@@ -62,13 +66,13 @@ export function MetronomeControl({
   const [draft, setDraft] = useState<string | null>(null);
 
   return (
-    <div className='flex items-center gap-1 rounded-lg border border-gray-200 dark:border-gray-700 px-1.5 py-1 print:hidden'>
-      <span className='text-sm font-medium text-gray-700 dark:text-gray-200 select-none'>BPM</span>
+    <div className='flex items-center gap-1 rounded-lg border border-gray-200 dark:border-neutral-700 px-1.5 py-1 print:hidden'>
+      <span className='text-sm font-medium text-gray-700 dark:text-neutral-200 select-none'>BPM</span>
       <button
         type='button'
         onClick={() => onBpmChange(bpm - 1)}
         disabled={bpm <= MIN_BPM}
-        className='h-10 w-10 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed'
+        className='h-10 w-10 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-neutral-800 hover:bg-gray-200 dark:hover:bg-neutral-700 text-gray-700 dark:text-neutral-200 font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed'
         aria-label='Decrease tempo'
       >
         <Minus className='w-4 h-4' />
@@ -86,13 +90,13 @@ export function MetronomeControl({
         }}
         onBlur={() => setDraft(null)}
         aria-label='Beats per minute'
-        className='h-10 w-14 rounded-lg bg-gray-100 dark:bg-gray-800 text-center text-sm font-medium text-gray-700 dark:text-gray-200 outline-none focus:ring-1 focus:ring-gray-400'
+        className='h-10 w-14 rounded-lg bg-gray-100 dark:bg-neutral-800 text-center text-sm font-medium text-gray-700 dark:text-neutral-200 outline-none focus:ring-1 focus:ring-gray-400'
       />
       <button
         type='button'
         onClick={() => onBpmChange(bpm + 1)}
         disabled={bpm >= MAX_BPM}
-        className='h-10 w-10 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed'
+        className='h-10 w-10 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-neutral-800 hover:bg-gray-200 dark:hover:bg-neutral-700 text-gray-700 dark:text-neutral-200 font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed'
         aria-label='Increase tempo'
       >
         <Plus className='w-4 h-4' />
@@ -102,7 +106,7 @@ export function MetronomeControl({
         onChange={(e) => onBeatsPerBarChange(parseInt(e.target.value, 10))}
         aria-label='Beats per bar'
         title='Beats per bar — the first beat flashes brightest'
-        className='h-10 rounded-lg bg-gray-100 dark:bg-gray-800 px-1 text-sm font-medium text-gray-700 dark:text-gray-200 outline-none'
+        className='h-10 rounded-lg bg-gray-100 dark:bg-neutral-800 px-1 text-sm font-medium text-gray-700 dark:text-neutral-200 outline-none'
       >
         {BEATS_PER_BAR_OPTIONS.map((n) => (
           <option key={n} value={n}>
@@ -117,7 +121,7 @@ export function MetronomeControl({
         className={`h-10 flex items-center gap-1.5 px-3 rounded-lg text-sm font-medium transition-colors duration-150 ${
           running
             ? "bg-yellow-400 text-black hover:bg-yellow-300"
-            : "bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200"
+            : "bg-gray-100 dark:bg-neutral-800 hover:bg-gray-200 dark:hover:bg-neutral-700 text-gray-700 dark:text-neutral-200"
         }`}
       >
         {running ? <Square className='w-4 h-4' /> : <CircleDot className='w-4 h-4' />}
@@ -154,8 +158,9 @@ export function MetronomeOverlay({
 
   const beatInBar = ((beat % beatsPerBar) + beatsPerBar) % beatsPerBar;
   const downbeat = beatInBar === 0;
+  const beatMs = 60000 / bpm;
   // Blink for a slice of the beat, capped so fast tempos still read as flashes.
-  const flashMs = Math.min(260, (60000 / bpm) * 0.55);
+  const flashMs = Math.min(260, beatMs * 0.55);
 
   return (
     <div className='pointer-events-none fixed inset-0 z-[55] print:hidden' aria-hidden='true'>
@@ -180,6 +185,37 @@ export function MetronomeOverlay({
               animation: `leadsheetBeatPulse ${flashMs}ms ease-out forwards`,
             }}
           />
+
+          {/* Sweep to the next beat: empties on the beat and fills clockwise,
+              closing the circle exactly as the next one lands. */}
+          <svg className='absolute inset-1' viewBox='0 0 100 100' aria-hidden='true'>
+            <circle
+              cx='50'
+              cy='50'
+              r={SWEEP_RADIUS}
+              fill='none'
+              stroke='#facc15'
+              strokeOpacity={0.18}
+              strokeWidth='7'
+            />
+            <circle
+              key={`sweep-${beat}`}
+              cx='50'
+              cy='50'
+              r={SWEEP_RADIUS}
+              fill='none'
+              stroke='#facc15'
+              strokeWidth='7'
+              strokeLinecap='round'
+              transform='rotate(-90 50 50)'
+              pathLength={1}
+              style={{
+                strokeDasharray: 1,
+                animation: `leadsheetBeatSweep ${beatMs}ms linear forwards`,
+              }}
+            />
+          </svg>
+
           <span className='relative text-5xl font-bold tabular-nums text-yellow-400 sm:text-6xl'>
             {beatInBar + 1}
           </span>

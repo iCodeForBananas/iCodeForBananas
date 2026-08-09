@@ -148,7 +148,7 @@ export function ChordLyricLine({
   if (!hasChords) {
     return (
       <p
-        className={`leadsheet-lyric font-mono whitespace-pre ${large ? "text-[1.5em]" : "text-[1em]"} leading-relaxed text-black dark:text-white`}
+        className={`leadsheet-lyric font-mono whitespace-pre-wrap break-words ${large ? "text-[1.5em]" : "text-[1em]"} leading-relaxed text-black dark:text-white`}
       >
         {timeChip}
         {body || "\u00A0"}
@@ -157,7 +157,7 @@ export function ChordLyricLine({
   }
 
   return (
-    <p className={`font-mono whitespace-pre-wrap ${large ? "text-[1.5em]" : "text-[1em]"} leading-relaxed`}>
+    <p className={`font-mono whitespace-pre-wrap break-words ${large ? "text-[1.5em]" : "text-[1em]"} leading-relaxed`}>
       {timeChip}
       {segments.map((seg, i) => (
         <span key={i}>

@@ -128,22 +128,22 @@ export function PlaybackBar({
   const progress = timeline.duration > 0 ? (time / timeline.duration) * 100 : 0;
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-[60] border-t border-gray-200 bg-white/95 backdrop-blur dark:border-gray-700 dark:bg-gray-900/95 print:hidden">
+    <div className="fixed inset-x-0 bottom-0 z-[60] border-t border-gray-200 bg-white/95 backdrop-blur dark:border-neutral-700 dark:bg-black/95 print:hidden">
       <div className="mx-auto flex max-w-5xl flex-col gap-2 px-4 py-3">
         {/* Scrubber */}
         <div className="flex items-center gap-3">
-          <span className="w-12 shrink-0 font-mono text-xs text-gray-500 dark:text-gray-400">
+          <span className="w-12 shrink-0 font-mono text-xs text-gray-500 dark:text-neutral-400">
             {formatTime(time)}
           </span>
           <div className="relative flex-1">
-            <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+            <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-neutral-700">
               <div className="h-full rounded-full bg-yellow-400" style={{ width: `${progress}%` }} />
             </div>
             {/* Cue ticks — every line you've timed, so you can see the shape of the song */}
             {timeline.cues.map((cue) => (
               <span
                 key={cue.index}
-                className="pointer-events-none absolute top-1/2 h-2 w-px -translate-y-1/2 bg-gray-400/60 dark:bg-gray-500"
+                className="pointer-events-none absolute top-1/2 h-2 w-px -translate-y-1/2 bg-gray-400/60 dark:bg-neutral-500"
                 style={{ left: `${(cue.start / (timeline.duration || 1)) * 100}%` }}
               />
             ))}
@@ -158,7 +158,7 @@ export function PlaybackBar({
               className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
             />
           </div>
-          <span className="w-12 shrink-0 text-right font-mono text-xs text-gray-500 dark:text-gray-400">
+          <span className="w-12 shrink-0 text-right font-mono text-xs text-gray-500 dark:text-neutral-400">
             {formatTime(timeline.duration)}
           </span>
         </div>
@@ -168,7 +168,7 @@ export function PlaybackBar({
             type="button"
             onClick={playback.restart}
             aria-label="Back to start"
-            className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100 text-gray-700 transition-colors duration-150 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+            className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100 text-gray-700 transition-colors duration-150 hover:bg-gray-200 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
           >
             <RotateCcw className="h-4 w-4" />
           </button>
@@ -176,7 +176,7 @@ export function PlaybackBar({
             type="button"
             onClick={() => playback.nudge(-NUDGE_SECONDS)}
             aria-label="Back 5 seconds"
-            className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100 text-gray-700 transition-colors duration-150 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+            className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100 text-gray-700 transition-colors duration-150 hover:bg-gray-200 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
           >
             <Rewind className="h-4 w-4" />
           </button>
@@ -193,7 +193,7 @@ export function PlaybackBar({
             type="button"
             onClick={() => playback.nudge(NUDGE_SECONDS)}
             aria-label="Forward 5 seconds"
-            className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100 text-gray-700 transition-colors duration-150 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+            className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100 text-gray-700 transition-colors duration-150 hover:bg-gray-200 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
           >
             <FastForward className="h-4 w-4" />
           </button>
@@ -205,17 +205,17 @@ export function PlaybackBar({
                 <span className="mr-2 rounded px-1.5 py-0.5 text-[0.65rem] font-bold uppercase tracking-widest" style={{ background: "#facc15", color: "#000" }}>
                   {activeCue.sectionLabel}
                 </span>
-                <span className="truncate align-middle font-mono text-sm text-gray-700 dark:text-gray-200">
+                <span className="truncate align-middle font-mono text-sm text-gray-700 dark:text-neutral-200">
                   {activeCue.text}
                 </span>
               </div>
             ) : (
-              <span className="font-mono text-sm text-gray-400 dark:text-gray-500">
+              <span className="font-mono text-sm text-gray-400 dark:text-neutral-500">
                 {upNext ? `Starts in ${Math.ceil(upNext.start - time)}s` : "—"}
               </span>
             )}
             {activeCue && upNext && (
-              <div className="truncate text-xs text-gray-400 dark:text-gray-500">
+              <div className="truncate text-xs text-gray-400 dark:text-neutral-500">
                 Next in {Math.max(0, Math.ceil(upNext.start - time))}s · {upNext.text || upNext.sectionLabel}
               </div>
             )}
@@ -228,7 +228,7 @@ export function PlaybackBar({
             className={`flex h-10 items-center gap-1.5 rounded-lg px-3 text-sm font-medium transition-colors duration-150 ${
               follow
                 ? "bg-yellow-400 text-black hover:bg-yellow-300"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
             }`}
           >
             <Crosshair className="h-4 w-4" />
@@ -238,7 +238,7 @@ export function PlaybackBar({
             type="button"
             onClick={onClose}
             aria-label="Close playback"
-            className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100 text-gray-700 transition-colors duration-150 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+            className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100 text-gray-700 transition-colors duration-150 hover:bg-gray-200 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
           >
             <X className="h-4 w-4" />
           </button>
