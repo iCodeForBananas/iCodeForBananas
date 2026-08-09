@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback, useEffect, useMemo, useState, use } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState, use } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/app/hooks/useAuth";
@@ -25,8 +25,17 @@ import { cacheSheet, getCachedSheet } from "../../offlineCache";
 import { transposeText } from "../../../lib/transpose";
 import { buildTimeline, cueAt, lineKey, type Timeline } from "../../timing";
 import { PlaybackBar, usePlayback, usePlaybackKeys } from "../../PlaybackBar";
+import {
+  MetronomeControl,
+  MetronomeOverlay,
+  clampBpm,
+  DEFAULT_BEATS_PER_BAR,
+  DEFAULT_BPM,
+} from "../../Metronome";
 
-// Per-song localStorage keys: leadSheet:${id}:fontScale, leadSheet:${id}:columnCount, leadSheet:${id}:columnWidthVw
+// Per-song localStorage keys: leadSheet:${id}:fontScale, leadSheet:${id}:columnCount,
+// leadSheet:${id}:columnWidthVw, leadSheet:${id}:beatsPerBar
+// The metronome's BPM is not local — it lives on the song's tempo column.
 
 const MIN_SCALE = 70;
 const MAX_SCALE = 160;
@@ -69,6 +78,16 @@ function loadColumnWidthVw(id: string): number {
     if (!isNaN(parsed)) return Math.min(MAX_COLUMN_WIDTH_VW, Math.max(MIN_COLUMN_WIDTH_VW, parsed));
   } catch {}
   return DEFAULT_COLUMN_WIDTH_VW;
+}
+
+function loadBeatsPerBar(id: string): number {
+  if (typeof window === "undefined") return DEFAULT_BEATS_PER_BAR;
+  try {
+    const saved = localStorage.getItem(`leadSheet:${id}:beatsPerBar`);
+    const parsed = saved ? parseInt(saved) : NaN;
+    if (!isNaN(parsed) && parsed > 0) return parsed;
+  } catch {}
+  return DEFAULT_BEATS_PER_BAR;
 }
 
 function ColumnCountControl({ count, onChange }: { count: number; onChange: (next: number) => void }) {
@@ -378,6 +397,10 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
   const [playbackOpen, setPlaybackOpen] = useState(false);
   const [follow, setFollow] = useState(true);
   const [autoPlay, setAutoPlay] = useState(false);
+  const [bpm, setBpm] = useState(DEFAULT_BPM);
+  const [beatsPerBar, setBeatsPerBar] = useState(() => loadBeatsPerBar(id));
+  const [metronomeOn, setMetronomeOn] = useState(false);
+  const bpmSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ─── Timed playback ─────────────────────────────────────────────────────────
 
@@ -474,6 +497,35 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
     } catch {}
   };
 
+  // The metronome tempo is the song's tempo, so changing it here writes back to
+  // the sheet — debounced, since it moves a beat at a time on the +/- buttons.
+  const updateBpm = (next: number) => {
+    const clamped = clampBpm(next);
+    setBpm(clamped);
+    setSheet((prev) => (prev ? { ...prev, tempo: clamped } : prev));
+    if (bpmSaveTimer.current) clearTimeout(bpmSaveTimer.current);
+    bpmSaveTimer.current = setTimeout(async () => {
+      try {
+        await createClient()!
+          .from("lead_sheets")
+          .update({ tempo: clamped, updated_at: new Date().toISOString() })
+          .eq("id", id);
+        if (sheet) await cacheSheet({ ...sheet, tempo: clamped });
+      } catch {
+        // Offline or not the owner — the metronome still runs at the new tempo.
+      }
+    }, 800);
+  };
+
+  useEffect(() => () => { if (bpmSaveTimer.current) clearTimeout(bpmSaveTimer.current); }, []);
+
+  const updateBeatsPerBar = (next: number) => {
+    setBeatsPerBar(next);
+    try {
+      localStorage.setItem(`leadSheet:${id}:beatsPerBar`, String(next));
+    } catch {}
+  };
+
   const updateColumnWidthVw = (next: number) => {
     const clamped = Math.min(MAX_COLUMN_WIDTH_VW, Math.max(MIN_COLUMN_WIDTH_VW, next));
     setColumnWidthVw(clamped);
@@ -489,6 +541,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
       if (error) throw error;
       if (data) {
         setSheet({ ...data, sections: data.sections.map(migrateSection) });
+        setBpm(data.tempo ? clampBpm(data.tempo) : DEFAULT_BPM);
         setOffline(false);
         await cacheSheet(data);
       }
@@ -496,6 +549,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
       const cached = await getCachedSheet(id);
       if (cached) {
         setSheet({ ...cached, sections: cached.sections.map(migrateSection) });
+        setBpm(cached.tempo ? clampBpm(cached.tempo) : DEFAULT_BPM);
         setOffline(true);
       }
     }
@@ -557,6 +611,14 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                   <ColumnCountControl count={columnCount} onChange={updateColumnCount} />
                   <ColumnWidthControl width={columnWidthVw} onChange={updateColumnWidthVw} />
                   <TransposeControl steps={transposeSteps} onChange={setTransposeSteps} />
+                  <MetronomeControl
+                    bpm={bpm}
+                    onBpmChange={updateBpm}
+                    beatsPerBar={beatsPerBar}
+                    onBeatsPerBarChange={updateBeatsPerBar}
+                    running={metronomeOn}
+                    onToggle={() => setMetronomeOn((on) => !on)}
+                  />
                   <PlayControl hasTiming={hasTiming} open={playbackOpen} onOpen={openPlayback} onClose={closePlayback} />
                   <div className='w-px self-stretch bg-gray-300 dark:bg-gray-600' />
                   {setIds && <NextSongControl setIds={setIds} pos={setPos} onNext={goToNextSong} />}
@@ -641,6 +703,14 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                     <ColumnCountControl count={columnCount} onChange={updateColumnCount} />
                     <ColumnWidthControl width={columnWidthVw} onChange={updateColumnWidthVw} />
                     <TransposeControl steps={transposeSteps} onChange={setTransposeSteps} />
+                  <MetronomeControl
+                    bpm={bpm}
+                    onBpmChange={updateBpm}
+                    beatsPerBar={beatsPerBar}
+                    onBeatsPerBarChange={updateBeatsPerBar}
+                    running={metronomeOn}
+                    onToggle={() => setMetronomeOn((on) => !on)}
+                  />
                     <PlayControl hasTiming={hasTiming} open={playbackOpen} onOpen={openPlayback} onClose={closePlayback} />
                     <div className='w-px self-stretch bg-gray-300 dark:bg-gray-600' />
                     {setIds && <NextSongControl setIds={setIds} pos={setPos} onNext={goToNextSong} />}
@@ -708,6 +778,15 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
               </div>
             </div>
           </div>
+        )}
+
+        {metronomeOn && (
+          <MetronomeOverlay
+            bpm={bpm}
+            beatsPerBar={beatsPerBar}
+            running={metronomeOn}
+            lifted={playbackOpen}
+          />
         )}
 
         {playbackOpen && (

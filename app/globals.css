@@ -174,6 +174,29 @@ body {
   color: #d97706 !important;
 }
 
+/* ── Silent metronome blink ──────────────────────────────────────────────
+   Each beat remounts the flashing element, so these run once from the top
+   and hold their end state until the next beat replaces them. */
+@keyframes leadsheetRingPulse {
+  from {
+    opacity: 0.9;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes leadsheetBeatPulse {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.12);
+  }
+}
+
 /* ── Lead sheet multi-column layout ──────────────────────────────────────
    Uses native CSS columns driven by custom properties set inline. Forced
    back to a single column below the `sm` breakpoint so narrow screens never
