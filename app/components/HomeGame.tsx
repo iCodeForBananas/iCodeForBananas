@@ -6,8 +6,11 @@ const HORIZON_RATIO = 0.45;
 const CHUNK_WIDTH = 900;
 const PLAYER_SPEED = 260;
 const PLAYER_DEPTH_SPEED = 0.6;
-const MIN_SCALE = 0.45;
-const MAX_SCALE = 1.55;
+// Belt-scrollers keep sprites a fixed size and read depth purely from where the
+// feet sit on the ground. Only the barest taper here, so walking up onto the
+// sidewalk moves you up the screen without visibly shrinking you.
+const MIN_SCALE = 0.94;
+const MAX_SCALE = 1.06;
 const ANCHOR_X_RATIO = 0.35;
 const DEPTH_TO_WORLD = 200;
 const ENEMY_SPEED = 55;
@@ -20,7 +23,7 @@ const COMBO_WINDOW_MS = 600;
 // sidewalk by the storefronts, over the curb, down to the near edge of the road.
 const MIN_PLAYER_DEPTH = 0.06; // up against the building fronts
 const MAX_PLAYER_DEPTH = 0.92; // near edge of the road
-const SIDEWALK_DEPTH = 0.22; // curb line — sidewalk above it, asphalt below
+const SIDEWALK_DEPTH = 0.17; // curb line — a lane you can step up onto, not a slab
 const CAMERA_ZOOM = 1.4; // world is drawn in a smaller logical viewport, scaled up = tighter, cinematic framing
 
 const PARROT_LIFT_HEIGHT = 210; // how high the parrot hauls an enemy before dropping them
@@ -301,8 +304,8 @@ function generateChunk(index: number): Chunk {
     // scenery you have to move around either way.
     const depth =
       type === "car"
-        ? SIDEWALK_DEPTH + 0.04 + rand() * 0.12
-        : 0.08 + rand() * 0.1;
+        ? SIDEWALK_DEPTH + 0.05 + rand() * 0.12
+        : 0.07 + rand() * 0.07;
     const size = 0.8 + rand() * 0.5;
     const scale = (MIN_SCALE + depth * (MAX_SCALE - MIN_SCALE)) * size;
     const fp = PROP_FOOTPRINT[type];
@@ -1905,23 +1908,23 @@ export default function HomeGame() {
       ctx.fillStyle = wallShadow;
       ctx.fillRect(0, horizonY, width, (curbY - horizonY) * 0.5);
 
-      // Sidewalk tile seams — horizontal, bunched toward the back so the strip
-      // reads as a surface receding away rather than a flat wall
+      // Paving seams. Sprites do not scale with depth, so the ground is drawn in
+      // the matching oblique projection: seams all lean the same way instead of
+      // converging on a vanishing point, and rows are evenly spaced rather than
+      // foreshortened. Converging lines under a fixed-size character are exactly
+      // what makes the street look wrong.
       ctx.strokeStyle = "rgba(0,0,0,0.22)";
       ctx.lineWidth = 1;
-      for (const d of [0.4, 0.72]) {
-        const ty = horizonY + d * (curbY - horizonY);
+      const bandH = curbY - horizonY;
+      for (const d of [0.34, 0.67]) {
+        const ty = horizonY + d * bandH;
         ctx.beginPath(); ctx.moveTo(0, ty); ctx.lineTo(width, ty); ctx.stroke();
       }
-      // Sidewalk tile seams — splayed toward a vanishing point at screen centre,
-      // which is what actually sells it as ground you are looking across
-      const vanishX = width / 2;
-      const seamConverge = 0.74;
+      const seamLean = bandH * 0.42; // constant sideways lean over the band
       const tileW = 76;
       const tileOff = tileW - cameraX % tileW;
-      for (let tx = tileOff - tileW; tx < width + tileW; tx += tileW) {
-        const backX = vanishX + (tx - vanishX) * seamConverge;
-        ctx.beginPath(); ctx.moveTo(backX, horizonY); ctx.lineTo(tx, curbY); ctx.stroke();
+      for (let tx = tileOff - tileW - seamLean; tx < width + tileW + seamLean; tx += tileW) {
+        ctx.beginPath(); ctx.moveTo(tx + seamLean, horizonY); ctx.lineTo(tx, curbY); ctx.stroke();
       }
 
       // Warm light pooling on the sidewalk out of lit doorways and alleys
@@ -1935,11 +1938,12 @@ export default function HomeGame() {
             if (!d.lit) continue;
             const cxd = off + d.x + d.width / 2;
             if (cxd < -60 || cxd > width + 60) continue;
-            // Spill widens as it reaches the curb
+            // Widens toward the curb, and leans with the paving so the light
+            // lies on the same ground plane as the seams
             const spread = d.width * 1.9;
             ctx.beginPath();
-            ctx.moveTo(cxd - d.width * 0.5, horizonY);
-            ctx.lineTo(cxd + d.width * 0.5, horizonY);
+            ctx.moveTo(cxd - d.width * 0.5 + seamLean, horizonY);
+            ctx.lineTo(cxd + d.width * 0.5 + seamLean, horizonY);
             ctx.lineTo(cxd + spread, curbY);
             ctx.lineTo(cxd - spread, curbY);
             ctx.closePath();
@@ -1958,7 +1962,13 @@ export default function HomeGame() {
           spillGrad.addColorStop(0, "rgba(200,215,255,0.09)");
           spillGrad.addColorStop(1, "rgba(200,215,255,0)");
           ctx.fillStyle = spillGrad;
-          ctx.fillRect(cxa - a.width * 0.6, horizonY, a.width * 1.2, curbY - horizonY);
+          ctx.beginPath();
+          ctx.moveTo(cxa - a.width * 0.5 + seamLean, horizonY);
+          ctx.lineTo(cxa + a.width * 0.5 + seamLean, horizonY);
+          ctx.lineTo(cxa + a.width * 0.7, curbY);
+          ctx.lineTo(cxa - a.width * 0.7, curbY);
+          ctx.closePath();
+          ctx.fill();
         }
       }
       ctx.restore();
