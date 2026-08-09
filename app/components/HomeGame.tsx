@@ -26,11 +26,20 @@ const PARROT_HANG_MS = 180;
 const PARROT_SLAM_MS = 260;
 const PARROT_SLAM_DAMAGE = 90;
 
+const PLAYER_MAX_HP = 100;
+const PLAYER_IFRAME_MS = 900; // grace period after taking a hit
+const ENEMY_DAMAGE = 12;
+const ENEMY_ATTACK_RANGE = 48;
+const ENEMY_ATTACK_DEPTH_TOL = 0.07;
+const ENEMY_WINDUP_MS = 320; // telegraph so a hit is always readable
+const ENEMY_ATTACK_COOLDOWN_MS = 1500;
+
 const CAR_DRIVEBY_MS = 2800; // how long the goldfish car takes to cross the street
 const CAR_COOLDOWN_MS = 3800;
 
 const SCORE_KILL = 100;
 const SCORE_PICKUP = 50;
+const PICKUP_HEAL = 8; // bananas are the only way back up, so they're worth chasing
 const PICKUP_LIFETIME_MS = 9000;
 const HIGH_SCORE_KEY = "shoot-simulator-high-score";
 
@@ -86,6 +95,9 @@ interface Enemy {
   grabbed: boolean;
   /** Which way they try to step around an obstacle that blocks their path. */
   avoidDir: 1 | -1;
+  attackReadyAt: number;
+  /** Set when a swing starts; the hit lands ENEMY_WINDUP_MS later. */
+  attackStartedAt: number | null;
 }
 
 interface Pickup {
@@ -285,9 +297,19 @@ function drawPerson(
   }
 }
 
-function drawEnemyPerson(ctx: CanvasRenderingContext2D, s: number, walkT: number, stunned: boolean) {
+function drawEnemyPerson(
+  ctx: CanvasRenderingContext2D,
+  s: number,
+  walkT: number,
+  stunned: boolean,
+  opts: { attackT?: number; facing?: 1 | -1 } = {}
+) {
   ctx.lineCap = "round";
   const wp = stunned ? 0 : Math.sin(walkT * 6) * 0.8;
+  // attackT ramps 0→1 through the wind-up: cock back, then throw
+  const at = opts.attackT ?? 0;
+  const face = opts.facing ?? 1;
+  const swing = at > 0 ? (at < 0.7 ? -at * 0.5 : (at - 0.7) / 0.3) : 0;
 
   // Legs
   ctx.lineWidth = 7 * s;
@@ -305,16 +327,17 @@ function drawEnemyPerson(ctx: CanvasRenderingContext2D, s: number, walkT: number
   ctx.fillStyle = "#7a1f1f";
   ctx.fillRect(-9 * s, -44 * s, 18 * s, 24 * s);
 
-  // Arms (menacing — both angled forward)
+  // Arms (menacing — both angled forward; the lead arm throws the punch)
   ctx.lineWidth = 5 * s;
   ctx.strokeStyle = "#991b1b";
+  const reach = 15 + swing * 22;
   ctx.beginPath();
   ctx.moveTo(-9 * s, -36 * s);
-  ctx.lineTo(-15 * s, -24 * s);
+  ctx.lineTo((-15 - swing * 4) * s, -24 * s);
   ctx.stroke();
   ctx.beginPath();
   ctx.moveTo(9 * s, -36 * s);
-  ctx.lineTo(15 * s, -24 * s);
+  ctx.lineTo(face * reach * s, (-24 - swing * 6) * s);
   ctx.stroke();
 
   // Head
@@ -343,6 +366,12 @@ function drawEnemyPerson(ctx: CanvasRenderingContext2D, s: number, walkT: number
     ctx.font = `${8 * s}px sans-serif`;
     ctx.textAlign = "center";
     ctx.fillText("★", 0, -64 * s);
+  } else if (at > 0 && at < 0.7) {
+    // Wind-up tell so an incoming hit can be dodged
+    ctx.fillStyle = "#fca5a5";
+    ctx.font = `bold ${11 * s}px system-ui, sans-serif`;
+    ctx.textAlign = "center";
+    ctx.fillText("!", 0, -66 * s);
   }
 }
 
@@ -514,21 +543,25 @@ export default function HomeGame() {
 
     const keys = new Set<string>();
 
-    // Title screen
-    let titlePhase: "title" | "playing" = "title";
+    // Title screen / game over both use the same button rect
+    let titlePhase: "title" | "playing" | "gameover" = "title";
+    let gameOverAt = 0;
+    // Don't let a key held at the moment of death instantly restart the run
+    const restartArmed = () => titlePhase !== "gameover" || performance.now() - gameOverAt > 800;
     const playBtn = { x: 0, y: 0, w: 0, h: 0 };
     const onCanvasClick = (e: MouseEvent) => {
-      if (titlePhase !== "title") return;
+      if (titlePhase === "playing" || !restartArmed()) return;
       const rect = canvas.getBoundingClientRect();
       const cx = (e.clientX - rect.left) / CAMERA_ZOOM;
       const cy = (e.clientY - rect.top) / CAMERA_ZOOM;
       if (cx >= playBtn.x && cx <= playBtn.x + playBtn.w && cy >= playBtn.y && cy <= playBtn.y + playBtn.h) {
+        if (titlePhase === "gameover") restartGame();
         titlePhase = "playing";
         canvas.style.cursor = "default";
       }
     };
     const onCanvasMouseMove = (e: MouseEvent) => {
-      if (titlePhase !== "title") return;
+      if (titlePhase === "playing") return;
       const rect = canvas.getBoundingClientRect();
       const cx = (e.clientX - rect.left) / CAMERA_ZOOM;
       const cy = (e.clientY - rect.top) / CAMERA_ZOOM;
@@ -575,7 +608,16 @@ export default function HomeGame() {
     }
 
     const state = {
-      player: { worldX: (width * ANCHOR_X_RATIO) || 300, depth: 0.6, facing: 1 as 1 | -1, level: 1, xp: 0 },
+      player: {
+        worldX: (width * ANCHOR_X_RATIO) || 300,
+        depth: 0.6,
+        facing: 1 as 1 | -1,
+        level: 1,
+        xp: 0,
+        hp: PLAYER_MAX_HP,
+        invulnUntil: 0,
+        hurtUntil: 0,
+      },
       selectedAttack: 1 as 1 | 2 | 3,
       attackReadyAt: { 1: 0, 2: 0, 3: 0 } as Record<1 | 2 | 3, number>,
       shakeUntil: 0,
@@ -591,8 +633,8 @@ export default function HomeGame() {
       floaters: [] as Floater[],
     };
 
-    // Don't start the player standing inside a prop
-    {
+    // Don't leave the player standing inside a prop
+    const settlePlayer = () => {
       const s = MIN_SCALE + state.player.depth * (MAX_SCALE - MIN_SCALE);
       const hw = ACTOR_HALF_W * s;
       const hd = ACTOR_HALF_D * s;
@@ -600,7 +642,8 @@ export default function HomeGame() {
       while (overlapsProp(state.player.worldX, state.player.depth, hw, hd) && guard++ < 100) {
         state.player.worldX += 20;
       }
-    }
+    };
+    settlePlayer();
 
     const addScore = (amount: number, worldX: number, depth: number, color: string, now: number) => {
       state.score += amount;
@@ -614,6 +657,38 @@ export default function HomeGame() {
         }
       }
       state.floaters.push({ worldX, depth, text: `+${amount}`, color, startedAt: now });
+    };
+
+    const damagePlayer = (dmg: number, fromX: number, now: number) => {
+      if (titlePhase !== "playing" || now < state.player.invulnUntil) return;
+      state.player.hp = Math.max(0, state.player.hp - dmg);
+      state.player.invulnUntil = now + PLAYER_IFRAME_MS;
+      state.player.hurtUntil = now + 220;
+      state.shakeUntil = now + 240;
+      state.floaters.push({
+        worldX: state.player.worldX,
+        depth: state.player.depth,
+        text: `-${dmg}`,
+        color: "#f87171",
+        startedAt: now,
+      });
+      // Knocked back away from whoever landed it, unless a prop is in the way
+      const away = state.player.worldX >= fromX ? 1 : -1;
+      const s = MIN_SCALE + state.player.depth * (MAX_SCALE - MIN_SCALE);
+      const knockedTo = Math.max(0, state.player.worldX + away * 30);
+      if (!overlapsProp(knockedTo, state.player.depth, ACTOR_HALF_W * s, ACTOR_HALF_D * s)) {
+        state.player.worldX = knockedTo;
+      }
+      if (state.player.hp <= 0) {
+        titlePhase = "gameover";
+        gameOverAt = now;
+        // Freeze the street on a clean tableau
+        carState.active = false;
+        parrot.phase = "idle";
+        parrot.targetId = null;
+        combo.visual = null;
+        for (const e of state.enemies) e.grabbed = false;
+      }
     };
 
     // Combo state (attack 1: jab → hook → kick)
@@ -656,6 +731,12 @@ export default function HomeGame() {
     const damageEnemy = (enemy: Enemy, dmg: number) => {
       if (enemy.dying) return;
       enemy.hp -= dmg;
+      // Getting hit interrupts their swing — otherwise a stunned enemy lands it
+      // the instant the stun wears off.
+      if (enemy.attackStartedAt !== null) {
+        enemy.attackStartedAt = null;
+        enemy.attackReadyAt = performance.now() + ENEMY_ATTACK_COOLDOWN_MS * 0.6;
+      }
       if (enemy.hp <= 0) {
         const now = performance.now();
         enemy.dying = true;
@@ -731,7 +812,9 @@ export default function HomeGame() {
       if (isTypingTarget(e.target)) return;
       const key = e.key.toLowerCase();
       if (["arrowleft", "arrowright", "arrowup", "arrowdown", "1", "2", "3", " "].includes(key)) e.preventDefault();
-      if (titlePhase === "title" && (key === " " || key === "enter")) {
+      if (titlePhase !== "playing" && (key === " " || key === "enter")) {
+        if (!restartArmed()) return;
+        if (titlePhase === "gameover") restartGame();
         titlePhase = "playing";
         canvas.style.cursor = "default";
         return;
@@ -751,6 +834,41 @@ export default function HomeGame() {
     let lastTime = performance.now();
     let rafId = 0;
     let spaceWasDown = false;
+
+    // Death sends you back to the start of the street with a fresh score. The
+    // high score lives in state (and localStorage), so it survives the reset.
+    const restartGame = () => {
+      const now = performance.now();
+      state.player.worldX = width * ANCHOR_X_RATIO || 300;
+      state.player.depth = 0.6;
+      state.player.facing = 1;
+      state.player.level = 1;
+      state.player.xp = 0;
+      state.player.hp = PLAYER_MAX_HP;
+      state.player.invulnUntil = 0;
+      state.player.hurtUntil = 0;
+      settlePlayer();
+      state.selectedAttack = 1;
+      state.attackReadyAt = { 1: 0, 2: 0, 3: 0 };
+      state.enemies = [];
+      state.pickups = [];
+      state.floaters = [];
+      state.score = 0;
+      state.scorePulseUntil = 0;
+      state.shakeUntil = 0;
+      state.nextSpawnAt = now + 1200;
+      state.walkTime = 0;
+      combo.step = 0;
+      combo.visual = null;
+      combo.lastHitAt = 0;
+      parrot.phase = "idle";
+      parrot.targetId = null;
+      carState.active = false;
+      carState.hitIds.clear();
+      cameraX = 0;
+      keys.clear();
+      spaceWasDown = false;
+    };
 
     const drawTitleScreen = (time: number) => {
       // Sky
@@ -924,6 +1042,83 @@ export default function HomeGame() {
       ctx.restore();
     };
 
+    const drawGameOver = (now: number) => {
+      const t = Math.min(1, (now - gameOverAt) / 600);
+      const isNewHigh = state.score > 0 && state.score >= state.highScore;
+
+      ctx.save();
+      ctx.fillStyle = `rgba(0,0,0,${0.72 * t})`;
+      ctx.fillRect(0, 0, width, height);
+
+      const cy = height * 0.34;
+      const fs = Math.min(width * 0.13, 84);
+      const flicker = Math.random() < 0.03 ? 0.55 : 1;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.globalAlpha = t;
+
+      ctx.save();
+      ctx.font = `900 ${fs}px system-ui, sans-serif`;
+      ctx.shadowColor = "#ff1a1a";
+      ctx.shadowBlur = 60 * flicker;
+      ctx.fillStyle = `rgba(255,255,255,${flicker})`;
+      ctx.fillText("GAME OVER", width / 2, cy);
+      ctx.restore();
+
+      ctx.font = "10px system-ui, sans-serif";
+      ctx.fillStyle = "rgba(255,255,255,0.5)";
+      ctx.fillText("FINAL SCORE", width / 2, cy + fs * 0.72);
+
+      ctx.font = "bold 40px system-ui, sans-serif";
+      ctx.fillStyle = "#facc15";
+      ctx.fillText(String(state.score).padStart(5, "0"), width / 2, cy + fs * 0.72 + 32);
+
+      if (isNewHigh) {
+        ctx.font = "bold 13px system-ui, sans-serif";
+        ctx.fillStyle = `rgba(250,204,21,${0.55 + 0.45 * Math.sin(now * 0.006)})`;
+        ctx.fillText("★ NEW HIGH SCORE ★", width / 2, cy + fs * 0.72 + 60);
+      } else {
+        ctx.font = "12px system-ui, sans-serif";
+        ctx.fillStyle = "rgba(255,255,255,0.45)";
+        ctx.fillText(`HIGH ${String(state.highScore).padStart(5, "0")}`, width / 2, cy + fs * 0.72 + 60);
+      }
+
+      // RETRY button — shares playBtn with the title screen so one click
+      // handler covers both.
+      const btnW = Math.min(220, width * 0.44);
+      const btnH = 56;
+      const btnX = width / 2 - btnW / 2;
+      const btnY = Math.min(height * 0.74, cy + fs * 0.72 + 88);
+      playBtn.x = btnX; playBtn.y = btnY; playBtn.w = btnW; playBtn.h = btnH;
+
+      const bPulse = 0.75 + 0.25 * Math.sin(now * 0.0038);
+      ctx.shadowColor = "#facc15";
+      ctx.shadowBlur = 30 * bPulse;
+      const br = 10;
+      ctx.beginPath();
+      ctx.moveTo(btnX + br, btnY);
+      ctx.lineTo(btnX + btnW - br, btnY);
+      ctx.quadraticCurveTo(btnX + btnW, btnY, btnX + btnW, btnY + br);
+      ctx.lineTo(btnX + btnW, btnY + btnH - br);
+      ctx.quadraticCurveTo(btnX + btnW, btnY + btnH, btnX + btnW - br, btnY + btnH);
+      ctx.lineTo(btnX + br, btnY + btnH);
+      ctx.quadraticCurveTo(btnX, btnY + btnH, btnX, btnY + btnH - br);
+      ctx.lineTo(btnX, btnY + br);
+      ctx.quadraticCurveTo(btnX, btnY, btnX + br, btnY);
+      ctx.closePath();
+      ctx.fillStyle = "#facc15";
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = "#111";
+      ctx.font = "bold 22px system-ui, sans-serif";
+      ctx.fillText("↺  RETRY", width / 2, btnY + btnH / 2);
+
+      ctx.fillStyle = "rgba(255,255,255,0.25)";
+      ctx.font = "11px system-ui, sans-serif";
+      ctx.fillText("or press SPACE", width / 2, btnY + btnH + 20);
+      ctx.restore();
+    };
+
     const drawHud = () => {
       const { level, xp } = state.player;
       const threshold = xpToNext(level);
@@ -938,7 +1133,9 @@ export default function HomeGame() {
       const bh = 12;
       const by = labelY - 10 - bh;
       const lty = by - 8;
-      const pt = lty - 22;
+      const hpH = 13;
+      const hpY = lty - 14 - hpH;
+      const pt = hpY - 10;
       const names: Record<1 | 2 | 3, string> = { 1: "Punch", 2: "Parrot", 3: "Fishcar" };
       const unlocks: Record<1 | 2 | 3, number> = { 1: 1, 2: 2, 3: 3 };
 
@@ -949,9 +1146,25 @@ export default function HomeGame() {
       ctx.lineWidth = 1;
       ctx.strokeRect(px - 8, pt, pw, pb - pt + 8);
 
+      // Health
+      const hpRatio = state.player.hp / PLAYER_MAX_HP;
+      ctx.fillStyle = "rgba(255,255,255,0.12)";
+      ctx.fillRect(px, hpY, sw, hpH);
+      ctx.fillStyle = hpRatio > 0.5 ? "#22c55e" : hpRatio > 0.25 ? "#facc15" : "#dc2626";
+      ctx.fillRect(px, hpY, sw * hpRatio, hpH);
+      ctx.strokeStyle = "rgba(0,0,0,0.6)";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(px, hpY, sw, hpH);
+      ctx.fillStyle = "#fff";
+      ctx.font = "bold 9px system-ui, sans-serif";
+      ctx.textBaseline = "alphabetic";
+      ctx.textAlign = "left";
+      ctx.fillText("HP", px + 4, hpY + hpH - 3.5);
+      ctx.textAlign = "right";
+      ctx.fillText(`${Math.ceil(state.player.hp)}/${PLAYER_MAX_HP}`, px + sw - 4, hpY + hpH - 3.5);
+
       ctx.fillStyle = "#facc15";
       ctx.font = "bold 14px system-ui, sans-serif";
-      ctx.textBaseline = "alphabetic";
       ctx.textAlign = "left";
       ctx.fillText(`LV ${level}`, px, lty);
 
@@ -1001,11 +1214,17 @@ export default function HomeGame() {
         return;
       }
 
+      // On game over the street keeps drawing but nothing updates — the last
+      // frame freezes behind the results panel.
+      const live = titlePhase === "playing";
+
       let vx = 0, vd = 0;
-      if (keys.has("arrowleft") || keys.has("a")) vx -= 1;
-      if (keys.has("arrowright") || keys.has("d")) vx += 1;
-      if (keys.has("arrowup") || keys.has("w")) vd -= 1;
-      if (keys.has("arrowdown") || keys.has("s")) vd += 1;
+      if (live) {
+        if (keys.has("arrowleft") || keys.has("a")) vx -= 1;
+        if (keys.has("arrowright") || keys.has("d")) vx += 1;
+        if (keys.has("arrowup") || keys.has("w")) vd -= 1;
+        if (keys.has("arrowdown") || keys.has("s")) vd += 1;
+      }
 
       state.isMoving = vx !== 0 || vd !== 0;
       if (state.isMoving) state.walkTime += dt;
@@ -1047,7 +1266,7 @@ export default function HomeGame() {
 
       // Space: trigger on leading edge
       const spaceDown = keys.has(" ");
-      if (spaceDown && !spaceWasDown) {
+      if (live && spaceDown && !spaceWasDown) {
         if (state.selectedAttack === 1) doComboHit(nowTs);
         else if (state.selectedAttack === 2) doParrotAttack(nowTs, psx, psy);
         else if (state.selectedAttack === 3) doCarAttack(nowTs, psy);
@@ -1056,7 +1275,7 @@ export default function HomeGame() {
 
       // Enemy update
       for (const enemy of state.enemies) {
-        if (enemy.dying || enemy.grabbed) continue;
+        if (!live || enemy.dying || enemy.grabbed) continue;
         if (enemy.floatY > 0) enemy.floatY = Math.max(0, enemy.floatY - 80 * dt);
         if (nowTs < enemy.stunUntil) continue;
         const dxp = state.player.worldX - enemy.worldX;
@@ -1066,6 +1285,23 @@ export default function HomeGame() {
         const eHalfD = ACTOR_HALF_D * eScale;
         // Same escape hatch as the player: never freeze an enemy inside a prop
         const eInside = overlapsProp(enemy.worldX, enemy.depth, eHalfW, eHalfD);
+
+        // Swing at the player once they're in reach; the hit lands after a
+        // telegraphed wind-up, and they hold still while throwing it.
+        const inReach =
+          Math.abs(dxp) <= ENEMY_ATTACK_RANGE && Math.abs(ddp) <= ENEMY_ATTACK_DEPTH_TOL;
+        if (enemy.attackStartedAt !== null) {
+          if (nowTs - enemy.attackStartedAt >= ENEMY_WINDUP_MS) {
+            if (inReach) damagePlayer(ENEMY_DAMAGE, enemy.worldX, nowTs);
+            enemy.attackStartedAt = null;
+            enemy.attackReadyAt = nowTs + ENEMY_ATTACK_COOLDOWN_MS;
+          }
+          continue;
+        }
+        if (inReach && nowTs >= enemy.attackReadyAt) {
+          enemy.attackStartedAt = nowTs;
+          continue;
+        }
 
         let blockedX = false;
         if (Math.abs(dxp) > 25) {
@@ -1088,11 +1324,13 @@ export default function HomeGame() {
         if (canDepth && end !== enemy.depth) enemy.depth = end;
         else if (blockedX) enemy.avoidDir = (enemy.avoidDir * -1) as 1 | -1;
       }
-      state.enemies = state.enemies.filter((e) => {
-        if (e.dying) return nowTs - (e.deathStartedAt ?? 0) < 260;
-        return e.worldX >= cameraX - 500;
-      });
-      if (state.enemies.length < MAX_ENEMIES && nowTs >= state.nextSpawnAt) {
+      if (live) {
+        state.enemies = state.enemies.filter((e) => {
+          if (e.dying) return nowTs - (e.deathStartedAt ?? 0) < 260;
+          return e.worldX >= cameraX - 500;
+        });
+      }
+      if (live && state.enemies.length < MAX_ENEMIES && nowTs >= state.nextSpawnAt) {
         state.enemies.push({
           id: state.nextEnemyId++,
           worldX: cameraX + width + 80 + Math.random() * 220,
@@ -1104,25 +1342,42 @@ export default function HomeGame() {
           floatY: 0,
           grabbed: false,
           avoidDir: Math.random() < 0.5 ? 1 : -1,
+          attackReadyAt: nowTs + 600,
+          attackStartedAt: null,
         });
         state.nextSpawnAt = nowTs + 1400 + Math.random() * 900;
       }
 
       // Banana pickups dropped by fallen enemies
-      state.pickups = state.pickups.filter((pu) => {
-        if (nowTs - pu.spawnedAt > PICKUP_LIFETIME_MS) return false;
-        const dx = Math.abs(pu.worldX - state.player.worldX);
-        const dd = Math.abs(pu.depth - state.player.depth);
-        if (dx < 34 && dd < 0.07) {
-          addScore(SCORE_PICKUP, pu.worldX, pu.depth, "#fde68a", nowTs);
-          return false;
-        }
-        return pu.worldX >= cameraX - 400;
-      });
-      state.floaters = state.floaters.filter((f) => nowTs - f.startedAt < 900);
+      if (live) {
+        state.pickups = state.pickups.filter((pu) => {
+          if (nowTs - pu.spawnedAt > PICKUP_LIFETIME_MS) return false;
+          const dx = Math.abs(pu.worldX - state.player.worldX);
+          const dd = Math.abs(pu.depth - state.player.depth);
+          if (dx < 34 && dd < 0.07) {
+            addScore(SCORE_PICKUP, pu.worldX, pu.depth, "#fde68a", nowTs);
+            if (state.player.hp < PLAYER_MAX_HP) {
+              state.player.hp = Math.min(PLAYER_MAX_HP, state.player.hp + PICKUP_HEAL);
+              // Offset in depth so it doesn't sit on top of the score popup
+              state.floaters.push({
+                worldX: pu.worldX,
+                depth: Math.min(MAX_PLAYER_DEPTH, pu.depth + 0.05),
+                text: `+${PICKUP_HEAL} HP`,
+                color: "#4ade80",
+                startedAt: nowTs,
+              });
+            }
+            return false;
+          }
+          return pu.worldX >= cameraX - 400;
+        });
+        state.floaters = state.floaters.filter((f) => nowTs - f.startedAt < 900);
+      }
 
       // Parrot state machine
-      if (parrot.phase === "flying-out") {
+      if (!live) {
+        // frozen on the game over screen
+      } else if (parrot.phase === "flying-out") {
         const tgt = state.enemies.find((e) => e.id === parrot.targetId);
         if (!tgt || tgt.dying) {
           parrot.phase = "idle";
@@ -1209,7 +1464,7 @@ export default function HomeGame() {
 
       let carDrawCx = 0;
       let carDrawCy = 0;
-      if (carState.active) {
+      if (live && carState.active) {
         const carProgress = (nowTs - carState.startedAt) / CAR_DRIVEBY_MS;
         carDrawCx = -120 + (width + 240) * carProgress;
         carDrawCy = carState.screenY - 14;
@@ -1453,15 +1708,20 @@ export default function HomeGame() {
           sc *= 1 - 0.3 * t;
         }
         const e2 = enemy;
-        const eWalkT = nowTs / 1000;
+        const eWalkT = (live ? nowTs : gameOverAt) / 1000;
         const eStunned = nowTs < e2.stunUntil;
+        const eAttackT =
+          e2.attackStartedAt !== null
+            ? Math.min(1, (nowTs - e2.attackStartedAt) / ENEMY_WINDUP_MS)
+            : 0;
+        const eFacing: 1 | -1 = state.player.worldX >= e2.worldX ? 1 : -1;
         entities.push({
           depth: enemy.depth,
           draw: () => {
             ctx.save();
             ctx.globalAlpha = alpha;
             drawShadowAndSprite(ctx, esx, esy, sc, (c) => {
-              drawEnemyPerson(c, sc, eWalkT, eStunned);
+              drawEnemyPerson(c, sc, eWalkT, eStunned, { attackT: eAttackT, facing: eFacing });
             });
             ctx.restore();
           },
@@ -1513,20 +1773,26 @@ export default function HomeGame() {
       entities.push({
         depth: state.player.depth,
         draw: () => {
+          // Flicker while invulnerable, and flash red on the hit itself
+          const hurt = nowTs < state.player.hurtUntil;
+          const invuln = nowTs < state.player.invulnUntil;
+          ctx.save();
+          if (invuln && !hurt && Math.floor(nowTs / 90) % 2 === 0) ctx.globalAlpha = 0.4;
           drawShadowAndSprite(ctx, psx, psy, ps, (c, s) => {
             c.save();
             if (state.player.facing === -1) c.scale(-1, 1);
             drawPerson(c, s, {
               walkPhase,
-              skinColor: "#fbbf24",
-              shirtColor: "#1d4ed8",
-              pantsColor: "#1e293b",
+              skinColor: hurt ? "#fca5a5" : "#fbbf24",
+              shirtColor: hurt ? "#b91c1c" : "#1d4ed8",
+              pantsColor: hurt ? "#7f1d1d" : "#1e293b",
               hairColor: "#111827",
               comboHit: comboHitStep,
               comboProgress,
             });
             c.restore();
           });
+          ctx.restore();
 
           // Parrot on shoulder when slot 2 is idle/cooldown
           if (state.selectedAttack === 2 && state.player.level >= 2) {
@@ -1588,6 +1854,7 @@ export default function HomeGame() {
       ctx.restore();
       drawHud();
       drawScore(nowTs);
+      if (titlePhase === "gameover") drawGameOver(nowTs);
       rafId = requestAnimationFrame(loop);
     };
 
