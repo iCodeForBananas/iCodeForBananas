@@ -20,7 +20,16 @@ import {
   Link2,
   Play,
 } from "lucide-react";
-import { type LeadSheet, type Section, migrateSection, ChordLyricLine, getPlainText, OfflineBadge } from "../../shared";
+import {
+  type LeadSheet,
+  type Section,
+  migrateSection,
+  ChordLyricLine,
+  getPlainText,
+  OfflineBadge,
+  printSong,
+  useSongDocumentTitle,
+} from "../../shared";
 import { cacheSheet, getCachedSheet } from "../../offlineCache";
 import { transposeText } from "../../../lib/transpose";
 import { buildTimeline, cueAt, lineKey, type Timeline } from "../../timing";
@@ -404,6 +413,9 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
   const [metronomeOn, setMetronomeOn] = useState(false);
   const bpmSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Printing to PDF should offer the song's name, not "Preview Lead Sheet".
+  useSongDocumentTitle(sheet?.title);
+
   // ─── Timed playback ─────────────────────────────────────────────────────────
 
   const timeline = useMemo(() => buildTimeline(sheet?.sections ?? []), [sheet]);
@@ -647,7 +659,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                     {shared ? "Link Copied!" : "Share"}
                   </button>
                   <button
-                    onClick={() => window.print()}
+                    onClick={() => printSong(sheet.title)}
                     className='h-10 flex items-center gap-1.5 px-3 rounded-lg text-sm font-medium bg-gray-100 dark:bg-neutral-800 hover:bg-gray-200 dark:hover:bg-neutral-700 text-gray-700 dark:text-neutral-200 transition-colors duration-150'
                   >
                     <Printer className='w-4 h-4' /> Print
@@ -739,7 +751,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                       {shared ? "Link Copied!" : "Share"}
                     </button>
                     <button
-                      onClick={() => window.print()}
+                      onClick={() => printSong(sheet.title)}
                       className='h-10 flex items-center gap-1.5 px-3 rounded-lg text-sm font-medium bg-gray-100 dark:bg-neutral-800 hover:bg-gray-200 dark:hover:bg-neutral-700 text-gray-700 dark:text-neutral-200 transition-colors duration-150'
                     >
                       <Printer className='w-4 h-4' /> Print

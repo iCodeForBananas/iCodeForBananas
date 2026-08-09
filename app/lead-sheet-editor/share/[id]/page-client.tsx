@@ -3,7 +3,14 @@
 import { useState, useEffect, use } from "react";
 import { Minus, Plus, Printer } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
-import { type LeadSheet, type Section, migrateSection, ChordLyricLine } from "../../shared";
+import {
+  type LeadSheet,
+  type Section,
+  migrateSection,
+  ChordLyricLine,
+  printSong,
+  useSongDocumentTitle,
+} from "../../shared";
 
 const FONT_SCALE_KEY = "lead-sheet-print-font-scale";
 const MIN_SCALE = 70;
@@ -85,6 +92,9 @@ export default function ShareLeadSheet({ params }: { params: Promise<{ id: strin
   const [loading, setLoading] = useState(true);
   const [fontScale, setFontScale] = useState(loadFontScale);
 
+  // Printing to PDF should offer the song's name, not "Lead Sheet".
+  useSongDocumentTitle(sheet?.title);
+
   useEffect(() => {
     async function loadSheet() {
       const { data } = await createClient()!.from("lead_sheets").select("*").eq("id", id).single();
@@ -161,7 +171,7 @@ export default function ShareLeadSheet({ params }: { params: Promise<{ id: strin
                 </button>
               </div>
               <button
-                onClick={() => window.print()}
+                onClick={() => printSong(sheet.title)}
                 className='flex items-center gap-1.5 rounded border border-[#373A40]/20 dark:border-white/20 px-3 py-2 text-sm font-medium text-[#373A40]/60 dark:text-white/60 hover:border-black dark:hover:border-white hover:bg-black hover:text-yellow-400 transition-colors'
               >
                 <Printer className='w-4 h-4' /> Print

@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { WifiOff } from "lucide-react";
 import ChordHoverPopover from "../components/ChordHoverPopover";
 import { formatTime, parseTimeMarker, stripTimeMarker } from "./timing";
@@ -80,6 +81,39 @@ export function migrateSection(s: Section): Section {
   if (s.content !== undefined && s.content !== "") return s;
   const legacy = s.lyrics ?? "";
   return { ...s, content: legacy, chords: undefined, lyrics: undefined };
+}
+
+// ─── Print / document title ───────────────────────────────────────────────────
+
+/** What a printed song should be called — also the Save-as-PDF filename. */
+export function printableTitle(title: string | undefined): string {
+  return title?.trim() || "Untitled Lead Sheet";
+}
+
+/**
+ * Browsers name the "Save as PDF" file after the document title, so while a
+ * song is on screen the tab carries the song's name rather than the route's
+ * generic one. Restores the previous title when leaving the page.
+ */
+export function useSongDocumentTitle(title: string | undefined) {
+  useEffect(() => {
+    if (!title) return;
+    const previous = document.title;
+    document.title = printableTitle(title);
+    return () => {
+      document.title = previous;
+    };
+  }, [title]);
+}
+
+/**
+ * Print with the song's name in hand. The title is already set by
+ * `useSongDocumentTitle`, but the router can rewrite it when route metadata
+ * resolves, so it's pinned once more at the moment the dialog opens.
+ */
+export function printSong(title: string | undefined) {
+  document.title = printableTitle(title);
+  window.print();
 }
 
 export function getPlainText(sheet: LeadSheet): string {
