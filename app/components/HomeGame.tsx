@@ -16,11 +16,11 @@ const MAX_ENEMIES = 5;
 const ENEMY_XP = 25;
 const XP_THRESHOLDS = [100, 250, 500];
 const COMBO_WINDOW_MS = 600;
-const MIN_PLAYER_DEPTH = 0.32; // top of walkable road (~1/3 viewport from bottom)
-const MAX_PLAYER_DEPTH = 0.92; // bottom of walkable road
-// Where the curb sits in the ground band. Kept well above the walk limit so the
-// sidewalk is a shallow strip in the distance rather than a slab up the screen.
-const SIDEWALK_DEPTH = 0.17;
+// Belt-scroll playfield: you walk the whole depth of the street, from up on the
+// sidewalk by the storefronts, over the curb, down to the near edge of the road.
+const MIN_PLAYER_DEPTH = 0.06; // up against the building fronts
+const MAX_PLAYER_DEPTH = 0.92; // near edge of the road
+const SIDEWALK_DEPTH = 0.22; // curb line — sidewalk above it, asphalt below
 const CAMERA_ZOOM = 1.4; // world is drawn in a smaller logical viewport, scaled up = tighter, cinematic framing
 
 const PARROT_LIFT_HEIGHT = 210; // how high the parrot hauls an enemy before dropping them
@@ -62,7 +62,8 @@ const ACTOR_HALF_W = 7;
 const ACTOR_HALF_D = 3;
 const ENEMY_AVOID_DEPTH_SPEED = 0.5; // faster than their normal drift so they round a car promptly
 const GROUND_FLOOR_H = 78; // storefront band at the base of every facade
-const DOOR_DEPTH = 0.05; // enemies step out at the building line and cross the sidewalk
+const DOOR_DEPTH = 0.02; // enemies step out at the threshold, behind the walk limit
+const EMERGE_TARGET_DEPTH = 0.14; // clear of the doorway, out on the sidewalk
 const EMERGE_DEPTH_SPEED = 0.42;
 
 interface GroundProp {
@@ -295,10 +296,13 @@ function generateChunk(index: number): Chunk {
   for (let i = 0; i < propCount; i++) {
     const roll = rand();
     const type: PropType = roll < 0.35 ? "trashcan" : roll < 0.65 ? "dumpster" : "car";
-    // Everything hugs the curb the way it would on a real street — bins against
-    // the sidewalk, cars parked alongside it — leaving the road clear to fight in
+    // Bins sit up on the sidewalk against the storefronts, cars park on the
+    // asphalt alongside the curb — all of it inside the walkable band, so it is
+    // scenery you have to move around either way.
     const depth =
-      type === "car" ? 0.36 + rand() * 0.13 : 0.33 + rand() * 0.09;
+      type === "car"
+        ? SIDEWALK_DEPTH + 0.04 + rand() * 0.12
+        : 0.08 + rand() * 0.1;
     const size = 0.8 + rand() * 0.5;
     const scale = (MIN_SCALE + depth * (MAX_SCALE - MIN_SCALE)) * size;
     const fp = PROP_FOOTPRINT[type];
@@ -1603,8 +1607,8 @@ export default function HomeGame() {
         // Stepping out of a doorway: cross the sidewalk before joining the fight
         if (enemy.emerging) {
           enemy.depth += EMERGE_DEPTH_SPEED * dt;
-          if (enemy.depth >= MIN_PLAYER_DEPTH) {
-            enemy.depth = MIN_PLAYER_DEPTH;
+          if (enemy.depth >= EMERGE_TARGET_DEPTH) {
+            enemy.depth = EMERGE_TARGET_DEPTH;
             enemy.emerging = false;
           }
           continue;
@@ -1985,39 +1989,21 @@ export default function HomeGame() {
       ctx.beginPath(); ctx.moveTo(0, laneY); ctx.lineTo(width, laneY); ctx.stroke();
       ctx.setLineDash([]);
 
-      // Streetlamps along the curb, spaced evenly in world space
+      // Streetlamps along the curb, spaced evenly in world space. The pools of
+      // light go down here; the posts are drawn later as depth-sorted entities
+      // so you can walk behind them.
       const lampGap = 340;
+      const lampScreenXs: number[] = [];
       for (let lampX = Math.floor(cameraX / lampGap) * lampGap; lampX < cameraX + width + lampGap; lampX += lampGap) {
         const lx = lampX - cameraX;
         if (lx < -40 || lx > width + 40) continue;
+        lampScreenXs.push(lx);
         const baseYl = curbY + 2;
-        const headY = baseYl - 118;
-        // Pool of light on the road below
         const pool = ctx.createRadialGradient(lx + 12, baseYl + 26, 4, lx + 12, baseYl + 26, 96);
         pool.addColorStop(0, "rgba(253,224,71,0.13)");
         pool.addColorStop(1, "rgba(253,224,71,0)");
         ctx.fillStyle = pool;
         ctx.fillRect(lx - 90, baseYl - 20, 200, 130);
-        // Pole
-        ctx.fillStyle = "#1b1b20";
-        ctx.fillRect(lx - 2, headY, 4, baseYl - headY);
-        ctx.fillRect(lx - 6, baseYl - 4, 12, 5);
-        // Arm reaching over the road
-        ctx.strokeStyle = "#1b1b20";
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.moveTo(lx, headY + 4);
-        ctx.quadraticCurveTo(lx + 10, headY - 4, lx + 18, headY + 3);
-        ctx.stroke();
-        // Lamp head
-        ctx.save();
-        ctx.shadowColor = "rgba(253,224,71,0.9)";
-        ctx.shadowBlur = 18;
-        ctx.fillStyle = "rgba(253,230,138,0.95)";
-        ctx.beginPath();
-        ctx.ellipse(lx + 18, headY + 7, 5, 3.5, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
       }
 
       // Bottom vignette
@@ -2030,6 +2016,34 @@ export default function HomeGame() {
       // Depth-sorted entities
       type Entity = { depth: number; draw: () => void };
       const entities: Entity[] = [];
+
+      // Lamp posts stand on the curb, so they sort at the curb's depth
+      for (const lx of lampScreenXs) {
+        const baseYl = curbY + 2;
+        const headY = baseYl - 118;
+        entities.push({
+          depth: SIDEWALK_DEPTH,
+          draw: () => {
+            ctx.fillStyle = "#1b1b20";
+            ctx.fillRect(lx - 2, headY, 4, baseYl - headY);
+            ctx.fillRect(lx - 6, baseYl - 4, 12, 5);
+            ctx.strokeStyle = "#1b1b20";
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(lx, headY + 4);
+            ctx.quadraticCurveTo(lx + 10, headY - 4, lx + 18, headY + 3);
+            ctx.stroke();
+            ctx.save();
+            ctx.shadowColor = "rgba(253,224,71,0.9)";
+            ctx.shadowBlur = 18;
+            ctx.fillStyle = "rgba(253,230,138,0.95)";
+            ctx.beginPath();
+            ctx.ellipse(lx + 18, headY + 7, 5, 3.5, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+          },
+        });
+      }
 
       for (let ci = Math.max(0, Math.floor((cameraX - width) / CHUNK_WIDTH) - 1);
            ci <= Math.floor((cameraX + width) / CHUNK_WIDTH) + 1; ci++) {
