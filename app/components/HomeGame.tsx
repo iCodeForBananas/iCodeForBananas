@@ -58,6 +58,9 @@ const PROP_FOOTPRINT: Record<PropType, { halfW: number; halfD: number }> = {
 const ACTOR_HALF_W = 7;
 const ACTOR_HALF_D = 3;
 const ENEMY_AVOID_DEPTH_SPEED = 0.5; // faster than their normal drift so they round a car promptly
+const GROUND_FLOOR_H = 78; // storefront band at the base of every facade
+const DOOR_DEPTH = 0.05; // enemies step out at the building line and cross the sidewalk
+const EMERGE_DEPTH_SPEED = 0.42;
 
 interface GroundProp {
   x: number;
@@ -70,6 +73,7 @@ interface GroundProp {
   halfD: number;
 }
 
+/** Distant skyline, drawn with parallax well behind the street. */
 interface Building {
   x: number;
   width: number;
@@ -78,9 +82,51 @@ interface Building {
   windows: { x: number; y: number; lit: boolean }[];
 }
 
+interface Doorway {
+  x: number;
+  width: number;
+  height: number;
+  lit: boolean;
+  /** Shop entrances get an awning and a sign; the rest are plain stoops. */
+  shop: boolean;
+}
+
+/** The building fronts you actually walk past — grounded at the back of the sidewalk. */
+interface Facade {
+  x: number;
+  width: number;
+  /** Fraction of the available height to the horizon, so rooflines stay varied
+   *  at any viewport size instead of all clamping to the same ceiling. */
+  heightRatio: number;
+  color: string;
+  trimColor: string;
+  groundColor: string;
+  windows: { x: number; y: number; w: number; h: number; lit: boolean }[];
+  doors: Doorway[];
+  awningColor: string;
+  signColor: string | null;
+  signX: number;
+}
+
+interface Alley {
+  x: number;
+  width: number;
+  heightRatio: number;
+  lampLit: boolean;
+}
+
+/** Where enemies walk in from: a doorway or the mouth of an alley. */
+interface SpawnPoint {
+  x: number;
+  kind: "door" | "alley";
+}
+
 interface Chunk {
   props: GroundProp[];
   buildings: Building[];
+  facades: Facade[];
+  alleys: Alley[];
+  spawnPoints: SpawnPoint[];
 }
 
 interface Enemy {
@@ -93,6 +139,9 @@ interface Enemy {
   stunUntil: number;
   floatY: number;
   grabbed: boolean;
+  /** Walking out of a doorway/alley across the sidewalk; not yet in the fight. */
+  emerging: boolean;
+  spawnedAt: number;
   /** Which way they try to step around an obstacle that blocks their path. */
   avoidDir: 1 | -1;
   attackReadyAt: number;
@@ -154,6 +203,85 @@ function generateChunk(index: number): Chunk {
     buildings.push({ x: bx, width: w, height: h, color, windows: wins });
     bx += w + 10 + rand() * 40;
   }
+  // Street-level row: building fronts separated by the occasional alley. Widths
+  // fill the chunk exactly so the row is continuous across chunk seams.
+  const facades: Facade[] = [];
+  const alleys: Alley[] = [];
+  const spawnPoints: SpawnPoint[] = [];
+  const awningColors = ["#7f1d1d", "#14532d", "#1e3a5f", "#78350f", "#4c1d95"];
+  const neonColors = ["#f472b6", "#22d3ee", "#facc15", "#4ade80", "#fb923c"];
+  let fx = 0;
+  while (fx < CHUNK_WIDTH) {
+    const remaining = CHUNK_WIDTH - fx;
+    // An alley needs room for a building on either side of it
+    if (remaining > 260 && fx > 40 && rand() < 0.2) {
+      const aw = 46 + rand() * 44;
+      alleys.push({ x: fx, width: aw, heightRatio: 0.55 + rand() * 0.3, lampLit: rand() < 0.55 });
+      spawnPoints.push({ x: fx + aw / 2, kind: "alley" });
+      fx += aw;
+      continue;
+    }
+    // Absorb the remainder rather than leaving a sliver too narrow for a door
+    let w = Math.min(remaining, 150 + rand() * 170);
+    if (remaining - w < 110) w = remaining;
+    const hue = 205 + Math.floor(rand() * 45);
+    const sat = 10 + Math.floor(rand() * 16);
+    const lig = 9 + Math.floor(rand() * 9);
+    const heightRatio = 0.52 + rand() * 0.48;
+    // Generous nominal height for laying windows out; rows run from the roof
+    // down and the draw clips any that reach the ground floor.
+    const height = 460 * heightRatio;
+
+    const doors: Doorway[] = [];
+    const doorCount = w > 250 && rand() < 0.55 ? 2 : 1;
+    const slot = w / doorCount;
+    for (let d = 0; d < doorCount; d++) {
+      const dw = 30 + rand() * 14;
+      const jitter = Math.max(6, slot - dw - 28);
+      doors.push({
+        // Keep the whole door inside the facade whatever the width worked out to
+        x: Math.min(fx + d * slot + 14 + rand() * jitter, fx + w - dw - 8),
+        width: dw,
+        height: 56 + rand() * 16,
+        lit: rand() < 0.55,
+        shop: rand() < 0.5,
+      });
+    }
+
+    // Upper-storey windows, kept above the ground floor
+    const windows: Facade["windows"] = [];
+    const cols = Math.max(2, Math.floor(w / 48));
+    const rows = Math.max(1, Math.floor((height - GROUND_FLOOR_H - 30) / 44));
+    const wW = Math.min(22, (w - 20) / cols - 10);
+    for (let c = 0; c < cols; c++) {
+      for (let r = 0; r < rows; r++) {
+        windows.push({
+          x: fx + 12 + c * ((w - 24) / cols),
+          y: 26 + r * 44,
+          w: wW,
+          h: 26,
+          lit: rand() < 0.3,
+        });
+      }
+    }
+
+    facades.push({
+      x: fx,
+      width: w,
+      heightRatio,
+      color: `hsl(${hue}, ${sat}%, ${lig}%)`,
+      trimColor: `hsl(${hue}, ${sat}%, ${lig + 9}%)`,
+      groundColor: `hsl(${hue}, ${sat}%, ${Math.max(4, lig - 4)}%)`,
+      windows,
+      doors,
+      awningColor: awningColors[Math.floor(rand() * awningColors.length)],
+      signColor: rand() < 0.45 ? neonColors[Math.floor(rand() * neonColors.length)] : null,
+      signX: fx + 16 + rand() * Math.max(10, w - 70),
+    });
+    for (const d of doors) spawnPoints.push({ x: d.x + d.width / 2, kind: "door" });
+    fx += w;
+  }
+
   const propCount = 2 + Math.floor(rand() * 4);
   const props: GroundProp[] = [];
   const propColors: Record<PropType, string[]> = {
@@ -164,7 +292,10 @@ function generateChunk(index: number): Chunk {
   for (let i = 0; i < propCount; i++) {
     const roll = rand();
     const type: PropType = roll < 0.35 ? "trashcan" : roll < 0.65 ? "dumpster" : "car";
-    const depth = 0.34 + rand() * 0.54;
+    // Everything hugs the curb the way it would on a real street — bins against
+    // the sidewalk, cars parked alongside it — leaving the road clear to fight in
+    const depth =
+      type === "car" ? 0.36 + rand() * 0.13 : 0.33 + rand() * 0.09;
     const size = 0.8 + rand() * 0.5;
     const scale = (MIN_SCALE + depth * (MAX_SCALE - MIN_SCALE)) * size;
     const fp = PROP_FOOTPRINT[type];
@@ -188,7 +319,155 @@ function generateChunk(index: number): Chunk {
     if (prop.x + prop.halfW > CHUNK_WIDTH) break;
     placed.push(prop);
   }
-  return { buildings, props: placed };
+  return { buildings, props: placed, facades, alleys, spawnPoints };
+}
+
+// A building front standing at the back edge of the sidewalk. baseY is the
+// building line; everything is drawn upward from there.
+function drawFacade(ctx: CanvasRenderingContext2D, f: Facade, sx: number, baseY: number, maxH: number) {
+  const h = Math.max(GROUND_FLOOR_H + 30, maxH * f.heightRatio);
+  const top = baseY - h;
+
+  ctx.fillStyle = f.color;
+  ctx.fillRect(sx, top, f.width, h);
+
+  // Light falls from the left, so shade toward the right edge
+  const shade = ctx.createLinearGradient(sx, 0, sx + f.width, 0);
+  shade.addColorStop(0, "rgba(255,255,255,0.045)");
+  shade.addColorStop(0.6, "rgba(0,0,0,0)");
+  shade.addColorStop(1, "rgba(0,0,0,0.3)");
+  ctx.fillStyle = shade;
+  ctx.fillRect(sx, top, f.width, h);
+
+  // Cornice
+  ctx.fillStyle = f.trimColor;
+  ctx.fillRect(sx, top, f.width, 5);
+  ctx.fillStyle = "rgba(0,0,0,0.35)";
+  ctx.fillRect(sx, top + 5, f.width, 3);
+
+  // Upper windows
+  for (const w of f.windows) {
+    const wy = top + w.y;
+    if (wy + w.h > baseY - GROUND_FLOOR_H - 6) continue;
+    ctx.fillStyle = w.lit ? "rgba(252,211,77,0.85)" : "rgba(120,160,200,0.07)";
+    ctx.fillRect(sx + (w.x - f.x), wy, w.w, w.h);
+    ctx.strokeStyle = "rgba(0,0,0,0.4)";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(sx + (w.x - f.x), wy, w.w, w.h);
+    // Sill
+    ctx.fillStyle = "rgba(0,0,0,0.3)";
+    ctx.fillRect(sx + (w.x - f.x) - 1, wy + w.h, w.w + 2, 2);
+  }
+
+  // Ground floor band
+  const gfTop = baseY - GROUND_FLOOR_H;
+  ctx.fillStyle = f.groundColor;
+  ctx.fillRect(sx, gfTop, f.width, GROUND_FLOOR_H);
+  ctx.fillStyle = "rgba(0,0,0,0.4)";
+  ctx.fillRect(sx, gfTop, f.width, 3);
+
+  for (const d of f.doors) {
+    const dx = sx + (d.x - f.x);
+    const dy = baseY - d.height;
+    // Recess
+    ctx.fillStyle = "#08080b";
+    ctx.fillRect(dx, dy, d.width, d.height);
+    if (d.lit) {
+      const inner = ctx.createLinearGradient(0, dy, 0, baseY);
+      inner.addColorStop(0, "rgba(253,224,71,0.5)");
+      inner.addColorStop(1, "rgba(253,186,71,0.12)");
+      ctx.fillStyle = inner;
+      ctx.fillRect(dx + 2, dy + 3, d.width - 4, d.height - 3);
+    }
+    // Frame
+    ctx.strokeStyle = f.trimColor;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(dx - 1, dy - 1, d.width + 2, d.height + 1);
+
+    if (d.shop) {
+      // Awning above the entrance
+      const aw = d.width + 16;
+      const ax = dx - 8;
+      const ay = dy - 12;
+      ctx.fillStyle = f.awningColor;
+      ctx.beginPath();
+      ctx.moveTo(ax, ay);
+      ctx.lineTo(ax + aw, ay);
+      ctx.lineTo(ax + aw - 4, ay + 11);
+      ctx.lineTo(ax + 4, ay + 11);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = "rgba(0,0,0,0.25)";
+      for (let s = 0; s < aw; s += 8) ctx.fillRect(ax + s + 4, ay, 4, 11);
+    }
+  }
+
+  // Neon sign over the storefront
+  if (f.signColor) {
+    const sgx = sx + (f.signX - f.x);
+    const sgy = gfTop - 14;
+    ctx.save();
+    ctx.shadowColor = f.signColor;
+    ctx.shadowBlur = 14;
+    ctx.fillStyle = f.signColor;
+    ctx.globalAlpha = 0.85;
+    ctx.fillRect(sgx, sgy, Math.min(54, f.width - 24), 9);
+    ctx.restore();
+  }
+}
+
+// The gap between two buildings — a dark corridor enemies wander out of.
+function drawAlley(ctx: CanvasRenderingContext2D, a: Alley, sx: number, baseY: number, maxH: number) {
+  const h = maxH * a.heightRatio;
+  const top = baseY - h;
+
+  const g = ctx.createLinearGradient(0, top, 0, baseY);
+  g.addColorStop(0, "#05050a");
+  g.addColorStop(1, "#0d0d14");
+  ctx.fillStyle = g;
+  ctx.fillRect(sx, top, a.width, h);
+
+  // Side walls converging toward the far end
+  ctx.fillStyle = "rgba(255,255,255,0.05)";
+  ctx.beginPath();
+  ctx.moveTo(sx, top);
+  ctx.lineTo(sx + a.width * 0.3, top + h * 0.22);
+  ctx.lineTo(sx + a.width * 0.3, baseY);
+  ctx.lineTo(sx, baseY);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = "rgba(0,0,0,0.35)";
+  ctx.beginPath();
+  ctx.moveTo(sx + a.width, top);
+  ctx.lineTo(sx + a.width * 0.7, top + h * 0.22);
+  ctx.lineTo(sx + a.width * 0.7, baseY);
+  ctx.lineTo(sx + a.width, baseY);
+  ctx.closePath();
+  ctx.fill();
+
+  // Alley floor catching a little light from the street
+  const floor = ctx.createLinearGradient(0, baseY - 16, 0, baseY);
+  floor.addColorStop(0, "rgba(120,130,150,0.03)");
+  floor.addColorStop(1, "rgba(150,160,180,0.14)");
+  ctx.fillStyle = floor;
+  ctx.fillRect(sx + a.width * 0.28, baseY - 16, a.width * 0.44, 16);
+
+  if (a.lampLit) {
+    // Wall lamp part way down
+    const lx = sx + a.width * 0.32;
+    const ly = top + h * 0.45;
+    ctx.save();
+    ctx.shadowColor = "rgba(253,224,71,0.9)";
+    ctx.shadowBlur = 16;
+    ctx.fillStyle = "rgba(253,224,71,0.8)";
+    ctx.fillRect(lx, ly, 4, 5);
+    ctx.restore();
+    const spill = ctx.createRadialGradient(lx + 2, ly + 3, 1, lx + 2, ly + 3, 34);
+    spill.addColorStop(0, "rgba(253,224,71,0.18)");
+    spill.addColorStop(1, "rgba(253,224,71,0)");
+    ctx.fillStyle = spill;
+    ctx.fillRect(sx, ly - 34, a.width, 68);
+  }
 }
 
 function drawShadowAndSprite(
@@ -600,6 +879,27 @@ export default function HomeGame() {
       return false;
     };
 
+    // Enemies come out of a doorway or alley you are walking toward. If none is
+    // in range (or they'd appear on top of you), fall back to walking in from
+    // off-screen ahead.
+    const pickSpawnPoint = () => {
+      const playerX = state.player.worldX;
+      const from = playerX - width * 0.15;
+      const to = playerX + width * 0.85;
+      const candidates: number[] = [];
+      for (let ci = Math.floor(from / CHUNK_WIDTH); ci <= Math.floor(to / CHUNK_WIDTH); ci++) {
+        if (ci < 0) continue;
+        for (const sp of getChunk(ci).spawnPoints) {
+          const wx = ci * CHUNK_WIDTH + sp.x;
+          if (wx >= from && wx <= to && Math.abs(wx - playerX) > 130) candidates.push(wx);
+        }
+      }
+      if (candidates.length === 0) {
+        return { x: playerX + width * 0.8 + Math.random() * 220, emerging: false };
+      }
+      return { x: candidates[Math.floor(Math.random() * candidates.length)], emerging: true };
+    };
+
     let storedHigh = 0;
     try {
       storedHigh = Number(window.localStorage.getItem(HIGH_SCORE_KEY)) || 0;
@@ -744,7 +1044,12 @@ export default function HomeGame() {
         enemy.grabbed = false;
         gainXp(ENEMY_XP);
         addScore(SCORE_KILL, enemy.worldX, enemy.depth, "#facc15", now);
-        state.pickups.push({ worldX: enemy.worldX, depth: enemy.depth, spawnedAt: now });
+        // Drop onto the road — a banana left up on the sidewalk is unreachable
+        state.pickups.push({
+          worldX: enemy.worldX,
+          depth: Math.max(MIN_PLAYER_DEPTH + 0.03, enemy.depth),
+          spawnedAt: now,
+        });
       }
     };
 
@@ -889,7 +1194,7 @@ export default function HomeGame() {
         ctx.fillRect(sx, sy, 1.5, 1.5);
       }
 
-      // City silhouette
+      // Skyline, then the same street row the game uses
       const groundY = height * 0.6;
       for (let ci = 0; ci <= Math.ceil(width / CHUNK_WIDTH) + 1; ci++) {
         const ch = getChunk(ci);
@@ -900,9 +1205,22 @@ export default function HomeGame() {
           ctx.fillStyle = b.color;
           ctx.fillRect(bx, groundY - b.height, b.width, b.height);
           for (const w of b.windows) {
-            ctx.fillStyle = w.lit ? "#facc15" : "rgba(255,255,255,0.04)";
+            ctx.fillStyle = w.lit ? "rgba(250,204,21,0.5)" : "rgba(255,255,255,0.04)";
             ctx.fillRect(bx + w.x, groundY - b.height + w.y, 5, 7);
           }
+        }
+      }
+      const titleMaxH = Math.max(120, groundY - 14);
+      for (let ci = 0; ci <= Math.ceil(width / CHUNK_WIDTH) + 1; ci++) {
+        const ch = getChunk(ci);
+        const off = ci * CHUNK_WIDTH;
+        for (const a of ch.alleys) {
+          if (off + a.x > width + 20) continue;
+          drawAlley(ctx, a, off + a.x, groundY, titleMaxH);
+        }
+        for (const f of ch.facades) {
+          if (off + f.x > width + 20) continue;
+          drawFacade(ctx, f, off + f.x, groundY, titleMaxH);
         }
       }
 
@@ -1278,6 +1596,17 @@ export default function HomeGame() {
         if (!live || enemy.dying || enemy.grabbed) continue;
         if (enemy.floatY > 0) enemy.floatY = Math.max(0, enemy.floatY - 80 * dt);
         if (nowTs < enemy.stunUntil) continue;
+
+        // Stepping out of a doorway: cross the sidewalk before joining the fight
+        if (enemy.emerging) {
+          enemy.depth += EMERGE_DEPTH_SPEED * dt;
+          if (enemy.depth >= MIN_PLAYER_DEPTH) {
+            enemy.depth = MIN_PLAYER_DEPTH;
+            enemy.emerging = false;
+          }
+          continue;
+        }
+
         const dxp = state.player.worldX - enemy.worldX;
         const ddp = state.player.depth - enemy.depth;
         const eScale = MIN_SCALE + enemy.depth * (MAX_SCALE - MIN_SCALE);
@@ -1331,16 +1660,21 @@ export default function HomeGame() {
         });
       }
       if (live && state.enemies.length < MAX_ENEMIES && nowTs >= state.nextSpawnAt) {
+        const from = pickSpawnPoint();
         state.enemies.push({
           id: state.nextEnemyId++,
-          worldX: cameraX + width + 80 + Math.random() * 220,
-          depth: MIN_PLAYER_DEPTH + 0.05 + Math.random() * (MAX_PLAYER_DEPTH - MIN_PLAYER_DEPTH - 0.05),
+          worldX: from.x,
+          depth: from.emerging
+            ? DOOR_DEPTH
+            : MIN_PLAYER_DEPTH + 0.05 + Math.random() * (MAX_PLAYER_DEPTH - MIN_PLAYER_DEPTH - 0.05),
           hp: 100,
           dying: false,
           deathStartedAt: null,
           stunUntil: 0,
           floatY: 0,
           grabbed: false,
+          emerging: from.emerging,
+          spawnedAt: nowTs,
           avoidDir: Math.random() < 0.5 ? 1 : -1,
           attackReadyAt: nowTs + 600,
           attackStartedAt: null,
@@ -1499,8 +1833,8 @@ export default function HomeGame() {
       ctx.fillStyle = skyGrad;
       ctx.fillRect(0, 0, width, horizonY);
 
-      // Buildings (parallax)
-      const par = 0.4;
+      // Distant skyline — parallaxed, so it drifts behind the street
+      const par = 0.25;
       for (let ci = Math.max(0, Math.floor((cameraX * par - width) / CHUNK_WIDTH) - 1);
            ci <= Math.floor((cameraX * par + width) / CHUNK_WIDTH) + 1; ci++) {
         const ch = getChunk(ci);
@@ -1512,9 +1846,34 @@ export default function HomeGame() {
           ctx.fillStyle = b.color;
           ctx.fillRect(bx, by2, b.width, b.height);
           for (const w of b.windows) {
-            ctx.fillStyle = w.lit ? "#facc15" : "rgba(255,255,255,0.05)";
-            ctx.fillRect(bx + w.x, by2 + w.y, 6, 8);
+            ctx.fillStyle = w.lit ? "rgba(250,204,21,0.5)" : "rgba(255,255,255,0.04)";
+            ctx.fillRect(bx + w.x, by2 + w.y, 5, 7);
           }
+        }
+      }
+      // Haze over the skyline so it reads as far off
+      const hazeGrad = ctx.createLinearGradient(0, horizonY - 220, 0, horizonY);
+      hazeGrad.addColorStop(0, "rgba(10,16,48,0)");
+      hazeGrad.addColorStop(1, "rgba(10,16,48,0.75)");
+      ctx.fillStyle = hazeGrad;
+      ctx.fillRect(0, horizonY - 220, width, 220);
+
+      // Building fronts, grounded at the back edge of the sidewalk. These scroll
+      // 1:1 with the street because that is where they physically stand.
+      const maxFacadeH = Math.max(120, horizonY - 14);
+      for (let ci = Math.max(0, Math.floor((cameraX - width) / CHUNK_WIDTH) - 1);
+           ci <= Math.floor((cameraX + width) / CHUNK_WIDTH) + 1; ci++) {
+        const ch = getChunk(ci);
+        const off = ci * CHUNK_WIDTH - cameraX;
+        for (const a of ch.alleys) {
+          const ax = off + a.x;
+          if (ax + a.width < -20 || ax > width + 20) continue;
+          drawAlley(ctx, a, ax, horizonY, maxFacadeH);
+        }
+        for (const f of ch.facades) {
+          const fx2 = off + f.x;
+          if (fx2 + f.width < -20 || fx2 > width + 20) continue;
+          drawFacade(ctx, f, fx2, horizonY, maxFacadeH);
         }
       }
 
@@ -1537,12 +1896,51 @@ export default function HomeGame() {
         const ty = horizonY + d * (curbY - horizonY);
         ctx.beginPath(); ctx.moveTo(0, ty); ctx.lineTo(width, ty); ctx.stroke();
       }
-      // Sidewalk tile seams — vertical, scrolling with camera
+      // Sidewalk tile seams — vertical, scrolling with the street
       const tileW = 68;
-      const tileOff = tileW - (cameraX * 0.55) % tileW;
+      const tileOff = tileW - (cameraX * 0.92) % tileW;
       for (let tx = tileOff - tileW; tx < width + tileW; tx += tileW) {
         ctx.beginPath(); ctx.moveTo(tx, horizonY); ctx.lineTo(tx, curbY); ctx.stroke();
       }
+
+      // Warm light pooling on the sidewalk out of lit doorways and alleys
+      ctx.save();
+      for (let ci = Math.max(0, Math.floor((cameraX - width) / CHUNK_WIDTH) - 1);
+           ci <= Math.floor((cameraX + width) / CHUNK_WIDTH) + 1; ci++) {
+        const ch = getChunk(ci);
+        const off = ci * CHUNK_WIDTH - cameraX;
+        for (const f of ch.facades) {
+          for (const d of f.doors) {
+            if (!d.lit) continue;
+            const cxd = off + d.x + d.width / 2;
+            if (cxd < -60 || cxd > width + 60) continue;
+            // Spill widens as it reaches the curb
+            const spread = d.width * 1.9;
+            ctx.beginPath();
+            ctx.moveTo(cxd - d.width * 0.5, horizonY);
+            ctx.lineTo(cxd + d.width * 0.5, horizonY);
+            ctx.lineTo(cxd + spread, curbY);
+            ctx.lineTo(cxd - spread, curbY);
+            ctx.closePath();
+            const spillGrad = ctx.createLinearGradient(0, horizonY, 0, curbY);
+            spillGrad.addColorStop(0, "rgba(253,224,71,0.17)");
+            spillGrad.addColorStop(1, "rgba(253,186,71,0)");
+            ctx.fillStyle = spillGrad;
+            ctx.fill();
+          }
+        }
+        for (const a of ch.alleys) {
+          if (!a.lampLit) continue;
+          const cxa = off + a.x + a.width / 2;
+          if (cxa < -60 || cxa > width + 60) continue;
+          const spillGrad = ctx.createLinearGradient(0, horizonY, 0, curbY);
+          spillGrad.addColorStop(0, "rgba(200,215,255,0.09)");
+          spillGrad.addColorStop(1, "rgba(200,215,255,0)");
+          ctx.fillStyle = spillGrad;
+          ctx.fillRect(cxa - a.width * 0.6, horizonY, a.width * 1.2, curbY - horizonY);
+        }
+      }
+      ctx.restore();
 
       // Curb lip
       ctx.fillStyle = "#505058";
@@ -1564,9 +1962,44 @@ export default function HomeGame() {
       ctx.strokeStyle = "rgba(220,170,0,0.5)";
       ctx.lineWidth = 3;
       ctx.setLineDash([34, 24]);
-      ctx.lineDashOffset = -(cameraX * 0.4) % 58;
+      ctx.lineDashOffset = -cameraX % 58;
       ctx.beginPath(); ctx.moveTo(0, laneY); ctx.lineTo(width, laneY); ctx.stroke();
       ctx.setLineDash([]);
+
+      // Streetlamps along the curb, spaced evenly in world space
+      const lampGap = 340;
+      for (let lampX = Math.floor(cameraX / lampGap) * lampGap; lampX < cameraX + width + lampGap; lampX += lampGap) {
+        const lx = lampX - cameraX;
+        if (lx < -40 || lx > width + 40) continue;
+        const baseYl = curbY + 2;
+        const headY = baseYl - 118;
+        // Pool of light on the road below
+        const pool = ctx.createRadialGradient(lx + 12, baseYl + 26, 4, lx + 12, baseYl + 26, 96);
+        pool.addColorStop(0, "rgba(253,224,71,0.13)");
+        pool.addColorStop(1, "rgba(253,224,71,0)");
+        ctx.fillStyle = pool;
+        ctx.fillRect(lx - 90, baseYl - 20, 200, 130);
+        // Pole
+        ctx.fillStyle = "#1b1b20";
+        ctx.fillRect(lx - 2, headY, 4, baseYl - headY);
+        ctx.fillRect(lx - 6, baseYl - 4, 12, 5);
+        // Arm reaching over the road
+        ctx.strokeStyle = "#1b1b20";
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(lx, headY + 4);
+        ctx.quadraticCurveTo(lx + 10, headY - 4, lx + 18, headY + 3);
+        ctx.stroke();
+        // Lamp head
+        ctx.save();
+        ctx.shadowColor = "rgba(253,224,71,0.9)";
+        ctx.shadowBlur = 18;
+        ctx.fillStyle = "rgba(253,230,138,0.95)";
+        ctx.beginPath();
+        ctx.ellipse(lx + 18, headY + 7, 5, 3.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
 
       // Bottom vignette
       const vigGrad = ctx.createLinearGradient(0, floorBottom - 28, 0, floorBottom);
@@ -1701,7 +2134,8 @@ export default function HomeGame() {
         if (esx < -100 || esx > width + 100) continue;
         const esy = horizonY + enemy.depth * (floorBottom - horizonY) - enemy.floatY;
         let sc = MIN_SCALE + enemy.depth * (MAX_SCALE - MIN_SCALE);
-        let alpha = 1;
+        // Fade up out of the dark doorway they stepped from
+        let alpha = enemy.emerging ? Math.min(1, (nowTs - enemy.spawnedAt) / 320) : 1;
         if (enemy.dying) {
           const t = Math.min(1, (nowTs - (enemy.deathStartedAt ?? nowTs)) / 260);
           alpha = 1 - t;
