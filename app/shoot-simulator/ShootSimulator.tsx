@@ -1404,6 +1404,93 @@ export default function ShootSimulator() {
     canvas.addEventListener("click", onCanvasClick);
     canvas.addEventListener("mousemove", onCanvasMouseMove);
 
+    // On-screen controls, shown only where there is no mouse — tablets and
+    // phones — and never on desktop.
+    const coarseQuery = window.matchMedia("(pointer: coarse)");
+    let touchMode = coarseQuery.matches;
+    const onPointerKind = (e: MediaQueryListEvent) => {
+      touchMode = e.matches;
+    };
+    coarseQuery.addEventListener("change", onPointerKind);
+
+    const STICK_RADIUS = 52;
+    const SHOOT_RADIUS = 44;
+    const touch = {
+      moveId: null as number | null,
+      moveOrigin: { x: 0, y: 0 },
+      moveVec: { x: 0, y: 0 },
+      shootId: null as number | null,
+      shootDown: false,
+    };
+    /** Phone-sized viewports get tighter spacing so nothing collides. */
+    const compactUI = () => width < 430 || height < 360;
+    /** Resting positions: stick under the right hand, hit button under the left. */
+    const touchLayout = () => {
+      const inset = compactUI() ? 62 : 88;
+      return {
+        stick: { x: width - inset - 4, y: height - inset },
+        shoot: { x: inset + 2, y: height - inset },
+      };
+    };
+    /** Tap targets for the attack slots, refreshed by the HUD each frame. */
+    const attackRects: { id: 1 | 2 | 3; x: number; y: number; w: number; h: number }[] = [];
+
+    const toLocal = (e: PointerEvent) => {
+      const rect = canvas.getBoundingClientRect();
+      return { x: (e.clientX - rect.left) / CAMERA_ZOOM, y: (e.clientY - rect.top) / CAMERA_ZOOM };
+    };
+
+    const onPointerDown = (e: PointerEvent) => {
+      if (e.pointerType === "mouse" || titlePhase !== "playing") return;
+      const p = toLocal(e);
+      // Tapping an unlocked slot switches attack
+      for (const r of attackRects) {
+        if (p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h) {
+          if (state.player.level >= r.id) state.selectedAttack = r.id;
+          e.preventDefault();
+          return;
+        }
+      }
+      // Whole halves are live, not just the drawn circles — a thumb that lands
+      // near enough still works, the way it does in Roblox.
+      if (p.x < width * 0.5) {
+        touch.shootId = e.pointerId;
+        touch.shootDown = true;
+      } else {
+        touch.moveId = e.pointerId;
+        touch.moveOrigin = p; // floating stick: it appears where you press
+        touch.moveVec = { x: 0, y: 0 };
+      }
+      e.preventDefault();
+    };
+
+    const onPointerMove = (e: PointerEvent) => {
+      if (touch.moveId !== e.pointerId) return;
+      const p = toLocal(e);
+      const dx = p.x - touch.moveOrigin.x;
+      const dy = p.y - touch.moveOrigin.y;
+      const dist = Math.hypot(dx, dy);
+      const clamp = dist > STICK_RADIUS ? STICK_RADIUS / dist : 1;
+      touch.moveVec = { x: (dx * clamp) / STICK_RADIUS, y: (dy * clamp) / STICK_RADIUS };
+      e.preventDefault();
+    };
+
+    const onPointerUp = (e: PointerEvent) => {
+      if (touch.moveId === e.pointerId) {
+        touch.moveId = null;
+        touch.moveVec = { x: 0, y: 0 };
+      }
+      if (touch.shootId === e.pointerId) {
+        touch.shootId = null;
+        touch.shootDown = false;
+      }
+    };
+
+    canvas.addEventListener("pointerdown", onPointerDown);
+    canvas.addEventListener("pointermove", onPointerMove);
+    canvas.addEventListener("pointerup", onPointerUp);
+    canvas.addEventListener("pointercancel", onPointerUp);
+
     const chunks = new Map<number, Chunk>();
     const getChunk = (i: number) => {
       if (!chunks.has(i)) chunks.set(i, generateChunk(i));
@@ -1871,7 +1958,13 @@ export default function ShootSimulator() {
       ctx.font = `${Math.max(10, Math.min(12, width * 0.02))}px system-ui, sans-serif`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText("WASD / ARROWS · SPACE to attack · 1 / 2 / 3 switch attacks", width / 2, btnY + btnH + 28);
+      ctx.fillText(
+        touchMode
+          ? "STICK on the right · HIT on the left · tap a slot to switch attacks"
+          : "WASD / ARROWS · SPACE to attack · 1 / 2 / 3 switch attacks",
+        width / 2,
+        btnY + btnH + 28
+      );
       if (state.highScore > 0) {
         ctx.fillStyle = "rgba(250,204,21,0.6)";
         ctx.font = `bold ${Math.max(11, Math.min(14, width * 0.024))}px system-ui, sans-serif`;
@@ -1882,8 +1975,9 @@ export default function ShootSimulator() {
 
     const drawScore = (now: number) => {
       const pad = 16;
-      const boxW = 168;
-      const boxH = 62;
+      const narrow = width < 430;
+      const boxW = narrow ? 116 : 168;
+      const boxH = narrow ? 50 : 62;
       const bx = width - pad - boxW;
       const by = pad;
       const pulse = now < state.scorePulseUntil ? 1 + 0.12 * ((state.scorePulseUntil - now) / 260) : 1;
@@ -1902,16 +1996,16 @@ export default function ShootSimulator() {
       ctx.fillText("SCORE", bx + boxW - 10, by + 17);
 
       ctx.save();
-      ctx.translate(bx + boxW - 10, by + 40);
+      ctx.translate(bx + boxW - 10, by + (narrow ? 34 : 40));
       ctx.scale(pulse, pulse);
       ctx.fillStyle = "#facc15";
-      ctx.font = "bold 24px system-ui, sans-serif";
+      ctx.font = `bold ${narrow ? 19 : 24}px system-ui, sans-serif`;
       ctx.fillText(String(state.score).padStart(5, "0"), 0, 0);
       ctx.restore();
 
       ctx.fillStyle = "rgba(255,255,255,0.45)";
       ctx.font = "10px system-ui, sans-serif";
-      ctx.fillText(`HIGH ${String(state.highScore).padStart(5, "0")}`, bx + boxW - 10, by + 55);
+      ctx.fillText(`HIGH ${String(state.highScore).padStart(5, "0")}`, bx + boxW - 10, by + boxH - 7);
       ctx.restore();
     };
 
@@ -1995,12 +2089,17 @@ export default function ShootSimulator() {
     const drawHud = () => {
       const { level, xp } = state.player;
       const threshold = xpToNext(level);
-      const boxSize = 38;
+      // Bigger slots on touch, and the panel moves to the top so it is clear of
+      // the thumb controls along the bottom.
+      // Narrow phones shrink the slots again so the panel clears the score box
+      const boxSize = touchMode ? (width < 330 ? 34 : compactUI() ? 42 : 54) : 38;
       const gap = 8;
       const sw = boxSize * 3 + gap * 2;
       const px = 16;
       const pw = sw + 16;
-      const pb = height - 16;
+      const bh0 = 12;
+      const hpH0 = 13;
+      const pb = touchMode ? 16 + boxSize + bh0 + hpH0 + 48 : height - 16;
       const sy = pb - boxSize;
       const labelY = sy - 6;
       const bh = 12;
@@ -2059,24 +2158,66 @@ export default function ShootSimulator() {
       ctx.textAlign = "right";
       ctx.fillText(`${xp}/${threshold}`, px + sw - 4, by + bh - 3);
 
+      attackRects.length = 0;
       for (let i = 1; i <= 3; i++) {
         const id = i as 1 | 2 | 3;
         const unlocked = level >= unlocks[id];
         const selected = state.selectedAttack === id;
         const x = px + (i - 1) * (boxSize + gap);
+        attackRects.push({ id, x, y: sy, w: boxSize, h: boxSize });
         ctx.fillStyle = unlocked ? (selected ? "#facc15" : "rgba(250,204,21,0.15)") : "rgba(255,255,255,0.06)";
         ctx.fillRect(x, sy, boxSize, boxSize);
         ctx.strokeStyle = selected ? "#fff" : unlocked ? "rgba(250,204,21,0.7)" : "rgba(255,255,255,0.2)";
         ctx.lineWidth = selected ? 2.5 : 1;
         ctx.strokeRect(x, sy, boxSize, boxSize);
         ctx.fillStyle = unlocked ? (selected ? "#111" : "#facc15") : "rgba(255,255,255,0.3)";
-        ctx.font = "bold 16px system-ui, sans-serif";
+        ctx.font = `bold ${touchMode ? 20 : 16}px system-ui, sans-serif`;
         ctx.textAlign = "center";
-        ctx.fillText(String(i), x + boxSize / 2, sy + boxSize / 2 + 6);
-        ctx.font = "8px system-ui, sans-serif";
+        ctx.fillText(String(i), x + boxSize / 2, sy + boxSize / 2 + (touchMode ? 4 : 6));
+        ctx.font = `${touchMode ? 9 : 8}px system-ui, sans-serif`;
         ctx.fillStyle = unlocked ? "rgba(250,204,21,0.85)" : "rgba(255,255,255,0.25)";
-        ctx.fillText(unlocked ? names[id] : "???", x + boxSize / 2, labelY);
+        ctx.fillText(unlocked ? names[id] : "???", x + boxSize / 2, touchMode ? sy + boxSize - 6 : labelY);
       }
+      ctx.restore();
+    };
+
+    // Thumb controls: floating stick under the right hand, hit button under the
+    // left. Drawn only on touch devices.
+    const drawTouchControls = () => {
+      const { stick, shoot } = touchLayout();
+      const base = touch.moveId !== null ? touch.moveOrigin : stick;
+      ctx.save();
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+
+      ctx.globalAlpha = touch.moveId !== null ? 0.55 : 0.3;
+      ctx.fillStyle = "rgba(0,0,0,0.5)";
+      ctx.beginPath();
+      ctx.arc(base.x, base.y, STICK_RADIUS, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(250,204,21,0.85)";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      const kx = base.x + touch.moveVec.x * STICK_RADIUS * 0.7;
+      const ky = base.y + touch.moveVec.y * STICK_RADIUS * 0.7;
+      ctx.globalAlpha = touch.moveId !== null ? 0.9 : 0.5;
+      ctx.fillStyle = "#facc15";
+      ctx.beginPath();
+      ctx.arc(kx, ky, STICK_RADIUS * 0.4, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.globalAlpha = touch.shootDown ? 0.95 : 0.5;
+      ctx.fillStyle = touch.shootDown ? "#facc15" : "rgba(0,0,0,0.5)";
+      ctx.beginPath();
+      ctx.arc(shoot.x, shoot.y, SHOOT_RADIUS, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(250,204,21,0.9)";
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = touch.shootDown ? "#111" : "#facc15";
+      ctx.font = "bold 15px system-ui, sans-serif";
+      ctx.fillText("HIT", shoot.x, shoot.y);
       ctx.restore();
     };
 
@@ -2104,6 +2245,11 @@ export default function ShootSimulator() {
         if (keys.has("arrowright") || keys.has("d")) vx += 1;
         if (keys.has("arrowup") || keys.has("w")) vd -= 1;
         if (keys.has("arrowdown") || keys.has("s")) vd += 1;
+        // Stick is analog, with a deadzone so a resting thumb does not drift
+        if (touch.moveId !== null) {
+          if (Math.abs(touch.moveVec.x) > 0.2) vx = touch.moveVec.x;
+          if (Math.abs(touch.moveVec.y) > 0.2) vd = touch.moveVec.y;
+        }
       }
 
       state.isMoving = vx !== 0 || vd !== 0;
@@ -2158,7 +2304,7 @@ export default function ShootSimulator() {
       const ps = MIN_SCALE + state.player.depth * (MAX_SCALE - MIN_SCALE);
 
       // Space: trigger on leading edge
-      const spaceDown = keys.has(" ");
+      const spaceDown = keys.has(" ") || touch.shootDown;
       if (live && spaceDown && !spaceWasDown) {
         if (state.selectedAttack === 1) doComboHit(nowTs);
         else if (state.selectedAttack === 2) doParrotAttack(nowTs, psx, psy);
@@ -2932,6 +3078,7 @@ export default function ShootSimulator() {
       ctx.restore();
       drawHud();
       drawScore(nowTs);
+      if (touchMode && live) drawTouchControls();
       if (titlePhase === "gameover") drawGameOver(nowTs);
       rafId = requestAnimationFrame(loop);
     };
@@ -2945,12 +3092,18 @@ export default function ShootSimulator() {
       window.removeEventListener("keyup", onKeyUp);
       canvas.removeEventListener("click", onCanvasClick);
       canvas.removeEventListener("mousemove", onCanvasMouseMove);
+      canvas.removeEventListener("pointerdown", onPointerDown);
+      canvas.removeEventListener("pointermove", onPointerMove);
+      canvas.removeEventListener("pointerup", onPointerUp);
+      canvas.removeEventListener("pointercancel", onPointerUp);
+      coarseQuery.removeEventListener("change", onPointerKind);
     };
   }, []);
 
   return (
     <div ref={containerRef} className="w-full h-full">
-      <canvas ref={canvasRef} className="block w-full h-full" />
+      {/* touchAction none so dragging the stick never scrolls the page */}
+      <canvas ref={canvasRef} className="block w-full h-full" style={{ touchAction: "none" }} />
     </div>
   );
 }
