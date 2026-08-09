@@ -34,6 +34,8 @@ const PARROT_SLAM_DAMAGE = 90;
 
 const PLAYER_MAX_HP = 100;
 const PLAYER_IFRAME_MS = 900; // grace period after taking a hit
+const HP_REGEN_DELAY_MS = 4500; // quiet time before you start patching yourself up
+const HP_REGEN_PER_SEC = 4.5; // slow enough that you still have to disengage
 const ENEMY_DAMAGE = 12;
 const ENEMY_ATTACK_RANGE = 48;
 const ENEMY_ATTACK_DEPTH_TOL = 0.07;
@@ -98,8 +100,18 @@ interface Doorway {
   shop: boolean;
 }
 
+interface Graffiti {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  color: string;
+  style: 0 | 1 | 2;
+}
+
 /** The building fronts you actually walk past — grounded at the back of the sidewalk. */
 interface Facade {
+  kind: "facade";
   x: number;
   width: number;
   /** Fraction of the available height to the horizon, so rooflines stay varied
@@ -113,14 +125,44 @@ interface Facade {
   awningColor: string;
   signColor: string | null;
   signX: number;
+  /** Big lit shop window beside the door on some storefronts. */
+  shopWindow: { x: number; width: number; lit: boolean; tint: string } | null;
+  /** Sign hanging perpendicular off the wall. */
+  bladeSign: { x: number; height: number; color: string } | null;
+  graffiti: Graffiti[];
 }
 
 interface Alley {
+  kind: "alley";
   x: number;
   width: number;
   heightRatio: number;
   lampLit: boolean;
 }
+
+/** A gap in the row: chain-link fence, weeds and rubble where a building was. */
+interface Lot {
+  kind: "lot";
+  x: number;
+  width: number;
+  wallRatio: number;
+  debris: { x: number; w: number; h: number }[];
+  weeds: { x: number; h: number }[];
+  graffiti: Graffiti[];
+  billboard: { x: number; width: number; color: string } | null;
+}
+
+/** A stretch running under an overpass — dark, tiled, strip-lit. */
+interface Underpass {
+  kind: "underpass";
+  x: number;
+  width: number;
+  pillarXs: number[];
+  lightXs: number[];
+  graffiti: Graffiti[];
+}
+
+type StreetSpan = Facade | Alley | Lot | Underpass;
 
 /** Where enemies walk in from: a doorway or the mouth of an alley. */
 interface SpawnPoint {
@@ -128,12 +170,21 @@ interface SpawnPoint {
   kind: "door" | "alley";
 }
 
+/** Chalk scrawls, manhole covers and tar patches scattered on the paving. */
+interface GroundMark {
+  x: number;
+  depth: number;
+  kind: "chalk" | "hopscotch" | "manhole" | "patch";
+  size: number;
+  color: string;
+}
+
 interface Chunk {
   props: GroundProp[];
   buildings: Building[];
-  facades: Facade[];
-  alleys: Alley[];
+  spans: StreetSpan[];
   spawnPoints: SpawnPoint[];
+  marks: GroundMark[];
 }
 
 interface Enemy {
@@ -186,6 +237,39 @@ function mulberry32(seed: number) {
   };
 }
 
+// The street does not run dead straight: every so often it turns, which in a
+// belt-scroller reads as the whole ground plane sliding up or down the screen
+// while you keep walking. Turns alternate direction so the street always comes
+// back to level rather than wandering off.
+const BEND_SPACING = 2300; // world px between turns
+const BEND_RAMP = 820; // how much street the turn takes to complete
+const BEND_MIN = 42;
+const BEND_MAX = 96;
+
+const bendTotals: number[] = [0, 0]; // offset once bend k has fully completed
+function bendTotal(k: number): number {
+  while (bendTotals.length <= k) {
+    const i = bendTotals.length;
+    const r = mulberry32(0x9e3779b9 ^ (i * 2654435761));
+    const magnitude = BEND_MIN + r() * (BEND_MAX - BEND_MIN);
+    // Each turn heads back against wherever the street has drifted to, so it
+    // always comes back to level instead of wandering off over a long run.
+    const prev = bendTotals[i - 1];
+    const dir = prev > 0 ? -1 : prev < 0 ? 1 : i % 2 === 1 ? 1 : -1;
+    bendTotals.push(prev + dir * magnitude);
+  }
+  return bendTotals[k];
+}
+
+/** Vertical offset of the street's ground line at a world x. */
+function bendAt(x: number): number {
+  if (x <= BEND_SPACING) return 0;
+  const k = Math.floor(x / BEND_SPACING);
+  const t = Math.min(1, Math.max(0, (x - k * BEND_SPACING) / BEND_RAMP));
+  const eased = t * t * (3 - 2 * t);
+  return bendTotal(k) + (bendTotal(k + 1) - bendTotal(k)) * eased;
+}
+
 function generateChunk(index: number): Chunk {
   const rand = mulberry32((index + 1) * 2654435761);
   const buildingCount = 3 + Math.floor(rand() * 3);
@@ -210,20 +294,87 @@ function generateChunk(index: number): Chunk {
     buildings.push({ x: bx, width: w, height: h, color, windows: wins });
     bx += w + 10 + rand() * 40;
   }
-  // Street-level row: building fronts separated by the occasional alley. Widths
-  // fill the chunk exactly so the row is continuous across chunk seams.
-  const facades: Facade[] = [];
-  const alleys: Alley[] = [];
+  // Street-level row: building fronts broken up by alleys, empty lots and the
+  // occasional underpass. Widths fill the chunk exactly so the row is continuous
+  // across chunk seams.
+  const spans: StreetSpan[] = [];
   const spawnPoints: SpawnPoint[] = [];
   const awningColors = ["#7f1d1d", "#14532d", "#1e3a5f", "#78350f", "#4c1d95"];
   const neonColors = ["#f472b6", "#22d3ee", "#facc15", "#4ade80", "#fb923c"];
+  const tagColors = ["#f472b6", "#22d3ee", "#a3e635", "#fb923c", "#c084fc", "#fde047"];
+  const makeGraffiti = (atX: number, spanW: number, count: number, maxH: number): Graffiti[] => {
+    const tags: Graffiti[] = [];
+    for (let g = 0; g < count; g++) {
+      const gw = 26 + rand() * 46;
+      tags.push({
+        x: atX + 8 + rand() * Math.max(4, spanW - gw - 16),
+        y: 6 + rand() * Math.max(6, maxH - 24),
+        w: gw,
+        h: 12 + rand() * 12,
+        color: tagColors[Math.floor(rand() * tagColors.length)],
+        style: Math.floor(rand() * 3) as 0 | 1 | 2,
+      });
+    }
+    return tags;
+  };
+
   let fx = 0;
   while (fx < CHUNK_WIDTH) {
     const remaining = CHUNK_WIDTH - fx;
+    const roll = rand();
+
+    // An underpass wants a good long run of street
+    if (remaining > 520 && fx > 40 && roll < 0.11) {
+      const uw = 260 + rand() * 150;
+      const pillarXs: number[] = [];
+      for (let p = 0; p < 3; p++) pillarXs.push(fx + 30 + p * ((uw - 60) / 2));
+      const lightXs: number[] = [];
+      const lightCount = Math.max(2, Math.floor(uw / 90));
+      for (let l = 0; l < lightCount; l++) lightXs.push(fx + 40 + l * ((uw - 80) / Math.max(1, lightCount - 1)));
+      spans.push({ kind: "underpass", x: fx, width: uw, pillarXs, lightXs, graffiti: makeGraffiti(fx, uw, 2 + Math.floor(rand() * 3), 70) });
+      spawnPoints.push({ x: fx + uw * 0.25, kind: "alley" });
+      spawnPoints.push({ x: fx + uw * 0.75, kind: "alley" });
+      fx += uw;
+      continue;
+    }
+
+    // Empty lot behind a chain-link fence
+    if (remaining > 330 && fx > 40 && roll < 0.19) {
+      const lw = 130 + rand() * 110;
+      const debris: Lot["debris"] = [];
+      for (let d = 0; d < 2 + Math.floor(rand() * 3); d++) {
+        debris.push({ x: fx + 12 + rand() * (lw - 40), w: 14 + rand() * 30, h: 8 + rand() * 18 });
+      }
+      const weeds: Lot["weeds"] = [];
+      for (let g = 0; g < 5 + Math.floor(rand() * 7); g++) {
+        weeds.push({ x: fx + 6 + rand() * (lw - 12), h: 5 + rand() * 9 });
+      }
+      spans.push({
+        kind: "lot",
+        x: fx,
+        width: lw,
+        wallRatio: 0.16 + rand() * 0.16,
+        debris,
+        weeds,
+        graffiti: makeGraffiti(fx, lw, 1 + Math.floor(rand() * 2), 34),
+        billboard:
+          rand() < 0.45
+            ? {
+                x: fx + 14 + rand() * Math.max(6, lw - 90),
+                width: 60 + rand() * 24,
+                color: neonColors[Math.floor(rand() * neonColors.length)],
+              }
+            : null,
+      });
+      spawnPoints.push({ x: fx + lw / 2, kind: "alley" });
+      fx += lw;
+      continue;
+    }
+
     // An alley needs room for a building on either side of it
-    if (remaining > 260 && fx > 40 && rand() < 0.2) {
+    if (remaining > 260 && fx > 40 && roll < 0.36) {
       const aw = 46 + rand() * 44;
-      alleys.push({ x: fx, width: aw, heightRatio: 0.55 + rand() * 0.3, lampLit: rand() < 0.55 });
+      spans.push({ kind: "alley", x: fx, width: aw, heightRatio: 0.55 + rand() * 0.3, lampLit: rand() < 0.55 });
       spawnPoints.push({ x: fx + aw / 2, kind: "alley" });
       fx += aw;
       continue;
@@ -272,7 +423,21 @@ function generateChunk(index: number): Chunk {
       }
     }
 
-    facades.push({
+    // A storefront gets a lit display window in whatever space the doors left
+    const rightmostDoor = doors.reduce((m, d) => Math.max(m, d.x + d.width), fx);
+    const winGap = fx + w - rightmostDoor - 12;
+    const shopWindow =
+      winGap > 46 && rand() < 0.6
+        ? {
+            x: rightmostDoor + 8,
+            width: Math.min(winGap - 6, 40 + rand() * 60),
+            lit: rand() < 0.7,
+            tint: neonColors[Math.floor(rand() * neonColors.length)],
+          }
+        : null;
+
+    spans.push({
+      kind: "facade",
       x: fx,
       width: w,
       heightRatio,
@@ -284,9 +449,36 @@ function generateChunk(index: number): Chunk {
       awningColor: awningColors[Math.floor(rand() * awningColors.length)],
       signColor: rand() < 0.45 ? neonColors[Math.floor(rand() * neonColors.length)] : null,
       signX: fx + 16 + rand() * Math.max(10, w - 70),
+      shopWindow,
+      bladeSign:
+        rand() < 0.35
+          ? {
+              x: fx + 10 + rand() * Math.max(6, w - 40),
+              height: 40 + rand() * 34,
+              color: neonColors[Math.floor(rand() * neonColors.length)],
+            }
+          : null,
+      graffiti: rand() < 0.45 ? makeGraffiti(fx, w, 1 + Math.floor(rand() * 2), GROUND_FLOOR_H - 26) : [],
     });
     for (const d of doors) spawnPoints.push({ x: d.x + d.width / 2, kind: "door" });
     fx += w;
+  }
+
+  // Chalk, manholes and tar patches scattered over the paving and asphalt
+  const marks: GroundMark[] = [];
+  const markCount = 3 + Math.floor(rand() * 5);
+  for (let m = 0; m < markCount; m++) {
+    const r = rand();
+    const kind: GroundMark["kind"] =
+      r < 0.3 ? "chalk" : r < 0.45 ? "hopscotch" : r < 0.7 ? "manhole" : "patch";
+    const onPaving = kind === "chalk" || kind === "hopscotch";
+    marks.push({
+      x: rand() * CHUNK_WIDTH,
+      depth: onPaving ? 0.06 + rand() * (SIDEWALK_DEPTH - 0.07) : SIDEWALK_DEPTH + 0.08 + rand() * 0.6,
+      kind,
+      size: 0.8 + rand() * 0.6,
+      color: kind === "chalk" || kind === "hopscotch" ? ["#e5e7eb", "#fbcfe8", "#bae6fd"][Math.floor(rand() * 3)] : "#000",
+    });
   }
 
   const propCount = 2 + Math.floor(rand() * 4);
@@ -329,7 +521,45 @@ function generateChunk(index: number): Chunk {
     if (prop.x + prop.halfW > CHUNK_WIDTH) break;
     placed.push(prop);
   }
-  return { buildings, props: placed, facades, alleys, spawnPoints };
+  return { buildings, props: placed, spans, spawnPoints, marks };
+}
+
+// Spray-painted tags. Not letters — just the gesture of them, which reads better
+// at this size than any attempt at actual lettering would.
+function drawGraffiti(ctx: CanvasRenderingContext2D, tags: Graffiti[], sx: number, spanX: number, baseY: number) {
+  for (const g of tags) {
+    const gx = sx + (g.x - spanX);
+    const gy = baseY - g.y - g.h;
+    ctx.save();
+    ctx.globalAlpha = 0.75;
+    ctx.strokeStyle = g.color;
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.beginPath();
+    if (g.style === 0) {
+      // Looping scrawl
+      ctx.moveTo(gx, gy + g.h);
+      ctx.bezierCurveTo(gx + g.w * 0.2, gy - g.h * 0.3, gx + g.w * 0.45, gy + g.h * 1.2, gx + g.w * 0.6, gy + g.h * 0.4);
+      ctx.bezierCurveTo(gx + g.w * 0.75, gy - g.h * 0.2, gx + g.w * 0.9, gy + g.h * 0.9, gx + g.w, gy + g.h * 0.2);
+    } else if (g.style === 1) {
+      // Angular throw-up
+      ctx.moveTo(gx, gy + g.h);
+      ctx.lineTo(gx + g.w * 0.25, gy);
+      ctx.lineTo(gx + g.w * 0.45, gy + g.h * 0.8);
+      ctx.lineTo(gx + g.w * 0.68, gy + g.h * 0.1);
+      ctx.lineTo(gx + g.w, gy + g.h * 0.7);
+    } else {
+      // Fat blob tag with an outline
+      ctx.globalAlpha = 0.5;
+      ctx.fillStyle = g.color;
+      ctx.ellipse(gx + g.w / 2, gy + g.h / 2, g.w / 2, g.h / 2, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 0.8;
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
 }
 
 // A building front standing at the back edge of the sidewalk. baseY is the
@@ -412,6 +642,42 @@ function drawFacade(ctx: CanvasRenderingContext2D, f: Facade, sx: number, baseY:
     }
   }
 
+  // Lit display window beside the entrance
+  if (f.shopWindow) {
+    const sw = f.shopWindow;
+    const wx = sx + (sw.x - f.x);
+    const wy = baseY - 62;
+    const wh = 46;
+    ctx.fillStyle = sw.lit ? "rgba(253,230,138,0.22)" : "rgba(90,120,150,0.1)";
+    ctx.fillRect(wx, wy, sw.width, wh);
+    if (sw.lit) {
+      // Goods on shelves, suggested with a few blocks
+      ctx.fillStyle = "rgba(0,0,0,0.45)";
+      ctx.fillRect(wx, wy + wh * 0.55, sw.width, 2);
+      for (let s = 4; s < sw.width - 6; s += 13) {
+        const bh = 6 + ((s * 7) % 9);
+        ctx.fillStyle = "rgba(0,0,0,0.5)";
+        ctx.fillRect(wx + s, wy + wh * 0.55 - bh, 8, bh);
+      }
+      ctx.fillStyle = sw.tint;
+      ctx.globalAlpha = 0.18;
+      ctx.fillRect(wx, wy, sw.width, wh * 0.4);
+      ctx.globalAlpha = 1;
+    }
+    // Mullions and frame
+    ctx.strokeStyle = f.trimColor;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(wx, wy, sw.width, wh);
+    ctx.strokeStyle = "rgba(0,0,0,0.4)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(wx + sw.width / 2, wy);
+    ctx.lineTo(wx + sw.width / 2, wy + wh);
+    ctx.stroke();
+  }
+
+  if (f.graffiti.length) drawGraffiti(ctx, f.graffiti, sx, f.x, baseY);
+
   // Neon sign over the storefront
   if (f.signColor) {
     const sgx = sx + (f.signX - f.x);
@@ -422,6 +688,36 @@ function drawFacade(ctx: CanvasRenderingContext2D, f: Facade, sx: number, baseY:
     ctx.fillStyle = f.signColor;
     ctx.globalAlpha = 0.85;
     ctx.fillRect(sgx, sgy, Math.min(54, f.width - 24), 9);
+    ctx.restore();
+  }
+
+  // Blade sign hanging out perpendicular to the wall
+  if (f.bladeSign) {
+    const b = f.bladeSign;
+    const bx = sx + (b.x - f.x);
+    const byTop = gfTop - 20 - b.height;
+    ctx.save();
+    // Bracket
+    ctx.strokeStyle = "#2a2a30";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(bx, byTop + 4);
+    ctx.lineTo(bx + 13, byTop + 4);
+    ctx.stroke();
+    // Board
+    ctx.fillStyle = "#111116";
+    ctx.fillRect(bx + 9, byTop, 13, b.height);
+    ctx.strokeStyle = b.color;
+    ctx.lineWidth = 1.5;
+    ctx.shadowColor = b.color;
+    ctx.shadowBlur = 10;
+    ctx.strokeRect(bx + 9, byTop, 13, b.height);
+    // Stacked lettering, suggested as bars
+    ctx.fillStyle = b.color;
+    ctx.globalAlpha = 0.9;
+    for (let ly = byTop + 5; ly < byTop + b.height - 5; ly += 9) {
+      ctx.fillRect(bx + 12, ly, 7, 4);
+    }
     ctx.restore();
   }
 }
@@ -478,6 +774,252 @@ function drawAlley(ctx: CanvasRenderingContext2D, a: Alley, sx: number, baseY: n
     ctx.fillStyle = spill;
     ctx.fillRect(sx, ly - 34, a.width, 68);
   }
+}
+
+// A demolished plot: low back wall, rubble and weeds, fenced off from the street.
+function drawLot(ctx: CanvasRenderingContext2D, l: Lot, sx: number, baseY: number, maxH: number) {
+  const wallH = maxH * l.wallRatio;
+
+  // Open sky behind, hazed at the back of the plot
+  const back = ctx.createLinearGradient(0, baseY - wallH - 40, 0, baseY);
+  back.addColorStop(0, "rgba(12,16,38,0.85)");
+  back.addColorStop(1, "#0a0a10");
+  ctx.fillStyle = back;
+  ctx.fillRect(sx, baseY - wallH - 40, l.width, wallH + 40);
+
+  // Party wall of the surviving building next door, with the ghost of the
+  // demolished one's roofline still on it
+  ctx.fillStyle = "#15151b";
+  ctx.fillRect(sx, baseY - wallH, l.width, wallH);
+  ctx.fillStyle = "rgba(0,0,0,0.35)";
+  ctx.beginPath();
+  ctx.moveTo(sx, baseY - wallH * 0.55);
+  ctx.lineTo(sx + l.width * 0.42, baseY - wallH * 0.9);
+  ctx.lineTo(sx + l.width, baseY - wallH * 0.5);
+  ctx.lineTo(sx + l.width, baseY);
+  ctx.lineTo(sx, baseY);
+  ctx.closePath();
+  ctx.fill();
+
+  if (l.graffiti.length) drawGraffiti(ctx, l.graffiti, sx, l.x, baseY);
+
+  if (l.billboard) {
+    const b = l.billboard;
+    const bx = sx + (b.x - l.x);
+    const byTop = baseY - wallH - 26;
+    ctx.fillStyle = "#0d0d12";
+    ctx.fillRect(bx, byTop, b.width, 26);
+    ctx.save();
+    ctx.strokeStyle = b.color;
+    ctx.shadowColor = b.color;
+    ctx.shadowBlur = 10;
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(bx, byTop, b.width, 26);
+    ctx.globalAlpha = 0.75;
+    ctx.fillStyle = b.color;
+    ctx.fillRect(bx + 6, byTop + 7, b.width * 0.45, 5);
+    ctx.fillRect(bx + 6, byTop + 15, b.width * 0.7, 4);
+    ctx.restore();
+    // Legs
+    ctx.fillStyle = "#17171d";
+    ctx.fillRect(bx + 8, byTop + 26, 3, 16);
+    ctx.fillRect(bx + b.width - 11, byTop + 26, 3, 16);
+  }
+
+  // Rubble
+  for (const d of l.debris) {
+    const dx = sx + (d.x - l.x);
+    ctx.fillStyle = "#1e1e24";
+    ctx.beginPath();
+    ctx.moveTo(dx, baseY);
+    ctx.lineTo(dx + d.w * 0.3, baseY - d.h);
+    ctx.lineTo(dx + d.w * 0.7, baseY - d.h * 0.6);
+    ctx.lineTo(dx + d.w, baseY);
+    ctx.closePath();
+    ctx.fill();
+  }
+  // Weeds
+  ctx.strokeStyle = "rgba(74,124,60,0.55)";
+  ctx.lineWidth = 1;
+  for (const wd of l.weeds) {
+    const wx = sx + (wd.x - l.x);
+    ctx.beginPath();
+    ctx.moveTo(wx, baseY);
+    ctx.lineTo(wx + 2, baseY - wd.h);
+    ctx.stroke();
+  }
+
+  // Chain-link fence across the front — posts, rails, and a diamond mesh
+  const fenceH = 46;
+  const fenceTop = baseY - fenceH;
+  ctx.save();
+  ctx.strokeStyle = "rgba(160,172,186,0.32)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let mx = sx - fenceH; mx < sx + l.width + fenceH; mx += 9) {
+    ctx.moveTo(mx, fenceTop);
+    ctx.lineTo(mx + fenceH, baseY);
+    ctx.moveTo(mx + fenceH, fenceTop);
+    ctx.lineTo(mx, baseY);
+  }
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(sx, fenceTop, l.width, fenceH);
+  ctx.clip();
+  ctx.stroke();
+  ctx.restore();
+  // Rails and posts
+  ctx.strokeStyle = "rgba(190,200,212,0.5)";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(sx, fenceTop);
+  ctx.lineTo(sx + l.width, fenceTop);
+  ctx.stroke();
+  for (let px2 = sx; px2 <= sx + l.width + 1; px2 += Math.max(40, l.width / 3)) {
+    ctx.beginPath();
+    ctx.moveTo(px2, fenceTop - 3);
+    ctx.lineTo(px2, baseY);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// Running under an overpass: tiled wall, support pillars, strip lights, and a
+// heavy deck overhead that darkens the street.
+function drawUnderpass(ctx: CanvasRenderingContext2D, u: Underpass, sx: number, baseY: number, maxH: number) {
+  const wallH = Math.min(maxH, 190);
+  const top = baseY - wallH;
+
+  // Back wall
+  const wall = ctx.createLinearGradient(0, top, 0, baseY);
+  wall.addColorStop(0, "#111119");
+  wall.addColorStop(1, "#1a1a22");
+  ctx.fillStyle = wall;
+  ctx.fillRect(sx, top, u.width, wallH);
+
+  // Tiling
+  ctx.strokeStyle = "rgba(255,255,255,0.045)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let ty = top + 16; ty < baseY; ty += 16) {
+    ctx.moveTo(sx, ty);
+    ctx.lineTo(sx + u.width, ty);
+  }
+  for (let tx = sx + 20; tx < sx + u.width; tx += 20) {
+    ctx.moveTo(tx, top);
+    ctx.lineTo(tx, baseY);
+  }
+  ctx.stroke();
+
+  // Grime creeping up from the base
+  const grime = ctx.createLinearGradient(0, baseY - 40, 0, baseY);
+  grime.addColorStop(0, "rgba(0,0,0,0)");
+  grime.addColorStop(1, "rgba(0,0,0,0.6)");
+  ctx.fillStyle = grime;
+  ctx.fillRect(sx, baseY - 40, u.width, 40);
+
+  if (u.graffiti.length) drawGraffiti(ctx, u.graffiti, sx, u.x, baseY);
+
+  // Support pillars
+  for (const p of u.pillarXs) {
+    const px2 = sx + (p - u.x);
+    ctx.fillStyle = "#0e0e14";
+    ctx.fillRect(px2, top, 16, wallH);
+    ctx.fillStyle = "rgba(255,255,255,0.05)";
+    ctx.fillRect(px2, top, 3, wallH);
+    ctx.fillStyle = "rgba(0,0,0,0.5)";
+    ctx.fillRect(px2 + 13, top, 3, wallH);
+  }
+
+  // Deck overhead
+  ctx.fillStyle = "#08080c";
+  ctx.fillRect(sx, top - 34, u.width, 36);
+  ctx.fillStyle = "#1c1c24";
+  ctx.fillRect(sx, top - 34, u.width, 5);
+  ctx.fillStyle = "rgba(0,0,0,0.55)";
+  ctx.fillRect(sx, top + 2, u.width, 6);
+
+  // Strip lights under the deck
+  for (const lxw of u.lightXs) {
+    const lx = sx + (lxw - u.x);
+    ctx.save();
+    ctx.shadowColor = "rgba(190,225,255,0.9)";
+    ctx.shadowBlur = 16;
+    ctx.fillStyle = "rgba(214,235,255,0.9)";
+    ctx.fillRect(lx, top + 6, 20, 3);
+    ctx.restore();
+    const cone = ctx.createLinearGradient(0, top + 8, 0, baseY);
+    cone.addColorStop(0, "rgba(190,225,255,0.11)");
+    cone.addColorStop(1, "rgba(190,225,255,0)");
+    ctx.fillStyle = cone;
+    ctx.beginPath();
+    ctx.moveTo(lx - 2, top + 8);
+    ctx.lineTo(lx + 22, top + 8);
+    ctx.lineTo(lx + 38, baseY);
+    ctx.lineTo(lx - 18, baseY);
+    ctx.closePath();
+    ctx.fill();
+  }
+}
+
+// Small things lying on the ground: kids' chalk on the paving, ironwork and tar
+// patches out on the asphalt. Drawn flat, squashed vertically to sit on the plane.
+function drawGroundMark(ctx: CanvasRenderingContext2D, m: GroundMark, sx: number, sy: number) {
+  const s = m.size;
+  ctx.save();
+  ctx.translate(sx, sy);
+  if (m.kind === "manhole") {
+    ctx.fillStyle = "rgba(0,0,0,0.5)";
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 15 * s, 5 * s, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "rgba(140,140,150,0.3)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 12 * s, 3.8 * s, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(-9 * s, 0);
+    ctx.lineTo(9 * s, 0);
+    ctx.stroke();
+  } else if (m.kind === "patch") {
+    // Tar patch over a filled pothole
+    ctx.fillStyle = "rgba(0,0,0,0.42)";
+    ctx.beginPath();
+    ctx.ellipse(-4 * s, 0, 20 * s, 6 * s, 0.1, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(9 * s, 2 * s, 11 * s, 4 * s, -0.2, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (m.kind === "hopscotch") {
+    // Chalked hopscotch grid, flattened onto the paving
+    ctx.strokeStyle = m.color;
+    ctx.globalAlpha = 0.4;
+    ctx.lineWidth = 1.5;
+    const cw = 13 * s;
+    const chh = 5 * s;
+    for (let i = 0; i < 4; i++) {
+      ctx.strokeRect(-cw / 2, -i * chh - chh, cw, chh);
+    }
+    ctx.strokeRect(-cw, -4 * chh - chh, cw, chh);
+    ctx.strokeRect(0, -4 * chh - chh, cw, chh);
+  } else {
+    // Loose chalk scrawl
+    ctx.strokeStyle = m.color;
+    ctx.globalAlpha = 0.34;
+    ctx.lineWidth = 1.6;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(-14 * s, 0);
+    ctx.quadraticCurveTo(-5 * s, -6 * s, 2 * s, -1 * s);
+    ctx.quadraticCurveTo(9 * s, 4 * s, 15 * s, -2 * s);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(-8 * s, 4 * s);
+    ctx.lineTo(7 * s, 3 * s);
+    ctx.stroke();
+  }
+  ctx.restore();
 }
 
 function drawShadowAndSprite(
@@ -927,6 +1469,7 @@ export default function HomeGame() {
         hp: PLAYER_MAX_HP,
         invulnUntil: 0,
         hurtUntil: 0,
+        regenAt: 0,
       },
       selectedAttack: 1 as 1 | 2 | 3,
       attackReadyAt: { 1: 0, 2: 0, 3: 0 } as Record<1 | 2 | 3, number>,
@@ -974,6 +1517,7 @@ export default function HomeGame() {
       state.player.hp = Math.max(0, state.player.hp - dmg);
       state.player.invulnUntil = now + PLAYER_IFRAME_MS;
       state.player.hurtUntil = now + 220;
+      state.player.regenAt = now + HP_REGEN_DELAY_MS; // any hit restarts the clock
       state.shakeUntil = now + 240;
       state.floaters.push({
         worldX: state.player.worldX,
@@ -1162,6 +1706,7 @@ export default function HomeGame() {
       state.player.hp = PLAYER_MAX_HP;
       state.player.invulnUntil = 0;
       state.player.hurtUntil = 0;
+      state.player.regenAt = 0;
       settlePlayer();
       state.selectedAttack = 1;
       state.attackReadyAt = { 1: 0, 2: 0, 3: 0 };
@@ -1224,13 +1769,13 @@ export default function HomeGame() {
       for (let ci = 0; ci <= Math.ceil(width / CHUNK_WIDTH) + 1; ci++) {
         const ch = getChunk(ci);
         const off = ci * CHUNK_WIDTH;
-        for (const a of ch.alleys) {
-          if (off + a.x > width + 20) continue;
-          drawAlley(ctx, a, off + a.x, groundY, titleMaxH);
-        }
-        for (const f of ch.facades) {
-          if (off + f.x > width + 20) continue;
-          drawFacade(ctx, f, off + f.x, groundY, titleMaxH);
+        for (const span of ch.spans) {
+          const spanX = off + span.x;
+          if (spanX > width + 20 || spanX + span.width < -20) continue;
+          if (span.kind === "alley") drawAlley(ctx, span, spanX, groundY, titleMaxH);
+          else if (span.kind === "lot") drawLot(ctx, span, spanX, groundY, titleMaxH);
+          else if (span.kind === "underpass") drawUnderpass(ctx, span, spanX, groundY, titleMaxH);
+          else drawFacade(ctx, span, spanX, groundY, titleMaxH);
         }
       }
 
@@ -1476,10 +2021,17 @@ export default function HomeGame() {
 
       // Health
       const hpRatio = state.player.hp / PLAYER_MAX_HP;
+      const regenerating = performance.now() >= state.player.regenAt && state.player.hp < PLAYER_MAX_HP;
       ctx.fillStyle = "rgba(255,255,255,0.12)";
       ctx.fillRect(px, hpY, sw, hpH);
       ctx.fillStyle = hpRatio > 0.5 ? "#22c55e" : hpRatio > 0.25 ? "#facc15" : "#dc2626";
       ctx.fillRect(px, hpY, sw * hpRatio, hpH);
+      if (regenerating) {
+        // Pulsing edge on the bar while you are patching up
+        const glow = 0.35 + 0.35 * Math.sin(performance.now() * 0.006);
+        ctx.fillStyle = `rgba(134,239,172,${glow})`;
+        ctx.fillRect(px + sw * hpRatio - 2, hpY, 3, hpH);
+      }
       ctx.strokeStyle = "rgba(0,0,0,0.6)";
       ctx.lineWidth = 1;
       ctx.strokeRect(px, hpY, sw, hpH);
@@ -1557,6 +2109,11 @@ export default function HomeGame() {
       state.isMoving = vx !== 0 || vd !== 0;
       if (state.isMoving) state.walkTime += dt;
 
+      // Health trickles back once you have gone long enough without being hit
+      if (live && nowTs >= state.player.regenAt && state.player.hp < PLAYER_MAX_HP) {
+        state.player.hp = Math.min(PLAYER_MAX_HP, state.player.hp + HP_REGEN_PER_SEC * dt);
+      }
+
       // Move each axis on its own so obstacles block instead of stopping the
       // player dead — you slide along a car rather than sticking to it.
       const prevX = state.player.worldX;
@@ -1587,9 +2144,17 @@ export default function HomeGame() {
       cameraX = Math.max(0, state.player.worldX - anchorX);
       const horizonY = height * HORIZON_RATIO;
       const floorBottom = height;
+      const bandH = floorBottom - horizonY;
+
+      // The camera rides the bend under the player, so the street ahead and
+      // behind slopes while the player stays put on screen.
+      const bendBase = bendAt(state.player.worldX);
+      const groundYAt = (worldX: number) => horizonY + (bendAt(worldX) - bendBase);
+      /** Screen y of a point on the ground at a given world x and depth. */
+      const groundY = (worldX: number, depth: number) => groundYAt(worldX) + depth * bandH;
 
       const psx = state.player.worldX - cameraX;
-      const psy = horizonY + state.player.depth * (floorBottom - horizonY);
+      const psy = groundY(state.player.worldX, state.player.depth);
       const ps = MIN_SCALE + state.player.depth * (MAX_SCALE - MIN_SCALE);
 
       // Space: trigger on leading edge
@@ -1727,7 +2292,7 @@ export default function HomeGame() {
           parrot.phase = "idle";
         } else {
           const tSX = tgt.worldX - cameraX;
-          const tSY = horizonY + tgt.depth * (floorBottom - horizonY) - 20 * ps;
+          const tSY = groundY(tgt.worldX, tgt.depth) - 20 * ps;
           const t = Math.min(1, (nowTs - parrot.phaseStartedAt) / 500);
           parrot.pScreenX = parrot.fromX + (tSX - parrot.fromX) * t;
           parrot.pScreenY = parrot.fromY + (tSY - parrot.fromY) * t;
@@ -1746,9 +2311,9 @@ export default function HomeGame() {
           parrot.phase = "returning";
           parrot.phaseStartedAt = nowTs;
         } else {
-          const tgtGroundY = horizonY + tgt.depth * (floorBottom - horizonY);
+          const tgtGroundY = groundY(tgt.worldX, tgt.depth);
           // Lift as high as the street allows, stopping just under the horizon
-          parrot.liftHeight = Math.max(90, Math.min(PARROT_LIFT_HEIGHT, tgtGroundY - horizonY + 40));
+          parrot.liftHeight = Math.max(90, Math.min(PARROT_LIFT_HEIGHT, tgtGroundY - groundYAt(tgt.worldX) + 40));
           const t = Math.min(1, (nowTs - parrot.phaseStartedAt) / PARROT_LIFT_MS);
           tgt.grabbed = true;
           tgt.stunUntil = nowTs + 200;
@@ -1778,7 +2343,7 @@ export default function HomeGame() {
           // Parrot lets go at the apex and hovers there
           parrot.pScreenX = tgt.worldX - cameraX;
           parrot.pScreenY =
-            horizonY + tgt.depth * (floorBottom - horizonY) - parrot.liftHeight - 34 - 12 * ps - hang * 6;
+            groundY(tgt.worldX, tgt.depth) - parrot.liftHeight - 34 - 12 * ps - hang * 6;
           if (t >= 1) {
             tgt.floatY = 0;
             tgt.grabbed = false;
@@ -1815,7 +2380,7 @@ export default function HomeGame() {
         for (const e of state.enemies) {
           if (e.dying || carState.hitIds.has(e.id)) continue;
           const eesx = e.worldX - cameraX;
-          const eesy = horizonY + e.depth * (floorBottom - horizonY);
+          const eesy = groundY(e.worldX, e.depth);
           if (Math.abs(eesx - carDrawCx) < 50 && Math.abs(eesy - carDrawCy) < 100) {
             damageEnemy(e, 50);
             carState.hitIds.add(e.id);
@@ -1868,147 +2433,182 @@ export default function HomeGame() {
       ctx.fillStyle = hazeGrad;
       ctx.fillRect(0, horizonY - 220, width, 220);
 
-      // Building fronts, grounded at the back edge of the sidewalk. These scroll
-      // 1:1 with the street because that is where they physically stand.
+      // The street row, grounded at the back edge of the sidewalk and scrolling
+      // 1:1. Each block sits at the ground height of its own stretch of street,
+      // so the row steps up and down through a bend.
       const maxFacadeH = Math.max(120, horizonY - 14);
-      for (let ci = Math.max(0, Math.floor((cameraX - width) / CHUNK_WIDTH) - 1);
-           ci <= Math.floor((cameraX + width) / CHUNK_WIDTH) + 1; ci++) {
+      const firstChunk = Math.max(0, Math.floor((cameraX - width) / CHUNK_WIDTH) - 1);
+      const lastChunk = Math.floor((cameraX + width) / CHUNK_WIDTH) + 1;
+      for (let ci = firstChunk; ci <= lastChunk; ci++) {
         const ch = getChunk(ci);
         const off = ci * CHUNK_WIDTH - cameraX;
-        for (const a of ch.alleys) {
-          const ax = off + a.x;
-          if (ax + a.width < -20 || ax > width + 20) continue;
-          drawAlley(ctx, a, ax, horizonY, maxFacadeH);
-        }
-        for (const f of ch.facades) {
-          const fx2 = off + f.x;
-          if (fx2 + f.width < -20 || fx2 > width + 20) continue;
-          drawFacade(ctx, f, fx2, horizonY, maxFacadeH);
+        for (const span of ch.spans) {
+          const spanX = off + span.x;
+          if (spanX + span.width < -40 || spanX > width + 40) continue;
+          const spanBase = groundYAt(ci * CHUNK_WIDTH + span.x + span.width / 2);
+          if (span.kind === "alley") drawAlley(ctx, span, spanX, spanBase, maxFacadeH);
+          else if (span.kind === "lot") drawLot(ctx, span, spanX, spanBase, maxFacadeH);
+          else if (span.kind === "underpass") drawUnderpass(ctx, span, spanX, spanBase, maxFacadeH);
+          else drawFacade(ctx, span, spanX, spanBase, maxFacadeH);
         }
       }
 
-      // Ground base
-      ctx.fillStyle = "#09090c";
-      ctx.fillRect(0, horizonY, width, floorBottom - horizonY);
+      // Ground surfaces follow the bend, so they are drawn as sampled bands
+      // rather than plain rectangles.
+      const GROUND_SAMPLES = 28;
+      const sampleStep = width / GROUND_SAMPLES;
+      const topYs: number[] = [];
+      for (let i = 0; i <= GROUND_SAMPLES; i++) topYs.push(groundYAt(cameraX + i * sampleStep));
+      const midTop = topYs[Math.floor(GROUND_SAMPLES / 2)];
+      /** Fill the strip between two depths, following the bend across the screen. */
+      const fillBand = (dTop: number, dBot: number, style: string | CanvasGradient) => {
+        ctx.beginPath();
+        ctx.moveTo(0, topYs[0] + dTop * bandH);
+        for (let i = 1; i <= GROUND_SAMPLES; i++) ctx.lineTo(i * sampleStep, topYs[i] + dTop * bandH);
+        if (dBot === Infinity) {
+          ctx.lineTo(width, height * 2);
+          ctx.lineTo(0, height * 2);
+        } else {
+          for (let i = GROUND_SAMPLES; i >= 0; i--) ctx.lineTo(i * sampleStep, topYs[i] + dBot * bandH);
+        }
+        ctx.closePath();
+        ctx.fillStyle = style;
+        ctx.fill();
+      };
+      /** Stroke a line of constant depth along the bend. */
+      const strokeAlong = (d: number) => {
+        ctx.beginPath();
+        ctx.moveTo(0, topYs[0] + d * bandH);
+        for (let i = 1; i <= GROUND_SAMPLES; i++) ctx.lineTo(i * sampleStep, topYs[i] + d * bandH);
+        ctx.stroke();
+      };
+      const curbY = midTop + SIDEWALK_DEPTH * bandH; // representative, for gradients
+      const pavingH = SIDEWALK_DEPTH * bandH;
 
-      // Sidewalk (above the walkable road)
-      const curbY = horizonY + SIDEWALK_DEPTH * (floorBottom - horizonY);
+      fillBand(0, Infinity, "#09090c");
+
       // Paving is hazier and lighter where it recedes, darker underfoot at the
       // kerb — a wall would be lit the other way round
-      const swGrad = ctx.createLinearGradient(0, horizonY, 0, curbY);
+      const swGrad = ctx.createLinearGradient(0, midTop, 0, curbY);
       swGrad.addColorStop(0, "#3b3b43");
       swGrad.addColorStop(0.45, "#33333a");
       swGrad.addColorStop(1, "#26262c");
-      ctx.fillStyle = swGrad;
-      ctx.fillRect(0, horizonY, width, curbY - horizonY);
+      fillBand(0, SIDEWALK_DEPTH, swGrad);
       // Shadow the buildings cast across the back of the paving
-      const wallShadow = ctx.createLinearGradient(0, horizonY, 0, horizonY + (curbY - horizonY) * 0.5);
+      const wallShadow = ctx.createLinearGradient(0, midTop, 0, midTop + pavingH * 0.5);
       wallShadow.addColorStop(0, "rgba(0,0,0,0.5)");
       wallShadow.addColorStop(1, "rgba(0,0,0,0)");
-      ctx.fillStyle = wallShadow;
-      ctx.fillRect(0, horizonY, width, (curbY - horizonY) * 0.5);
+      fillBand(0, SIDEWALK_DEPTH * 0.5, wallShadow);
 
       // Paving seams. Sprites do not scale with depth, so the ground is drawn in
       // the matching oblique projection: seams all lean the same way instead of
       // converging on a vanishing point, and rows are evenly spaced rather than
-      // foreshortened. Converging lines under a fixed-size character are exactly
-      // what makes the street look wrong.
+      // foreshortened.
       ctx.strokeStyle = "rgba(0,0,0,0.22)";
       ctx.lineWidth = 1;
-      const bandH = curbY - horizonY;
-      for (const d of [0.34, 0.67]) {
-        const ty = horizonY + d * bandH;
-        ctx.beginPath(); ctx.moveTo(0, ty); ctx.lineTo(width, ty); ctx.stroke();
-      }
-      const seamLean = bandH * 0.42; // constant sideways lean over the band
+      strokeAlong(SIDEWALK_DEPTH * 0.34);
+      strokeAlong(SIDEWALK_DEPTH * 0.67);
+      const seamLean = pavingH * 0.42; // constant sideways lean over the band
       const tileW = 76;
       const tileOff = tileW - cameraX % tileW;
       for (let tx = tileOff - tileW - seamLean; tx < width + tileW + seamLean; tx += tileW) {
-        ctx.beginPath(); ctx.moveTo(tx + seamLean, horizonY); ctx.lineTo(tx, curbY); ctx.stroke();
+        const backY = groundYAt(cameraX + tx + seamLean);
+        const frontY = groundYAt(cameraX + tx) + pavingH;
+        ctx.beginPath(); ctx.moveTo(tx + seamLean, backY); ctx.lineTo(tx, frontY); ctx.stroke();
+      }
+
+      // Chalk, manholes and patches lying on the ground
+      for (let ci = firstChunk; ci <= lastChunk; ci++) {
+        const ch = getChunk(ci);
+        for (const mk of ch.marks) {
+          const mwx = ci * CHUNK_WIDTH + mk.x;
+          const mx = mwx - cameraX;
+          if (mx < -60 || mx > width + 60) continue;
+          const my = groundY(mwx, mk.depth);
+          drawGroundMark(ctx, mk, mx, my);
+        }
       }
 
       // Warm light pooling on the sidewalk out of lit doorways and alleys
       ctx.save();
-      for (let ci = Math.max(0, Math.floor((cameraX - width) / CHUNK_WIDTH) - 1);
-           ci <= Math.floor((cameraX + width) / CHUNK_WIDTH) + 1; ci++) {
+      for (let ci = firstChunk; ci <= lastChunk; ci++) {
         const ch = getChunk(ci);
         const off = ci * CHUNK_WIDTH - cameraX;
-        for (const f of ch.facades) {
-          for (const d of f.doors) {
-            if (!d.lit) continue;
-            const cxd = off + d.x + d.width / 2;
-            if (cxd < -60 || cxd > width + 60) continue;
-            // Widens toward the curb, and leans with the paving so the light
-            // lies on the same ground plane as the seams
-            const spread = d.width * 1.9;
-            ctx.beginPath();
-            ctx.moveTo(cxd - d.width * 0.5 + seamLean, horizonY);
-            ctx.lineTo(cxd + d.width * 0.5 + seamLean, horizonY);
-            ctx.lineTo(cxd + spread, curbY);
-            ctx.lineTo(cxd - spread, curbY);
-            ctx.closePath();
-            const spillGrad = ctx.createLinearGradient(0, horizonY, 0, curbY);
-            spillGrad.addColorStop(0, "rgba(253,224,71,0.17)");
-            spillGrad.addColorStop(1, "rgba(253,186,71,0)");
+        for (const span of ch.spans) {
+          if (span.kind === "facade") {
+            for (const d of span.doors) {
+              if (!d.lit) continue;
+              const cxd = off + d.x + d.width / 2;
+              if (cxd < -60 || cxd > width + 60) continue;
+              const backY = groundYAt(cameraX + cxd + seamLean);
+              const frontY = groundYAt(cameraX + cxd) + pavingH;
+              // Widens toward the curb, and leans with the paving so the light
+              // lies on the same ground plane as the seams
+              const spread = d.width * 1.9;
+              ctx.beginPath();
+              ctx.moveTo(cxd - d.width * 0.5 + seamLean, backY);
+              ctx.lineTo(cxd + d.width * 0.5 + seamLean, backY);
+              ctx.lineTo(cxd + spread, frontY);
+              ctx.lineTo(cxd - spread, frontY);
+              ctx.closePath();
+              const spillGrad = ctx.createLinearGradient(0, backY, 0, frontY);
+              spillGrad.addColorStop(0, "rgba(253,224,71,0.17)");
+              spillGrad.addColorStop(1, "rgba(253,186,71,0)");
+              ctx.fillStyle = spillGrad;
+              ctx.fill();
+            }
+          } else if (span.kind === "alley" && span.lampLit) {
+            const cxa = off + span.x + span.width / 2;
+            if (cxa < -60 || cxa > width + 60) continue;
+            const backY = groundYAt(cameraX + cxa + seamLean);
+            const frontY = groundYAt(cameraX + cxa) + pavingH;
+            const spillGrad = ctx.createLinearGradient(0, backY, 0, frontY);
+            spillGrad.addColorStop(0, "rgba(200,215,255,0.09)");
+            spillGrad.addColorStop(1, "rgba(200,215,255,0)");
             ctx.fillStyle = spillGrad;
+            ctx.beginPath();
+            ctx.moveTo(cxa - span.width * 0.5 + seamLean, backY);
+            ctx.lineTo(cxa + span.width * 0.5 + seamLean, backY);
+            ctx.lineTo(cxa + span.width * 0.7, frontY);
+            ctx.lineTo(cxa - span.width * 0.7, frontY);
+            ctx.closePath();
             ctx.fill();
           }
-        }
-        for (const a of ch.alleys) {
-          if (!a.lampLit) continue;
-          const cxa = off + a.x + a.width / 2;
-          if (cxa < -60 || cxa > width + 60) continue;
-          const spillGrad = ctx.createLinearGradient(0, horizonY, 0, curbY);
-          spillGrad.addColorStop(0, "rgba(200,215,255,0.09)");
-          spillGrad.addColorStop(1, "rgba(200,215,255,0)");
-          ctx.fillStyle = spillGrad;
-          ctx.beginPath();
-          ctx.moveTo(cxa - a.width * 0.5 + seamLean, horizonY);
-          ctx.lineTo(cxa + a.width * 0.5 + seamLean, horizonY);
-          ctx.lineTo(cxa + a.width * 0.7, curbY);
-          ctx.lineTo(cxa - a.width * 0.7, curbY);
-          ctx.closePath();
-          ctx.fill();
         }
       }
       ctx.restore();
 
       // Curb — a thin kerb top with a short face dropping to the asphalt
-      ctx.fillStyle = "#4c4c54";
-      ctx.fillRect(0, curbY - 3, width, 3); // top of the kerb, catching light
-      ctx.fillStyle = "rgba(255,255,255,0.16)";
-      ctx.fillRect(0, curbY - 3, width, 1);
-      ctx.fillStyle = "#26262c";
-      ctx.fillRect(0, curbY, width, 4); // shaded face of the step
-      ctx.fillStyle = "rgba(0,0,0,0.5)";
-      ctx.fillRect(0, curbY + 4, width, 2); // gutter shadow
+      const kerbTopD = SIDEWALK_DEPTH - 3 / bandH;
+      fillBand(kerbTopD, SIDEWALK_DEPTH, "#4c4c54");
+      fillBand(kerbTopD, kerbTopD + 1 / bandH, "rgba(255,255,255,0.16)");
+      fillBand(SIDEWALK_DEPTH, SIDEWALK_DEPTH + 4 / bandH, "#26262c"); // shaded face
+      fillBand(SIDEWALK_DEPTH + 4 / bandH, SIDEWALK_DEPTH + 6 / bandH, "rgba(0,0,0,0.5)"); // gutter
 
       // Road / asphalt
       const roadGrad = ctx.createLinearGradient(0, curbY + 5, 0, floorBottom);
       roadGrad.addColorStop(0, "#161619");
       roadGrad.addColorStop(1, "#0b0b0d");
-      ctx.fillStyle = roadGrad;
-      ctx.fillRect(0, curbY + 5, width, floorBottom - curbY - 5);
+      fillBand(SIDEWALK_DEPTH + 6 / bandH, Infinity, roadGrad);
 
-      // Road center dashed yellow line — scrolls with camera
-      const laneY = curbY + (floorBottom - curbY) * 0.5;
+      // Road center dashed yellow line — follows the bend
       ctx.strokeStyle = "rgba(220,170,0,0.5)";
       ctx.lineWidth = 3;
       ctx.setLineDash([34, 24]);
       ctx.lineDashOffset = -cameraX % 58;
-      ctx.beginPath(); ctx.moveTo(0, laneY); ctx.lineTo(width, laneY); ctx.stroke();
+      strokeAlong(SIDEWALK_DEPTH + (1 - SIDEWALK_DEPTH) * 0.5);
       ctx.setLineDash([]);
 
       // Streetlamps along the curb, spaced evenly in world space. The pools of
       // light go down here; the posts are drawn later as depth-sorted entities
       // so you can walk behind them.
       const lampGap = 340;
-      const lampScreenXs: number[] = [];
+      const lampScreens: { x: number; baseY: number }[] = [];
       for (let lampX = Math.floor(cameraX / lampGap) * lampGap; lampX < cameraX + width + lampGap; lampX += lampGap) {
         const lx = lampX - cameraX;
         if (lx < -40 || lx > width + 40) continue;
-        lampScreenXs.push(lx);
-        const baseYl = curbY + 2;
+        const baseYl = groundY(lampX, SIDEWALK_DEPTH) + 2;
+        lampScreens.push({ x: lx, baseY: baseYl });
         const pool = ctx.createRadialGradient(lx + 12, baseYl + 26, 4, lx + 12, baseYl + 26, 96);
         pool.addColorStop(0, "rgba(253,224,71,0.13)");
         pool.addColorStop(1, "rgba(253,224,71,0)");
@@ -2028,8 +2628,9 @@ export default function HomeGame() {
       const entities: Entity[] = [];
 
       // Lamp posts stand on the curb, so they sort at the curb's depth
-      for (const lx of lampScreenXs) {
-        const baseYl = curbY + 2;
+      for (const lamp of lampScreens) {
+        const lx = lamp.x;
+        const baseYl = lamp.baseY;
         const headY = baseYl - 118;
         entities.push({
           depth: SIDEWALK_DEPTH,
@@ -2062,7 +2663,7 @@ export default function HomeGame() {
           const wx = ci * CHUNK_WIDTH + prop.x;
           const esx = wx - cameraX;
           if (esx < -100 || esx > width + 100) continue;
-          const esy = horizonY + prop.depth * (floorBottom - horizonY);
+          const esy = groundY(wx, prop.depth);
           const sc = (MIN_SCALE + prop.depth * (MAX_SCALE - MIN_SCALE)) * prop.size;
           const p = prop;
           entities.push({
@@ -2175,7 +2776,7 @@ export default function HomeGame() {
       for (const enemy of state.enemies) {
         const esx = enemy.worldX - cameraX;
         if (esx < -100 || esx > width + 100) continue;
-        const esy = horizonY + enemy.depth * (floorBottom - horizonY) - enemy.floatY;
+        const esy = groundY(enemy.worldX, enemy.depth) - enemy.floatY;
         let sc = MIN_SCALE + enemy.depth * (MAX_SCALE - MIN_SCALE);
         // Fade up out of the dark doorway they stepped from
         let alpha = enemy.emerging ? Math.min(1, (nowTs - enemy.spawnedAt) / 320) : 1;
@@ -2212,7 +2813,7 @@ export default function HomeGame() {
         // Blink out over the last second of its life
         const fading = age > PICKUP_LIFETIME_MS - 1200;
         if (fading && Math.floor(age / 110) % 2 === 0) continue;
-        const usy = horizonY + pu.depth * (floorBottom - horizonY);
+        const usy = groundY(pu.worldX, pu.depth);
         const usc = MIN_SCALE + pu.depth * (MAX_SCALE - MIN_SCALE);
         const bob = Math.sin(nowTs * 0.005 + pu.worldX) * 4 * usc;
         const spin = nowTs * 0.003 + pu.worldX;
@@ -2295,7 +2896,7 @@ export default function HomeGame() {
       for (const f of state.floaters) {
         const t = (nowTs - f.startedAt) / 900;
         const fx = f.worldX - cameraX;
-        const fy = horizonY + f.depth * (floorBottom - horizonY) - 60 - t * 40;
+        const fy = groundY(f.worldX, f.depth) - 60 - t * 40;
         ctx.save();
         ctx.globalAlpha = Math.max(0, 1 - t);
         ctx.fillStyle = f.color;
