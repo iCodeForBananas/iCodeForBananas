@@ -29,6 +29,8 @@ export const LINKS: { href: string; text: string; category: Category; auth?: boo
   // Education
   { href: "/learning-progress", text: "Learning Progress", category: "Education", abbr: "LP" },
   { href: "/space-math", text: "Space Math", category: "Education", abbr: "SP" },
+  // Experiments
+  { href: "/shoot-simulator", text: "Shoot Simulator", category: "Experiments", abbr: "SS" },
 ];
 
 export default function Sidebar() {
