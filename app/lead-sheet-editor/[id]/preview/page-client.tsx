@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
+import { memo, useCallback, useEffect, useMemo, useState, use } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/app/hooks/useAuth";
@@ -18,10 +18,13 @@ import {
   Copy,
   Check,
   Link2,
+  Play,
 } from "lucide-react";
 import { type LeadSheet, type Section, migrateSection, ChordLyricLine, getPlainText, OfflineBadge } from "../../shared";
 import { cacheSheet, getCachedSheet } from "../../offlineCache";
 import { transposeText } from "../../../lib/transpose";
+import { buildTimeline, cueAt, lineKey, type Timeline } from "../../timing";
+import { PlaybackBar, usePlayback, usePlaybackKeys } from "../../PlaybackBar";
 
 // Per-song localStorage keys: leadSheet:${id}:fontScale, leadSheet:${id}:columnCount, leadSheet:${id}:columnWidthVw
 
@@ -178,6 +181,39 @@ function TransposeControl({ steps, onChange }: { steps: number; onChange: (next:
   );
 }
 
+function PlayControl({
+  hasTiming,
+  open,
+  onOpen,
+  onClose,
+}: {
+  hasTiming: boolean;
+  open: boolean;
+  onOpen: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <button
+      type='button'
+      onClick={open ? onClose : onOpen}
+      disabled={!hasTiming}
+      title={
+        hasTiming
+          ? "Follow along in time with the song"
+          : "Add @0:12 style timings to lines in the editor to enable playback"
+      }
+      className={`h-10 flex items-center gap-1.5 px-3 rounded-lg text-sm font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed print:hidden ${
+        open
+          ? "bg-yellow-400 text-black hover:bg-yellow-300"
+          : "bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200"
+      }`}
+    >
+      <Play className='w-4 h-4' />
+      {open ? "Playing" : "Play"}
+    </button>
+  );
+}
+
 function NextSongControl({
   setIds,
   pos,
@@ -201,7 +237,26 @@ function NextSongControl({
   );
 }
 
-function SheetContent({ sheet, fullscreen, columnCount, columnWidthVw, transposeSteps = 0 }: { sheet: LeadSheet; fullscreen: boolean; columnCount?: number; columnWidthVw?: number; transposeSteps?: number }) {
+const SheetContent = memo(function SheetContent({
+  sheet,
+  fullscreen,
+  columnCount,
+  columnWidthVw,
+  transposeSteps = 0,
+  timeline,
+  activeCueIndex = null,
+  onSeekToLine,
+}: {
+  sheet: LeadSheet;
+  fullscreen: boolean;
+  columnCount?: number;
+  columnWidthVw?: number;
+  transposeSteps?: number;
+  /** Present only while playback is open — otherwise the sheet renders untouched. */
+  timeline?: Timeline;
+  activeCueIndex?: number | null;
+  onSeekToLine?: (sectionIndex: number, lineIndex: number) => void;
+}) {
   const columnsActive = !!(columnCount || columnWidthVw);
   return (
     <div>
@@ -250,7 +305,7 @@ function SheetContent({ sheet, fullscreen, columnCount, columnWidthVw, transpose
             : undefined
         }
       >
-        {sheet.sections.map((section: Section) => {
+        {sheet.sections.map((section: Section, sectionIndex: number) => {
           const lines = (section.content ?? "").split("\n");
           return (
             <div key={section.id} style={{ breakInside: "avoid" }}>
@@ -263,17 +318,33 @@ function SheetContent({ sheet, fullscreen, columnCount, columnWidthVw, transpose
                 </span>
               </div>
               <div className='space-y-3 overflow-x-auto'>
-                {lines.map((line, i) =>
-                  line.trim() === "" ? (
-                    <div key={i} className='h-3' />
-                  ) : (
-                    <ChordLyricLine
+                {lines.map((line, i) => {
+                  if (line.trim() === "") return <div key={i} className='h-3' />;
+                  const cueIndex = timeline?.lineCue.get(lineKey(sectionIndex, i));
+                  const active = cueIndex !== undefined && cueIndex === activeCueIndex;
+                  return (
+                    <div
                       key={i}
-                      line={transposeSteps !== 0 ? transposeText(line, transposeSteps) : line}
-                      large={fullscreen}
-                    />
-                  ),
-                )}
+                      data-active-cue={active || undefined}
+                      onClick={
+                        cueIndex !== undefined && onSeekToLine
+                          ? () => onSeekToLine(sectionIndex, i)
+                          : undefined
+                      }
+                      className={`-mx-2 rounded px-2 transition-colors duration-150 ${
+                        active
+                          ? "bg-yellow-200/70 shadow-[inset_3px_0_0_0_#facc15] dark:bg-yellow-400/20"
+                          : ""
+                      } ${cueIndex !== undefined && onSeekToLine ? "cursor-pointer print:cursor-auto" : ""}`}
+                    >
+                      <ChordLyricLine
+                        line={transposeSteps !== 0 ? transposeText(line, transposeSteps) : line}
+                        large={fullscreen}
+                        showTime={!!timeline}
+                      />
+                    </div>
+                  );
+                })}
               </div>
               {section.notes && (
                 <p className={`mt-3 italic text-black/50 dark:text-white/40 ${fullscreen ? "text-[1em]" : "text-[0.875em]"}`}>
@@ -286,7 +357,7 @@ function SheetContent({ sheet, fullscreen, columnCount, columnWidthVw, transpose
       </div>
     </div>
   );
-}
+});
 
 export default function PreviewLeadSheet({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -304,6 +375,57 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
   const [transposeSteps, setTransposeSteps] = useState(0);
   const [setIds, setSetIds] = useState<string[] | null>(null);
   const [setPos, setSetPos] = useState(0);
+  const [playbackOpen, setPlaybackOpen] = useState(false);
+  const [follow, setFollow] = useState(true);
+  const [autoPlay, setAutoPlay] = useState(false);
+
+  // ─── Timed playback ─────────────────────────────────────────────────────────
+
+  const timeline = useMemo(() => buildTimeline(sheet?.sections ?? []), [sheet]);
+  const hasTiming = timeline.cues.length > 0;
+  const playback = usePlayback(timeline.duration);
+  const { seek, toggle, stop, time } = playback;
+  const activeCue = playbackOpen ? cueAt(timeline, time) : null;
+  const activeCueIndex = activeCue?.index ?? null;
+  usePlaybackKeys(playback, playbackOpen);
+
+  const seekToLine = useCallback(
+    (sectionIndex: number, lineIndex: number) => {
+      const cueIndex = timeline.lineCue.get(lineKey(sectionIndex, lineIndex));
+      if (cueIndex === undefined) return;
+      seek(timeline.cues[cueIndex].start);
+    },
+    [timeline, seek]
+  );
+
+  const openPlayback = () => {
+    if (!hasTiming) return;
+    setPlaybackOpen(true);
+    seek(0);
+  };
+
+  const closePlayback = () => {
+    stop();
+    setPlaybackOpen(false);
+  };
+
+  // Arriving from the editor's Play button: open the transport and start rolling
+  // once the sheet (and therefore the timeline) is actually loaded.
+  useEffect(() => {
+    if (!autoPlay || !hasTiming || playbackOpen) return;
+    setAutoPlay(false);
+    setPlaybackOpen(true);
+    seek(0);
+    toggle();
+  }, [autoPlay, hasTiming, playbackOpen, seek, toggle]);
+
+  // Keep the current line on screen. Scrolling only on cue changes means the
+  // page stays still while a line is being sung.
+  useEffect(() => {
+    if (!playbackOpen || !follow || activeCueIndex === null) return;
+    const el = document.querySelector("[data-active-cue]");
+    el?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [activeCueIndex, playbackOpen, follow]);
 
   useEffect(() => {
     if (user) loadSheet();
@@ -315,6 +437,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
     const pos = params.get("pos");
     setSetIds(set ? set.split(",").filter(Boolean) : null);
     setSetPos(pos ? parseInt(pos) || 0 : 0);
+    setAutoPlay(params.get("play") === "1");
   }, [id]);
 
   const goToNextSong = (nextId: string, nextPos: number) => {
@@ -434,6 +557,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                   <ColumnCountControl count={columnCount} onChange={updateColumnCount} />
                   <ColumnWidthControl width={columnWidthVw} onChange={updateColumnWidthVw} />
                   <TransposeControl steps={transposeSteps} onChange={setTransposeSteps} />
+                  <PlayControl hasTiming={hasTiming} open={playbackOpen} onOpen={openPlayback} onClose={closePlayback} />
                   <div className='w-px self-stretch bg-gray-300 dark:bg-gray-600' />
                   {setIds && <NextSongControl setIds={setIds} pos={setPos} onNext={goToNextSong} />}
                   <button
@@ -482,8 +606,18 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
               </div>
               </div>
               <div style={{ fontSize: `${fontScale}%` }}>
-                <SheetContent sheet={sheet} fullscreen columnCount={columnCount} columnWidthVw={columnWidthVw} transposeSteps={transposeSteps} />
+                <SheetContent
+                  sheet={sheet}
+                  fullscreen
+                  columnCount={columnCount}
+                  columnWidthVw={columnWidthVw}
+                  transposeSteps={transposeSteps}
+                  timeline={playbackOpen ? timeline : undefined}
+                  activeCueIndex={activeCueIndex}
+                  onSeekToLine={playbackOpen ? seekToLine : undefined}
+                />
               </div>
+              {playbackOpen && <div className='h-44' />}
             </div>
           </div>
         ) : (
@@ -507,6 +641,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                     <ColumnCountControl count={columnCount} onChange={updateColumnCount} />
                     <ColumnWidthControl width={columnWidthVw} onChange={updateColumnWidthVw} />
                     <TransposeControl steps={transposeSteps} onChange={setTransposeSteps} />
+                    <PlayControl hasTiming={hasTiming} open={playbackOpen} onOpen={openPlayback} onClose={closePlayback} />
                     <div className='w-px self-stretch bg-gray-300 dark:bg-gray-600' />
                     {setIds && <NextSongControl setIds={setIds} pos={setPos} onNext={goToNextSong} />}
                     <button
@@ -558,11 +693,32 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
               {/* Scrollable content */}
               <div className='flex-1 overflow-auto'>
                 <div className='w-full py-8 px-4 sm:px-0' style={{ fontSize: `${fontScale}%` }}>
-                  <SheetContent sheet={sheet} fullscreen={false} columnCount={columnCount} columnWidthVw={columnWidthVw} transposeSteps={transposeSteps} />
+                  <SheetContent
+                    sheet={sheet}
+                    fullscreen={false}
+                    columnCount={columnCount}
+                    columnWidthVw={columnWidthVw}
+                    transposeSteps={transposeSteps}
+                    timeline={playbackOpen ? timeline : undefined}
+                    activeCueIndex={activeCueIndex}
+                    onSeekToLine={playbackOpen ? seekToLine : undefined}
+                  />
+                  {playbackOpen && <div className='h-44' />}
                 </div>
               </div>
             </div>
           </div>
+        )}
+
+        {playbackOpen && (
+          <PlaybackBar
+            playback={playback}
+            timeline={timeline}
+            activeCue={activeCue}
+            follow={follow}
+            onFollowChange={setFollow}
+            onClose={closePlayback}
+          />
         )}
       </div>
     </>

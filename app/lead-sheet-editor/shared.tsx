@@ -2,6 +2,7 @@
 
 import { WifiOff } from "lucide-react";
 import ChordHoverPopover from "../components/ChordHoverPopover";
+import { formatTime, parseTimeMarker, stripTimeMarker } from "./timing";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -126,25 +127,38 @@ function parseChordProLine(line: string): Segment[] {
 export function ChordLyricLine({
   line,
   large = false,
+  showTime = false,
 }: {
   line: string;
   large?: boolean;
+  /** Render the line's `@m:ss` cue as a chip. Off everywhere the timing is noise. */
+  showTime?: boolean;
 }) {
-  const segments = parseChordProLine(line);
+  const marker = parseTimeMarker(line);
+  const body = marker ? stripTimeMarker(line) : line;
+  const segments = parseChordProLine(body);
   const hasChords = segments.some((s) => s.chord);
+
+  const timeChip = showTime && marker && (
+    <span className="mr-2 select-none rounded bg-black/5 px-1.5 py-0.5 align-middle font-mono text-[0.7em] text-black/40 dark:bg-white/10 dark:text-white/40 print:hidden">
+      {formatTime(marker.start)}
+    </span>
+  );
 
   if (!hasChords) {
     return (
       <p
         className={`leadsheet-lyric font-mono whitespace-pre ${large ? "text-[1.5em]" : "text-[1em]"} leading-relaxed text-black dark:text-white`}
       >
-        {line || "\u00A0"}
+        {timeChip}
+        {body || "\u00A0"}
       </p>
     );
   }
 
   return (
     <p className={`font-mono whitespace-pre-wrap ${large ? "text-[1.5em]" : "text-[1em]"} leading-relaxed`}>
+      {timeChip}
       {segments.map((seg, i) => (
         <span key={i}>
           {seg.chord && (

@@ -4,9 +4,11 @@ import { useState, useEffect, useLayoutEffect, useMemo, useRef, use } from "reac
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/app/hooks/useAuth";
-import { Save, ArrowLeft, Eye, Replace, X, Sparkles } from "lucide-react";
+import { Save, ArrowLeft, Eye, Replace, X, Sparkles, Play, Timer } from "lucide-react";
 import { type LeadSheet, type Section, type SectionType, migrateSection, OfflineBadge } from "../../shared";
 import { cacheSheet, getCachedSheet } from "../../offlineCache";
+import { parseTimeMarker } from "../../timing";
+import TapTiming from "../../TapTiming";
 
 // ─── Text ↔ LeadSheet ─────────────────────────────────────────────────────────
 
@@ -198,12 +200,14 @@ Key: G  Tempo: 120
 Performance notes (capo, feel, strumming pattern)...
 
 [Verse 1]
-[G]Driving down an [D]empty road, [Em]windows down and [C]radio on
-[G]Nothing but the [D]open sky as [Em]far as I can [C]see
+@0:12 [G]Driving down an [D]empty road, [Em]windows down and [C]radio on
+@0:18 [G]Nothing but the [D]open sky as [Em]far as I can [C]see
 > Use light fingerpicking
 
 [Chorus]
-[G]Take me [D]somewhere [Em]new`;
+@0:24 [G]Take me [D]somewhere [Em]new
+
+Start a line with @m:ss to say when it comes in — hit Play to follow along.`;
 
 // ─── Edit page ────────────────────────────────────────────────────────────────
 
@@ -222,6 +226,7 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
   const [findChord, setFindChord] = useState("");
   const [replaceWith, setReplaceWith] = useState("");
   const [replaceResult, setReplaceResult] = useState("");
+  const [tapOpen, setTapOpen] = useState(false);
   const sbRef = useRef<ReturnType<typeof createClient> | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -230,6 +235,10 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
   const chordsInSheet = useMemo(
     () => (replaceOpen ? collectChords(rawText) : []),
     [replaceOpen, rawText]
+  );
+  const hasTiming = useMemo(
+    () => rawText.split("\n").some((line) => parseTimeMarker(line) !== null),
+    [rawText]
   );
   const findCount = chordsInSheet.find((c) => c.chord === findChord)?.count ?? 0;
   const newChord = replaceWith.trim().replace(/^\[|\]$/g, "").trim();
@@ -372,6 +381,12 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
     router.push(`/lead-sheet-editor/${id}/preview`);
   }
 
+  // Play always runs against the saved sheet, so timings typed a second ago count.
+  async function handlePlay() {
+    if (dirty) await saveSheet();
+    router.push(`/lead-sheet-editor/${id}/preview?play=1`);
+  }
+
   function handleBack() {
     if (dirty && !confirm("Discard unsaved changes?")) return;
     router.push("/lead-sheet-editor");
@@ -433,6 +448,27 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
                 >
                   <Replace className="w-4 h-4" />
                   Replace Chord
+                </button>
+                <button
+                  onClick={() => setTapOpen(true)}
+                  title="Tap along with the song to time each line"
+                  className="flex items-center gap-1.5 rounded border border-[#373A40]/30 dark:border-white/30 px-3 py-2 text-sm font-medium text-black dark:text-white/80 hover:border-black dark:hover:border-white hover:bg-black hover:text-yellow-400 transition-colors"
+                >
+                  <Timer className="w-4 h-4" />
+                  Tap Timing
+                </button>
+                <button
+                  onClick={handlePlay}
+                  disabled={!hasTiming}
+                  title={
+                    hasTiming
+                      ? "Play through the sheet, highlighting each line in time"
+                      : "Time some lines first — use Tap Timing, or type @0:12 at the start of a line"
+                  }
+                  className="flex items-center gap-1.5 rounded border border-[#373A40]/30 dark:border-white/30 px-3 py-2 text-sm font-medium text-black dark:text-white/80 hover:border-black dark:hover:border-white hover:bg-black hover:text-yellow-400 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                >
+                  <Play className="w-4 h-4" />
+                  Play
                 </button>
                 <button
                   onClick={handlePreview}
@@ -559,6 +595,10 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
           </div>
         </div>
       </main>
+
+      {tapOpen && (
+        <TapTiming rawText={rawText} onApply={handleChange} onClose={() => setTapOpen(false)} />
+      )}
     </div>
   );
 }
