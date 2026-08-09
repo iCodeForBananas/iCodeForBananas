@@ -1315,30 +1315,6 @@ const VisualScaffolding = ({ hint }: { hint: Problem["visualHint"] }) => {
     );
   }
 
-  if (hint.operator === "word-add" || hint.operator === "word-sub") {
-    const isAdd = hint.operator === "word-add";
-    return (
-      <div className='flex flex-col items-center gap-2 p-3 bg-white/10 rounded-2xl border border-white/20'>
-        <div className='flex items-center gap-3 flex-wrap justify-center'>
-          <div className='flex flex-wrap gap-1 max-w-[100px] justify-center'>
-            {Array.from({ length: hint.left }).map((_, i) => (
-              <div key={i} className='w-3 h-3 bg-orange-400 rounded-full' />
-            ))}
-          </div>
-          <span className='text-xl font-bold text-white'>{isAdd ? "+" : "−"}</span>
-          <div className='flex flex-wrap gap-1 max-w-[100px] justify-center'>
-            {Array.from({ length: hint.right }).map((_, i) => (
-              <div key={i} className='w-3 h-3 bg-purple-400 rounded-full' />
-            ))}
-          </div>
-        </div>
-        <p className='text-[10px] text-blue-200'>
-          {isAdd ? "Count all the dots together!" : "Start with the first group and take away!"}
-        </p>
-      </div>
-    );
-  }
-
   if (hint.operator === "comparison") {
     return (
       <div className='flex flex-col items-center gap-2 p-3 bg-white/10 rounded-2xl border border-white/20'>
@@ -1378,34 +1354,6 @@ const VisualScaffolding = ({ hint }: { hint: Problem["visualHint"] }) => {
       <div className='flex flex-col items-center gap-2 p-3 bg-white/10 rounded-2xl border border-white/20'>
         <FractionBar hint={hint.extra ?? "1/2"} />
         <p className='text-[10px] text-blue-200'>Purple = one equal part of the whole</p>
-      </div>
-    );
-  }
-
-  if (hint.operator === "three-add") {
-    const c = parseInt(hint.extra ?? "0", 10);
-    return (
-      <div className='flex flex-col items-center gap-2 p-3 bg-white/10 rounded-2xl border border-white/20'>
-        <div className='flex items-center gap-2 flex-wrap justify-center'>
-          <div className='flex flex-wrap gap-1 max-w-[60px] justify-center'>
-            {Array.from({ length: hint.left }).map((_, i) => (
-              <div key={i} className='w-3 h-3 bg-orange-400 rounded-full' />
-            ))}
-          </div>
-          <span className='text-lg font-bold text-white'>+</span>
-          <div className='flex flex-wrap gap-1 max-w-[60px] justify-center'>
-            {Array.from({ length: hint.right }).map((_, i) => (
-              <div key={i} className='w-3 h-3 bg-purple-400 rounded-full' />
-            ))}
-          </div>
-          <span className='text-lg font-bold text-white'>+</span>
-          <div className='flex flex-wrap gap-1 max-w-[60px] justify-center'>
-            {Array.from({ length: c }).map((_, i) => (
-              <div key={i} className='w-3 h-3 bg-emerald-400 rounded-full' />
-            ))}
-          </div>
-        </div>
-        <p className='text-[10px] text-blue-200'>Count all three groups together!</p>
       </div>
     );
   }
@@ -1619,12 +1567,7 @@ const VisualScaffolding = ({ hint }: { hint: Problem["visualHint"] }) => {
   if (hint.operator === "odd-even") {
     return (
       <div className='flex flex-col items-center gap-2 p-3 bg-white/10 rounded-2xl border border-white/20'>
-        <div className='flex flex-wrap gap-1 max-w-[180px] justify-center'>
-          {Array.from({ length: hint.left }).map((_, i) => (
-            <div key={i} className={`w-3 h-3 rounded-full ${i % 2 === 0 ? "bg-orange-400" : "bg-purple-400"}`} />
-          ))}
-        </div>
-        <p className='text-[10px] text-blue-200'>Pair them up — does one have a partner?</p>
+        <p className='text-[10px] text-blue-200'>Pair the number up — does one have a partner left over?</p>
       </div>
     );
   }
@@ -1816,27 +1759,8 @@ const VisualScaffolding = ({ hint }: { hint: Problem["visualHint"] }) => {
     );
   }
 
-  // Default: addition / subtraction dots
-  return (
-    <div className='flex flex-col items-center gap-2 p-3 bg-white/10 rounded-2xl border border-white/20'>
-      <div className='flex items-center gap-3 flex-wrap justify-center'>
-        <div className='flex flex-wrap gap-1 max-w-[100px] justify-center'>
-          {Array.from({ length: hint.left }).map((_, i) => (
-            <div key={i} className='w-3 h-3 bg-orange-400 rounded-full shadow-lg shadow-orange-500/20' />
-          ))}
-        </div>
-        <span className='text-xl font-bold text-white'>{hint.operator === "+" ? "+" : "−"}</span>
-        <div className='flex flex-wrap gap-1 max-w-[100px] justify-center'>
-          {Array.from({ length: hint.right }).map((_, i) => (
-            <div key={i} className='w-3 h-3 bg-purple-400 rounded-full shadow-lg shadow-purple-500/20' />
-          ))}
-        </div>
-      </div>
-      <p className='text-[10px] text-blue-200'>
-        {hint.operator === "+" ? "Count all the dots together!" : "Start with the first group and take away!"}
-      </p>
-    </div>
-  );
+  // Plain addition / subtraction gets no scaffolding — counting dots gave the answer away.
+  return null;
 };
 
 // ─── Audio ────────────────────────────────────────────────────────────────────
@@ -2401,7 +2325,7 @@ export default function SpaceMathPage() {
                     </button>
                   )}
                 </div>
-                <div className='flex justify-center mb-2 shrink-0'>
+                <div className='flex justify-center mb-2 shrink-0 empty:hidden'>
                   <VisualScaffolding hint={problem.visualHint} />
                 </div>
                 <div className={`grid gap-2 sm:gap-3 flex-1 min-h-0 ${isThreeOptions ? "grid-cols-3" : "grid-cols-2"}`}>
