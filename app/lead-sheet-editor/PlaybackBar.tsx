@@ -9,6 +9,10 @@ const NUDGE_SECONDS = 5;
 export interface Playback {
   time: number;
   playing: boolean;
+  /** How long the transport runs — the timed lines, or the video when one drives it. */
+  duration: number;
+  /** False while a media source is still loading; the controls do nothing until then. */
+  ready: boolean;
   toggle: () => void;
   seek: (seconds: number) => void;
   nudge: (seconds: number) => void;
@@ -82,7 +86,7 @@ export function usePlayback(duration: number): Playback {
   const nudge = useCallback((seconds: number) => seek(timeRef.current + seconds), [seek]);
   const stop = useCallback(() => setPlaying(false), []);
 
-  return { time, playing, toggle, seek, nudge, restart, stop };
+  return { time, playing, duration, ready: true, toggle, seek, nudge, restart, stop };
 }
 
 /** Space / arrows drive the transport, except while the user is typing. */
@@ -125,7 +129,10 @@ export function PlaybackBar({
 }) {
   const { time, playing } = playback;
   const upNext = nextCueAfter(timeline, time);
-  const progress = timeline.duration > 0 ? (time / timeline.duration) * 100 : 0;
+  // The video, when one is driving, usually outlasts the last timed line — the
+  // scrubber has to span the whole thing or the tail is unreachable.
+  const duration = playback.duration || timeline.duration;
+  const progress = duration > 0 ? (time / duration) * 100 : 0;
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-[60] border-t border-gray-200 bg-white/95 backdrop-blur dark:border-neutral-700 dark:bg-black/95 print:hidden">
@@ -144,13 +151,13 @@ export function PlaybackBar({
               <span
                 key={cue.index}
                 className="pointer-events-none absolute top-1/2 h-2 w-px -translate-y-1/2 bg-gray-400/60 dark:bg-neutral-500"
-                style={{ left: `${(cue.start / (timeline.duration || 1)) * 100}%` }}
+                style={{ left: `${(cue.start / (duration || 1)) * 100}%` }}
               />
             ))}
             <input
               type="range"
               min={0}
-              max={Math.max(timeline.duration, 0.1)}
+              max={Math.max(duration, 0.1)}
               step={0.1}
               value={time}
               onChange={(e) => playback.seek(parseFloat(e.target.value))}
@@ -159,7 +166,7 @@ export function PlaybackBar({
             />
           </div>
           <span className="w-12 shrink-0 text-right font-mono text-xs text-gray-500 dark:text-neutral-400">
-            {formatTime(timeline.duration)}
+            {formatTime(duration)}
           </span>
         </div>
 
@@ -183,11 +190,12 @@ export function PlaybackBar({
           <button
             type="button"
             onClick={playback.toggle}
+            disabled={!playback.ready}
             aria-label={playing ? "Pause" : "Play"}
-            className="flex h-10 items-center gap-2 rounded-lg bg-black px-5 text-sm font-medium text-yellow-400 transition-colors duration-150 hover:bg-black/80"
+            className="flex h-10 items-center gap-2 rounded-lg bg-black px-5 text-sm font-medium text-yellow-400 transition-colors duration-150 hover:bg-black/80 disabled:cursor-not-allowed disabled:opacity-40"
           >
             {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-            {playing ? "Pause" : "Play"}
+            {!playback.ready ? "Loading" : playing ? "Pause" : "Play"}
           </button>
           <button
             type="button"

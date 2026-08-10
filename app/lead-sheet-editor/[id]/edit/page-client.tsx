@@ -207,7 +207,9 @@ Performance notes (capo, feel, strumming pattern)...
 [Chorus]
 @0:24 [G]Take me [D]somewhere [Em]new
 
-Start a line with @m:ss to say when it comes in — hit Play to follow along.`;
+Start a line with @m:ss to say when it comes in — hit Play to follow along.
+Paste a YouTube link anywhere in the song and Play rides the recording instead of a
+stopwatch. Add ?t=15 to the link if the song only starts 15 seconds into the video.`;
 
 // ─── Edit page ────────────────────────────────────────────────────────────────
 

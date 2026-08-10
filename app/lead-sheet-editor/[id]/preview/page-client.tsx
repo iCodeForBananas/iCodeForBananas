@@ -19,6 +19,7 @@ import {
   Check,
   Link2,
   Play,
+  Youtube,
 } from "lucide-react";
 import {
   type LeadSheet,
@@ -34,6 +35,8 @@ import { cacheSheet, getCachedSheet } from "../../offlineCache";
 import { transposeText } from "../../../lib/transpose";
 import { buildTimeline, cueAt, lineKey, type Timeline } from "../../timing";
 import { PlaybackBar, usePlayback, usePlaybackKeys } from "../../PlaybackBar";
+import { findYouTubeLink } from "../../youtube";
+import { YouTubePanel, useYouTubePlayback } from "../../YouTubePlayer";
 import {
   MetronomeControl,
   MetronomeOverlay,
@@ -211,11 +214,14 @@ function TransposeControl({ steps, onChange }: { steps: number; onChange: (next:
 
 function PlayControl({
   hasTiming,
+  hasVideo,
   open,
   onOpen,
   onClose,
 }: {
   hasTiming: boolean;
+  /** A YouTube link in the song — the transport rides the recording instead of a clock. */
+  hasVideo: boolean;
   open: boolean;
   onOpen: () => void;
   onClose: () => void;
@@ -226,9 +232,11 @@ function PlayControl({
       onClick={open ? onClose : onOpen}
       disabled={!hasTiming}
       title={
-        hasTiming
-          ? "Follow along in time with the song"
-          : "Add @0:12 style timings to lines in the editor to enable playback"
+        !hasTiming
+          ? "Add @0:12 style timings to lines in the editor to enable playback"
+          : hasVideo
+            ? "Play the linked YouTube video and follow along with it"
+            : "Follow along in time with the song"
       }
       className={`h-10 flex items-center gap-1.5 px-3 rounded-lg text-sm font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed print:hidden ${
         open
@@ -236,8 +244,8 @@ function PlayControl({
           : "bg-gray-100 dark:bg-neutral-800 hover:bg-gray-200 dark:hover:bg-neutral-700 text-gray-700 dark:text-neutral-200"
       }`}
     >
-      <Play className='w-4 h-4' />
-      {open ? "Playing" : "Play"}
+      {hasVideo ? <Youtube className='w-4 h-4' /> : <Play className='w-4 h-4' />}
+      {open ? "Playing" : hasVideo ? "Play Video" : "Play"}
     </button>
   );
 }
@@ -420,7 +428,15 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
 
   const timeline = useMemo(() => buildTimeline(sheet?.sections ?? []), [sheet]);
   const hasTiming = timeline.cues.length > 0;
-  const playback = usePlayback(timeline.duration);
+
+  // A YouTube link in the song promotes the recording to the transport's clock.
+  // The stopwatch stays wired up underneath as the fallback for a video that
+  // won't embed.
+  const videoLink = useMemo(() => findYouTubeLink(sheet), [sheet]);
+  const stopwatch = usePlayback(timeline.duration);
+  const video = useYouTubePlayback(playbackOpen ? videoLink : null, timeline.duration);
+  const videoDrivesPlayback = !!videoLink && video.status !== "error";
+  const playback = videoDrivesPlayback ? video.playback : stopwatch;
   const { seek, toggle, stop, time } = playback;
   const activeCue = playbackOpen ? cueAt(timeline, time) : null;
   const activeCueIndex = activeCue?.index ?? null;
@@ -446,15 +462,20 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
     setPlaybackOpen(false);
   };
 
-  // Arriving from the editor's Play button: open the transport and start rolling
-  // once the sheet (and therefore the timeline) is actually loaded.
+  // Arriving from the editor's Play button: open the transport once the sheet
+  // (and therefore the timeline) is loaded, then start rolling as soon as the
+  // clock is live — with a video, that's once the player has loaded.
   useEffect(() => {
-    if (!autoPlay || !hasTiming || playbackOpen) return;
+    if (!autoPlay || !hasTiming) return;
+    if (!playbackOpen) {
+      setPlaybackOpen(true);
+      seek(0);
+      return;
+    }
+    if (!playback.ready) return;
     setAutoPlay(false);
-    setPlaybackOpen(true);
-    seek(0);
     toggle();
-  }, [autoPlay, hasTiming, playbackOpen, seek, toggle]);
+  }, [autoPlay, hasTiming, playbackOpen, playback.ready, seek, toggle]);
 
   // Keep the current line on screen. Scrolling only on cue changes means the
   // page stays still while a line is being sung.
@@ -633,7 +654,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                     running={metronomeOn}
                     onToggle={() => setMetronomeOn((on) => !on)}
                   />
-                  <PlayControl hasTiming={hasTiming} open={playbackOpen} onOpen={openPlayback} onClose={closePlayback} />
+                  <PlayControl hasTiming={hasTiming} hasVideo={videoDrivesPlayback} open={playbackOpen} onOpen={openPlayback} onClose={closePlayback} />
                   <div className='w-px self-stretch bg-gray-300 dark:bg-neutral-600' />
                   {setIds && <NextSongControl setIds={setIds} pos={setPos} onNext={goToNextSong} />}
                   <button
@@ -725,7 +746,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                     running={metronomeOn}
                     onToggle={() => setMetronomeOn((on) => !on)}
                   />
-                    <PlayControl hasTiming={hasTiming} open={playbackOpen} onOpen={openPlayback} onClose={closePlayback} />
+                    <PlayControl hasTiming={hasTiming} hasVideo={videoDrivesPlayback} open={playbackOpen} onOpen={openPlayback} onClose={closePlayback} />
                     <div className='w-px self-stretch bg-gray-300 dark:bg-neutral-600' />
                     {setIds && <NextSongControl setIds={setIds} pos={setPos} onNext={goToNextSong} />}
                     <button
@@ -801,6 +822,10 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
             running={metronomeOn}
             lifted={playbackOpen}
           />
+        )}
+
+        {playbackOpen && videoLink && (
+          <YouTubePanel link={videoLink} status={video.status} mount={video.mount} />
         )}
 
         {playbackOpen && (
