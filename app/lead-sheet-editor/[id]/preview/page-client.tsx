@@ -44,6 +44,7 @@ import {
   DEFAULT_BEATS_PER_BAR,
   DEFAULT_BPM,
 } from "../../Metronome";
+import { DrumMachineControl } from "../../DrumMachine";
 
 // Per-song localStorage keys: leadSheet:${id}:fontScale, leadSheet:${id}:columnCount,
 // leadSheet:${id}:columnWidthVw, leadSheet:${id}:beatsPerBar
@@ -419,6 +420,9 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
   const [bpm, setBpm] = useState(DEFAULT_BPM);
   const [beatsPerBar, setBeatsPerBar] = useState(() => loadBeatsPerBar(id));
   const [metronomeOn, setMetronomeOn] = useState(false);
+  const [drumRunning, setDrumRunning] = useState(false);
+  const [drumPatternIdx, setDrumPatternIdx] = useState(0);
+  const [drumVolume, setDrumVolume] = useState(0.8);
   const bpmSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Printing to PDF should offer the song's name, not "Preview Lead Sheet".
@@ -654,6 +658,15 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                     running={metronomeOn}
                     onToggle={() => setMetronomeOn((on) => !on)}
                   />
+                  <DrumMachineControl
+                    bpm={bpm}
+                    running={drumRunning}
+                    onToggle={() => setDrumRunning((r) => !r)}
+                    patternIdx={drumPatternIdx}
+                    onPatternChange={setDrumPatternIdx}
+                    volume={drumVolume}
+                    onVolumeChange={setDrumVolume}
+                  />
                   <PlayControl hasTiming={hasTiming} hasVideo={videoDrivesPlayback} open={playbackOpen} onOpen={openPlayback} onClose={closePlayback} />
                   <div className='w-px self-stretch bg-gray-300 dark:bg-neutral-600' />
                   {setIds && <NextSongControl setIds={setIds} pos={setPos} onNext={goToNextSong} />}
@@ -745,6 +758,15 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                     onBeatsPerBarChange={updateBeatsPerBar}
                     running={metronomeOn}
                     onToggle={() => setMetronomeOn((on) => !on)}
+                  />
+                  <DrumMachineControl
+                    bpm={bpm}
+                    running={drumRunning}
+                    onToggle={() => setDrumRunning((r) => !r)}
+                    patternIdx={drumPatternIdx}
+                    onPatternChange={setDrumPatternIdx}
+                    volume={drumVolume}
+                    onVolumeChange={setDrumVolume}
                   />
                     <PlayControl hasTiming={hasTiming} hasVideo={videoDrivesPlayback} open={playbackOpen} onOpen={openPlayback} onClose={closePlayback} />
                     <div className='w-px self-stretch bg-gray-300 dark:bg-neutral-600' />
