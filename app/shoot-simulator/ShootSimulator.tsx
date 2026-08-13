@@ -2842,44 +2842,58 @@ export default function ShootSimulator() {
                     c.stroke();
                   }
                 } else if (p.type === "dumpster") {
-                  // Main body (wider box)
-                  c.fillRect(-28 * s, -36 * s, 56 * s, 36 * s);
-                  // Darker bottom strip
-                  c.fillStyle = "rgba(0,0,0,0.35)";
-                  c.fillRect(-28 * s, -8 * s, 56 * s, 8 * s);
-                  // Lid panels (two halves, angled)
-                  const lidColor = c.fillStyle = p.color;
-                  void lidColor;
+                  // Lid top surface — two flat panels seen from slightly above
                   c.fillStyle = p.color;
-                  // Left lid half
-                  c.beginPath();
-                  c.moveTo(-28 * s, -36 * s);
-                  c.lineTo(0, -44 * s);
-                  c.lineTo(0, -36 * s);
-                  c.closePath();
-                  c.fill();
-                  // Right lid half
-                  c.fillStyle = "rgba(0,0,0,0.15)";
-                  c.beginPath();
-                  c.moveTo(28 * s, -36 * s);
-                  c.lineTo(0, -44 * s);
-                  c.lineTo(0, -36 * s);
-                  c.closePath();
-                  c.fill();
-                  // Reset to prop color for outlines
+                  c.fillRect(-28 * s, -45 * s, 27 * s, 9 * s); // left panel
+                  c.fillStyle = "rgba(0,0,0,0.16)";
+                  c.fillRect(1 * s, -45 * s, 27 * s, 9 * s);   // right panel (shadowed)
+                  // Lid front face (visible thickness)
                   c.fillStyle = p.color;
-                  // Side handles
-                  c.strokeStyle = "rgba(0,0,0,0.5)";
-                  c.lineWidth = 2 * s;
-                  c.strokeRect(-28 * s, -36 * s, 56 * s, 36 * s);
-                  // Handle bars on sides
-                  c.strokeStyle = "#888";
-                  c.lineWidth = 3 * s;
-                  c.strokeRect(-24 * s, -28 * s, 8 * s, 10 * s);
-                  c.strokeRect(16 * s, -28 * s, 8 * s, 10 * s);
-                  // Graffiti stripe
-                  c.fillStyle = "rgba(250,204,21,0.18)";
-                  c.fillRect(-20 * s, -26 * s, 14 * s, 4 * s);
+                  c.fillRect(-28 * s, -36 * s, 56 * s, 6 * s);
+                  // Top edge highlight
+                  c.strokeStyle = "rgba(255,255,255,0.1)";
+                  c.lineWidth = s;
+                  c.beginPath();
+                  c.moveTo(-28 * s, -45 * s);
+                  c.lineTo(28 * s, -45 * s);
+                  c.stroke();
+                  // Center hinge gap
+                  c.strokeStyle = "rgba(0,0,0,0.7)";
+                  c.lineWidth = 2.5 * s;
+                  c.lineCap = "butt";
+                  c.beginPath();
+                  c.moveTo(0, -45 * s);
+                  c.lineTo(0, -30 * s);
+                  c.stroke();
+                  // Body
+                  c.fillStyle = p.color;
+                  c.fillRect(-28 * s, -30 * s, 56 * s, 30 * s);
+                  // Lower darker strip
+                  c.fillStyle = "rgba(0,0,0,0.22)";
+                  c.fillRect(-28 * s, -10 * s, 56 * s, 10 * s);
+                  // Horizontal rib
+                  c.strokeStyle = "rgba(0,0,0,0.28)";
+                  c.lineWidth = 1.5 * s;
+                  c.beginPath();
+                  c.moveTo(-28 * s, -18 * s);
+                  c.lineTo(28 * s, -18 * s);
+                  c.stroke();
+                  // Body outline
+                  c.strokeStyle = "rgba(0,0,0,0.55)";
+                  c.lineWidth = 1.5 * s;
+                  c.strokeRect(-28 * s, -30 * s, 56 * s, 30 * s);
+                  // Lift pockets (slots for garbage truck forks)
+                  c.strokeStyle = "#3a3a3a";
+                  c.lineWidth = 2.5 * s;
+                  c.strokeRect(-28 * s, -24 * s, 10 * s, 8 * s);
+                  c.strokeRect(18 * s, -24 * s, 10 * s, 8 * s);
+                  // Wheels
+                  c.fillStyle = "#1a1a1a";
+                  c.beginPath(); c.arc(-18 * s, 0, 4.5 * s, 0, Math.PI * 2); c.fill();
+                  c.beginPath(); c.arc(18 * s, 0, 4.5 * s, 0, Math.PI * 2); c.fill();
+                  c.fillStyle = "#333";
+                  c.beginPath(); c.arc(-18 * s, 0, 2.5 * s, 0, Math.PI * 2); c.fill();
+                  c.beginPath(); c.arc(18 * s, 0, 2.5 * s, 0, Math.PI * 2); c.fill();
                 } else {
                   // Parked car (polygon)
                   // Body
