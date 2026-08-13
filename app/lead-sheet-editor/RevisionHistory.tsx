@@ -138,6 +138,7 @@ export function RevisionHistory({
   const load = useCallback(async () => {
     setLoading(true);
     const sb = createClient();
+    if (!sb) { setLoading(false); return; }
     const { data } = await sb
       .from("lead_sheet_revisions")
       .select("id, raw_text, created_at")
