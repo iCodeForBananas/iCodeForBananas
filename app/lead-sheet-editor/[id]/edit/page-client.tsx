@@ -4,7 +4,8 @@ import { useState, useEffect, useMemo, useRef, use } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/app/hooks/useAuth";
-import { Save, ArrowLeft, Eye, Replace, X, Sparkles, Play, Timer } from "lucide-react";
+import { Save, ArrowLeft, Eye, Replace, X, Sparkles, Play, Timer, Clock } from "lucide-react";
+import { RevisionHistory } from "../../RevisionHistory";
 import { type LeadSheet, type Section, type SectionType, migrateSection, OfflineBadge } from "../../shared";
 import { cacheSheet, getCachedSheet } from "../../offlineCache";
 import { parseTimeMarker } from "../../timing";
@@ -229,8 +230,11 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
   const [replaceWith, setReplaceWith] = useState("");
   const [replaceResult, setReplaceResult] = useState("");
   const [tapOpen, setTapOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const sbRef = useRef<ReturnType<typeof createClient> | null>(null);
   const replaceInputRef = useRef<HTMLInputElement>(null);
+  /** Timestamp of last revision snapshot, to throttle auto-save revisions */
+  const lastRevisionAt = useRef<number>(0);
 
   const chordsInSheet = useMemo(
     () => (replaceOpen ? collectChords(rawText) : []),
@@ -285,7 +289,7 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
     setLoading(false);
   }
 
-  async function saveSheet() {
+  async function saveSheet(manual = false) {
     if (!sheetId) return;
     setSaving(true);
     setSaveError(false);
@@ -305,6 +309,30 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
       if (error) throw error;
       setDirty(false);
       setSaveError(false);
+
+      // Save a revision snapshot:
+      //   • always on manual saves
+      //   • on auto-saves, at most once every 5 minutes
+      const now = Date.now();
+      const shouldSnapshot = manual || (now - lastRevisionAt.current > 5 * 60 * 1000);
+      if (shouldSnapshot) {
+        lastRevisionAt.current = now;
+        const sb = getSb();
+        // Insert new revision
+        await sb
+          .from("lead_sheet_revisions")
+          .insert({ lead_sheet_id: sheetId, raw_text: rawText });
+        // Prune to 100 most recent
+        const { data: all } = await sb
+          .from("lead_sheet_revisions")
+          .select("id")
+          .eq("lead_sheet_id", sheetId)
+          .order("created_at", { ascending: false });
+        if (all && all.length > 100) {
+          const toDelete = all.slice(100).map((r: { id: string }) => r.id);
+          await sb.from("lead_sheet_revisions").delete().in("id", toDelete);
+        }
+      }
     } catch {
       setSaveError(true);
     } finally {
@@ -473,11 +501,19 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
                   <Eye className="w-4 h-4" />
                   Preview
                 </button>
+                <button
+                  onClick={() => setHistoryOpen(true)}
+                  className="flex items-center gap-1.5 rounded border border-[#373A40]/30 dark:border-white/30 px-3 py-2 text-sm font-medium text-black dark:text-white/80 hover:border-black dark:hover:border-white hover:bg-black hover:text-yellow-400 transition-colors"
+                  title="View revision history"
+                >
+                  <Clock className="w-4 h-4" />
+                  History
+                </button>
 
                 <div className="w-px self-stretch bg-black/20 dark:bg-white/20" />
 
                 <button
-                  onClick={saveSheet}
+                  onClick={() => saveSheet(true)}
                   disabled={!dirty || saving}
                   className="flex items-center gap-2 rounded bg-black px-4 py-2 text-sm font-medium text-yellow-400 hover:bg-black/80 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                 >
@@ -591,6 +627,15 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
 
       {tapOpen && (
         <TapTiming rawText={rawText} onApply={handleChange} onClose={() => setTapOpen(false)} />
+      )}
+
+      {historyOpen && sheetId && (
+        <RevisionHistory
+          sheetId={sheetId}
+          currentRawText={rawText}
+          onRestore={(text) => { handleChange(text); }}
+          onClose={() => setHistoryOpen(false)}
+        />
       )}
     </div>
   );
