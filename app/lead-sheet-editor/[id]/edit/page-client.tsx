@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useLayoutEffect, useMemo, useRef, use } from "react";
+import { useState, useEffect, useMemo, useRef, use } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/app/hooks/useAuth";
@@ -230,8 +230,6 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
   const [replaceResult, setReplaceResult] = useState("");
   const [tapOpen, setTapOpen] = useState(false);
   const sbRef = useRef<ReturnType<typeof createClient> | null>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const replaceInputRef = useRef<HTMLInputElement>(null);
 
   const chordsInSheet = useMemo(
@@ -246,16 +244,6 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
   const newChord = replaceWith.trim().replace(/^\[|\]$/g, "").trim();
   const canReplace =
     findCount > 0 && newChord.length > 0 && newChord !== findChord && !/[\[\]]/.test(newChord);
-
-  useLayoutEffect(() => {
-    const el = textareaRef.current;
-    const container = scrollContainerRef.current;
-    if (!el) return;
-    const savedScroll = container?.scrollTop ?? 0;
-    el.style.height = "auto";
-    el.style.height = el.scrollHeight + "px";
-    if (container) container.scrollTop = savedScroll;
-  }, [rawText]);
 
   const getSb = () => {
     if (!sbRef.current) sbRef.current = createClient();
@@ -397,7 +385,10 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
   if (authLoading || loading) {
     return (
       <div className="flex flex-col flex-1 min-h-0">
-        <main className="flex flex-col flex-1 min-h-0 p-2 sm:p-4">
+        {/* min-h-0! beats the global `main { min-height: 100vh }`, which would
+            otherwise hold the editor at full height when a phone keyboard
+            shrinks the viewport and push the text under the keyboard. */}
+        <main className="flex flex-col flex-1 min-h-0! p-2 sm:p-4">
           <div className="flex flex-col flex-1 min-h-0 rounded-none border-none bg-black overflow-hidden">
             <div className="flex-1 flex items-center justify-center text-white/50">Loading...</div>
           </div>
@@ -409,7 +400,10 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
   if (!user || !sheetId) {
     return (
       <div className="flex flex-col flex-1 min-h-0">
-        <main className="flex flex-col flex-1 min-h-0 p-2 sm:p-4">
+        {/* min-h-0! beats the global `main { min-height: 100vh }`, which would
+            otherwise hold the editor at full height when a phone keyboard
+            shrinks the viewport and push the text under the keyboard. */}
+        <main className="flex flex-col flex-1 min-h-0! p-2 sm:p-4">
           <div className="flex flex-col flex-1 min-h-0 rounded-none border-none bg-black overflow-hidden">
             <div className="flex-1 flex items-center justify-center text-white/50">Sheet not found.</div>
           </div>
@@ -581,19 +575,16 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
             )}
           </div>
 
-          {/* Editor */}
-          <div ref={scrollContainerRef} className="flex-1 overflow-auto">
-            <div className="max-w-3xl mx-auto px-6 py-8">
-              <textarea
-                ref={textareaRef}
-                value={rawText}
-                onChange={(e) => handleChange(e.target.value)}
-                placeholder={PLACEHOLDER}
-                spellCheck={false}
-                className="w-full outline-none resize-none font-mono text-base leading-relaxed bg-transparent text-black dark:text-white placeholder:text-[#373A40]/30 dark:placeholder:text-white/30"
-                style={{ minHeight: "calc(100vh - 160px)", overflow: "hidden" }}
-              />
-            </div>
+          {/* Editor — the textarea is its own scroll box, so dragging a selection or
+              swiping on a phone scrolls the song instead of hitting a dead end. */}
+          <div className="flex flex-1 min-h-0 justify-center px-6 py-8">
+            <textarea
+              value={rawText}
+              onChange={(e) => handleChange(e.target.value)}
+              placeholder={PLACEHOLDER}
+              spellCheck={false}
+              className="w-full max-w-3xl h-full overflow-auto outline-none resize-none font-mono text-base leading-relaxed bg-transparent text-black dark:text-white placeholder:text-[#373A40]/30 dark:placeholder:text-white/30"
+            />
           </div>
         </div>
       </main>
