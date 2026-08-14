@@ -477,61 +477,121 @@ function playSnare(ctx: AudioContext, dst: AudioNode, when: number) {
   osc.stop(when + 0.09);
 }
 
-/** Brushed snare: high-freq noise swish with soft long tail, subtle body resonance */
-function playSnareBrush(ctx: AudioContext, dst: AudioNode, when: number) {
-  // Brush swish — highpass + bandpass shaped noise, long soft envelope
-  const swishLen = Math.ceil(ctx.sampleRate * 0.48);
-  const swishBuf = ctx.createBuffer(1, swishLen, ctx.sampleRate);
-  const swishData = swishBuf.getChannelData(0);
-  for (let i = 0; i < swishLen; i++) swishData[i] = Math.random() * 2 - 1;
-  const swish = ctx.createBufferSource();
-  swish.buffer = swishBuf;
+/**
+ * Pink noise — 1/f rolloff via Paul Kellet's economy filter. Flat white noise
+ * reads as hiss or, gated hard enough, as a snap; brushed nylon on a coated
+ * head has most of its energy low and a gentle slope above it.
+ *
+ * One buffer per context, since a sweep needs far more noise than a single
+ * stroke consumes and regenerating it per hit is wasted work.
+ */
+const pinkNoiseByContext = new WeakMap<AudioContext, AudioBuffer>();
 
+function pinkNoise(ctx: AudioContext): AudioBuffer {
+  const buf = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * 2), ctx.sampleRate);
+  const data = buf.getChannelData(0);
+  let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+  for (let i = 0; i < data.length; i++) {
+    const white = Math.random() * 2 - 1;
+    b0 = 0.99886 * b0 + white * 0.0555179;
+    b1 = 0.99332 * b1 + white * 0.0750759;
+    b2 = 0.96900 * b2 + white * 0.1538520;
+    b3 = 0.86650 * b3 + white * 0.3104856;
+    b4 = 0.55000 * b4 + white * 0.5329522;
+    b5 = -0.7616 * b5 - white * 0.0168980;
+    data[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362) * 0.11;
+    b6 = white * 0.115926;
+  }
+  return buf;
+}
+
+function getPinkNoise(ctx: AudioContext): AudioBuffer {
+  let buf = pinkNoiseByContext.get(ctx);
+  if (!buf) {
+    buf = pinkNoise(ctx);
+    pinkNoiseByContext.set(ctx, buf);
+  }
+  return buf;
+}
+
+/**
+ * Brushed snare — a sweep across the head, not a stroke onto it.
+ *
+ * The character is entirely in the envelope: any fast attack, however quiet,
+ * reads as a slap or a snap. So there is no transient here at all. The gain
+ * swells in over 60ms and the band sweeps upward across the stroke, which is
+ * the brush travelling over the coating.
+ */
+const BRUSH_ATTACK = 0.06;
+const BRUSH_DECAY  = 0.44;
+
+function playSnareBrush(ctx: AudioContext, dst: AudioNode, when: number) {
+  const buf = getPinkNoise(ctx);
+
+  // Brushes speak before the beat: start the swell early so its peak lands on
+  // the beat instead of dragging 60ms behind it. Clamped in case we're
+  // scheduling something already due.
+  const start = Math.max(ctx.currentTime, when - BRUSH_ATTACK);
+  const peak  = start + BRUSH_ATTACK;
+
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+
+  // Below this is drum body rather than brush, and it muddies the sweep.
   const hp = ctx.createBiquadFilter();
   hp.type = "highpass";
-  hp.frequency.value = 2500;
+  hp.frequency.value = 1100;
 
+  // Wide and shallow — a resonant peak whistles instead of whispering.
   const bp = ctx.createBiquadFilter();
   bp.type = "bandpass";
-  bp.frequency.value = 5200;
-  bp.Q.value = 0.55;
+  bp.Q.value = 0.5;
+  bp.frequency.setValueAtTime(2000, start);
+  bp.frequency.linearRampToValueAtTime(4300, peak + 0.22);
 
-  const sg = ctx.createGain();
-  // Soft attack (brush settling), quick dip, then long swish tail
-  sg.gain.setValueAtTime(0, when);
-  sg.gain.linearRampToValueAtTime(0.48, when + 0.012);
-  sg.gain.exponentialRampToValueAtTime(0.14, when + 0.09);
-  sg.gain.exponentialRampToValueAtTime(0.001, when + 0.44);
+  // Shaves the top fizz that would otherwise read as tape hiss.
+  const lp = ctx.createBiquadFilter();
+  lp.type = "lowpass";
+  lp.frequency.value = 7500;
 
-  swish.connect(hp);
+  // Pink noise carries far less energy than white, and the three filters take
+  // more still, so this sits well above 1 to land at a peak just under the old
+  // brush — quieter than a stick, but present.
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0, start);
+  g.gain.linearRampToValueAtTime(1.1, peak);
+  g.gain.exponentialRampToValueAtTime(0.001, peak + BRUSH_DECAY);
+
+  src.connect(hp);
   hp.connect(bp);
-  bp.connect(sg);
-  sg.connect(dst);
-  swish.start(when);
-  swish.stop(when + 0.48);
+  bp.connect(lp);
+  lp.connect(g);
+  g.connect(dst);
+  // A random window keeps consecutive strokes from sounding stamped out of the
+  // same sample. The buffer is long enough that a stroke never runs off the end.
+  src.start(start, Math.random() * (buf.duration - 1));
+  src.stop(peak + BRUSH_DECAY + 0.05);
 
-  // Snare body resonance — low bandpass noise, very quiet, short
-  const bodyLen = Math.ceil(ctx.sampleRate * 0.18);
-  const bodyBuf = ctx.createBuffer(1, bodyLen, ctx.sampleRate);
-  const bodyData = bodyBuf.getChannelData(0);
-  for (let i = 0; i < bodyLen; i++) bodyData[i] = Math.random() * 2 - 1;
+  // A whisper of head resonance so the sweep sits on a drum rather than in
+  // open air. Same soft envelope — an instant attack here is what snapped.
   const body = ctx.createBufferSource();
-  body.buffer = bodyBuf;
+  body.buffer = buf;
 
   const bodyBp = ctx.createBiquadFilter();
   bodyBp.type = "bandpass";
-  bodyBp.frequency.value = 550;
-  bodyBp.Q.value = 1.4;
+  bodyBp.frequency.value = 420;
+  bodyBp.Q.value = 0.9;
 
   const bg = ctx.createGain();
-  bg.gain.setValueAtTime(0.16, when);
-  bg.gain.exponentialRampToValueAtTime(0.001, when + 0.16);
+  bg.gain.setValueAtTime(0, start);
+  bg.gain.linearRampToValueAtTime(0.17, peak);
+  bg.gain.exponentialRampToValueAtTime(0.001, peak + 0.2);
 
   body.connect(bodyBp);
   bodyBp.connect(bg);
   bg.connect(dst);
-  body.start(when);
-  body.stop(when + 0.18);
+  body.start(start, Math.random() * (buf.duration - 1));
+  body.stop(peak + 0.25);
 }
 
 function playHihat(ctx: AudioContext, dst: AudioNode, when: number) {
