@@ -216,6 +216,63 @@ function playSnare(ctx: AudioContext, dst: AudioNode, when: number) {
   osc.stop(when + 0.09);
 }
 
+/** Brushed snare: high-freq noise swish with soft long tail, subtle body resonance */
+function playSnareBrush(ctx: AudioContext, dst: AudioNode, when: number) {
+  // Brush swish — highpass + bandpass shaped noise, long soft envelope
+  const swishLen = Math.ceil(ctx.sampleRate * 0.48);
+  const swishBuf = ctx.createBuffer(1, swishLen, ctx.sampleRate);
+  const swishData = swishBuf.getChannelData(0);
+  for (let i = 0; i < swishLen; i++) swishData[i] = Math.random() * 2 - 1;
+  const swish = ctx.createBufferSource();
+  swish.buffer = swishBuf;
+
+  const hp = ctx.createBiquadFilter();
+  hp.type = "highpass";
+  hp.frequency.value = 2500;
+
+  const bp = ctx.createBiquadFilter();
+  bp.type = "bandpass";
+  bp.frequency.value = 5200;
+  bp.Q.value = 0.55;
+
+  const sg = ctx.createGain();
+  // Soft attack (brush settling), quick dip, then long swish tail
+  sg.gain.setValueAtTime(0, when);
+  sg.gain.linearRampToValueAtTime(0.48, when + 0.012);
+  sg.gain.exponentialRampToValueAtTime(0.14, when + 0.09);
+  sg.gain.exponentialRampToValueAtTime(0.001, when + 0.44);
+
+  swish.connect(hp);
+  hp.connect(bp);
+  bp.connect(sg);
+  sg.connect(dst);
+  swish.start(when);
+  swish.stop(when + 0.48);
+
+  // Snare body resonance — low bandpass noise, very quiet, short
+  const bodyLen = Math.ceil(ctx.sampleRate * 0.18);
+  const bodyBuf = ctx.createBuffer(1, bodyLen, ctx.sampleRate);
+  const bodyData = bodyBuf.getChannelData(0);
+  for (let i = 0; i < bodyLen; i++) bodyData[i] = Math.random() * 2 - 1;
+  const body = ctx.createBufferSource();
+  body.buffer = bodyBuf;
+
+  const bodyBp = ctx.createBiquadFilter();
+  bodyBp.type = "bandpass";
+  bodyBp.frequency.value = 550;
+  bodyBp.Q.value = 1.4;
+
+  const bg = ctx.createGain();
+  bg.gain.setValueAtTime(0.16, when);
+  bg.gain.exponentialRampToValueAtTime(0.001, when + 0.16);
+
+  body.connect(bodyBp);
+  bodyBp.connect(bg);
+  bg.connect(dst);
+  body.start(when);
+  body.stop(when + 0.18);
+}
+
 function playHihat(ctx: AudioContext, dst: AudioNode, when: number) {
   const len = Math.ceil(ctx.sampleRate * 0.07);
   const buf = ctx.createBuffer(1, len, ctx.sampleRate);
@@ -247,22 +304,25 @@ function useDrumScheduler(
   running: boolean,
   volume: number,
   kickStyle: "folk" | "808",
+  snareStyle: "regular" | "brush",
 ): number {
-  const ctxRef        = useRef<AudioContext | null>(null);
-  const masterRef     = useRef<GainNode | null>(null);
-  const nextTimeRef   = useRef(0);
-  const stepRef       = useRef(0);
-  const timerRef      = useRef<ReturnType<typeof setInterval> | null>(null);
-  const patternIdxRef = useRef(patternIdx);
-  const bpmRef        = useRef(bpm);
-  const volumeRef     = useRef(volume);
-  const kickStyleRef  = useRef(kickStyle);
+  const ctxRef         = useRef<AudioContext | null>(null);
+  const masterRef      = useRef<GainNode | null>(null);
+  const nextTimeRef    = useRef(0);
+  const stepRef        = useRef(0);
+  const timerRef       = useRef<ReturnType<typeof setInterval> | null>(null);
+  const patternIdxRef  = useRef(patternIdx);
+  const bpmRef         = useRef(bpm);
+  const volumeRef      = useRef(volume);
+  const kickStyleRef   = useRef(kickStyle);
+  const snareStyleRef  = useRef(snareStyle);
   const [activeStep, setActiveStep] = useState(-1);
 
   // Keep refs in sync so the scheduler loop picks up changes without restart
   useEffect(() => { patternIdxRef.current = patternIdx; }, [patternIdx]);
   useEffect(() => { bpmRef.current = bpm; }, [bpm]);
   useEffect(() => { kickStyleRef.current = kickStyle; }, [kickStyle]);
+  useEffect(() => { snareStyleRef.current = snareStyle; }, [snareStyle]);
   useEffect(() => {
     volumeRef.current = volume;
     if (masterRef.current) masterRef.current.gain.value = volume;
@@ -308,7 +368,10 @@ function useDrumScheduler(
           if (kickStyleRef.current === "808") playKick808(ctx, dst, when);
           else playKick(ctx, dst, when);
         }
-        if (pat.snare[step]) playSnare(ctx, dst, when);
+        if (pat.snare[step]) {
+          if (snareStyleRef.current === "brush") playSnareBrush(ctx, dst, when);
+          else playSnare(ctx, dst, when);
+        }
         if (pat.hihat[step]) playHihat(ctx, dst, when);
 
         // Update visual indicator at the right moment
@@ -361,7 +424,8 @@ export function DrumMachineControl({
   onVolumeChange: (v: number) => void;
 }) {
   const [kickStyle, setKickStyle] = useState<"folk" | "808">("folk");
-  const activeStep = useDrumScheduler(bpm, patternIdx, running, volume, kickStyle);
+  const [snareStyle, setSnareStyle] = useState<"regular" | "brush">("regular");
+  const activeStep = useDrumScheduler(bpm, patternIdx, running, volume, kickStyle, snareStyle);
   const pat = DRUM_PATTERNS[patternIdx];
 
   return (
@@ -427,6 +491,28 @@ export function DrumMachineControl({
             title={style === "808" ? "TR-808 sub-bass kick" : "Folk acoustic kick"}
           >
             {style === "808" ? "808" : "Folk"}
+          </button>
+        ))}
+      </div>
+
+      {/* Snare style toggle: Regular / Brush */}
+      <div className="flex rounded-md overflow-hidden border border-gray-200 dark:border-neutral-700 flex-shrink-0">
+        {(["regular", "brush"] as const).map((style) => (
+          <button
+            key={style}
+            type="button"
+            onClick={() => setSnareStyle(style)}
+            className={`px-2 h-7 text-xs font-medium transition-colors duration-100 ${
+              snareStyle === style
+                ? style === "brush"
+                  ? "bg-emerald-600 text-white"
+                  : "bg-indigo-500 text-white"
+                : "bg-gray-100 dark:bg-neutral-800 text-gray-500 dark:text-neutral-400 hover:bg-gray-200 dark:hover:bg-neutral-700"
+            }`}
+            aria-label={`${style === "brush" ? "Brushed" : "Regular"} snare`}
+            title={style === "brush" ? "Brushed snare" : "Regular snare"}
+          >
+            {style === "brush" ? "Brush" : "Snare"}
           </button>
         ))}
       </div>
