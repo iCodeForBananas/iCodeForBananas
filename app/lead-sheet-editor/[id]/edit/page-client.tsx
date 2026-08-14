@@ -6,9 +6,26 @@ import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/app/hooks/useAuth";
 import { Save, ArrowLeft, Eye, Replace, X, Sparkles, Play, Timer, TimerOff, Clock } from "lucide-react";
 import { RevisionHistory } from "../../RevisionHistory";
-import { type LeadSheet, type Section, type SectionType, migrateSection, OfflineBadge } from "../../shared";
+import {
+  type LeadSheet,
+  type LeadSheetMetadata,
+  type Section,
+  type SectionType,
+  migrateSection,
+  OfflineBadge,
+} from "../../shared";
 import { cacheSheet, getCachedSheet } from "../../offlineCache";
 import { clearAllMarkers, parseTimeMarker } from "../../timing";
+import {
+  type DrumSettings,
+  DEFAULT_DRUM_SETTINGS,
+  formatDrumSettings,
+  hasDrumSettingsLine,
+  isDefaultDrumSettings,
+  normalizeDrumSettings,
+  parseDrumSettingsLine,
+  stripDrumSettings,
+} from "../../DrumMachine";
 import TapTiming from "../../TapTiming";
 
 // ─── Text ↔ LeadSheet ─────────────────────────────────────────────────────────
@@ -72,6 +89,11 @@ function serializeSheet(sheet: LeadSheet): string {
   if (sheet.tempo) meta.push(`Tempo: ${sheet.tempo}`);
   if (meta.length) parts.push(meta.join("  "));
 
+  // A kit left at defaults isn't worth a line — songs you never touched the
+  // drums on stay clean. Changing anything writes the line on the next open.
+  const drums = normalizeDrumSettings(sheet.metadata?.drums);
+  if (!isDefaultDrumSettings(drums)) parts.push(formatDrumSettings(drums));
+
   parts.push("");
 
   if (sheet.general_notes) {
@@ -103,6 +125,7 @@ function parseText(text: string): Partial<LeadSheet> {
 
   let key = "";
   let tempo: number | null = null;
+  let drums: DrumSettings | null = null;
   const preambleLines: string[] = [];
 
   // Preamble: lines before first section header
@@ -110,10 +133,12 @@ function parseText(text: string): Partial<LeadSheet> {
     const line = lines[i++];
     const keyMatch = line.match(/Key:\s*([A-G][#b]?m?)\b/i);
     const tempoMatch = line.match(/\bTempo:\s*(\d+)\b/i);
+    const drumMatch = hasDrumSettingsLine(line);
     if (keyMatch) key = keyMatch[1];
     if (tempoMatch) tempo = parseInt(tempoMatch[1]);
-    if (keyMatch || tempoMatch) {
-      const stripped = line
+    if (drumMatch) drums = parseDrumSettingsLine(line);
+    if (keyMatch || tempoMatch || drumMatch) {
+      const stripped = stripDrumSettings(line)
         .replace(/Key:\s*[A-G][#b]?m?\b/gi, "")
         .replace(/\bTempo:\s*\d+\b/gi, "")
         .replace(/\|/g, "")
@@ -125,6 +150,8 @@ function parseText(text: string): Partial<LeadSheet> {
   }
 
   const general_notes = preambleLines.join("\n").trim();
+  // No line means the kit is back to defaults — deleting it resets the song.
+  const metadata: LeadSheetMetadata = { drums: drums ?? DEFAULT_DRUM_SETTINGS };
 
   // Sections
   const sections: Section[] = [];
@@ -157,7 +184,7 @@ function parseText(text: string): Partial<LeadSheet> {
     }
   }
 
-  return { title, key, tempo, general_notes, sections };
+  return { title, key, tempo, general_notes, metadata, sections };
 }
 
 // ─── AI feedback ──────────────────────────────────────────────────────────────
@@ -197,6 +224,7 @@ const FEEDBACK_OPTIONS: { label: string; prompt: string }[] = [
 
 const PLACEHOLDER = `Song Title
 Key: G  Tempo: 120
+Drums: Folk Stomp, folk kick, regular snare, 80%
 
 Performance notes (capo, feel, strumming pattern)...
 
@@ -235,6 +263,8 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
   const replaceInputRef = useRef<HTMLInputElement>(null);
   /** Timestamp of last revision snapshot, to throttle auto-save revisions */
   const lastRevisionAt = useRef<number>(0);
+  /** Metadata as loaded, so a save can't drop keys the text doesn't carry. */
+  const sheetMetadata = useRef<LeadSheetMetadata>({});
 
   const chordsInSheet = useMemo(
     () => (replaceOpen ? collectChords(rawText) : []),
@@ -274,6 +304,7 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
       if (data) {
         setSheetId(data.id);
         const sheet: LeadSheet = { ...data, sections: data.sections.map(migrateSection) };
+        sheetMetadata.current = sheet.metadata ?? {};
         setRawText(serializeSheet(sheet));
         setOffline(false);
         await cacheSheet(data);
@@ -283,6 +314,7 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
       if (cached) {
         setSheetId(cached.id);
         const sheet: LeadSheet = { ...cached, sections: cached.sections.map(migrateSection) };
+        sheetMetadata.current = sheet.metadata ?? {};
         setRawText(serializeSheet(sheet));
         setOffline(true);
       }
@@ -303,6 +335,8 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
           key: parsed.key ?? "",
           tempo: parsed.tempo ?? null,
           general_notes: parsed.general_notes ?? "",
+          // Merge so keys this editor doesn't know about survive a save.
+          metadata: { ...sheetMetadata.current, ...parsed.metadata },
           sections: parsed.sections ?? [],
           updated_at: new Date().toISOString(),
         })

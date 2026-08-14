@@ -158,6 +158,74 @@ export function patternIndex(name: string): number {
   return i === -1 ? 0 : i;
 }
 
+export function isDefaultDrumSettings(s: DrumSettings): boolean {
+  return (
+    s.pattern === DEFAULT_DRUM_SETTINGS.pattern &&
+    s.kick === DEFAULT_DRUM_SETTINGS.kick &&
+    s.snare === DEFAULT_DRUM_SETTINGS.snare &&
+    s.volume === DEFAULT_DRUM_SETTINGS.volume
+  );
+}
+
+// ── Text form ────────────────────────────────────────────────────────────────
+//
+// The settings also live in the song text as a preamble line, alongside Key and
+// Tempo, so they can be read and edited by hand:
+//
+//   Drums: Stomp & Brush, folk kick, brush snare, 80%
+//
+// No pattern name contains a comma, so comma-separated fields parse cleanly.
+
+const DRUMS_LINE_RE = /\bDrums:\s*([^\n|]*)/i;
+
+/** The `Drums: …` line as written into the song text. */
+export function formatDrumSettings(s: DrumSettings): string {
+  return `Drums: ${s.pattern}, ${s.kick} kick, ${s.snare} snare, ${Math.round(s.volume * 100)}%`;
+}
+
+/**
+ * Reads a `Drums: …` line, in whatever order the fields were typed. Returns
+ * null when the line isn't there at all — which is different from a line that's
+ * present but garbled, where the defaults stand in for the unreadable parts.
+ */
+export function parseDrumSettingsLine(line: string): DrumSettings | null {
+  const m = line.match(DRUMS_LINE_RE);
+  if (!m) return null;
+
+  const fields = m[1].split(",").map((f) => f.trim()).filter(Boolean);
+  const settings = { ...DEFAULT_DRUM_SETTINGS };
+
+  for (const field of fields) {
+    const lower = field.toLowerCase();
+    const pattern = DRUM_PATTERNS.find((p) => p.name.toLowerCase() === lower);
+    if (pattern) {
+      settings.pattern = pattern.name;
+    } else if (/\bfolk\b/.test(lower) && /kick/.test(lower)) {
+      settings.kick = "folk";
+    } else if (/\b808\b/.test(lower)) {
+      settings.kick = "808";
+    } else if (/\bbrush(ed)?\b/.test(lower)) {
+      settings.snare = "brush";
+    } else if (/\b(regular|snare)\b/.test(lower)) {
+      settings.snare = "regular";
+    } else {
+      const pct = lower.match(/^(\d{1,3})\s*%$/);
+      if (pct) settings.volume = Math.min(1, Math.max(0, parseInt(pct[1], 10) / 100));
+    }
+  }
+
+  return settings;
+}
+
+/** Strips the `Drums: …` line's text so it never shows up as a performance note. */
+export function stripDrumSettings(line: string): string {
+  return line.replace(DRUMS_LINE_RE, "").trim();
+}
+
+export function hasDrumSettingsLine(line: string): boolean {
+  return DRUMS_LINE_RE.test(line);
+}
+
 // ── Synthesis ────────────────────────────────────────────────────────────────
 
 /** Roland TR-808 kick for pop/indie: punchy sine with fast pitch drop, ~650ms decay */
