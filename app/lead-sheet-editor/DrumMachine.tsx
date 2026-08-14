@@ -123,7 +123,151 @@ export const DRUM_PATTERNS: Pattern[] = [
     snare: [0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0],
     hihat: [0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0],
   },
+  // ── Dance floor ───────────────────────────────────────────────────────────
+  {
+    name: "Disco Floor",
+    // Four on the floor with driving 16th hats instead of offbeat 8ths —
+    // busier and more forward than the plain "4 on the Floor" above.
+    kick:  [1,0,0,0, 1,0,0,0, 1,0,0,0, 1,0,0,0],
+    snare: [0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0],
+    hihat: [1,1,1,1, 1,1,1,1, 1,1,1,1, 1,1,1,1],
+  },
+  {
+    name: "Two-Step",
+    // UK garage skip: kick pulled off the downbeat, snare with a 16th push on
+    // the "a" of 2, offbeat hats closing with a stutter into the next bar.
+    kick:  [1,0,0,0, 0,0,0,0, 0,0,1,0, 0,0,0,0],
+    snare: [0,0,0,0, 1,0,0,1, 0,0,0,0, 1,0,0,0],
+    hihat: [0,0,1,0, 0,0,1,0, 0,0,1,0, 0,0,1,1],
+  },
+  {
+    name: "Stomp Clap",
+    // Arena chant: stomp, stomp, clap, rest. No hats — the space is the hook.
+    kick:  [1,0,0,0, 1,0,0,0, 0,0,0,0, 0,0,0,0],
+    snare: [0,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0],
+    hihat: [0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0],
+  },
+  // ── Hip-hop, funk & R&B ───────────────────────────────────────────────────
+  {
+    name: "Boom Bap",
+    // Kick on 1 with the classic "and of 2" / "and of 3" answer, hard backbeat.
+    kick:  [1,0,0,0, 0,0,1,0, 0,0,1,0, 0,0,0,0],
+    snare: [0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0],
+    hihat: [1,0,1,0, 1,0,1,0, 1,0,1,0, 1,0,1,0],
+  },
+  {
+    name: "Funk Break",
+    // Breakbeat syncopation — kick on the "a" of 1, snare answering off the
+    // grid, hats stuttering into 2 and 4.
+    kick:  [1,0,0,1, 0,0,0,0, 0,0,1,0, 0,0,0,0],
+    snare: [0,0,0,0, 1,0,0,1, 0,0,0,0, 1,0,1,0],
+    hihat: [1,0,1,0, 1,0,1,1, 1,0,1,0, 1,0,1,1],
+  },
+  {
+    name: "Second Line",
+    // New Orleans street beat: the shuffle-adjacent parade groove that funk
+    // grew out of. Kick and snare trade syncopations all bar.
+    kick:  [1,0,0,1, 0,0,0,0, 1,0,0,0, 0,0,1,0],
+    snare: [0,0,0,0, 0,0,1,0, 0,0,1,1, 0,0,0,0],
+    hihat: [1,0,1,0, 1,0,1,0, 1,0,1,0, 1,0,1,0],
+  },
+  // ── Latin & global ────────────────────────────────────────────────────────
+  {
+    name: "Tresillo Pop",
+    // The 3+3+2 kick that runs under a huge slice of modern pop.
+    kick:  [1,0,0,0, 0,0,1,0, 0,0,0,0, 1,0,0,0],
+    snare: [0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0],
+    hihat: [1,0,1,0, 1,0,1,0, 1,0,1,0, 1,0,1,0],
+  },
+  {
+    name: "Dembow",
+    // Reggaeton's engine: kick on 1 and 3, snare on the "a"/"and" pairs that
+    // give it the boom-ch-boom-chick lurch.
+    kick:  [1,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0],
+    snare: [0,0,0,1, 0,0,1,0, 0,0,0,1, 0,0,1,0],
+    hihat: [1,0,1,0, 1,0,1,0, 1,0,1,0, 1,0,1,0],
+  },
+  {
+    name: "Afrobeats",
+    // Kick pushing off the "and" of 2 and into the bar line, clap landing late
+    // on 4, shaker-style 16th fills between.
+    kick:  [1,0,0,0, 0,0,1,0, 1,0,0,0, 0,0,1,0],
+    snare: [0,0,0,0, 1,0,0,0, 0,0,0,1, 1,0,0,0],
+    hihat: [1,0,1,1, 1,0,1,0, 1,0,1,1, 1,0,1,0],
+  },
+  {
+    name: "Samba Step",
+    // Surdo on the "a" of each half bar, tamborim-style snare cutting across
+    // it, constant 16ths underneath.
+    kick:  [1,0,0,1, 0,0,0,0, 1,0,0,1, 0,0,0,0],
+    snare: [0,0,1,0, 0,0,1,0, 0,0,0,1, 0,0,1,0],
+    hihat: [1,1,1,1, 1,1,1,1, 1,1,1,1, 1,1,1,1],
+  },
+  // ── Airy & emotional ──────────────────────────────────────────────────────
+  {
+    name: "Heartbeat",
+    // Lub-dub twice a bar, nothing else. Pairs with the dance grooves as the
+    // drop-out section.
+    kick:  [1,0,1,0, 0,0,0,0, 1,0,1,0, 0,0,0,0],
+    snare: [0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0],
+    hihat: [0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0],
+  },
+  {
+    name: "Floating",
+    // One kick a bar, hats breathing on the quarter and the "and" of 2 — open
+    // enough to leave the melody all the room.
+    kick:  [1,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0],
+    snare: [0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0],
+    hihat: [1,0,0,0, 0,0,1,0, 1,0,0,0, 0,0,1,0],
+  },
+  {
+    name: "Rainfall",
+    // Scattered offbeat 16ths over a kick that lands late — unsettled, no
+    // backbeat to lock onto.
+    kick:  [1,0,0,0, 0,0,0,0, 0,0,0,1, 0,0,0,0],
+    snare: [0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0],
+    hihat: [0,0,1,0, 0,1,0,0, 0,0,1,0, 0,1,0,1],
+  },
+  {
+    name: "6/8 Ballad",
+    // Two dotted-quarter pulses across 12 of the 16 steps, like Waltz Feel —
+    // the slow-dance feel.
+    kick:  [1,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0],
+    snare: [0,0,0,0, 0,0,1,0, 0,0,0,0, 0,0,0,0],
+    hihat: [1,0,1,0, 1,0,1,0, 1,0,1,0, 0,0,0,0],
+  },
 ];
+
+// ── Dropdown grouping ────────────────────────────────────────────────────────
+//
+// Presentation only — the scheduler still works off DRUM_PATTERNS order, and a
+// pattern missing from every group still shows up under "More", so adding one
+// can never make it vanish from the picker.
+
+const PATTERN_GROUP_NAMES: { label: string; names: string[] }[] = [
+  { label: "Backbeat & rock",     names: ["Half-time", "Slow Groove", "March", "Stomp Clap"] },
+  { label: "Roots & folk",        names: ["Folk Stomp", "Indie Kick", "Stomp & Brush", "Boom-Chick"] },
+  { label: "Dance floor",         names: ["4 on the Floor", "Disco Floor", "Two-Step"] },
+  { label: "Hip-hop, funk & R&B", names: ["Sexy Beat", "Boom Bap", "Funk Break", "Second Line"] },
+  { label: "Latin & global",      names: ["Tresillo Pop", "Dembow", "Afrobeats", "Samba Step", "Bossa Nova", "Reggae One Drop"] },
+  { label: "Jazz & swing",        names: ["Shuffle", "Swing Beat"] },
+  { label: "Airy & emotional",    names: ["Heartbeat", "Floating", "Rainfall", "6/8 Ballad", "Waltz Feel"] },
+  { label: "Sparse",              names: ["Kick Only", "1 & 4", "Pulse"] },
+];
+
+export const PATTERN_GROUPS: { label: string; items: { name: string; index: number }[] }[] = (() => {
+  const indexOf = new Map(DRUM_PATTERNS.map((p, i) => [p.name, i]));
+  const grouped = PATTERN_GROUP_NAMES.map(({ label, names }) => ({
+    label,
+    items: names
+      .filter((name) => indexOf.has(name))
+      .map((name) => ({ name, index: indexOf.get(name)! })),
+  })).filter((g) => g.items.length > 0);
+
+  const placed = new Set(grouped.flatMap((g) => g.items.map((i) => i.name)));
+  const rest = DRUM_PATTERNS.map((p, i) => ({ name: p.name, index: i })).filter((p) => !placed.has(p.name));
+  return rest.length ? [...grouped, { label: "More", items: rest }] : grouped;
+})();
 
 // ── Settings ─────────────────────────────────────────────────────────────────
 
@@ -580,10 +724,14 @@ export function DrumMachineControl({
         aria-label="Drum pattern"
         className="h-8 text-xs rounded-md border border-gray-200 dark:border-neutral-700 bg-gray-100 dark:bg-neutral-800 text-gray-700 dark:text-neutral-200 px-1 focus:outline-none"
       >
-        {DRUM_PATTERNS.map((p, i) => (
-          <option key={p.name} value={i}>
-            {p.name}
-          </option>
+        {PATTERN_GROUPS.map((group) => (
+          <optgroup key={group.label} label={group.label}>
+            {group.items.map((item) => (
+              <option key={item.name} value={item.index}>
+                {item.name}
+              </option>
+            ))}
+          </optgroup>
         ))}
       </select>
 
