@@ -112,44 +112,37 @@ export const DRUM_PATTERNS: Pattern[] = [
 
 // ── Synthesis ────────────────────────────────────────────────────────────────
 
-/** Trap 808: tuned bass with long pitch glide, two detuned oscs, heavy saturation */
+/** Roland TR-808 kick for pop/indie: punchy sine with fast pitch drop, ~650ms decay */
 function playKick808(ctx: AudioContext, dst: AudioNode, when: number) {
-  // Two slightly detuned sines for that thick, beating sub texture
-  const osc1 = ctx.createOscillator();
-  const osc2 = ctx.createOscillator();
-  const g    = ctx.createGain();
+  const osc = ctx.createOscillator();
+  const g   = ctx.createGain();
+  osc.type = "sine";
 
-  osc1.type = "sine";
-  osc2.type = "sine";
+  // Fast pitch sweep — gives the Roland "thump" punch character
+  // 100 Hz -> 55 Hz in 30ms (the attack punch), then settles at 30 Hz
+  osc.frequency.setValueAtTime(100, when);
+  osc.frequency.exponentialRampToValueAtTime(55, when + 0.03);
+  osc.frequency.exponentialRampToValueAtTime(30, when + 0.35);
 
-  // Start at A2 (110 Hz) — a musical pitch — slide down over 1.8s to ~35 Hz
-  // This is the classic trap 808 "woop" glide
-  osc1.frequency.setValueAtTime(110, when);
-  osc1.frequency.exponentialRampToValueAtTime(35, when + 1.8);
-  osc2.frequency.setValueAtTime(113, when);  // +3 Hz detune for thickness
-  osc2.frequency.exponentialRampToValueAtTime(36.5, when + 1.8);
+  // Instant attack, ~650ms decay — pop kick, not a sustained bass note
+  g.gain.setValueAtTime(1.0, when);
+  g.gain.exponentialRampToValueAtTime(0.001, when + 0.65);
 
-  // Gain: instant attack, very long tail — trap 808s sustain for 2-3 seconds
-  g.gain.setValueAtTime(0, when);
-  g.gain.linearRampToValueAtTime(0.85, when + 0.003);
-  g.gain.exponentialRampToValueAtTime(0.001, when + 2.5);
-
-  // Heavy tanh saturation — trap 808s are cranked through a saturator
+  // Light waveshaper for body warmth without harshness
   const ws = ctx.createWaveShaper();
-  const curve = new Float32Array(512);
-  for (let i = 0; i < 512; i++) {
-    const x = (i * 2) / 512 - 1;
-    curve[i] = Math.tanh(4 * x) / Math.tanh(4);
+  const curve = new Float32Array(256);
+  for (let i = 0; i < 256; i++) {
+    const x = (i * 2) / 256 - 1;
+    curve[i] = Math.tanh(2 * x) / Math.tanh(2);
   }
   ws.curve = curve;
-  ws.oversample = "4x";
+  ws.oversample = "2x";
 
-  osc1.connect(g);
-  osc2.connect(g);
+  osc.connect(g);
   g.connect(ws);
   ws.connect(dst);
-  osc1.start(when); osc1.stop(when + 2.55);
-  osc2.start(when); osc2.stop(when + 2.55);
+  osc.start(when);
+  osc.stop(when + 0.7);
 }
 
 function playKick(ctx: AudioContext, dst: AudioNode, when: number) {
