@@ -52,6 +52,13 @@ export const DRUM_PATTERNS: Pattern[] = [
     hihat: [0,1,0,1, 0,1,0,1, 0,1,0,1, 0,1,0,1],
   },
   {
+    name: "Swing Beat",
+    // Kick 1+3, snare 2+4, hi-hat on swung 8ths (triplet feel: beat + skip + late)
+    kick:  [1,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0],
+    snare: [0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0],
+    hihat: [1,0,0,1, 1,0,0,1, 1,0,0,1, 1,0,0,1],
+  },
+  {
     name: "Boom-Chick",
     kick:  [1,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0],
     snare: [0,0,0,0, 1,0,1,0, 0,0,0,0, 1,0,1,0],
