@@ -4,11 +4,11 @@ import { useState, useEffect, useMemo, useRef, use } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/app/hooks/useAuth";
-import { Save, ArrowLeft, Eye, Replace, X, Sparkles, Play, Timer, Clock } from "lucide-react";
+import { Save, ArrowLeft, Eye, Replace, X, Sparkles, Play, Timer, TimerOff, Clock } from "lucide-react";
 import { RevisionHistory } from "../../RevisionHistory";
 import { type LeadSheet, type Section, type SectionType, migrateSection, OfflineBadge } from "../../shared";
 import { cacheSheet, getCachedSheet } from "../../offlineCache";
-import { parseTimeMarker } from "../../timing";
+import { clearAllMarkers, parseTimeMarker } from "../../timing";
 import TapTiming from "../../TapTiming";
 
 // ─── Text ↔ LeadSheet ─────────────────────────────────────────────────────────
@@ -240,10 +240,11 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
     () => (replaceOpen ? collectChords(rawText) : []),
     [replaceOpen, rawText]
   );
-  const hasTiming = useMemo(
-    () => rawText.split("\n").some((line) => parseTimeMarker(line) !== null),
+  const timingCount = useMemo(
+    () => rawText.split("\n").filter((line) => parseTimeMarker(line) !== null).length,
     [rawText]
   );
+  const hasTiming = timingCount > 0;
   const findCount = chordsInSheet.find((c) => c.chord === findChord)?.count ?? 0;
   const newChord = replaceWith.trim().replace(/^\[|\]$/g, "").trim();
   const canReplace =
@@ -343,6 +344,15 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
   function handleChange(value: string) {
     setRawText(value);
     setDirty(true);
+  }
+
+  // Strips every @m:ss marker so the song can be re-timed from scratch later.
+  // It lands as an ordinary text edit, so Save/History can walk it back.
+  function handleClearTimings() {
+    if (!hasTiming) return;
+    const label = `${timingCount} time stamp${timingCount === 1 ? "" : "s"}`;
+    if (!confirm(`Remove all ${label} from this song? The lyrics and chords stay put.`)) return;
+    handleChange(clearAllMarkers(rawText));
   }
 
   function openReplace() {
@@ -480,6 +490,19 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
                 >
                   <Timer className="w-4 h-4" />
                   Tap Timing
+                </button>
+                <button
+                  onClick={handleClearTimings}
+                  disabled={!hasTiming}
+                  title={
+                    hasTiming
+                      ? `Remove all ${timingCount} time stamp${timingCount === 1 ? "" : "s"} so you can re-time the song`
+                      : "This song has no time stamps"
+                  }
+                  className="flex items-center gap-1.5 rounded border border-[#373A40]/30 dark:border-white/30 px-3 py-2 text-sm font-medium text-black dark:text-white/80 hover:border-black dark:hover:border-white hover:bg-black hover:text-yellow-400 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                >
+                  <TimerOff className="w-4 h-4" />
+                  Clear Times
                 </button>
                 <button
                   onClick={handlePlay}

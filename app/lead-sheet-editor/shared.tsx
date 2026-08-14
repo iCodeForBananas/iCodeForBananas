@@ -26,6 +26,17 @@ export interface Section {
   lyrics?: string;
 }
 
+/**
+ * Free-form per-song settings kept on the sheet's `metadata` jsonb column —
+ * playback preferences that belong to the song rather than the device.
+ * Anything reading it must tolerate missing or unexpected values (rows created
+ * before a key existed, sheets cached offline).
+ */
+export interface LeadSheetMetadata {
+  /** Drum machine state; see normalizeDrumSettings in DrumMachine.tsx. */
+  drums?: { pattern?: string; kick?: string; snare?: string; volume?: number };
+}
+
 export interface LeadSheet {
   id: string;
   title: string;
@@ -33,6 +44,7 @@ export interface LeadSheet {
   tempo: number | null;
   general_notes: string;
   sections: Section[];
+  metadata?: LeadSheetMetadata | null;
   created_at: string;
   updated_at: string;
 }

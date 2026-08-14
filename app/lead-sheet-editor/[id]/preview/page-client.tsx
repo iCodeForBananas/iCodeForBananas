@@ -44,7 +44,12 @@ import {
   DEFAULT_BEATS_PER_BAR,
   DEFAULT_BPM,
 } from "../../Metronome";
-import { DrumMachineControl } from "../../DrumMachine";
+import {
+  DrumMachineControl,
+  DEFAULT_DRUM_SETTINGS,
+  normalizeDrumSettings,
+  type DrumSettings,
+} from "../../DrumMachine";
 
 // Per-song localStorage keys: leadSheet:${id}:fontScale, leadSheet:${id}:columnCount,
 // leadSheet:${id}:columnWidthVw, leadSheet:${id}:beatsPerBar
@@ -421,9 +426,9 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
   const [beatsPerBar, setBeatsPerBar] = useState(() => loadBeatsPerBar(id));
   const [metronomeOn, setMetronomeOn] = useState(false);
   const [drumRunning, setDrumRunning] = useState(false);
-  const [drumPatternIdx, setDrumPatternIdx] = useState(0);
-  const [drumVolume, setDrumVolume] = useState(0.8);
+  const [drumSettings, setDrumSettings] = useState<DrumSettings>(DEFAULT_DRUM_SETTINGS);
   const bpmSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const drumSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Printing to PDF should offer the song's name, not "Preview Lead Sheet".
   useSongDocumentTitle(sheet?.title);
@@ -558,6 +563,30 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
 
   useEffect(() => () => { if (bpmSaveTimer.current) clearTimeout(bpmSaveTimer.current); }, []);
 
+  // The drum machine's pattern and voicing are part of how the song is played,
+  // so they ride along on the sheet's metadata instead of living on this device.
+  // Debounced like the tempo — the volume slider fires on every drag.
+  const updateDrumSettings = (patch: Partial<DrumSettings>) => {
+    const next = { ...drumSettings, ...patch };
+    setDrumSettings(next);
+    setSheet((prev) => (prev ? { ...prev, metadata: { ...prev.metadata, drums: next } } : prev));
+    if (drumSaveTimer.current) clearTimeout(drumSaveTimer.current);
+    drumSaveTimer.current = setTimeout(async () => {
+      const metadata = { ...sheet?.metadata, drums: next };
+      try {
+        await createClient()!
+          .from("lead_sheets")
+          .update({ metadata, updated_at: new Date().toISOString() })
+          .eq("id", id);
+        if (sheet) await cacheSheet({ ...sheet, metadata });
+      } catch {
+        // Offline or not the owner — the kit still plays with the new settings.
+      }
+    }, 800);
+  };
+
+  useEffect(() => () => { if (drumSaveTimer.current) clearTimeout(drumSaveTimer.current); }, []);
+
   const updateBeatsPerBar = (next: number) => {
     setBeatsPerBar(next);
     try {
@@ -581,6 +610,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
       if (data) {
         setSheet({ ...data, sections: data.sections.map(migrateSection) });
         setBpm(data.tempo ? clampBpm(data.tempo) : DEFAULT_BPM);
+        setDrumSettings(normalizeDrumSettings(data.metadata?.drums));
         setOffline(false);
         await cacheSheet(data);
       }
@@ -589,6 +619,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
       if (cached) {
         setSheet({ ...cached, sections: cached.sections.map(migrateSection) });
         setBpm(cached.tempo ? clampBpm(cached.tempo) : DEFAULT_BPM);
+        setDrumSettings(normalizeDrumSettings(cached.metadata?.drums));
         setOffline(true);
       }
     }
@@ -662,10 +693,8 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                     bpm={bpm}
                     running={drumRunning}
                     onToggle={() => setDrumRunning((r) => !r)}
-                    patternIdx={drumPatternIdx}
-                    onPatternChange={setDrumPatternIdx}
-                    volume={drumVolume}
-                    onVolumeChange={setDrumVolume}
+                    settings={drumSettings}
+                    onSettingsChange={updateDrumSettings}
                   />
                   <PlayControl hasTiming={hasTiming} hasVideo={videoDrivesPlayback} open={playbackOpen} onOpen={openPlayback} onClose={closePlayback} />
                   <div className='w-px self-stretch bg-gray-300 dark:bg-neutral-600' />
@@ -763,10 +792,8 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                     bpm={bpm}
                     running={drumRunning}
                     onToggle={() => setDrumRunning((r) => !r)}
-                    patternIdx={drumPatternIdx}
-                    onPatternChange={setDrumPatternIdx}
-                    volume={drumVolume}
-                    onVolumeChange={setDrumVolume}
+                    settings={drumSettings}
+                    onSettingsChange={updateDrumSettings}
                   />
                     <PlayControl hasTiming={hasTiming} hasVideo={videoDrivesPlayback} open={playbackOpen} onOpen={openPlayback} onClose={closePlayback} />
                     <div className='w-px self-stretch bg-gray-300 dark:bg-neutral-600' />

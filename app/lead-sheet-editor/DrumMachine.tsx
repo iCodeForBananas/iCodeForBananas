@@ -117,6 +117,47 @@ export const DRUM_PATTERNS: Pattern[] = [
   },
 ];
 
+// ── Settings ─────────────────────────────────────────────────────────────────
+
+export type KickStyle  = "folk" | "808";
+export type SnareStyle = "regular" | "brush";
+
+/** What the drum machine remembers per song — stored on the sheet's metadata. */
+export interface DrumSettings {
+  /** Pattern name rather than index, so reordering DRUM_PATTERNS can't reassign it. */
+  pattern: string;
+  kick: KickStyle;
+  snare: SnareStyle;
+  volume: number;
+}
+
+export const DEFAULT_DRUM_SETTINGS: DrumSettings = {
+  pattern: DRUM_PATTERNS[0].name,
+  kick: "folk",
+  snare: "regular",
+  volume: 0.8,
+};
+
+/** Coerce whatever came back from the database into usable settings. */
+export function normalizeDrumSettings(raw: unknown): DrumSettings {
+  if (!raw || typeof raw !== "object") return DEFAULT_DRUM_SETTINGS;
+  const r = raw as Record<string, unknown>;
+  const known = DRUM_PATTERNS.some((p) => p.name === r.pattern);
+  const volume = typeof r.volume === "number" && isFinite(r.volume) ? r.volume : DEFAULT_DRUM_SETTINGS.volume;
+  return {
+    pattern: known ? (r.pattern as string) : DEFAULT_DRUM_SETTINGS.pattern,
+    kick:    r.kick === "808" ? "808" : "folk",
+    snare:   r.snare === "brush" ? "brush" : "regular",
+    volume:  Math.min(1, Math.max(0, volume)),
+  };
+}
+
+/** Index of a pattern by name; falls back to the first pattern. */
+export function patternIndex(name: string): number {
+  const i = DRUM_PATTERNS.findIndex((p) => p.name === name);
+  return i === -1 ? 0 : i;
+}
+
 // ── Synthesis ────────────────────────────────────────────────────────────────
 
 /** Roland TR-808 kick for pop/indie: punchy sine with fast pitch drop, ~650ms decay */
@@ -303,8 +344,8 @@ function useDrumScheduler(
   patternIdx: number,
   running: boolean,
   volume: number,
-  kickStyle: "folk" | "808",
-  snareStyle: "regular" | "brush",
+  kickStyle: KickStyle,
+  snareStyle: SnareStyle,
 ): number {
   const ctxRef         = useRef<AudioContext | null>(null);
   const masterRef      = useRef<GainNode | null>(null);
@@ -410,21 +451,18 @@ export function DrumMachineControl({
   bpm,
   running,
   onToggle,
-  patternIdx,
-  onPatternChange,
-  volume,
-  onVolumeChange,
+  settings,
+  onSettingsChange,
 }: {
   bpm: number;
   running: boolean;
   onToggle: () => void;
-  patternIdx: number;
-  onPatternChange: (idx: number) => void;
-  volume: number;
-  onVolumeChange: (v: number) => void;
+  settings: DrumSettings;
+  /** Called with just the fields that changed; the owner merges and persists. */
+  onSettingsChange: (patch: Partial<DrumSettings>) => void;
 }) {
-  const [kickStyle, setKickStyle] = useState<"folk" | "808">("folk");
-  const [snareStyle, setSnareStyle] = useState<"regular" | "brush">("regular");
+  const { kick: kickStyle, snare: snareStyle, volume } = settings;
+  const patternIdx = patternIndex(settings.pattern);
   const activeStep = useDrumScheduler(bpm, patternIdx, running, volume, kickStyle, snareStyle);
   const pat = DRUM_PATTERNS[patternIdx];
 
@@ -462,7 +500,7 @@ export function DrumMachineControl({
       {/* Pattern selector */}
       <select
         value={patternIdx}
-        onChange={(e) => onPatternChange(Number(e.target.value))}
+        onChange={(e) => onSettingsChange({ pattern: DRUM_PATTERNS[Number(e.target.value)].name })}
         aria-label="Drum pattern"
         className="h-8 text-xs rounded-md border border-gray-200 dark:border-neutral-700 bg-gray-100 dark:bg-neutral-800 text-gray-700 dark:text-neutral-200 px-1 focus:outline-none"
       >
@@ -479,7 +517,7 @@ export function DrumMachineControl({
           <button
             key={style}
             type="button"
-            onClick={() => setKickStyle(style)}
+            onClick={() => onSettingsChange({ kick: style })}
             className={`px-2 h-7 text-xs font-medium transition-colors duration-100 ${
               kickStyle === style
                 ? style === "808"
@@ -501,7 +539,7 @@ export function DrumMachineControl({
           <button
             key={style}
             type="button"
-            onClick={() => setSnareStyle(style)}
+            onClick={() => onSettingsChange({ snare: style })}
             className={`px-2 h-7 text-xs font-medium transition-colors duration-100 ${
               snareStyle === style
                 ? style === "brush"
@@ -545,7 +583,7 @@ export function DrumMachineControl({
         max={1}
         step={0.05}
         value={volume}
-        onChange={(e) => onVolumeChange(Number(e.target.value))}
+        onChange={(e) => onSettingsChange({ volume: Number(e.target.value) })}
         aria-label={`Drum volume ${Math.round(volume * 100)}%`}
         title={`Volume: ${Math.round(volume * 100)}%`}
         className="w-14 h-1 accent-indigo-500 flex-shrink-0"
