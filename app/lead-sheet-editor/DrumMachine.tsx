@@ -105,6 +105,36 @@ export const DRUM_PATTERNS: Pattern[] = [
 
 // ── Synthesis ────────────────────────────────────────────────────────────────
 
+/** Classic Roland TR-808 bass kick: pure deep sine, long sub-bass decay */
+function playKick808(ctx: AudioContext, dst: AudioNode, when: number) {
+  const osc = ctx.createOscillator();
+  const g   = ctx.createGain();
+  osc.type = "sine";
+  // Attack pitch: starts with a short "click" envelope then settles into deep sub
+  osc.frequency.setValueAtTime(150, when);
+  osc.frequency.exponentialRampToValueAtTime(50, when + 0.025);
+  osc.frequency.exponentialRampToValueAtTime(30, when + 0.5);
+  // Long sustaining gain envelope — the 808 "boom"
+  g.gain.setValueAtTime(1.0, when);
+  g.gain.exponentialRampToValueAtTime(0.001, when + 1.4);
+  osc.connect(g);
+  g.connect(dst);
+  osc.start(when);
+  osc.stop(when + 1.41);
+
+  // Tiny transient sine pulse at attack for definition (no noise — stays pure)
+  const atk = ctx.createOscillator();
+  const ag  = ctx.createGain();
+  atk.type = "sine";
+  atk.frequency.value = 3500;
+  ag.gain.setValueAtTime(0.12, when);
+  ag.gain.exponentialRampToValueAtTime(0.001, when + 0.008);
+  atk.connect(ag);
+  ag.connect(dst);
+  atk.start(when);
+  atk.stop(when + 0.01);
+}
+
 function playKick(ctx: AudioContext, dst: AudioNode, when: number) {
   // Warm sine body with pitch drop — indie folk thump
   const osc = ctx.createOscillator();
@@ -199,6 +229,7 @@ function useDrumScheduler(
   patternIdx: number,
   running: boolean,
   volume: number,
+  kickStyle: "folk" | "808",
 ): number {
   const ctxRef        = useRef<AudioContext | null>(null);
   const masterRef     = useRef<GainNode | null>(null);
@@ -208,11 +239,13 @@ function useDrumScheduler(
   const patternIdxRef = useRef(patternIdx);
   const bpmRef        = useRef(bpm);
   const volumeRef     = useRef(volume);
+  const kickStyleRef  = useRef(kickStyle);
   const [activeStep, setActiveStep] = useState(-1);
 
   // Keep refs in sync so the scheduler loop picks up changes without restart
   useEffect(() => { patternIdxRef.current = patternIdx; }, [patternIdx]);
   useEffect(() => { bpmRef.current = bpm; }, [bpm]);
+  useEffect(() => { kickStyleRef.current = kickStyle; }, [kickStyle]);
   useEffect(() => {
     volumeRef.current = volume;
     if (masterRef.current) masterRef.current.gain.value = volume;
@@ -254,7 +287,10 @@ function useDrumScheduler(
         const step = stepRef.current;
         const when = nextTimeRef.current;
 
-        if (pat.kick[step])  playKick(ctx, dst, when);
+        if (pat.kick[step]) {
+          if (kickStyleRef.current === "808") playKick808(ctx, dst, when);
+          else playKick(ctx, dst, when);
+        }
         if (pat.snare[step]) playSnare(ctx, dst, when);
         if (pat.hihat[step]) playHihat(ctx, dst, when);
 
@@ -307,7 +343,8 @@ export function DrumMachineControl({
   volume: number;
   onVolumeChange: (v: number) => void;
 }) {
-  const activeStep = useDrumScheduler(bpm, patternIdx, running, volume);
+  const [kickStyle, setKickStyle] = useState<"folk" | "808">("folk");
+  const activeStep = useDrumScheduler(bpm, patternIdx, running, volume, kickStyle);
   const pat = DRUM_PATTERNS[patternIdx];
 
   return (
@@ -354,6 +391,28 @@ export function DrumMachineControl({
           </option>
         ))}
       </select>
+
+      {/* Kick style toggle: Folk / 808 */}
+      <div className="flex rounded-md overflow-hidden border border-gray-200 dark:border-neutral-700 flex-shrink-0">
+        {(["folk", "808"] as const).map((style) => (
+          <button
+            key={style}
+            type="button"
+            onClick={() => setKickStyle(style)}
+            className={`px-2 h-7 text-xs font-medium transition-colors duration-100 ${
+              kickStyle === style
+                ? style === "808"
+                  ? "bg-orange-500 text-white"
+                  : "bg-indigo-500 text-white"
+                : "bg-gray-100 dark:bg-neutral-800 text-gray-500 dark:text-neutral-400 hover:bg-gray-200 dark:hover:bg-neutral-700"
+            }`}
+            aria-label={`${style === "808" ? "TR-808" : "Folk"} kick`}
+            title={style === "808" ? "TR-808 sub-bass kick" : "Folk acoustic kick"}
+          >
+            {style === "808" ? "808" : "Folk"}
+          </button>
+        ))}
+      </div>
 
       {/* 16-step indicator — only visible while running */}
       {running && (
