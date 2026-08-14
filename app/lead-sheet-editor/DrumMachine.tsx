@@ -96,6 +96,13 @@ export const DRUM_PATTERNS: Pattern[] = [
     hihat: [0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0],
   },
   {
+    name: "1 & 4",
+    // Kick on beat 1, snare on beat 4 — the simplest possible groove
+    kick:  [1,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0],
+    snare: [0,0,0,0, 0,0,0,0, 0,0,0,0, 1,0,0,0],
+    hihat: [0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0],
+  },
+  {
     name: "Pulse",
     kick:  [1,0,0,0, 1,0,0,0, 1,0,0,0, 1,0,0,0],
     snare: [0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0],
@@ -105,34 +112,38 @@ export const DRUM_PATTERNS: Pattern[] = [
 
 // ── Synthesis ────────────────────────────────────────────────────────────────
 
-/** Classic Roland TR-808 bass kick: pure deep sine, long sub-bass decay */
+/** Classic Roland TR-808 bass kick: fat, round sub-bass with soft saturation */
 function playKick808(ctx: AudioContext, dst: AudioNode, when: number) {
   const osc = ctx.createOscillator();
   const g   = ctx.createGain();
   osc.type = "sine";
-  // Attack pitch: starts with a short "click" envelope then settles into deep sub
-  osc.frequency.setValueAtTime(150, when);
-  osc.frequency.exponentialRampToValueAtTime(50, when + 0.025);
-  osc.frequency.exponentialRampToValueAtTime(30, when + 0.5);
-  // Long sustaining gain envelope — the 808 "boom"
-  g.gain.setValueAtTime(1.0, when);
-  g.gain.exponentialRampToValueAtTime(0.001, when + 1.4);
-  osc.connect(g);
-  g.connect(dst);
-  osc.start(when);
-  osc.stop(when + 1.41);
 
-  // Tiny transient sine pulse at attack for definition (no noise — stays pure)
-  const atk = ctx.createOscillator();
-  const ag  = ctx.createGain();
-  atk.type = "sine";
-  atk.frequency.value = 3500;
-  ag.gain.setValueAtTime(0.12, when);
-  ag.gain.exponentialRampToValueAtTime(0.001, when + 0.008);
-  atk.connect(ag);
-  ag.connect(dst);
-  atk.start(when);
-  atk.stop(when + 0.01);
+  // Pitch sweeps down smoothly — no sharp transient, just round sub movement
+  osc.frequency.setValueAtTime(65, when);
+  osc.frequency.exponentialRampToValueAtTime(48, when + 0.06);
+  osc.frequency.exponentialRampToValueAtTime(28, when + 0.7);
+
+  // Gain: tiny linear ramp to avoid any click, then long exponential tail
+  g.gain.setValueAtTime(0, when);
+  g.gain.linearRampToValueAtTime(1.0, when + 0.006);
+  g.gain.exponentialRampToValueAtTime(0.001, when + 1.6);
+
+  // Soft waveshaper saturation — adds warmth/fatness without harshness
+  const ws = ctx.createWaveShaper();
+  const curve = new Float32Array(512);
+  for (let i = 0; i < 512; i++) {
+    const x = (i * 2) / 512 - 1;
+    // tanh-based soft clip: warm even harmonics, no harsh distortion
+    curve[i] = Math.tanh(2.5 * x) / Math.tanh(2.5);
+  }
+  ws.curve = curve;
+  ws.oversample = "2x";
+
+  osc.connect(g);
+  g.connect(ws);
+  ws.connect(dst);
+  osc.start(when);
+  osc.stop(when + 1.65);
 }
 
 function playKick(ctx: AudioContext, dst: AudioNode, when: number) {
