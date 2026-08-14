@@ -59,6 +59,14 @@ export const DRUM_PATTERNS: Pattern[] = [
     hihat: [1,0,0,1, 1,0,0,1, 1,0,0,1, 1,0,0,1],
   },
   {
+    name: "Sexy Beat",
+    // Kick 1 + 3 with a pickup on the "and" of 4 that leans into the next bar,
+    // snare 2 + 4, straight 8th hats for the sultry R&B push-and-pull.
+    kick:  [1,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,1,0],
+    snare: [0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0],
+    hihat: [1,0,1,0, 1,0,1,0, 1,0,1,0, 1,0,1,0],
+  },
+  {
     name: "Boom-Chick",
     kick:  [1,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0],
     snare: [0,0,0,0, 1,0,1,0, 0,0,0,0, 1,0,1,0],
