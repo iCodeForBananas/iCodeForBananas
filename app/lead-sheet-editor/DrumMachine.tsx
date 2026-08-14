@@ -112,38 +112,44 @@ export const DRUM_PATTERNS: Pattern[] = [
 
 // ── Synthesis ────────────────────────────────────────────────────────────────
 
-/** Classic Roland TR-808 bass kick: fat, round sub-bass with soft saturation */
+/** Trap 808: tuned bass with long pitch glide, two detuned oscs, heavy saturation */
 function playKick808(ctx: AudioContext, dst: AudioNode, when: number) {
-  const osc = ctx.createOscillator();
-  const g   = ctx.createGain();
-  osc.type = "sine";
+  // Two slightly detuned sines for that thick, beating sub texture
+  const osc1 = ctx.createOscillator();
+  const osc2 = ctx.createOscillator();
+  const g    = ctx.createGain();
 
-  // Pitch sweeps down smoothly — no sharp transient, just round sub movement
-  osc.frequency.setValueAtTime(65, when);
-  osc.frequency.exponentialRampToValueAtTime(48, when + 0.06);
-  osc.frequency.exponentialRampToValueAtTime(28, when + 0.7);
+  osc1.type = "sine";
+  osc2.type = "sine";
 
-  // Gain: tiny linear ramp to avoid any click, then long exponential tail
+  // Start at A2 (110 Hz) — a musical pitch — slide down over 1.8s to ~35 Hz
+  // This is the classic trap 808 "woop" glide
+  osc1.frequency.setValueAtTime(110, when);
+  osc1.frequency.exponentialRampToValueAtTime(35, when + 1.8);
+  osc2.frequency.setValueAtTime(113, when);  // +3 Hz detune for thickness
+  osc2.frequency.exponentialRampToValueAtTime(36.5, when + 1.8);
+
+  // Gain: instant attack, very long tail — trap 808s sustain for 2-3 seconds
   g.gain.setValueAtTime(0, when);
-  g.gain.linearRampToValueAtTime(1.0, when + 0.006);
-  g.gain.exponentialRampToValueAtTime(0.001, when + 1.6);
+  g.gain.linearRampToValueAtTime(0.85, when + 0.003);
+  g.gain.exponentialRampToValueAtTime(0.001, when + 2.5);
 
-  // Soft waveshaper saturation — adds warmth/fatness without harshness
+  // Heavy tanh saturation — trap 808s are cranked through a saturator
   const ws = ctx.createWaveShaper();
   const curve = new Float32Array(512);
   for (let i = 0; i < 512; i++) {
     const x = (i * 2) / 512 - 1;
-    // tanh-based soft clip: warm even harmonics, no harsh distortion
-    curve[i] = Math.tanh(2.5 * x) / Math.tanh(2.5);
+    curve[i] = Math.tanh(4 * x) / Math.tanh(4);
   }
   ws.curve = curve;
-  ws.oversample = "2x";
+  ws.oversample = "4x";
 
-  osc.connect(g);
+  osc1.connect(g);
+  osc2.connect(g);
   g.connect(ws);
   ws.connect(dst);
-  osc.start(when);
-  osc.stop(when + 1.65);
+  osc1.start(when); osc1.stop(when + 2.55);
+  osc2.start(when); osc2.stop(when + 2.55);
 }
 
 function playKick(ctx: AudioContext, dst: AudioNode, when: number) {
