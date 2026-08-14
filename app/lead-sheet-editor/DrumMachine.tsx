@@ -97,9 +97,9 @@ export const DRUM_PATTERNS: Pattern[] = [
   },
   {
     name: "1 & 4",
-    // Kick on beat 1, snare on beat 4 — the simplest possible groove
+    // Kick on beat 1, snare on beats 2, 3, 4
     kick:  [1,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0],
-    snare: [0,0,0,0, 0,0,0,0, 0,0,0,0, 1,0,0,0],
+    snare: [0,0,0,0, 1,0,0,0, 1,0,0,0, 1,0,0,0],
     hihat: [0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0],
   },
   {
