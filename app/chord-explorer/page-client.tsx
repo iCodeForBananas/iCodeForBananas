@@ -465,57 +465,70 @@ export default function ChordExplorerPage() {
     </p>
   );
 
+  // Sidebar rather than a dropdown: the whole point is scanning the feelings
+  // and clicking through them quickly, which a closed <select> can't do.
   const progressionContent = (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <label
-          htmlFor="progression-select"
-          className="text-xs font-semibold text-black/50 dark:text-white/50 uppercase tracking-wider shrink-0"
-          title="Pick a named chord progression — the chords shown below update to match your currently selected root note"
-        >
-          Progression
-        </label>
-        <select
-          id="progression-select"
-          value={selectedProgressionName}
-          onChange={(e) => setSelectedProgressionName(e.target.value)}
-          className="min-h-[44px] flex-1 min-w-[220px] max-w-sm rounded-lg border border-border bg-transparent px-3 py-2 text-sm dark:border-neutral-600 dark:bg-neutral-900"
-        >
-          {PROGRESSION_GROUPS.map((group) => (
-            <optgroup key={group.label} label={group.label}>
-              {group.items.map((p) => (
-                <option key={p.name} value={p.name}>
-                  {p.name} — {p.pattern}
-                </option>
-              ))}
-            </optgroup>
-          ))}
-        </select>
-      </div>
-
-      <div className="flex flex-col gap-1">
-        <p className="text-sm font-semibold text-black dark:text-white">{selectedProgressionDef.name}</p>
-        <p className="text-sm text-black/50 dark:text-white/50">{selectedProgressionDef.description}</p>
-        <p
-          className="text-xs font-mono text-black/40 dark:text-neutral-500"
-          title="The Roman numeral pattern — each numeral represents a scale degree relative to the selected root note"
-        >
-          {selectedProgressionDef.pattern}
-        </p>
-      </div>
-
-      <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))" }}>
-        {progressionChords.map((c, i) => (
-          <ProgressionChordCard
-            key={i}
-            roman={c.roman}
-            note={c.note}
-            quality={c.quality}
-            voicingIndex={progressionVoicingIndices[i] ?? 0}
-            useFlats={useFlats}
-            onVoicingChange={(voicingIndex) => handleProgressionVoicingChange(i, voicingIndex)}
-          />
+    <div className="flex h-full min-h-0 flex-col gap-4 md:flex-row">
+      <div
+        className="flex max-h-64 min-h-0 shrink-0 flex-col overflow-y-auto rounded-lg border border-border md:max-h-none md:w-60 dark:border-neutral-700"
+        role="listbox"
+        aria-label="Chord progressions by feeling"
+      >
+        {PROGRESSION_GROUPS.map((group) => (
+          <div key={group.label}>
+            <p className="sticky top-0 z-10 border-b border-border bg-gray-50 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-black/50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white/50">
+              {group.label}
+            </p>
+            {group.items.map((p) => {
+              const active = p.name === selectedProgressionName;
+              return (
+                <button
+                  key={p.name}
+                  type="button"
+                  role="option"
+                  aria-selected={active}
+                  onClick={() => setSelectedProgressionName(p.name)}
+                  title={p.description}
+                  className={`flex w-full flex-col items-start gap-0.5 border-l-2 px-3 py-2 text-left transition-colors ${
+                    active
+                      ? "border-accent bg-accent/20"
+                      : "border-transparent hover:bg-foreground/10"
+                  }`}
+                >
+                  <span className="text-sm font-medium text-black dark:text-white">{p.name}</span>
+                  <span className="font-mono text-[11px] text-black/40 dark:text-neutral-500">{p.pattern}</span>
+                </button>
+              );
+            })}
+          </div>
         ))}
+      </div>
+
+      <div className="flex min-h-0 flex-1 flex-col gap-4 md:overflow-y-auto">
+        <div className="flex flex-col gap-1">
+          <p className="text-sm font-semibold text-black dark:text-white">{selectedProgressionDef.name}</p>
+          <p className="text-sm text-black/50 dark:text-white/50">{selectedProgressionDef.description}</p>
+          <p
+            className="text-xs font-mono text-black/40 dark:text-neutral-500"
+            title="The Roman numeral pattern — each numeral represents a scale degree relative to the selected root note"
+          >
+            {selectedProgressionDef.pattern}
+          </p>
+        </div>
+
+        <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))" }}>
+          {progressionChords.map((c, i) => (
+            <ProgressionChordCard
+              key={i}
+              roman={c.roman}
+              note={c.note}
+              quality={c.quality}
+              voicingIndex={progressionVoicingIndices[i] ?? 0}
+              useFlats={useFlats}
+              onVoicingChange={(voicingIndex) => handleProgressionVoicingChange(i, voicingIndex)}
+            />
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -561,9 +574,9 @@ export default function ChordExplorerPage() {
       id: "progression-generator",
       title: "Chord Progressions",
       tooltip:
-        "Pick a named, popular chord progression and see it rendered in the selected key — the Roman numeral pattern and feel description stay fixed while the actual chords update to match your root note. Use each card's dropdown to swap in a different voicing.",
+        "Click through the sidebar to hear progressions grouped by the feeling they create — the chords render in your selected key, and the Roman numeral pattern stays fixed while the actual chords follow your root note. Use each card's dropdown to swap in a different voicing. Drag the panel's corner to make the list taller.",
       defaultColSpan: 12,
-      defaultRowSpan: 4,
+      defaultRowSpan: 6,
       content: progressionContent,
     },
   ];

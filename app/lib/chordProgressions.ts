@@ -37,7 +37,14 @@ const ROMAN_BASE_DEGREE: Record<string, number> = {
   VII: 11,
 };
 
-const parseRomanToken = (raw: string): ProgressionChord => {
+// In a minor key, a bare III / VI / VII means the natural-minor degree — the
+// flat third, sixth and seventh. In a major key the same numerals mean chords
+// built on the major scale (the VI of I–VI–ii–V is A in C, not Ab). A numeral
+// on its own can't say which, so the tonic decides: a lowercase i anywhere in
+// the pattern means we are reading it in minor.
+const MINOR_KEY_DEGREE: Record<string, number> = { III: 3, VI: 8, VII: 10 };
+
+const parseRomanToken = (raw: string, minorKey: boolean): ProgressionChord => {
   const roman = raw.trim();
   let t = roman;
 
@@ -54,15 +61,28 @@ const parseRomanToken = (raw: string): ProgressionChord => {
   if (diminished) t = t.slice(0, -1);
 
   const isMajorCase = t === t.toUpperCase();
-  const base = ROMAN_BASE_DEGREE[t.toUpperCase()] ?? 0;
+  const upper = t.toUpperCase();
+  // An explicit accidental is already saying exactly which degree it wants, so
+  // the minor reading only applies to the bare numeral.
+  const base =
+    minorKey && isMajorCase && accidental === 0 && upper in MINOR_KEY_DEGREE
+      ? MINOR_KEY_DEGREE[upper]
+      : ROMAN_BASE_DEGREE[upper] ?? 0;
   const degree = ((base + accidental) % 12 + 12) % 12;
   const quality: ChordQuality = diminished ? "Diminished" : isMajorCase ? "Major" : "Minor";
 
   return { roman, degree, quality };
 };
 
-export const parseRomanPattern = (pattern: string): ProgressionChord[] =>
-  pattern.split(/[–-]/).map(parseRomanToken);
+/** A lowercase i tonic is what marks a pattern as minor-key. */
+const isMinorKeyPattern = (tokens: string[]): boolean =>
+  tokens.some((t) => t.trim().replace(/°$/, "") === "i");
+
+export const parseRomanPattern = (pattern: string): ProgressionChord[] => {
+  const tokens = pattern.split(/[–-]/);
+  const minorKey = isMinorKeyPattern(tokens);
+  return tokens.map((t) => parseRomanToken(t, minorKey));
+};
 
 export const noteAtDegree = (rootNote: string, degree: number, useFlats: boolean): string => {
   const canonical = flatToSharp[rootNote] ?? rootNote;
@@ -152,6 +172,66 @@ export const PROGRESSION_GROUPS: ProgressionGroup[] = [
       { name: "The Pivot", pattern: "I–IV–bVII–bVI", description: "Unexpected flat-six landing. Cinematic twist." },
       { name: "Modal Mix", pattern: "I–bVI–bVII–I", description: "Borrowed chords from parallel minor. Rock grandeur." },
       { name: "The Drop", pattern: "I–I–IV–iv", description: "Major to minor IV. Emotional gut punch mid-progression." },
+    ],
+  },
+  {
+    label: "Dreamy / Atmospheric",
+    items: [
+      { name: "The Daydream", pattern: "I–iii–vi–IV", description: "The iii softens the step out of the tonic, so it floats where I–V–vi–IV lands." },
+      { name: "Slow Drift", pattern: "I–iii–IV–iii", description: "Rocks between two neighbours. Almost no harmonic motion, which is the whole effect." },
+      { name: "Cloudbank", pattern: "vi–iii–IV–I", description: "Opens unresolved and only sinks into the tonic at the last moment." },
+      { name: "Weightless", pattern: "I–II–vi–IV", description: "The major II is borrowed from Lydian — raises the 4th and takes the floor out." },
+      { name: "Half-Light", pattern: "I–iii–bVII–IV", description: "Major third-degree against a flat-seven. Warm and slightly out of focus." },
+      { name: "The Long Exhale", pattern: "I–V–vi–iii–IV–I–ii–V", description: "Canon motion rerouted through ii, so it lands softer than Pachelbel does." },
+    ],
+  },
+  {
+    label: "Aching / Longing",
+    items: [
+      { name: "Unsent Letter", pattern: "I–iii–vi–iv", description: "Ends on the borrowed minor iv — the didn't-say-it chord." },
+      { name: "The Ache", pattern: "vi–IV–I–iii", description: "The pop loop with the V withheld, so it never gets its resolution." },
+      { name: "Still Here", pattern: "vi–V–IV–V", description: "Falls, then pulls back up short. Circular and unfinished." },
+      { name: "Something Left", pattern: "I–iii–IV–iv–I", description: "The IV turns minor underneath a melody note that doesn't move." },
+      { name: "Held Breath", pattern: "IV–iii–ii–I", description: "Stepwise descent onto the tonic. Resigned rather than triumphant." },
+      { name: "The Long Way Home", pattern: "I–V–vi–iii–IV–iv–I–V", description: "Canon opening that darkens at the iv before it resolves. Eight bars to say one thing." },
+    ],
+  },
+  {
+    label: "Sultry / Late Night",
+    items: [
+      { name: "After Hours", pattern: "i–iv–VII–III", description: "Minor with a major III release. Smoky and in no hurry." },
+      { name: "Velvet", pattern: "ii–V–iii–vi", description: "Two cadences chained so the loop never actually reaches I." },
+      { name: "Smoke", pattern: "i–VI–ii°–V", description: "The diminished ii pulling into V is the noir sound." },
+      { name: "Slow Burn", pattern: "i–iv–VI–V", description: "Builds pressure onto the V and just sits there." },
+      { name: "Neon", pattern: "vi–ii–V–I", description: "Jazz turnaround entered from the relative minor. Lands late." },
+    ],
+  },
+  {
+    label: "Driving / Danceable",
+    items: [
+      { name: "Night Drive", pattern: "i–VII–III–VI", description: "Continuous descent with no resolution. Built to repeat." },
+      { name: "The Chase", pattern: "i–iv–VII–VI", description: "Every chord falls. Relentless under a steady kick." },
+      { name: "Hands Up", pattern: "IV–V–iii–vi", description: "Starts mid-lift on the IV and lands on the relative minor." },
+      { name: "Bassline", pattern: "i–v–iv–VII", description: "All minor until the VII cracks it open." },
+      { name: "The Runner", pattern: "I–V–IV–V", description: "Never settles on the IV — keeps handing back to the V." },
+    ],
+  },
+  {
+    label: "Warm / Homely",
+    items: [
+      { name: "Porch Light", pattern: "I–IV–vi–iii", description: "Familiar folk opening that drifts to the minor side and stays there." },
+      { name: "Old Friend", pattern: "I–iii–ii–V", description: "Stepwise walk down through the middle degrees." },
+      { name: "Kitchen Table", pattern: "I–V–IV–vi", description: "The three chords everyone knows, with the relative minor as the way out." },
+      { name: "Sunday Drive", pattern: "I–IV–ii–V–I–IV–V–I", description: "Eight bars of plain diatonic motion. Nothing surprising, which is the point." },
+    ],
+  },
+  {
+    label: "Unsettled / Restless",
+    items: [
+      { name: "Second Thoughts", pattern: "i–III–VII–iv", description: "Major III against a minor iv — can't decide which mode it lives in." },
+      { name: "Pacing", pattern: "i–VI–iv–v", description: "The minor v instead of V removes the resolution entirely." },
+      { name: "Loose Thread", pattern: "I–bIII–bVII–IV", description: "Three borrowed chords in a row. Familiar shape, wrong colours." },
+      { name: "Can't Sit Still", pattern: "vi–III–IV–I", description: "The major III is the jolt; everything after it is recovery." },
     ],
   },
 ];
