@@ -51,6 +51,33 @@ import {
   type DrumSettings,
 } from "../../DrumMachine";
 
+// ── Drum timeline parsing ─────────────────────────────────────────────────────
+
+interface DrumEvent { time: number; action: "start" | "stop" }
+
+const DRUM_START_RE = /\[drum\]/i;
+const DRUM_STOP_RE  = /\[\/drum\]/i;
+const TIMESTAMP_RE  = /^@(\d+):(\d{2})\b/;
+
+function parseDrumEvents(sections: Section[]): DrumEvent[] {
+  const events: DrumEvent[] = [];
+  for (const section of sections) {
+    for (const line of (section.content ?? "").split("\n")) {
+      const m = line.match(TIMESTAMP_RE);
+      if (!m) continue;
+      const secs = parseInt(m[1]) * 60 + parseInt(m[2]);
+      if (DRUM_START_RE.test(line)) events.push({ time: secs, action: "start" });
+      else if (DRUM_STOP_RE.test(line)) events.push({ time: secs, action: "stop" });
+    }
+  }
+  return events.sort((a, b) => a.time - b.time);
+}
+
+// Strip [drum] / [/drum] markers from a line for display
+function stripDrumMarkers(line: string): string {
+  return line.replace(/\[\/drum\]/gi, "").replace(/\[drum\]/gi, "").replace(/\s{2,}/g, " ").trim();
+}
+
 // Per-song localStorage keys: leadSheet:${id}:fontScale, leadSheet:${id}:columnCount,
 // leadSheet:${id}:columnWidthVw, leadSheet:${id}:beatsPerBar
 // The metronome's BPM is not local — it lives on the song's tempo column.
@@ -364,6 +391,9 @@ const SheetContent = memo(function SheetContent({
               <div className='space-y-3'>
                 {lines.map((line, i) => {
                   if (line.trim() === "") return <div key={i} className='h-3' />;
+                  const hasDrumStart = DRUM_START_RE.test(line);
+                  const hasDrumStop  = DRUM_STOP_RE.test(line);
+                  const displayLine  = (hasDrumStart || hasDrumStop) ? stripDrumMarkers(line) : line;
                   const cueIndex = timeline?.lineCue.get(lineKey(sectionIndex, i));
                   const active = cueIndex !== undefined && cueIndex === activeCueIndex;
                   return (
@@ -381,8 +411,19 @@ const SheetContent = memo(function SheetContent({
                           : ""
                       } ${cueIndex !== undefined && onSeekToLine ? "cursor-pointer print:cursor-auto" : ""}`}
                     >
+                      {(hasDrumStart || hasDrumStop) && (
+                        <span
+                          className={`inline-flex items-center gap-1 text-[0.65em] font-bold tracking-wide uppercase px-1.5 py-0.5 rounded mr-2 print:hidden ${
+                            hasDrumStart
+                              ? "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400"
+                              : "bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-400"
+                          }`}
+                        >
+                          🥁 {hasDrumStart ? "Drums In" : "Drums Out"}
+                        </span>
+                      )}
                       <ChordLyricLine
-                        line={transposeSteps !== 0 ? transposeText(line, transposeSteps) : line}
+                        line={transposeSteps !== 0 ? transposeText(displayLine, transposeSteps) : displayLine}
                         large={fullscreen}
                         showTime={!!timeline}
                       />
@@ -429,6 +470,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
   const [drumSettings, setDrumSettings] = useState<DrumSettings>(DEFAULT_DRUM_SETTINGS);
   const bpmSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const drumSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastDrumEventIdxRef = useRef<number>(-2); // -2 = uninitialized
 
   // Printing to PDF should offer the song's name, not "Preview Lead Sheet".
   useSongDocumentTitle(sheet?.title);
@@ -450,6 +492,42 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
   const activeCue = playbackOpen ? cueAt(timeline, time) : null;
   const activeCueIndex = activeCue?.index ?? null;
   usePlaybackKeys(playback, playbackOpen);
+
+  // ── Drum timeline automation ───────────────────────────────────────────────
+  const drumEvents = useMemo(
+    () => (sheet ? parseDrumEvents(sheet.sections) : []),
+    [sheet]
+  );
+
+  // When playback closes, reset tracker and let the user keep drums in whatever
+  // state they set manually.
+  useEffect(() => {
+    if (!playbackOpen) {
+      lastDrumEventIdxRef.current = -2;
+    }
+  }, [playbackOpen]);
+
+  // Watch the playback clock and auto-trigger drum start/stop at marked times.
+  useEffect(() => {
+    if (!playbackOpen || drumEvents.length === 0) return;
+
+    // Find the latest event at-or-before current time
+    let idx = -1;
+    for (let i = 0; i < drumEvents.length; i++) {
+      if (drumEvents[i].time <= time) idx = i;
+      else break;
+    }
+
+    if (idx !== lastDrumEventIdxRef.current) {
+      lastDrumEventIdxRef.current = idx;
+      if (idx >= 0) {
+        setDrumRunning(drumEvents[idx].action === "start");
+      } else {
+        // Seeked before first event — stop drums
+        setDrumRunning(false);
+      }
+    }
+  }, [time, playbackOpen, drumEvents]);
 
   const seekToLine = useCallback(
     (sectionIndex: number, lineIndex: number) => {
