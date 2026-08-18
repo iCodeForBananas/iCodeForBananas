@@ -16,28 +16,14 @@ interface LogEntry {
 }
 
 const COMPOUND: { name: string; type: "weighted" | "bodyweight" }[] = [
-  { name: "Bulgarian Split Squats", type: "weighted" },
   { name: "Bench Press", type: "weighted" },
   { name: "Bent Over Rows", type: "weighted" },
-  { name: "Bicep Curls", type: "weighted" },
-  { name: "Chin-ups", type: "bodyweight" },
-  { name: "Ab Wheel Rollout", type: "bodyweight" },
-  { name: "Cable Crunch", type: "weighted" },
-  { name: "Core Work", type: "bodyweight" },
-  { name: "Dragon Flag", type: "bodyweight" },
-  { name: "Leg Raises", type: "bodyweight" },
-  { name: "Crunches", type: "bodyweight" },
+  { name: "Bulgarian Split Squats", type: "weighted" },
   { name: "Deadlift", type: "weighted" },
-  { name: "Dips", type: "bodyweight" },
-  { name: "Incline Press", type: "weighted" },
-  { name: "Leg Lifts", type: "bodyweight" },
-  { name: "Leg Press", type: "weighted" },
   { name: "Overhead Press", type: "weighted" },
   { name: "Pull-ups", type: "bodyweight" },
-  { name: "Push-ups", type: "weighted" },
-  { name: "Sit-ups", type: "bodyweight" },
+  { name: "Push-ups", type: "bodyweight" },
   { name: "Squat", type: "weighted" },
-  { name: "Upright Rows", type: "weighted" },
 ];
 
 const localDateStr = (d: Date) =>
@@ -47,30 +33,17 @@ const today = () => localDateStr(new Date());
 const COLORS = ["#ef4444", "#3b82f6", "#22c55e", "#f59e0b", "#8b5cf6", "#06b6d4", "#ec4899", "#f97316"];
 
 const BODY_PART_MAP: Partial<Record<string, string[]>> = {
-  "Bulgarian Split Squats": ["legs"],
   "Bench Press": ["chest"],
   "Bent Over Rows": ["back"],
-  "Chin-ups": ["back"],
-  "Ab Wheel Rollout": ["core"],
-  "Cable Crunch": ["core"],
-  "Core Work": ["core"],
-  "Dragon Flag": ["core"],
-  "Leg Raises": ["core"],
-  "Leg Lifts": ["core"],
-  Crunches: ["core"],
-  "Sit-ups": ["core"],
+  "Bulgarian Split Squats": ["legs"],
   Deadlift: ["back", "legs"],
-  Dips: ["chest"],
-  "Incline Press": ["chest"],
-  "Leg Press": ["legs"],
   "Overhead Press": ["shoulders"],
   "Pull-ups": ["back"],
   "Push-ups": ["chest"],
   Squat: ["legs"],
-  "Upright Rows": ["shoulders"],
 };
 
-const BODY_PARTS = ["chest", "back", "shoulders", "legs", "core"] as const;
+const BODY_PARTS = ["chest", "back", "shoulders", "legs"] as const;
 type BodyPart = (typeof BODY_PARTS)[number];
 
 const BODY_PART_COLORS: Record<BodyPart, string> = {
@@ -78,7 +51,6 @@ const BODY_PART_COLORS: Record<BodyPart, string> = {
   back: "#22c55e",
   shoulders: "#8b5cf6",
   legs: "#3b82f6",
-  core: "#f59e0b",
 };
 
 const BODY_PART_EXERCISES = (Object.entries(BODY_PART_MAP) as [string, string[]][]).reduce(
@@ -88,7 +60,7 @@ const BODY_PART_EXERCISES = (Object.entries(BODY_PART_MAP) as [string, string[]]
     });
     return acc;
   },
-  { chest: [], back: [], shoulders: [], legs: [], core: [] } as Record<BodyPart, string[]>,
+  { chest: [], back: [], shoulders: [], legs: [] } as Record<BodyPart, string[]>,
 );
 
 export default function WorkoutTrackerContent() {
