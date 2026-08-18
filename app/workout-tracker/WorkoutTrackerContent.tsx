@@ -29,6 +29,9 @@ const COMPOUND: { name: string; type: "weighted" | "bodyweight" }[] = [
 const localDateStr = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 const today = () => localDateStr(new Date());
+// noon avoids DST edges shifting a day across a boundary
+const dayMs = (d: string) => new Date(d + "T12:00:00").getTime();
+const DAY_MS = 86400000;
 
 const COLORS = ["#ef4444", "#3b82f6", "#22c55e", "#f59e0b", "#8b5cf6", "#06b6d4", "#ec4899", "#f97316"];
 
@@ -124,7 +127,8 @@ export default function WorkoutTrackerContent() {
   const chartData = useMemo(() => {
     const dates = [...new Set(logs.map((l) => l.date))].sort();
     return dates.map((d) => {
-      const row: Record<string, string | number> = { date: d };
+      // numeric timestamp: spaces points by real elapsed time, not by index
+      const row: Record<string, string | number> = { date: d, t: dayMs(d) };
       for (const ex of exercisesWithLogs) {
         const entry = logs.find((l) => l.exercise === ex.name && l.date === d);
         if (entry) row[ex.name] = entry.weight ?? 0;
@@ -132,6 +136,32 @@ export default function WorkoutTrackerContent() {
       return row;
     });
   }, [logs, exercisesWithLogs]);
+
+  // One tick per week, or per month once the span gets long, so the gaps
+  // between sessions stay readable rather than collapsing to even spacing.
+  const chartTicks = useMemo(() => {
+    if (chartData.length === 0) return [];
+    const first = chartData[0].t as number;
+    const last = chartData[chartData.length - 1].t as number;
+    const spanDays = (last - first) / DAY_MS;
+    const ticks: number[] = [];
+    const cur = new Date(first);
+    if (spanDays > 180) {
+      cur.setDate(1);
+      while (cur.getTime() <= last) {
+        if (cur.getTime() >= first) ticks.push(cur.getTime());
+        cur.setMonth(cur.getMonth() + 1);
+      }
+    } else {
+      const step = spanDays > 70 ? 14 : 7;
+      while (cur.getTime() <= last) {
+        ticks.push(cur.getTime());
+        cur.setDate(cur.getDate() + step);
+      }
+    }
+    if (ticks[ticks.length - 1] !== last) ticks.push(last);
+    return ticks;
+  }, [chartData]);
 
   const [hovered, setHovered] = useState<{ date: string; exercises: string[]; x: number; y: number } | null>(null);
   const [focusedExercise, setFocusedExercise] = useState<string | null>(null);
@@ -185,7 +215,8 @@ export default function WorkoutTrackerContent() {
     <BentoPageLayout title="Workout Tracker">
       {/* Log form */}
           {user && (
-            <div className='flex flex-col sm:flex-row sm:flex-wrap gap-3 sm:items-end mb-6 sm:mb-8 max-w-3xl mx-auto'>
+            <div className='bg-white text-[#1A1B1E] rounded-2xl border border-[#373A40]/15 shadow-sm p-4 sm:p-5 mb-6'>
+              <div className='flex flex-col sm:flex-row sm:flex-wrap gap-3 sm:items-end max-w-3xl mx-auto'>
               <input
                 type='date'
                 value={date}
@@ -219,12 +250,13 @@ export default function WorkoutTrackerContent() {
               >
                 Submit
               </button>
+              </div>
             </div>
           )}
 
           {/* Weight progress chart */}
           {exercisesWithLogs.length > 0 && chartData.length > 0 && (
-            <div className='border-t border-[#373A40]/10 pt-6 mb-8'>
+            <div className='bg-white text-[#1A1B1E] rounded-2xl border border-[#373A40]/15 shadow-sm p-4 sm:p-5 mb-6'>
               <h2 className='font-semibold text-lg mb-4'>Weight Progress</h2>
               <div className='h-72 sm:h-96'>
                 <ClientOnly>
@@ -232,17 +264,21 @@ export default function WorkoutTrackerContent() {
                   <LineChart data={chartData}>
                     <CartesianGrid strokeDasharray='3 3' stroke='#e5e7eb' />
                     <XAxis
-                      dataKey='date'
+                      dataKey='t'
+                      type='number'
+                      scale='time'
+                      domain={["dataMin", "dataMax"]}
+                      ticks={chartTicks}
                       fontSize={11}
-                      tickFormatter={(d) => {
-                        const dt = new Date(d + "T12:00:00");
+                      tickFormatter={(t) => {
+                        const dt = new Date(t);
                         return `${dt.getMonth() + 1}/${dt.getDate()}`;
                       }}
                     />
                     <YAxis fontSize={11} unit=' lbs' />
                     <Tooltip
-                      labelFormatter={(d) =>
-                        new Date(d + "T12:00:00").toLocaleDateString("en-US", {
+                      labelFormatter={(t) =>
+                        new Date(t).toLocaleDateString("en-US", {
                           weekday: "short",
                           month: "short",
                           day: "numeric",
@@ -273,7 +309,7 @@ export default function WorkoutTrackerContent() {
           )}
 
           {/* Contribution graph */}
-          <div className='border-t border-[#373A40]/10 pt-6 mb-8 relative'>
+          <div className='bg-white text-[#1A1B1E] rounded-2xl border border-[#373A40]/15 shadow-sm p-4 sm:p-5 mb-6 relative'>
             <h2 className='font-semibold text-lg mb-4'>Activity</h2>
             <div className='overflow-x-auto'>
               <div className='flex gap-[2px] sm:gap-[3px]'>
@@ -332,7 +368,7 @@ export default function WorkoutTrackerContent() {
           </div>
 
           {/* Body part coverage */}
-          <div className='border-t border-[#373A40]/10 pt-6 mb-8'>
+          <div className='bg-white text-[#1A1B1E] rounded-2xl border border-[#373A40]/15 shadow-sm p-4 sm:p-5 mb-6'>
             <div>
               <h2 className='font-semibold text-lg mb-1'>Body Part Coverage</h2>
               <p className='text-xs text-[#000]/40 mb-4'>sessions in last 14 days</p>
@@ -380,7 +416,7 @@ export default function WorkoutTrackerContent() {
               const totalPages = Math.ceil(sorted.length / PAGE_SIZE);
               const paged = sorted.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
               return (
-                <div className='border-t border-[#373A40]/10 pt-6'>
+                <div className='bg-white text-[#1A1B1E] rounded-2xl border border-[#373A40]/15 shadow-sm p-4 sm:p-5 mb-6'>
                   <h2 className='font-semibold text-lg mb-3'>
                     All Entries <span className='text-sm font-normal text-[#000]/40'>({sorted.length})</span>
                   </h2>
