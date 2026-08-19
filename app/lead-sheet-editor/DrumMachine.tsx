@@ -381,7 +381,7 @@ export function hasDrumSettingsLine(line: string): boolean {
 // ── Synthesis ────────────────────────────────────────────────────────────────
 
 /** Roland TR-808 kick for pop/indie: punchy sine with fast pitch drop, ~650ms decay */
-function playKick808(ctx: AudioContext, dst: AudioNode, when: number) {
+function playKick808(ctx: BaseAudioContext, dst: AudioNode, when: number) {
   const osc = ctx.createOscillator();
   const g   = ctx.createGain();
   osc.type = "sine";
@@ -413,7 +413,7 @@ function playKick808(ctx: AudioContext, dst: AudioNode, when: number) {
   osc.stop(when + 0.7);
 }
 
-function playKick(ctx: AudioContext, dst: AudioNode, when: number) {
+function playKick(ctx: BaseAudioContext, dst: AudioNode, when: number) {
   // Warm sine body with pitch drop — indie folk thump
   const osc = ctx.createOscillator();
   const g = ctx.createGain();
@@ -443,7 +443,7 @@ function playKick(ctx: AudioContext, dst: AudioNode, when: number) {
   src.start(when);
 }
 
-function playSnare(ctx: AudioContext, dst: AudioNode, when: number) {
+function playSnare(ctx: BaseAudioContext, dst: AudioNode, when: number) {
   // Bandpass noise for brush/snare body
   const len = Math.ceil(ctx.sampleRate * 0.22);
   const buf = ctx.createBuffer(1, len, ctx.sampleRate);
@@ -485,9 +485,9 @@ function playSnare(ctx: AudioContext, dst: AudioNode, when: number) {
  * One buffer per context, since a sweep needs far more noise than a single
  * stroke consumes and regenerating it per hit is wasted work.
  */
-const pinkNoiseByContext = new WeakMap<AudioContext, AudioBuffer>();
+const pinkNoiseByContext = new WeakMap<BaseAudioContext, AudioBuffer>();
 
-function pinkNoise(ctx: AudioContext): AudioBuffer {
+function pinkNoise(ctx: BaseAudioContext): AudioBuffer {
   const buf = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * 2), ctx.sampleRate);
   const data = buf.getChannelData(0);
   let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
@@ -505,7 +505,7 @@ function pinkNoise(ctx: AudioContext): AudioBuffer {
   return buf;
 }
 
-function getPinkNoise(ctx: AudioContext): AudioBuffer {
+function getPinkNoise(ctx: BaseAudioContext): AudioBuffer {
   let buf = pinkNoiseByContext.get(ctx);
   if (!buf) {
     buf = pinkNoise(ctx);
@@ -525,7 +525,7 @@ function getPinkNoise(ctx: AudioContext): AudioBuffer {
 const BRUSH_ATTACK = 0.06;
 const BRUSH_DECAY  = 0.44;
 
-function playSnareBrush(ctx: AudioContext, dst: AudioNode, when: number) {
+function playSnareBrush(ctx: BaseAudioContext, dst: AudioNode, when: number) {
   const buf = getPinkNoise(ctx);
 
   // Brushes speak before the beat: start the swell early so its peak lands on
@@ -594,7 +594,7 @@ function playSnareBrush(ctx: AudioContext, dst: AudioNode, when: number) {
   body.stop(peak + 0.25);
 }
 
-function playHihat(ctx: AudioContext, dst: AudioNode, when: number) {
+function playHihat(ctx: BaseAudioContext, dst: AudioNode, when: number) {
   const len = Math.ceil(ctx.sampleRate * 0.07);
   const buf = ctx.createBuffer(1, len, ctx.sampleRate);
   const data = buf.getChannelData(0);
@@ -614,6 +614,134 @@ function playHihat(ctx: AudioContext, dst: AudioNode, when: number) {
   src.stop(when + 0.07);
 }
 
+/** Hand clap — 3 layered noise bursts 9ms apart, bandpassed around 2400 Hz */
+function playClap(ctx: BaseAudioContext, dst: AudioNode, when: number) {
+  for (let i = 0; i < 3; i++) {
+    const t = when + i * 0.009;
+    const len = Math.ceil(ctx.sampleRate * 0.06);
+    const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let j = 0; j < len; j++) d[j] = Math.random() * 2 - 1;
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    const hp = ctx.createBiquadFilter();
+    hp.type = "highpass";
+    hp.frequency.value = 900;
+    const bp = ctx.createBiquadFilter();
+    bp.type = "bandpass";
+    bp.frequency.value = 2400;
+    bp.Q.value = 0.9;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.48 - i * 0.11, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.055 - i * 0.006);
+    src.connect(hp); hp.connect(bp); bp.connect(g); g.connect(dst);
+    src.start(t); src.stop(t + 0.07);
+  }
+}
+
+/** Shimmer — soft high-freq noise on every step for a continuous airy sparkle texture */
+function playShimmer(ctx: BaseAudioContext, dst: AudioNode, when: number) {
+  const len = Math.ceil(ctx.sampleRate * 0.14);
+  const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+  const hp = ctx.createBiquadFilter();
+  hp.type = "highpass";
+  hp.frequency.value = 6000;
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0, when);
+  g.gain.linearRampToValueAtTime(0.055, when + 0.015);
+  g.gain.exponentialRampToValueAtTime(0.001, when + 0.11);
+  src.connect(hp); hp.connect(g); g.connect(dst);
+  src.start(when); src.stop(when + 0.14);
+}
+
+// ── WAV export ────────────────────────────────────────────────────────────────
+
+/** Encode an AudioBuffer as a 16-bit PCM WAV Blob. */
+function encodeWav(buffer: AudioBuffer): Blob {
+  const numCh  = buffer.numberOfChannels;
+  const sr     = buffer.sampleRate;
+  const len    = buffer.length;
+  const bitsPS = 16;
+  const bytesPS = bitsPS / 8;
+  const dataLen = len * numCh * bytesPS;
+  const ab = new ArrayBuffer(44 + dataLen);
+  const view = new DataView(ab);
+
+  const str = (offset: number, s: string) => { for (let i = 0; i < s.length; i++) view.setUint8(offset + i, s.charCodeAt(i)); };
+  str(0,  "RIFF");
+  view.setUint32(4,  36 + dataLen, true);
+  str(8,  "WAVE");
+  str(12, "fmt ");
+  view.setUint32(16, 16, true);          // subchunk1 size
+  view.setUint16(20, 1,  true);          // PCM
+  view.setUint16(22, numCh, true);
+  view.setUint32(24, sr, true);
+  view.setUint32(28, sr * numCh * bytesPS, true);
+  view.setUint16(32, numCh * bytesPS, true);
+  view.setUint16(34, bitsPS, true);
+  str(36, "data");
+  view.setUint32(40, dataLen, true);
+
+  let offset = 44;
+  for (let i = 0; i < len; i++) {
+    for (let ch = 0; ch < numCh; ch++) {
+      const s = Math.max(-1, Math.min(1, buffer.getChannelData(ch)[i]));
+      view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+      offset += 2;
+    }
+  }
+  return new Blob([ab], { type: "audio/wav" });
+}
+
+/** Render the current drum settings to a WAV Blob using OfflineAudioContext. */
+async function renderDrumToWav(
+  bpm: number,
+  patternIdx: number,
+  kickStyle: KickStyle,
+  snareStyle: SnareStyle,
+  clapsEnabled: boolean,
+  shimmerEnabled: boolean,
+  volume: number,
+  durationSec: number,
+): Promise<Blob> {
+  const SR = 44100;
+  const totalFrames = Math.ceil(SR * durationSec);
+  const ctx = new OfflineAudioContext(2, totalFrames, SR);
+
+  const master = ctx.createGain();
+  master.gain.value = volume;
+  master.connect(ctx.destination);
+
+  const stepDur = 15 / bpm; // seconds per 16th note
+  const pat = DRUM_PATTERNS[patternIdx];
+  let when = 0;
+  let step = 0;
+
+  while (when < durationSec) {
+    if (pat.kick[step]) {
+      if (kickStyle === "808") playKick808(ctx, master, when);
+      else playKick(ctx, master, when);
+    }
+    if (pat.snare[step]) {
+      if (snareStyle === "brush") playSnareBrush(ctx, master, when);
+      else playSnare(ctx, master, when);
+    }
+    if (pat.hihat[step]) playHihat(ctx, master, when);
+    if (clapsEnabled && (step === 4 || step === 12)) playClap(ctx, master, when);
+    if (shimmerEnabled) playShimmer(ctx, master, when);
+
+    when += stepDur;
+    step = (step + 1) % 16;
+  }
+
+  const rendered = await ctx.startRendering();
+  return encodeWav(rendered);
+}
+
 // ── Scheduler hook ────────────────────────────────────────────────────────────
 
 const LOOKAHEAD = 0.12;  // seconds ahead to schedule
@@ -626,17 +754,21 @@ function useDrumScheduler(
   volume: number,
   kickStyle: KickStyle,
   snareStyle: SnareStyle,
+  clapsEnabled: boolean,
+  shimmerEnabled: boolean,
 ): number {
-  const ctxRef         = useRef<AudioContext | null>(null);
-  const masterRef      = useRef<GainNode | null>(null);
-  const nextTimeRef    = useRef(0);
-  const stepRef        = useRef(0);
-  const timerRef       = useRef<ReturnType<typeof setInterval> | null>(null);
-  const patternIdxRef  = useRef(patternIdx);
-  const bpmRef         = useRef(bpm);
-  const volumeRef      = useRef(volume);
-  const kickStyleRef   = useRef(kickStyle);
-  const snareStyleRef  = useRef(snareStyle);
+  const ctxRef            = useRef<AudioContext | null>(null);
+  const masterRef         = useRef<GainNode | null>(null);
+  const nextTimeRef       = useRef(0);
+  const stepRef           = useRef(0);
+  const timerRef          = useRef<ReturnType<typeof setInterval> | null>(null);
+  const patternIdxRef     = useRef(patternIdx);
+  const bpmRef            = useRef(bpm);
+  const volumeRef         = useRef(volume);
+  const kickStyleRef      = useRef(kickStyle);
+  const snareStyleRef     = useRef(snareStyle);
+  const clapsEnabledRef   = useRef(clapsEnabled);
+  const shimmerEnabledRef = useRef(shimmerEnabled);
   const [activeStep, setActiveStep] = useState(-1);
 
   // Keep refs in sync so the scheduler loop picks up changes without restart
@@ -644,6 +776,8 @@ function useDrumScheduler(
   useEffect(() => { bpmRef.current = bpm; }, [bpm]);
   useEffect(() => { kickStyleRef.current = kickStyle; }, [kickStyle]);
   useEffect(() => { snareStyleRef.current = snareStyle; }, [snareStyle]);
+  useEffect(() => { clapsEnabledRef.current = clapsEnabled; }, [clapsEnabled]);
+  useEffect(() => { shimmerEnabledRef.current = shimmerEnabled; }, [shimmerEnabled]);
   useEffect(() => {
     volumeRef.current = volume;
     if (masterRef.current) masterRef.current.gain.value = volume;
@@ -694,6 +828,10 @@ function useDrumScheduler(
           else playSnare(ctx, dst, when);
         }
         if (pat.hihat[step]) playHihat(ctx, dst, when);
+        // Claps on beats 2 and 4 (steps 4 and 12)
+        if (clapsEnabledRef.current && (step === 4 || step === 12)) playClap(ctx, dst, when);
+        // Shimmer on every step — continuous high-freq sparkle
+        if (shimmerEnabledRef.current) playShimmer(ctx, dst, when);
 
         // Update visual indicator at the right moment
         const delayMs = Math.max(0, (when - ctx.currentTime) * 1000);
@@ -733,6 +871,10 @@ export function DrumMachineControl({
   onToggle,
   settings,
   onSettingsChange,
+  clapsEnabled,
+  onClapsToggle,
+  shimmerEnabled,
+  onShimmerToggle,
 }: {
   bpm: number;
   running: boolean;
@@ -740,11 +882,41 @@ export function DrumMachineControl({
   settings: DrumSettings;
   /** Called with just the fields that changed; the owner merges and persists. */
   onSettingsChange: (patch: Partial<DrumSettings>) => void;
+  clapsEnabled: boolean;
+  onClapsToggle: () => void;
+  shimmerEnabled: boolean;
+  onShimmerToggle: () => void;
 }) {
   const { kick: kickStyle, snare: snareStyle, volume } = settings;
   const patternIdx = patternIndex(settings.pattern);
-  const activeStep = useDrumScheduler(bpm, patternIdx, running, volume, kickStyle, snareStyle);
+  const activeStep = useDrumScheduler(bpm, patternIdx, running, volume, kickStyle, snareStyle, clapsEnabled, shimmerEnabled);
   const pat = DRUM_PATTERNS[patternIdx];
+
+  const [showDlPicker, setShowDlPicker] = useState(false);
+  const [dlMinutes, setDlMinutes] = useState("2");
+  const [rendering, setRendering] = useState(false);
+
+  async function handleDownload() {
+    const mins = parseFloat(dlMinutes);
+    if (!mins || mins <= 0) return;
+    setRendering(true);
+    try {
+      const blob = await renderDrumToWav(
+        bpm, patternIdx, kickStyle, snareStyle,
+        clapsEnabled, shimmerEnabled, volume, mins * 60,
+      );
+      const patName = settings.pattern.toLowerCase().replace(/\s+/g, "-");
+      const ts = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+      const filename = `drums-${patName}-${bpm}bpm-${mins}min-${ts}.wav`;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = filename; a.click();
+      URL.revokeObjectURL(url);
+      setShowDlPicker(false);
+    } finally {
+      setRendering(false);
+    }
+  }
 
   return (
     <div className="flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-neutral-700 px-2 py-1 print:hidden">
@@ -839,11 +1011,42 @@ export function DrumMachineControl({
         ))}
       </div>
 
+      {/* Claps toggle */}
+      <button
+        type="button"
+        onClick={onClapsToggle}
+        aria-label={clapsEnabled ? "Claps on" : "Claps off"}
+        title="Toggle hand claps on beats 2 & 4"
+        className={`px-2 h-7 text-xs font-medium rounded-md border transition-colors duration-100 flex-shrink-0 ${
+          clapsEnabled
+            ? "bg-amber-400 text-white border-amber-400"
+            : "bg-gray-100 dark:bg-neutral-800 text-gray-500 dark:text-neutral-400 border-gray-200 dark:border-neutral-700 hover:bg-gray-200 dark:hover:bg-neutral-700"
+        }`}
+      >
+        Claps
+      </button>
+
+      {/* Shimmer toggle */}
+      <button
+        type="button"
+        onClick={onShimmerToggle}
+        aria-label={shimmerEnabled ? "Shimmer on" : "Shimmer off"}
+        title="Toggle shimmer — soft high-freq sparkle on every step"
+        className={`px-2 h-7 text-xs font-medium rounded-md border transition-colors duration-100 flex-shrink-0 ${
+          shimmerEnabled
+            ? "bg-sky-400 text-white border-sky-400"
+            : "bg-gray-100 dark:bg-neutral-800 text-gray-500 dark:text-neutral-400 border-gray-200 dark:border-neutral-700 hover:bg-gray-200 dark:hover:bg-neutral-700"
+        }`}
+      >
+        Shimmer
+      </button>
+
       {/* 16-step indicator — only visible while running */}
       {running && (
         <div className="flex gap-px" aria-hidden="true">
           {Array.from({ length: 16 }, (_, i) => {
-            const hasHit = pat.kick[i] || pat.snare[i] || pat.hihat[i];
+            const hasClap = clapsEnabled && (i === 4 || i === 12);
+            const hasHit = pat.kick[i] || pat.snare[i] || pat.hihat[i] || hasClap || shimmerEnabled;
             return (
               <div
                 key={i}
@@ -872,6 +1075,50 @@ export function DrumMachineControl({
         title={`Volume: ${Math.round(volume * 100)}%`}
         className="w-14 h-1 accent-indigo-500 flex-shrink-0"
       />
+
+      {/* Download WAV */}
+      {!showDlPicker ? (
+        <button
+          type="button"
+          onClick={() => setShowDlPicker(true)}
+          title="Download drum track as WAV"
+          aria-label="Download drum track as WAV"
+          className="h-7 px-2 text-xs font-medium rounded-md border border-gray-200 dark:border-neutral-700 bg-gray-100 dark:bg-neutral-800 text-gray-500 dark:text-neutral-400 hover:bg-gray-200 dark:hover:bg-neutral-700 flex-shrink-0"
+        >
+          ↓ WAV
+        </button>
+      ) : (
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <input
+            type="number"
+            min={0.1}
+            max={60}
+            step={0.5}
+            value={dlMinutes}
+            onChange={(e) => setDlMinutes(e.target.value)}
+            aria-label="Duration in minutes"
+            title="Duration in minutes"
+            className="w-14 h-7 text-xs rounded-md border border-gray-200 dark:border-neutral-700 bg-gray-100 dark:bg-neutral-800 text-gray-700 dark:text-neutral-200 px-1.5 focus:outline-none"
+          />
+          <span className="text-[10px] text-gray-400 dark:text-neutral-500">min</span>
+          <button
+            type="button"
+            onClick={handleDownload}
+            disabled={rendering}
+            className="h-7 px-2 text-xs font-medium rounded-md border border-indigo-400 bg-indigo-500 text-white hover:bg-indigo-600 disabled:opacity-50 flex-shrink-0"
+          >
+            {rendering ? "…" : "↓"}
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowDlPicker(false)}
+            aria-label="Cancel download"
+            className="h-7 px-1.5 text-xs rounded-md border border-gray-200 dark:border-neutral-700 bg-gray-100 dark:bg-neutral-800 text-gray-400 hover:bg-gray-200 dark:hover:bg-neutral-700 flex-shrink-0"
+          >
+            ✕
+          </button>
+        </div>
+      )}
     </div>
   );
 }
