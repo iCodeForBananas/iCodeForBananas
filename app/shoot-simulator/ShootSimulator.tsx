@@ -44,6 +44,28 @@ const ENEMY_ATTACK_DEPTH_TOL = 0.07;
 const ENEMY_WINDUP_MS = 320; // telegraph so a hit is always readable
 const ENEMY_ATTACK_COOLDOWN_MS = 1500;
 
+// Robo-snake: the occasional ranged enemy. Everything about the shot is tuned so
+// you can see it coming, step out of the lane, or put a dumpster between you.
+const SNAKE_HP = 140;
+const SNAKE_XP = 60;
+const SNAKE_SCORE = 250;
+const SNAKE_SPEED = 80;
+const SNAKE_DEPTH_SPEED = 0.09; // creeps into your lane slowly enough to leave it
+const SNAKE_NEAR_RANGE = 190; // slithers back if you get inside this
+const SNAKE_FAR_RANGE = 430; // closes until you are this near
+const SNAKE_AIM_MS = 950; // laser sight is up this long before the first round
+const SNAKE_BURST = 2;
+const SNAKE_BURST_GAP_MS = 430;
+const SNAKE_RELOAD_MS = 2800;
+const SNAKE_SPAWN_MIN_MS = 22000;
+const SNAKE_SPAWN_VAR_MS = 14000;
+const SNAKE_BULLET_SPEED = 300; // slow enough to walk out of the way of
+const SNAKE_BULLET_RANGE = 900;
+const SNAKE_BULLET_DAMAGE = 14;
+const SNAKE_BULLET_DEPTH_TOL = 0.045; // the lane the round travels down
+const SNAKE_BULLET_HALF_W = 7; // for the cover test against props
+const SNAKE_BULLET_HALF_D = 3;
+
 const CAR_DRIVEBY_MS = 5600; // slow enough that you actually watch the goldfish drive past
 const CAR_COOLDOWN_MS = 11000;
 
@@ -76,7 +98,15 @@ const HIGH_SCORE_KEY = "shoot-simulator-high-score";
 type SlotId = 1 | 2 | 3 | 4 | 5;
 const SLOT_IDS: SlotId[] = [1, 2, 3, 4, 5];
 
-type PropType = "trashcan" | "dumpster" | "car";
+type PropType = "trashcan" | "dumpster" | "car" | "tree";
+
+/** The street trees you actually see planted along a city block. */
+type TreeKind =
+  | "plane" // London plane — broad mottled crown, the classic city street tree
+  | "pear" // callery pear — tight upright oval
+  | "locust" // honey locust — airy, open, fine-leaved
+  | "maple" // young red maple — dense rounded crown
+  | "ginkgo"; // ginkgo — narrow, fan-shaped, the yellowest green of the bunch
 
 // Where a prop actually touches the ground, in unscaled sprite pixels (multiplied
 // by the prop's draw scale). Deliberately just the base — not the sprite's bounding
@@ -86,6 +116,8 @@ const PROP_FOOTPRINT: Record<PropType, { halfW: number; halfD: number }> = {
   trashcan: { halfW: 9, halfD: 4 },
   dumpster: { halfW: 24, halfD: 5 },
   car: { halfW: 30, halfD: 6 },
+  // Only the trunk is solid — the crown hangs over your head, not in your way
+  tree: { halfW: 6, halfD: 3 },
 };
 // Player and enemies share a footprint — roughly the width of their stance
 const ACTOR_HALF_W = 7;
@@ -105,6 +137,25 @@ interface GroundProp {
   /** Ground-footprint half-extents in screen pixels, already scaled. */
   halfW: number;
   halfD: number;
+  /** Set on street trees; the crown is baked at generation so it never shimmers. */
+  tree?: TreeSpec;
+}
+
+/** One street tree. Foliage is a pile of overlapping blobs, each its own shade of green. */
+interface TreeSpec {
+  kind: TreeKind;
+  /** Base foliage colour, varied per tree; blobs shift lightness around it. */
+  hue: number;
+  sat: number;
+  light: number;
+  trunkH: number;
+  trunkW: number;
+  barkColor: string;
+  /** Bare limbs, drawn under the crown so an airy tree reads as branches + leaves. */
+  limbs: { x: number; y: number }[];
+  blobs: { x: number; y: number; r: number; dl: number }[];
+  /** Cast-iron grate around the pit, the way a downtown block plants them. */
+  grate: boolean;
 }
 
 /** Distant skyline, drawn with parallax well behind the street. */
@@ -214,6 +265,8 @@ interface Chunk {
 
 interface Enemy {
   id: number;
+  /** Street thugs brawl; robo-snakes hang back and shoot. */
+  kind: "thug" | "snake";
   worldX: number;
   depth: number;
   hp: number;
@@ -230,6 +283,19 @@ interface Enemy {
   attackReadyAt: number;
   /** Set when a swing starts; the hit lands ENEMY_WINDUP_MS later. */
   attackStartedAt: number | null;
+  /** Snakes only: set while the laser sight is up, before the first round. */
+  aimStartedAt: number | null;
+  /** Snakes only: rounds left in the current burst, and when the next one leaves the barrel. */
+  shotsLeft: number;
+  nextShotAt: number;
+}
+
+/** A round from a robo-snake. Travels down one depth lane so you can step out of it. */
+interface EnemyBullet {
+  worldX: number;
+  depth: number;
+  dir: 1 | -1;
+  travelled: number;
 }
 
 /** Minigun tracer, tracked in world space so it rides the camera with everything else. */
@@ -303,6 +369,99 @@ function bendAt(x: number): number {
   const t = Math.min(1, Math.max(0, (x - k * BEND_SPACING) / BEND_RAMP));
   const eased = t * t * (3 - 2 * t);
   return bendTotal(k) + (bendTotal(k + 1) - bendTotal(k)) * eased;
+}
+
+/** Builds one street tree's crown. Every kind has its own silhouette and its own green. */
+function makeTree(rand: () => number): TreeSpec {
+  const kinds: TreeKind[] = ["plane", "pear", "locust", "maple", "ginkgo"];
+  const kind = kinds[Math.floor(rand() * kinds.length)];
+  // Greens run from the blue-green of a plane tree to the yellow-green of a
+  // ginkgo, and every individual tree gets its own shade inside that range.
+  const hueRange: Record<TreeKind, [number, number]> = {
+    plane: [104, 132],
+    pear: [96, 120],
+    locust: [78, 98],
+    maple: [88, 116],
+    ginkgo: [68, 88],
+  };
+  const [h0, h1] = hueRange[kind];
+  const hue = h0 + rand() * (h1 - h0);
+  const sat = 22 + rand() * 30;
+  const light = 17 + rand() * 12; // night street: everything sits dark
+  const barkColor =
+    kind === "plane"
+      ? "#6b6255" // plane trees have that pale patchy bark
+      : kind === "ginkgo"
+        ? "#4a4038"
+        : ["#3f342b", "#4a3b2e", "#352d26"][Math.floor(rand() * 3)];
+
+  const blobs: TreeSpec["blobs"] = [];
+  const limbs: TreeSpec["limbs"] = [];
+  const puff = (x: number, y: number, r: number, dl: number) => blobs.push({ x, y, r, dl });
+  let trunkH = 34;
+  let trunkW = 5;
+
+  if (kind === "plane" || kind === "maple") {
+    // Broad rounded crown, widest of the street trees
+    trunkH = kind === "plane" ? 38 : 32;
+    trunkW = kind === "plane" ? 6.5 : 5.5;
+    const spread = 24 + rand() * 8;
+    const top = -trunkH - 30 - rand() * 12;
+    for (let i = 0; i < 9; i++) {
+      const a = (i / 9) * Math.PI * 2 + rand() * 0.5;
+      const rad = i === 0 ? 0 : 0.55 + rand() * 0.45;
+      puff(
+        Math.cos(a) * spread * rad,
+        top + Math.sin(a) * 13 * rad,
+        13 + rand() * 7,
+        -5 + rand() * 12
+      );
+    }
+    limbs.push({ x: -9, y: -trunkH - 8 }, { x: 9, y: -trunkH - 10 });
+  } else if (kind === "pear" || kind === "ginkgo") {
+    // Upright oval — the tree they plant where the sidewalk is narrow
+    trunkH = kind === "ginkgo" ? 44 : 38;
+    trunkW = 5;
+    const tiers = 5;
+    for (let i = 0; i < tiers; i++) {
+      const t = i / (tiers - 1);
+      const y = -trunkH - 8 - t * (34 + rand() * 10);
+      const halfW = (kind === "ginkgo" ? 13 : 16) * (1 - Math.abs(t - 0.45) * 0.7);
+      puff(-halfW * 0.5, y, 11 + rand() * 4, -4 + rand() * 10);
+      puff(halfW * 0.5, y, 11 + rand() * 4, -4 + rand() * 10);
+    }
+    limbs.push({ x: -5, y: -trunkH - 6 }, { x: 5, y: -trunkH - 6 });
+  } else {
+    // Honey locust: tall clear trunk, open crown you can see the street through
+    trunkH = 46;
+    trunkW = 4.5;
+    limbs.push({ x: -16, y: -trunkH - 16 }, { x: 15, y: -trunkH - 20 }, { x: 2, y: -trunkH - 26 });
+    for (let i = 0; i < 7; i++) {
+      const a = (i / 7) * Math.PI * 2 + rand() * 0.6;
+      puff(
+        Math.cos(a) * (18 + rand() * 10),
+        -trunkH - 20 + Math.sin(a) * 12,
+        8 + rand() * 5,
+        2 + rand() * 12 // lighter, so the crown reads as thin foliage
+      );
+    }
+    // A little foliage through the middle as well, or the crown reads as a ring
+    puff(-4 + rand() * 8, -trunkH - 22 + rand() * 6, 9 + rand() * 4, 1 + rand() * 8);
+    puff(-2 + rand() * 6, -trunkH - 14 + rand() * 5, 7 + rand() * 4, 1 + rand() * 8);
+  }
+
+  return {
+    kind,
+    hue,
+    sat,
+    light,
+    trunkH,
+    trunkW,
+    barkColor,
+    limbs,
+    blobs,
+    grate: rand() < 0.6,
+  };
 }
 
 function generateChunk(index: number): Chunk {
@@ -522,6 +681,7 @@ function generateChunk(index: number): Chunk {
     trashcan: ["#4a4a4a", "#3a3a3a", "#555", "#606060"],
     dumpster: ["#1a5c1a", "#0e420e", "#1d6b22", "#2d4a0a"],
     car: ["#7a1f1f", "#1f3f7a", "#3a3a3a", "#4a4a1f"],
+    tree: ["#3f342b"], // trees carry their own palette on the TreeSpec
   };
   for (let i = 0; i < propCount; i++) {
     const roll = rand();
@@ -546,13 +706,36 @@ function generateChunk(index: number): Chunk {
       halfD: fp.halfD * scale,
     });
   }
+  // Street trees, planted in a line of pits just inside the curb the way a city
+  // block does it — evenly spaced, but never so evenly that it looks stamped.
+  const treeGap = 130 + rand() * 70;
+  for (let tx = 30 + rand() * 90; tx < CHUNK_WIDTH - 30; tx += treeGap + (rand() - 0.5) * 50) {
+    if (rand() < 0.12) continue; // the odd empty pit, as on any real block
+    const depth = SIDEWALK_DEPTH - 0.045 + rand() * 0.03;
+    const size = 0.85 + rand() * 0.45;
+    const scale = (MIN_SCALE + depth * (MAX_SCALE - MIN_SCALE)) * size;
+    const fp = PROP_FOOTPRINT.tree;
+    props.push({
+      x: tx,
+      depth,
+      type: "tree",
+      color: "#3f342b",
+      size,
+      halfW: fp.halfW * scale,
+      halfD: fp.halfD * scale,
+      tree: makeTree(rand),
+    });
+  }
+
   // Props are solid, so keep them apart along x — two overlapping footprints
   // could span the whole road depth and wall the street off completely.
   props.sort((a, b) => a.x - b.x);
   const placed: GroundProp[] = [];
   for (const prop of props) {
     const prev = placed[placed.length - 1];
-    if (prev) prop.x = Math.max(prop.x, prev.x + prev.halfW + prop.halfW + 70);
+    // Trees only need room for their trunk; bins and cars need real clearance
+    const clear = prev && (prev.type === "tree" || prop.type === "tree") ? 34 : 70;
+    if (prev) prop.x = Math.max(prop.x, prev.x + prev.halfW + prop.halfW + clear);
     if (prop.x + prop.halfW > CHUNK_WIDTH) break;
     placed.push(prop);
   }
@@ -1072,6 +1255,236 @@ function drawShadowAndSprite(
   ctx.fill();
   draw(ctx, scale);
   ctx.restore();
+}
+
+/**
+ * Robotic snake, origin (0,0) on the ground. Always drawn facing right; the caller
+ * flips it. `aimT` runs 0→1 while the laser sight is up, `flash` while a round leaves.
+ */
+function drawRoboSnake(
+  ctx: CanvasRenderingContext2D,
+  s: number,
+  t: number,
+  opts: { aimT: number | null; flash: number; stunned: boolean }
+) {
+  const coil = Math.sin(t * 2.2) * 2.2; // slow idle breathing through the coils
+  const aiming = opts.aimT !== null;
+
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+
+  // Coiled body: stacked rings, widest at the ground, tapering as it rises
+  const rings: { x: number; y: number; rx: number; ry: number; shade: number }[] = [];
+  for (let i = 0; i < 5; i++) {
+    const k = i / 4;
+    rings.push({
+      x: (-6 + k * 4) + Math.sin(t * 2.2 + i * 0.9) * (1.4 + k * 1.6),
+      y: -4 - i * 8.5,
+      rx: 20 - k * 6.5,
+      ry: 7.5 - k * 1.6,
+      shade: 1 - k * 0.25,
+    });
+  }
+  for (const r of rings) {
+    const g = ctx.createLinearGradient(0, (r.y - r.ry) * s, 0, (r.y + r.ry) * s);
+    g.addColorStop(0, `rgba(203,213,225,${0.95 * r.shade})`);
+    g.addColorStop(0.45, `rgba(148,163,184,${0.95 * r.shade})`);
+    g.addColorStop(1, `rgba(71,85,105,${0.95 * r.shade})`);
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.ellipse(r.x * s, r.y * s, r.rx * s, r.ry * s, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Segment seam
+    ctx.strokeStyle = "rgba(15,23,42,0.55)";
+    ctx.lineWidth = 1 * s;
+    ctx.beginPath();
+    ctx.ellipse(r.x * s, r.y * s, r.rx * s, r.ry * s, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    // Plated highlight along the top of each coil
+    ctx.strokeStyle = "rgba(226,232,240,0.5)";
+    ctx.lineWidth = 1.4 * s;
+    ctx.beginPath();
+    ctx.ellipse(r.x * s, (r.y - r.ry * 0.45) * s, r.rx * 0.7 * s, r.ry * 0.35 * s, 0, Math.PI, 0);
+    ctx.stroke();
+  }
+
+  // Neck, rising out of the top coil to the head
+  const headX = (10 + coil * 0.6) * s;
+  const headY = (-58 + coil) * s;
+  ctx.strokeStyle = "#94a3b8";
+  ctx.lineWidth = 8 * s;
+  ctx.beginPath();
+  ctx.moveTo(-2 * s, -36 * s);
+  ctx.quadraticCurveTo(-6 * s, -52 * s, headX - 4 * s, headY + 2 * s);
+  ctx.stroke();
+  ctx.strokeStyle = "rgba(226,232,240,0.45)";
+  ctx.lineWidth = 2.4 * s;
+  ctx.beginPath();
+  ctx.moveTo(-3.5 * s, -36 * s);
+  ctx.quadraticCurveTo(-7.5 * s, -52 * s, headX - 6 * s, headY + 2 * s);
+  ctx.stroke();
+
+  // Head — a wedge of plate steel with a jaw
+  ctx.save();
+  ctx.translate(headX, headY);
+  const headG = ctx.createLinearGradient(0, -7 * s, 0, 7 * s);
+  headG.addColorStop(0, "#e2e8f0");
+  headG.addColorStop(0.5, "#94a3b8");
+  headG.addColorStop(1, "#475569");
+  ctx.fillStyle = headG;
+  ctx.beginPath();
+  ctx.moveTo(-9 * s, -6 * s);
+  ctx.lineTo(9 * s, -4 * s);
+  ctx.lineTo(14 * s, 0);
+  ctx.lineTo(9 * s, 5 * s);
+  ctx.lineTo(-9 * s, 6 * s);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = "rgba(15,23,42,0.6)";
+  ctx.lineWidth = 1 * s;
+  ctx.stroke();
+  // Jaw seam
+  ctx.beginPath();
+  ctx.moveTo(-6 * s, 2.5 * s);
+  ctx.lineTo(12 * s, 1 * s);
+  ctx.stroke();
+  // Sensor eye — amber on patrol, hot red once it has you
+  const eye = opts.stunned ? "#facc15" : aiming ? "#ef4444" : "#f59e0b";
+  ctx.save();
+  ctx.shadowColor = eye;
+  ctx.shadowBlur = (aiming ? 12 : 6) * s;
+  ctx.fillStyle = eye;
+  ctx.beginPath();
+  ctx.ellipse(4 * s, -1.5 * s, 2.6 * s, 1.8 * s, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+  // Forked tongue flicks between shots
+  if (!aiming && Math.sin(t * 6) > 0.7) {
+    ctx.strokeStyle = "#ef4444";
+    ctx.lineWidth = 1.2 * s;
+    ctx.beginPath();
+    ctx.moveTo(14 * s, 1 * s);
+    ctx.lineTo(21 * s, 0);
+    ctx.moveTo(19 * s, 0.4 * s);
+    ctx.lineTo(22 * s, 2.5 * s);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // Tail, curled up over the coils, holding the pistol
+  const gunX = (26 + (aiming ? 2 : 0)) * s;
+  const gunY = (-34 + coil * 0.5) * s;
+  ctx.strokeStyle = "#94a3b8";
+  ctx.lineWidth = 5 * s;
+  ctx.beginPath();
+  ctx.moveTo(8 * s, -18 * s);
+  ctx.quadraticCurveTo(22 * s, -26 * s, gunX - 3 * s, gunY + 4 * s);
+  ctx.stroke();
+  ctx.strokeStyle = "rgba(15,23,42,0.4)";
+  ctx.lineWidth = 1 * s;
+  ctx.beginPath();
+  ctx.moveTo(8 * s, -18 * s);
+  ctx.quadraticCurveTo(22 * s, -26 * s, gunX - 3 * s, gunY + 4 * s);
+  ctx.stroke();
+
+  // The pistol itself
+  ctx.save();
+  ctx.translate(gunX, gunY);
+  ctx.fillStyle = "#1f2937";
+  ctx.fillRect(-4 * s, -3 * s, 16 * s, 5 * s); // slide
+  ctx.fillStyle = "#111827";
+  ctx.fillRect(-3 * s, 2 * s, 5 * s, 7 * s); // grip
+  ctx.fillStyle = "#374151";
+  ctx.fillRect(10 * s, -2 * s, 4 * s, 3 * s); // muzzle
+  if (opts.flash > 0) {
+    ctx.fillStyle = `rgba(254,240,138,${opts.flash})`;
+    ctx.beginPath();
+    ctx.moveTo(14 * s, -0.5 * s);
+    ctx.lineTo(26 * s, -5 * s * opts.flash);
+    ctx.lineTo(31 * s, -0.5 * s);
+    ctx.lineTo(26 * s, 4 * s * opts.flash);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+/** A street tree, origin (0,0) at the base of the trunk. `sway` drifts the crown in the wind. */
+function drawStreetTree(ctx: CanvasRenderingContext2D, s: number, t: TreeSpec, sway: number) {
+  const { hue, sat, light } = t;
+  const leaf = (dl: number, alpha = 1) =>
+    `hsla(${hue}, ${sat}%, ${Math.max(6, Math.min(52, light + dl))}%, ${alpha})`;
+
+  // Tree pit: soil ring, and a grate on the blocks that got the nicer treatment
+  ctx.fillStyle = "#1a1512";
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 15 * s, 5.5 * s, 0, 0, Math.PI * 2);
+  ctx.fill();
+  if (t.grate) {
+    ctx.strokeStyle = "rgba(120,120,130,0.35)";
+    ctx.lineWidth = 1 * s;
+    for (const gx of [-9, -4.5, 0, 4.5, 9]) {
+      ctx.beginPath();
+      ctx.moveTo(gx * s, -3.4 * s);
+      ctx.lineTo(gx * s, 3.4 * s);
+      ctx.stroke();
+    }
+  }
+
+  // Trunk — tapered, with the light side facing the streetlamps
+  const th = t.trunkH * s;
+  const tw = t.trunkW * s;
+  ctx.fillStyle = t.barkColor;
+  ctx.beginPath();
+  ctx.moveTo(-tw, 0);
+  ctx.lineTo(-tw * 0.6 + sway * 0.25, -th);
+  ctx.lineTo(tw * 0.6 + sway * 0.25, -th);
+  ctx.lineTo(tw, 0);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = "rgba(255,255,255,0.09)";
+  ctx.fillRect(-tw, -th, tw * 0.55, th);
+  if (t.kind === "plane") {
+    // Plane-tree bark sheds in patches — a couple of pale flecks sells it
+    ctx.fillStyle = "rgba(200,196,180,0.22)";
+    ctx.fillRect(-tw * 0.2, -th * 0.75, tw * 0.7, th * 0.22);
+    ctx.fillRect(-tw * 0.5, -th * 0.4, tw * 0.5, th * 0.15);
+  }
+
+  // Limbs under the crown
+  ctx.strokeStyle = t.barkColor;
+  ctx.lineCap = "round";
+  for (const l of t.limbs) {
+    ctx.lineWidth = 2.2 * s;
+    ctx.beginPath();
+    ctx.moveTo(sway * 0.2, -th);
+    ctx.quadraticCurveTo(l.x * 0.5 * s + sway * 0.4, (-th + l.y * 0.2) * 1, l.x * s + sway * 0.7, l.y * s);
+    ctx.stroke();
+  }
+
+  // Crown: overlapping blobs, each a slightly different green
+  for (const b of t.blobs) {
+    ctx.fillStyle = leaf(b.dl);
+    ctx.beginPath();
+    ctx.ellipse(b.x * s + sway, b.y * s, b.r * s, b.r * 0.86 * s, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // Sodium-lamp catchlight along the top of the crown
+  for (const b of t.blobs) {
+    if (b.dl < 4) continue;
+    ctx.fillStyle = `hsla(${hue - 12}, ${sat + 10}%, ${Math.min(60, light + b.dl + 14)}%, 0.35)`;
+    ctx.beginPath();
+    ctx.ellipse(
+      b.x * s + sway - b.r * 0.25 * s,
+      b.y * s - b.r * 0.3 * s,
+      b.r * 0.5 * s,
+      b.r * 0.34 * s,
+      0,
+      0,
+      Math.PI * 2
+    );
+    ctx.fill();
+  }
 }
 
 /** Six-barrel minigun held at (hx, hy), pointing right; the caller has already flipped for facing. */
@@ -1755,6 +2168,8 @@ export default function ShootSimulator() {
       scorePulseUntil: 0,
       pickups: [] as Pickup[],
       bullets: [] as Bullet[],
+      enemyBullets: [] as EnemyBullet[],
+      nextSnakeAt: 0,
       floaters: [] as Floater[],
     };
 
@@ -1815,6 +2230,7 @@ export default function ShootSimulator() {
         combo.visual = null;
         minigun.firing = false;
         state.bullets = [];
+        state.enemyBullets = [];
         sword.swingStartedAt = null;
         for (const e of state.enemies) e.grabbed = false;
       }
@@ -1885,8 +2301,14 @@ export default function ShootSimulator() {
         enemy.dying = true;
         enemy.deathStartedAt = now;
         enemy.grabbed = false;
-        gainXp(ENEMY_XP);
-        addScore(SCORE_KILL, enemy.worldX, enemy.depth, "#facc15", now);
+        gainXp(enemy.kind === "snake" ? SNAKE_XP : ENEMY_XP);
+        addScore(
+          enemy.kind === "snake" ? SNAKE_SCORE : SCORE_KILL,
+          enemy.worldX,
+          enemy.depth,
+          enemy.kind === "snake" ? "#67e8f9" : "#facc15",
+          now
+        );
         // Drop onto the road — a banana left up on the sidewalk is unreachable
         state.pickups.push({
           worldX: enemy.worldX,
@@ -2032,6 +2454,8 @@ export default function ShootSimulator() {
       state.enemies = [];
       state.pickups = [];
       state.bullets = [];
+      state.enemyBullets = [];
+      state.nextSnakeAt = now + SNAKE_SPAWN_MIN_MS;
       state.floaters = [];
       state.score = 0;
       state.scorePulseUntil = 0;
@@ -2577,6 +3001,66 @@ export default function ShootSimulator() {
           continue;
         }
 
+        if (enemy.kind === "snake") {
+          const sdx = state.player.worldX - enemy.worldX;
+          const sdd = state.player.depth - enemy.depth;
+          enemy.avoidDir = sdx >= 0 ? 1 : -1; // reused as facing for the sprite
+
+          // Mid-burst: rounds leave the barrel on their own clock
+          if (enemy.shotsLeft > 0) {
+            if (nowTs >= enemy.nextShotAt) {
+              const dir: 1 | -1 = sdx >= 0 ? 1 : -1;
+              state.enemyBullets.push({
+                worldX: enemy.worldX + dir * 30,
+                depth: enemy.depth,
+                dir,
+                travelled: 0,
+              });
+              enemy.shotsLeft -= 1;
+              enemy.nextShotAt = nowTs + SNAKE_BURST_GAP_MS;
+              if (enemy.shotsLeft === 0) enemy.attackReadyAt = nowTs + SNAKE_RELOAD_MS;
+            }
+            continue; // holds still while it empties the burst
+          }
+
+          // Laser sight up: locked in place, which is the window to step aside
+          if (enemy.aimStartedAt !== null) {
+            if (nowTs - enemy.aimStartedAt >= SNAKE_AIM_MS) {
+              enemy.aimStartedAt = null;
+              enemy.shotsLeft = SNAKE_BURST;
+              enemy.nextShotAt = nowTs;
+            }
+            continue;
+          }
+
+          // Hold a firing distance: close from far off, back away if crowded
+          const absDx = Math.abs(sdx);
+          const towards = Math.sign(sdx) || 1;
+          const move =
+            absDx > SNAKE_FAR_RANGE ? towards : absDx < SNAKE_NEAR_RANGE ? -towards : 0;
+          if (move !== 0) {
+            const nx = enemy.worldX + move * SNAKE_SPEED * dt;
+            const sScale = MIN_SCALE + enemy.depth * (MAX_SCALE - MIN_SCALE);
+            if (
+              overlapsProp(enemy.worldX, enemy.depth, ACTOR_HALF_W * sScale, ACTOR_HALF_D * sScale) ||
+              !overlapsProp(nx, enemy.depth, ACTOR_HALF_W * sScale, ACTOR_HALF_D * sScale)
+            ) {
+              enemy.worldX = Math.max(cameraX - 200, nx);
+            }
+          }
+          // Lines itself up with your lane, slowly — this is what you dodge
+          if (Math.abs(sdd) > 0.01) {
+            enemy.depth = Math.max(
+              MIN_PLAYER_DEPTH,
+              Math.min(MAX_PLAYER_DEPTH, enemy.depth + Math.sign(sdd) * SNAKE_DEPTH_SPEED * dt)
+            );
+          }
+          if (absDx >= 110 && absDx <= SNAKE_BULLET_RANGE && nowTs >= enemy.attackReadyAt) {
+            enemy.aimStartedAt = nowTs;
+          }
+          continue;
+        }
+
         const dxp = state.player.worldX - enemy.worldX;
         const ddp = state.player.depth - enemy.depth;
         const eScale = MIN_SCALE + enemy.depth * (MAX_SCALE - MIN_SCALE);
@@ -2633,6 +3117,10 @@ export default function ShootSimulator() {
         const from = pickSpawnPoint();
         state.enemies.push({
           id: state.nextEnemyId++,
+          kind: "thug",
+          aimStartedAt: null,
+          shotsLeft: 0,
+          nextShotAt: 0,
           worldX: from.x,
           depth: from.emerging
             ? DOOR_DEPTH
@@ -2650,6 +3138,69 @@ export default function ShootSimulator() {
           attackStartedAt: null,
         });
         state.nextSpawnAt = nowTs + 1400 + Math.random() * 900;
+      }
+
+      // A robo-snake shows up every so often, on its own timer and outside the
+      // usual thug cap, so the street never has more than one gun on it.
+      if (live && nowTs >= state.nextSnakeAt) {
+        if (state.nextSnakeAt === 0) {
+          state.nextSnakeAt = nowTs + SNAKE_SPAWN_MIN_MS;
+        } else if (!state.enemies.some((e) => e.kind === "snake" && !e.dying)) {
+          const side = Math.random() < 0.75 ? 1 : -1;
+          state.enemies.push({
+            id: state.nextEnemyId++,
+            kind: "snake",
+            aimStartedAt: null,
+            shotsLeft: 0,
+            nextShotAt: 0,
+            worldX: Math.max(40, state.player.worldX + side * (width * 0.62 + Math.random() * 160)),
+            depth: MIN_PLAYER_DEPTH + 0.12 + Math.random() * 0.5,
+            hp: SNAKE_HP,
+            dying: false,
+            deathStartedAt: null,
+            stunUntil: 0,
+            floatY: 0,
+            grabbed: false,
+            emerging: false,
+            spawnedAt: nowTs,
+            avoidDir: 1,
+            attackReadyAt: nowTs + 900,
+            attackStartedAt: null,
+          });
+          state.nextSnakeAt = nowTs + SNAKE_SPAWN_MIN_MS + Math.random() * SNAKE_SPAWN_VAR_MS;
+        }
+      }
+
+      // Snake rounds: they run down one lane, and any solid prop eats them —
+      // which is what makes a dumpster worth standing behind.
+      if (live && state.enemyBullets.length > 0) {
+        const eStep = SNAKE_BULLET_SPEED * dt;
+        state.enemyBullets = state.enemyBullets.filter((b) => {
+          b.worldX += b.dir * eStep;
+          b.travelled += eStep;
+          if (b.travelled > SNAKE_BULLET_RANGE) return false;
+          const bScale = MIN_SCALE + b.depth * (MAX_SCALE - MIN_SCALE);
+          if (overlapsProp(b.worldX, b.depth, SNAKE_BULLET_HALF_W * bScale, SNAKE_BULLET_HALF_D * bScale)) {
+            state.floaters.push({
+              worldX: b.worldX,
+              depth: b.depth,
+              text: "CLANG",
+              color: "#cbd5e1",
+              startedAt: nowTs,
+            });
+            return false;
+          }
+          if (
+            Math.abs(b.worldX - state.player.worldX) < 20 &&
+            Math.abs(b.depth - state.player.depth) < SNAKE_BULLET_DEPTH_TOL
+          ) {
+            damagePlayer(SNAKE_BULLET_DAMAGE, b.worldX, nowTs);
+            return false;
+          }
+          return true;
+        });
+      } else if (!live) {
+        state.enemyBullets = [];
       }
 
       // Banana pickups dropped by fallen enemies
@@ -3115,7 +3666,10 @@ export default function ShootSimulator() {
             draw: () =>
               drawShadowAndSprite(ctx, esx, esy, sc, (c, s) => {
                 c.fillStyle = p.color;
-                if (p.type === "trashcan") {
+                if (p.tree) {
+                  // Barely-there sway, tied to world x so no two trees move together
+                  drawStreetTree(c, s, p.tree, Math.sin(nowTs * 0.0009 + wx * 0.01) * 1.6 * s);
+                } else if (p.type === "trashcan") {
                   // Cylinder body
                   c.fillRect(-10 * s, -34 * s, 20 * s, 34 * s);
                   // Rounded bottom
@@ -3251,14 +3805,45 @@ export default function ShootSimulator() {
             ? Math.min(1, (nowTs - e2.attackStartedAt) / ENEMY_WINDUP_MS)
             : 0;
         const eFacing: 1 | -1 = state.player.worldX >= e2.worldX ? 1 : -1;
+        // Snakes: aim window and muzzle flash both drive the sprite
+        const sAimT =
+          e2.aimStartedAt !== null ? Math.min(1, (nowTs - e2.aimStartedAt) / SNAKE_AIM_MS) : null;
+        const sFlash =
+          e2.kind === "snake" && e2.shotsLeft > 0
+            ? Math.max(0, 1 - (nowTs - (e2.nextShotAt - SNAKE_BURST_GAP_MS)) / 90)
+            : 0;
         entities.push({
           depth: enemy.depth,
           draw: () => {
             ctx.save();
             ctx.globalAlpha = alpha;
-            drawShadowAndSprite(ctx, esx, esy, sc, (c) => {
-              drawEnemyPerson(c, sc, eWalkT, eStunned, { attackT: eAttackT, facing: eFacing });
-            });
+            if (e2.kind === "snake") {
+              // Laser sight down the lane it is about to fire along
+              if (sAimT !== null) {
+                const laserY = esy - 34 * sc;
+                const grow = Math.min(1, sAimT * 1.6);
+                ctx.save();
+                ctx.globalAlpha = alpha * (0.35 + 0.35 * Math.sin(nowTs * 0.02));
+                ctx.strokeStyle = "#ef4444";
+                ctx.lineWidth = 1.5;
+                ctx.setLineDash([9, 7]);
+                ctx.beginPath();
+                ctx.moveTo(esx + eFacing * 26 * sc, laserY);
+                ctx.lineTo(esx + eFacing * (26 + 620 * grow) * sc, laserY);
+                ctx.stroke();
+                ctx.restore();
+              }
+              drawShadowAndSprite(ctx, esx, esy, sc, (c) => {
+                c.save();
+                if (eFacing === -1) c.scale(-1, 1);
+                drawRoboSnake(c, sc, eWalkT, { aimT: sAimT, flash: sFlash, stunned: eStunned });
+                c.restore();
+              });
+            } else {
+              drawShadowAndSprite(ctx, esx, esy, sc, (c) => {
+                drawEnemyPerson(c, sc, eWalkT, eStunned, { attackT: eAttackT, facing: eFacing });
+              });
+            }
             ctx.restore();
           },
         });
@@ -3312,6 +3897,34 @@ export default function ShootSimulator() {
             ctx.fillStyle = "#fef08a";
             ctx.beginPath();
             ctx.arc(bsx, bsy, 2.4 * bsc, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+          },
+        });
+      }
+
+      for (const b of state.enemyBullets) {
+        const bsx = b.worldX - cameraX;
+        if (bsx < -60 || bsx > width + 60) continue;
+        const bsc = MIN_SCALE + b.depth * (MAX_SCALE - MIN_SCALE);
+        const bsy = groundY(b.worldX, b.depth) - 34 * bsc;
+        entities.push({
+          depth: b.depth,
+          draw: () => {
+            ctx.save();
+            // Hot core with a smear behind it — reads as a slug in flight, not a dot
+            ctx.strokeStyle = "rgba(248,113,113,0.45)";
+            ctx.lineWidth = 3 * bsc;
+            ctx.lineCap = "round";
+            ctx.beginPath();
+            ctx.moveTo(bsx - b.dir * 16 * bsc, bsy);
+            ctx.lineTo(bsx, bsy);
+            ctx.stroke();
+            ctx.shadowColor = "rgba(248,113,113,0.9)";
+            ctx.shadowBlur = 10;
+            ctx.fillStyle = "#fecaca";
+            ctx.beginPath();
+            ctx.ellipse(bsx, bsy, 4.5 * bsc, 3 * bsc, 0, 0, Math.PI * 2);
             ctx.fill();
             ctx.restore();
           },
