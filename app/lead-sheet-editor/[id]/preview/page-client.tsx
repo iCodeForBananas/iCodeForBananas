@@ -51,31 +51,79 @@ import {
   type DrumSettings,
 } from "../../DrumMachine";
 
-// ── Drum timeline parsing ─────────────────────────────────────────────────────
+// ── Generic cue tag parsing ───────────────────────────────────────────────────
+//
+// Syntax: @M:SS [layer1, layer2, modifier]  — start those layers
+//         @M:SS [/layer1, /layer2]          — stop those layers
+//         @M:SS [/all]                      — stop everything
+//
+// Layer names are open-ended — any word that isn't a modifier or empty is a
+// layer name. Currently wired sounds: drum | claps | shimmer. Future sounds
+// (vocal, strings, bass, custom, etc.) just need to be added to the scheduler;
+// the parser and state tracking already handle any name.
+//
+// Modifiers: fade-in | fade-out
+// Backward-compatible: [drum] and [/drum] still work exactly as before.
 
-interface DrumEvent { time: number; action: "start" | "stop" }
+interface CueEvent {
+  time: number;
+  starts: string[];    // layer names to start
+  stops: string[];     // layer names to stop ("all" is a wildcard)
+  fadeIn: boolean;
+  fadeOut: boolean;
+}
 
-const DRUM_START_RE = /\[drum\]/i;
-const DRUM_STOP_RE  = /\[\/drum\]/i;
-const TIMESTAMP_RE  = /^@(\d+):(\d{2})\b/;
+const CUE_TAG_RE   = /\[([^\]]+)\]/;
+const TIMESTAMP_RE = /^@(\d+):(\d{2})\b/;
 
-function parseDrumEvents(sections: Section[]): DrumEvent[] {
-  const events: DrumEvent[] = [];
+const MODIFIERS = new Set(["fade-in", "fade-out"]);
+
+function parseCueEvents(sections: Section[]): CueEvent[] {
+  const events: CueEvent[] = [];
   for (const section of sections) {
     for (const line of (section.content ?? "").split("\n")) {
-      const m = line.match(TIMESTAMP_RE);
-      if (!m) continue;
-      const secs = parseInt(m[1]) * 60 + parseInt(m[2]);
-      if (DRUM_START_RE.test(line)) events.push({ time: secs, action: "start" });
-      else if (DRUM_STOP_RE.test(line)) events.push({ time: secs, action: "stop" });
+      const tm = line.match(TIMESTAMP_RE);
+      if (!tm) continue;
+      const secs = parseInt(tm[1]) * 60 + parseInt(tm[2]);
+      const tagM = line.match(CUE_TAG_RE);
+      if (!tagM) continue;
+
+      const parts = tagM[1].split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
+      const starts: string[] = [];
+      const stops: string[] = [];
+      let fadeIn = false, fadeOut = false;
+
+      for (const part of parts) {
+        if (part === "fade-in")        { fadeIn = true; }
+        else if (part === "fade-out")  { fadeOut = true; }
+        else if (part.startsWith("/")) { stops.push(part.slice(1)); }   // any layer or "all"
+        else if (!MODIFIERS.has(part)) { starts.push(part); }           // any layer name
+      }
+
+      if (starts.length > 0 || stops.length > 0) {
+        events.push({ time: secs, starts, stops, fadeIn, fadeOut });
+      }
     }
   }
   return events.sort((a, b) => a.time - b.time);
 }
 
-// Strip [drum] / [/drum] markers from a line for display
-function stripDrumMarkers(line: string): string {
-  return line.replace(/\[\/drum\]/gi, "").replace(/\[drum\]/gi, "").replace(/\s{2,}/g, " ").trim();
+/** Strip all [...] cue brackets from a line for display. */
+function stripCueMarkers(line: string): string {
+  return line.replace(/\[[^\]]*\]/g, "").replace(/\s{2,}/g, " ").trim();
+}
+
+/** Returns label + direction for a line that has a cue tag. */
+function getCueTagInfo(line: string): { label: string; isStop: boolean } | null {
+  const m = line.match(CUE_TAG_RE);
+  if (!m) return null;
+  const parts = m[1].split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
+  const isStop = parts.some((p) => p.startsWith("/"));
+  const layers = parts
+    .filter((p) => !MODIFIERS.has(p))
+    .map((p) => p.replace(/^\//, ""));
+  if (layers.length === 0 && !isStop) return null;
+  return { label: layers.length > 0 ? layers.join(", ") : "all", isStop };
 }
 
 // Per-song localStorage keys: leadSheet:${id}:fontScale, leadSheet:${id}:columnCount,
@@ -391,9 +439,8 @@ const SheetContent = memo(function SheetContent({
               <div className='space-y-3'>
                 {lines.map((line, i) => {
                   if (line.trim() === "") return <div key={i} className='h-3' />;
-                  const hasDrumStart = DRUM_START_RE.test(line);
-                  const hasDrumStop  = DRUM_STOP_RE.test(line);
-                  const displayLine  = (hasDrumStart || hasDrumStop) ? stripDrumMarkers(line) : line;
+                  const cueInfo  = getCueTagInfo(line);
+                  const displayLine = cueInfo ? stripCueMarkers(line) : line;
                   const cueIndex = timeline?.lineCue.get(lineKey(sectionIndex, i));
                   const active = cueIndex !== undefined && cueIndex === activeCueIndex;
                   return (
@@ -411,15 +458,15 @@ const SheetContent = memo(function SheetContent({
                           : ""
                       } ${cueIndex !== undefined && onSeekToLine ? "cursor-pointer print:cursor-auto" : ""}`}
                     >
-                      {(hasDrumStart || hasDrumStop) && (
+                      {cueInfo && (
                         <span
                           className={`inline-flex items-center gap-1 text-[0.65em] font-bold tracking-wide uppercase px-1.5 py-0.5 rounded mr-2 print:hidden ${
-                            hasDrumStart
+                            !cueInfo.isStop
                               ? "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400"
                               : "bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-400"
                           }`}
                         >
-                          🥁 {hasDrumStart ? "Drums In" : "Drums Out"}
+                          🥁 {cueInfo.isStop ? "stop" : "start"}: {cueInfo.label}
                         </span>
                       )}
                       <ChordLyricLine
@@ -466,11 +513,27 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
   const [bpm, setBpm] = useState(DEFAULT_BPM);
   const [beatsPerBar, setBeatsPerBar] = useState(() => loadBeatsPerBar(id));
   const [metronomeOn, setMetronomeOn] = useState(false);
-  const [drumRunning, setDrumRunning] = useState(false);
+  // Open-ended layer state: any cue tag layer name lives here.
+  // Currently wired: "drum", "claps", "shimmer". Future layers are tracked
+  // automatically and just need synthesis code to act on them.
+  const [activeLayers, setActiveLayers] = useState<Set<string>>(new Set());
+  const drumRunning    = activeLayers.has("drum");
+  const clapsRunning   = activeLayers.has("claps");
+  const shimmerRunning = activeLayers.has("shimmer");
+  const toggleLayer = (name: string) =>
+    setActiveLayers((prev) => {
+      const next = new Set(prev);
+      next.has(name) ? next.delete(name) : next.add(name);
+      return next;
+    });
   const [drumSettings, setDrumSettings] = useState<DrumSettings>(DEFAULT_DRUM_SETTINGS);
+  const [localVolume, _setLocalVolume] = useState<number | null>(null);
+  const localVolumeRef = useRef<number | null>(null);
+  const setLocalVolume = (v: number | null) => { localVolumeRef.current = v; _setLocalVolume(v); };
   const bpmSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const drumSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lastDrumEventIdxRef = useRef<number>(-2); // -2 = uninitialized
+  const fadeTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const lastCueEventIdxRef = useRef<number>(-2); // -2 = uninitialized
 
   // Printing to PDF should offer the song's name, not "Preview Lead Sheet".
   useSongDocumentTitle(sheet?.title);
@@ -493,41 +556,114 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
   const activeCueIndex = activeCue?.index ?? null;
   usePlaybackKeys(playback, playbackOpen);
 
-  // ── Drum timeline automation ───────────────────────────────────────────────
-  const drumEvents = useMemo(
-    () => (sheet ? parseDrumEvents(sheet.sections) : []),
+  // ── Cue timeline automation ────────────────────────────────────────────────
+  const cueEvents = useMemo(
+    () => (sheet ? parseCueEvents(sheet.sections) : []),
     [sheet]
   );
 
-  // When playback closes, reset tracker and let the user keep drums in whatever
-  // state they set manually.
+  // When playback closes, reset the tracker (leave drum state for manual control).
   useEffect(() => {
     if (!playbackOpen) {
-      lastDrumEventIdxRef.current = -2;
+      lastCueEventIdxRef.current = -2;
+      if (fadeTimerRef.current) { clearInterval(fadeTimerRef.current); fadeTimerRef.current = null; }
+      setLocalVolume(null);
+      setActiveLayers(new Set());
     }
   }, [playbackOpen]);
 
-  // Watch the playback clock and auto-trigger drum start/stop at marked times.
+  // Watch the playback clock and fire cue events at their marked times.
   useEffect(() => {
-    if (!playbackOpen || drumEvents.length === 0) return;
+    if (!playbackOpen || cueEvents.length === 0) return;
 
-    // Find the latest event at-or-before current time
     let idx = -1;
-    for (let i = 0; i < drumEvents.length; i++) {
-      if (drumEvents[i].time <= time) idx = i;
+    for (let i = 0; i < cueEvents.length; i++) {
+      if (cueEvents[i].time <= time) idx = i;
       else break;
     }
 
-    if (idx !== lastDrumEventIdxRef.current) {
-      lastDrumEventIdxRef.current = idx;
-      if (idx >= 0) {
-        setDrumRunning(drumEvents[idx].action === "start");
-      } else {
-        // Seeked before first event — stop drums
-        setDrumRunning(false);
+    if (idx !== lastCueEventIdxRef.current) {
+      lastCueEventIdxRef.current = idx;
+
+      if (idx < 0) {
+        // Seeked before first event — reset everything
+        setActiveLayers(new Set());
+        if (fadeTimerRef.current) { clearInterval(fadeTimerRef.current); fadeTimerRef.current = null; }
+        setLocalVolume(null);
+        return;
+      }
+
+      const ev = cueEvents[idx];
+      if (fadeTimerRef.current) { clearInterval(fadeTimerRef.current); fadeTimerRef.current = null; }
+
+      // ── Stops ────────────────────────────────────────────────────────────
+      if (ev.stops.length > 0) {
+        const stopAll = ev.stops.includes("all");
+        const stoppingDrum = stopAll || ev.stops.includes("drum");
+
+        // Remove stopped layers from the set (except "drum" on fade-out — handled below)
+        setActiveLayers((prev) => {
+          const next = new Set(prev);
+          if (stopAll) { next.clear(); }
+          else { ev.stops.forEach((l) => { if (l !== "drum" || !ev.fadeOut) next.delete(l); }); }
+          return next;
+        });
+
+        if (stoppingDrum) {
+          if (ev.fadeOut) {
+            const startVol = localVolumeRef.current ?? drumSettings.volume;
+            let elapsed = 0;
+            const FADE_MS = 4000, STEP_MS = 50;
+            setLocalVolume(startVol);
+            fadeTimerRef.current = setInterval(() => {
+              elapsed += STEP_MS;
+              const frac = Math.min(elapsed / FADE_MS, 1);
+              setLocalVolume(startVol * (1 - frac));
+              if (frac >= 1) {
+                clearInterval(fadeTimerRef.current!); fadeTimerRef.current = null;
+                setActiveLayers((prev) => { const next = new Set(prev); next.delete("drum"); return next; });
+                setLocalVolume(null);
+              }
+            }, STEP_MS);
+          } else {
+            setLocalVolume(null);
+          }
+        }
+      }
+
+      // ── Starts ───────────────────────────────────────────────────────────
+      if (ev.starts.length > 0) {
+        const startingDrum = ev.starts.includes("drum");
+
+        // Add non-drum layers immediately; drum handled below for fade support
+        setActiveLayers((prev) => {
+          const next = new Set(prev);
+          ev.starts.forEach((l) => { if (l !== "drum" || !ev.fadeIn) next.add(l); });
+          return next;
+        });
+
+        if (startingDrum) {
+          if (ev.fadeIn) {
+            const targetVol = drumSettings.volume;
+            setLocalVolume(0);
+            setActiveLayers((prev) => new Set([...prev, "drum"]));
+            let elapsed = 0;
+            const FADE_MS = 4000, STEP_MS = 50;
+            fadeTimerRef.current = setInterval(() => {
+              elapsed += STEP_MS;
+              const frac = Math.min(elapsed / FADE_MS, 1);
+              setLocalVolume(targetVol * frac);
+              if (frac >= 1) {
+                clearInterval(fadeTimerRef.current!); fadeTimerRef.current = null;
+                setLocalVolume(null);
+              }
+            }, STEP_MS);
+          }
+          // non-fade drum already added above
+        }
       }
     }
-  }, [time, playbackOpen, drumEvents]);
+  }, [time, playbackOpen, cueEvents, drumSettings.volume]);
 
   const seekToLine = useCallback(
     (sectionIndex: number, lineIndex: number) => {
@@ -665,6 +801,11 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
 
   useEffect(() => () => { if (drumSaveTimer.current) clearTimeout(drumSaveTimer.current); }, []);
 
+  // When a fade is in progress, override the volume without touching persisted settings
+  const effectiveDrumSettings = localVolume !== null
+    ? { ...drumSettings, volume: localVolume }
+    : drumSettings;
+
   const updateBeatsPerBar = (next: number) => {
     setBeatsPerBar(next);
     try {
@@ -770,9 +911,13 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                   <DrumMachineControl
                     bpm={bpm}
                     running={drumRunning}
-                    onToggle={() => setDrumRunning((r) => !r)}
-                    settings={drumSettings}
+                    onToggle={() => toggleLayer("drum")}
+                    settings={effectiveDrumSettings}
                     onSettingsChange={updateDrumSettings}
+                    clapsEnabled={clapsRunning}
+                    onClapsToggle={() => toggleLayer("claps")}
+                    shimmerEnabled={shimmerRunning}
+                    onShimmerToggle={() => toggleLayer("shimmer")}
                   />
                   <PlayControl hasTiming={hasTiming} hasVideo={videoDrivesPlayback} open={playbackOpen} onOpen={openPlayback} onClose={closePlayback} />
                   <div className='w-px self-stretch bg-gray-300 dark:bg-neutral-600' />
@@ -869,9 +1014,13 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                   <DrumMachineControl
                     bpm={bpm}
                     running={drumRunning}
-                    onToggle={() => setDrumRunning((r) => !r)}
-                    settings={drumSettings}
+                    onToggle={() => toggleLayer("drum")}
+                    settings={effectiveDrumSettings}
                     onSettingsChange={updateDrumSettings}
+                    clapsEnabled={clapsRunning}
+                    onClapsToggle={() => toggleLayer("claps")}
+                    shimmerEnabled={shimmerRunning}
+                    onShimmerToggle={() => toggleLayer("shimmer")}
                   />
                     <PlayControl hasTiming={hasTiming} hasVideo={videoDrivesPlayback} open={playbackOpen} onOpen={openPlayback} onClose={closePlayback} />
                     <div className='w-px self-stretch bg-gray-300 dark:bg-neutral-600' />

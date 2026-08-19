@@ -167,6 +167,24 @@ export default function WorkoutTrackerContent() {
   const [focusedExercise, setFocusedExercise] = useState<string | null>(null);
   const [hoveredBodyPart, setHoveredBodyPart] = useState<BodyPart | null>(null);
 
+  // Responsive activity graph: measure the container and compute how many weeks
+  // fit at ~18px per cell so the grid is always 100% wide with no scrollbar.
+  const graphRef = useRef<HTMLDivElement>(null);
+  const [numWeeks, setNumWeeks] = useState(52);
+  useEffect(() => {
+    const el = graphRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([entry]) => {
+      const w = entry.contentRect.width;
+      const cellTarget = 18; // target cell size in px
+      const gapPx = 2;
+      const computed = Math.floor((w + gapPx) / (cellTarget + gapPx));
+      setNumWeeks(Math.min(52, Math.max(8, computed)));
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   const contributionData = useMemo(() => {
     const map = new Map<string, string[]>();
     for (const l of logs) {
@@ -311,40 +329,39 @@ export default function WorkoutTrackerContent() {
           {/* Contribution graph */}
           <div className='bg-white text-[#1A1B1E] rounded-2xl border border-[#373A40]/15 shadow-sm p-4 sm:p-5 mb-6 relative'>
             <h2 className='font-semibold text-lg mb-4'>Activity</h2>
-            <div className='overflow-x-auto'>
-              <div className='flex gap-[2px] sm:gap-[3px]'>
-                {contributionData.map((week, wi) => (
-                  <div key={wi} className='flex flex-col gap-[2px] sm:gap-[3px]'>
-                    {week.map((day) => (
-                      <div
-                        key={day.date}
-                        className='w-[10px] h-[10px] sm:w-[13px] sm:h-[13px] rounded-sm cursor-default'
-                        style={{
-                          backgroundColor:
-                            day.count === 0
-                              ? "#ebedf0"
-                              : day.count <= 1
-                                ? "#fef3c7"
-                                : day.count <= 3
-                                  ? "#fcd34d"
-                                  : "#facc15",
-                        }}
-                        onMouseEnter={(e) => {
-                          const rect = e.currentTarget.getBoundingClientRect();
-                          const parent = e.currentTarget.closest(".relative")!.getBoundingClientRect();
-                          setHovered({
-                            date: day.date,
-                            exercises: day.exercises,
-                            x: rect.left - parent.left + rect.width / 2,
-                            y: rect.top - parent.top - 8,
-                          });
-                        }}
-                        onMouseLeave={() => setHovered(null)}
-                      />
-                    ))}
-                  </div>
-                ))}
-              </div>
+            {/* ref lets ResizeObserver compute numWeeks; flex-1 + aspect-square fills 100% width */}
+            <div ref={graphRef} className='flex gap-[2px] w-full'>
+              {contributionData.slice(-numWeeks).map((week, wi) => (
+                <div key={wi} className='flex flex-col gap-[2px] flex-1'>
+                  {week.map((day) => (
+                    <div
+                      key={day.date}
+                      className='w-full aspect-square rounded-sm cursor-default'
+                      style={{
+                        backgroundColor:
+                          day.count === 0
+                            ? "#ebedf0"
+                            : day.count <= 1
+                              ? "#fef3c7"
+                              : day.count <= 3
+                                ? "#fcd34d"
+                                : "#facc15",
+                      }}
+                      onMouseEnter={(e) => {
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        const parent = e.currentTarget.closest(".relative")!.getBoundingClientRect();
+                        setHovered({
+                          date: day.date,
+                          exercises: day.exercises,
+                          x: rect.left - parent.left + rect.width / 2,
+                          y: rect.top - parent.top - 8,
+                        });
+                      }}
+                      onMouseLeave={() => setHovered(null)}
+                    />
+                  ))}
+                </div>
+              ))}
             </div>
             {hovered && (
               <div

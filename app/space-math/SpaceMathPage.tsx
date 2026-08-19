@@ -12,14 +12,9 @@ type ProblemType =
   | "place-value"
   | "mental-ten"
   | "add-100"
-  | "word-problem"
   | "comparison"
-  | "time"
-  | "shapes"
-  | "fractions"
   | "three-addend"
   | "fact-family"
-  | "length"
   | "count-120"
   // K
   | "count-by-1"
@@ -39,8 +34,6 @@ type ProblemType =
   | "mental-hundred"
   | "odd-even"
   | "array"
-  | "time-5min"
-  | "money"
   // G3
   | "multiply"
   | "divide"
@@ -50,9 +43,7 @@ type ProblemType =
   | "equiv-fractions"
   | "compare-fractions"
   | "area"
-  | "perimeter"
-  | "time-minute"
-  | "elapsed-time";
+  | "perimeter";
 
 type HintOp =
   | "+"
@@ -61,15 +52,9 @@ type HintOp =
   | "mental-add"
   | "mental-sub"
   | "add-100"
-  | "word-add"
-  | "word-sub"
   | "comparison"
-  | "time"
-  | "shape"
-  | "fraction"
   | "three-add"
   | "fact-family"
-  | "length"
   | "count-next"
   | "count-prev"
   | "make-10"
@@ -85,7 +70,6 @@ type HintOp =
   | "mental-sub-100"
   | "odd-even"
   | "array"
-  | "money"
   | "multiply"
   | "divide"
   | "multiply-tens"
@@ -94,8 +78,7 @@ type HintOp =
   | "equiv-fractions"
   | "compare-fractions"
   | "area"
-  | "perimeter"
-  | "elapsed";
+  | "perimeter";
 
 interface Problem {
   id: string;
@@ -126,8 +109,10 @@ interface TopicDef {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-// Mastery threshold: spaced-repetition interval at or above this means the topic is "known"
-const MASTERY_INTERVAL = 8;
+// Mastery threshold: 5 correct-streak doublings (1→2→4→8→16... capped) means the topic is "known"
+const MASTERY_INTERVAL = 5;
+// Grade advancement: don't block on every topic — 75% mastered unlocks the next grade
+const GRADE_MASTERY_PCT = 0.75;
 
 const GRADE_ORDER: Grade[] = ["K", "G1", "G2", "G3"];
 
@@ -142,7 +127,6 @@ const TOPIC_PROGRESSION: TopicDef[] = [
   { key: "sub-1-10",         type: "subtraction",    min: 1,  max: 10,  grade: "K" },
   { key: "k-make-10",        type: "make-10",        min: 1,  max: 9,   grade: "K" },
   { key: "k-compare-10",     type: "comparison",     min: 1,  max: 10,  grade: "K" },
-  { key: "k-shapes",         type: "shapes",         min: 1,  max: 6,   grade: "K" },
   { key: "k-teen",           type: "teen-decompose", min: 11, max: 19,  grade: "K" },
 
   // ── Grade 1 ──
@@ -156,12 +140,8 @@ const TOPIC_PROGRESSION: TopicDef[] = [
   { key: "place-value",      type: "place-value",    min: 1,  max: 9,   grade: "G1" },
   { key: "mental-ten",       type: "mental-ten",     min: 10, max: 90,  grade: "G1" },
   { key: "g1-sub-mult-10",   type: "sub-mult-10",    min: 10, max: 90,  grade: "G1" },
-  { key: "length",           type: "length",         min: 2,  max: 20,  grade: "G1" },
-  { key: "time",             type: "time",           min: 1,  max: 12,  grade: "G1" },
   { key: "add-100",          type: "add-100",        min: 10, max: 90,  grade: "G1" },
-  { key: "word-problem",     type: "word-problem",   min: 1,  max: 10,  grade: "G1" },
   { key: "count-120",        type: "count-120",      min: 1,  max: 120, grade: "G1" },
-  { key: "fractions",        type: "fractions",      min: 1,  max: 4,   grade: "G1" },
 
   // ── Grade 2 ──
   { key: "g2-add-regroup",   type: "add-100-regroup", min: 10, max: 99, grade: "G2" },
@@ -172,10 +152,6 @@ const TOPIC_PROGRESSION: TopicDef[] = [
   { key: "g2-mental-100",    type: "mental-hundred",  min: 100, max: 800, grade: "G2" },
   { key: "g2-odd-even",      type: "odd-even",        min: 1,  max: 20, grade: "G2" },
   { key: "g2-array",         type: "array",           min: 2,  max: 5,  grade: "G2" },
-  { key: "g2-time-5",        type: "time-5min",       min: 1,  max: 12, grade: "G2" },
-  { key: "g2-money",         type: "money",           min: 1,  max: 5,  grade: "G2" },
-  { key: "g2-thirds",        type: "fractions",       min: 3,  max: 3,  grade: "G2" },
-  { key: "g2-shapes",        type: "shapes",          min: 4,  max: 6,  grade: "G2" },
 
   // ── Grade 3 ──
   { key: "g3-mult",          type: "multiply",         min: 0,  max: 10, grade: "G3" },
@@ -187,8 +163,6 @@ const TOPIC_PROGRESSION: TopicDef[] = [
   { key: "g3-compare-frac",  type: "compare-fractions", min: 2, max: 8,  grade: "G3" },
   { key: "g3-area",          type: "area",             min: 2,  max: 9,  grade: "G3" },
   { key: "g3-perimeter",     type: "perimeter",        min: 2,  max: 12, grade: "G3" },
-  { key: "g3-time-minute",   type: "time-minute",      min: 1,  max: 12, grade: "G3" },
-  { key: "g3-elapsed",       type: "elapsed-time",     min: 5,  max: 55, grade: "G3" },
 ];
 
 // Maps each topic key to its API stage. One stage = one Common Core skill.
@@ -202,7 +176,6 @@ const TOPIC_STAGE: Record<string, { id: number; label: string }> = {
   "k-count-by-10":   { id: 17, label: "K · Count by 10s to 100" },
   "k-make-10":       { id: 12, label: "K · Make 10" },
   "k-compare-10":    { id: 13, label: "K · Compare 1–10" },
-  "k-shapes":        { id: 14, label: "K · Shapes" },
   "k-teen":          { id: 15, label: "K · Teen Numbers (10 + ones)" },
   // G1
   "add-1-20":        { id: 5,  label: "G1 · Add within 20" },
@@ -215,12 +188,8 @@ const TOPIC_STAGE: Record<string, { id: number; label: string }> = {
   "place-value":     { id: 7,  label: "G1 · Tens & ones place value" },
   "mental-ten":      { id: 64, label: "G1 · Mental ±10" },
   "g1-sub-mult-10":  { id: 65, label: "G1 · Subtract multiples of 10" },
-  "length":          { id: 9,  label: "G1 · Compare lengths" },
-  "time":            { id: 66, label: "G1 · Time (hour & half-hour)" },
   "add-100":         { id: 8,  label: "G1 · Add within 100" },
-  "word-problem":    { id: 67, label: "G1 · Word problems within 20" },
   "count-120":       { id: 68, label: "G1 · Count to 120" },
-  "fractions":       { id: 10, label: "G1 · Halves & fourths" },
   // G2
   "g2-add-regroup":  { id: 20, label: "G2 · Add within 100" },
   "g2-sub-regroup":  { id: 21, label: "G2 · Subtract within 100" },
@@ -230,10 +199,6 @@ const TOPIC_STAGE: Record<string, { id: number; label: string }> = {
   "g2-mental-100":   { id: 25, label: "G2 · Mental ±100" },
   "g2-odd-even":     { id: 26, label: "G2 · Odd or Even" },
   "g2-array":        { id: 27, label: "G2 · Arrays" },
-  "g2-time-5":       { id: 28, label: "G2 · Time to 5 min" },
-  "g2-money":        { id: 29, label: "G2 · Money" },
-  "g2-thirds":       { id: 30, label: "G2 · Thirds" },
-  "g2-shapes":       { id: 31, label: "G2 · Polygons" },
   // G3
   "g3-mult":         { id: 40, label: "G3 · Multiplication" },
   "g3-mult-tens":    { id: 41, label: "G3 · ×Multiples of 10" },
@@ -244,16 +209,16 @@ const TOPIC_STAGE: Record<string, { id: number; label: string }> = {
   "g3-compare-frac": { id: 46, label: "G3 · Compare Fractions" },
   "g3-area":         { id: 47, label: "G3 · Area" },
   "g3-perimeter":    { id: 48, label: "G3 · Perimeter" },
-  "g3-time-minute":  { id: 49, label: "G3 · Time to the Minute" },
-  "g3-elapsed":      { id: 50, label: "G3 · Elapsed Time" },
 };
 
 const DEFAULT_RECORD: TopicRecord = { correct: 0, attempts: 0, interval: 1, dueIn: 0 };
 
-// A grade is mastered iff every topic in it has interval >= MASTERY_INTERVAL
+// A grade is mastered when >= 75% of its topics have interval >= MASTERY_INTERVAL
 function isGradeMastered(grade: Grade, records: Record<string, TopicRecord>): boolean {
   const topics = TOPIC_PROGRESSION.filter((t) => t.grade === grade);
-  return topics.every((t) => (records[t.key]?.interval ?? 1) >= MASTERY_INTERVAL);
+  if (topics.length === 0) return true;
+  const mastered = topics.filter((t) => (records[t.key]?.interval ?? 1) >= MASTERY_INTERVAL).length;
+  return mastered / topics.length >= GRADE_MASTERY_PCT;
 }
 
 // The current working grade is the lowest grade that isn't fully mastered
@@ -266,20 +231,28 @@ function currentGrade(records: Record<string, TopicRecord>): Grade {
 
 // Pick the topic most in need of practice from all unlocked topics
 function selectTopic(records: Record<string, TopicRecord>, lastKey: string | null): TopicDef {
-  // A topic is unlocked iff all lower grades are mastered. Within current grade, all topics are available.
   const grade = currentGrade(records);
   const gradeIdx = GRADE_ORDER.indexOf(grade);
   const allowedGrades = new Set(GRADE_ORDER.slice(0, gradeIdx + 1));
   const unlocked = TOPIC_PROGRESSION.filter((t) => allowedGrades.has(t.grade));
-  const due = unlocked.filter((t) => (records[t.key]?.dueIn ?? 0) <= 0);
-  const pool = due.length > 0 ? due : unlocked;
 
-  // Weight: low-accuracy and short-interval topics surface more; penalize last topic to avoid back-to-back
+  // Exclude mastered topics unless everything is mastered
+  const unmastered = unlocked.filter((t) => (records[t.key]?.interval ?? 1) < MASTERY_INTERVAL);
+  const candidates = unmastered.length > 0 ? unmastered : unlocked;
+
+  // Only consider topics that are due
+  const due = candidates.filter((t) => (records[t.key]?.dueIn ?? 0) <= 0);
+  const pool = due.length > 0 ? due : candidates;
+
+  // Weight: unseen topics get 5× bonus; low-accuracy / short-interval topics surface more
+  // Penalize the last topic to avoid back-to-back repeats
   const weights = pool.map((t) => {
     const r = records[t.key] ?? DEFAULT_RECORD;
+    const isNew = r.attempts === 0;
     const accuracy = r.attempts > 0 ? r.correct / r.attempts : 0.5;
     const base = (1 - accuracy * 0.8) / Math.max(r.interval, 1);
-    return t.key === lastKey ? base * 0.25 : base;
+    const newBonus = isNew ? 5 : 1;
+    return t.key === lastKey ? base * newBonus * 0.25 : base * newBonus;
   });
 
   const total = weights.reduce((a, b) => a + b, 0);
@@ -309,61 +282,6 @@ function tickTopics(records: Record<string, TopicRecord>, exceptKey: string): Re
   return out;
 }
 
-const WP_SUBJECTS = ["rockets", "aliens", "stars", "moons", "comets", "astronauts"];
-const WP_ADD_VERBS = ["land at", "join", "appear at", "launch from"];
-const WP_SUB_VERBS = ["fly away from", "leave", "blast off from", "depart from"];
-
-const LENGTH_PAIRS: [string, string][] = [
-  ["pencil", "crayon"],
-  ["book", "ruler"],
-  ["bat", "straw"],
-  ["worm", "snake"],
-  ["brush", "pen"],
-  ["ribbon", "rope"],
-];
-
-const SHAPE_QS: { q: string; a: number; hint: string }[] = [
-  { q: "How many sides does a triangle have?", a: 3, hint: "△" },
-  { q: "How many corners does a triangle have?", a: 3, hint: "△" },
-  { q: "How many sides does a square have?", a: 4, hint: "□" },
-  { q: "How many corners does a square have?", a: 4, hint: "□" },
-  { q: "How many sides does a rectangle have?", a: 4, hint: "▭" },
-  { q: "How many sides does a pentagon have?", a: 5, hint: "⬠" },
-  { q: "How many sides does a hexagon have?", a: 6, hint: "⬡" },
-  { q: "How many vertices does a hexagon have?", a: 6, hint: "⬡" },
-  { q: "A circle has how many sides?", a: 0, hint: "○" },
-  { q: "How many faces does a cube have?", a: 6, hint: "🧊" },
-  { q: "How many flat faces does a cone have?", a: 1, hint: "🔺" },
-  { q: "How many flat faces does a cylinder have?", a: 2, hint: "🥫" },
-  { q: "How many sides does a trapezoid have?", a: 4, hint: "⏢" },
-];
-
-const FRACTION_QS: { q: string; a: string; opts: string[]; hint: string }[] = [
-  { q: "A pizza cut into 2 equal pieces — one piece is:", a: "1/2", opts: ["1/2", "1/3", "1/4", "2/3"], hint: "1/2" },
-  { q: "A pizza cut into 4 equal pieces — one piece is:", a: "1/4", opts: ["1/2", "1/4", "1/3", "1/8"], hint: "1/4" },
-  { q: "A shape split into 2 equal parts — each part is:", a: "1/2", opts: ["1/2", "1/3", "1/4", "1/5"], hint: "1/2" },
-  {
-    q: "A rectangle divided into 4 equal parts — one part is:",
-    a: "1/4",
-    opts: ["1/2", "1/3", "1/4", "2/4"],
-    hint: "1/4",
-  },
-  { q: "How many halves make a whole?", a: "2", opts: ["2", "3", "4", "8"], hint: "1/2" },
-  { q: "How many quarters make a whole?", a: "4", opts: ["2", "3", "4", "6"], hint: "1/4" },
-  { q: "How many fourths make one whole?", a: "4", opts: ["2", "3", "4", "8"], hint: "1/4" },
-  {
-    q: "A circle is cut into 4 equal parts. One shaded part equals:",
-    a: "1/4",
-    opts: ["1/4", "1/2", "3/4", "1/3"],
-    hint: "1/4",
-  },
-  {
-    q: "1/2 of a shape is shaded. What fraction is NOT shaded?",
-    a: "1/2",
-    opts: ["1/2", "1/3", "1/4", "2/3"],
-    hint: "1/2",
-  },
-];
 
 // ─── Problem Generator ────────────────────────────────────────────────────────
 
@@ -470,33 +388,6 @@ function buildProblem(type: ProblemType, min: number, max: number): Problem {
     };
   }
 
-  if (type === "word-problem") {
-    const subj = WP_SUBJECTS[Math.floor(Math.random() * WP_SUBJECTS.length)];
-    const isAdd = Math.random() > 0.4;
-    // Word problems stay within 20 per 1st grade curriculum
-    const a = Math.floor(Math.random() * 10) + 1; // 1–10
-    const b = Math.floor(Math.random() * 10) + 1; // 1–10
-    let question: string, answer: number;
-    if (isAdd) {
-      const verb = WP_ADD_VERBS[Math.floor(Math.random() * WP_ADD_VERBS.length)];
-      question = `There are ${a} ${subj}. ${b} more ${verb} the station. How many total?`;
-      answer = a + b;
-    } else {
-      const verb = WP_SUB_VERBS[Math.floor(Math.random() * WP_SUB_VERBS.length)];
-      question = `There are ${a + b} ${subj}. ${b} ${verb} the station. How many are left?`;
-      answer = a;
-    }
-    return {
-      id,
-      type,
-      question,
-      answer,
-      options: numOpts(answer),
-      visualHint: { left: a, right: b, operator: isAdd ? "word-add" : "word-sub" },
-      signature: `wp-${isAdd ? "add" : "sub"}:${a},${b}`,
-    };
-  }
-
   if (type === "comparison") {
     const a = Math.floor(Math.random() * (max - min + 1)) + min;
     const b = Math.floor(Math.random() * (max - min + 1)) + min;
@@ -509,60 +400,6 @@ function buildProblem(type: ProblemType, min: number, max: number): Problem {
       options: ["<", "=", ">"],
       visualHint: { left: a, right: b, operator: "comparison" },
       signature: `cmp:${a},${b}`,
-    };
-  }
-
-  if (type === "time") {
-    const hour = Math.floor(Math.random() * 12) + 1;
-    const isHalf = Math.random() > 0.5;
-    const minutes = isHalf ? 30 : 0;
-    const timeStr = `${hour}:${minutes === 0 ? "00" : "30"}`;
-    const wrongHour1 = (hour % 12) + 1 + 1 > 12 ? 1 : (hour % 12) + 1 + 1;
-    const wrongHour2 = hour - 1 < 1 ? 12 : hour - 1;
-    const opts = [
-      timeStr,
-      `${wrongHour1}:${minutes === 0 ? "00" : "30"}`,
-      `${wrongHour2}:${minutes === 0 ? "00" : "30"}`,
-      `${hour}:${minutes === 0 ? "30" : "00"}`,
-    ];
-    opts.sort(() => Math.random() - 0.5);
-    const q = isHalf
-      ? `The clock shows half past ${hour}. What time is it?`
-      : `The clock shows ${hour} o'clock. What time is it?`;
-    return {
-      id,
-      type,
-      question: q,
-      answer: timeStr,
-      options: opts,
-      visualHint: { left: hour, right: minutes, operator: "time" },
-      signature: `time:${timeStr}`,
-    };
-  }
-
-  if (type === "shapes") {
-    const sq = SHAPE_QS[Math.floor(Math.random() * SHAPE_QS.length)];
-    return {
-      id,
-      type,
-      question: sq.q,
-      answer: sq.a,
-      options: numOpts(sq.a),
-      visualHint: { left: sq.a, right: 0, operator: "shape", extra: sq.hint },
-      signature: `shape:${sq.q.slice(0, 25)}`,
-    };
-  }
-
-  if (type === "fractions") {
-    const fq = FRACTION_QS[Math.floor(Math.random() * FRACTION_QS.length)];
-    return {
-      id,
-      type,
-      question: fq.q,
-      answer: fq.a,
-      options: fq.opts,
-      visualHint: { left: 0, right: 0, operator: "fraction", extra: fq.hint },
-      signature: `frac:${fq.q.slice(0, 25)}`,
     };
   }
 
@@ -600,26 +437,6 @@ function buildProblem(type: ProblemType, min: number, max: number): Problem {
     };
   }
 
-  if (type === "length") {
-    const pair = LENGTH_PAIRS[Math.floor(Math.random() * LENGTH_PAIRS.length)];
-    const len1 = Math.floor(Math.random() * (max - min)) + min;
-    let len2 = Math.floor(Math.random() * (max - min)) + min;
-    while (len2 === len1) len2 = Math.floor(Math.random() * (max - min)) + min;
-    const isLongerQ = Math.random() > 0.5;
-    const longer = len1 > len2 ? pair[0] : pair[1];
-    const shorter = len1 > len2 ? pair[1] : pair[0];
-    const answer = isLongerQ ? longer : shorter;
-    return {
-      id,
-      type,
-      question: `A ${pair[0]} is ${len1} cm long. A ${pair[1]} is ${len2} cm long. Which is ${isLongerQ ? "longer" : "shorter"}?`,
-      answer,
-      options: [pair[0], pair[1]],
-      visualHint: { left: len1, right: len2, operator: "length", extra: `${pair[0]},${pair[1]}` },
-      signature: `len:${pair[0]},${isLongerQ ? "longer" : "shorter"}`,
-    };
-  }
-
   if (type === "count-120") {
     const useHigh = Math.random() > 0.4;
     const start = useHigh
@@ -627,10 +444,13 @@ function buildProblem(type: ProblemType, min: number, max: number): Problem {
       : Math.floor(Math.random() * (max - 2)) + 2;
     const isNext = Math.random() > 0.5;
     const answer = isNext ? start + 1 : start - 1;
+    const question = isNext
+      ? `${start - 2}, ${start - 1}, ${start}, ___`
+      : `___, ${start}, ${start + 1}, ${start + 2}`;
     return {
       id,
       type,
-      question: isNext ? `What number comes after ${start}?` : `What number comes before ${start}?`,
+      question,
       answer,
       options: numOpts(answer),
       visualHint: { left: start, right: 0, operator: isNext ? "count-next" : "count-prev" },
@@ -644,10 +464,13 @@ function buildProblem(type: ProblemType, min: number, max: number): Problem {
     const start = Math.floor(Math.random() * 98) + 2;
     const isNext = Math.random() > 0.5;
     const answer = isNext ? start + 1 : start - 1;
+    const question = isNext
+      ? `${start - 2}, ${start - 1}, ${start}, ___`
+      : `___, ${start}, ${start + 1}, ${start + 2}`;
     return {
       id,
       type,
-      question: isNext ? `What comes after ${start}?` : `What comes before ${start}?`,
+      question,
       answer,
       options: numOpts(answer),
       visualHint: { left: start, right: 0, operator: isNext ? "count-next" : "count-prev" },
@@ -898,54 +721,6 @@ function buildProblem(type: ProblemType, min: number, max: number): Problem {
     };
   }
 
-  if (type === "time-5min") {
-    const hour = Math.floor(Math.random() * 12) + 1;
-    const minutes = Math.floor(Math.random() * 12) * 5; // 0..55 in 5s
-    const timeStr = `${hour}:${minutes.toString().padStart(2, "0")}`;
-    const opts = new Set<string>([timeStr]);
-    while (opts.size < 4) {
-      const wh = Math.floor(Math.random() * 12) + 1;
-      const wm = Math.floor(Math.random() * 12) * 5;
-      opts.add(`${wh}:${wm.toString().padStart(2, "0")}`);
-    }
-    return {
-      id,
-      type,
-      question: `What time is shown?`,
-      answer: timeStr,
-      options: Array.from(opts).sort(() => Math.random() - 0.5),
-      visualHint: { left: hour, right: minutes, operator: "time" },
-      signature: `t5:${timeStr}`,
-    };
-  }
-
-  if (type === "money") {
-    // Mix of coins: pennies (1), nickels (5), dimes (10), quarters (25)
-    const coins = [
-      { name: "penny", value: 1 },
-      { name: "nickel", value: 5 },
-      { name: "dime", value: 10 },
-      { name: "quarter", value: 25 },
-    ];
-    const numKinds = Math.floor(Math.random() * 2) + 2; // 2 or 3 kinds
-    const picked = coins.sort(() => Math.random() - 0.5).slice(0, numKinds);
-    const parts = picked.map((c) => {
-      const n = Math.floor(Math.random() * 4) + 1; // 1..4
-      return { ...c, n };
-    });
-    const total = parts.reduce((s, p) => s + p.n * p.value, 0);
-    const desc = parts.map((p) => `${p.n} ${p.name}${p.n > 1 ? "s" : ""}`).join(" and ");
-    return {
-      id,
-      type,
-      question: `${desc}. How many ¢?`,
-      answer: total,
-      options: numOpts(total),
-      visualHint: { left: 0, right: 0, operator: "money", extra: parts.map((p) => `${p.n}${p.name[0]}`).join(",") },
-      signature: `money:${desc}`,
-    };
-  }
-
   // ─── Grade 3 ───────────────────────────────────────────────────────────────
 
   if (type === "multiply") {
@@ -1124,48 +899,6 @@ function buildProblem(type: ProblemType, min: number, max: number): Problem {
     };
   }
 
-  if (type === "time-minute") {
-    const hour = Math.floor(Math.random() * 12) + 1;
-    const minutes = Math.floor(Math.random() * 60); // 0..59
-    const timeStr = `${hour}:${minutes.toString().padStart(2, "0")}`;
-    const opts = new Set<string>([timeStr]);
-    while (opts.size < 4) {
-      const wh = Math.floor(Math.random() * 12) + 1;
-      const wm = Math.floor(Math.random() * 60);
-      opts.add(`${wh}:${wm.toString().padStart(2, "0")}`);
-    }
-    return {
-      id,
-      type,
-      question: `What time is shown?`,
-      answer: timeStr,
-      options: Array.from(opts).sort(() => Math.random() - 0.5),
-      visualHint: { left: hour, right: minutes, operator: "time" },
-      signature: `tm:${timeStr}`,
-    };
-  }
-
-  if (type === "elapsed-time") {
-    const startH = Math.floor(Math.random() * 11) + 1; // 1..11
-    const startM = Math.floor(Math.random() * 12) * 5; // 0..55 step 5
-    const elapsed = Math.floor(Math.random() * 11) + 1; // 1..11 fives
-    const elapsedMin = elapsed * 5;
-    const totalM = startM + elapsedMin;
-    const endH = startH + Math.floor(totalM / 60);
-    const endM = totalM % 60;
-    const startStr = `${startH}:${startM.toString().padStart(2, "0")}`;
-    const endStr = `${endH > 12 ? endH - 12 : endH}:${endM.toString().padStart(2, "0")}`;
-    return {
-      id,
-      type,
-      question: `Start ${startStr}, end ${endStr}. How many minutes elapsed?`,
-      answer: elapsedMin,
-      options: numOpts(elapsedMin),
-      visualHint: { left: startH, right: startM, operator: "elapsed", extra: endStr },
-      signature: `elap:${startStr}-${endStr}`,
-    };
-  }
-
   return buildProblem("addition", min, max);
 }
 
@@ -1201,16 +934,6 @@ async function postQuestionProgress(
 }
 
 // ─── Visual Scaffolding ───────────────────────────────────────────────────────
-
-function DigitalClock({ hours, minutes }: { hours: number; minutes: number }) {
-  const h = hours === 0 ? 12 : hours;
-  const m = minutes.toString().padStart(2, "0");
-  return (
-    <div className='font-mono text-5xl sm:text-6xl font-black text-yellow-300 bg-slate-900 px-6 py-3 rounded-lg border-2 border-yellow-400/50 shadow-inner tracking-widest'>
-      {h}:{m}
-    </div>
-  );
-}
 
 function FractionBar({ hint }: { hint: string }) {
   // Parse "a/b"; default to 1/2 if malformed
@@ -1331,33 +1054,6 @@ const VisualScaffolding = ({ hint }: { hint: Problem["visualHint"] }) => {
     );
   }
 
-  if (hint.operator === "time") {
-    return (
-      <div className='flex flex-col items-center gap-2 p-3 bg-white/10 rounded-2xl border border-white/20'>
-        <DigitalClock hours={hint.left} minutes={hint.right} />
-        <p className='text-[10px] text-blue-200'>Hours : Minutes</p>
-      </div>
-    );
-  }
-
-  if (hint.operator === "shape") {
-    return (
-      <div className='flex flex-col items-center gap-2 p-3 bg-white/10 rounded-2xl border border-white/20'>
-        <span className='text-5xl'>{hint.extra}</span>
-        <p className='text-[10px] text-blue-200'>Count the sides or corners carefully!</p>
-      </div>
-    );
-  }
-
-  if (hint.operator === "fraction") {
-    return (
-      <div className='flex flex-col items-center gap-2 p-3 bg-white/10 rounded-2xl border border-white/20'>
-        <FractionBar hint={hint.extra ?? "1/2"} />
-        <p className='text-[10px] text-blue-200'>Purple = one equal part of the whole</p>
-      </div>
-    );
-  }
-
   if (hint.operator === "fact-family") {
     const sum = hint.left + hint.right;
     return (
@@ -1380,28 +1076,6 @@ const VisualScaffolding = ({ hint }: { hint: Problem["visualHint"] }) => {
           </div>
         </div>
         <p className='text-[10px] text-blue-200'>Addition and subtraction are opposites!</p>
-      </div>
-    );
-  }
-
-  if (hint.operator === "length") {
-    const [obj1, obj2] = (hint.extra ?? ",").split(",");
-    const maxLen = Math.max(hint.left, hint.right);
-    return (
-      <div className='flex flex-col items-center gap-2 p-3 bg-white/10 rounded-2xl border border-white/20'>
-        <div className='flex flex-col gap-2 w-full max-w-[220px]'>
-          <div className='flex items-center gap-2'>
-            <span className='text-[10px] text-blue-300 w-14 text-right shrink-0'>{obj1}</span>
-            <div className='h-4 bg-orange-400 rounded' style={{ width: `${(hint.left / maxLen) * 120}px` }} />
-            <span className='text-[10px] text-slate-300'>{hint.left} cm</span>
-          </div>
-          <div className='flex items-center gap-2'>
-            <span className='text-[10px] text-blue-300 w-14 text-right shrink-0'>{obj2}</span>
-            <div className='h-4 bg-purple-400 rounded' style={{ width: `${(hint.right / maxLen) * 120}px` }} />
-            <span className='text-[10px] text-slate-300'>{hint.right} cm</span>
-          </div>
-        </div>
-        <p className='text-[10px] text-blue-200'>Longer bar = longer object!</p>
       </div>
     );
   }
@@ -1589,35 +1263,6 @@ const VisualScaffolding = ({ hint }: { hint: Problem["visualHint"] }) => {
     );
   }
 
-  if (hint.operator === "money") {
-    const COIN: Record<string, { c: string; v: number }> = {
-      p: { c: "🪙", v: 1 },
-      n: { c: "🟢", v: 5 },
-      d: { c: "🔵", v: 10 },
-      q: { c: "🟡", v: 25 },
-    };
-    const parts = (hint.extra ?? "").split(",").filter(Boolean);
-    return (
-      <div className='flex flex-col items-center gap-2 p-3 bg-white/10 rounded-2xl border border-white/20'>
-        <div className='flex flex-wrap gap-2 justify-center max-w-[260px]'>
-          {parts.map((p, i) => {
-            const n = parseInt(p[0], 10);
-            const kind = p[1];
-            const coin = COIN[kind] ?? { c: "·", v: 0 };
-            return (
-              <div key={i} className='flex items-center gap-1 bg-white/5 px-2 py-1 rounded'>
-                <span className='text-lg'>{coin.c}</span>
-                <span className='text-xs text-white'>×{n}</span>
-                <span className='text-[10px] text-emerald-300'>{coin.v}¢</span>
-              </div>
-            );
-          })}
-        </div>
-        <p className='text-[10px] text-blue-200'>Add each coin&apos;s value.</p>
-      </div>
-    );
-  }
-
   if (hint.operator === "multiply") {
     return (
       <div className='flex flex-col items-center gap-2 p-3 bg-white/10 rounded-2xl border border-white/20'>
@@ -1740,21 +1385,6 @@ const VisualScaffolding = ({ hint }: { hint: Problem["visualHint"] }) => {
           {hint.left}×{hint.right}
         </div>
         <p className='text-[10px] text-blue-200'>Add up all 4 sides: {hint.left} + {hint.right} + {hint.left} + {hint.right}</p>
-      </div>
-    );
-  }
-
-  if (hint.operator === "elapsed") {
-    return (
-      <div className='flex flex-col items-center gap-2 p-3 bg-white/10 rounded-2xl border border-white/20'>
-        <div className='flex items-center gap-3'>
-          <DigitalClock hours={hint.left} minutes={hint.right} />
-          <span className='text-yellow-300 text-2xl'>→</span>
-          <div className='font-mono text-3xl font-black text-emerald-300 bg-slate-900 px-4 py-2 rounded-lg border-2 border-emerald-400/50 tracking-widest'>
-            {hint.extra}
-          </div>
-        </div>
-        <p className='text-[10px] text-blue-200'>How many minutes from start to end?</p>
       </div>
     );
   }
@@ -2165,18 +1795,15 @@ export default function SpaceMathPage() {
     setScore(0);
   };
 
-  const isWordProblem = problem?.type === "word-problem";
   const READ_ALOUD: Set<ProblemType> = new Set([
-    "word-problem", "time", "shapes", "fractions", "fact-family", "length", "count-120",
-    "count-by-1", "count-by-10", "make-10", "teen-decompose",
+    "fact-family", "count-120", "count-by-1", "count-by-10", "make-10", "teen-decompose",
     "equal-sign", "unknown-addend",
-    "skip-count", "odd-even", "array", "time-5min", "money",
+    "skip-count", "odd-even", "array",
     "round", "fraction-line", "equiv-fractions", "compare-fractions",
-    "area", "perimeter", "time-minute", "elapsed-time",
+    "area", "perimeter",
   ]);
   const isReadAloud = !!problem && READ_ALOUD.has(problem.type);
-  const isFraction = problem?.type === "fractions";
-  const isLongQuestion = problem && !isWordProblem && !isFraction && problem.question.length > 40;
+  const isLongQuestion = problem && problem.question.length > 40;
   const isThreeOptions = problem && problem.options.length === 3;
   const GRADE_LABEL: Record<Grade, string> = { K: "Kindergarten", G1: "Grade 1", G2: "Grade 2", G3: "Grade 3" };
 

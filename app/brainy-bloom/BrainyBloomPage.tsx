@@ -14,7 +14,7 @@ import {
 
 interface Question {
   id: string;
-  type: "verbal" | "quantitative" | "spatial";
+  type?: string;
   level: number;
   prompt: string;
   options: string[];
@@ -95,22 +95,14 @@ const QUESTION_POOL: Record<number, Omit<Question, "id" | "level">[]> = {
     { type: "quantitative", prompt: "Count the balloons: 🎈🎈🎈🎈", options: ["3", "4", "5", "6"], correctAnswer: "4" },
     { type: "quantitative", prompt: "How many ducks? 🦆🦆🦆🦆🦆", options: ["4", "5", "6", "7"], correctAnswer: "5" },
     { type: "quantitative", prompt: "Count the bees: 🐝🐝", options: ["1", "2", "3", "4"], correctAnswer: "2" },
-    { type: "verbal", prompt: 'Which word is the same as: "CAT"?', options: ["DOG", "BAT", "CAT", "RAT"], correctAnswer: "CAT" },
-    { type: "verbal", prompt: 'Find the word: "SUN"', options: ["RUN", "SUN", "FUN", "GUN"], correctAnswer: "SUN" },
-    { type: "verbal", prompt: 'Which one says: "RED"?', options: ["BLUE", "RED", "GREEN", "PINK"], correctAnswer: "RED" },
-    { type: "verbal", prompt: 'Match the word: "BALL"', options: ["FALL", "CALL", "BALL", "TALL"], correctAnswer: "BALL" },
-    { type: "verbal", prompt: 'Find the word: "FISH"', options: ["DISH", "WISH", "FISH", "BASH"], correctAnswer: "FISH" },
-    { type: "verbal", prompt: 'Which one says: "BLUE"?', options: ["BLUE", "BLUR", "BULL", "BELL"], correctAnswer: "BLUE" },
     { type: "spatial", prompt: "Which flower matches?", options: ["🌻", "🌹", "🌷", "🌺"], correctAnswer: "🌻", visualData: { target: "🌻" } },
     { type: "spatial", prompt: "Find the same bug!", options: ["🐛", "🦋", "🐞", "🐜"], correctAnswer: "🐛", visualData: { target: "🐛" } },
     { type: "quantitative", prompt: "Count the hearts: ❤️❤️❤️❤️❤️❤️", options: ["4", "5", "6", "7"], correctAnswer: "6" },
     { type: "quantitative", prompt: "How many trees? 🌲🌲🌲", options: ["2", "3", "4", "5"], correctAnswer: "3" },
-    { type: "verbal", prompt: 'Match the word: "TREE"', options: ["FREE", "TREE", "THREE", "TRAY"], correctAnswer: "TREE" },
     { type: "spatial", prompt: "Which one matches?", options: ["🎸", "🥁", "🎺", "🎹"], correctAnswer: "🎸", visualData: { target: "🎸" } },
     { type: "spatial", prompt: "Find the same one!", options: ["🦁", "🐯", "🐻", "🐼"], correctAnswer: "🦁", visualData: { target: "🦁" } },
     { type: "quantitative", prompt: "How many moons? 🌙🌙🌙🌙", options: ["2", "3", "4", "5"], correctAnswer: "4" },
     { type: "quantitative", prompt: "Count the fish: 🐟🐟🐟🐟🐟🐟🐟", options: ["5", "6", "7", "8"], correctAnswer: "7" },
-    { type: "verbal", prompt: 'Which one says: "STAR"?', options: ["STAR", "STIR", "SCAR", "STAY"], correctAnswer: "STAR" },
   ],
   2: [
     { type: "spatial", prompt: "What comes next in the pattern? 🔴 🟦 🔴 🟦 ...", options: ["🔴", "🟦", "🟡", "🔺"], correctAnswer: "🔴" },
@@ -125,22 +117,14 @@ const QUESTION_POOL: Record<number, Omit<Question, "id" | "level">[]> = {
     { type: "quantitative", prompt: "Sequence: 1, 3, 5, ...", options: ["6", "7", "8", "9"], correctAnswer: "7" },
     { type: "quantitative", prompt: "Next number: 10, 20, 30, ...", options: ["35", "40", "45", "50"], correctAnswer: "40" },
     { type: "quantitative", prompt: "Count down: 5, 4, 3, ...", options: ["0", "1", "2", "3"], correctAnswer: "2" },
-    { type: "verbal", prompt: "Which word is the odd one out?", options: ["Apple", "Banana", "Carrot", "Orange"], correctAnswer: "Carrot" },
-    { type: "verbal", prompt: "Which one does not belong?", options: ["Dog", "Cat", "Bird", "Car"], correctAnswer: "Car" },
-    { type: "verbal", prompt: "Find the different word:", options: ["Happy", "Sad", "Angry", "Blue"], correctAnswer: "Blue" },
-    { type: "verbal", prompt: "Which is not a color?", options: ["Red", "Green", "Yellow", "Square"], correctAnswer: "Square" },
-    { type: "verbal", prompt: "Odd one out:", options: ["Milk", "Juice", "Water", "Bread"], correctAnswer: "Bread" },
-    { type: "verbal", prompt: "Which is different?", options: ["Circle", "Square", "Triangle", "Yellow"], correctAnswer: "Yellow" },
     { type: "spatial", prompt: "What comes next? 🐶 🐱 🐶 🐱 ...", options: ["🐶", "🐱", "🐭", "🐹"], correctAnswer: "🐶" },
     { type: "spatial", prompt: "Continue: 🌻 🌹 🌻 🌹 ...", options: ["🌻", "🌹", "🌷", "🌺"], correctAnswer: "🌻" },
     { type: "quantitative", prompt: "What comes next? 3, 6, 9, ...", options: ["10", "11", "12", "13"], correctAnswer: "12" },
     { type: "quantitative", prompt: "Count by twos: 2, 4, 6, 8, ...", options: ["9", "10", "11", "12"], correctAnswer: "10" },
-    { type: "verbal", prompt: "Which does not belong?", options: ["Shirt", "Pants", "Hat", "Pizza"], correctAnswer: "Pizza" },
     { type: "spatial", prompt: "What comes next? 🎈 🎁 🎈 🎁 ...", options: ["🎈", "🎁", "🎉", "🎊"], correctAnswer: "🎈" },
     { type: "spatial", prompt: "Continue: 🐸 🐛 🐸 🐛 ...", options: ["🐸", "🐛", "🐝", "🦋"], correctAnswer: "🐸" },
     { type: "quantitative", prompt: "What comes next? 1, 2, 3, 4, ...", options: ["4", "5", "6", "7"], correctAnswer: "5" },
     { type: "quantitative", prompt: "Count backwards: 20, 18, 16, ...", options: ["12", "13", "14", "15"], correctAnswer: "14" },
-    { type: "verbal", prompt: "Which one is not a fruit?", options: ["Grape", "Lemon", "Potato", "Peach"], correctAnswer: "Potato" },
   ],
   3: [
     { type: "spatial", prompt: "Bird is to Nest as Bee is to ...", options: ["Hive", "Tree", "Flower", "Honey"], correctAnswer: "Hive" },
@@ -155,22 +139,14 @@ const QUESTION_POOL: Record<number, Omit<Question, "id" | "level">[]> = {
     { type: "quantitative", prompt: "If 2 + ? = 10, what is ?", options: ["6", "7", "8", "9"], correctAnswer: "8" },
     { type: "quantitative", prompt: "Triple 2 is ...", options: ["4", "5", "6", "7"], correctAnswer: "6" },
     { type: "quantitative", prompt: "If 7 - ? = 2, what is ?", options: ["3", "4", "5", "6"], correctAnswer: "5" },
-    { type: "verbal", prompt: 'Which group does "Lion" belong to?', options: ["Pets", "Wild Animals", "Birds", "Fish"], correctAnswer: "Wild Animals" },
-    { type: "verbal", prompt: 'Which group does "Rose" belong to?', options: ["Trees", "Flowers", "Vegetables", "Fruits"], correctAnswer: "Flowers" },
-    { type: "verbal", prompt: 'A "Hammer" is a type of ...', options: ["Food", "Tool", "Toy", "Animal"], correctAnswer: "Tool" },
-    { type: "verbal", prompt: 'A "Piano" is a ...', options: ["Sport", "Instrument", "Vehicle", "Fruit"], correctAnswer: "Instrument" },
-    { type: "verbal", prompt: 'Which group does "Broccoli" belong to?', options: ["Fruits", "Vegetables", "Meats", "Sweets"], correctAnswer: "Vegetables" },
-    { type: "verbal", prompt: "A dolphin lives in the ocean. It is a type of ...", options: ["Bird", "Fish", "Mammal", "Insect"], correctAnswer: "Mammal" },
     { type: "spatial", prompt: "Pen is to Write as Scissors is to ...", options: ["Cut", "Draw", "Glue", "Tape"], correctAnswer: "Cut" },
     { type: "spatial", prompt: "Eye is to See as Ear is to ...", options: ["Hear", "Smell", "Taste", "Touch"], correctAnswer: "Hear" },
     { type: "quantitative", prompt: "If 3 + ? = 9, what is ?", options: ["4", "5", "6", "7"], correctAnswer: "6" },
     { type: "quantitative", prompt: "If 12 - ? = 7, what is ?", options: ["3", "4", "5", "6"], correctAnswer: "5" },
-    { type: "verbal", prompt: 'Which group does "Eagle" belong to?', options: ["Fish", "Birds", "Reptiles", "Mammals"], correctAnswer: "Birds" },
     { type: "spatial", prompt: "Pillow is to Bed as Tire is to ...", options: ["Car", "Bike", "Road", "Shoe"], correctAnswer: "Car" },
     { type: "spatial", prompt: "Kitten is to Cat as Puppy is to ...", options: ["Dog", "Fox", "Wolf", "Bear"], correctAnswer: "Dog" },
     { type: "quantitative", prompt: "If 8 + ? = 14, what is ?", options: ["4", "5", "6", "7"], correctAnswer: "6" },
     { type: "quantitative", prompt: "If 15 - ? = 9, what is ?", options: ["4", "5", "6", "7"], correctAnswer: "6" },
-    { type: "verbal", prompt: "A guitar makes music. It is a type of ...", options: ["Toy", "Instrument", "Tool", "Furniture"], correctAnswer: "Instrument" },
   ],
   4: [
     { type: "spatial", prompt: "Look at the 2x2 grid. Which shape completes the pattern?", options: ["🔺", "🟦", "🟡", "🔴"], correctAnswer: "🔺", visualData: { matrix: [["🔴", "🔴"], ["🔺", "?"]] } },
