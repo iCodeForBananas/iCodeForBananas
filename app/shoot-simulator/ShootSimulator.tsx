@@ -17,7 +17,9 @@ const ENEMY_SPEED = 55;
 const ENEMY_DEPTH_SPEED = 0.18;
 const MAX_ENEMIES = 5;
 const ENEMY_XP = 25;
-const XP_THRESHOLDS = [100, 250, 500, 900, 1400];
+// Kills per level at 25 XP a head: 4, 8, 12, 18. Flat enough that a good run
+// reaches the sword instead of stalling out with two slots still greyed.
+const XP_THRESHOLDS = [100, 200, 300, 450, 700];
 const COMBO_WINDOW_MS = 600;
 // Belt-scroll playfield: you walk the whole depth of the street, from up on the
 // sidewalk by the storefronts, over the curb, down to the near edge of the road.
