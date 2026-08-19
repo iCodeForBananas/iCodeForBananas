@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useRef, use } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/app/hooks/useAuth";
-import { Save, ArrowLeft, Eye, Replace, X, Sparkles, Play, Timer, TimerOff, Clock } from "lucide-react";
+import { Save, ArrowLeft, Eye, Replace, X, Sparkles, Play, Timer, TimerOff, Clock, HelpCircle } from "lucide-react";
 import { RevisionHistory } from "../../RevisionHistory";
 import {
   type LeadSheet,
@@ -27,6 +27,7 @@ import {
   stripDrumSettings,
 } from "../../DrumMachine";
 import TapTiming from "../../TapTiming";
+import SyntaxHelp from "../../SyntaxHelp";
 
 // ─── Text ↔ LeadSheet ─────────────────────────────────────────────────────────
 
@@ -229,6 +230,7 @@ Drums: Folk Stomp, folk kick, regular snare, 80%
 Performance notes (capo, feel, strumming pattern)...
 
 [Verse 1]
+@0:00 [drum]
 @0:12 [G]Driving down an [D]empty road, [Em]windows down and [C]radio on
 @0:18 [G]Nothing but the [D]open sky as [Em]far as I can [C]see
 > Use light fingerpicking
@@ -237,6 +239,8 @@ Performance notes (capo, feel, strumming pattern)...
 @0:24 [G]Take me [D]somewhere [Em]new
 
 Start a line with @m:ss to say when it comes in — hit Play to follow along.
+Mark a stamped line [drum] to start the drum machine there, [/drum] to stop it — Help
+in the toolbar lists everything a song can carry.
 Paste a YouTube link anywhere in the song and Play rides the recording instead of a
 stopwatch. Add ?t=15 to the link if the song only starts 15 seconds into the video.`;
 
@@ -259,6 +263,7 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
   const [replaceResult, setReplaceResult] = useState("");
   const [tapOpen, setTapOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
   const sbRef = useRef<ReturnType<typeof createClient> | null>(null);
   const replaceInputRef = useRef<HTMLInputElement>(null);
   /** Timestamp of last revision snapshot, to throttle auto-save revisions */
@@ -507,6 +512,14 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
                 )}
 
                 <button
+                  onClick={() => setHelpOpen(true)}
+                  title="What can I type into a song? Time stamps, drum triggers, chords…"
+                  className="flex items-center gap-1.5 rounded border border-[#373A40]/30 dark:border-white/30 px-3 py-2 text-sm font-medium text-black dark:text-white/80 hover:border-black dark:hover:border-white hover:bg-black hover:text-yellow-400 transition-colors"
+                >
+                  <HelpCircle className="w-4 h-4" />
+                  Help
+                </button>
+                <button
                   onClick={replaceOpen ? closeReplace : openReplace}
                   className={`flex items-center gap-1.5 rounded border px-3 py-2 text-sm font-medium transition-colors ${
                     replaceOpen
@@ -681,6 +694,8 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
           </div>
         </div>
       </main>
+
+      {helpOpen && <SyntaxHelp onClose={() => setHelpOpen(false)} />}
 
       {tapOpen && (
         <TapTiming rawText={rawText} onApply={handleChange} onClose={() => setTapOpen(false)} />
