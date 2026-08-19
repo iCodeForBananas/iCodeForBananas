@@ -64,6 +64,7 @@ const SNAKE_BULLET_RANGE = 900;
 const SNAKE_BULLET_DAMAGE = 14;
 const SNAKE_BULLET_DEPTH_TOL = 0.045; // the lane the round travels down
 const SNAKE_BULLET_HALF_W = 7; // for the cover test against props
+const MUZZLE_Y = 38; // height of the snake's barrel, and so of the round in flight
 const SNAKE_BULLET_HALF_D = 3;
 
 const CAR_DRIVEBY_MS = 5600; // slow enough that you actually watch the goldfish drive past
@@ -1258,8 +1259,10 @@ function drawShadowAndSprite(
 }
 
 /**
- * Robotic snake, origin (0,0) on the ground. Always drawn facing right; the caller
- * flips it. `aimT` runs 0→1 while the laser sight is up, `flash` while a round leaves.
+ * Robotic snake, origin (0,0) on the ground. A long body laid out along the
+ * street, undulating as it slithers, with the gun mounted on the head itself.
+ * Always drawn heading right; the caller flips it. `aimT` runs 0→1 while the
+ * laser sight is up, `flash` while a round leaves the barrel.
  */
 function drawRoboSnake(
   ctx: CanvasRenderingContext2D,
@@ -1267,77 +1270,109 @@ function drawRoboSnake(
   t: number,
   opts: { aimT: number | null; flash: number; stunned: boolean }
 ) {
-  const coil = Math.sin(t * 2.2) * 2.2; // slow idle breathing through the coils
   const aiming = opts.aimT !== null;
+  // It stops weaving to take the shot, so a steady body is the tell that a
+  // round is coming.
+  const swim = aiming ? 0.25 : 1;
+  const SEGMENTS = 26;
+  const TAIL_X = -104;
+  const NECK_X = 10;
 
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
 
-  // Coiled body: stacked rings, widest at the ground, tapering as it rises
-  const rings: { x: number; y: number; rx: number; ry: number; shade: number }[] = [];
-  for (let i = 0; i < 5; i++) {
-    const k = i / 4;
-    rings.push({
-      x: (-6 + k * 4) + Math.sin(t * 2.2 + i * 0.9) * (1.4 + k * 1.6),
-      y: -4 - i * 8.5,
-      rx: 20 - k * 6.5,
-      ry: 7.5 - k * 1.6,
-      shade: 1 - k * 0.25,
-    });
-  }
-  for (const r of rings) {
-    const g = ctx.createLinearGradient(0, (r.y - r.ry) * s, 0, (r.y + r.ry) * s);
-    g.addColorStop(0, `rgba(203,213,225,${0.95 * r.shade})`);
-    g.addColorStop(0.45, `rgba(148,163,184,${0.95 * r.shade})`);
-    g.addColorStop(1, `rgba(71,85,105,${0.95 * r.shade})`);
-    ctx.fillStyle = g;
-    ctx.beginPath();
-    ctx.ellipse(r.x * s, r.y * s, r.rx * s, r.ry * s, 0, 0, Math.PI * 2);
-    ctx.fill();
-    // Segment seam
-    ctx.strokeStyle = "rgba(15,23,42,0.55)";
-    ctx.lineWidth = 1 * s;
-    ctx.beginPath();
-    ctx.ellipse(r.x * s, r.y * s, r.rx * s, r.ry * s, 0, 0, Math.PI * 2);
-    ctx.stroke();
-    // Plated highlight along the top of each coil
-    ctx.strokeStyle = "rgba(226,232,240,0.5)";
-    ctx.lineWidth = 1.4 * s;
-    ctx.beginPath();
-    ctx.ellipse(r.x * s, (r.y - r.ry * 0.45) * s, r.rx * 0.7 * s, r.ry * 0.35 * s, 0, Math.PI, 0);
-    ctx.stroke();
+  // Spine, sampled head-to-tail. Amplitude grows toward the tail so the whole
+  // length reads as one travelling wave rather than a wobbling stick.
+  const spine: { x: number; y: number; r: number }[] = [];
+  for (let i = 0; i <= SEGMENTS; i++) {
+    const k = i / SEGMENTS; // 0 at the neck, 1 at the tail tip
+    const x = NECK_X + (TAIL_X - NECK_X) * k;
+    const amp = (1.2 + k * 5.5) * swim;
+    const y = -6 - Math.sin(x * 0.075 + t * 4.2) * amp;
+    // Thickest just behind the head, tapering to a point at the tail
+    const r = 1 + 7.2 * Math.pow(Math.max(0, 1 - k), 0.55) * (0.55 + 0.45 * Math.sin(Math.min(1, k * 6)));
+    spine.push({ x, y, r });
   }
 
-  // Neck, rising out of the top coil to the head
-  const headX = (10 + coil * 0.6) * s;
-  const headY = (-58 + coil) * s;
-  ctx.strokeStyle = "#94a3b8";
-  ctx.lineWidth = 8 * s;
+  // Long ground shadow under the whole body
+  ctx.fillStyle = "rgba(0,0,0,0.35)";
   ctx.beginPath();
-  ctx.moveTo(-2 * s, -36 * s);
-  ctx.quadraticCurveTo(-6 * s, -52 * s, headX - 4 * s, headY + 2 * s);
+  ctx.ellipse(((TAIL_X + NECK_X) / 2) * s, 0, ((NECK_X - TAIL_X) / 2 + 6) * s, 4.5 * s, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Body: one filled ribbon from the top edge out and the belly edge back
+  ctx.beginPath();
+  for (let i = 0; i < spine.length; i++) {
+    const p = spine[i];
+    if (i === 0) ctx.moveTo(p.x * s, (p.y - p.r) * s);
+    else ctx.lineTo(p.x * s, (p.y - p.r) * s);
+  }
+  for (let i = spine.length - 1; i >= 0; i--) {
+    const p = spine[i];
+    ctx.lineTo(p.x * s, (p.y + p.r) * s);
+  }
+  ctx.closePath();
+  const bodyG = ctx.createLinearGradient(0, -16 * s, 0, 2 * s);
+  bodyG.addColorStop(0, "#e2e8f0");
+  bodyG.addColorStop(0.4, "#94a3b8");
+  bodyG.addColorStop(1, "#475569");
+  ctx.fillStyle = bodyG;
+  ctx.fill();
+  ctx.strokeStyle = "rgba(15,23,42,0.55)";
+  ctx.lineWidth = 1 * s;
+  ctx.stroke();
+
+  // Plated segments — a seam across the body every few samples
+  ctx.strokeStyle = "rgba(15,23,42,0.45)";
+  ctx.lineWidth = 1 * s;
+  for (let i = 2; i < spine.length - 1; i += 2) {
+    const p = spine[i];
+    ctx.beginPath();
+    ctx.moveTo(p.x * s, (p.y - p.r * 0.9) * s);
+    ctx.lineTo(p.x * s, (p.y + p.r * 0.9) * s);
+    ctx.stroke();
+  }
+  // Highlight running the length of the back
+  ctx.strokeStyle = "rgba(241,245,249,0.5)";
+  ctx.lineWidth = 1.4 * s;
+  ctx.beginPath();
+  for (let i = 0; i < spine.length; i++) {
+    const p = spine[i];
+    const y = (p.y - p.r * 0.55) * s;
+    if (i === 0) ctx.moveTo(p.x * s, y);
+    else ctx.lineTo(p.x * s, y);
+  }
+  ctx.stroke();
+
+  // Neck, lifting the head clear of the road so the barrel sits at chest height
+  const headY = -30 - Math.sin(t * 3.1) * 1.4 * swim;
+  ctx.strokeStyle = "#94a3b8";
+  ctx.lineWidth = 9 * s;
+  ctx.beginPath();
+  ctx.moveTo(NECK_X * s, -6 * s);
+  ctx.quadraticCurveTo(18 * s, -14 * s, 20 * s, (headY + 3) * s);
   ctx.stroke();
   ctx.strokeStyle = "rgba(226,232,240,0.45)";
-  ctx.lineWidth = 2.4 * s;
+  ctx.lineWidth = 2.6 * s;
   ctx.beginPath();
-  ctx.moveTo(-3.5 * s, -36 * s);
-  ctx.quadraticCurveTo(-7.5 * s, -52 * s, headX - 6 * s, headY + 2 * s);
+  ctx.moveTo((NECK_X - 2) * s, -6 * s);
+  ctx.quadraticCurveTo(15.5 * s, -14 * s, 17 * s, (headY + 3) * s);
   ctx.stroke();
 
-  // Head — a wedge of plate steel with a jaw
+  // Head, with the weapon built into it
   ctx.save();
-  ctx.translate(headX, headY);
-  const headG = ctx.createLinearGradient(0, -7 * s, 0, 7 * s);
+  ctx.translate(20 * s, headY * s);
+  const headG = ctx.createLinearGradient(0, -8 * s, 0, 8 * s);
   headG.addColorStop(0, "#e2e8f0");
   headG.addColorStop(0.5, "#94a3b8");
   headG.addColorStop(1, "#475569");
   ctx.fillStyle = headG;
   ctx.beginPath();
-  ctx.moveTo(-9 * s, -6 * s);
-  ctx.lineTo(9 * s, -4 * s);
-  ctx.lineTo(14 * s, 0);
-  ctx.lineTo(9 * s, 5 * s);
-  ctx.lineTo(-9 * s, 6 * s);
+  ctx.moveTo(-11 * s, -7 * s);
+  ctx.lineTo(11 * s, -6 * s);
+  ctx.lineTo(17 * s, 0);
+  ctx.lineTo(11 * s, 6 * s);
+  ctx.lineTo(-11 * s, 7.5 * s);
   ctx.closePath();
   ctx.fill();
   ctx.strokeStyle = "rgba(15,23,42,0.6)";
@@ -1345,9 +1380,38 @@ function drawRoboSnake(
   ctx.stroke();
   // Jaw seam
   ctx.beginPath();
-  ctx.moveTo(-6 * s, 2.5 * s);
-  ctx.lineTo(12 * s, 1 * s);
+  ctx.moveTo(-7 * s, 3 * s);
+  ctx.lineTo(15 * s, 1 * s);
   ctx.stroke();
+  // Forked tongue, flicking between shots
+  if (!aiming && Math.sin(t * 6) > 0.7) {
+    ctx.strokeStyle = "#ef4444";
+    ctx.lineWidth = 1.2 * s;
+    ctx.beginPath();
+    ctx.moveTo(17 * s, 2.5 * s);
+    ctx.lineTo(24 * s, 2 * s);
+    ctx.moveTo(22 * s, 2.2 * s);
+    ctx.lineTo(25 * s, 4.5 * s);
+    ctx.stroke();
+  }
+
+  // Gun, mounted along the top of the skull: receiver, magazine, barrel
+  ctx.fillStyle = "#1f2937";
+  ctx.fillRect(-7 * s, -11 * s, 17 * s, 5.5 * s); // receiver
+  ctx.fillStyle = "#111827";
+  ctx.fillRect(-3.5 * s, -15 * s, 4.5 * s, 4 * s); // magazine standing proud of it
+  ctx.fillStyle = "#374151";
+  ctx.fillRect(9 * s, -10.5 * s, 16 * s, 3.6 * s); // barrel
+  ctx.fillRect(24 * s, -11.5 * s, 4 * s, 5.5 * s); // muzzle brake
+  // Mounting straps back onto the head
+  ctx.strokeStyle = "#64748b";
+  ctx.lineWidth = 1.6 * s;
+  for (const mx of [-4, 6]) {
+    ctx.beginPath();
+    ctx.moveTo(mx * s, -6 * s);
+    ctx.lineTo(mx * s, -1 * s);
+    ctx.stroke();
+  }
   // Sensor eye — amber on patrol, hot red once it has you
   const eye = opts.stunned ? "#facc15" : aiming ? "#ef4444" : "#f59e0b";
   ctx.save();
@@ -1355,55 +1419,22 @@ function drawRoboSnake(
   ctx.shadowBlur = (aiming ? 12 : 6) * s;
   ctx.fillStyle = eye;
   ctx.beginPath();
-  ctx.ellipse(4 * s, -1.5 * s, 2.6 * s, 1.8 * s, 0, 0, Math.PI * 2);
+  ctx.ellipse(5 * s, -1.5 * s, 2.8 * s, 2 * s, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
-  // Forked tongue flicks between shots
-  if (!aiming && Math.sin(t * 6) > 0.7) {
-    ctx.strokeStyle = "#ef4444";
-    ctx.lineWidth = 1.2 * s;
-    ctx.beginPath();
-    ctx.moveTo(14 * s, 1 * s);
-    ctx.lineTo(21 * s, 0);
-    ctx.moveTo(19 * s, 0.4 * s);
-    ctx.lineTo(22 * s, 2.5 * s);
-    ctx.stroke();
-  }
-  ctx.restore();
 
-  // Tail, curled up over the coils, holding the pistol
-  const gunX = (26 + (aiming ? 2 : 0)) * s;
-  const gunY = (-34 + coil * 0.5) * s;
-  ctx.strokeStyle = "#94a3b8";
-  ctx.lineWidth = 5 * s;
-  ctx.beginPath();
-  ctx.moveTo(8 * s, -18 * s);
-  ctx.quadraticCurveTo(22 * s, -26 * s, gunX - 3 * s, gunY + 4 * s);
-  ctx.stroke();
-  ctx.strokeStyle = "rgba(15,23,42,0.4)";
-  ctx.lineWidth = 1 * s;
-  ctx.beginPath();
-  ctx.moveTo(8 * s, -18 * s);
-  ctx.quadraticCurveTo(22 * s, -26 * s, gunX - 3 * s, gunY + 4 * s);
-  ctx.stroke();
-
-  // The pistol itself
-  ctx.save();
-  ctx.translate(gunX, gunY);
-  ctx.fillStyle = "#1f2937";
-  ctx.fillRect(-4 * s, -3 * s, 16 * s, 5 * s); // slide
-  ctx.fillStyle = "#111827";
-  ctx.fillRect(-3 * s, 2 * s, 5 * s, 7 * s); // grip
-  ctx.fillStyle = "#374151";
-  ctx.fillRect(10 * s, -2 * s, 4 * s, 3 * s); // muzzle
   if (opts.flash > 0) {
     ctx.fillStyle = `rgba(254,240,138,${opts.flash})`;
     ctx.beginPath();
-    ctx.moveTo(14 * s, -0.5 * s);
-    ctx.lineTo(26 * s, -5 * s * opts.flash);
-    ctx.lineTo(31 * s, -0.5 * s);
-    ctx.lineTo(26 * s, 4 * s * opts.flash);
+    ctx.moveTo(28 * s, -8.7 * s);
+    ctx.lineTo(40 * s, -8.7 * s - 5 * s * opts.flash);
+    ctx.lineTo(45 * s, -8.7 * s);
+    ctx.lineTo(40 * s, -8.7 * s + 5 * s * opts.flash);
     ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = `rgba(255,255,255,${opts.flash * 0.8})`;
+    ctx.beginPath();
+    ctx.arc(30 * s, -8.7 * s, 3.5 * s * opts.flash, 0, Math.PI * 2);
     ctx.fill();
   }
   ctx.restore();
@@ -3011,7 +3042,7 @@ export default function ShootSimulator() {
             if (nowTs >= enemy.nextShotAt) {
               const dir: 1 | -1 = sdx >= 0 ? 1 : -1;
               state.enemyBullets.push({
-                worldX: enemy.worldX + dir * 30,
+                worldX: enemy.worldX + dir * 48,
                 depth: enemy.depth,
                 dir,
                 travelled: 0,
@@ -3820,7 +3851,7 @@ export default function ShootSimulator() {
             if (e2.kind === "snake") {
               // Laser sight down the lane it is about to fire along
               if (sAimT !== null) {
-                const laserY = esy - 34 * sc;
+                const laserY = esy - MUZZLE_Y * sc;
                 const grow = Math.min(1, sAimT * 1.6);
                 ctx.save();
                 ctx.globalAlpha = alpha * (0.35 + 0.35 * Math.sin(nowTs * 0.02));
@@ -3828,8 +3859,8 @@ export default function ShootSimulator() {
                 ctx.lineWidth = 1.5;
                 ctx.setLineDash([9, 7]);
                 ctx.beginPath();
-                ctx.moveTo(esx + eFacing * 26 * sc, laserY);
-                ctx.lineTo(esx + eFacing * (26 + 620 * grow) * sc, laserY);
+                ctx.moveTo(esx + eFacing * 46 * sc, laserY);
+                ctx.lineTo(esx + eFacing * (46 + 620 * grow) * sc, laserY);
                 ctx.stroke();
                 ctx.restore();
               }
@@ -3907,7 +3938,7 @@ export default function ShootSimulator() {
         const bsx = b.worldX - cameraX;
         if (bsx < -60 || bsx > width + 60) continue;
         const bsc = MIN_SCALE + b.depth * (MAX_SCALE - MIN_SCALE);
-        const bsy = groundY(b.worldX, b.depth) - 34 * bsc;
+        const bsy = groundY(b.worldX, b.depth) - MUZZLE_Y * bsc;
         entities.push({
           depth: b.depth,
           draw: () => {
