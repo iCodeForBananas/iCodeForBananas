@@ -17,7 +17,7 @@ const ENEMY_SPEED = 55;
 const ENEMY_DEPTH_SPEED = 0.18;
 const MAX_ENEMIES = 5;
 const ENEMY_XP = 25;
-const XP_THRESHOLDS = [100, 250, 500];
+const XP_THRESHOLDS = [100, 250, 500, 900, 1400];
 const COMBO_WINDOW_MS = 600;
 // Belt-scroll playfield: you walk the whole depth of the street, from up on the
 // sidewalk by the storefronts, over the curb, down to the near edge of the road.
@@ -42,14 +42,37 @@ const ENEMY_ATTACK_DEPTH_TOL = 0.07;
 const ENEMY_WINDUP_MS = 320; // telegraph so a hit is always readable
 const ENEMY_ATTACK_COOLDOWN_MS = 1500;
 
-const CAR_DRIVEBY_MS = 2800; // how long the goldfish car takes to cross the street
-const CAR_COOLDOWN_MS = 3800;
+const CAR_DRIVEBY_MS = 5600; // slow enough that you actually watch the goldfish drive past
+const CAR_COOLDOWN_MS = 11000;
+
+// Minigun (attack 4): a held burst of tracer fire down the street
+const MINIGUN_DURATION_MS = 1500;
+const MINIGUN_FIRE_INTERVAL_MS = 65;
+const MINIGUN_DAMAGE = 16;
+const MINIGUN_RANGE = 560; // world px before a tracer fizzles out
+const MINIGUN_COOLDOWN_MS = 4200; // measured from when the barrel stops
+const BULLET_SPEED = 1150;
+const BULLET_HIT_W = 26;
+const BULLET_HIT_DEPTH = 0.09;
+
+// Sword (attack 5): two slashes then a spin that cuts both ways
+const SWORD_SWING_MS = 260;
+const SWORD_DAMAGE = 62;
+const SWORD_SPIN_DAMAGE = 95;
+const SWORD_REACH = 118;
+const SWORD_DEPTH_TOL = 0.3;
+const SWORD_COOLDOWN_MS = 380;
+const SWORD_SPIN_COOLDOWN_MS = 700;
 
 const SCORE_KILL = 100;
 const SCORE_PICKUP = 50;
 const PICKUP_HEAL = 8; // bananas are the only way back up, so they're worth chasing
 const PICKUP_LIFETIME_MS = 9000;
 const HIGH_SCORE_KEY = "shoot-simulator-high-score";
+
+/** Attack slots, earned one per level: punch, parrot, fishcar, minigun, sword. */
+type SlotId = 1 | 2 | 3 | 4 | 5;
+const SLOT_IDS: SlotId[] = [1, 2, 3, 4, 5];
 
 type PropType = "trashcan" | "dumpster" | "car";
 
@@ -205,6 +228,16 @@ interface Enemy {
   attackReadyAt: number;
   /** Set when a swing starts; the hit lands ENEMY_WINDUP_MS later. */
   attackStartedAt: number | null;
+}
+
+/** Minigun tracer, tracked in world space so it rides the camera with everything else. */
+interface Bullet {
+  worldX: number;
+  depth: number;
+  dir: 1 | -1;
+  /** Height above the ground line, in unscaled sprite px. */
+  yOff: number;
+  travelled: number;
 }
 
 interface Pickup {
@@ -1039,6 +1072,117 @@ function drawShadowAndSprite(
   ctx.restore();
 }
 
+/** Six-barrel minigun held at (hx, hy), pointing right; the caller has already flipped for facing. */
+function drawMinigun(
+  ctx: CanvasRenderingContext2D,
+  hx: number,
+  hy: number,
+  s: number,
+  spin: number,
+  firing: boolean
+) {
+  ctx.save();
+  ctx.translate(hx, hy);
+  // Receiver
+  ctx.fillStyle = "#334155";
+  ctx.fillRect(-6 * s, -5 * s, 20 * s, 10 * s);
+  ctx.fillStyle = "#1e293b";
+  ctx.fillRect(-6 * s, -5 * s, 20 * s, 3 * s);
+  // Ammo drum under the receiver
+  ctx.fillStyle = "#475569";
+  ctx.beginPath();
+  ctx.arc(-1 * s, 8 * s, 6 * s, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = "#94a3b8";
+  ctx.lineWidth = 1.2 * s;
+  ctx.stroke();
+  // Belt feed
+  ctx.strokeStyle = "#a16207";
+  ctx.lineWidth = 2 * s;
+  ctx.beginPath();
+  ctx.moveTo(-1 * s, 3 * s);
+  ctx.lineTo(2 * s, 0);
+  ctx.stroke();
+  // Rotating barrel cluster: six barrels around the bore axis, seen end-on, so
+  // the spin reads as the barrels swapping top and bottom.
+  ctx.lineWidth = 2.2 * s;
+  ctx.lineCap = "butt";
+  for (let i = 0; i < 6; i++) {
+    const a = spin + (i * Math.PI) / 3;
+    const off = Math.sin(a) * 3.4 * s;
+    const shade = 0.45 + 0.35 * (1 + Math.cos(a)) * 0.5;
+    ctx.strokeStyle = `rgba(148,163,184,${shade})`;
+    ctx.beginPath();
+    ctx.moveTo(13 * s, off);
+    ctx.lineTo(30 * s, off);
+    ctx.stroke();
+  }
+  // Barrel shroud at the muzzle end
+  ctx.fillStyle = "#475569";
+  ctx.fillRect(28 * s, -5 * s, 4 * s, 10 * s);
+  if (firing) {
+    const flare = 0.6 + 0.4 * Math.sin(spin * 5);
+    ctx.fillStyle = `rgba(253,224,71,${flare})`;
+    ctx.beginPath();
+    ctx.moveTo(32 * s, 0);
+    ctx.lineTo(46 * s, -6 * s * flare);
+    ctx.lineTo(52 * s, 0);
+    ctx.lineTo(46 * s, 6 * s * flare);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = `rgba(255,255,255,${flare * 0.8})`;
+    ctx.beginPath();
+    ctx.arc(35 * s, 0, 4 * s * flare, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+/** Banana-yellow-hilted blade held at (hx, hy). `angle` is null when sheathed at rest. */
+function drawSword(
+  ctx: CanvasRenderingContext2D,
+  hx: number,
+  hy: number,
+  s: number,
+  angle: number | null
+) {
+  ctx.save();
+  ctx.translate(hx, hy);
+  ctx.rotate(angle ?? -Math.PI * 0.42); // resting: blade shouldered, tip up
+  // Grip
+  ctx.fillStyle = "#78350f";
+  ctx.fillRect(-6 * s, -1.6 * s, 8 * s, 3.2 * s);
+  // Pommel
+  ctx.fillStyle = "#facc15";
+  ctx.beginPath();
+  ctx.arc(-7 * s, 0, 2.2 * s, 0, Math.PI * 2);
+  ctx.fill();
+  // Crossguard
+  ctx.fillRect(1 * s, -6 * s, 3 * s, 12 * s);
+  // Blade
+  const blade = ctx.createLinearGradient(4 * s, 0, 40 * s, 0);
+  blade.addColorStop(0, "#e2e8f0");
+  blade.addColorStop(0.55, "#f8fafc");
+  blade.addColorStop(1, "#cbd5e1");
+  ctx.fillStyle = blade;
+  ctx.beginPath();
+  ctx.moveTo(4 * s, -3.2 * s);
+  ctx.lineTo(34 * s, -2.4 * s);
+  ctx.lineTo(42 * s, 0);
+  ctx.lineTo(34 * s, 2.4 * s);
+  ctx.lineTo(4 * s, 3.2 * s);
+  ctx.closePath();
+  ctx.fill();
+  // Fuller
+  ctx.strokeStyle = "rgba(100,116,139,0.7)";
+  ctx.lineWidth = 0.9 * s;
+  ctx.beginPath();
+  ctx.moveTo(6 * s, 0);
+  ctx.lineTo(33 * s, 0);
+  ctx.stroke();
+  ctx.restore();
+}
+
 // Draws a person figure. Origin (0,0) = feet. Always faces right; caller scales(-1,1) to flip.
 function drawPerson(
   ctx: CanvasRenderingContext2D,
@@ -1052,6 +1196,14 @@ function drawPerson(
     comboHit?: 0 | 1 | 2;
     comboProgress?: number;
     stunned?: boolean;
+    /** Earned weapon held in the hands, drawn over the arms. */
+    weapon?: "minigun" | "sword";
+    /** Barrel rotation for the minigun, in radians. */
+    weaponSpin?: number;
+    firing?: boolean;
+    /** 0→1 through a sword swing; null when the blade is at rest. */
+    swordT?: number | null;
+    swordSpin?: boolean;
   }
 ) {
   const { walkPhase: wp, skinColor, shirtColor, pantsColor, hairColor } = opts;
@@ -1081,18 +1233,48 @@ function drawPerson(
   // Arms
   ctx.lineWidth = 6 * s;
   ctx.strokeStyle = skinColor;
-  const rightArmDx =
-    opts.comboHit === 0 ? 9 + cp * 22 : opts.comboHit === 1 ? 9 + cp * 10 : 9 + (stunned ? 0 : wp * 8);
-  const leftArmDx =
-    opts.comboHit === 1 ? -(9 + cp * 14) : -(9 + (stunned ? 0 : wp * 6));
+  // A weapon in hand overrides the empty-handed arm poses: both hands come up
+  // onto the grip so the gun/blade reads as held rather than floating.
+  const holding = opts.weapon !== undefined;
+  const recoil = opts.weapon === "minigun" && opts.firing ? Math.sin((opts.weaponSpin ?? 0) * 3) * 1.6 : 0;
+  const swingA =
+    opts.swordT === null || opts.swordT === undefined
+      ? null
+      : opts.swordSpin
+        ? -Math.PI * 0.6 + opts.swordT * Math.PI * 2
+        : -Math.PI * 0.5 + opts.swordT * Math.PI * 0.75;
+  const rightArmDx = holding
+    ? opts.weapon === "minigun"
+      ? 16 - recoil
+      : 13
+    : opts.comboHit === 0
+      ? 9 + cp * 22
+      : opts.comboHit === 1
+        ? 9 + cp * 10
+        : 9 + (stunned ? 0 : wp * 8);
+  const rightArmDy = holding ? (opts.weapon === "minigun" ? -32 : -33) : -26;
+  const leftArmDx = holding
+    ? opts.weapon === "minigun"
+      ? 4 - recoil
+      : 2
+    : opts.comboHit === 1
+      ? -(9 + cp * 14)
+      : -(9 + (stunned ? 0 : wp * 6));
+  const leftArmDy = holding ? -30 : -26;
   ctx.beginPath();
   ctx.moveTo(9 * s, -38 * s);
-  ctx.lineTo(rightArmDx * s, -26 * s);
+  ctx.lineTo(rightArmDx * s, rightArmDy * s);
   ctx.stroke();
   ctx.beginPath();
   ctx.moveTo(-9 * s, -38 * s);
-  ctx.lineTo(leftArmDx * s, -26 * s);
+  ctx.lineTo(leftArmDx * s, leftArmDy * s);
   ctx.stroke();
+
+  if (opts.weapon === "minigun") {
+    drawMinigun(ctx, (rightArmDx - 2) * s, rightArmDy * s, s, opts.weaponSpin ?? 0, opts.firing ?? false);
+  } else if (opts.weapon === "sword") {
+    drawSword(ctx, rightArmDx * s, rightArmDy * s, s, swingA);
+  }
 
   // Head
   ctx.fillStyle = skinColor;
@@ -1433,7 +1615,7 @@ export default function ShootSimulator() {
       };
     };
     /** Tap targets for the attack slots, refreshed by the HUD each frame. */
-    const attackRects: { id: 1 | 2 | 3; x: number; y: number; w: number; h: number }[] = [];
+    const attackRects: { id: SlotId; x: number; y: number; w: number; h: number }[] = [];
 
     const toLocal = (e: PointerEvent) => {
       const rect = canvas.getBoundingClientRect();
@@ -1558,8 +1740,8 @@ export default function ShootSimulator() {
         hurtUntil: 0,
         regenAt: 0,
       },
-      selectedAttack: 1 as 1 | 2 | 3,
-      attackReadyAt: { 1: 0, 2: 0, 3: 0 } as Record<1 | 2 | 3, number>,
+      selectedAttack: 1 as SlotId,
+      attackReadyAt: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } as Record<SlotId, number>,
       shakeUntil: 0,
       enemies: [] as Enemy[],
       nextEnemyId: 0,
@@ -1570,6 +1752,7 @@ export default function ShootSimulator() {
       highScore: storedHigh,
       scorePulseUntil: 0,
       pickups: [] as Pickup[],
+      bullets: [] as Bullet[],
       floaters: [] as Floater[],
     };
 
@@ -1628,6 +1811,9 @@ export default function ShootSimulator() {
         parrot.phase = "idle";
         parrot.targetId = null;
         combo.visual = null;
+        minigun.firing = false;
+        state.bullets = [];
+        sword.swingStartedAt = null;
         for (const e of state.enemies) e.grabbed = false;
       }
     };
@@ -1657,6 +1843,20 @@ export default function ShootSimulator() {
       startedAt: 0,
       screenY: 0,
       hitIds: new Set<number>(),
+    };
+
+    // Minigun state (attack 4): spin up, hose the street, spin down
+    const minigun = {
+      firing: false,
+      startedAt: 0,
+      lastShotAt: 0,
+    };
+
+    // Sword state (attack 5): slash, slash, spin
+    const sword = {
+      step: 0 as 0 | 1 | 2,
+      swingStartedAt: null as number | null,
+      spin: false,
     };
 
     const gainXp = (amount: number) => {
@@ -1754,10 +1954,41 @@ export default function ShootSimulator() {
       state.shakeUntil = now + 500;
     };
 
+    const doMinigunAttack = (now: number) => {
+      if (state.player.level < 4 || minigun.firing || now < state.attackReadyAt[4]) return;
+      minigun.firing = true;
+      minigun.startedAt = now;
+      minigun.lastShotAt = 0;
+    };
+
+    const doSwordAttack = (now: number) => {
+      if (state.player.level < 5 || now < state.attackReadyAt[5]) return;
+      const spin = sword.step === 2;
+      sword.spin = spin;
+      sword.swingStartedAt = now;
+      sword.step = ((sword.step + 1) % 3) as 0 | 1 | 2;
+      state.attackReadyAt[5] = now + (spin ? SWORD_SPIN_COOLDOWN_MS : SWORD_COOLDOWN_MS);
+      if (spin) state.shakeUntil = now + 220;
+
+      const dmg = spin ? SWORD_SPIN_DAMAGE : SWORD_DAMAGE;
+      for (const enemy of state.enemies) {
+        if (enemy.dying) continue;
+        // The spin cuts a full circle, so it does not care which way you face
+        const dx = (enemy.worldX - state.player.worldX) * state.player.facing;
+        const inArc = spin ? Math.abs(dx) <= SWORD_REACH : dx >= -18 && dx <= SWORD_REACH;
+        const depthDiff = Math.abs(enemy.depth - state.player.depth) * DEPTH_TO_WORLD;
+        if (inArc && depthDiff <= SWORD_DEPTH_TOL * DEPTH_TO_WORLD) {
+          damageEnemy(enemy, dmg);
+          if (spin) enemy.worldX += Math.sign(dx || 1) * 70;
+        }
+      }
+    };
+
     const onKeyDown = (e: KeyboardEvent) => {
       if (isTypingTarget(e.target)) return;
       const key = e.key.toLowerCase();
-      if (["arrowleft", "arrowright", "arrowup", "arrowdown", "1", "2", "3", " "].includes(key)) e.preventDefault();
+      if (["arrowleft", "arrowright", "arrowup", "arrowdown", "1", "2", "3", "4", "5", " "].includes(key))
+        e.preventDefault();
       if (titlePhase !== "playing" && (key === " " || key === "enter")) {
         if (!restartArmed()) return;
         if (titlePhase === "gameover") restartGame();
@@ -1766,10 +1997,9 @@ export default function ShootSimulator() {
         return;
       }
       keys.add(key);
-      if (key === "1" || key === "2" || key === "3") {
-        const id = Number(key) as 1 | 2 | 3;
-        const unlock = [0, 1, 2, 3];
-        if (state.player.level >= unlock[id]) state.selectedAttack = id;
+      if (["1", "2", "3", "4", "5"].includes(key)) {
+        const id = Number(key) as SlotId;
+        if (state.player.level >= id) state.selectedAttack = id;
       }
     };
     const onKeyUp = (e: KeyboardEvent) => keys.delete(e.key.toLowerCase());
@@ -1796,9 +2026,10 @@ export default function ShootSimulator() {
       state.player.regenAt = 0;
       settlePlayer();
       state.selectedAttack = 1;
-      state.attackReadyAt = { 1: 0, 2: 0, 3: 0 };
+      state.attackReadyAt = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
       state.enemies = [];
       state.pickups = [];
+      state.bullets = [];
       state.floaters = [];
       state.score = 0;
       state.scorePulseUntil = 0;
@@ -1812,6 +2043,9 @@ export default function ShootSimulator() {
       parrot.targetId = null;
       carState.active = false;
       carState.hitIds.clear();
+      minigun.firing = false;
+      sword.step = 0;
+      sword.swingStartedAt = null;
       cameraX = 0;
       keys.clear();
       spaceWasDown = false;
@@ -1961,7 +2195,7 @@ export default function ShootSimulator() {
       ctx.fillText(
         touchMode
           ? "STICK on the right · HIT on the left · tap a slot to switch attacks"
-          : "WASD / ARROWS · SPACE to attack · 1 / 2 / 3 switch attacks",
+          : "WASD / ARROWS · SPACE to attack · 1 – 5 switch attacks",
         width / 2,
         btnY + btnH + 28
       );
@@ -2092,9 +2326,15 @@ export default function ShootSimulator() {
       // Bigger slots on touch, and the panel moves to the top so it is clear of
       // the thumb controls along the bottom.
       // Narrow phones shrink the slots again so the panel clears the score box
-      const boxSize = touchMode ? (width < 330 ? 34 : compactUI() ? 42 : 54) : 38;
-      const gap = 8;
-      const sw = boxSize * 3 + gap * 2;
+      const gap = touchMode ? 6 : 8;
+      // Five slots have to fit the panel at any width, so the preferred size is
+      // capped by whatever room is actually left beside the score box.
+      const preferred = touchMode ? (width < 330 ? 30 : compactUI() ? 38 : 48) : 34;
+      const maxRowW = Math.max(120, width * 0.62 - 32);
+      const boxSize = Math.floor(
+        Math.min(preferred, (maxRowW - gap * (SLOT_IDS.length - 1)) / SLOT_IDS.length)
+      );
+      const sw = boxSize * SLOT_IDS.length + gap * (SLOT_IDS.length - 1);
       const px = 16;
       const pw = sw + 16;
       const bh0 = 12;
@@ -2108,8 +2348,13 @@ export default function ShootSimulator() {
       const hpH = 13;
       const hpY = lty - 14 - hpH;
       const pt = hpY - 10;
-      const names: Record<1 | 2 | 3, string> = { 1: "Punch", 2: "Parrot", 3: "Fishcar" };
-      const unlocks: Record<1 | 2 | 3, number> = { 1: 1, 2: 2, 3: 3 };
+      const names: Record<SlotId, string> = {
+        1: "Punch",
+        2: "Parrot",
+        3: "Fishcar",
+        4: "Minigun",
+        5: "Sword",
+      };
 
       ctx.save();
       ctx.fillStyle = "rgba(0,0,0,0.6)";
@@ -2159,11 +2404,11 @@ export default function ShootSimulator() {
       ctx.fillText(`${xp}/${threshold}`, px + sw - 4, by + bh - 3);
 
       attackRects.length = 0;
-      for (let i = 1; i <= 3; i++) {
-        const id = i as 1 | 2 | 3;
-        const unlocked = level >= unlocks[id];
+      for (const id of SLOT_IDS) {
+        // One slot earned per level, so the slot number is also its unlock level
+        const unlocked = level >= id;
         const selected = state.selectedAttack === id;
-        const x = px + (i - 1) * (boxSize + gap);
+        const x = px + (id - 1) * (boxSize + gap);
         attackRects.push({ id, x, y: sy, w: boxSize, h: boxSize });
         ctx.fillStyle = unlocked ? (selected ? "#facc15" : "rgba(250,204,21,0.15)") : "rgba(255,255,255,0.06)";
         ctx.fillRect(x, sy, boxSize, boxSize);
@@ -2173,7 +2418,7 @@ export default function ShootSimulator() {
         ctx.fillStyle = unlocked ? (selected ? "#111" : "#facc15") : "rgba(255,255,255,0.3)";
         ctx.font = `bold ${touchMode ? 20 : 16}px system-ui, sans-serif`;
         ctx.textAlign = "center";
-        ctx.fillText(String(i), x + boxSize / 2, sy + boxSize / 2 + (touchMode ? 4 : 6));
+        ctx.fillText(String(id), x + boxSize / 2, sy + boxSize / 2 + (touchMode ? 4 : 6));
         ctx.font = `${touchMode ? 9 : 8}px system-ui, sans-serif`;
         ctx.fillStyle = unlocked ? "rgba(250,204,21,0.85)" : "rgba(255,255,255,0.25)";
         ctx.fillText(unlocked ? names[id] : "???", x + boxSize / 2, touchMode ? sy + boxSize - 6 : labelY);
@@ -2309,6 +2554,8 @@ export default function ShootSimulator() {
         if (state.selectedAttack === 1) doComboHit(nowTs);
         else if (state.selectedAttack === 2) doParrotAttack(nowTs, psx, psy);
         else if (state.selectedAttack === 3) doCarAttack(nowTs, psy);
+        else if (state.selectedAttack === 4) doMinigunAttack(nowTs);
+        else if (state.selectedAttack === 5) doSwordAttack(nowTs);
       }
       spaceWasDown = spaceDown;
 
@@ -2515,6 +2762,55 @@ export default function ShootSimulator() {
         }
       } else if (parrot.phase === "cooldown" && nowTs >= state.attackReadyAt[2]) {
         parrot.phase = "idle";
+      }
+
+      // Minigun: spits a tracer every few frames while the barrel is spinning,
+      // and only starts its cooldown once the burst is done.
+      if (live && minigun.firing) {
+        if (nowTs - minigun.startedAt >= MINIGUN_DURATION_MS) {
+          minigun.firing = false;
+          state.attackReadyAt[4] = nowTs + MINIGUN_COOLDOWN_MS;
+        } else if (nowTs - minigun.lastShotAt >= MINIGUN_FIRE_INTERVAL_MS) {
+          minigun.lastShotAt = nowTs;
+          state.bullets.push({
+            worldX: state.player.worldX + state.player.facing * 26,
+            depth: state.player.depth + (Math.random() - 0.5) * 0.03,
+            dir: state.player.facing,
+            yOff: 32 + (Math.random() - 0.5) * 5,
+            travelled: 0,
+          });
+          state.shakeUntil = Math.max(state.shakeUntil, nowTs + 90);
+        }
+      } else if (!live) {
+        minigun.firing = false;
+      }
+
+      // Tracers travel until they hit someone or run out of street
+      if (live && state.bullets.length > 0) {
+        const step = BULLET_SPEED * dt;
+        state.bullets = state.bullets.filter((b) => {
+          b.worldX += b.dir * step;
+          b.travelled += step;
+          if (b.travelled > MINIGUN_RANGE) return false;
+          for (const enemy of state.enemies) {
+            if (enemy.dying || enemy.grabbed) continue;
+            if (
+              Math.abs(enemy.worldX - b.worldX) < BULLET_HIT_W &&
+              Math.abs(enemy.depth - b.depth) < BULLET_HIT_DEPTH
+            ) {
+              damageEnemy(enemy, MINIGUN_DAMAGE);
+              return false;
+            }
+          }
+          return true;
+        });
+      } else if (!live) {
+        state.bullets = [];
+      }
+
+      // Sword swing is instantaneous in damage; this just times the arc visual
+      if (sword.swingStartedAt !== null && nowTs - sword.swingStartedAt >= SWORD_SWING_MS) {
+        sword.swingStartedAt = null;
       }
 
       let carDrawCx = 0;
@@ -2994,6 +3290,32 @@ export default function ShootSimulator() {
         });
       }
 
+      for (const b of state.bullets) {
+        const bsx = b.worldX - cameraX;
+        if (bsx < -80 || bsx > width + 80) continue;
+        const bsc = MIN_SCALE + b.depth * (MAX_SCALE - MIN_SCALE);
+        const bsy = groundY(b.worldX, b.depth) - b.yOff * bsc;
+        const tail = 26 * bsc;
+        entities.push({
+          depth: b.depth,
+          draw: () => {
+            ctx.save();
+            ctx.strokeStyle = "rgba(253,224,71,0.55)";
+            ctx.lineWidth = 2 * bsc;
+            ctx.lineCap = "round";
+            ctx.beginPath();
+            ctx.moveTo(bsx - b.dir * tail, bsy);
+            ctx.lineTo(bsx, bsy);
+            ctx.stroke();
+            ctx.fillStyle = "#fef08a";
+            ctx.beginPath();
+            ctx.arc(bsx, bsy, 2.4 * bsc, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+          },
+        });
+      }
+
       // Combo visual state for player draw
       let comboHitStep: 0 | 1 | 2 | undefined;
       let comboProgress = 0;
@@ -3006,6 +3328,20 @@ export default function ShootSimulator() {
           comboProgress = Math.sin(prog * Math.PI);
         }
       }
+
+      // Whichever earned weapon is selected rides in the player's hands
+      const heldWeapon: "minigun" | "sword" | undefined =
+        state.selectedAttack === 4 && state.player.level >= 4
+          ? "minigun"
+          : state.selectedAttack === 5 && state.player.level >= 5
+            ? "sword"
+            : undefined;
+      // Barrels idle slowly and whip round while firing
+      const barrelSpin = nowTs * (minigun.firing ? 0.03 : 0.0035);
+      const swordT =
+        sword.swingStartedAt !== null
+          ? Math.min(1, (nowTs - sword.swingStartedAt) / SWORD_SWING_MS)
+          : null;
 
       const walkPhase = state.isMoving ? Math.sin(state.walkTime * 8) : 0;
       entities.push({
@@ -3027,10 +3363,40 @@ export default function ShootSimulator() {
               hairColor: "#111827",
               comboHit: comboHitStep,
               comboProgress,
+              weapon: heldWeapon,
+              weaponSpin: barrelSpin,
+              firing: minigun.firing,
+              swordT,
+              swordSpin: sword.spin,
             });
             c.restore();
           });
           ctx.restore();
+
+          // Slash arc — swept where the blade just went, so the hit reads even
+          // though the damage all lands on the first frame
+          if (heldWeapon === "sword" && swordT !== null) {
+            const fade = 1 - swordT;
+            const r = SWORD_REACH * 0.62 * ps;
+            ctx.save();
+            ctx.translate(psx, psy - 32 * ps);
+            ctx.scale(state.player.facing, 1);
+            ctx.strokeStyle = `rgba(226,232,240,${0.75 * fade})`;
+            ctx.lineWidth = 7 * ps * fade + 2;
+            ctx.lineCap = "round";
+            ctx.beginPath();
+            if (sword.spin) {
+              ctx.arc(0, 0, r, -Math.PI * 0.6, -Math.PI * 0.6 + swordT * Math.PI * 2);
+            } else {
+              const a0 = -Math.PI * 0.5;
+              ctx.arc(0, 0, r, a0, a0 + swordT * Math.PI * 0.75);
+            }
+            ctx.stroke();
+            ctx.strokeStyle = `rgba(250,204,21,${0.4 * fade})`;
+            ctx.lineWidth = 2 * ps;
+            ctx.stroke();
+            ctx.restore();
+          }
 
           // Parrot on shoulder when slot 2 is idle/cooldown
           if (state.selectedAttack === 2 && state.player.level >= 2) {
