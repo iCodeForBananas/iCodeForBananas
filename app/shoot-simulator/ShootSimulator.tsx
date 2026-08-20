@@ -2,6 +2,189 @@
 
 import { useEffect, useRef } from "react";
 
+// ── Sound effects ─────────────────────────────────────────────────────────────
+
+let sfxCtx: AudioContext | null = null;
+function getSfxCtx(): AudioContext {
+  if (!sfxCtx || sfxCtx.state === "closed") sfxCtx = new AudioContext();
+  if (sfxCtx.state === "suspended") sfxCtx.resume();
+  return sfxCtx;
+}
+
+/** Short "ugh" pain grunt when the player is hit but survives. */
+function playHurtSound() {
+  const ctx = getSfxCtx();
+  const now = ctx.currentTime;
+  const master = ctx.createGain();
+  master.gain.setValueAtTime(0.55, now);
+  master.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+  master.connect(ctx.destination);
+
+  // Voiced "ugh" — pitched sine dropping fast
+  const osc = ctx.createOscillator();
+  osc.type = "sine";
+  osc.frequency.setValueAtTime(260, now);
+  osc.frequency.exponentialRampToValueAtTime(130, now + 0.18);
+  const gOsc = ctx.createGain();
+  gOsc.gain.setValueAtTime(0.7, now);
+  gOsc.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+  osc.connect(gOsc); gOsc.connect(master);
+  osc.start(now); osc.stop(now + 0.28);
+
+  // Breathy noise layer (throat texture)
+  const bufLen = Math.ceil(ctx.sampleRate * 0.12);
+  const buf = ctx.createBuffer(1, bufLen, ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < bufLen; i++) d[i] = Math.random() * 2 - 1;
+  const src = ctx.createBufferSource(); src.buffer = buf;
+  const hp = ctx.createBiquadFilter(); hp.type = "bandpass"; hp.frequency.value = 900; hp.Q.value = 1.2;
+  const gN = ctx.createGain();
+  gN.gain.setValueAtTime(0.25, now);
+  gN.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+  src.connect(hp); hp.connect(gN); gN.connect(master);
+  src.start(now); src.stop(now + 0.12);
+}
+
+/** Dramatic "you died" sting — three descending doom chords. */
+function playDeathSound() {
+  const ctx = getSfxCtx();
+  const now = ctx.currentTime;
+
+  // Low ominous rumble
+  const rumble = ctx.createOscillator();
+  rumble.type = "sawtooth";
+  rumble.frequency.setValueAtTime(55, now);
+  rumble.frequency.exponentialRampToValueAtTime(30, now + 1.8);
+  const rumbleG = ctx.createGain();
+  rumbleG.gain.setValueAtTime(0, now);
+  rumbleG.gain.linearRampToValueAtTime(0.4, now + 0.05);
+  rumbleG.gain.exponentialRampToValueAtTime(0.001, now + 1.8);
+  const rumbleFilt = ctx.createBiquadFilter(); rumbleFilt.type = "lowpass"; rumbleFilt.frequency.value = 120;
+  rumble.connect(rumbleFilt); rumbleFilt.connect(rumbleG); rumbleG.connect(ctx.destination);
+  rumble.start(now); rumble.stop(now + 1.9);
+
+  // Three descending stabs: E2 → C2 → A1
+  const stabs = [82.4, 65.4, 55.0];
+  stabs.forEach((freq, i) => {
+    const t = now + i * 0.38;
+    const osc1 = ctx.createOscillator(); osc1.type = "sawtooth"; osc1.frequency.value = freq;
+    const osc2 = ctx.createOscillator(); osc2.type = "square";   osc2.frequency.value = freq * 2.01;
+    const dist = ctx.createWaveShaper();
+    const curve = new Float32Array(256);
+    for (let j = 0; j < 256; j++) { const x = j / 128 - 1; curve[j] = (Math.PI + 180) * x / (Math.PI + 180 * Math.abs(x)); }
+    dist.curve = curve;
+    const filt = ctx.createBiquadFilter(); filt.type = "lowpass"; filt.frequency.value = 800;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.001, t);
+    g.gain.linearRampToValueAtTime(0.45, t + 0.025);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
+    osc1.connect(dist); osc2.connect(dist); dist.connect(filt); filt.connect(g); g.connect(ctx.destination);
+    osc1.start(t); osc2.start(t); osc1.stop(t + 0.6); osc2.stop(t + 0.6);
+  });
+
+  // High metallic "death bell" ping on impact
+  const bell = ctx.createOscillator(); bell.type = "sine"; bell.frequency.value = 440;
+  bell.frequency.exponentialRampToValueAtTime(220, now + 0.8);
+  const bellG = ctx.createGain();
+  bellG.gain.setValueAtTime(0.3, now);
+  bellG.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
+  bell.connect(bellG); bellG.connect(ctx.destination);
+  bell.start(now); bell.stop(now + 1.3);
+}
+
+/** Fist whap — short smack transient for each punch hit. */
+function playPunchSound() {
+  const ctx = getSfxCtx();
+  const now = ctx.currentTime;
+  // Thwack body
+  const bufLen = Math.ceil(ctx.sampleRate * 0.06);
+  const buf = ctx.createBuffer(1, bufLen, ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < bufLen; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufLen * 0.3));
+  const src = ctx.createBufferSource(); src.buffer = buf;
+  const bp = ctx.createBiquadFilter(); bp.type = "bandpass"; bp.frequency.value = 320; bp.Q.value = 0.9;
+  const g = ctx.createGain(); g.gain.setValueAtTime(0.7, now); g.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
+  src.connect(bp); bp.connect(g); g.connect(ctx.destination);
+  src.start(now); src.stop(now + 0.07);
+  // Bone click overtone
+  const osc = ctx.createOscillator(); osc.type = "sine"; osc.frequency.value = 900;
+  const og = ctx.createGain(); og.gain.setValueAtTime(0.18, now); og.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+  osc.connect(og); og.connect(ctx.destination); osc.start(now); osc.stop(now + 0.04);
+}
+
+/** Parrot squawk on launch. */
+function playParrotSound() {
+  const ctx = getSfxCtx();
+  const now = ctx.currentTime;
+  const osc = ctx.createOscillator(); osc.type = "sawtooth";
+  osc.frequency.setValueAtTime(880, now);
+  osc.frequency.setValueAtTime(660, now + 0.05);
+  osc.frequency.setValueAtTime(780, now + 0.09);
+  osc.frequency.exponentialRampToValueAtTime(550, now + 0.22);
+  const filt = ctx.createBiquadFilter(); filt.type = "bandpass"; filt.frequency.value = 1400; filt.Q.value = 2;
+  const g = ctx.createGain(); g.gain.setValueAtTime(0.4, now); g.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+  osc.connect(filt); filt.connect(g); g.connect(ctx.destination); osc.start(now); osc.stop(now + 0.25);
+}
+
+/** Car engine roar + tire screech for the fish-car attack. */
+function playCarAttackSound() {
+  const ctx = getSfxCtx();
+  const now = ctx.currentTime;
+  // Engine surge
+  const eng = ctx.createOscillator(); eng.type = "sawtooth";
+  eng.frequency.setValueAtTime(80, now); eng.frequency.linearRampToValueAtTime(240, now + 0.4); eng.frequency.linearRampToValueAtTime(120, now + 1.0);
+  const engFilt = ctx.createBiquadFilter(); engFilt.type = "lowpass"; engFilt.frequency.value = 600;
+  const engG = ctx.createGain(); engG.gain.setValueAtTime(0.35, now); engG.gain.exponentialRampToValueAtTime(0.001, now + 1.1);
+  eng.connect(engFilt); engFilt.connect(engG); engG.connect(ctx.destination); eng.start(now); eng.stop(now + 1.1);
+  // Screech
+  const bufLen = Math.ceil(ctx.sampleRate * 0.35);
+  const sbuf = ctx.createBuffer(1, bufLen, ctx.sampleRate);
+  const sd = sbuf.getChannelData(0);
+  for (let i = 0; i < bufLen; i++) sd[i] = Math.random() * 2 - 1;
+  const ssrc = ctx.createBufferSource(); ssrc.buffer = sbuf;
+  const sbp = ctx.createBiquadFilter(); sbp.type = "bandpass"; sbp.frequency.value = 2400; sbp.Q.value = 8;
+  const sg = ctx.createGain(); sg.gain.setValueAtTime(0, now + 0.1); sg.gain.linearRampToValueAtTime(0.3, now + 0.25); sg.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+  ssrc.connect(sbp); sbp.connect(sg); sg.connect(ctx.destination); ssrc.start(now); ssrc.stop(now + 0.5);
+}
+
+/** Single minigun tracer crack — called per bullet. */
+function playMinigunShotSound() {
+  const ctx = getSfxCtx();
+  const now = ctx.currentTime;
+  const bufLen = Math.ceil(ctx.sampleRate * 0.04);
+  const buf = ctx.createBuffer(1, bufLen, ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < bufLen; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufLen * 0.15));
+  const src = ctx.createBufferSource(); src.buffer = buf;
+  const hp = ctx.createBiquadFilter(); hp.type = "highpass"; hp.frequency.value = 1800;
+  const g = ctx.createGain(); g.gain.setValueAtTime(0.45, now); g.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+  src.connect(hp); hp.connect(g); g.connect(ctx.destination); src.start(now); src.stop(now + 0.04);
+}
+
+/** Sword whoosh — short version for normal swings, long for the spin. */
+function playSwordSound(spin: boolean) {
+  const ctx = getSfxCtx();
+  const now = ctx.currentTime;
+  const dur = spin ? 0.45 : 0.18;
+  const bufLen = Math.ceil(ctx.sampleRate * dur);
+  const buf = ctx.createBuffer(1, bufLen, ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < bufLen; i++) d[i] = Math.random() * 2 - 1;
+  const src = ctx.createBufferSource(); src.buffer = buf;
+  const bp = ctx.createBiquadFilter(); bp.type = "bandpass"; bp.frequency.value = spin ? 1200 : 2200; bp.Q.value = spin ? 1.5 : 3;
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.001, now);
+  g.gain.linearRampToValueAtTime(spin ? 0.5 : 0.35, now + dur * 0.2);
+  g.gain.exponentialRampToValueAtTime(0.001, now + dur);
+  src.connect(bp); bp.connect(g); g.connect(ctx.destination); src.start(now); src.stop(now + dur);
+  if (spin) {
+    // Power impact bass thud
+    const thud = ctx.createOscillator(); thud.type = "sine"; thud.frequency.setValueAtTime(120, now + 0.1); thud.frequency.exponentialRampToValueAtTime(40, now + 0.35);
+    const tg = ctx.createGain(); tg.gain.setValueAtTime(0.5, now + 0.1); tg.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+    thud.connect(tg); tg.connect(ctx.destination); thud.start(now + 0.1); thud.stop(now + 0.4);
+  }
+}
+
 const HORIZON_RATIO = 0.45;
 const CHUNK_WIDTH = 900;
 const PLAYER_SPEED = 260;
@@ -207,6 +390,8 @@ interface Facade {
   /** Sign hanging perpendicular off the wall. */
   bladeSign: { x: number; height: number; color: string } | null;
   graffiti: Graffiti[];
+  /** Billboard on the roof — tall structures get these occasionally. */
+  roofBillboard: { offsetX: number; bw: number; color: string; style: number } | null;
 }
 
 interface Alley {
@@ -418,6 +603,8 @@ function makeTree(rand: () => number): TreeSpec {
         -5 + rand() * 12
       );
     }
+    // Pedestal blob — visually anchors the crown to the trunk so they never look detached
+    puff(rand() * 6 - 3, -trunkH - 9, 17 + rand() * 6, -6 + rand() * 4);
     limbs.push({ x: -9, y: -trunkH - 8 }, { x: 9, y: -trunkH - 10 });
   } else if (kind === "pear" || kind === "ginkgo") {
     // Upright oval — the tree they plant where the sidewalk is narrow
@@ -654,6 +841,14 @@ function generateChunk(index: number): Chunk {
             }
           : null,
       graffiti: rand() < 0.45 ? makeGraffiti(fx, w, 1 + Math.floor(rand() * 2), GROUND_FLOOR_H - 26) : [],
+      roofBillboard: rand() < 0.28
+        ? {
+            offsetX: 12 + rand() * Math.max(4, w - 80),
+            bw: 55 + rand() * 60,
+            color: neonColors[Math.floor(rand() * neonColors.length)],
+            style: Math.floor(rand() * 3),
+          }
+        : null,
     });
     for (const d of doors) spawnPoints.push({ x: d.x + d.width / 2, kind: "door" });
     fx += w;
@@ -749,34 +944,97 @@ function drawGraffiti(ctx: CanvasRenderingContext2D, tags: Graffiti[], sx: numbe
   for (const g of tags) {
     const gx = sx + (g.x - spanX);
     const gy = baseY - g.y - g.h;
+    const w = g.w, h = g.h;
     ctx.save();
-    ctx.globalAlpha = 0.75;
+    ctx.globalAlpha = 0.82;
     ctx.strokeStyle = g.color;
-    ctx.lineWidth = 2.5;
+    ctx.fillStyle = g.color;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
-    ctx.beginPath();
+
     if (g.style === 0) {
-      // Looping scrawl
-      ctx.moveTo(gx, gy + g.h);
-      ctx.bezierCurveTo(gx + g.w * 0.2, gy - g.h * 0.3, gx + g.w * 0.45, gy + g.h * 1.2, gx + g.w * 0.6, gy + g.h * 0.4);
-      ctx.bezierCurveTo(gx + g.w * 0.75, gy - g.h * 0.2, gx + g.w * 0.9, gy + g.h * 0.9, gx + g.w, gy + g.h * 0.2);
+      // "Tag" style — fast signature-like cursive stroke resembling real graffiti tags.
+      // Draws a connected signature with an upstroke, crossbar, and looping descender.
+      ctx.lineWidth = 2.8;
+      ctx.beginPath();
+      // Opening loop (like a capital letter)
+      ctx.moveTo(gx + w * 0.05, gy + h * 0.85);
+      ctx.bezierCurveTo(gx, gy + h * 0.2, gx + w * 0.14, gy, gx + w * 0.22, gy + h * 0.1);
+      ctx.bezierCurveTo(gx + w * 0.3, gy + h * 0.22, gx + w * 0.22, gy + h * 0.6, gx + w * 0.3, gy + h * 0.65);
+      // Mid-stroke rises and curves
+      ctx.bezierCurveTo(gx + w * 0.38, gy + h * 0.7, gx + w * 0.42, gy + h * 0.05, gx + w * 0.52, gy + h * 0.15);
+      ctx.bezierCurveTo(gx + w * 0.6, gy + h * 0.25, gx + w * 0.55, gy + h * 0.7, gx + w * 0.64, gy + h * 0.72);
+      // End sweeps with a tail
+      ctx.bezierCurveTo(gx + w * 0.72, gy + h * 0.74, gx + w * 0.78, gy + h * 0.1, gx + w * 0.88, gy + h * 0.2);
+      ctx.bezierCurveTo(gx + w * 0.96, gy + h * 0.3, gx + w, gy + h * 0.75, gx + w * 0.98, gy + h * 0.88);
+      ctx.stroke();
+      // Underline drip — classic tag finisher
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.moveTo(gx + w * 0.08, gy + h * 0.95);
+      ctx.bezierCurveTo(gx + w * 0.35, gy + h * 1.05, gx + w * 0.65, gy + h * 1.02, gx + w * 0.9, gy + h * 0.95);
+      ctx.stroke();
+
     } else if (g.style === 1) {
-      // Angular throw-up
-      ctx.moveTo(gx, gy + g.h);
-      ctx.lineTo(gx + g.w * 0.25, gy);
-      ctx.lineTo(gx + g.w * 0.45, gy + g.h * 0.8);
-      ctx.lineTo(gx + g.w * 0.68, gy + g.h * 0.1);
-      ctx.lineTo(gx + g.w, gy + g.h * 0.7);
+      // "Throw-up" style — chunky bubble-letter fills with outlines, like a real throw.
+      // Two overlapping bubble-letter shapes side by side.
+      const letterW = w / 2.2;
+      for (let li = 0; li < 2; li++) {
+        const lx = gx + li * w * 0.48;
+        // Filled interior
+        ctx.globalAlpha = 0.38;
+        ctx.beginPath();
+        ctx.moveTo(lx + letterW * 0.15, gy + h);
+        ctx.bezierCurveTo(lx, gy + h, lx, gy, lx + letterW * 0.25, gy + h * 0.05);
+        ctx.bezierCurveTo(lx + letterW * 0.5, gy - h * 0.1, lx + letterW * 0.75, gy, lx + letterW, gy + h * 0.1);
+        ctx.bezierCurveTo(lx + letterW * 1.05, gy + h * 0.4, lx + letterW, gy + h, lx + letterW * 0.85, gy + h);
+        ctx.bezierCurveTo(lx + letterW * 0.5, gy + h * 1.06, lx + letterW * 0.2, gy + h, lx + letterW * 0.15, gy + h);
+        ctx.fill();
+        // Outline stroke
+        ctx.globalAlpha = 0.85;
+        ctx.lineWidth = 2.2;
+        ctx.stroke();
+        // Interior highlight
+        ctx.globalAlpha = 0.55;
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(lx + letterW * 0.25, gy + h * 0.8);
+        ctx.bezierCurveTo(lx + letterW * 0.15, gy + h * 0.5, lx + letterW * 0.2, gy + h * 0.2, lx + letterW * 0.35, gy + h * 0.12);
+        ctx.stroke();
+      }
+
     } else {
-      // Fat blob tag with an outline
-      ctx.globalAlpha = 0.5;
-      ctx.fillStyle = g.color;
-      ctx.ellipse(gx + g.w / 2, gy + g.h / 2, g.w / 2, g.h / 2, 0, 0, Math.PI * 2);
+      // "Wildstyle" — angular interlocking letter shapes with arrows and serifs.
+      ctx.lineWidth = 3;
+      // Base letter block
+      ctx.globalAlpha = 0.42;
+      ctx.beginPath();
+      ctx.moveTo(gx, gy + h);
+      ctx.lineTo(gx + w * 0.08, gy + h * 0.15);
+      ctx.lineTo(gx + w * 0.28, gy);
+      ctx.lineTo(gx + w * 0.42, gy + h * 0.45);
+      ctx.lineTo(gx + w * 0.55, gy + h * 0.05);
+      ctx.lineTo(gx + w * 0.72, gy);
+      ctx.lineTo(gx + w * 0.9, gy + h * 0.12);
+      ctx.lineTo(gx + w, gy + h * 0.55);
+      ctx.lineTo(gx + w * 0.88, gy + h);
+      ctx.closePath();
       ctx.fill();
-      ctx.globalAlpha = 0.8;
+      ctx.globalAlpha = 0.9;
+      ctx.stroke();
+      // Arrow serifs — signature wildstyle detail
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(gx + w * 0.9, gy + h * 0.12);
+      ctx.lineTo(gx + w * 1.02, gy + h * 0.05);
+      ctx.lineTo(gx + w * 1.0, gy + h * 0.22);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(gx + w * 0.08, gy + h * 0.15);
+      ctx.lineTo(gx - w * 0.04, gy + h * 0.08);
+      ctx.lineTo(gx - w * 0.02, gy + h * 0.28);
+      ctx.stroke();
     }
-    ctx.stroke();
     ctx.restore();
   }
 }
@@ -896,6 +1154,58 @@ function drawFacade(ctx: CanvasRenderingContext2D, f: Facade, sx: number, baseY:
   }
 
   if (f.graffiti.length) drawGraffiti(ctx, f.graffiti, sx, f.x, baseY);
+
+  // Roof billboard — mounted above the cornice on taller buildings
+  if (f.roofBillboard) {
+    const rb = f.roofBillboard;
+    const bx = sx + rb.offsetX;
+    const bh = 34 + (rb.style === 2 ? 14 : 0);
+    const bw = Math.min(rb.bw, f.width - rb.offsetX - 8);
+    const bTop = top - bh - 6; // sits above the roofline
+    ctx.save();
+    // Dark panel
+    ctx.fillStyle = "#07070d";
+    ctx.fillRect(bx, bTop, bw, bh);
+    // Neon border glow
+    ctx.shadowColor = rb.color;
+    ctx.shadowBlur = 12;
+    ctx.strokeStyle = rb.color;
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(bx + 1, bTop + 1, bw - 2, bh - 2);
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = rb.color;
+    ctx.globalAlpha = 0.78;
+    if (rb.style === 0) {
+      // Two text bars — ad copy suggestion
+      ctx.fillRect(bx + 6, bTop + 7, bw * 0.55, 5);
+      ctx.fillRect(bx + 6, bTop + 16, bw * 0.78, 4);
+      ctx.fillRect(bx + 6, bTop + 24, bw * 0.38, 3);
+    } else if (rb.style === 1) {
+      // Logo-style — a big centered block with smaller lines
+      ctx.fillRect(bx + bw * 0.22, bTop + 6, bw * 0.56, 10);
+      ctx.globalAlpha = 0.45;
+      ctx.fillRect(bx + 8, bTop + 20, bw - 16, 3);
+      ctx.fillRect(bx + 8, bTop + 26, bw * 0.6 - 8, 3);
+    } else {
+      // Arrow + text billboard (product promotion)
+      ctx.beginPath();
+      ctx.moveTo(bx + 8, bTop + bh / 2);
+      ctx.lineTo(bx + 22, bTop + 8);
+      ctx.lineTo(bx + 22, bTop + bh - 8);
+      ctx.closePath();
+      ctx.fill();
+      ctx.globalAlpha = 0.72;
+      ctx.fillRect(bx + 28, bTop + 8, bw * 0.6, 6);
+      ctx.fillRect(bx + 28, bTop + 18, bw * 0.45, 5);
+      ctx.fillRect(bx + 28, bTop + 27, bw * 0.55, 4);
+    }
+    // Support legs
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = "#14141c";
+    ctx.fillRect(bx + 8, bTop + bh, 3, 8);
+    ctx.fillRect(bx + bw - 11, bTop + bh, 3, 8);
+    ctx.restore();
+  }
 
   // Neon sign over the storefront
   if (f.signColor) {
@@ -1737,15 +2047,23 @@ function drawPerson(
   ctx.arc(0, -57 * s, 8 * s, Math.PI, 0);
   ctx.fill();
 
-  // Eye (right side = facing direction)
-  ctx.fillStyle = "#fff";
-  ctx.beginPath();
-  ctx.arc(5 * s, -53 * s, 2.5 * s, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = stunned ? "#dc2626" : "#111";
-  ctx.beginPath();
-  ctx.arc(6 * s, -53 * s, 1.5 * s, 0, Math.PI * 2);
-  ctx.fill();
+  // Eyes — two visible on the face
+  const eyeOffsets = [5, -3] as const; // right eye (toward facing direction) then left
+  for (const ex of eyeOffsets) {
+    ctx.fillStyle = "#fff";
+    ctx.beginPath();
+    ctx.arc(ex * s, -53 * s, 2.2 * s, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = stunned ? "#dc2626" : "#111";
+    ctx.beginPath();
+    ctx.arc((ex + 0.8) * s, -53.2 * s, 1.3 * s, 0, Math.PI * 2);
+    ctx.fill();
+    // Catchlight
+    ctx.fillStyle = "rgba(255,255,255,0.7)";
+    ctx.beginPath();
+    ctx.arc((ex + 0.3) * s, -54 * s, 0.5 * s, 0, Math.PI * 2);
+    ctx.fill();
+  }
 
   // Stun stars
   if (stunned) {
@@ -1770,9 +2088,9 @@ function drawEnemyPerson(
   const face = opts.facing ?? 1;
   const swing = at > 0 ? (at < 0.7 ? -at * 0.5 : (at - 0.7) / 0.3) : 0;
 
-  // Legs
+  // Legs — muddy dark brown trousers
   ctx.lineWidth = 7 * s;
-  ctx.strokeStyle = "#1c1c1c";
+  ctx.strokeStyle = "#3b2a14";
   ctx.beginPath();
   ctx.moveTo(-5 * s, -20 * s);
   ctx.lineTo((-5 - wp * 8) * s, 0);
@@ -1782,13 +2100,13 @@ function drawEnemyPerson(
   ctx.lineTo((5 + wp * 8) * s, 0);
   ctx.stroke();
 
-  // Torso
-  ctx.fillStyle = "#7a1f1f";
+  // Torso — torn dirty brown shirt
+  ctx.fillStyle = "#6b4f2a";
   ctx.fillRect(-9 * s, -44 * s, 18 * s, 24 * s);
 
-  // Arms (menacing — both angled forward; the lead arm throws the punch)
+  // Arms — zombie green-grey skin
   ctx.lineWidth = 5 * s;
-  ctx.strokeStyle = "#991b1b";
+  ctx.strokeStyle = "#4e7a4e";
   const reach = 15 + swing * 22;
   ctx.beginPath();
   ctx.moveTo(-9 * s, -36 * s);
@@ -1799,26 +2117,33 @@ function drawEnemyPerson(
   ctx.lineTo(face * reach * s, (-24 - swing * 6) * s);
   ctx.stroke();
 
-  // Head
-  ctx.fillStyle = "#991b1b";
+  // Head — zombie green
+  ctx.fillStyle = "#557a55";
   ctx.beginPath();
   ctx.arc(0, -52 * s, 9 * s, 0, Math.PI * 2);
   ctx.fill();
-  ctx.strokeStyle = "rgba(0,0,0,0.25)";
+  ctx.strokeStyle = "rgba(0,0,0,0.3)";
   ctx.lineWidth = 1.5 * s;
   ctx.stroke();
-  ctx.fillStyle = "#450a0a";
+  // Matted dark hair
+  ctx.fillStyle = "#2a1a0a";
   ctx.beginPath();
   ctx.arc(0, -55 * s, 7 * s, Math.PI, 0);
   ctx.fill();
-  ctx.fillStyle = "#fff";
-  ctx.beginPath();
-  ctx.arc(3 * s, -52 * s, 2 * s, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = stunned ? "#facc15" : "#dc2626";
-  ctx.beginPath();
-  ctx.arc(4 * s, -52 * s, 1.2 * s, 0, Math.PI * 2);
-  ctx.fill();
+  // Eyes — two zombie eyes on the face
+  const zEyeOffsets = [4, -3] as const;
+  for (const ex of zEyeOffsets) {
+    // Eye white (greenish)
+    ctx.fillStyle = "#d4edda";
+    ctx.beginPath();
+    ctx.arc(ex * s, -52 * s, 2 * s, 0, Math.PI * 2);
+    ctx.fill();
+    // Pupil — blood red or yellow when stunned
+    ctx.fillStyle = stunned ? "#facc15" : "#b91c1c";
+    ctx.beginPath();
+    ctx.arc((ex + 0.7) * s, -52 * s, 1.2 * s, 0, Math.PI * 2);
+    ctx.fill();
+  }
 
   if (stunned) {
     ctx.fillStyle = "#facc15";
@@ -2119,6 +2444,15 @@ export default function ShootSimulator() {
     canvas.addEventListener("pointerup", onPointerUp);
     canvas.addEventListener("pointercancel", onPointerUp);
 
+    // Prevent iOS/iPad Safari from showing selection handles, context menus, or
+    // callouts when the player taps and holds during gameplay.
+    const preventDefaultTouch = (e: Event) => e.preventDefault();
+    canvas.addEventListener("contextmenu", preventDefaultTouch);
+    canvas.addEventListener("selectstart", preventDefaultTouch);
+    canvas.addEventListener("touchstart", preventDefaultTouch, { passive: false });
+    canvas.addEventListener("touchmove", preventDefaultTouch, { passive: false });
+    canvas.addEventListener("touchend", preventDefaultTouch, { passive: false });
+
     const chunks = new Map<number, Chunk>();
     const getChunk = (i: number) => {
       if (!chunks.has(i)) chunks.set(i, generateChunk(i));
@@ -2235,6 +2569,7 @@ export default function ShootSimulator() {
       state.player.hp = Math.max(0, state.player.hp - dmg);
       state.player.invulnUntil = now + PLAYER_IFRAME_MS;
       state.player.hurtUntil = now + 220;
+      if (state.player.hp > 0) playHurtSound();
       state.player.regenAt = now + HP_REGEN_DELAY_MS; // any hit restarts the clock
       state.shakeUntil = now + 240;
       state.floaters.push({
@@ -2252,6 +2587,7 @@ export default function ShootSimulator() {
         state.player.worldX = knockedTo;
       }
       if (state.player.hp <= 0) {
+        playDeathSound();
         titlePhase = "gameover";
         gameOverAt = now;
         // Freeze the street on a clean tableau
@@ -2293,6 +2629,12 @@ export default function ShootSimulator() {
       screenY: 0,
       hitIds: new Set<number>(),
     };
+
+    // Traffic cars — random cars that drive through periodically in the road
+    type TrafficCar = { worldX: number; dir: 1 | -1; depth: number; color: string; speed: number; hitIds: Set<number> };
+    const trafficCars: TrafficCar[] = [];
+    const TRAFFIC_CAR_COLORS = ["#c53030","#1a56db","#2f855a","#92400e","#5a67d8","#d69e2e","#e53e3e"];
+    let nextTrafficSpawn = 8000 + Math.random() * 8000; // ms from game start until first traffic car
 
     // Minigun state (attack 4): spin up, hose the street, spin down
     const minigun = {
@@ -2368,6 +2710,7 @@ export default function ShootSimulator() {
         combo.step = 0;
       }
 
+      let punchHit = false;
       for (const enemy of state.enemies) {
         if (enemy.dying || now < enemy.stunUntil) continue;
         const facingDx = (enemy.worldX - state.player.worldX) * state.player.facing;
@@ -2375,8 +2718,10 @@ export default function ShootSimulator() {
         if (facingDx >= -15 && facingDx <= reach && depthDiff <= depthTol * DEPTH_TO_WORLD) {
           damageEnemy(enemy, dmg);
           if (step === 2) enemy.worldX += state.player.facing * 90;
+          punchHit = true;
         }
       }
+      if (punchHit) playPunchSound();
     };
 
     const doParrotAttack = (now: number, psx: number, psy: number) => {
@@ -2393,6 +2738,7 @@ export default function ShootSimulator() {
       parrot.phase = "flying-out";
       parrot.phaseStartedAt = now;
       parrot.targetId = nearest.id;
+      playParrotSound();
       parrot.fromX = psx + 14 * state.player.facing;
       parrot.fromY = psy - 46;
       parrot.pScreenX = parrot.fromX;
@@ -2407,6 +2753,7 @@ export default function ShootSimulator() {
       carState.hitIds = new Set();
       state.attackReadyAt[3] = now + CAR_COOLDOWN_MS;
       state.shakeUntil = now + 500;
+      playCarAttackSound();
     };
 
     const doMinigunAttack = (now: number) => {
@@ -2421,6 +2768,7 @@ export default function ShootSimulator() {
       const spin = sword.step === 2;
       sword.spin = spin;
       sword.swingStartedAt = now;
+      playSwordSound(spin);
       sword.step = ((sword.step + 1) % 3) as 0 | 1 | 2;
       state.attackReadyAt[5] = now + (spin ? SWORD_SPIN_COOLDOWN_MS : SWORD_COOLDOWN_MS);
       if (spin) state.shakeUntil = now + 220;
@@ -2879,6 +3227,41 @@ export default function ShootSimulator() {
         ctx.font = `${touchMode ? 9 : 8}px system-ui, sans-serif`;
         ctx.fillStyle = unlocked ? "rgba(250,204,21,0.85)" : "rgba(255,255,255,0.25)";
         ctx.fillText(unlocked ? names[id] : "???", x + boxSize / 2, touchMode ? sy + boxSize - 6 : labelY);
+
+        // ── Cooldown overlay ─────────────────────────────────────────────
+        if (unlocked) {
+          const nowMs = performance.now();
+          const remaining = Math.max(0, state.attackReadyAt[id] - nowMs);
+          // Parrot busy (mid-animation, not yet in cooldown timer)
+          const parrotBusy = id === 2 && parrot.phase !== "idle" && parrot.phase !== "cooldown" && remaining < 100;
+          const MAX_CD: Record<number, number> = { 1: 450, 2: 2000, 3: CAR_COOLDOWN_MS, 4: MINIGUN_COOLDOWN_MS, 5: SWORD_SPIN_COOLDOWN_MS };
+          const SLOT_COLOR: Record<number, string> = { 1: "#a78bfa", 2: "#c084fc", 3: "#f97316", 4: "#f87171", 5: "#67e8f9" };
+          const barH = 3;
+
+          if (parrotBusy) {
+            // Pulsing "in use" tint while parrot is airborne
+            const pulse = 0.3 + 0.2 * Math.sin(nowMs * 0.008);
+            ctx.fillStyle = `rgba(192,132,252,${pulse})`;
+            ctx.fillRect(x, sy, boxSize, boxSize);
+          } else if (remaining > 300) {
+            const frac = Math.min(1, remaining / (MAX_CD[id] ?? 2000));
+            // Dark tint
+            ctx.fillStyle = "rgba(0,0,0,0.52)";
+            ctx.fillRect(x, sy, boxSize, boxSize);
+            // Depleting bar at bottom of slot (full → empty as cooldown expires)
+            ctx.fillStyle = "rgba(255,255,255,0.12)";
+            ctx.fillRect(x, sy + boxSize - barH, boxSize, barH);
+            ctx.fillStyle = SLOT_COLOR[id] ?? "#60a5fa";
+            ctx.fillRect(x, sy + boxSize - barH, Math.round(boxSize * frac), barH);
+            // Countdown seconds
+            const secsLeft = remaining / 1000;
+            const cdText = secsLeft >= 10 ? `${Math.ceil(secsLeft)}s` : `${secsLeft.toFixed(1)}s`;
+            ctx.fillStyle = "#fff";
+            ctx.font = `bold ${touchMode ? 12 : 10}px system-ui, sans-serif`;
+            ctx.textAlign = "center";
+            ctx.fillText(cdText, x + boxSize / 2, sy + boxSize / 2 + (touchMode ? 5 : 4));
+          }
+        }
       }
       ctx.restore();
     };
@@ -3210,6 +3593,16 @@ export default function ShootSimulator() {
           b.worldX += b.dir * eStep;
           b.travelled += eStep;
           if (b.travelled > SNAKE_BULLET_RANGE) return false;
+          // Sword parry — any mid-swing frame deflects bullets near the player
+          if (
+            sword.swingStartedAt !== null &&
+            nowTs - sword.swingStartedAt < SWORD_SWING_MS &&
+            Math.abs(b.worldX - state.player.worldX) < 50 &&
+            Math.abs(b.depth - state.player.depth) < 0.12
+          ) {
+            state.floaters.push({ worldX: b.worldX, depth: b.depth, text: "CLANG!", color: "#fcd34d", startedAt: nowTs });
+            return false;
+          }
           const bScale = MIN_SCALE + b.depth * (MAX_SCALE - MIN_SCALE);
           if (overlapsProp(b.worldX, b.depth, SNAKE_BULLET_HALF_W * bScale, SNAKE_BULLET_HALF_D * bScale)) {
             state.floaters.push({
@@ -3220,6 +3613,13 @@ export default function ShootSimulator() {
               startedAt: nowTs,
             });
             return false;
+          }
+          // Traffic cars also stop enemy bullets
+          for (const tc of trafficCars) {
+            if (Math.abs(b.worldX - tc.worldX) < 45 && Math.abs(b.depth - tc.depth) < 0.1) {
+              state.floaters.push({ worldX: b.worldX, depth: b.depth, text: "CLANG", color: "#cbd5e1", startedAt: nowTs });
+              return false;
+            }
           }
           if (
             Math.abs(b.worldX - state.player.worldX) < 20 &&
@@ -3356,6 +3756,7 @@ export default function ShootSimulator() {
           state.attackReadyAt[4] = nowTs + MINIGUN_COOLDOWN_MS;
         } else if (nowTs - minigun.lastShotAt >= MINIGUN_FIRE_INTERVAL_MS) {
           minigun.lastShotAt = nowTs;
+          playMinigunShotSound();
           state.bullets.push({
             worldX: state.player.worldX + state.player.facing * 26,
             depth: state.player.depth + (Math.random() - 0.5) * 0.03,
@@ -3386,6 +3787,19 @@ export default function ShootSimulator() {
               return false;
             }
           }
+          // Stop bullets at parked cars (props)
+          const bSc = MIN_SCALE + b.depth * (MAX_SCALE - MIN_SCALE);
+          if (overlapsProp(b.worldX, b.depth, 10 * bSc, 3 * bSc)) {
+            state.floaters.push({ worldX: b.worldX, depth: b.depth, text: "PING", color: "#94a3b8", startedAt: nowTs });
+            return false;
+          }
+          // Stop bullets at traffic cars
+          for (const tc of trafficCars) {
+            if (Math.abs(b.worldX - tc.worldX) < 45 && Math.abs(b.depth - tc.depth) < 0.1) {
+              state.floaters.push({ worldX: b.worldX, depth: b.depth, text: "PING", color: "#94a3b8", startedAt: nowTs });
+              return false;
+            }
+          }
           return true;
         });
       } else if (!live) {
@@ -3413,6 +3827,46 @@ export default function ShootSimulator() {
           }
         }
         if (carProgress >= 1) carState.active = false;
+      }
+
+      // Traffic cars — random cars driving through the road
+      if (live && nowTs > nextTrafficSpawn) {
+        nextTrafficSpawn = nowTs + 6000 + Math.random() * 8000;
+        const dir = Math.random() < 0.5 ? 1 : -1;
+        const speed = 280 + Math.random() * 180; // px/s
+        const depth = SIDEWALK_DEPTH + 0.35 + Math.random() * 0.4; // in the road
+        trafficCars.push({
+          worldX: cameraX + (dir > 0 ? -180 : width + 180),
+          dir: dir as 1 | -1,
+          depth,
+          color: TRAFFIC_CAR_COLORS[Math.floor(Math.random() * TRAFFIC_CAR_COLORS.length)],
+          speed,
+          hitIds: new Set<number>(),
+        });
+      }
+      // Move and collide traffic cars
+      for (let ti = trafficCars.length - 1; ti >= 0; ti--) {
+        const tc = trafficCars[ti];
+        tc.worldX += tc.dir * tc.speed * dt;
+        // Remove when well off-screen
+        if (tc.dir > 0 && tc.worldX > cameraX + width + 300) { trafficCars.splice(ti, 1); continue; }
+        if (tc.dir < 0 && tc.worldX < cameraX - 300) { trafficCars.splice(ti, 1); continue; }
+        // Damage enemies and player on contact
+        const tcSx = tc.worldX - cameraX;
+        for (const e of state.enemies) {
+          if (e.dying || tc.hitIds.has(e.id)) continue;
+          if (Math.abs(e.worldX - tc.worldX) < 50 && Math.abs(e.depth - tc.depth) < 0.15) {
+            damageEnemy(e, 60);
+            tc.hitIds.add(e.id);
+          }
+        }
+        if (
+          !state.player.invulnUntil || nowTs > state.player.invulnUntil
+        ) {
+          if (Math.abs(state.player.worldX - tc.worldX) < 50 && Math.abs(state.player.depth - tc.depth) < 0.15) {
+            damagePlayer(25, tc.worldX, nowTs);
+          }
+        }
       }
 
       // Screen shake
@@ -3617,13 +4071,31 @@ export default function ShootSimulator() {
       roadGrad.addColorStop(1, "#0b0b0d");
       fillBand(SIDEWALK_DEPTH + 6 / bandH, Infinity, roadGrad);
 
-      // Road center dashed yellow line — follows the bend
-      ctx.strokeStyle = "rgba(220,170,0,0.5)";
-      ctx.lineWidth = 3;
-      ctx.setLineDash([34, 24]);
-      ctx.lineDashOffset = -cameraX % 58;
-      strokeAlong(SIDEWALK_DEPTH + (1 - SIDEWALK_DEPTH) * 0.5);
-      ctx.setLineDash([]);
+      // Road center dashed yellow line — drawn dash-by-dash in world space so
+      // the stripes appear stationary on the road rather than scrolling with the camera.
+      {
+        const STRIPE_PERIOD = 58;
+        const STRIPE_LEN = 34;
+        const stripeD = SIDEWALK_DEPTH + (1 - SIDEWALK_DEPTH) * 0.5;
+        ctx.strokeStyle = "rgba(220,170,0,0.5)";
+        ctx.lineWidth = 3;
+        ctx.setLineDash([]);
+        const firstDash = Math.floor(cameraX / STRIPE_PERIOD) * STRIPE_PERIOD;
+        for (let wdx = firstDash; wdx < cameraX + width + STRIPE_PERIOD; wdx += STRIPE_PERIOD) {
+          const x0 = Math.max(0, wdx - cameraX);
+          const x1 = Math.min(width, wdx + STRIPE_LEN - cameraX);
+          if (x0 >= x1) continue;
+          ctx.beginPath();
+          const steps = 6;
+          for (let st = 0; st <= steps; st++) {
+            const px = x0 + (x1 - x0) * (st / steps);
+            const si = Math.min(GROUND_SAMPLES, Math.round((px / width) * GROUND_SAMPLES));
+            const py = topYs[si] + stripeD * bandH;
+            if (st === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+          }
+          ctx.stroke();
+        }
+      }
 
       // Streetlamps along the curb, spaced evenly in world space. The pools of
       // light go down here; the posts are drawn later as depth-sorted entities
@@ -3814,6 +4286,63 @@ export default function ShootSimulator() {
               }),
           });
         }
+      }
+
+      // Traffic cars in the road (sorted with other entities by depth)
+      for (const tc of trafficCars) {
+        const tcSx = tc.worldX - cameraX;
+        if (tcSx < -200 || tcSx > width + 200) continue;
+        const tcSy = groundY(tc.worldX, tc.depth);
+        const tcScale = (MIN_SCALE + tc.depth * (MAX_SCALE - MIN_SCALE)) * 1.4;
+        const tcDir = tc.dir;
+        entities.push({
+          depth: tc.depth,
+          draw: () => {
+            ctx.save();
+            ctx.translate(tcSx, tcSy);
+            if (tcDir < 0) ctx.scale(-1, 1);
+            const s = tcScale;
+            ctx.fillStyle = tc.color;
+            // Body
+            ctx.fillRect(-36 * s, -22 * s, 72 * s, 22 * s);
+            // Roof
+            ctx.beginPath();
+            ctx.moveTo(-22 * s, -22 * s);
+            ctx.lineTo(-18 * s, -38 * s);
+            ctx.lineTo(18 * s, -38 * s);
+            ctx.lineTo(22 * s, -22 * s);
+            ctx.closePath();
+            ctx.fill();
+            // Windows (tinted)
+            ctx.fillStyle = "rgba(80,180,255,0.45)";
+            ctx.fillRect(-16 * s, -36 * s, 13 * s, 13 * s);
+            ctx.fillRect(3 * s, -36 * s, 13 * s, 13 * s);
+            // Outline
+            ctx.strokeStyle = "rgba(0,0,0,0.5)";
+            ctx.lineWidth = 1.5 * s;
+            ctx.strokeRect(-36 * s, -22 * s, 72 * s, 22 * s);
+            // Wheels (spinning — phase by worldX)
+            ctx.fillStyle = "#111";
+            ctx.beginPath(); ctx.ellipse(-22 * s, 0, 9 * s, 5 * s, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.ellipse(22 * s, 0, 9 * s, 5 * s, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = "#555";
+            ctx.beginPath(); ctx.ellipse(-22 * s, 0, 5 * s, 3 * s, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.ellipse(22 * s, 0, 5 * s, 3 * s, 0, 0, Math.PI * 2); ctx.fill();
+            // Headlights (front = right when dir=1)
+            ctx.fillStyle = "rgba(255,250,180,0.9)";
+            ctx.fillRect(28 * s, -18 * s, 9 * s, 6 * s);
+            ctx.fillStyle = "rgba(220,30,30,0.85)";
+            ctx.fillRect(-37 * s, -18 * s, 7 * s, 6 * s);
+            // Headlight glow
+            ctx.save();
+            ctx.shadowColor = "rgba(255,255,160,0.8)";
+            ctx.shadowBlur = 18 * s;
+            ctx.fillStyle = "rgba(255,255,180,0.6)";
+            ctx.fillRect(37 * s, -16 * s, 4 * s, 4 * s);
+            ctx.restore();
+            ctx.restore();
+          },
+        });
       }
 
       for (const enemy of state.enemies) {
@@ -4122,14 +4651,23 @@ export default function ShootSimulator() {
       canvas.removeEventListener("pointermove", onPointerMove);
       canvas.removeEventListener("pointerup", onPointerUp);
       canvas.removeEventListener("pointercancel", onPointerUp);
+      canvas.removeEventListener("contextmenu", preventDefaultTouch);
+      canvas.removeEventListener("selectstart", preventDefaultTouch);
+      canvas.removeEventListener("touchstart", preventDefaultTouch);
+      canvas.removeEventListener("touchmove", preventDefaultTouch);
+      canvas.removeEventListener("touchend", preventDefaultTouch);
       coarseQuery.removeEventListener("change", onPointerKind);
     };
   }, []);
 
   return (
-    <div ref={containerRef} className="w-full h-full">
+    <div ref={containerRef} className="w-full h-full" style={{ userSelect: "none", WebkitUserSelect: "none" }}>
       {/* touchAction none so dragging the stick never scrolls the page */}
-      <canvas ref={canvasRef} className="block w-full h-full" style={{ touchAction: "none" }} />
+      <canvas
+        ref={canvasRef}
+        className="block w-full h-full"
+        style={{ touchAction: "none", userSelect: "none", WebkitUserSelect: "none" }}
+      />
     </div>
   );
 }
