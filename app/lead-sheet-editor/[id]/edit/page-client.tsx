@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useRef, use } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/app/hooks/useAuth";
-import { Save, ArrowLeft, Eye, Replace, X, Sparkles, Play, Timer, TimerOff, Clock, HelpCircle } from "lucide-react";
+import { Save, ArrowLeft, Eye, Replace, X, Sparkles, Play, Timer, TimerOff, Clock, HelpCircle, SlidersHorizontal } from "lucide-react";
 import { RevisionHistory } from "../../RevisionHistory";
 import {
   type LeadSheet,
@@ -14,6 +14,7 @@ import {
   migrateSection,
   OfflineBadge,
 } from "../../shared";
+import { asSectionHeader, isChordName } from "../../songText";
 import { cacheSheet, getCachedSheet } from "../../offlineCache";
 import { clearAllMarkers, parseTimeMarker } from "../../timing";
 import {
@@ -27,6 +28,7 @@ import {
   stripDrumSettings,
 } from "../../DrumMachine";
 import TapTiming from "../../TapTiming";
+import TrackEditor from "../../TrackEditor";
 import SyntaxHelp from "../../SyntaxHelp";
 
 // ─── Text ↔ LeadSheet ─────────────────────────────────────────────────────────
@@ -42,15 +44,6 @@ function inferSectionType(label: string): SectionType {
   return "other";
 }
 
-// A standalone [text] line is a section header unless the text looks like a chord
-const CHORD_RE = /^[A-G][b#]?(m|maj|min|dim|aug|sus|add|dom)?(\d+)?(\/[A-G][b#]?)?$/;
-function asSectionHeader(line: string): string | null {
-  const m = line.match(/^\[([^\[\]]+)\]$/);
-  if (!m) return null;
-  const inner = m[1].trim();
-  return CHORD_RE.test(inner) ? null : inner;
-}
-
 // ─── Bulk chord replace ───────────────────────────────────────────────────────
 
 // Every inline [X] that reads as a chord, with how often it appears. Section
@@ -61,7 +54,7 @@ function collectChords(text: string): { chord: string; count: number }[] {
     if (asSectionHeader(line) !== null) continue;
     for (const m of line.matchAll(/\[([^\[\]]*)\]/g)) {
       const inner = m[1].trim();
-      if (!CHORD_RE.test(inner)) continue;
+      if (!isChordName(inner)) continue;
       counts.set(inner, (counts.get(inner) ?? 0) + 1);
     }
   }
@@ -238,7 +231,8 @@ Performance notes (capo, feel, strumming pattern)...
 [Chorus]
 @0:24 [G]Take me [D]somewhere [Em]new
 
-Start a line with @m:ss to say when it comes in — hit Play to follow along.
+Start a line with @m:ss to say when it comes in — hit Play to follow along, or
+open Arrange to drag every line and drum hit around on tracks.
 Mark a stamped line [drum] to start the drum machine there, [/drum] to stop it — Help
 in the toolbar lists everything a song can carry.
 Paste a YouTube link anywhere in the song and Play rides the recording instead of a
@@ -262,6 +256,7 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
   const [replaceWith, setReplaceWith] = useState("");
   const [replaceResult, setReplaceResult] = useState("");
   const [tapOpen, setTapOpen] = useState(false);
+  const [arrangeOpen, setArrangeOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const sbRef = useRef<ReturnType<typeof createClient> | null>(null);
@@ -531,6 +526,14 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
                   Replace Chord
                 </button>
                 <button
+                  onClick={() => setArrangeOpen(true)}
+                  title="Lay the song out on tracks — drag each line and each sound to where it belongs"
+                  className="flex items-center gap-1.5 rounded border border-[#373A40]/30 dark:border-white/30 px-3 py-2 text-sm font-medium text-black dark:text-white/80 hover:border-black dark:hover:border-white hover:bg-black hover:text-yellow-400 transition-colors"
+                >
+                  <SlidersHorizontal className="w-4 h-4" />
+                  Arrange
+                </button>
+                <button
                   onClick={() => setTapOpen(true)}
                   title="Tap along with the song to time each line"
                   className="flex items-center gap-1.5 rounded border border-[#373A40]/30 dark:border-white/30 px-3 py-2 text-sm font-medium text-black dark:text-white/80 hover:border-black dark:hover:border-white hover:bg-black hover:text-yellow-400 transition-colors"
@@ -699,6 +702,14 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
 
       {tapOpen && (
         <TapTiming rawText={rawText} onApply={handleChange} onClose={() => setTapOpen(false)} />
+      )}
+
+      {arrangeOpen && (
+        <TrackEditor
+          rawText={rawText}
+          onApply={handleChange}
+          onClose={() => setArrangeOpen(false)}
+        />
       )}
 
       {historyOpen && sheetId && (

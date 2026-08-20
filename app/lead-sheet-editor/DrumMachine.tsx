@@ -747,7 +747,12 @@ async function renderDrumToWav(
 const LOOKAHEAD = 0.12;  // seconds ahead to schedule
 const TICK_MS   = 22;    // scheduler polling interval
 
-function useDrumScheduler(
+/**
+ * `drumsEnabled` is what the kit itself does while the loop runs: turn it off
+ * and the claps or the shimmer can carry a section on their own, which is how
+ * the arranger plays a claps-only chorus.
+ */
+export function useDrumScheduler(
   bpm: number,
   patternIdx: number,
   running: boolean,
@@ -756,6 +761,7 @@ function useDrumScheduler(
   snareStyle: SnareStyle,
   clapsEnabled: boolean,
   shimmerEnabled: boolean,
+  drumsEnabled = true,
 ): number {
   const ctxRef            = useRef<AudioContext | null>(null);
   const masterRef         = useRef<GainNode | null>(null);
@@ -769,6 +775,7 @@ function useDrumScheduler(
   const snareStyleRef     = useRef(snareStyle);
   const clapsEnabledRef   = useRef(clapsEnabled);
   const shimmerEnabledRef = useRef(shimmerEnabled);
+  const drumsEnabledRef   = useRef(drumsEnabled);
   const [activeStep, setActiveStep] = useState(-1);
 
   // Keep refs in sync so the scheduler loop picks up changes without restart
@@ -778,6 +785,7 @@ function useDrumScheduler(
   useEffect(() => { snareStyleRef.current = snareStyle; }, [snareStyle]);
   useEffect(() => { clapsEnabledRef.current = clapsEnabled; }, [clapsEnabled]);
   useEffect(() => { shimmerEnabledRef.current = shimmerEnabled; }, [shimmerEnabled]);
+  useEffect(() => { drumsEnabledRef.current = drumsEnabled; }, [drumsEnabled]);
   useEffect(() => {
     volumeRef.current = volume;
     if (masterRef.current) masterRef.current.gain.value = volume;
@@ -819,15 +827,17 @@ function useDrumScheduler(
         const step = stepRef.current;
         const when = nextTimeRef.current;
 
-        if (pat.kick[step]) {
-          if (kickStyleRef.current === "808") playKick808(ctx, dst, when);
-          else playKick(ctx, dst, when);
+        if (drumsEnabledRef.current) {
+          if (pat.kick[step]) {
+            if (kickStyleRef.current === "808") playKick808(ctx, dst, when);
+            else playKick(ctx, dst, when);
+          }
+          if (pat.snare[step]) {
+            if (snareStyleRef.current === "brush") playSnareBrush(ctx, dst, when);
+            else playSnare(ctx, dst, when);
+          }
+          if (pat.hihat[step]) playHihat(ctx, dst, when);
         }
-        if (pat.snare[step]) {
-          if (snareStyleRef.current === "brush") playSnareBrush(ctx, dst, when);
-          else playSnare(ctx, dst, when);
-        }
-        if (pat.hihat[step]) playHihat(ctx, dst, when);
         // Claps on beats 2 and 4 (steps 4 and 12)
         if (clapsEnabledRef.current && (step === 4 || step === 12)) playClap(ctx, dst, when);
         // Shimmer on every step — continuous high-freq sparkle

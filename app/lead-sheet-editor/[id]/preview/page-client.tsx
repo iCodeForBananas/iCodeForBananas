@@ -45,121 +45,16 @@ import {
   DEFAULT_BPM,
 } from "../../Metronome";
 import {
+  getCueTagInfo,
+  parseCueEvents,
+  stripCueMarkers,
+} from "../../cues";
+import {
   DrumMachineControl,
   DEFAULT_DRUM_SETTINGS,
   normalizeDrumSettings,
   type DrumSettings,
 } from "../../DrumMachine";
-
-// ── Cue tag parsing ────────────────────────────────────────────────
-//
-// Syntax: @M:SS [drum]              — start a layer
-//         @M:SS [drum, claps]       — start several
-//         @M:SS [/drum]             — stop one
-//         @M:SS [/all]              — stop everything
-//         @M:SS [drum, fade-in]     — with a fade modifier
-//
-// A bracket only counts as a cue when every word inside it is a known layer or
-// modifier. Everything else in brackets — [G], [Am7/C], [Chorus] — is left
-// alone so chords keep rendering as chords.
-
-/** Layers the scheduler knows how to play. Adding a sound? Add its name here. */
-const CUE_LAYERS = new Set(["drum", "claps", "shimmer"]);
-const MODIFIERS = new Set(["fade-in", "fade-out"]);
-
-interface CueEvent {
-  time: number;
-  starts: string[];    // layer names to start
-  stops: string[];     // layer names to stop ("all" is a wildcard)
-  fadeIn: boolean;
-  fadeOut: boolean;
-}
-
-interface CueTokens {
-  starts: string[];
-  stops: string[];
-  fadeIn: boolean;
-  fadeOut: boolean;
-}
-
-const CUE_TAG_RE_G = /\[([^\[\]]*)\]/g;
-const TIMESTAMP_RE = /^@(\d+):(\d{2})\b/;
-
-function isCueWord(word: string): boolean {
-  if (MODIFIERS.has(word)) return true;
-  if (word.startsWith("/")) return word === "/all" || CUE_LAYERS.has(word.slice(1));
-  return CUE_LAYERS.has(word);
-}
-
-/**
- * Cue tokens from every cue bracket on the line, or null when the line carries
- * none. A bracket has to be cues all the way through to count — one stray word
- * and it is somebody's chord, not a cue.
- */
-function readCueTokens(line: string): CueTokens | null {
-  const starts: string[] = [];
-  const stops: string[] = [];
-  let fadeIn = false;
-  let fadeOut = false;
-  let found = false;
-
-  for (const m of line.matchAll(CUE_TAG_RE_G)) {
-    const words = m[1].split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
-    if (words.length === 0 || !words.every(isCueWord)) continue;
-    if (!words.some((w) => w !== "fade-in" && w !== "fade-out")) continue;
-    found = true;
-    for (const word of words) {
-      if (word === "fade-in") fadeIn = true;
-      else if (word === "fade-out") fadeOut = true;
-      else if (word.startsWith("/")) stops.push(word.slice(1));
-      else starts.push(word);
-    }
-  }
-
-  return found ? { starts, stops, fadeIn, fadeOut } : null;
-}
-
-function parseCueEvents(sections: Section[]): CueEvent[] {
-  const events: CueEvent[] = [];
-  for (const section of sections) {
-    for (const line of (section.content ?? "").split("\n")) {
-      const tm = line.match(TIMESTAMP_RE);
-      if (!tm) continue;
-      const secs = parseInt(tm[1]) * 60 + parseInt(tm[2]);
-      const cue = readCueTokens(line);
-      if (!cue) continue;
-      if (cue.starts.length > 0 || cue.stops.length > 0) {
-        events.push({ time: secs, ...cue });
-      }
-    }
-  }
-  return events.sort((a, b) => a.time - b.time);
-}
-
-/** Drop the cue brackets from a line, leaving chords and lyrics untouched. */
-function stripCueMarkers(line: string): string {
-  return line
-    .replace(CUE_TAG_RE_G, (full, inner: string) => {
-      const words = inner.split(",").map((s: string) => s.trim().toLowerCase()).filter(Boolean);
-      return words.length > 0 && words.every(isCueWord) ? "" : full;
-    })
-    .replace(/\s{2,}/g, " ")
-    .trimEnd();
-}
-
-/** How a layer reads on the page — "drum" is one word to type, many to hear. */
-const LAYER_LABELS: Record<string, string> = { drum: "drums", all: "everything" };
-
-/** Badge text for a cued line: which layers move, and which way. */
-function getCueTagInfo(line: string): { label: string; isStop: boolean } | null {
-  const cue = readCueTokens(line);
-  if (!cue) return null;
-  const isStop = cue.starts.length === 0 && cue.stops.length > 0;
-  const layers = cue.starts.length > 0 ? cue.starts : cue.stops;
-  if (layers.length === 0) return null;
-  const names = layers.map((l) => LAYER_LABELS[l] ?? l).join(", ");
-  return { label: `${names} ${isStop ? "out" : "in"}`, isStop };
-}
 
 // Per-song localStorage keys: leadSheet:${id}:fontScale, leadSheet:${id}:columnCount,
 // leadSheet:${id}:columnWidthVw, leadSheet:${id}:beatsPerBar

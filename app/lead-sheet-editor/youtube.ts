@@ -60,16 +60,22 @@ function parseStart(url: URL): number {
   return Number(parts[1] ?? 0) * 3600 + Number(parts[2] ?? 0) * 60 + Number(parts[3] ?? 0);
 }
 
-/** The first YouTube link anywhere in the song, or null if there isn't one. */
-export function findYouTubeLink(sheet: LeadSheet | null | undefined): YouTubeLink | null {
-  if (!sheet) return null;
-  const haystack = [
-    sheet.general_notes ?? "",
-    ...(sheet.sections ?? []).flatMap((section) => [section.content ?? "", section.notes ?? ""]),
-  ].join("\n");
-  for (const match of haystack.match(URL_RE) ?? []) {
+/** The first YouTube link in a block of song text, or null if there isn't one. */
+export function findYouTubeLinkInText(text: string): YouTubeLink | null {
+  for (const match of text.match(URL_RE) ?? []) {
     const link = parseYouTubeUrl(match);
     if (link) return link;
   }
   return null;
+}
+
+/** The first YouTube link anywhere in the song, or null if there isn't one. */
+export function findYouTubeLink(sheet: LeadSheet | null | undefined): YouTubeLink | null {
+  if (!sheet) return null;
+  return findYouTubeLinkInText(
+    [
+      sheet.general_notes ?? "",
+      ...(sheet.sections ?? []).flatMap((section) => [section.content ?? "", section.notes ?? ""]),
+    ].join("\n")
+  );
 }

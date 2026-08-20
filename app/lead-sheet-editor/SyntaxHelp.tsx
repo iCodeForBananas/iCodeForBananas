@@ -54,6 +54,7 @@ const ENTRIES: Entry[] = [
       "@0:18-0:24 sets an explicit end, leaving a gap after the line instead of running into the next one.",
       "Lines above the first stamp are a pre-roll and never light up.",
       "Tap Timing stamps the whole song by ear; Clear Times wipes every stamp.",
+      "Arrange opens the whole song as tracks — drag a line to move its stamp instead of typing one.",
     ],
   },
   {
@@ -66,11 +67,12 @@ const ENTRIES: Entry[] = [
       "Tags stack in one bracket, comma separated — [drum, claps] starts both at once.",
       "[/all] cuts everything that is currently playing.",
       "Add fade-in or fade-out to ride the volume over four seconds instead of snapping — [drum, fade-out] fades the drums away.",
-      "A tag only fires on a line that starts with a stamp in m:ss form — @1:30 works, @90 does not.",
+      "A tag only fires on a line that starts with a time stamp — without one there is no moment for it to happen at.",
       "You can hang a tag off a lyric line instead of giving it its own line — @1:30 [/drum] [Em]just voice works the same.",
       "Chords are safe: only the known sound names count as tags, so [G] and [Am7/C] stay chords.",
       "Tags are stripped out of the previewed and printed sheet, so a tag on its own line reads as blank on the page.",
       "Only playback moves the sounds. Open a sheet without pressing Play and the toggles stay under your own control.",
+      "Arrange in the toolbar draws these tags as clips you can slide and stretch, and writes them back for you.",
     ],
   },
   {
@@ -106,6 +108,7 @@ const TAG_REFERENCE: { tag: string; does: string }[] = [
   { tag: "> note", does: "A performance note on the section" },
   { tag: "[Chorus]", does: "A line that is only a name starts a section" },
   { tag: "[G]", does: "A chord, right before the syllable it lands on" },
+  { tag: "Arrange", does: "The toolbar button that lays all of this out on draggable tracks" },
 ];
 
 // ─── Modal ────────────────────────────────────────────────────────────────────
