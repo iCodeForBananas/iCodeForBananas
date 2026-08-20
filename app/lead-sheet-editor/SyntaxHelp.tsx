@@ -57,16 +57,20 @@ const ENTRIES: Entry[] = [
     ],
   },
   {
-    title: "Drum machine triggers",
+    title: "Sound tags",
     blurb:
-      "Put [drum] on a time-stamped line and the drum machine starts itself at that moment during playback. [/drum] stops it. Use as many pairs as you like — the drums drop out and come back in wherever you mark them.",
+      "A tag in square brackets on a time-stamped line switches a sound on or off during playback. [drum] starts the drum machine, [/drum] stops it, and the same works for claps and shimmer. Use as many as you like — the band drops out and comes back in wherever you mark it.",
     example:
-      "[Intro]\n@0:00 [drum]\n@0:08 [G]Driving down an [D]empty road\n\n[Bridge]\n@1:30 [/drum]\n@1:30 [Em]just voice and guitar here\n@1:52 [drum]\n@1:52 [C]and the band comes back in",
+      "[Intro]\n@0:00 [drum]\n@0:08 [G]Driving down an [D]empty road\n\n[Chorus]\n@0:44 [claps, shimmer]\n\n[Bridge]\n@1:30 [/all]\n@1:30 [Em]just voice and guitar here\n@1:52 [drum, fade-in]\n@1:52 [C]and the band comes back in",
     notes: [
-      "A marker only fires on a line that starts with a stamp in m:ss form — @1:30 works, @90 does not.",
-      "You can hang the marker off a lyric line instead of giving it its own line — @1:30 [/drum] [Em]just voice works the same.",
-      "The markers are stripped out of the previewed and printed sheet, so a marker on its own line reads as blank on the page.",
-      "Only playback moves the drums. Open a sheet without pressing Play and the drum toggle stays under your own control.",
+      "Tags stack in one bracket, comma separated — [drum, claps] starts both at once.",
+      "[/all] cuts everything that is currently playing.",
+      "Add fade-in or fade-out to ride the volume over four seconds instead of snapping — [drum, fade-out] fades the drums away.",
+      "A tag only fires on a line that starts with a stamp in m:ss form — @1:30 works, @90 does not.",
+      "You can hang a tag off a lyric line instead of giving it its own line — @1:30 [/drum] [Em]just voice works the same.",
+      "Chords are safe: only the known sound names count as tags, so [G] and [Am7/C] stay chords.",
+      "Tags are stripped out of the previewed and printed sheet, so a tag on its own line reads as blank on the page.",
+      "Only playback moves the sounds. Open a sheet without pressing Play and the toggles stay under your own control.",
     ],
   },
   {
@@ -88,6 +92,20 @@ const ENTRIES: Entry[] = [
       "?t=15 says the song's 0:00 sits 15 seconds into the video — use it when there's talking or an intro before the count-in.",
     ],
   },
+];
+
+const TAG_REFERENCE: { tag: string; does: string }[] = [
+  { tag: "[drum]", does: "Start the drum machine" },
+  { tag: "[claps]", does: "Start handclaps on 2 and 4" },
+  { tag: "[shimmer]", does: "Start the airy shimmer texture" },
+  { tag: "[/drum]", does: "Stop the drums — same for [/claps] and [/shimmer]" },
+  { tag: "[/all]", does: "Stop everything that is playing" },
+  { tag: "fade-in", does: "Modifier: fade the sound up over four seconds" },
+  { tag: "fade-out", does: "Modifier: fade the sound away over four seconds" },
+  { tag: "@m:ss", does: "When the line comes in — tags need one to fire" },
+  { tag: "> note", does: "A performance note on the section" },
+  { tag: "[Chorus]", does: "A line that is only a name starts a section" },
+  { tag: "[G]", does: "A chord, right before the syllable it lands on" },
 ];
 
 // ─── Modal ────────────────────────────────────────────────────────────────────
@@ -175,6 +193,22 @@ export default function SyntaxHelp({ onClose }: { onClose: () => void }) {
               )}
             </section>
           ))}
+
+          {/* The tag vocabulary in one glance — the table the Help button is for. */}
+          <section>
+            <h3 className="text-sm font-medium text-yellow-400">Tag reference</h3>
+            <p className="mt-1 text-xs leading-relaxed text-white/60">
+              Every tag the player understands, and what it does.
+            </p>
+            <div className="mt-2 divide-y divide-white/5 rounded border border-white/10">
+              {TAG_REFERENCE.map((tag) => (
+                <div key={tag.tag} className="flex items-baseline gap-3 px-3 py-1.5">
+                  <code className="w-28 shrink-0 font-mono text-xs text-white">{tag.tag}</code>
+                  <span className="text-xs leading-relaxed text-white/50">{tag.does}</span>
+                </div>
+              ))}
+            </div>
+          </section>
 
           {/* Generated from the kit itself, so the list can never drift. */}
           <section>
