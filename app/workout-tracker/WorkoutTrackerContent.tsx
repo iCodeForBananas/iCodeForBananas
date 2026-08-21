@@ -243,12 +243,12 @@ export default function WorkoutTrackerContent() {
               style={{
                 backgroundColor:
                   day.count === 0
-                    ? "#ebedf0"
+                    ? "#e2e8f0"
                     : day.count <= 1
-                      ? "#fef3c7"
+                      ? "#bfdbfe"
                       : day.count <= 3
-                        ? "#fcd34d"
-                        : "#facc15",
+                        ? "#3b82f6"
+                        : "#1e3a8a",
               }}
               onMouseEnter={(e) => {
                 const rect = e.currentTarget.getBoundingClientRect();

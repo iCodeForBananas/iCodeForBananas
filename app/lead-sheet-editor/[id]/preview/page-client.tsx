@@ -55,6 +55,12 @@ import {
   normalizeDrumSettings,
   type DrumSettings,
 } from "../../DrumMachine";
+import {
+  StringPadsControl,
+  DEFAULT_STRING_SETTINGS,
+  normalizeStringSettings,
+  type StringPadsSettings,
+} from "../../StringPads";
 
 // Per-song localStorage keys: leadSheet:${id}:fontScale, leadSheet:${id}:columnCount,
 // leadSheet:${id}:columnWidthVw, leadSheet:${id}:beatsPerBar
@@ -225,39 +231,66 @@ function TransposeControl({ steps, onChange }: { steps: number; onChange: (next:
 
 function PlayControl({
   hasTiming,
-  hasVideo,
+  videoLink,
+  withVideo,
+  onWithVideoToggle,
   open,
   onOpen,
   onClose,
 }: {
   hasTiming: boolean;
-  /** A YouTube link in the song — the transport rides the recording instead of a clock. */
-  hasVideo: boolean;
+  /** A YouTube link found in the song, or null. */
+  videoLink: string | null;
+  /** Whether the YouTube video is included in playback (only relevant when videoLink != null). */
+  withVideo: boolean;
+  onWithVideoToggle: () => void;
   open: boolean;
   onOpen: () => void;
   onClose: () => void;
 }) {
+  const playBtnClass = `h-10 flex items-center gap-1.5 px-3 text-sm font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed ${
+    videoLink ? "rounded-l-lg" : "rounded-lg"
+  } ${
+    open
+      ? "bg-yellow-400 text-black hover:bg-yellow-300"
+      : "bg-gray-100 dark:bg-neutral-800 hover:bg-gray-200 dark:hover:bg-neutral-700 text-gray-700 dark:text-neutral-200"
+  }`;
+
   return (
-    <button
-      type='button'
-      onClick={open ? onClose : onOpen}
-      disabled={!hasTiming}
-      title={
-        !hasTiming
-          ? "Add @0:12 style timings to lines in the editor to enable playback"
-          : hasVideo
-            ? "Play the linked YouTube video and follow along with it"
+    <div className='flex items-center print:hidden'>
+      <button
+        type='button'
+        onClick={open ? onClose : onOpen}
+        disabled={!hasTiming}
+        title={
+          !hasTiming
+            ? "Add @0:12 style timings to lines in the editor to enable playback"
             : "Follow along in time with the song"
-      }
-      className={`h-10 flex items-center gap-1.5 px-3 rounded-lg text-sm font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed print:hidden ${
-        open
-          ? "bg-yellow-400 text-black hover:bg-yellow-300"
-          : "bg-gray-100 dark:bg-neutral-800 hover:bg-gray-200 dark:hover:bg-neutral-700 text-gray-700 dark:text-neutral-200"
-      }`}
-    >
-      {hasVideo ? <Youtube className='w-4 h-4' /> : <Play className='w-4 h-4' />}
-      {open ? "Playing" : hasVideo ? "Play Video" : "Play"}
-    </button>
+        }
+        className={playBtnClass}
+      >
+        <Play className='w-4 h-4' />
+        {open ? "Playing" : "Play"}
+      </button>
+      {videoLink && (
+        <button
+          type='button'
+          onClick={onWithVideoToggle}
+          title={withVideo ? "YouTube video enabled — click to play without it" : "Click to play with the linked YouTube video"}
+          className={`h-10 flex items-center px-2 rounded-r-lg border-l text-sm transition-colors duration-150 ${
+            open
+              ? withVideo
+                ? "bg-yellow-300 text-black border-yellow-500/60 hover:bg-yellow-200"
+                : "bg-yellow-400 text-black/40 border-yellow-500/40 hover:bg-yellow-300"
+              : withVideo
+                ? "bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 border-gray-200 dark:border-neutral-600 hover:bg-blue-200 dark:hover:bg-blue-900/60"
+                : "bg-gray-100 dark:bg-neutral-800 text-gray-400 dark:text-neutral-500 border-gray-200 dark:border-neutral-700 hover:bg-gray-200 dark:hover:bg-neutral-700"
+          }`}
+        >
+          <Youtube className='w-4 h-4' />
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -457,11 +490,15 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
       return next;
     });
   const [drumSettings, setDrumSettings] = useState<DrumSettings>(DEFAULT_DRUM_SETTINGS);
+  const [stringSettings, setStringSettings] = useState<StringPadsSettings>(DEFAULT_STRING_SETTINGS);
+  const stringsRunning = activeLayers.has("strings");
+  const [withVideo, setWithVideo] = useState(true);
   const [localVolume, _setLocalVolume] = useState<number | null>(null);
   const localVolumeRef = useRef<number | null>(null);
   const setLocalVolume = (v: number | null) => { localVolumeRef.current = v; _setLocalVolume(v); };
   const bpmSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const drumSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const stringSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fadeTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastCueEventIdxRef = useRef<number>(-2); // -2 = uninitialized
 
@@ -478,8 +515,8 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
   // won't embed.
   const videoLink = useMemo(() => findYouTubeLink(sheet), [sheet]);
   const stopwatch = usePlayback(timeline.duration);
-  const video = useYouTubePlayback(playbackOpen ? videoLink : null, timeline.duration);
-  const videoDrivesPlayback = !!videoLink && video.status !== "error";
+  const video = useYouTubePlayback(playbackOpen && withVideo ? videoLink : null, timeline.duration);
+  const videoDrivesPlayback = !!videoLink && withVideo && video.status !== "error";
   const playback = videoDrivesPlayback ? video.playback : stopwatch;
   const { seek, toggle, stop, time } = playback;
   const activeCue = playbackOpen ? cueAt(timeline, time) : null;
@@ -731,6 +768,25 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
 
   useEffect(() => () => { if (drumSaveTimer.current) clearTimeout(drumSaveTimer.current); }, []);
 
+  const updateStringSettings = (patch: Partial<StringPadsSettings>) => {
+    const next = { ...stringSettings, ...patch };
+    setStringSettings(next);
+    setSheet((prev) => (prev ? { ...prev, metadata: { ...prev.metadata, strings: next } } : prev));
+    if (stringSaveTimer.current) clearTimeout(stringSaveTimer.current);
+    stringSaveTimer.current = setTimeout(async () => {
+      const metadata = { ...sheet?.metadata, strings: next };
+      try {
+        await createClient()!
+          .from("lead_sheets")
+          .update({ metadata, updated_at: new Date().toISOString() })
+          .eq("id", id);
+        if (sheet) await cacheSheet({ ...sheet, metadata });
+      } catch {}
+    }, 800);
+  };
+
+  useEffect(() => () => { if (stringSaveTimer.current) clearTimeout(stringSaveTimer.current); }, []);
+
   // When a fade is in progress, override the volume without touching persisted settings
   const effectiveDrumSettings = localVolume !== null
     ? { ...drumSettings, volume: localVolume }
@@ -760,6 +816,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
         setSheet({ ...data, sections: data.sections.map(migrateSection) });
         setBpm(data.tempo ? clampBpm(data.tempo) : DEFAULT_BPM);
         setDrumSettings(normalizeDrumSettings(data.metadata?.drums));
+        setStringSettings(normalizeStringSettings(data.metadata?.strings));
         setOffline(false);
         await cacheSheet(data);
       }
@@ -769,6 +826,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
         setSheet({ ...cached, sections: cached.sections.map(migrateSection) });
         setBpm(cached.tempo ? clampBpm(cached.tempo) : DEFAULT_BPM);
         setDrumSettings(normalizeDrumSettings(cached.metadata?.drums));
+        setStringSettings(normalizeStringSettings(cached.metadata?.strings));
         setOffline(true);
       }
     }
@@ -849,7 +907,14 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                     shimmerEnabled={shimmerRunning}
                     onShimmerToggle={() => toggleLayer("shimmer")}
                   />
-                  <PlayControl hasTiming={hasTiming} hasVideo={videoDrivesPlayback} open={playbackOpen} onOpen={openPlayback} onClose={closePlayback} />
+                  <StringPadsControl
+                    songKey={sheet?.key ?? null}
+                    running={stringsRunning}
+                    onToggle={() => toggleLayer("strings")}
+                    settings={stringSettings}
+                    onSettingsChange={updateStringSettings}
+                  />
+                  <PlayControl hasTiming={hasTiming} videoLink={videoLink} withVideo={withVideo} onWithVideoToggle={() => setWithVideo((v) => !v)} open={playbackOpen} onOpen={openPlayback} onClose={closePlayback} />
                   <div className='w-px self-stretch bg-gray-300 dark:bg-neutral-600' />
                   {setIds && <NextSongControl setIds={setIds} pos={setPos} onNext={goToNextSong} />}
                   <button
@@ -952,7 +1017,14 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                     shimmerEnabled={shimmerRunning}
                     onShimmerToggle={() => toggleLayer("shimmer")}
                   />
-                    <PlayControl hasTiming={hasTiming} hasVideo={videoDrivesPlayback} open={playbackOpen} onOpen={openPlayback} onClose={closePlayback} />
+                  <StringPadsControl
+                    songKey={sheet?.key ?? null}
+                    running={stringsRunning}
+                    onToggle={() => toggleLayer("strings")}
+                    settings={stringSettings}
+                    onSettingsChange={updateStringSettings}
+                  />
+                    <PlayControl hasTiming={hasTiming} videoLink={videoLink} withVideo={withVideo} onWithVideoToggle={() => setWithVideo((v) => !v)} open={playbackOpen} onOpen={openPlayback} onClose={closePlayback} />
                     <div className='w-px self-stretch bg-gray-300 dark:bg-neutral-600' />
                     {setIds && <NextSongControl setIds={setIds} pos={setPos} onNext={goToNextSong} />}
                     <button
@@ -1030,7 +1102,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
           />
         )}
 
-        {playbackOpen && videoLink && (
+        {playbackOpen && videoLink && withVideo && (
           <YouTubePanel link={videoLink} status={video.status} mount={video.mount} />
         )}
 
