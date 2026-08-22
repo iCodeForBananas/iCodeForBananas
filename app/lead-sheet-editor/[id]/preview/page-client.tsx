@@ -20,6 +20,9 @@ import {
   Link2,
   Play,
   Youtube,
+  ChevronDown,
+  ChevronUp,
+  Mic,
 } from "lucide-react";
 import {
   type LeadSheet,
@@ -61,6 +64,7 @@ import {
   normalizeStringSettings,
   type StringPadsSettings,
 } from "../../StringPads";
+import { ArrangementPanel } from "../../ArrangementPanel";
 
 // Per-song localStorage keys: leadSheet:${id}:fontScale, leadSheet:${id}:columnCount,
 // leadSheet:${id}:columnWidthVw, leadSheet:${id}:beatsPerBar
@@ -471,6 +475,8 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
   const [setIds, setSetIds] = useState<string[] | null>(null);
   const [setPos, setSetPos] = useState(0);
   const [playbackOpen, setPlaybackOpen] = useState(false);
+  const [toolbarOpen,      setToolbarOpen     ] = useState(true);
+  const [showArrangement,  setShowArrangement ] = useState(false);
   const [follow, setFollow] = useState(true);
   const [autoPlay, setAutoPlay] = useState(false);
   const [bpm, setBpm] = useState(DEFAULT_BPM);
@@ -871,120 +877,160 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
       <div className='print:hidden flex flex-col flex-1 min-h-0'>
         {fullscreen ? (
           <div className='fixed inset-0 z-50 bg-white dark:bg-black overflow-y-auto overflow-x-hidden'>
-            <div className='w-full py-8'>
+            <div className='w-full'>
               {/* Toolbar (kept constrained while content below goes full-width) */}
-              <div className='max-w-3xl mx-auto px-4'>
-              <div className='flex flex-wrap items-center justify-between gap-3 mb-8'>
-                <button
-                  onClick={() => setFullscreen(false)}
-                  className='h-10 flex items-center gap-2 px-3 rounded-lg bg-gray-100 dark:bg-neutral-800 hover:bg-gray-200 dark:hover:bg-neutral-700 text-gray-700 dark:text-neutral-200 transition-colors duration-150 text-sm font-medium'
-                >
-                  <ArrowLeft className='w-4 h-4' />
-                  Exit Fullscreen
-                </button>
-                {offline && <OfflineBadge />}
-                <div className='flex flex-wrap items-center gap-2'>
-                  <FontScaleControl scale={fontScale} onChange={updateFontScale} />
-                  <ColumnCountControl count={columnCount} onChange={updateColumnCount} />
-                  <ColumnWidthControl width={columnWidthVw} onChange={updateColumnWidthVw} />
-                  <TransposeControl steps={transposeSteps} onChange={setTransposeSteps} />
-                  <MetronomeControl
-                    bpm={bpm}
-                    onBpmChange={updateBpm}
-                    beatsPerBar={beatsPerBar}
-                    onBeatsPerBarChange={updateBeatsPerBar}
-                    running={metronomeOn}
-                    onToggle={() => setMetronomeOn((on) => !on)}
-                  />
-                  <DrumMachineControl
-                    bpm={bpm}
-                    running={drumRunning}
-                    onToggle={() => toggleLayer("drum")}
-                    settings={effectiveDrumSettings}
-                    onSettingsChange={updateDrumSettings}
-                    clapsEnabled={clapsRunning}
-                    shimmerEnabled={shimmerRunning}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => toggleLayer("claps")}
-                    title="Hand claps on beats 2 & 4"
-                    className={`h-8 px-2.5 text-xs font-medium rounded-lg border transition-colors duration-100 flex-shrink-0 print:hidden ${
-                      clapsRunning
-                        ? "bg-amber-400 text-white border-amber-400"
-                        : "bg-gray-100 dark:bg-neutral-800 text-gray-600 dark:text-neutral-300 border-gray-200 dark:border-neutral-700 hover:bg-gray-200 dark:hover:bg-neutral-700"
-                    }`}
+              <div className='sticky top-0 z-10 bg-white dark:bg-black border-b border-gray-200 dark:border-neutral-800 print:hidden'>
+                <div className='max-w-3xl mx-auto px-4'>
+                  {/* Always-visible header strip */}
+                  <div className='flex items-center justify-between gap-2 py-2'>
+                    <div className='flex items-center gap-2 min-w-0'>
+                      <button
+                        onClick={() => setFullscreen(false)}
+                        className='h-9 flex items-center gap-1.5 px-2.5 rounded-lg bg-gray-100 dark:bg-neutral-800 hover:bg-gray-200 dark:hover:bg-neutral-700 text-gray-700 dark:text-neutral-200 transition-colors duration-150 text-sm font-medium shrink-0'
+                      >
+                        <ArrowLeft className='w-4 h-4' />
+                        Exit
+                      </button>
+                      {offline && <OfflineBadge />}
+                      <span className='text-sm font-semibold text-gray-800 dark:text-neutral-100 truncate'>
+                        {sheet.title}
+                      </span>
+                    </div>
+                    <div className='flex items-center gap-1.5 shrink-0'>
+                      <PlayControl hasTiming={hasTiming} videoLink={videoLink} withVideo={withVideo} onWithVideoToggle={() => setWithVideo((v) => !v)} open={playbackOpen} onOpen={openPlayback} onClose={closePlayback} />
+                      {setIds && <NextSongControl setIds={setIds} pos={setPos} onNext={goToNextSong} />}
+                      <button
+                        onClick={() => setToolbarOpen((o) => !o)}
+                        title={toolbarOpen ? "Hide controls" : "Show controls"}
+                        className='h-9 w-9 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-neutral-800 hover:bg-gray-200 dark:hover:bg-neutral-700 text-gray-500 dark:text-neutral-400 transition-colors duration-150'
+                      >
+                        {toolbarOpen ? <ChevronUp className='w-4 h-4' /> : <ChevronDown className='w-4 h-4' />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Collapsible controls panel */}
+                  <div
+                    className='overflow-hidden transition-all duration-300 ease-in-out'
+                    style={{ maxHeight: toolbarOpen ? "500px" : "0px", opacity: toolbarOpen ? 1 : 0 }}
                   >
-                    Claps
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => toggleLayer("shimmer")}
-                    title="Shimmer — soft high-freq sparkle on every step"
-                    className={`h-8 px-2.5 text-xs font-medium rounded-lg border transition-colors duration-100 flex-shrink-0 print:hidden ${
-                      shimmerRunning
-                        ? "bg-sky-400 text-white border-sky-400"
-                        : "bg-gray-100 dark:bg-neutral-800 text-gray-600 dark:text-neutral-300 border-gray-200 dark:border-neutral-700 hover:bg-gray-200 dark:hover:bg-neutral-700"
-                    }`}
-                  >
-                    Shimmer
-                  </button>
-                  <StringPadsControl
-                    songKey={sheet?.key ?? null}
-                    running={stringsRunning}
-                    onToggle={() => toggleLayer("strings")}
-                    settings={stringSettings}
-                    onSettingsChange={updateStringSettings}
-                  />
-                  <PlayControl hasTiming={hasTiming} videoLink={videoLink} withVideo={withVideo} onWithVideoToggle={() => setWithVideo((v) => !v)} open={playbackOpen} onOpen={openPlayback} onClose={closePlayback} />
-                  <div className='w-px self-stretch bg-gray-300 dark:bg-neutral-600' />
-                  {setIds && <NextSongControl setIds={setIds} pos={setPos} onNext={goToNextSong} />}
-                  <button
-                    onClick={handleCopy}
-                    className={`h-10 flex items-center gap-1.5 px-3 rounded-lg text-sm font-medium transition-colors duration-150 ${
-                      copied
-                        ? "bg-blue-100 hover:bg-blue-200 text-blue-700"
-                        : "bg-gray-100 hover:bg-gray-200 text-gray-700"
-                    }`}
-                  >
-                    {copied ? <Check className='w-4 h-4' /> : <Copy className='w-4 h-4' />}
-                    {copied ? "Copied!" : "Copy Text"}
-                  </button>
-                  <button
-                    onClick={handleShare}
-                    className={`h-10 flex items-center gap-1.5 px-3 rounded-lg text-sm font-medium transition-colors duration-150 ${
-                      shared
-                        ? "bg-blue-100 hover:bg-blue-200 text-blue-700"
-                        : "bg-gray-100 hover:bg-gray-200 text-gray-700"
-                    }`}
-                  >
-                    {shared ? <Check className='w-4 h-4' /> : <Link2 className='w-4 h-4' />}
-                    {shared ? "Link Copied!" : "Share"}
-                  </button>
-                  <button
-                    onClick={() => printSong(sheet.title)}
-                    className='h-10 flex items-center gap-1.5 px-3 rounded-lg text-sm font-medium bg-gray-100 dark:bg-neutral-800 hover:bg-gray-200 dark:hover:bg-neutral-700 text-gray-700 dark:text-neutral-200 transition-colors duration-150'
-                  >
-                    <Printer className='w-4 h-4' /> Print
-                  </button>
-                  <button
-                    onClick={() => setFullscreen(false)}
-                    className='h-10 flex items-center gap-1.5 px-3 rounded-lg text-sm font-medium bg-gray-100 dark:bg-neutral-800 hover:bg-gray-200 dark:hover:bg-neutral-700 text-gray-700 dark:text-neutral-200 transition-colors duration-150'
-                  >
-                    <Minimize2 className='w-4 h-4' /> Exit
-                  </button>
-                  <div className='w-px self-stretch bg-gray-300 dark:bg-neutral-600' />
-                  <button
-                    onClick={() => router.push(`/lead-sheet-editor/${id}/edit`)}
-                    className='h-10 flex items-center gap-1.5 px-3 rounded-lg text-sm font-medium bg-black hover:bg-black/80 text-yellow-400 transition-colors duration-150'
-                  >
-                    <Pencil className='w-4 h-4' />
-                    Edit
-                  </button>
+                    <div className='pb-3 pt-1'>
+                      {/* Row 1: Display */}
+                      <div className='flex flex-wrap items-center gap-2 mb-2'>
+                        <span className='text-xs font-medium text-gray-400 dark:text-neutral-500 uppercase tracking-wide w-12 shrink-0'>Display</span>
+                        <FontScaleControl scale={fontScale} onChange={updateFontScale} />
+                        <ColumnCountControl count={columnCount} onChange={updateColumnCount} />
+                        <ColumnWidthControl width={columnWidthVw} onChange={updateColumnWidthVw} />
+                        <TransposeControl steps={transposeSteps} onChange={setTransposeSteps} />
+                      </div>
+                      {/* Row 2: Audio */}
+                      <div className='flex flex-wrap items-center gap-2 mb-2'>
+                        <span className='text-xs font-medium text-gray-400 dark:text-neutral-500 uppercase tracking-wide w-12 shrink-0'>Audio</span>
+                        <MetronomeControl
+                          bpm={bpm}
+                          onBpmChange={updateBpm}
+                          beatsPerBar={beatsPerBar}
+                          onBeatsPerBarChange={updateBeatsPerBar}
+                          running={metronomeOn}
+                          onToggle={() => setMetronomeOn((on) => !on)}
+                        />
+                        <DrumMachineControl
+                          bpm={bpm}
+                          running={drumRunning}
+                          onToggle={() => toggleLayer("drum")}
+                          settings={effectiveDrumSettings}
+                          onSettingsChange={updateDrumSettings}
+                          clapsEnabled={clapsRunning}
+                          shimmerEnabled={shimmerRunning}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => toggleLayer("claps")}
+                          title="Hand claps on beats 2 & 4"
+                          className={`h-8 px-2.5 text-xs font-medium rounded-lg border transition-colors duration-100 flex-shrink-0 ${
+                            clapsRunning
+                              ? "bg-amber-400 text-white border-amber-400"
+                              : "bg-gray-100 dark:bg-neutral-800 text-gray-600 dark:text-neutral-300 border-gray-200 dark:border-neutral-700 hover:bg-gray-200 dark:hover:bg-neutral-700"
+                          }`}
+                        >
+                          Claps
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => toggleLayer("shimmer")}
+                          title="Shimmer — soft high-freq sparkle on every step"
+                          className={`h-8 px-2.5 text-xs font-medium rounded-lg border transition-colors duration-100 flex-shrink-0 ${
+                            shimmerRunning
+                              ? "bg-sky-400 text-white border-sky-400"
+                              : "bg-gray-100 dark:bg-neutral-800 text-gray-600 dark:text-neutral-300 border-gray-200 dark:border-neutral-700 hover:bg-gray-200 dark:hover:bg-neutral-700"
+                          }`}
+                        >
+                          Shimmer
+                        </button>
+                        <StringPadsControl
+                          songKey={sheet?.key ?? null}
+                          running={stringsRunning}
+                          onToggle={() => toggleLayer("strings")}
+                          settings={stringSettings}
+                          onSettingsChange={updateStringSettings}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowArrangement((v) => !v)}
+                          title="Record and arrange audio tracks"
+                          className={`h-8 flex items-center gap-1.5 px-2.5 text-xs font-medium rounded-lg border transition-colors duration-100 flex-shrink-0 ${
+                            showArrangement
+                              ? "bg-rose-500 text-white border-rose-500"
+                              : "bg-gray-100 dark:bg-neutral-800 text-gray-600 dark:text-neutral-300 border-gray-200 dark:border-neutral-700 hover:bg-gray-200 dark:hover:bg-neutral-700"
+                          }`}
+                        >
+                          <Mic className='w-3.5 h-3.5' /> Arrange
+                        </button>
+                      </div>
+                      {/* Row 3: Share */}
+                      <div className='flex flex-wrap items-center gap-2'>
+                        <span className='text-xs font-medium text-gray-400 dark:text-neutral-500 uppercase tracking-wide w-12 shrink-0'>Share</span>
+                        <button
+                          onClick={handleCopy}
+                          className={`h-8 flex items-center gap-1.5 px-2.5 rounded-lg text-xs font-medium transition-colors duration-150 ${
+                            copied
+                              ? "bg-blue-100 hover:bg-blue-200 text-blue-700"
+                              : "bg-gray-100 hover:bg-gray-200 text-gray-700 dark:bg-neutral-800 dark:hover:bg-neutral-700 dark:text-neutral-200"
+                          }`}
+                        >
+                          {copied ? <Check className='w-3.5 h-3.5' /> : <Copy className='w-3.5 h-3.5' />}
+                          {copied ? "Copied!" : "Copy Text"}
+                        </button>
+                        <button
+                          onClick={handleShare}
+                          className={`h-8 flex items-center gap-1.5 px-2.5 rounded-lg text-xs font-medium transition-colors duration-150 ${
+                            shared
+                              ? "bg-blue-100 hover:bg-blue-200 text-blue-700"
+                              : "bg-gray-100 hover:bg-gray-200 text-gray-700 dark:bg-neutral-800 dark:hover:bg-neutral-700 dark:text-neutral-200"
+                          }`}
+                        >
+                          {shared ? <Check className='w-3.5 h-3.5' /> : <Link2 className='w-3.5 h-3.5' />}
+                          {shared ? "Link Copied!" : "Share"}
+                        </button>
+                        <button
+                          onClick={() => printSong(sheet.title)}
+                          className='h-8 flex items-center gap-1.5 px-2.5 rounded-lg text-xs font-medium bg-gray-100 dark:bg-neutral-800 hover:bg-gray-200 dark:hover:bg-neutral-700 text-gray-700 dark:text-neutral-200 transition-colors duration-150'
+                        >
+                          <Printer className='w-3.5 h-3.5' /> Print
+                        </button>
+                        <button
+                          onClick={() => router.push(`/lead-sheet-editor/${id}/edit`)}
+                          className='h-8 flex items-center gap-1.5 px-2.5 rounded-lg text-xs font-medium bg-black hover:bg-black/80 text-yellow-400 transition-colors duration-150'
+                        >
+                          <Pencil className='w-3.5 h-3.5' />
+                          Edit
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
-              </div>
-              <div style={{ fontSize: `${fontScale}%` }}>
+              <div className='py-8' style={{ fontSize: `${fontScale}%` }}>
                 <SheetContent
                   sheet={sheet}
                   fullscreen
@@ -996,6 +1042,13 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                   onSeekToLine={playbackOpen ? seekToLine : undefined}
                 />
               </div>
+              {showArrangement && (
+                <ArrangementPanel
+                  sheetId={sheet.id}
+                  userId={user?.id ?? null}
+                  songTitle={sheet.title}
+                />
+              )}
               {playbackOpen && <div className='h-44' />}
             </div>
           </div>
@@ -1005,114 +1058,158 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
               className='flex flex-col flex-1 min-h-0 rounded-none border-none bg-white dark:bg-black overflow-hidden'
             >
               {/* Toolbar */}
-              <div className='shrink-0'>
-                <div className='flex flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-6 sm:py-4'>
-                  <button
-                    onClick={() => router.push("/lead-sheet-editor")}
-                    className='h-10 flex items-center gap-2 px-3 rounded-lg bg-gray-100 dark:bg-neutral-800 hover:bg-gray-200 dark:hover:bg-neutral-700 text-gray-700 dark:text-neutral-200 transition-colors duration-150 text-sm font-medium'
-                  >
-                    <ArrowLeft className='w-4 h-4' />
-                    All Sheets
-                  </button>
-                  {offline && <OfflineBadge />}
-                  <div className='flex flex-wrap items-center gap-2'>
-                    <FontScaleControl scale={fontScale} onChange={updateFontScale} />
-                    <ColumnCountControl count={columnCount} onChange={updateColumnCount} />
-                    <ColumnWidthControl width={columnWidthVw} onChange={updateColumnWidthVw} />
-                    <TransposeControl steps={transposeSteps} onChange={setTransposeSteps} />
-                  <MetronomeControl
-                    bpm={bpm}
-                    onBpmChange={updateBpm}
-                    beatsPerBar={beatsPerBar}
-                    onBeatsPerBarChange={updateBeatsPerBar}
-                    running={metronomeOn}
-                    onToggle={() => setMetronomeOn((on) => !on)}
-                  />
-                  <DrumMachineControl
-                    bpm={bpm}
-                    running={drumRunning}
-                    onToggle={() => toggleLayer("drum")}
-                    settings={effectiveDrumSettings}
-                    onSettingsChange={updateDrumSettings}
-                    clapsEnabled={clapsRunning}
-                    shimmerEnabled={shimmerRunning}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => toggleLayer("claps")}
-                    title="Hand claps on beats 2 & 4"
-                    className={`h-8 px-2.5 text-xs font-medium rounded-lg border transition-colors duration-100 flex-shrink-0 print:hidden ${
-                      clapsRunning
-                        ? "bg-amber-400 text-white border-amber-400"
-                        : "bg-gray-100 dark:bg-neutral-800 text-gray-600 dark:text-neutral-300 border-gray-200 dark:border-neutral-700 hover:bg-gray-200 dark:hover:bg-neutral-700"
-                    }`}
-                  >
-                    Claps
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => toggleLayer("shimmer")}
-                    title="Shimmer — soft high-freq sparkle on every step"
-                    className={`h-8 px-2.5 text-xs font-medium rounded-lg border transition-colors duration-100 flex-shrink-0 print:hidden ${
-                      shimmerRunning
-                        ? "bg-sky-400 text-white border-sky-400"
-                        : "bg-gray-100 dark:bg-neutral-800 text-gray-600 dark:text-neutral-300 border-gray-200 dark:border-neutral-700 hover:bg-gray-200 dark:hover:bg-neutral-700"
-                    }`}
-                  >
-                    Shimmer
-                  </button>
-                  <StringPadsControl
-                    songKey={sheet?.key ?? null}
-                    running={stringsRunning}
-                    onToggle={() => toggleLayer("strings")}
-                    settings={stringSettings}
-                    onSettingsChange={updateStringSettings}
-                  />
+              <div className='shrink-0 border-b border-gray-200 dark:border-neutral-800 print:hidden'>
+                {/* Always-visible header strip */}
+                <div className='flex items-center justify-between gap-2 px-4 py-2 sm:px-6'>
+                  <div className='flex items-center gap-2 min-w-0'>
+                    <button
+                      onClick={() => router.push("/lead-sheet-editor")}
+                      className='h-9 flex items-center gap-1.5 px-2.5 rounded-lg bg-gray-100 dark:bg-neutral-800 hover:bg-gray-200 dark:hover:bg-neutral-700 text-gray-700 dark:text-neutral-200 transition-colors duration-150 text-sm font-medium shrink-0'
+                    >
+                      <ArrowLeft className='w-4 h-4' />
+                      All Sheets
+                    </button>
+                    {offline && <OfflineBadge />}
+                    <span className='text-sm font-semibold text-gray-800 dark:text-neutral-100 truncate'>
+                      {sheet.title}
+                    </span>
+                  </div>
+                  <div className='flex items-center gap-1.5 shrink-0'>
                     <PlayControl hasTiming={hasTiming} videoLink={videoLink} withVideo={withVideo} onWithVideoToggle={() => setWithVideo((v) => !v)} open={playbackOpen} onOpen={openPlayback} onClose={closePlayback} />
-                    <div className='w-px self-stretch bg-gray-300 dark:bg-neutral-600' />
                     {setIds && <NextSongControl setIds={setIds} pos={setPos} onNext={goToNextSong} />}
                     <button
-                      onClick={handleCopy}
-                      className={`h-10 flex items-center gap-1.5 px-3 rounded-lg text-sm font-medium transition-colors duration-150 ${
-                        copied
-                          ? "bg-blue-100 hover:bg-blue-200 text-blue-700"
-                          : "bg-gray-100 hover:bg-gray-200 text-gray-700"
-                      }`}
+                      onClick={() => setToolbarOpen((o) => !o)}
+                      title={toolbarOpen ? "Hide controls" : "Show controls"}
+                      className='h-9 w-9 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-neutral-800 hover:bg-gray-200 dark:hover:bg-neutral-700 text-gray-500 dark:text-neutral-400 transition-colors duration-150'
                     >
-                      {copied ? <Check className='w-4 h-4' /> : <Copy className='w-4 h-4' />}
-                      {copied ? "Copied!" : "Copy Text"}
+                      {toolbarOpen ? <ChevronUp className='w-4 h-4' /> : <ChevronDown className='w-4 h-4' />}
                     </button>
-                    <button
-                      onClick={handleShare}
-                      className={`h-10 flex items-center gap-1.5 px-3 rounded-lg text-sm font-medium transition-colors duration-150 ${
-                        shared
-                          ? "bg-blue-100 hover:bg-blue-200 text-blue-700"
-                          : "bg-gray-100 hover:bg-gray-200 text-gray-700"
-                      }`}
-                    >
-                      {shared ? <Check className='w-4 h-4' /> : <Link2 className='w-4 h-4' />}
-                      {shared ? "Link Copied!" : "Share"}
-                    </button>
-                    <button
-                      onClick={() => printSong(sheet.title)}
-                      className='h-10 flex items-center gap-1.5 px-3 rounded-lg text-sm font-medium bg-gray-100 dark:bg-neutral-800 hover:bg-gray-200 dark:hover:bg-neutral-700 text-gray-700 dark:text-neutral-200 transition-colors duration-150'
-                    >
-                      <Printer className='w-4 h-4' /> Print
-                    </button>
-                    <button
-                      onClick={() => setFullscreen(true)}
-                      className='h-10 flex items-center gap-1.5 px-3 rounded-lg text-sm font-medium bg-gray-100 dark:bg-neutral-800 hover:bg-gray-200 dark:hover:bg-neutral-700 text-gray-700 dark:text-neutral-200 transition-colors duration-150'
-                    >
-                      <Maximize2 className='w-4 h-4' /> Fullscreen
-                    </button>
-                    <div className='w-px self-stretch bg-gray-300 dark:bg-neutral-600' />
-                    <button
-                      onClick={() => router.push(`/lead-sheet-editor/${id}/edit`)}
-                      className='h-10 flex items-center gap-1.5 px-3 rounded-lg text-sm font-medium bg-black hover:bg-black/80 text-yellow-400 transition-colors duration-150'
-                    >
-                      <Pencil className='w-4 h-4' />
-                      Edit
-                    </button>
+                  </div>
+                </div>
+
+                {/* Collapsible controls panel */}
+                <div
+                  className='overflow-hidden transition-all duration-300 ease-in-out'
+                  style={{ maxHeight: toolbarOpen ? "500px" : "0px", opacity: toolbarOpen ? 1 : 0 }}
+                >
+                  <div className='px-4 pb-3 pt-1 sm:px-6'>
+                    {/* Row 1: Display */}
+                    <div className='flex flex-wrap items-center gap-2 mb-2'>
+                      <span className='text-xs font-medium text-gray-400 dark:text-neutral-500 uppercase tracking-wide w-12 shrink-0'>Display</span>
+                      <FontScaleControl scale={fontScale} onChange={updateFontScale} />
+                      <ColumnCountControl count={columnCount} onChange={updateColumnCount} />
+                      <ColumnWidthControl width={columnWidthVw} onChange={updateColumnWidthVw} />
+                      <TransposeControl steps={transposeSteps} onChange={setTransposeSteps} />
+                      <button
+                        onClick={() => setFullscreen(true)}
+                        className='h-8 flex items-center gap-1.5 px-2.5 rounded-lg text-xs font-medium bg-gray-100 dark:bg-neutral-800 hover:bg-gray-200 dark:hover:bg-neutral-700 text-gray-700 dark:text-neutral-200 transition-colors duration-150'
+                      >
+                        <Maximize2 className='w-3.5 h-3.5' /> Fullscreen
+                      </button>
+                    </div>
+                    {/* Row 2: Audio */}
+                    <div className='flex flex-wrap items-center gap-2 mb-2'>
+                      <span className='text-xs font-medium text-gray-400 dark:text-neutral-500 uppercase tracking-wide w-12 shrink-0'>Audio</span>
+                      <MetronomeControl
+                        bpm={bpm}
+                        onBpmChange={updateBpm}
+                        beatsPerBar={beatsPerBar}
+                        onBeatsPerBarChange={updateBeatsPerBar}
+                        running={metronomeOn}
+                        onToggle={() => setMetronomeOn((on) => !on)}
+                      />
+                      <DrumMachineControl
+                        bpm={bpm}
+                        running={drumRunning}
+                        onToggle={() => toggleLayer("drum")}
+                        settings={effectiveDrumSettings}
+                        onSettingsChange={updateDrumSettings}
+                        clapsEnabled={clapsRunning}
+                        shimmerEnabled={shimmerRunning}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => toggleLayer("claps")}
+                        title="Hand claps on beats 2 & 4"
+                        className={`h-8 px-2.5 text-xs font-medium rounded-lg border transition-colors duration-100 flex-shrink-0 ${
+                          clapsRunning
+                            ? "bg-amber-400 text-white border-amber-400"
+                            : "bg-gray-100 dark:bg-neutral-800 text-gray-600 dark:text-neutral-300 border-gray-200 dark:border-neutral-700 hover:bg-gray-200 dark:hover:bg-neutral-700"
+                        }`}
+                      >
+                        Claps
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => toggleLayer("shimmer")}
+                        title="Shimmer — soft high-freq sparkle on every step"
+                        className={`h-8 px-2.5 text-xs font-medium rounded-lg border transition-colors duration-100 flex-shrink-0 ${
+                          shimmerRunning
+                            ? "bg-sky-400 text-white border-sky-400"
+                            : "bg-gray-100 dark:bg-neutral-800 text-gray-600 dark:text-neutral-300 border-gray-200 dark:border-neutral-700 hover:bg-gray-200 dark:hover:bg-neutral-700"
+                        }`}
+                      >
+                        Shimmer
+                      </button>
+                      <StringPadsControl
+                        songKey={sheet?.key ?? null}
+                        running={stringsRunning}
+                        onToggle={() => toggleLayer("strings")}
+                        settings={stringSettings}
+                        onSettingsChange={updateStringSettings}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowArrangement((v) => !v)}
+                        title="Record and arrange audio tracks"
+                        className={`h-8 flex items-center gap-1.5 px-2.5 text-xs font-medium rounded-lg border transition-colors duration-100 flex-shrink-0 ${
+                          showArrangement
+                            ? "bg-rose-500 text-white border-rose-500"
+                            : "bg-gray-100 dark:bg-neutral-800 text-gray-600 dark:text-neutral-300 border-gray-200 dark:border-neutral-700 hover:bg-gray-200 dark:hover:bg-neutral-700"
+                        }`}
+                      >
+                        <Mic className='w-3.5 h-3.5' /> Arrange
+                      </button>
+                    </div>
+                    {/* Row 3: Share */}
+                    <div className='flex flex-wrap items-center gap-2'>
+                      <span className='text-xs font-medium text-gray-400 dark:text-neutral-500 uppercase tracking-wide w-12 shrink-0'>Share</span>
+                      <button
+                        onClick={handleCopy}
+                        className={`h-8 flex items-center gap-1.5 px-2.5 rounded-lg text-xs font-medium transition-colors duration-150 ${
+                          copied
+                            ? "bg-blue-100 hover:bg-blue-200 text-blue-700"
+                            : "bg-gray-100 hover:bg-gray-200 text-gray-700 dark:bg-neutral-800 dark:hover:bg-neutral-700 dark:text-neutral-200"
+                        }`}
+                      >
+                        {copied ? <Check className='w-3.5 h-3.5' /> : <Copy className='w-3.5 h-3.5' />}
+                        {copied ? "Copied!" : "Copy Text"}
+                      </button>
+                      <button
+                        onClick={handleShare}
+                        className={`h-8 flex items-center gap-1.5 px-2.5 rounded-lg text-xs font-medium transition-colors duration-150 ${
+                          shared
+                            ? "bg-blue-100 hover:bg-blue-200 text-blue-700"
+                            : "bg-gray-100 hover:bg-gray-200 text-gray-700 dark:bg-neutral-800 dark:hover:bg-neutral-700 dark:text-neutral-200"
+                        }`}
+                      >
+                        {shared ? <Check className='w-3.5 h-3.5' /> : <Link2 className='w-3.5 h-3.5' />}
+                        {shared ? "Link Copied!" : "Share"}
+                      </button>
+                      <button
+                        onClick={() => printSong(sheet.title)}
+                        className='h-8 flex items-center gap-1.5 px-2.5 rounded-lg text-xs font-medium bg-gray-100 dark:bg-neutral-800 hover:bg-gray-200 dark:hover:bg-neutral-700 text-gray-700 dark:text-neutral-200 transition-colors duration-150'
+                      >
+                        <Printer className='w-3.5 h-3.5' /> Print
+                      </button>
+                      <button
+                        onClick={() => router.push(`/lead-sheet-editor/${id}/edit`)}
+                        className='h-8 flex items-center gap-1.5 px-2.5 rounded-lg text-xs font-medium bg-black hover:bg-black/80 text-yellow-400 transition-colors duration-150'
+                      >
+                        <Pencil className='w-3.5 h-3.5' />
+                        Edit
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1130,8 +1227,15 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                     activeCueIndex={activeCueIndex}
                     onSeekToLine={playbackOpen ? seekToLine : undefined}
                   />
-                  {playbackOpen && <div className='h-44' />}
                 </div>
+                {showArrangement && (
+                  <ArrangementPanel
+                    sheetId={sheet.id}
+                    userId={user?.id ?? null}
+                    songTitle={sheet.title}
+                  />
+                )}
+                {playbackOpen && <div className='h-44' />}
               </div>
             </div>
           </div>
