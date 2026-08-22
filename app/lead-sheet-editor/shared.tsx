@@ -35,6 +35,8 @@ export interface Section {
 export interface LeadSheetMetadata {
   /** Drum machine state; see normalizeDrumSettings in DrumMachine.tsx. */
   drums?: { pattern?: string; kick?: string; snare?: string; volume?: number };
+  /** String pad state; see normalizeStringSettings in StringPads.tsx. */
+  strings?: { style?: string; volume?: number };
 }
 
 export interface LeadSheet {

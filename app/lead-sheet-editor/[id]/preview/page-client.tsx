@@ -35,7 +35,7 @@ import { cacheSheet, getCachedSheet } from "../../offlineCache";
 import { transposeText } from "../../../lib/transpose";
 import { buildTimeline, cueAt, lineKey, type Timeline } from "../../timing";
 import { PlaybackBar, usePlayback, usePlaybackKeys } from "../../PlaybackBar";
-import { findYouTubeLink } from "../../youtube";
+import { findYouTubeLink, type YouTubeLink } from "../../youtube";
 import { YouTubePanel, useYouTubePlayback } from "../../YouTubePlayer";
 import {
   MetronomeControl,
@@ -240,7 +240,7 @@ function PlayControl({
 }: {
   hasTiming: boolean;
   /** A YouTube link found in the song, or null. */
-  videoLink: string | null;
+  videoLink: YouTubeLink | null;
   /** Whether the YouTube video is included in playback (only relevant when videoLink != null). */
   withVideo: boolean;
   onWithVideoToggle: () => void;
