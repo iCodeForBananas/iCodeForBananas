@@ -42,7 +42,7 @@ function padFrequencies(semitone: number, minor: boolean): number[] {
 
 // ── Settings ──────────────────────────────────────────────────────────────────
 
-export type StringStyle = "warm" | "bright" | "ethereal";
+export type StringStyle = "warm" | "bright" | "ethereal" | "lush" | "organ";
 
 export interface StringPadsSettings {
   style: StringStyle;
@@ -57,8 +57,12 @@ export const DEFAULT_STRING_SETTINGS: StringPadsSettings = {
 export function normalizeStringSettings(raw: unknown): StringPadsSettings {
   if (!raw || typeof raw !== "object") return DEFAULT_STRING_SETTINGS;
   const r = raw as Record<string, unknown>;
-  const style =
-    r.style === "bright" ? "bright" : r.style === "ethereal" ? "ethereal" : "warm";
+  const style: StringStyle =
+    r.style === "bright" ? "bright"
+    : r.style === "ethereal" ? "ethereal"
+    : r.style === "lush" ? "lush"
+    : r.style === "organ" ? "organ"
+    : "warm";
   const volume =
     typeof r.volume === "number" && isFinite(r.volume)
       ? Math.min(1, Math.max(0, r.volume))
@@ -76,20 +80,37 @@ function buildPad(
   freqs: number[],
   style: StringStyle,
 ): OscillatorNode[] {
-  const oscType: OscillatorType = style === "bright" ? "sawtooth" : "triangle";
+  const oscType: OscillatorType =
+    style === "bright" ? "sawtooth"
+    : style === "organ" ? "sine"
+    : "triangle";
 
   // Tone shaping filter
   const filter = ctx.createBiquadFilter();
   filter.type = "lowpass";
-  filter.Q.value = style === "bright" ? 0.6 : style === "ethereal" ? 1.8 : 0.9;
-  filter.frequency.value = style === "bright" ? 2800 : style === "ethereal" ? 1000 : 1600;
+  filter.Q.value =
+    style === "bright" ? 0.6
+    : style === "ethereal" ? 1.8
+    : style === "lush" ? 1.2
+    : style === "organ" ? 0.5
+    : 0.9;
+  filter.frequency.value =
+    style === "bright" ? 2800
+    : style === "ethereal" ? 1000
+    : style === "lush" ? 1800
+    : style === "organ" ? 3200
+    : 1600;
   filter.connect(masterGain);
 
   // Slight chorus delay
   const delay = ctx.createDelay(0.06);
-  delay.delayTime.value = 0.033;
+  delay.delayTime.value = style === "organ" ? 0.01 : 0.033;
   const fbGain = ctx.createGain();
-  fbGain.gain.value = style === "ethereal" ? 0.45 : 0.2;
+  fbGain.gain.value =
+    style === "ethereal" ? 0.45
+    : style === "lush" ? 0.35
+    : style === "organ" ? 0.05
+    : 0.2;
   delay.connect(fbGain);
   fbGain.connect(delay);
   delay.connect(masterGain);
@@ -104,13 +125,13 @@ function buildPad(
       osc.frequency.value = freq;
       osc.detune.value = detune;
 
-      // LFO vibrato for warm / ethereal
-      if (style !== "bright") {
+      // LFO vibrato (not for bright or organ)
+      if (style !== "bright" && style !== "organ") {
         const lfo = ctx.createOscillator();
         const lfoG = ctx.createGain();
         lfo.type = "sine";
-        lfo.frequency.value = 4.2 + Math.random() * 0.8;
-        lfoG.gain.value = style === "ethereal" ? 10 : 4;
+        lfo.frequency.value = style === "lush" ? 3.0 + Math.random() * 0.5 : 4.2 + Math.random() * 0.8;
+        lfoG.gain.value = style === "ethereal" ? 10 : style === "lush" ? 6 : 4;
         lfo.connect(lfoG);
         lfoG.connect(osc.detune);
         lfo.start(ctx.currentTime);
@@ -160,7 +181,8 @@ export function useStringPads(
       if (!stateRef.current) return;
       const { ctx, masterGain } = stateRef.current;
       const now = ctx.currentTime;
-      const release = settingsRef.current.style === "ethereal" ? 2.5 : 1.5;
+      const s = settingsRef.current.style;
+      const release = s === "ethereal" ? 2.5 : s === "lush" ? 2.0 : s === "organ" ? 0.1 : 1.5;
       masterGain.gain.cancelScheduledValues(now);
       masterGain.gain.setValueAtTime(masterGain.gain.value, now);
       masterGain.gain.linearRampToValueAtTime(0, now + release);
@@ -182,7 +204,12 @@ export function useStringPads(
     const ctx = new AudioContext();
     const masterGain = ctx.createGain();
     const { style, volume } = settingsRef.current;
-    const attackSec = style === "ethereal" ? 2.2 : style === "bright" ? 0.8 : 1.4;
+    const attackSec =
+      style === "ethereal" ? 2.2
+      : style === "lush" ? 2.8
+      : style === "organ" ? 0.05
+      : style === "bright" ? 0.8
+      : 1.4;
     masterGain.gain.setValueAtTime(0, ctx.currentTime);
     masterGain.gain.linearRampToValueAtTime(volume, ctx.currentTime + attackSec);
     masterGain.connect(ctx.destination);
@@ -257,30 +284,19 @@ export function StringPadsControl({
         <StringsIcon />
       </button>
 
-      {/* Style: Warm / Bright / Ethereal */}
-      <div className="flex rounded-md overflow-hidden border border-gray-200 dark:border-neutral-700 flex-shrink-0">
-        {(["warm", "bright", "ethereal"] as const).map((style) => (
-          <button
-            key={style}
-            type="button"
-            onClick={() => onSettingsChange({ style })}
-            title={
-              style === "warm"
-                ? "Warm triangle pads with subtle vibrato"
-                : style === "bright"
-                ? "Bright sawtooth strings, no vibrato"
-                : "Slow-attack ethereal pad with deep chorus"
-            }
-            className={`px-2 h-7 text-xs font-medium capitalize transition-colors duration-100 ${
-              settings.style === style
-                ? "bg-violet-500 text-white"
-                : "bg-gray-100 dark:bg-neutral-800 text-gray-500 dark:text-neutral-400 hover:bg-gray-200 dark:hover:bg-neutral-700"
-            }`}
-          >
-            {style}
-          </button>
-        ))}
-      </div>
+      {/* Style dropdown */}
+      <select
+        value={settings.style}
+        onChange={(e) => onSettingsChange({ style: e.target.value as StringStyle })}
+        title="Drone pad style"
+        className="h-7 text-xs font-medium rounded-md border border-gray-200 dark:border-neutral-700 bg-gray-100 dark:bg-neutral-800 text-gray-700 dark:text-neutral-200 px-1.5 flex-shrink-0 cursor-pointer"
+      >
+        <option value="warm">Warm</option>
+        <option value="bright">Bright</option>
+        <option value="lush">Lush</option>
+        <option value="ethereal">Ethereal</option>
+        <option value="organ">Organ</option>
+      </select>
 
       {/* Volume */}
       <input

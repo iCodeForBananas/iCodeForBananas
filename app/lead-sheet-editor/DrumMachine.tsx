@@ -882,9 +882,7 @@ export function DrumMachineControl({
   settings,
   onSettingsChange,
   clapsEnabled,
-  onClapsToggle,
   shimmerEnabled,
-  onShimmerToggle,
 }: {
   bpm: number;
   running: boolean;
@@ -892,10 +890,10 @@ export function DrumMachineControl({
   settings: DrumSettings;
   /** Called with just the fields that changed; the owner merges and persists. */
   onSettingsChange: (patch: Partial<DrumSettings>) => void;
+  /** Passed through to the scheduler — toggle is a standalone button in the toolbar. */
   clapsEnabled: boolean;
-  onClapsToggle: () => void;
+  /** Passed through to the scheduler — toggle is a standalone button in the toolbar. */
   shimmerEnabled: boolean;
-  onShimmerToggle: () => void;
 }) {
   const { kick: kickStyle, snare: snareStyle, volume } = settings;
   const patternIdx = patternIndex(settings.pattern);
@@ -1020,36 +1018,6 @@ export function DrumMachineControl({
           </button>
         ))}
       </div>
-
-      {/* Claps toggle */}
-      <button
-        type="button"
-        onClick={onClapsToggle}
-        aria-label={clapsEnabled ? "Claps on" : "Claps off"}
-        title="Toggle hand claps on beats 2 & 4"
-        className={`px-2 h-7 text-xs font-medium rounded-md border transition-colors duration-100 flex-shrink-0 ${
-          clapsEnabled
-            ? "bg-amber-400 text-white border-amber-400"
-            : "bg-gray-100 dark:bg-neutral-800 text-gray-500 dark:text-neutral-400 border-gray-200 dark:border-neutral-700 hover:bg-gray-200 dark:hover:bg-neutral-700"
-        }`}
-      >
-        Claps
-      </button>
-
-      {/* Shimmer toggle */}
-      <button
-        type="button"
-        onClick={onShimmerToggle}
-        aria-label={shimmerEnabled ? "Shimmer on" : "Shimmer off"}
-        title="Toggle shimmer — soft high-freq sparkle on every step"
-        className={`px-2 h-7 text-xs font-medium rounded-md border transition-colors duration-100 flex-shrink-0 ${
-          shimmerEnabled
-            ? "bg-sky-400 text-white border-sky-400"
-            : "bg-gray-100 dark:bg-neutral-800 text-gray-500 dark:text-neutral-400 border-gray-200 dark:border-neutral-700 hover:bg-gray-200 dark:hover:bg-neutral-700"
-        }`}
-      >
-        Shimmer
-      </button>
 
       {/* 16-step indicator — only visible while running */}
       {running && (
