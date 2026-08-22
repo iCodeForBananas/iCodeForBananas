@@ -2394,7 +2394,20 @@ export default function ShootSimulator() {
     };
 
     const onPointerDown = (e: PointerEvent) => {
-      if (e.pointerType === "mouse" || titlePhase !== "playing") return;
+      if (e.pointerType === "mouse") return;
+
+      // Title / game-over screen: tap the play button to start or restart
+      if (titlePhase !== "playing") {
+        if (!restartArmed()) return;
+        const p = toLocal(e);
+        if (p.x >= playBtn.x && p.x <= playBtn.x + playBtn.w && p.y >= playBtn.y && p.y <= playBtn.y + playBtn.h) {
+          if (titlePhase === "gameover") restartGame();
+          titlePhase = "playing";
+          canvas.style.cursor = "default";
+        }
+        e.preventDefault();
+        return;
+      }
       const p = toLocal(e);
       // Tapping an unlocked slot switches attack
       for (const r of attackRects) {
