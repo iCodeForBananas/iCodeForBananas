@@ -11,14 +11,18 @@ const CORS_HEADERS = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, Mcp-Session-Id, Mcp-Protocol-Version",
 };
 
-// Public, read-only MCP server over the lead_sheets table. Uses the anon key —
-// relies on the "Public read" RLS policy on lead_sheets to permit selects.
+// Public, read-only MCP server over the lead_sheets and workout_logs tables.
+// Uses the anon key — relies on the "Public read" RLS policy on each table to
+// permit selects.
 function getSupabase() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
   if (!url || !anonKey) throw new Error("Supabase not configured");
   return createClient(url, anonKey);
 }
+
+const WORKOUT_DEFAULT_LIMIT = 50;
+const WORKOUT_MAX_LIMIT = 500;
 
 const TOOLS = [
   {
@@ -34,6 +38,33 @@ const TOOLS = [
       type: "object",
       properties: { id: { type: "string", description: "The lead sheet id" } },
       required: ["id"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "get_workouts",
+    description:
+      "List logged workouts, most recent first. Each entry has the exercise name, the date it was performed " +
+      "(YYYY-MM-DD), the weight lifted in pounds (null or 0 for bodyweight exercises like Pull-ups and Push-ups), " +
+      "and created_at, the timestamp the entry was logged.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        limit: {
+          type: "integer",
+          description: `How many entries to return, newest first (default ${WORKOUT_DEFAULT_LIMIT}, max ${WORKOUT_MAX_LIMIT}).`,
+          minimum: 1,
+          maximum: WORKOUT_MAX_LIMIT,
+        },
+        exercise: {
+          type: "string",
+          description: 'Only return entries for this exercise, e.g. "Bench Press". Case-insensitive exact match.',
+        },
+        since: {
+          type: "string",
+          description: 'Only return entries performed on or after this date, as YYYY-MM-DD.',
+        },
+      },
       additionalProperties: false,
     },
   },
@@ -61,6 +92,32 @@ async function callTool(name: string, args: Record<string, unknown>): Promise<un
       .single();
     if (error) throw error;
     return data;
+  }
+
+  if (name === "get_workouts") {
+    const rawLimit = args.limit;
+    const limit =
+      rawLimit === undefined
+        ? WORKOUT_DEFAULT_LIMIT
+        : Math.min(Math.max(Math.trunc(Number(rawLimit)) || WORKOUT_DEFAULT_LIMIT, 1), WORKOUT_MAX_LIMIT);
+
+    let query = supabase
+      .from("workout_logs")
+      .select("id, exercise, date, weight, created_at")
+      // date is the day it was performed; created_at breaks ties within a day
+      .order("date", { ascending: false })
+      .order("created_at", { ascending: false })
+      .limit(limit);
+
+    if (typeof args.exercise === "string" && args.exercise) query = query.ilike("exercise", args.exercise);
+    if (typeof args.since === "string" && args.since) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(args.since)) throw new Error("since must be a YYYY-MM-DD date");
+      query = query.gte("date", args.since);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+    return (data ?? []).map((row) => ({ ...row, weight_unit: "lbs" }));
   }
 
   throw new Error(`Unknown tool: ${name}`);
