@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Check,
+  ListMusic,
   Music3,
   Pause,
   Play,
@@ -58,6 +59,7 @@ const LANE_HEIGHT = 26;
 const LANE_GAP = 3;
 const TRACK_PAD = 6;
 const GUTTER = 132;
+const LIBRARY_WIDTH = 244;
 
 const SNAP_CHOICES = [
   { label: "1s", value: 1 },
@@ -81,6 +83,15 @@ const layerStyle = (layer: string) =>
 type Selection = { kind: "lyric" | "sound"; id: string } | null;
 
 type DragMode = "move" | "left" | "right";
+
+/** What is being carried out of the library, until it lands on the timeline. */
+type LibraryItem =
+  | { kind: "lyric"; id: string; label: string }
+  | { kind: "sound"; layer: string; label: string };
+
+/** True while the pointer is over the library, where a clip goes to be shelved. */
+const overLibrary = (clientX: number, clientY: number) =>
+  !!document.elementFromPoint(clientX, clientY)?.closest("[data-library]");
 
 interface DragState {
   kind: "lyric" | "sound";
@@ -161,10 +172,18 @@ export default function TrackEditor({
   const scrollRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<DragState | null>(null);
   const serialRef = useRef(0);
+  /** The library item under the pointer, carried until it is dropped. */
+  const carryRef = useRef<LibraryItem | null>(null);
+  const [ghost, setGhost] = useState<{ label: string; x: number; y: number } | null>(null);
+
+  // Only what has been put on the timeline counts as the song: a line still
+  // waiting in the library has a start left over from where it was read out of
+  // the text, and nothing there should be stretching the ruler.
+  const placedLyrics = useMemo(() => lyrics.filter((c) => c.placed), [lyrics]);
 
   const contentEnd = Math.max(
     0,
-    ...lyrics.map((c) => c.end),
+    ...placedLyrics.map((c) => c.end),
     ...sounds.map((c) => c.end)
   );
 
@@ -289,8 +308,19 @@ export default function TrackEditor({
       else patchSound(drag.id, { start, end });
     };
 
-    const onUp = () => {
+    const onUp = (event: PointerEvent) => {
+      const drag = dragRef.current;
       dragRef.current = null;
+      // Dragged back over the library, a clip goes on the shelf: a lyric hands
+      // its time back to the line above, a sound clip simply stops existing.
+      if (!drag || !overLibrary(event.clientX, event.clientY)) return;
+      if (drag.kind === "lyric") {
+        setLyrics((prev) => prev.map((c) => (c.id === drag.id ? { ...c, placed: false } : c)));
+      } else {
+        setSounds((prev) => prev.filter((c) => c.id !== drag.id));
+      }
+      setSelected(null);
+      setDirty(true);
     };
 
     window.addEventListener("pointermove", onMove);
@@ -344,6 +374,85 @@ export default function TrackEditor({
     setSelected({ kind: "sound", id: clip.id });
     setDirty(true);
   };
+
+  // ── Library → timeline ─────────────────────────────────────────────────────
+  //
+  // The song's own pieces wait in the library, in the order they are written,
+  // and only join the timeline once they are dropped on it. Where a piece lands
+  // horizontally is the whole question — which lane it belongs to is already
+  // decided by what it is — so a drop anywhere over the tracks counts.
+
+  /** The moment under the pointer, or null when it isn't over the timeline. */
+  const timeAtPointer = useCallback(
+    (clientX: number, clientY: number): number | null => {
+      const el = document.elementFromPoint(clientX, clientY);
+      const timeline = el?.closest<HTMLElement>("[data-timeline]");
+      if (!timeline) return null;
+      const bounds = timeline.getBoundingClientRect();
+      return snapTime((clientX - bounds.left - GUTTER) / zoom);
+    },
+    [snapTime, zoom]
+  );
+
+  const dropFromLibrary = useCallback(
+    (item: LibraryItem, clientX: number, clientY: number) => {
+      const start = timeAtPointer(clientX, clientY);
+      if (start === null) return;
+
+      if (item.kind === "lyric") {
+        // `patchLyric` marks it placed, which is what takes it out of the library.
+        patchLyric(item.id, { start, end: start + lineSeconds });
+        setSelected({ kind: "lyric", id: item.id });
+        return;
+      }
+
+      const clip: SoundClip = {
+        id: `new:${serialRef.current++}`,
+        layer: item.layer,
+        start,
+        end: start + 8,
+        fadeIn: false,
+        fadeOut: false,
+      };
+      // A layer dropped before it has a lane of its own brings one with it.
+      setExtraLayers((prev) => (prev.includes(item.layer) ? prev : [...prev, item.layer]));
+      setSounds((prev) => [...prev, clip]);
+      setSelected({ kind: "sound", id: clip.id });
+      setDirty(true);
+    },
+    [timeAtPointer, patchLyric, lineSeconds]
+  );
+
+  const grabFromLibrary = (event: React.PointerEvent, item: LibraryItem) => {
+    event.preventDefault();
+    carryRef.current = item;
+    setGhost({ label: item.label, x: event.clientX, y: event.clientY });
+  };
+
+  useEffect(() => {
+    const onMove = (event: PointerEvent) => {
+      if (!carryRef.current) return;
+      setGhost((g) => (g ? { ...g, x: event.clientX, y: event.clientY } : g));
+    };
+    const onUp = (event: PointerEvent) => {
+      const item = carryRef.current;
+      carryRef.current = null;
+      setGhost(null);
+      if (item) dropFromLibrary(item, event.clientX, event.clientY);
+    };
+    const onCancel = () => {
+      carryRef.current = null;
+      setGhost(null);
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onCancel);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onCancel);
+    };
+  }, [dropFromLibrary]);
 
   const removeSelected = useCallback(() => {
     if (!selected) return;
@@ -428,17 +537,31 @@ export default function TrackEditor({
     }
   }, [time, playing, zoom]);
 
-  const lyricLanes = useMemo(() => packLanes(lyrics), [lyrics]);
+  const lyricLanes = useMemo(() => packLanes(placedLyrics), [placedLyrics]);
   const laneCount = Math.max(1, ...[...lyricLanes.values()].map((lane) => lane + 1));
   const lyricHeight = laneCount * (LANE_HEIGHT + LANE_GAP) - LANE_GAP + TRACK_PAD * 2;
+
+  /**
+   * The shelf: every line the song hasn't been given a place for yet, kept in
+   * the order it is written and under the section it belongs to.
+   */
+  const libraryGroups = useMemo(() => {
+    const groups: { section: string; items: LyricClip[] }[] = [];
+    for (const clip of [...lyrics].sort((a, b) => a.lineIndex - b.lineIndex)) {
+      if (clip.placed) continue;
+      const last = groups[groups.length - 1];
+      if (last && last.section === clip.section) last.items.push(clip);
+      else groups.push({ section: clip.section, items: [clip] });
+    }
+    return groups;
+  }, [lyrics]);
 
   const selectedSound =
     selected?.kind === "sound" ? sounds.find((c) => c.id === selected.id) ?? null : null;
   const selectedLyric =
     selected?.kind === "lyric" ? lyrics.find((c) => c.id === selected.id) ?? null : null;
 
-  const unplaced = lyrics.filter((c) => !c.placed).length;
-  const addable = CUE_LAYERS.filter((layer) => !tracks.includes(layer));
+  const unplaced = lyrics.length - placedLyrics.length;
 
   return (
     <div className="fixed inset-0 z-[70] flex flex-col bg-black">
@@ -518,31 +641,6 @@ export default function TrackEditor({
           </select>
         </label>
 
-        {addable.length > 0 && (
-          <div className="relative flex h-9 items-center gap-1.5 rounded px-3 text-sm font-medium text-white/60 ring-1 ring-white/20 transition-colors hover:text-white hover:ring-white/50">
-            <Plus className="h-4 w-4" />
-            Add track
-            <select
-              value=""
-              aria-label="Add a sound track"
-              onChange={(e) => {
-                if (e.target.value) setExtraLayers((prev) => [...prev, e.target.value]);
-                e.target.value = "";
-              }}
-              className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-            >
-              <option value="" disabled>
-                Add a track
-              </option>
-              {addable.map((layer) => (
-                <option key={layer} value={layer}>
-                  {layerLabel(layer)}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-
         {/* Selected clip */}
         {selectedSound && (
           <div className="ml-1 flex items-center gap-2 rounded border border-white/15 px-2 py-1">
@@ -617,8 +715,14 @@ export default function TrackEditor({
 
       {/* Tracks — names and lanes share one scroller so a tall lyric track
           can never slide out of line with the labels beside it. */}
+      <div className="flex min-h-0 flex-1">
+      <Library
+        groups={libraryGroups}
+        layers={CUE_LAYERS as readonly string[]}
+        onGrab={grabFromLibrary}
+      />
       <div ref={scrollRef} className="min-h-0 flex-1 overflow-auto">
-        <div className="relative" style={{ width: GUTTER + width }}>
+        <div data-timeline className="relative" style={{ width: GUTTER + width }}>
           {/* Ruler */}
           <div className="sticky top-0 z-30 flex h-8 bg-black">
             <div
@@ -639,22 +743,16 @@ export default function TrackEditor({
               onPointerDown={() => setSelected(null)}
             >
               <Grid duration={duration} zoom={zoom} />
-              {lyrics.map((clip) => (
+              {placedLyrics.map((clip) => (
                 <ClipBox
                   key={clip.id}
                   left={clip.start * zoom}
                   width={Math.max(2, (clip.end - clip.start) * zoom)}
                   top={TRACK_PAD + (lyricLanes.get(clip) ?? 0) * (LANE_HEIGHT + LANE_GAP)}
                   selected={selected?.kind === "lyric" && selected.id === clip.id}
-                  className={
-                    clip.placed
-                      ? "bg-yellow-400/20 text-yellow-50"
-                      : "border border-dashed border-white/25 bg-white/5 text-white/50"
-                  }
+                  className="bg-yellow-400/20 text-yellow-50"
                   edgeClass="bg-yellow-400"
-                  title={`${clip.section} — ${formatArrangementTime(clip.start)}${
-                    clip.placed ? "" : " (inherited)"
-                  }`}
+                  title={`${clip.section} — ${formatArrangementTime(clip.start)}`}
                   onPointerDown={(e, mode) => beginDrag(e, clip, "lyric", mode)}
                 >
                   {clip.text || "·"}
@@ -728,18 +826,119 @@ export default function TrackEditor({
           </div>
         </div>
       </div>
+      </div>
 
       {/* Footer */}
       <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1 border-t border-white/10 px-4 py-2 text-xs text-white/35">
         <span>Space plays · ← → jump 5s · Delete removes a clip</span>
-        <span>Drag empty space on a sound track to draw a clip.</span>
+        <span>Drag from the library onto the tracks · drag a clip back to shelve it.</span>
         {unplaced > 0 && (
           <span>
-            {unplaced} line{unplaced === 1 ? " still follows" : "s still follow"} the line above —
-            drag one to give it a time of its own.
+            {unplaced} line{unplaced === 1 ? "" : "s"} still in the library, following the line
+            above until placed.
           </span>
         )}
         {!dirty && <span className="ml-auto">No changes yet.</span>}
+      </div>
+
+      {/* What the pointer is carrying — never under it, or the drop can't see
+          what it landed on. */}
+      {ghost && (
+        <div
+          className="pointer-events-none fixed z-[90] max-w-64 truncate rounded bg-yellow-400 px-2 py-1 text-xs font-medium text-black shadow-lg"
+          style={{ left: ghost.x + 14, top: ghost.y + 14 }}
+        >
+          {ghost.label}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Library ──────────────────────────────────────────────────────────────────
+
+/**
+ * The song's pieces, waiting to be placed. Everything the arrangement hasn't
+ * been given a moment for sits here in the order it is written, so building a
+ * song is bringing lines over one at a time rather than pulling them apart from
+ * a timeline that already has all of them stacked on top of each other.
+ */
+function Library({
+  groups,
+  layers,
+  onGrab,
+}: {
+  groups: { section: string; items: LyricClip[] }[];
+  layers: readonly string[];
+  onGrab: (event: React.PointerEvent, item: LibraryItem) => void;
+}) {
+  const count = groups.reduce((total, group) => total + group.items.length, 0);
+
+  return (
+    <div
+      data-library
+      className="flex shrink-0 flex-col border-r border-white/10 bg-black"
+      style={{ width: LIBRARY_WIDTH }}
+    >
+      <div className="flex shrink-0 items-center gap-2 border-b border-white/10 px-3 py-2">
+        <ListMusic className="h-3.5 w-3.5 text-yellow-400" />
+        <span className="text-xs font-medium uppercase tracking-wide text-white/60">Library</span>
+        <span className="ml-auto font-mono text-xs tabular-nums text-white/30">{count}</span>
+      </div>
+
+      <div className="min-h-0 flex-1 overflow-y-auto px-2 py-2">
+        <div className="mb-1 px-1 text-[0.65rem] font-medium uppercase tracking-wide text-white/30">
+          Sounds
+        </div>
+        <div className="mb-3 flex flex-wrap gap-1">
+          {layers.map((layer) => (
+            <button
+              key={layer}
+              onPointerDown={(e) =>
+                onGrab(e, { kind: "sound", layer, label: layerLabel(layer) })
+              }
+              title={`Drag ${layerLabel(layer)} onto the timeline`}
+              className={`flex cursor-grab items-center gap-1.5 rounded px-2 py-1 text-xs text-white/70 ring-1 ring-white/15 transition-colors select-none hover:ring-white/40 active:cursor-grabbing`}
+              style={{ touchAction: "none" }}
+            >
+              <span className={`h-2 w-2 shrink-0 rounded-full ${layerStyle(layer).dot}`} />
+              {layerLabel(layer)}
+            </button>
+          ))}
+        </div>
+
+        {count === 0 ? (
+          <p className="px-1 py-3 text-xs text-white/30">
+            Every line is on the timeline. Drag one back here to shelve it.
+          </p>
+        ) : (
+          groups.map((group, i) => (
+            <div key={`${group.section}:${i}`} className="mb-3">
+              <div className="mb-1 px-1 text-[0.65rem] font-medium uppercase tracking-wide text-white/30">
+                {group.section || "Song"}
+              </div>
+              <div className="flex flex-col gap-0.5">
+                {group.items.map((clip) => (
+                  <div
+                    key={clip.id}
+                    onPointerDown={(e) =>
+                      onGrab(e, {
+                        kind: "lyric",
+                        id: clip.id,
+                        label: clip.text || "(blank line)",
+                      })
+                    }
+                    title={clip.text || "(blank line)"}
+                    className="cursor-grab truncate rounded bg-white/5 px-2 py-1 text-xs text-white/60 transition-colors select-none hover:bg-white/10 hover:text-white active:cursor-grabbing"
+                    style={{ touchAction: "none" }}
+                  >
+                    {clip.text || "·"}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );
