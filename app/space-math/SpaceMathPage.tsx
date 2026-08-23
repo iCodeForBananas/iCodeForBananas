@@ -93,184 +93,216 @@ interface Problem {
 interface TopicRecord {
   correct: number;
   attempts: number;
-  interval: number; // target questions between reviews
+  streak: number; // consecutive correct answers
+  interval: number; // questions to wait before this topic comes back
   dueIn: number; // countdown to next review
+  learned: boolean; // has reached LEARNED_INTERVAL at least once
 }
-
-type Grade = "K" | "G1" | "G2" | "G3";
 
 interface TopicDef {
   key: string;
   type: ProblemType;
   min: number;
   max: number;
-  grade: Grade;
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-// Mastery threshold: 5 correct-streak doublings (1→2→4→8→16... capped) means the topic is "known"
-const MASTERY_INTERVAL = 5;
-// Grade advancement: don't block on every topic — 75% mastered unlocks the next grade
-const GRADE_MASTERY_PCT = 0.75;
+// Review intervals, counted in questions asked. A correct answer moves a topic one
+// rung up the ladder, a miss knocks it back down. High rungs are the point: a solid
+// skill stays in the mix but only resurfaces every 30–60 questions.
+const INTERVAL_STEPS = [1, 2, 4, 8, 16, 32, 60];
 
-const GRADE_ORDER: Grade[] = ["K", "G1", "G2", "G3"];
+// A topic counts as learned once it reaches this interval. Learned topics are never
+// retired — they just come back rarely, as reinforcement.
+const LEARNED_INTERVAL = 8;
 
-// Topics grouped by grade (Common Core State Standards)
+// How many not-yet-learned topics may be in rotation at once. New material is only
+// handed out when the learner is under this many, which is what keeps the
+// progression linear instead of dumping the whole syllabus in at once.
+const LEARNING_CAP = 3;
+
+// One linear ladder of skills, easiest first. The content is Common Core K–3, but
+// the learner is never placed in a grade: they sit at whatever point on the ladder
+// they've reached, and every topic behind them stays in the review mix.
 const TOPIC_PROGRESSION: TopicDef[] = [
-  // ── Kindergarten ──
-  { key: "k-count-by-1",     type: "count-by-1",     min: 1,  max: 100, grade: "K" },
-  { key: "k-count-by-10",    type: "count-by-10",    min: 10, max: 100, grade: "K" },
-  { key: "add-1-5",          type: "addition",       min: 1,  max: 5,   grade: "K" },
-  { key: "sub-1-5",          type: "subtraction",    min: 1,  max: 5,   grade: "K" },
-  { key: "add-1-10",         type: "addition",       min: 1,  max: 10,  grade: "K" },
-  { key: "sub-1-10",         type: "subtraction",    min: 1,  max: 10,  grade: "K" },
-  { key: "k-make-10",        type: "make-10",        min: 1,  max: 9,   grade: "K" },
-  { key: "k-compare-10",     type: "comparison",     min: 1,  max: 10,  grade: "K" },
-  { key: "k-teen",           type: "teen-decompose", min: 11, max: 19,  grade: "K" },
-
-  // ── Grade 1 ──
-  { key: "add-1-20",         type: "addition",       min: 1,  max: 20,  grade: "G1" },
-  { key: "sub-1-20",         type: "subtraction",    min: 1,  max: 20,  grade: "G1" },
-  { key: "three-addend",     type: "three-addend",   min: 1,  max: 6,   grade: "G1" },
-  { key: "fact-family",      type: "fact-family",    min: 1,  max: 10,  grade: "G1" },
-  { key: "g1-equal-sign",    type: "equal-sign",     min: 1,  max: 10,  grade: "G1" },
-  { key: "g1-unknown",       type: "unknown-addend", min: 1,  max: 20,  grade: "G1" },
-  { key: "compare-20",       type: "comparison",     min: 1,  max: 20,  grade: "G1" },
-  { key: "place-value",      type: "place-value",    min: 1,  max: 9,   grade: "G1" },
-  { key: "mental-ten",       type: "mental-ten",     min: 10, max: 90,  grade: "G1" },
-  { key: "g1-sub-mult-10",   type: "sub-mult-10",    min: 10, max: 90,  grade: "G1" },
-  { key: "add-100",          type: "add-100",        min: 10, max: 90,  grade: "G1" },
-  { key: "count-120",        type: "count-120",      min: 1,  max: 120, grade: "G1" },
-
-  // ── Grade 2 ──
-  { key: "g2-add-regroup",   type: "add-100-regroup", min: 10, max: 99, grade: "G2" },
-  { key: "g2-sub-regroup",   type: "sub-100-regroup", min: 10, max: 99, grade: "G2" },
-  { key: "g2-place-3",       type: "place-value-3",   min: 1,  max: 9,  grade: "G2" },
-  { key: "g2-skip-count",    type: "skip-count",      min: 5,  max: 100, grade: "G2" },
-  { key: "g2-compare-999",   type: "compare-3digit",  min: 100, max: 999, grade: "G2" },
-  { key: "g2-mental-100",    type: "mental-hundred",  min: 100, max: 800, grade: "G2" },
-  { key: "g2-odd-even",      type: "odd-even",        min: 1,  max: 20, grade: "G2" },
-  { key: "g2-array",         type: "array",           min: 2,  max: 5,  grade: "G2" },
-
-  // ── Grade 3 ──
-  { key: "g3-mult",          type: "multiply",         min: 0,  max: 10, grade: "G3" },
-  { key: "g3-mult-tens",     type: "multiply-tens",    min: 10, max: 90, grade: "G3" },
-  { key: "g3-divide",        type: "divide",           min: 1,  max: 10, grade: "G3" },
-  { key: "g3-round",         type: "round",            min: 10, max: 999, grade: "G3" },
-  { key: "g3-fraction-line", type: "fraction-line",    min: 2,  max: 8,  grade: "G3" },
-  { key: "g3-equiv-frac",    type: "equiv-fractions",  min: 2,  max: 8,  grade: "G3" },
-  { key: "g3-compare-frac",  type: "compare-fractions", min: 2, max: 8,  grade: "G3" },
-  { key: "g3-area",          type: "area",             min: 2,  max: 9,  grade: "G3" },
-  { key: "g3-perimeter",     type: "perimeter",        min: 2,  max: 12, grade: "G3" },
+  { key: "add-1-5",          type: "addition",        min: 1,   max: 5   },
+  { key: "sub-1-5",          type: "subtraction",     min: 1,   max: 5   },
+  { key: "k-count-by-1",     type: "count-by-1",      min: 1,   max: 100 },
+  { key: "add-1-10",         type: "addition",        min: 1,   max: 10  },
+  { key: "sub-1-10",         type: "subtraction",     min: 1,   max: 10  },
+  { key: "k-compare-10",     type: "comparison",      min: 1,   max: 10  },
+  { key: "k-make-10",        type: "make-10",         min: 1,   max: 9   },
+  { key: "k-count-by-10",    type: "count-by-10",     min: 10,  max: 100 },
+  { key: "k-teen",           type: "teen-decompose",  min: 11,  max: 19  },
+  { key: "add-1-20",         type: "addition",        min: 1,   max: 20  },
+  { key: "sub-1-20",         type: "subtraction",     min: 1,   max: 20  },
+  { key: "g1-equal-sign",    type: "equal-sign",      min: 1,   max: 10  },
+  { key: "g1-unknown",       type: "unknown-addend",  min: 1,   max: 20  },
+  { key: "compare-20",       type: "comparison",      min: 1,   max: 20  },
+  { key: "three-addend",     type: "three-addend",    min: 1,   max: 6   },
+  { key: "fact-family",      type: "fact-family",     min: 1,   max: 10  },
+  { key: "place-value",      type: "place-value",     min: 1,   max: 9   },
+  { key: "count-120",        type: "count-120",       min: 1,   max: 120 },
+  { key: "mental-ten",       type: "mental-ten",      min: 10,  max: 90  },
+  { key: "add-100",          type: "add-100",         min: 10,  max: 90  },
+  { key: "g1-sub-mult-10",   type: "sub-mult-10",     min: 10,  max: 90  },
+  { key: "g2-odd-even",      type: "odd-even",        min: 1,   max: 20  },
+  { key: "g2-skip-count",    type: "skip-count",      min: 5,   max: 100 },
+  { key: "g2-place-3",       type: "place-value-3",   min: 1,   max: 9   },
+  { key: "g2-compare-999",   type: "compare-3digit",  min: 100, max: 999 },
+  { key: "g2-add-regroup",   type: "add-100-regroup", min: 10,  max: 99  },
+  { key: "g2-sub-regroup",   type: "sub-100-regroup", min: 10,  max: 99  },
+  { key: "g2-mental-100",    type: "mental-hundred",  min: 100, max: 800 },
+  { key: "g2-array",         type: "array",           min: 2,   max: 5   },
+  { key: "g3-mult",          type: "multiply",        min: 0,   max: 10  },
+  { key: "g3-divide",        type: "divide",          min: 1,   max: 10  },
+  { key: "g3-mult-tens",     type: "multiply-tens",   min: 10,  max: 90  },
+  { key: "g3-round",         type: "round",           min: 10,  max: 999 },
+  { key: "g3-fraction-line", type: "fraction-line",   min: 2,   max: 8   },
+  { key: "g3-equiv-frac",    type: "equiv-fractions", min: 2,   max: 8   },
+  { key: "g3-compare-frac",  type: "compare-fractions", min: 2, max: 8   },
+  { key: "g3-area",          type: "area",            min: 2,   max: 9   },
+  { key: "g3-perimeter",     type: "perimeter",       min: 2,   max: 12  },
 ];
 
 // Maps each topic key to its API stage. One stage = one Common Core skill.
 const TOPIC_STAGE: Record<string, { id: number; label: string }> = {
   // K
-  "add-1-5":         { id: 1,  label: "K · Add within 5" },
-  "sub-1-5":         { id: 2,  label: "K · Subtract within 5" },
-  "add-1-10":        { id: 3,  label: "K · Add within 10" },
-  "sub-1-10":        { id: 4,  label: "K · Subtract within 10" },
-  "k-count-by-1":    { id: 11, label: "K · Count by 1s to 100" },
-  "k-count-by-10":   { id: 17, label: "K · Count by 10s to 100" },
-  "k-make-10":       { id: 12, label: "K · Make 10" },
-  "k-compare-10":    { id: 13, label: "K · Compare 1–10" },
-  "k-teen":          { id: 15, label: "K · Teen Numbers (10 + ones)" },
+  "add-1-5":         { id: 1,  label: "Add within 5" },
+  "sub-1-5":         { id: 2,  label: "Subtract within 5" },
+  "add-1-10":        { id: 3,  label: "Add within 10" },
+  "sub-1-10":        { id: 4,  label: "Subtract within 10" },
+  "k-count-by-1":    { id: 11, label: "Count by 1s to 100" },
+  "k-count-by-10":   { id: 17, label: "Count by 10s to 100" },
+  "k-make-10":       { id: 12, label: "Make 10" },
+  "k-compare-10":    { id: 13, label: "Compare 1–10" },
+  "k-teen":          { id: 15, label: "Teen Numbers (10 + ones)" },
   // G1
-  "add-1-20":        { id: 5,  label: "G1 · Add within 20" },
-  "sub-1-20":        { id: 60, label: "G1 · Subtract within 20" },
-  "three-addend":    { id: 61, label: "G1 · Three-addend addition" },
-  "fact-family":     { id: 62, label: "G1 · Fact families" },
-  "g1-equal-sign":   { id: 16, label: "G1 · Equal sign true/false" },
-  "g1-unknown":      { id: 63, label: "G1 · Unknown addend" },
-  "compare-20":      { id: 6,  label: "G1 · Compare 2-digit numbers" },
-  "place-value":     { id: 7,  label: "G1 · Tens & ones place value" },
-  "mental-ten":      { id: 64, label: "G1 · Mental ±10" },
-  "g1-sub-mult-10":  { id: 65, label: "G1 · Subtract multiples of 10" },
-  "add-100":         { id: 8,  label: "G1 · Add within 100" },
-  "count-120":       { id: 68, label: "G1 · Count to 120" },
+  "add-1-20":        { id: 5,  label: "Add within 20" },
+  "sub-1-20":        { id: 60, label: "Subtract within 20" },
+  "three-addend":    { id: 61, label: "Three-addend addition" },
+  "fact-family":     { id: 62, label: "Fact families" },
+  "g1-equal-sign":   { id: 16, label: "Equal sign true/false" },
+  "g1-unknown":      { id: 63, label: "Unknown addend" },
+  "compare-20":      { id: 6,  label: "Compare 2-digit numbers" },
+  "place-value":     { id: 7,  label: "Tens & ones place value" },
+  "mental-ten":      { id: 64, label: "Mental ±10" },
+  "g1-sub-mult-10":  { id: 65, label: "Subtract multiples of 10" },
+  "add-100":         { id: 8,  label: "Add within 100" },
+  "count-120":       { id: 68, label: "Count to 120" },
   // G2
-  "g2-add-regroup":  { id: 20, label: "G2 · Add within 100" },
-  "g2-sub-regroup":  { id: 21, label: "G2 · Subtract within 100" },
-  "g2-place-3":      { id: 22, label: "G2 · 3-Digit Place Value" },
-  "g2-skip-count":   { id: 23, label: "G2 · Skip Count" },
-  "g2-compare-999":  { id: 24, label: "G2 · Compare 3-Digit" },
-  "g2-mental-100":   { id: 25, label: "G2 · Mental ±100" },
-  "g2-odd-even":     { id: 26, label: "G2 · Odd or Even" },
-  "g2-array":        { id: 27, label: "G2 · Arrays" },
+  "g2-add-regroup":  { id: 20, label: "Add within 100" },
+  "g2-sub-regroup":  { id: 21, label: "Subtract within 100" },
+  "g2-place-3":      { id: 22, label: "3-Digit Place Value" },
+  "g2-skip-count":   { id: 23, label: "Skip Count" },
+  "g2-compare-999":  { id: 24, label: "Compare 3-Digit" },
+  "g2-mental-100":   { id: 25, label: "Mental ±100" },
+  "g2-odd-even":     { id: 26, label: "Odd or Even" },
+  "g2-array":        { id: 27, label: "Arrays" },
   // G3
-  "g3-mult":         { id: 40, label: "G3 · Multiplication" },
-  "g3-mult-tens":    { id: 41, label: "G3 · ×Multiples of 10" },
-  "g3-divide":       { id: 42, label: "G3 · Division" },
-  "g3-round":        { id: 43, label: "G3 · Rounding" },
-  "g3-fraction-line": { id: 44, label: "G3 · Fractions on Number Line" },
-  "g3-equiv-frac":   { id: 45, label: "G3 · Equivalent Fractions" },
-  "g3-compare-frac": { id: 46, label: "G3 · Compare Fractions" },
-  "g3-area":         { id: 47, label: "G3 · Area" },
-  "g3-perimeter":    { id: 48, label: "G3 · Perimeter" },
+  "g3-mult":         { id: 40, label: "Multiplication" },
+  "g3-mult-tens":    { id: 41, label: "×Multiples of 10" },
+  "g3-divide":       { id: 42, label: "Division" },
+  "g3-round":        { id: 43, label: "Rounding" },
+  "g3-fraction-line": { id: 44, label: "Fractions on Number Line" },
+  "g3-equiv-frac":   { id: 45, label: "Equivalent Fractions" },
+  "g3-compare-frac": { id: 46, label: "Compare Fractions" },
+  "g3-area":         { id: 47, label: "Area" },
+  "g3-perimeter":    { id: 48, label: "Perimeter" },
 };
 
-const DEFAULT_RECORD: TopicRecord = { correct: 0, attempts: 0, interval: 1, dueIn: 0 };
+const DEFAULT_RECORD: TopicRecord = { correct: 0, attempts: 0, streak: 0, interval: 1, dueIn: 0, learned: false };
 
-// A grade is mastered when >= 75% of its topics have interval >= MASTERY_INTERVAL
-function isGradeMastered(grade: Grade, records: Record<string, TopicRecord>): boolean {
-  const topics = TOPIC_PROGRESSION.filter((t) => t.grade === grade);
-  if (topics.length === 0) return true;
-  const mastered = topics.filter((t) => (records[t.key]?.interval ?? 1) >= MASTERY_INTERVAL).length;
-  return mastered / topics.length >= GRADE_MASTERY_PCT;
-}
-
-// The current working grade is the lowest grade that isn't fully mastered
-function currentGrade(records: Record<string, TopicRecord>): Grade {
-  for (const g of GRADE_ORDER) {
-    if (!isGradeMastered(g, records)) return g;
+// Fill in fields older saves didn't have, and drop keys no longer on the ladder
+function normalizeRecords(raw: unknown): Record<string, TopicRecord> {
+  const out: Record<string, TopicRecord> = {};
+  if (!raw || typeof raw !== "object") return out;
+  const saved = raw as Record<string, Partial<TopicRecord>>;
+  for (const t of TOPIC_PROGRESSION) {
+    const r = saved[t.key];
+    if (!r) continue;
+    const interval = typeof r.interval === "number" ? r.interval : 1;
+    out[t.key] = {
+      correct: r.correct ?? 0,
+      attempts: r.attempts ?? 0,
+      streak: r.streak ?? 0,
+      interval,
+      dueIn: r.dueIn ?? 0,
+      learned: r.learned ?? interval >= LEARNED_INTERVAL,
+    };
   }
-  return "G3";
+  return out;
 }
 
-// Pick the topic most in need of practice from all unlocked topics
+function stepUp(interval: number): number {
+  return INTERVAL_STEPS.find((s) => s > interval) ?? INTERVAL_STEPS[INTERVAL_STEPS.length - 1];
+}
+
+// A miss drops the topic two rungs rather than all the way back, so one slip on a
+// solid skill turns into a check-in, not a drill
+function stepDown(interval: number): number {
+  const idx = INTERVAL_STEPS.findIndex((s) => s >= interval);
+  const from = idx === -1 ? INTERVAL_STEPS.length - 1 : idx;
+  return INTERVAL_STEPS[Math.max(0, from - 2)];
+}
+
+// Everything the learner has reached so far: all learned topics plus the next few
+// still being learned. Nothing ever leaves this set.
+function unlockedTopics(records: Record<string, TopicRecord>): TopicDef[] {
+  const out: TopicDef[] = [];
+  let learning = 0;
+  for (const t of TOPIC_PROGRESSION) {
+    out.push(t);
+    if (!records[t.key]?.learned) learning++;
+    if (learning >= LEARNING_CAP) break;
+  }
+  return out;
+}
+
+function learnedCount(records: Record<string, TopicRecord>): number {
+  return TOPIC_PROGRESSION.filter((t) => records[t.key]?.learned).length;
+}
+
+// Pick the next topic. Every unlocked topic stays eligible forever — the schedule,
+// not a difficulty filter, decides what shows up, so a session naturally mixes the
+// new material with reviews of things already learned.
 function selectTopic(records: Record<string, TopicRecord>, lastKey: string | null): TopicDef {
-  const grade = currentGrade(records);
-  const gradeIdx = GRADE_ORDER.indexOf(grade);
-  const allowedGrades = new Set(GRADE_ORDER.slice(0, gradeIdx + 1));
-  const unlocked = TOPIC_PROGRESSION.filter((t) => allowedGrades.has(t.grade));
+  const pool = unlockedTopics(records);
+  const due = pool.filter((t) => (records[t.key]?.dueIn ?? 0) <= 0);
+  const candidates = due.length > 0 ? due : pool;
 
-  // Exclude mastered topics unless everything is mastered
-  const unmastered = unlocked.filter((t) => (records[t.key]?.interval ?? 1) < MASTERY_INTERVAL);
-  const candidates = unmastered.length > 0 ? unmastered : unlocked;
-
-  // Only consider topics that are due
-  const due = candidates.filter((t) => (records[t.key]?.dueIn ?? 0) <= 0);
-  const pool = due.length > 0 ? due : candidates;
-
-  // Weight: unseen topics get 5× bonus; low-accuracy / short-interval topics surface more
-  // Penalize the last topic to avoid back-to-back repeats
-  const weights = pool.map((t) => {
+  const weights = candidates.map((t) => {
     const r = records[t.key] ?? DEFAULT_RECORD;
-    const isNew = r.attempts === 0;
+    const interval = Math.max(r.interval, 1);
+    const ripeness = (interval - r.dueIn) / interval; // 1 exactly at due, >1 overdue
     const accuracy = r.attempts > 0 ? r.correct / r.attempts : 0.5;
-    const base = (1 - accuracy * 0.8) / Math.max(r.interval, 1);
-    const newBonus = isNew ? 5 : 1;
-    return t.key === lastKey ? base * newBonus * 0.25 : base * newBonus;
+    const need = 1.5 - accuracy; // shaky topics get a bigger share of the questions
+    const fresh = r.attempts === 0 ? 2 : 1; // ease brand-new topics in promptly
+    const repeat = t.key === lastKey ? 0.15 : 1; // avoid back-to-back repeats
+    return Math.max(ripeness, 0.02) ** 2 * need * fresh * repeat;
   });
 
   const total = weights.reduce((a, b) => a + b, 0);
   let rand = Math.random() * total;
-  for (let i = 0; i < pool.length; i++) {
+  for (let i = 0; i < candidates.length; i++) {
     rand -= weights[i];
-    if (rand <= 0) return pool[i];
+    if (rand <= 0) return candidates[i];
   }
-  return pool[pool.length - 1];
+  return candidates[candidates.length - 1];
 }
 
-// Spaced repetition: correct doubles the interval (cap 30), wrong resets to 1
+// Spaced repetition: correct moves the topic up the interval ladder, a miss moves it down
 function advanceRecord(record: TopicRecord, correct: boolean): TopicRecord {
-  if (correct) {
-    const newInterval = Math.min(record.interval * 2, 30);
-    return { correct: record.correct + 1, attempts: record.attempts + 1, interval: newInterval, dueIn: newInterval };
-  }
-  return { ...record, attempts: record.attempts + 1, interval: 1, dueIn: 1 };
+  const interval = correct ? stepUp(record.interval) : stepDown(record.interval);
+  return {
+    correct: record.correct + (correct ? 1 : 0),
+    attempts: record.attempts + 1,
+    streak: correct ? record.streak + 1 : 0,
+    interval,
+    dueIn: interval,
+    learned: record.learned || (correct && interval >= LEARNED_INTERVAL),
+  };
 }
 
 // Tick down dueIn for every topic except the one just answered
@@ -360,7 +392,7 @@ function buildProblem(type: ProblemType, min: number, max: number): Problem {
   }
 
   if (type === "add-100") {
-    // 1st grade patterns: round tens + single digit (20+7) OR round tens + round tens (20+30)
+    // Two easy patterns: round tens + single digit (20+7) or round tens + round tens (20+30)
     const useTens = Math.random() > 0.5;
     let left: number, right: number;
     if (useTens) {
@@ -521,7 +553,7 @@ function buildProblem(type: ProblemType, min: number, max: number): Problem {
     };
   }
 
-  // ─── Grade 1 NEW ───────────────────────────────────────────────────────────
+  // ─── Tens & equality ───────────────────────────────────────────────────────
 
   if (type === "sub-mult-10") {
     const a = (Math.floor(Math.random() * 8) + 2) * 10; // 20..90
@@ -593,7 +625,7 @@ function buildProblem(type: ProblemType, min: number, max: number): Problem {
     };
   }
 
-  // ─── Grade 2 ───────────────────────────────────────────────────────────────
+  // ─── Regrouping & 3-digit numbers ──────────────────────────────────────────
 
   if (type === "add-100-regroup") {
     // Two-digit + two-digit, often requiring regrouping
@@ -721,7 +753,7 @@ function buildProblem(type: ProblemType, min: number, max: number): Problem {
     };
   }
 
-  // ─── Grade 3 ───────────────────────────────────────────────────────────────
+  // ─── Multiplication, fractions & measurement ───────────────────────────────
 
   if (type === "multiply") {
     const a = Math.floor(Math.random() * (max - min + 1)) + min;
@@ -921,7 +953,7 @@ async function postQuestionProgress(
   const stage = TOPIC_STAGE[topicKey];
   if (!stage) return;
   const topicsInStage = Object.entries(TOPIC_STAGE).filter(([, s]) => s.id === stage.id).map(([k]) => k);
-  const mastered = topicsInStage.every((k) => (records[k]?.interval ?? 1) >= 8);
+  const mastered = topicsInStage.every((k) => (records[k]?.interval ?? 1) >= LEARNED_INTERVAL);
   try {
     await fetch("/api/space-math/progress", {
       method: "POST",
@@ -1646,8 +1678,7 @@ function readSave() {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function SpaceMathPage() {
-  const [topicRecords, setTopicRecords] = useState<Record<string, TopicRecord>>(() => readSave()?.topicRecords ?? {});
-  const grade = currentGrade(topicRecords);
+  const [topicRecords, setTopicRecords] = useState<Record<string, TopicRecord>>(() => normalizeRecords(readSave()?.topicRecords));
   const [currentTopic, setCurrentTopic] = useState<TopicDef | null>(null);
   const [lastTopicKey, setLastTopicKey] = useState<string | null>(null);
   const [sessionCorrect, setSessionCorrect] = useState(0);
@@ -1805,7 +1836,8 @@ export default function SpaceMathPage() {
   const isReadAloud = !!problem && READ_ALOUD.has(problem.type);
   const isLongQuestion = problem && problem.question.length > 40;
   const isThreeOptions = problem && problem.options.length === 3;
-  const GRADE_LABEL: Record<Grade, string> = { K: "Kindergarten", G1: "Grade 1", G2: "Grade 2", G3: "Grade 3" };
+  const topicLabel = currentTopic ? TOPIC_STAGE[currentTopic.key]?.label : null;
+  const skillsLearned = learnedCount(topicRecords);
 
   return (
     <div className='flex-1 bg-black text-white selection:bg-blue-500/30 relative flex flex-col overflow-hidden max-h-screen'>
@@ -1857,6 +1889,9 @@ export default function SpaceMathPage() {
                 <h2 className='text-3xl sm:text-4xl md:text-5xl font-black mb-3 sm:mb-4 bg-gradient-to-b from-white to-blue-300 bg-clip-text text-transparent'>
                   Ready for Launch?
                 </h2>
+                <p className='text-sm sm:text-base text-blue-200/80 font-semibold'>
+                  {skillsLearned} of {TOPIC_PROGRESSION.length} skills learned
+                </p>
               </div>
               <button
                 onClick={startGame}
@@ -1930,7 +1965,7 @@ export default function SpaceMathPage() {
               </AnimatePresence>
               <div className='w-full flex-1 min-h-0 bg-slate-900/80 backdrop-blur-xl border border-white/10 rounded-[32px] sm:rounded-[40px] p-4 sm:p-6 shadow-2xl relative overflow-hidden flex flex-col'>
                 <div className='absolute top-3 right-4 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-blue-500/20 border border-blue-400/30 text-blue-200'>
-                  {GRADE_LABEL[grade]}
+                  {topicLabel}
                 </div>
                 <div className='text-center mb-2 sm:mb-3 shrink-0'>
                   <h2

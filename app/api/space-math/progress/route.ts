@@ -86,65 +86,77 @@ const SYLLABUS_CATEGORIES = [
   { id: "geometry",             label: "Geometry",               description: "2D/3D shapes, polygons, partition shapes" },
 ];
 
-// Each stage = one Common Core syllabus skill the child must master to advance the grade.
-type GradeKey = "K" | "G1" | "G2" | "G3";
-const STAGE_INFO: Record<number, { grade: GradeKey; label: string; standard: string }> = {
+// Each stage = one Common Core syllabus skill. There is no grade placement: the
+// learner sits at whatever point on the ladder they have reached.
+const STAGE_INFO: Record<number, { label: string; standard: string }> = {
   // ── Kindergarten ──
-  1:  { grade: "K",  label: "Add within 5",                       standard: "K.OA.A.5" },
-  2:  { grade: "K",  label: "Subtract within 5",                  standard: "K.OA.A.5" },
-  3:  { grade: "K",  label: "Add within 10",                      standard: "K.OA.A.2" },
-  4:  { grade: "K",  label: "Subtract within 10",                 standard: "K.OA.A.2" },
-  11: { grade: "K",  label: "Count by 1s to 100",                 standard: "K.CC.A.1" },
-  17: { grade: "K",  label: "Count by 10s to 100",                standard: "K.CC.A.1" },
-  12: { grade: "K",  label: "Make 10 (find pair to make 10)",     standard: "K.OA.A.4" },
-  13: { grade: "K",  label: "Compare numbers 1–10",               standard: "K.CC.C.6" },
-  14: { grade: "K",  label: "Identify shapes (2D & 3D)",          standard: "K.G.A.2" },
-  15: { grade: "K",  label: "Teen numbers as 10 + ones",          standard: "K.NBT.A.1" },
+  1:  { label: "Add within 5",                       standard: "K.OA.A.5" },
+  2:  { label: "Subtract within 5",                  standard: "K.OA.A.5" },
+  3:  { label: "Add within 10",                      standard: "K.OA.A.2" },
+  4:  { label: "Subtract within 10",                 standard: "K.OA.A.2" },
+  11: { label: "Count by 1s to 100",                 standard: "K.CC.A.1" },
+  17: { label: "Count by 10s to 100",                standard: "K.CC.A.1" },
+  12: { label: "Make 10 (find pair to make 10)",     standard: "K.OA.A.4" },
+  13: { label: "Compare numbers 1–10",               standard: "K.CC.C.6" },
+  14: { label: "Identify shapes (2D & 3D)",          standard: "K.G.A.2" },
+  15: { label: "Teen numbers as 10 + ones",          standard: "K.NBT.A.1" },
   // ── Grade 1 ──
-  5:  { grade: "G1", label: "Add within 20",                      standard: "1.OA.C.6" },
-  60: { grade: "G1", label: "Subtract within 20",                 standard: "1.OA.C.6" },
-  61: { grade: "G1", label: "Three-addend addition",              standard: "1.OA.A.2" },
-  62: { grade: "G1", label: "Fact families (use ↔ subtraction)",  standard: "1.OA.B.4" },
-  16: { grade: "G1", label: "Equal sign true/false",              standard: "1.OA.D.7" },
-  63: { grade: "G1", label: "Unknown addend (8 + ? = 11)",        standard: "1.OA.D.8" },
-  6:  { grade: "G1", label: "Compare two-digit numbers",          standard: "1.NBT.B.3" },
-  7:  { grade: "G1", label: "Tens & ones place value",            standard: "1.NBT.B.2" },
-  64: { grade: "G1", label: "Mental ±10",                         standard: "1.NBT.C.5" },
-  65: { grade: "G1", label: "Subtract multiples of 10 (70 − 30)", standard: "1.NBT.C.6" },
-  9:  { grade: "G1", label: "Order & compare lengths",            standard: "1.MD.A.1" },
-  66: { grade: "G1", label: "Tell time to hour & half-hour",      standard: "1.MD.B.3" },
-  8:  { grade: "G1", label: "Add within 100 (2-digit + 1-digit / multiple of 10)", standard: "1.NBT.C.4" },
-  67: { grade: "G1", label: "Word problems within 20",            standard: "1.OA.A.1" },
-  68: { grade: "G1", label: "Count to 120 from any number",       standard: "1.NBT.A.1" },
-  10: { grade: "G1", label: "Halves & fourths (partition shapes)", standard: "1.G.A.3" },
+  5:  { label: "Add within 20",                      standard: "1.OA.C.6" },
+  60: { label: "Subtract within 20",                 standard: "1.OA.C.6" },
+  61: { label: "Three-addend addition",              standard: "1.OA.A.2" },
+  62: { label: "Fact families (use ↔ subtraction)",  standard: "1.OA.B.4" },
+  16: { label: "Equal sign true/false",              standard: "1.OA.D.7" },
+  63: { label: "Unknown addend (8 + ? = 11)",        standard: "1.OA.D.8" },
+  6:  { label: "Compare two-digit numbers",          standard: "1.NBT.B.3" },
+  7:  { label: "Tens & ones place value",            standard: "1.NBT.B.2" },
+  64: { label: "Mental ±10",                         standard: "1.NBT.C.5" },
+  65: { label: "Subtract multiples of 10 (70 − 30)", standard: "1.NBT.C.6" },
+  9:  { label: "Order & compare lengths",            standard: "1.MD.A.1" },
+  66: { label: "Tell time to hour & half-hour",      standard: "1.MD.B.3" },
+  8:  { label: "Add within 100 (2-digit + 1-digit / multiple of 10)", standard: "1.NBT.C.4" },
+  67: { label: "Word problems within 20",            standard: "1.OA.A.1" },
+  68: { label: "Count to 120 from any number",       standard: "1.NBT.A.1" },
+  10: { label: "Halves & fourths (partition shapes)", standard: "1.G.A.3" },
   // ── Grade 2 ──
-  20: { grade: "G2", label: "Add within 100 (with regrouping)",   standard: "2.NBT.B.5" },
-  21: { grade: "G2", label: "Subtract within 100 (with regrouping)", standard: "2.NBT.B.5" },
-  22: { grade: "G2", label: "3-digit place value",                standard: "2.NBT.A.1" },
-  23: { grade: "G2", label: "Skip count by 5s, 10s, 100s",        standard: "2.NBT.A.2" },
-  24: { grade: "G2", label: "Compare 3-digit numbers",            standard: "2.NBT.A.4" },
-  25: { grade: "G2", label: "Mental ±100",                        standard: "2.NBT.B.8" },
-  26: { grade: "G2", label: "Odd or even (within 20)",            standard: "2.OA.C.3" },
-  27: { grade: "G2", label: "Rectangular arrays (foundations of ×)", standard: "2.OA.C.4" },
-  28: { grade: "G2", label: "Tell time to the nearest 5 min",     standard: "2.MD.C.7" },
-  29: { grade: "G2", label: "Money (coins / cents)",              standard: "2.MD.C.8" },
-  30: { grade: "G2", label: "Thirds (partition shapes)",          standard: "2.G.A.3" },
-  31: { grade: "G2", label: "Identify polygons (quadrilaterals, pentagons, hexagons)", standard: "2.G.A.1" },
+  20: { label: "Add within 100 (with regrouping)",   standard: "2.NBT.B.5" },
+  21: { label: "Subtract within 100 (with regrouping)", standard: "2.NBT.B.5" },
+  22: { label: "3-digit place value",                standard: "2.NBT.A.1" },
+  23: { label: "Skip count by 5s, 10s, 100s",        standard: "2.NBT.A.2" },
+  24: { label: "Compare 3-digit numbers",            standard: "2.NBT.A.4" },
+  25: { label: "Mental ±100",                        standard: "2.NBT.B.8" },
+  26: { label: "Odd or even (within 20)",            standard: "2.OA.C.3" },
+  27: { label: "Rectangular arrays (foundations of ×)", standard: "2.OA.C.4" },
+  28: { label: "Tell time to the nearest 5 min",     standard: "2.MD.C.7" },
+  29: { label: "Money (coins / cents)",              standard: "2.MD.C.8" },
+  30: { label: "Thirds (partition shapes)",          standard: "2.G.A.3" },
+  31: { label: "Identify polygons (quadrilaterals, pentagons, hexagons)", standard: "2.G.A.1" },
   // ── Grade 3 ──
-  40: { grade: "G3", label: "Multiplication within 100",          standard: "3.OA.C.7" },
-  41: { grade: "G3", label: "Multiply by multiples of 10",        standard: "3.NBT.A.3" },
-  42: { grade: "G3", label: "Division within 100",                standard: "3.OA.C.7" },
-  43: { grade: "G3", label: "Round to nearest 10 or 100",         standard: "3.NBT.A.1" },
-  44: { grade: "G3", label: "Fractions on a number line",         standard: "3.NF.A.2" },
-  45: { grade: "G3", label: "Equivalent fractions",               standard: "3.NF.A.3.b" },
-  46: { grade: "G3", label: "Compare fractions",                  standard: "3.NF.A.3.d" },
-  47: { grade: "G3", label: "Area of rectangles",                 standard: "3.MD.C.7" },
-  48: { grade: "G3", label: "Perimeter of polygons",              standard: "3.MD.D.8" },
-  49: { grade: "G3", label: "Tell time to the minute",            standard: "3.MD.A.1" },
-  50: { grade: "G3", label: "Elapsed time word problems",         standard: "3.MD.A.1" },
+  40: { label: "Multiplication within 100",          standard: "3.OA.C.7" },
+  41: { label: "Multiply by multiples of 10",        standard: "3.NBT.A.3" },
+  42: { label: "Division within 100",                standard: "3.OA.C.7" },
+  43: { label: "Round to nearest 10 or 100",         standard: "3.NBT.A.1" },
+  44: { label: "Fractions on a number line",         standard: "3.NF.A.2" },
+  45: { label: "Equivalent fractions",               standard: "3.NF.A.3.b" },
+  46: { label: "Compare fractions",                  standard: "3.NF.A.3.d" },
+  47: { label: "Area of rectangles",                 standard: "3.MD.C.7" },
+  48: { label: "Perimeter of polygons",              standard: "3.MD.D.8" },
+  49: { label: "Tell time to the minute",            standard: "3.MD.A.1" },
+  50: { label: "Elapsed time word problems",         standard: "3.MD.A.1" },
 };
-const GRADE_LABEL: Record<GradeKey, string> = { K: "Kindergarten", G1: "Grade 1", G2: "Grade 2", G3: "Grade 3" };
-const GRADE_ORDER: GradeKey[] = ["K", "G1", "G2", "G3"];
+// The single linear skill ladder, easiest first — mirrors TOPIC_PROGRESSION in
+// app/space-math/SpaceMathPage.tsx. Spaced repetition keeps every rung in the mix,
+// so nothing on this list is retired once it is mastered.
+const LADDER: number[] = [
+  1, 2, 11, 3, 4, 13, 12, 17, 15,
+  5, 60, 16, 63, 6, 61, 62, 7, 68, 64, 8, 65,
+  26, 23, 22, 24, 20, 21, 25, 27,
+  40, 42, 41, 43, 44, 45, 46, 47, 48,
+];
+// Syllabus skills that don't have a question generator in the game yet
+const UPCOMING: number[] = Object.keys(STAGE_INFO).map(Number).filter((id) => !LADDER.includes(id));
+
+// How many not-yet-mastered skills the game keeps in rotation at once
+const FOCUS_COUNT = 3;
 
 function supabase() {
   return createClient(
@@ -301,7 +313,7 @@ export async function GET(req: NextRequest) {
     // ── Per-stage stats (only count primary-category rows so totals aren't doubled) ──
     type StageStat = {
       stageId: number;
-      grade: GradeKey;
+      rung: number | null;
       label: string;
       standard: string;
       correct: number;
@@ -314,8 +326,9 @@ export async function GET(req: NextRequest) {
     const stageMap: Record<number, StageStat> = {};
     for (const id of Object.keys(STAGE_INFO).map(Number)) {
       const info = STAGE_INFO[id];
+      const rung = LADDER.indexOf(id);
       stageMap[id] = {
-        stageId: id, grade: info.grade, label: info.label, standard: info.standard,
+        stageId: id, rung: rung === -1 ? null : rung + 1, label: info.label, standard: info.standard,
         correct: 0, total: 0, accuracy: null, mastered: masteredStages.has(id),
         lastPlayed: null, sessionCount: 0,
       };
@@ -336,43 +349,33 @@ export async function GET(req: NextRequest) {
       s.accuracy = s.total > 0 ? s.correct / s.total : null;
     }
 
-    // ── Group stages by grade ──
-    const gradeBreakdown = GRADE_ORDER.map((g) => {
-      const stages = Object.values(stageMap).filter((s) => s.grade === g)
-        .sort((a, b) => a.stageId - b.stageId);
-      const mastered = stages.filter((s) => s.mastered).length;
-      const totalCorrect = stages.reduce((acc, s) => acc + s.correct, 0);
-      const totalAttempts = stages.reduce((acc, s) => acc + s.total, 0);
-      return {
-        grade: g,
-        label: GRADE_LABEL[g],
-        totalStages: stages.length,
-        masteredStages: mastered,
-        complete: stages.length > 0 && mastered === stages.length,
-        masteryPct: stages.length > 0 ? Math.round((mastered / stages.length) * 100) : 0,
-        totalCorrect,
-        totalAttempts,
-        accuracy: totalAttempts > 0 ? totalCorrect / totalAttempts : null,
-        stages,
-      };
-    });
-    // Current grade = lowest grade not fully mastered (matches in-game gating)
-    const currentGradeEntry = gradeBreakdown.find((g) => !g.complete) ?? gradeBreakdown[gradeBreakdown.length - 1];
+    // ── The ladder: every playable skill in difficulty order ──
+    const ladder = LADDER.map((id) => stageMap[id]).filter(Boolean);
+    const upcoming = UPCOMING.map((id) => stageMap[id]).filter(Boolean);
+    const skillsMastered = ladder.filter((s) => s.mastered).length;
+    const ladderCorrect = ladder.reduce((acc, s) => acc + s.correct, 0);
+    const ladderAttempts = ladder.reduce((acc, s) => acc + s.total, 0);
+    // What the game is working on now: the next few skills not yet mastered
+    const focusSkills = ladder.filter((s) => !s.mastered).slice(0, FOCUS_COUNT);
+    // Mastered skills still in the review rotation, most recently practiced first
+    const reviewSkills = ladder
+      .filter((s) => s.mastered)
+      .sort((a, b) => (b.lastPlayed ?? "").localeCompare(a.lastPlayed ?? ""));
 
     return NextResponse.json({
       success: true,
       player,
       overallLevel,
-      currentGrade: currentGradeEntry.grade,
-      currentGradeLabel: currentGradeEntry.label,
-      currentGradeBreakdown: currentGradeEntry,
-      gradeBreakdown,
-      // Backward-compat shape
-      gradeStats: gradeBreakdown.map((g) => ({
-        grade: g.grade, label: g.label, totalStages: g.totalStages,
-        masteredStages: g.masteredStages, complete: g.complete,
-      })),
-      syllabusComplete: gradeBreakdown.every((g) => g.complete),
+      ladder,
+      upcoming,
+      focusSkills,
+      reviewSkills,
+      skillsMastered,
+      totalSkills: ladder.length,
+      ladderAccuracy: ladderAttempts > 0 ? ladderCorrect / ladderAttempts : null,
+      ladderCorrect,
+      ladderAttempts,
+      syllabusComplete: ladder.length > 0 && skillsMastered === ladder.length,
       categoryLevels,
       strengths: strengths.map((c) => c.label),
       weaknesses: weaknesses.map((c) => c.label),
