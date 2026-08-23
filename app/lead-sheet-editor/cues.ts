@@ -1,5 +1,5 @@
 import type { Section } from "./shared";
-import { parseTimeMarker } from "./timing";
+import { DEFAULT_BPM, parseTimeMarker } from "./timing";
 
 // ─── Cue tags ─────────────────────────────────────────────────────────────────
 //
@@ -121,10 +121,13 @@ export interface LineCueEvent extends CueEvent {
 }
 
 /** Cue events in the order they fire, tagged with the line that carries them. */
-export function cueEventsFromLines(lines: string[]): LineCueEvent[] {
+export function cueEventsFromLines(
+  lines: string[],
+  bpm: number = DEFAULT_BPM,
+): LineCueEvent[] {
   const events: LineCueEvent[] = [];
   lines.forEach((line, lineIndex) => {
-    const marker = parseTimeMarker(line);
+    const marker = parseTimeMarker(line, bpm);
     if (!marker) return;
     const cue = readCueTokens(line);
     if (!cue || (cue.starts.length === 0 && cue.stops.length === 0)) return;
@@ -133,8 +136,9 @@ export function cueEventsFromLines(lines: string[]): LineCueEvent[] {
   return events.sort((a, b) => a.time - b.time);
 }
 
-export function parseCueEvents(sections: Section[]): CueEvent[] {
+export function parseCueEvents(sections: Section[], bpm: number = DEFAULT_BPM): CueEvent[] {
   return cueEventsFromLines(
-    sections.flatMap((section) => (section.content ?? "").split("\n"))
+    sections.flatMap((section) => (section.content ?? "").split("\n")),
+    bpm
   );
 }

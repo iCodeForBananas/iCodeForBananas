@@ -331,6 +331,7 @@ const SheetContent = memo(function SheetContent({
   timeline,
   activeCueIndex = null,
   onSeekToLine,
+  bpm,
 }: {
   sheet: LeadSheet;
   fullscreen: boolean;
@@ -341,7 +342,10 @@ const SheetContent = memo(function SheetContent({
   timeline?: Timeline;
   activeCueIndex?: number | null;
   onSeekToLine?: (sectionIndex: number, lineIndex: number) => void;
+  /** Tempo the song's beat markers are read at — the live one, not the saved one. */
+  bpm?: number;
 }) {
+  const beatTempo = bpm ?? sheet.tempo ?? DEFAULT_BPM;
   const columnsActive = !!(columnCount || columnWidthVw);
   return (
     <div>
@@ -441,6 +445,7 @@ const SheetContent = memo(function SheetContent({
                         line={transposeSteps !== 0 ? transposeText(displayLine, transposeSteps) : displayLine}
                         large={fullscreen}
                         showTime={!!timeline}
+                        bpm={beatTempo}
                       />
                     </div>
                   );
@@ -514,7 +519,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
 
   // ─── Timed playback ─────────────────────────────────────────────────────────
 
-  const timeline = useMemo(() => buildTimeline(sheet?.sections ?? []), [sheet]);
+  const timeline = useMemo(() => buildTimeline(sheet?.sections ?? [], bpm), [sheet, bpm]);
   const hasTiming = timeline.cues.length > 0;
 
   // What the string pads play: the song's own chords, in the key on screen.
@@ -542,8 +547,8 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
 
   // ── Cue timeline automation ────────────────────────────────────────────────
   const cueEvents = useMemo(
-    () => (sheet ? parseCueEvents(sheet.sections) : []),
-    [sheet]
+    () => (sheet ? parseCueEvents(sheet.sections, bpm) : []),
+    [sheet, bpm]
   );
 
   // When playback closes, reset the tracker (leave drum state for manual control).
@@ -1054,6 +1059,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                   timeline={playbackOpen ? timeline : undefined}
                   activeCueIndex={activeCueIndex}
                   onSeekToLine={playbackOpen ? seekToLine : undefined}
+                  bpm={bpm}
                 />
               </div>
               {showArrangement && (
@@ -1243,6 +1249,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                     timeline={playbackOpen ? timeline : undefined}
                     activeCueIndex={activeCueIndex}
                     onSeekToLine={playbackOpen ? seekToLine : undefined}
+                  bpm={bpm}
                   />
                 </div>
                 {showArrangement && (

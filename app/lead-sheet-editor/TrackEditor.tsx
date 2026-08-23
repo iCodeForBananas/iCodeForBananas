@@ -61,12 +61,19 @@ const TRACK_PAD = 6;
 const GUTTER = 132;
 const LIBRARY_WIDTH = 244;
 
+/**
+ * What a drag lands on, counted in beats. A song is built out of bars, so the
+ * grid a clip snaps to is the song's own tempo rather than the wall clock.
+ */
 const SNAP_CHOICES = [
-  { label: "1s", value: 1 },
-  { label: "½s", value: 0.5 },
-  { label: "⅒s", value: 0.1 },
-  { label: "off", value: 0 },
+  { label: "Bar", beats: 4 },
+  { label: "½ bar", beats: 2 },
+  { label: "Beat", beats: 1 },
+  { label: "½ beat", beats: 0.5 },
+  { label: "off", beats: 0 },
 ];
+
+const BEATS_PER_BAR = 4;
 
 /** How long a fade takes — the same four seconds the preview's cues use. */
 const FADE_SECONDS = 4;
@@ -158,14 +165,14 @@ export default function TrackEditor({
   const settings = useMemo(() => readSongSettings(rawText), [rawText]);
   const lineSeconds = defaultLineSeconds(settings.bpm);
   const initial = useMemo(
-    () => buildArrangement(rawText, { lineSeconds }),
-    [rawText, lineSeconds]
+    () => buildArrangement(rawText, { lineSeconds, bpm: settings.bpm }),
+    [rawText, lineSeconds, settings.bpm]
   );
   const [lyrics, setLyrics] = useState<LyricClip[]>(initial.lyrics);
   const [sounds, setSounds] = useState<SoundClip[]>(initial.sounds);
   const [extraLayers, setExtraLayers] = useState<string[]>([]);
   const [zoom, setZoom] = useState(DEFAULT_ZOOM);
-  const [snap, setSnap] = useState(0.5);
+  const [snapBeats, setSnapBeats] = useState(1);
   const [selected, setSelected] = useState<Selection>(null);
   const [dirty, setDirty] = useState(false);
 
@@ -246,6 +253,10 @@ export default function TrackEditor({
   );
 
   // ── Clip edits ─────────────────────────────────────────────────────────────
+
+  /** One beat, in seconds — the unit the ruler, the grid and every snap use. */
+  const beatSeconds = 60 / Math.max(1, settings.bpm);
+  const snap = snapBeats * beatSeconds;
 
   const snapTime = useCallback(
     (seconds: number) => {
@@ -481,7 +492,7 @@ export default function TrackEditor({
 
   const resetAll = () => {
     if (dirty && !confirm("Put every clip back where the song has it?")) return;
-    const fresh = buildArrangement(rawText, { lineSeconds });
+    const fresh = buildArrangement(rawText, { lineSeconds, bpm: settings.bpm });
     setLyrics(fresh.lyrics);
     setSounds(fresh.sounds);
     setExtraLayers([]);
@@ -490,7 +501,13 @@ export default function TrackEditor({
   };
 
   const apply = () => {
-    onApply(applyArrangement(rawText, { lyrics, sounds, duration: contentEnd }));
+    onApply(
+      applyArrangement(
+        rawText,
+        { lyrics, sounds, duration: contentEnd },
+        { inBeats: !usingVideo, bpm: settings.bpm }
+      )
+    );
     onClose();
   };
 
@@ -629,12 +646,12 @@ export default function TrackEditor({
         <label className="ml-1 flex items-center gap-1.5 text-xs text-white/40">
           Snap
           <select
-            value={snap}
-            onChange={(e) => setSnap(parseFloat(e.target.value))}
+            value={snapBeats}
+            onChange={(e) => setSnapBeats(parseFloat(e.target.value))}
             className="rounded border border-white/20 bg-black px-2 py-1.5 text-xs text-white outline-none focus:border-white/60"
           >
             {SNAP_CHOICES.map((choice) => (
-              <option key={choice.label} value={choice.value}>
+              <option key={choice.label} value={choice.beats}>
                 {choice.label}
               </option>
             ))}
@@ -729,7 +746,7 @@ export default function TrackEditor({
               className="sticky left-0 z-40 shrink-0 border-r border-b border-white/10 bg-black"
               style={{ width: GUTTER }}
             />
-            <Ruler duration={duration} zoom={zoom} width={width} onSeek={seek} />
+            <Ruler duration={duration} zoom={zoom} width={width} beat={beatSeconds} onSeek={seek} />
           </div>
 
           {/* Lyric track */}
@@ -742,7 +759,7 @@ export default function TrackEditor({
               style={{ width, touchAction: "none" }}
               onPointerDown={() => setSelected(null)}
             >
-              <Grid duration={duration} zoom={zoom} />
+              <Grid duration={duration} zoom={zoom} beat={beatSeconds} />
               {placedLyrics.map((clip) => (
                 <ClipBox
                   key={clip.id}
@@ -793,7 +810,7 @@ export default function TrackEditor({
                 style={{ width, touchAction: "none" }}
                 onPointerDown={(e) => drawClip(e, layer)}
               >
-                <Grid duration={duration} zoom={zoom} />
+                <Grid duration={duration} zoom={zoom} beat={beatSeconds} />
                 {sounds
                   .filter((clip) => clip.layer === layer)
                   .map((clip) => (
@@ -958,22 +975,36 @@ function TrackName({ children }: { children: React.ReactNode }) {
   );
 }
 
-/** Seconds along the top, clickable end to end for scrubbing. */
+/**
+ * Bar numbers a drag can count against — every 1, 2, 4, 8 … bars, whichever
+ * leaves the labels far enough apart to read at this zoom. The clock still runs
+ * underneath, so each label carries the moment it lands on too.
+ */
+function barStep(beat: number, zoom: number): number {
+  const bar = beat * BEATS_PER_BAR * zoom;
+  return [1, 2, 4, 8, 16, 32].find((bars) => bars * bar >= 70) ?? 64;
+}
+
+/** Bars along the top, clickable end to end for scrubbing. */
 function Ruler({
   duration,
   zoom,
   width,
+  beat,
   onSeek,
 }: {
   duration: number;
   zoom: number;
   width: number;
+  beat: number;
   onSeek: (seconds: number) => void;
 }) {
-  // Roughly one label per 70px, rounded to something a musician would count in.
-  const step = [1, 2, 5, 10, 15, 30, 60].find((s) => s * zoom >= 70) ?? 120;
-  const ticks: number[] = [];
-  for (let t = 0; t <= duration; t += step) ticks.push(t);
+  const step = barStep(beat, zoom);
+  const barSeconds = beat * BEATS_PER_BAR;
+  const ticks: { bar: number; seconds: number }[] = [];
+  for (let bar = 0; bar * barSeconds <= duration; bar += step) {
+    ticks.push({ bar, seconds: bar * barSeconds });
+  }
 
   return (
     <div
@@ -984,11 +1015,12 @@ function Ruler({
         onSeek(Math.max(0, (e.clientX - bounds.left) / zoom));
       }}
     >
-      {ticks.map((t) => (
-        <div key={t} className="absolute top-0 h-full" style={{ left: t * zoom }}>
+      {ticks.map(({ bar, seconds }) => (
+        <div key={bar} className="absolute top-0 h-full" style={{ left: seconds * zoom }}>
           <div className="h-2 w-px bg-white/25" />
           <span className="absolute left-1 top-1.5 font-mono text-[0.65rem] tabular-nums text-white/40">
-            {formatTime(t)}
+            {bar + 1}
+            <span className="ml-1 text-white/20">{formatTime(seconds)}</span>
           </span>
         </div>
       ))}
@@ -996,18 +1028,19 @@ function Ruler({
   );
 }
 
-/** Faint bars behind the clips so a drag has something to read against. */
-function Grid({ duration, zoom }: { duration: number; zoom: number }) {
-  const step = [1, 2, 5, 10, 15, 30, 60].find((s) => s * zoom >= 70) ?? 120;
+/** Faint bar lines behind the clips so a drag has something to read against. */
+function Grid({ duration, zoom, beat }: { duration: number; zoom: number; beat: number }) {
+  const step = barStep(beat, zoom);
+  const barSeconds = beat * BEATS_PER_BAR;
   const lines: number[] = [];
-  for (let t = step; t <= duration; t += step) lines.push(t);
+  for (let bar = step; bar * barSeconds <= duration; bar += step) lines.push(bar * barSeconds);
   return (
     <>
-      {lines.map((t) => (
+      {lines.map((seconds) => (
         <div
-          key={t}
+          key={seconds}
           className="pointer-events-none absolute top-0 bottom-0 w-px bg-white/5"
-          style={{ left: t * zoom }}
+          style={{ left: seconds * zoom }}
         />
       ))}
     </>

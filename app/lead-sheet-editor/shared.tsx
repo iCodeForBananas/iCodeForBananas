@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { WifiOff } from "lucide-react";
 import ChordHoverPopover from "../components/ChordHoverPopover";
-import { formatTime, parseTimeMarker, stripTimeMarker } from "./timing";
+import { DEFAULT_BPM, formatTime, parseTimeMarker, stripTimeMarker } from "./timing";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -176,13 +176,16 @@ export function ChordLyricLine({
   line,
   large = false,
   showTime = false,
+  bpm = DEFAULT_BPM,
 }: {
   line: string;
   large?: boolean;
   /** Render the line's `@m:ss` cue as a chip. Off everywhere the timing is noise. */
   showTime?: boolean;
+  /** The song's tempo, which is what a beat marker's chip is read against. */
+  bpm?: number;
 }) {
-  const marker = parseTimeMarker(line);
+  const marker = parseTimeMarker(line, bpm);
   const body = marker ? stripTimeMarker(line) : line;
   const segments = parseChordProLine(body);
   const hasChords = segments.some((s) => s.chord);

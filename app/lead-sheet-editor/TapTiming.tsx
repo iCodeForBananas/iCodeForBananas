@@ -6,7 +6,9 @@ import {
   applyStamps,
   clearAllMarkers,
   formatTime,
+  hasBeatMarkers,
   parseTimeMarker,
+  readTempo,
   stampableLines,
   stripTimeMarker,
 } from "./timing";
@@ -26,6 +28,14 @@ export default function TapTiming({
   onClose: () => void;
 }) {
   const lines = useMemo(() => rawText.split("\n"), [rawText]);
+  const bpm = useMemo(() => readTempo(rawText), [rawText]);
+  // Taps land on the clock. A song already written in beats wants them
+  // converted; so does a song with no markers at all, which is a new one, and
+  // new songs are laid out in beats.
+  const inBeats = useMemo(
+    () => hasBeatMarkers(rawText) || !lines.some((line) => parseTimeMarker(line)),
+    [rawText, lines]
+  );
   const targets = useMemo(() => stampableLines(rawText), [rawText]);
   const targetSet = useMemo(() => new Set(targets), [targets]);
 
@@ -33,7 +43,7 @@ export default function TapTiming({
   const [stamps, setStamps] = useState<Map<number, number>>(() => {
     const seeded = new Map<number, number>();
     for (const i of stampableLines(rawText)) {
-      const marker = parseTimeMarker(rawText.split("\n")[i]);
+      const marker = parseTimeMarker(rawText.split("\n")[i], readTempo(rawText));
       if (marker) seeded.set(i, marker.start);
     }
     return seeded;
@@ -102,7 +112,7 @@ export default function TapTiming({
   }
 
   function apply() {
-    onApply(applyStamps(rawText, stamps));
+    onApply(applyStamps(rawText, stamps, inBeats ? bpm : undefined));
     onClose();
   }
 

@@ -5,7 +5,7 @@ import {
   readCueTokens,
   stripCueMarkers,
 } from "./cues";
-import { formatTime, parseTimeMarker, stripTimeMarker } from "./timing";
+import { formatBeatMarker, formatTime, parseTimeMarker, stripTimeMarker } from "./timing";
 
 // ─── Arrangement ──────────────────────────────────────────────────────────────
 //
@@ -46,6 +46,19 @@ export function defaultLineSeconds(bpm: number, beatsPerBar = 4): number {
 export interface ArrangementOptions {
   /** Length given to a line the song never timed. */
   lineSeconds?: number;
+  /** The tempo the song's beat markers are read at. */
+  bpm?: number;
+}
+
+/** How an arrangement is written back into the sheet. */
+export interface ApplyOptions {
+  /**
+   * Write every marker in beats, so the arrangement follows the tempo instead
+   * of the clock. Off for a song timed against a recording, which has a speed
+   * of its own that no tempo field is going to change.
+   */
+  inBeats?: boolean;
+  bpm?: number;
 }
 
 export interface LyricClip {
@@ -101,6 +114,7 @@ export function buildArrangement(
   options: ArrangementOptions = {},
 ): Arrangement {
   const lineSeconds = options.lineSeconds ?? defaultLineSeconds(DEFAULT_BPM);
+  const bpm = options.bpm ?? DEFAULT_BPM;
   const lines = rawText.split("\n");
   const lyrics: LyricClip[] = [];
 
@@ -138,7 +152,7 @@ export function buildArrangement(
       section = header;
       return;
     }
-    const marker = parseTimeMarker(line);
+    const marker = parseTimeMarker(line, bpm);
     // Every stamp is an anchor, cue lines included: [drum] at 1:04 is a moment
     // the song names, and the lines under it flow from there.
     if (marker) {
@@ -178,7 +192,7 @@ export function buildArrangement(
     if (clip.end <= clip.start) clip.end = Math.max(limit, clip.start + 1);
   });
 
-  const sounds = buildSoundClips(lines, lyrics);
+  const sounds = buildSoundClips(lines, lyrics, bpm);
 
   const duration = Math.max(
     0,
@@ -190,8 +204,8 @@ export function buildArrangement(
 }
 
 /** Walks the cue events, pairing each start with the stop that closes it. */
-function buildSoundClips(lines: string[], lyrics: LyricClip[]): SoundClip[] {
-  const events = cueEventsFromLines(lines);
+function buildSoundClips(lines: string[], lyrics: LyricClip[], bpm: number): SoundClip[] {
+  const events = cueEventsFromLines(lines, bpm);
   const lyricEnd = lyrics.length ? lyrics[lyrics.length - 1].end : 0;
   const songEnd = Math.max(lyricEnd, ...events.map((e) => e.time));
 
@@ -255,8 +269,15 @@ interface CueLine {
   text: string;
 }
 
+/** How a moment is written into the sheet — `1:04` or `b32`. */
+type StampFormat = (seconds: number) => string;
+
 /** One line per moment: everything starting at 1:04 shares a single tag. */
-function generateCueLines(sounds: SoundClip[], duration: number): CueLine[] {
+function generateCueLines(
+  sounds: SoundClip[],
+  duration: number,
+  stamp: StampFormat,
+): CueLine[] {
   const starts = new Map<string, { time: number; layers: string[]; fade: boolean }>();
   const stops = new Map<string, { time: number; layers: string[]; fade: boolean }>();
 
@@ -292,13 +313,13 @@ function generateCueLines(sounds: SoundClip[], duration: number): CueLine[] {
     const layers = stopsEverything && group.layers.length > 1 ? ["all"] : group.layers;
     lines.push({
       time: group.time,
-      text: `@${formatArrangementTime(group.time)} ${formatCueTag(layers, true, group.fade)}`,
+      text: `@${stamp(group.time)} ${formatCueTag(layers, true, group.fade)}`,
     });
   }
   for (const [, group] of starts) {
     lines.push({
       time: group.time,
-      text: `@${formatArrangementTime(group.time)} ${formatCueTag(group.layers, false, group.fade)}`,
+      text: `@${stamp(group.time)} ${formatCueTag(group.layers, false, group.fade)}`,
     });
   }
 
@@ -311,7 +332,18 @@ function generateCueLines(sounds: SoundClip[], duration: number): CueLine[] {
  * The song with the arrangement written into it. Lyric lines keep their text
  * and their place; their stamps, and every cue line, come from the clips.
  */
-export function applyArrangement(rawText: string, arrangement: Arrangement): string {
+export function applyArrangement(
+  rawText: string,
+  arrangement: Arrangement,
+  options: ApplyOptions = {},
+): string {
+  // Beats or the clock — decided once, here, so that a lyric line and the cue
+  // above it can never end up written in two different languages.
+  const bpm = options.bpm ?? DEFAULT_BPM;
+  const stamp: StampFormat = options.inBeats
+    ? (seconds) => formatBeatMarker(seconds, bpm)
+    : (seconds) => formatArrangementTime(seconds);
+
   const original = rawText.split("\n");
   const byLine = new Map(arrangement.lyrics.map((clip) => [clip.lineIndex, clip]));
   // Clips can be dragged past each other, so what comes "next" is a question
@@ -354,10 +386,10 @@ export function applyArrangement(rawText: string, arrangement: Arrangement): str
     const gap = next
       ? clip.end < next.start - EPSILON
       : Math.abs(clip.end - clip.start - TAIL_SECONDS) > EPSILON;
-    const stamp = gap
-      ? `@${formatArrangementTime(clip.start)}-${formatArrangementTime(clip.end)}`
-      : `@${formatArrangementTime(clip.start)}`;
-    kept.push({ text: `${stamp} ${body}`.trimEnd(), time: clip.start });
+    const marker = gap
+      ? `@${stamp(clip.start)}-${stamp(clip.end)}`
+      : `@${stamp(clip.start)}`;
+    kept.push({ text: `${marker} ${body}`.trimEnd(), time: clip.start });
   });
 
   const duration = Math.max(
@@ -371,7 +403,7 @@ export function applyArrangement(rawText: string, arrangement: Arrangement): str
   // A lyric on the same beat counts as not-yet: the drums come in and then the
   // line lands, which is the order they're read in as much as heard in.
   const insertions: { at: number; text: string }[] = [];
-  for (const cue of generateCueLines(arrangement.sounds, duration)) {
+  for (const cue of generateCueLines(arrangement.sounds, duration, stamp)) {
     const home = homes.get(cue.text);
     if (home !== undefined) {
       homes.delete(cue.text);
