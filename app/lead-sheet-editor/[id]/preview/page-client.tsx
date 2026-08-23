@@ -35,7 +35,8 @@ import {
   useSongDocumentTitle,
 } from "../../shared";
 import { cacheSheet, getCachedSheet } from "../../offlineCache";
-import { transposeText } from "../../../lib/transpose";
+import { transposeKey, transposeText } from "../../../lib/transpose";
+import { progressionFrom } from "../../progression";
 import { buildTimeline, cueAt, lineKey, type Timeline } from "../../timing";
 import { PlaybackBar, usePlayback, usePlaybackKeys } from "../../PlaybackBar";
 import { findYouTubeLink, type YouTubeLink } from "../../youtube";
@@ -516,6 +517,16 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
   const timeline = useMemo(() => buildTimeline(sheet?.sections ?? []), [sheet]);
   const hasTiming = timeline.cues.length > 0;
 
+  // What the string pads play: the song's own chords, in the key on screen.
+  const progression = useMemo(
+    () => progressionFrom(sheet?.sections ?? [], transposeSteps),
+    [sheet, transposeSteps]
+  );
+  const soundingKey = useMemo(
+    () => (sheet?.key ? transposeKey(sheet.key, transposeSteps) : null),
+    [sheet?.key, transposeSteps]
+  );
+
   // A YouTube link in the song promotes the recording to the transport's clock.
   // The stopwatch stays wired up underneath as the fallback for a video that
   // won't embed.
@@ -968,7 +979,10 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                           Shimmer
                         </button>
                         <StringPadsControl
-                          songKey={sheet?.key ?? null}
+                          songKey={soundingKey}
+                          progression={progression}
+                          bpm={bpm}
+                          beatsPerBar={beatsPerBar}
                           running={stringsRunning}
                           onToggle={() => toggleLayer("strings")}
                           settings={stringSettings}
@@ -1152,7 +1166,10 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                         Shimmer
                       </button>
                       <StringPadsControl
-                        songKey={sheet?.key ?? null}
+                        songKey={soundingKey}
+                        progression={progression}
+                        bpm={bpm}
+                        beatsPerBar={beatsPerBar}
                         running={stringsRunning}
                         onToggle={() => toggleLayer("strings")}
                         settings={stringSettings}
