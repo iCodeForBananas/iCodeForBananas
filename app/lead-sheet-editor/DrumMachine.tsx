@@ -897,7 +897,13 @@ export function DrumMachineControl({
 }) {
   const { kick: kickStyle, snare: snareStyle, volume } = settings;
   const patternIdx = patternIndex(settings.pattern);
-  const activeStep = useDrumScheduler(bpm, patternIdx, running, volume, kickStyle, snareStyle, clapsEnabled, shimmerEnabled);
+  // Claps and shimmer are layers of their own: either one runs the scheduler
+  // even with the kit off, so a claps-only or shimmer-only section works.
+  const schedulerRunning = running || clapsEnabled || shimmerEnabled;
+  const activeStep = useDrumScheduler(
+    bpm, patternIdx, schedulerRunning, volume, kickStyle, snareStyle,
+    clapsEnabled, shimmerEnabled, running,
+  );
   const pat = DRUM_PATTERNS[patternIdx];
 
   const [showDlPicker, setShowDlPicker] = useState(false);
@@ -1019,12 +1025,13 @@ export function DrumMachineControl({
         ))}
       </div>
 
-      {/* 16-step indicator — only visible while running */}
-      {running && (
+      {/* 16-step indicator — visible whenever something is sounding */}
+      {schedulerRunning && (
         <div className="flex gap-px" aria-hidden="true">
           {Array.from({ length: 16 }, (_, i) => {
+            const hasKit  = running && (pat.kick[i] || pat.snare[i] || pat.hihat[i]);
             const hasClap = clapsEnabled && (i === 4 || i === 12);
-            const hasHit = pat.kick[i] || pat.snare[i] || pat.hihat[i] || hasClap || shimmerEnabled;
+            const hasHit  = hasKit || hasClap || shimmerEnabled;
             return (
               <div
                 key={i}
