@@ -16,6 +16,7 @@ import {
 import {
   applyArrangement,
   buildArrangement,
+  defaultLineSeconds,
   formatArrangementTime,
   type LyricClip,
   type SoundClip,
@@ -143,7 +144,12 @@ export default function TrackEditor({
   onApply: (nextText: string) => void;
   onClose: () => void;
 }) {
-  const initial = useMemo(() => buildArrangement(rawText), [rawText]);
+  const settings = useMemo(() => readSongSettings(rawText), [rawText]);
+  const lineSeconds = defaultLineSeconds(settings.bpm);
+  const initial = useMemo(
+    () => buildArrangement(rawText, { lineSeconds }),
+    [rawText, lineSeconds]
+  );
   const [lyrics, setLyrics] = useState<LyricClip[]>(initial.lyrics);
   const [sounds, setSounds] = useState<SoundClip[]>(initial.sounds);
   const [extraLayers, setExtraLayers] = useState<string[]>([]);
@@ -152,7 +158,6 @@ export default function TrackEditor({
   const [selected, setSelected] = useState<Selection>(null);
   const [dirty, setDirty] = useState(false);
 
-  const settings = useMemo(() => readSongSettings(rawText), [rawText]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<DragState | null>(null);
   const serialRef = useRef(0);
@@ -367,7 +372,7 @@ export default function TrackEditor({
 
   const resetAll = () => {
     if (dirty && !confirm("Put every clip back where the song has it?")) return;
-    const fresh = buildArrangement(rawText);
+    const fresh = buildArrangement(rawText, { lineSeconds });
     setLyrics(fresh.lyrics);
     setSounds(fresh.sounds);
     setExtraLayers([]);

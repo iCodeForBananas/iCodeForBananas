@@ -26,6 +26,28 @@ const TAIL_SECONDS = 6;
 /** Times closer together than this are the same moment as far as a song cares. */
 const EPSILON = 0.02;
 
+/** Shortest an untimed line gets squeezed to when it has to fit somewhere. */
+const MIN_FLOW = 0.5;
+
+/** Bars an untimed line covers — two is about what a lyric phrase runs. */
+const DEFAULT_LINE_BARS = 2;
+
+/** The tempo assumed for a song whose header never names one. */
+const DEFAULT_BPM = 120;
+
+/**
+ * How long a line runs when the song hasn't said: two bars at its own tempo,
+ * so an untimed sheet still lands on the bar lines it would be sung against.
+ */
+export function defaultLineSeconds(bpm: number, beatsPerBar = 4): number {
+  return (60 / Math.max(1, bpm)) * beatsPerBar * DEFAULT_LINE_BARS;
+}
+
+export interface ArrangementOptions {
+  /** Length given to a line the song never timed. */
+  lineSeconds?: number;
+}
+
 export interface LyricClip {
   id: string;
   /** Index into the sheet's lines — the clip's identity, never reordered. */
@@ -74,13 +96,40 @@ function isLyricLine(line: string, seenHeader: boolean): boolean {
   return !isCueOnlyLine(line);
 }
 
-export function buildArrangement(rawText: string): Arrangement {
+export function buildArrangement(
+  rawText: string,
+  options: ArrangementOptions = {},
+): Arrangement {
+  const lineSeconds = options.lineSeconds ?? defaultLineSeconds(DEFAULT_BPM);
   const lines = rawText.split("\n");
   const lyrics: LyricClip[] = [];
 
   let seenHeader = false;
   let section = "";
-  let inherited = 0;
+  // Where the next untimed line starts: the last moment the song actually
+  // names. A song that names none of them lays itself out from the top.
+  let anchor = 0;
+  // Untimed lines, held back until the next stamp says how much room they get.
+  let pending: LyricClip[] = [];
+
+  /**
+   * Lines nobody timed run back to back from the anchor, one default line long
+   * each — squeezed evenly, never stretched, when `until` leaves less room than
+   * that. A stamped line with no end of its own leads the run rather than
+   * sitting outside it, so it keeps its start and shares the same spacing.
+   */
+  const flow = (until: number | null) => {
+    if (!pending.length) return;
+    const room = until === null ? null : until - anchor;
+    const step =
+      room !== null && room > EPSILON
+        ? Math.max(MIN_FLOW, Math.min(lineSeconds, room / pending.length))
+        : lineSeconds;
+    pending.forEach((clip, i) => {
+      clip.start = anchor + i * step;
+    });
+    pending = [];
+  };
 
   lines.forEach((line, lineIndex) => {
     const header = asSectionHeader(line);
@@ -90,28 +139,42 @@ export function buildArrangement(rawText: string): Arrangement {
       return;
     }
     const marker = parseTimeMarker(line);
-    if (marker) inherited = marker.start;
+    // Every stamp is an anchor, cue lines included: [drum] at 1:04 is a moment
+    // the song names, and the lines under it flow from there.
+    if (marker) {
+      flow(marker.start);
+      anchor = marker.end ?? marker.start;
+    }
     if (!isLyricLine(line, seenHeader)) return;
-    lyrics.push({
+    const clip: LyricClip = {
       id: `lyric:${lineIndex}`,
       lineIndex,
       text: stripCueMarkers(stripTimeMarker(line)).trim(),
-      start: marker ? marker.start : inherited,
+      // A stamped line keeps the start it was written with; an untimed one is
+      // put in its place by `flow`, once the next stamp is known.
+      start: marker ? marker.start : anchor,
       // Filled in below, once the following clip's start is known.
       end: marker?.end ?? Infinity,
       placed: marker !== null,
       section,
-    });
+    };
+    lyrics.push(clip);
+    // A line given both a start and an end already knows its length; anything
+    // else joins the run and is spaced with it.
+    if (!marker || marker.end === null) pending.push(clip);
   });
+  flow(null);
 
   // A clip runs until the next moment in the song, unless it was given its own
-  // end — and an explicit end is only honoured while it fits in the gap. Lines
-  // sharing a stamp share the moment too, so they run together rather than
-  // cutting each other short.
+  // end — and an explicit end is only honoured while it fits in the gap.
   lyrics.forEach((clip, i) => {
     const next = lyrics.slice(i + 1).find((other) => other.start > clip.start + EPSILON);
     const limit = next ? next.start : clip.start + TAIL_SECONDS;
     clip.end = clip.end === Infinity ? limit : Math.min(clip.end, limit);
+    // A line nobody timed runs one line long and then stops. The stamp after it
+    // can be a whole section away, and a clip that stretched to reach it would
+    // be claiming a length the song never said it had.
+    if (!clip.placed) clip.end = Math.min(clip.end, clip.start + lineSeconds);
     if (clip.end <= clip.start) clip.end = Math.max(limit, clip.start + 1);
   });
 
