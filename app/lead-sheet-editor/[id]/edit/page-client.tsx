@@ -256,7 +256,12 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
   const [replaceWith, setReplaceWith] = useState("");
   const [replaceResult, setReplaceResult] = useState("");
   const [tapOpen, setTapOpen] = useState(false);
+  // ?arrange=1 opens straight into the arranger — where Preview's Arrange
+  // button lands, so recording and laying out a song are the same door.
   const [arrangeOpen, setArrangeOpen] = useState(false);
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("arrange")) setArrangeOpen(true);
+  }, []);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const sbRef = useRef<ReturnType<typeof createClient> | null>(null);
@@ -709,6 +714,9 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
           rawText={rawText}
           onApply={handleChange}
           onClose={() => setArrangeOpen(false)}
+          sheetId={sheetId}
+          userId={user?.id ?? null}
+          songTitle={parseText(rawText).title || "arrangement"}
         />
       )}
 

@@ -65,7 +65,6 @@ import {
   normalizeStringSettings,
   type StringPadsSettings,
 } from "../../StringPads";
-import { ArrangementPanel } from "../../ArrangementPanel";
 
 // Per-song localStorage keys: leadSheet:${id}:fontScale, leadSheet:${id}:columnCount,
 // leadSheet:${id}:columnWidthVw, leadSheet:${id}:beatsPerBar
@@ -482,7 +481,6 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
   const [setPos, setSetPos] = useState(0);
   const [playbackOpen, setPlaybackOpen] = useState(false);
   const [toolbarOpen,      setToolbarOpen     ] = useState(true);
-  const [showArrangement,  setShowArrangement ] = useState(false);
   const [follow, setFollow] = useState(true);
   const [autoPlay, setAutoPlay] = useState(false);
   const [bpm, setBpm] = useState(DEFAULT_BPM);
@@ -995,13 +993,9 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                         />
                         <button
                           type="button"
-                          onClick={() => setShowArrangement((v) => !v)}
-                          title="Record and arrange audio tracks"
-                          className={`h-8 flex items-center gap-1.5 px-2.5 text-xs font-medium rounded-lg border transition-colors duration-100 flex-shrink-0 ${
-                            showArrangement
-                              ? "bg-rose-500 text-white border-rose-500"
-                              : "bg-gray-100 dark:bg-neutral-800 text-gray-600 dark:text-neutral-300 border-gray-200 dark:border-neutral-700 hover:bg-gray-200 dark:hover:bg-neutral-700"
-                          }`}
+                          onClick={() => router.push(`/lead-sheet-editor/${id}/edit?arrange=1`)}
+                          title="Lay the song out on tracks and record takes onto them"
+                          className='h-8 flex items-center gap-1.5 px-2.5 text-xs font-medium rounded-lg border bg-gray-100 dark:bg-neutral-800 text-gray-600 dark:text-neutral-300 border-gray-200 dark:border-neutral-700 hover:bg-gray-200 dark:hover:bg-neutral-700 transition-colors duration-100 flex-shrink-0'
                         >
                           <Mic className='w-3.5 h-3.5' /> Arrange
                         </button>
@@ -1062,13 +1056,6 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                   bpm={bpm}
                 />
               </div>
-              {showArrangement && (
-                <ArrangementPanel
-                  sheetId={sheet.id}
-                  userId={user?.id ?? null}
-                  songTitle={sheet.title}
-                />
-              )}
               {playbackOpen && <div className='h-44' />}
             </div>
           </div>
@@ -1183,13 +1170,9 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                       />
                       <button
                         type="button"
-                        onClick={() => setShowArrangement((v) => !v)}
-                        title="Record and arrange audio tracks"
-                        className={`h-8 flex items-center gap-1.5 px-2.5 text-xs font-medium rounded-lg border transition-colors duration-100 flex-shrink-0 ${
-                          showArrangement
-                            ? "bg-rose-500 text-white border-rose-500"
-                            : "bg-gray-100 dark:bg-neutral-800 text-gray-600 dark:text-neutral-300 border-gray-200 dark:border-neutral-700 hover:bg-gray-200 dark:hover:bg-neutral-700"
-                        }`}
+                        onClick={() => router.push(`/lead-sheet-editor/${id}/edit?arrange=1`)}
+                        title="Lay the song out on tracks and record takes onto them"
+                        className='h-8 flex items-center gap-1.5 px-2.5 text-xs font-medium rounded-lg border bg-gray-100 dark:bg-neutral-800 text-gray-600 dark:text-neutral-300 border-gray-200 dark:border-neutral-700 hover:bg-gray-200 dark:hover:bg-neutral-700 transition-colors duration-100 flex-shrink-0'
                       >
                         <Mic className='w-3.5 h-3.5' /> Arrange
                       </button>
@@ -1252,13 +1235,6 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                   bpm={bpm}
                   />
                 </div>
-                {showArrangement && (
-                  <ArrangementPanel
-                    sheetId={sheet.id}
-                    userId={user?.id ?? null}
-                    songTitle={sheet.title}
-                  />
-                )}
                 {playbackOpen && <div className='h-44' />}
               </div>
             </div>

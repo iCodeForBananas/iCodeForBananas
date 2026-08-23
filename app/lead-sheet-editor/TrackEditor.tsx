@@ -3,17 +3,32 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Check,
+  Cloud,
+  Download,
   ListMusic,
+  Mic,
   Music3,
   Pause,
   Play,
   Plus,
   RotateCcw,
+  Square,
   Trash2,
+  Volume2,
+  VolumeX,
   X,
   ZoomIn,
   ZoomOut,
 } from "lucide-react";
+import {
+  type LocalTrack,
+  deleteTrackEverywhere,
+  fetchFromSupabase,
+  getTracksForSheet,
+  saveTrack,
+  syncToSupabase,
+  updateTrackMeta,
+} from "./ArrangementStore";
 import {
   applyArrangement,
   buildArrangement,
@@ -101,12 +116,15 @@ const overLibrary = (clientX: number, clientY: number) =>
   !!document.elementFromPoint(clientX, clientY)?.closest("[data-library]");
 
 interface DragState {
-  kind: "lyric" | "sound";
+  kind: "lyric" | "sound" | "audio";
   id: string;
   mode: DragMode;
   startX: number;
   origStart: number;
   origEnd: number;
+  /** Where the drag last put the clip — what gets saved when the pointer lifts,
+   *  rather than re-reading state that a fast drag may not have re-rendered. */
+  lastStart?: number;
 }
 
 // ─── Song settings ────────────────────────────────────────────────────────────
@@ -127,6 +145,90 @@ function readSongSettings(rawText: string): SongSettings {
     if (hasDrumSettingsLine(line)) drums = parseDrumSettingsLine(line) ?? drums;
   }
   return { bpm, drums };
+}
+
+// ─── Recorded audio ───────────────────────────────────────────────────────────
+//
+// A take is a lane like any other: it starts where it was recorded and it can
+// be dragged, which is the only way to fix the few milliseconds every input
+// chain adds between hearing the click and the mic hearing you.
+
+/** Browser DSP is tuned for voice calls and wrecks a guitar — all of it off. */
+const RECORD_CONSTRAINTS = {
+  echoCancellation: false,
+  noiseSuppression: false,
+  autoGainControl: false,
+};
+
+function bestMime(): string {
+  for (const type of [
+    "audio/webm;codecs=opus",
+    "audio/webm",
+    "audio/ogg;codecs=opus",
+    "audio/mp4",
+  ]) {
+    if (typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(type)) return type;
+  }
+  return "";
+}
+
+function writeStr(view: DataView, offset: number, str: string) {
+  for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+}
+
+function encodeWAV(buffer: AudioBuffer): Blob {
+  const numCh = buffer.numberOfChannels;
+  const sr = buffer.sampleRate;
+  const len = buffer.length;
+  const ab = new ArrayBuffer(44 + len * numCh * 2);
+  const view = new DataView(ab);
+
+  writeStr(view, 0, "RIFF");
+  view.setUint32(4, ab.byteLength - 8, true);
+  writeStr(view, 8, "WAVE");
+  writeStr(view, 12, "fmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true); // PCM
+  view.setUint16(22, numCh, true);
+  view.setUint32(24, sr, true);
+  view.setUint32(28, sr * numCh * 2, true);
+  view.setUint16(32, numCh * 2, true);
+  view.setUint16(34, 16, true);
+  writeStr(view, 36, "data");
+  view.setUint32(40, len * numCh * 2, true);
+
+  let off = 44;
+  for (let i = 0; i < len; i++) {
+    for (let ch = 0; ch < numCh; ch++) {
+      const s = Math.max(-1, Math.min(1, buffer.getChannelData(ch)[i]));
+      view.setInt16(off, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+      off += 2;
+    }
+  }
+  return new Blob([ab], { type: "audio/wav" });
+}
+
+/** Where a take sits on the timeline, in seconds. */
+const trackStart = (track: LocalTrack) => Math.max(0, track.offsetMs / 1000);
+const trackEnd = (track: LocalTrack) => trackStart(track) + track.durationSec;
+
+function LevelMeter({ level }: { level: number }) {
+  const bars = 10;
+  return (
+    <div className="flex h-5 items-end gap-0.5">
+      {Array.from({ length: bars }, (_, i) => {
+        const active = level >= (i + 1) / bars;
+        const color = i < 7 ? "bg-green-500" : i < 9 ? "bg-yellow-400" : "bg-red-500";
+        return (
+          <div
+            key={i}
+            className={`w-1.5 rounded-sm transition-all duration-75 ${active ? color : "bg-white/15"}`}
+            style={{ height: `${40 + i * 7}%` }}
+          />
+        );
+      })}
+    </div>
+  );
 }
 
 // ─── Lane packing ─────────────────────────────────────────────────────────────
@@ -157,10 +259,18 @@ export default function TrackEditor({
   rawText,
   onApply,
   onClose,
+  sheetId = null,
+  userId = null,
+  songTitle = "arrangement",
 }: {
   rawText: string;
   onApply: (nextText: string) => void;
   onClose: () => void;
+  /** Which song's recorded takes to load. Without one, the arranger is text-only. */
+  sheetId?: string | null;
+  /** Signed in, so takes can reach the cloud as well as this browser. */
+  userId?: string | null;
+  songTitle?: string;
 }) {
   const settings = useMemo(() => readSongSettings(rawText), [rawText]);
   const lineSeconds = defaultLineSeconds(settings.bpm);
@@ -183,6 +293,34 @@ export default function TrackEditor({
   const carryRef = useRef<LibraryItem | null>(null);
   const [ghost, setGhost] = useState<{ label: string; x: number; y: number } | null>(null);
 
+  // ── Recorded takes ─────────────────────────────────────────────────────────
+  const [audio, setAudio] = useState<LocalTrack[]>([]);
+  const [arming, setArming] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
+  const [deviceId, setDeviceId] = useState("");
+  const [takeName, setTakeName] = useState("Guitar");
+  const [takeType, setTakeType] = useState<LocalTrack["type"]>("guitar");
+  const [level, setLevel] = useState(0);
+  const [exporting, setExporting] = useState(false);
+  const [audioError, setAudioError] = useState<string | null>(null);
+
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const streamRef = useRef<MediaStream | null>(null);
+  const meterCtxRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const meterRafRef = useRef<number | null>(null);
+  /** Where on the timeline this take began, so it lands where it was played. */
+  const recordAtRef = useRef(0);
+
+  /** Decoded takes, kept so scrubbing doesn't decode the same blob every time. */
+  const buffersRef = useRef<Map<string, AudioBuffer>>(new Map());
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const sourcesRef = useRef<AudioBufferSourceNode[]>([]);
+  /** Bumped whenever the audio has to be re-scheduled — a seek, a mute, a take. */
+  const [audioEpoch, setAudioEpoch] = useState(0);
+
   // Only what has been put on the timeline counts as the song: a line still
   // waiting in the library has a start left over from where it was read out of
   // the text, and nothing there should be stretching the ruler.
@@ -191,7 +329,8 @@ export default function TrackEditor({
   const contentEnd = Math.max(
     0,
     ...placedLyrics.map((c) => c.end),
-    ...sounds.map((c) => c.end)
+    ...sounds.map((c) => c.end),
+    ...audio.map(trackEnd)
   );
 
   // ── Transport ──────────────────────────────────────────────────────────────
@@ -280,7 +419,7 @@ export default function TrackEditor({
   const beginDrag = (
     event: React.PointerEvent,
     clip: { id: string; start: number; end: number },
-    kind: "lyric" | "sound",
+    kind: "lyric" | "sound" | "audio",
     mode: DragMode
   ) => {
     event.preventDefault();
@@ -294,7 +433,9 @@ export default function TrackEditor({
       origStart: clip.start,
       origEnd: clip.end,
     };
-    setSelected({ kind, id: clip.id });
+    // A take isn't selectable: Delete belongs to the clips the song is made of,
+    // and a recording is deleted from its own track head, with a confirmation.
+    setSelected(kind === "audio" ? null : { kind, id: clip.id });
   };
 
   useEffect(() => {
@@ -316,15 +457,28 @@ export default function TrackEditor({
       }
 
       if (drag.kind === "lyric") patchLyric(drag.id, { start, end });
-      else patchSound(drag.id, { start, end });
+      else if (drag.kind === "sound") patchSound(drag.id, { start, end });
+      // A take can only slide — its length is however long it was played for.
+      else {
+        drag.lastStart = Math.max(0, start);
+        patchAudio(drag.id, { offsetMs: Math.round(drag.lastStart * 1000) });
+      }
     };
 
     const onUp = (event: PointerEvent) => {
       const drag = dragRef.current;
       dragRef.current = null;
+      if (!drag) return;
+      if (drag.kind === "audio") {
+        // Where a take sits is worth keeping.
+        if (drag.lastStart !== undefined) {
+          updateTrackMeta(drag.id, { offsetMs: Math.round(drag.lastStart * 1000) }).catch(() => {});
+        }
+        return;
+      }
       // Dragged back over the library, a clip goes on the shelf: a lyric hands
       // its time back to the line above, a sound clip simply stops existing.
-      if (!drag || !overLibrary(event.clientX, event.clientY)) return;
+      if (!overLibrary(event.clientX, event.clientY)) return;
       if (drag.kind === "lyric") {
         setLyrics((prev) => prev.map((c) => (c.id === drag.id ? { ...c, placed: false } : c)));
       } else {
@@ -384,6 +538,314 @@ export default function TrackEditor({
     setSounds((prev) => [...prev, clip]);
     setSelected({ kind: "sound", id: clip.id });
     setDirty(true);
+  };
+
+  // ── Recorded takes: load, play, record ─────────────────────────────────────
+
+  /** The takes as the scheduler sees them, so a volume nudge can't restart it. */
+  const audioRef = useRef<LocalTrack[]>([]);
+  const gainsRef = useRef<Map<string, GainNode>>(new Map());
+  useEffect(() => {
+    audioRef.current = audio;
+  }, [audio]);
+
+  useEffect(() => {
+    if (!sheetId) return;
+    let live = true;
+    getTracksForSheet(sheetId)
+      .then((tracks) => live && setAudio(tracks))
+      .catch(() => {});
+    if (userId && navigator.onLine) {
+      fetchFromSupabase(sheetId)
+        .then(() => getTracksForSheet(sheetId))
+        .then((tracks) => live && setAudio(tracks))
+        .catch(() => {});
+      syncToSupabase().catch(() => {});
+    }
+    return () => {
+      live = false;
+    };
+  }, [sheetId, userId]);
+
+  /** Where playback should pick the takes up from, set by whatever moved it. */
+  const positionRef = useRef(0);
+  const bumpAudio = useCallback((position: number) => {
+    positionRef.current = position;
+    setAudioEpoch((epoch) => epoch + 1);
+  }, []);
+
+  const seekTo = useCallback(
+    (seconds: number) => {
+      seek(seconds);
+      bumpAudio(Math.max(0, seconds));
+    },
+    [seek, bumpAudio]
+  );
+
+  const togglePlay = useCallback(() => {
+    bumpAudio(time);
+    toggle();
+  }, [bumpAudio, time, toggle]);
+
+  // Every take is scheduled against one moment, decided after all of them have
+  // decoded — reading the clock between decodes is what makes tracks drift.
+  useEffect(() => {
+    for (const source of sourcesRef.current) {
+      try {
+        source.stop();
+      } catch {}
+    }
+    sourcesRef.current = [];
+    gainsRef.current.clear();
+
+    const takes = audioRef.current;
+    if (!playing || takes.length === 0) return;
+
+    let cancelled = false;
+    const ctx = audioCtxRef.current ?? new AudioContext();
+    audioCtxRef.current = ctx;
+    ctx.resume().catch(() => {});
+
+    (async () => {
+      const decoded: { track: LocalTrack; buffer: AudioBuffer }[] = [];
+      for (const track of takes) {
+        let buffer = buffersRef.current.get(track.id);
+        if (!buffer) {
+          try {
+            buffer = await ctx.decodeAudioData(await track.blob.arrayBuffer());
+            buffersRef.current.set(track.id, buffer);
+          } catch {
+            continue;
+          }
+        }
+        decoded.push({ track, buffer });
+      }
+      if (cancelled) return;
+
+      const from = positionRef.current;
+      // A short lead so the last take is scheduled before the first one sounds.
+      const zero = ctx.currentTime + 0.08 - from;
+
+      for (const { track, buffer } of decoded) {
+        const start = trackStart(track);
+        if (trackEnd(track) <= from) continue;
+
+        const gain = ctx.createGain();
+        gain.gain.value = track.muted ? 0 : track.volume;
+        gain.connect(ctx.destination);
+        gainsRef.current.set(track.id, gain);
+
+        const source = ctx.createBufferSource();
+        source.buffer = buffer;
+        source.connect(gain);
+        // Mid-take: start now, that far into the recording.
+        if (start >= from) source.start(zero + start);
+        else source.start(ctx.currentTime + 0.08, from - start);
+        sourcesRef.current.push(source);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [playing, audioEpoch]);
+
+  // Volume and mute ride the gain nodes, so moving a fader can't restart a take.
+  useEffect(() => {
+    for (const track of audio) {
+      const gain = gainsRef.current.get(track.id);
+      if (gain) gain.gain.value = track.muted ? 0 : track.volume;
+    }
+  }, [audio]);
+
+  useEffect(
+    () => () => {
+      for (const source of sourcesRef.current) {
+        try {
+          source.stop();
+        } catch {}
+      }
+      audioCtxRef.current?.close().catch(() => {});
+      meterCtxRef.current?.close().catch(() => {});
+      streamRef.current?.getTracks().forEach((t) => t.stop());
+      if (meterRafRef.current !== null) cancelAnimationFrame(meterRafRef.current);
+    },
+    []
+  );
+
+  const patchAudio = (id: string, patch: Partial<LocalTrack>) =>
+    setAudio((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)));
+
+  const setTakeVolume = (id: string, volume: number) => {
+    patchAudio(id, { volume });
+    updateTrackMeta(id, { volume }).catch(() => {});
+  };
+
+  const toggleTakeMute = (id: string) => {
+    const muted = !audio.find((t) => t.id === id)?.muted;
+    patchAudio(id, { muted });
+    updateTrackMeta(id, { muted }).catch(() => {});
+  };
+
+  const deleteTake = async (track: LocalTrack) => {
+    if (!confirm(`Delete "${track.name}"? This cannot be undone.`)) return;
+    await deleteTrackEverywhere(track);
+    buffersRef.current.delete(track.id);
+    setAudio((prev) => prev.filter((t) => t.id !== track.id));
+    bumpAudio(time);
+  };
+
+  // ── Recording ──────────────────────────────────────────────────────────────
+
+  const openRecorder = async () => {
+    setArming(true);
+    setAudioError(null);
+    try {
+      // Asking once up front is what makes the browser hand over device names.
+      const probe = await navigator.mediaDevices.getUserMedia({ audio: true });
+      probe.getTracks().forEach((t) => t.stop());
+      const inputs = (await navigator.mediaDevices.enumerateDevices()).filter(
+        (d) => d.kind === "audioinput"
+      );
+      setDevices(inputs);
+      if (inputs.length && !deviceId) setDeviceId(inputs[0].deviceId);
+    } catch {
+      setAudioError("Microphone access denied — check the browser's permissions.");
+    }
+  };
+
+  const startMeter = (stream: MediaStream) => {
+    const ctx = new AudioContext();
+    meterCtxRef.current = ctx;
+    const analyser = ctx.createAnalyser();
+    analyser.fftSize = 256;
+    ctx.createMediaStreamSource(stream).connect(analyser);
+    analyserRef.current = analyser;
+
+    const tick = () => {
+      const node = analyserRef.current;
+      if (!node) return;
+      const data = new Uint8Array(node.frequencyBinCount);
+      node.getByteTimeDomainData(data);
+      let peak = 0;
+      for (const v of data) peak = Math.max(peak, Math.abs((v - 128) / 128));
+      setLevel(peak);
+      meterRafRef.current = requestAnimationFrame(tick);
+    };
+    tick();
+  };
+
+  const stopMeter = () => {
+    if (meterRafRef.current !== null) cancelAnimationFrame(meterRafRef.current);
+    meterRafRef.current = null;
+    analyserRef.current = null;
+    meterCtxRef.current?.close().catch(() => {});
+    meterCtxRef.current = null;
+    setLevel(0);
+  };
+
+  const startRecording = async () => {
+    if (!sheetId) {
+      setAudioError("Save the song before recording, so takes have somewhere to live.");
+      return;
+    }
+    setAudioError(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: deviceId ? { deviceId: { exact: deviceId }, ...RECORD_CONSTRAINTS } : RECORD_CONSTRAINTS,
+      });
+      streamRef.current = stream;
+      chunksRef.current = [];
+
+      const mime = bestMime();
+      const recorder = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
+      recorderRef.current = recorder;
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data);
+      };
+
+      const takeAt = time;
+      const startedAt = Date.now();
+      recorder.onstop = async () => {
+        const track: LocalTrack = {
+          id: crypto.randomUUID(),
+          sheetId,
+          name: takeName.trim() || "Take",
+          type: takeType,
+          mimeType: recorder.mimeType || "audio/webm",
+          blob: new Blob(chunksRef.current, { type: recorder.mimeType || "audio/webm" }),
+          durationSec: (Date.now() - startedAt) / 1000,
+          volume: 0.8,
+          muted: false,
+          // A take belongs where it was played, not at the top of the song.
+          offsetMs: Math.round(takeAt * 1000),
+          createdAt: startedAt,
+          syncedAt: null,
+          storagePath: null,
+        };
+        await saveTrack(track);
+        setAudio((prev) => [...prev, track]);
+        setArming(false);
+        setRecording(false);
+        if (userId && navigator.onLine) syncToSupabase().catch(() => {});
+      };
+
+      recordAtRef.current = takeAt;
+      setRecording(true);
+      recorder.start(250);
+      startMeter(stream);
+      // Roll the song underneath, so a take is played against what's there.
+      if (!playing) togglePlay();
+    } catch (e) {
+      setAudioError(`Recording failed: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  };
+
+  const stopRecording = () => {
+    stopMeter();
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
+    recorderRef.current?.stop();
+    if (playing) toggle();
+  };
+
+  // ── Export ─────────────────────────────────────────────────────────────────
+
+  const exportWAV = async () => {
+    const live = audio.filter((t) => !t.muted);
+    if (!live.length) {
+      setAudioError("No un-muted takes to export.");
+      return;
+    }
+    setExporting(true);
+    setAudioError(null);
+    try {
+      const end = Math.max(...live.map(trackEnd));
+      const rate = 48000;
+      const offline = new OfflineAudioContext(2, Math.ceil(end * rate), rate);
+      for (const track of live) {
+        const buffer = await offline.decodeAudioData(await track.blob.arrayBuffer());
+        const gain = offline.createGain();
+        gain.gain.value = track.volume;
+        gain.connect(offline.destination);
+        const source = offline.createBufferSource();
+        source.buffer = buffer;
+        source.connect(gain);
+        source.start(trackStart(track));
+      }
+      const wav = encodeWAV(await offline.startRendering());
+      const url = URL.createObjectURL(wav);
+      const link = Object.assign(document.createElement("a"), {
+        href: url,
+        download: `${songTitle.replace(/[^\w\s-]/g, "").trim() || "arrangement"}.wav`,
+      });
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setAudioError(`Export failed: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setExporting(false);
+    }
   };
 
   // ── Library → timeline ─────────────────────────────────────────────────────
@@ -526,17 +988,17 @@ export default function TrackEditor({
         close();
       } else if (event.code === "Space") {
         event.preventDefault();
-        toggle();
+        togglePlay();
       } else if (event.key === "Delete" || event.key === "Backspace") {
         if (!selected) return;
         event.preventDefault();
         removeSelected();
       } else if (event.key === "ArrowLeft") {
         event.preventDefault();
-        seek(Math.max(0, time - 5));
+        seekTo(Math.max(0, time - 5));
       } else if (event.key === "ArrowRight") {
         event.preventDefault();
-        seek(time + 5);
+        seekTo(time + 5);
       }
     };
     window.addEventListener("keydown", onKeyDown);
@@ -617,7 +1079,7 @@ export default function TrackEditor({
       {/* Toolbar */}
       <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-white/10 px-4 py-2">
         <button
-          onClick={toggle}
+          onClick={togglePlay}
           disabled={!playback.ready}
           className="flex h-9 items-center gap-2 rounded bg-yellow-400 px-3 text-sm font-medium text-black transition-colors hover:bg-yellow-300 disabled:opacity-30"
         >
@@ -625,6 +1087,30 @@ export default function TrackEditor({
           {playing ? "Pause" : "Play"}
         </button>
         <span className="w-16 font-mono text-sm tabular-nums text-yellow-400">{formatTime(time)}</span>
+
+        {recording ? (
+          <button
+            onClick={stopRecording}
+            className="flex h-9 items-center gap-2 rounded bg-red-500 px-3 text-sm font-medium text-white transition-colors hover:bg-red-400"
+          >
+            <Square className="h-3.5 w-3.5 fill-current" />
+            Stop
+          </button>
+        ) : (
+          <button
+            onClick={arming ? () => setArming(false) : openRecorder}
+            title="Record a take onto its own track, from the playhead"
+            className={`flex h-9 items-center gap-2 rounded px-3 text-sm font-medium transition-colors ${
+              arming
+                ? "bg-rose-500 text-white hover:bg-rose-400"
+                : "text-white/60 ring-1 ring-white/20 hover:text-white hover:ring-white/50"
+            }`}
+          >
+            <Mic className="h-4 w-4" />
+            Record
+          </button>
+        )}
+        {recording && <LevelMeter level={level} />}
 
         <div className="mx-1 w-px self-stretch bg-white/15" />
 
@@ -719,6 +1205,17 @@ export default function TrackEditor({
             <RotateCcw className="h-3.5 w-3.5" />
             Reset
           </button>
+          {audio.length > 0 && (
+            <button
+              onClick={exportWAV}
+              disabled={exporting || recording}
+              title="Mix every un-muted take down to one WAV"
+              className="flex h-9 items-center gap-1.5 rounded px-3 text-sm font-medium text-white/50 transition-colors hover:text-white disabled:opacity-30"
+            >
+              <Download className="h-3.5 w-3.5" />
+              {exporting ? "Mixing…" : "Export"}
+            </button>
+          )}
           <button
             onClick={apply}
             disabled={!dirty}
@@ -729,6 +1226,68 @@ export default function TrackEditor({
           </button>
         </div>
       </div>
+
+      {/* Arming a take: what it's called, what it is, and which input it comes
+          from. Recording rolls the song underneath, so a take is played against
+          the drums and the takes already down rather than against silence. */}
+      {(arming || recording) && (
+        <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-white/10 bg-rose-500/10 px-4 py-2">
+          <input
+            value={takeName}
+            onChange={(e) => setTakeName(e.target.value)}
+            disabled={recording}
+            placeholder="Take name"
+            className="h-8 w-40 rounded border border-white/20 bg-black px-2 text-sm text-white outline-none focus:border-white/60 disabled:opacity-50"
+          />
+          <select
+            value={takeType}
+            onChange={(e) => setTakeType(e.target.value as LocalTrack["type"])}
+            disabled={recording}
+            className="h-8 rounded border border-white/20 bg-black px-2 text-sm text-white outline-none focus:border-white/60 disabled:opacity-50"
+          >
+            <option value="guitar">Guitar</option>
+            <option value="vocals">Vocals</option>
+            <option value="other">Other</option>
+          </select>
+          {devices.length > 0 && (
+            <select
+              value={deviceId}
+              onChange={(e) => setDeviceId(e.target.value)}
+              disabled={recording}
+              className="h-8 max-w-56 flex-1 rounded border border-white/20 bg-black px-2 text-sm text-white outline-none focus:border-white/60 disabled:opacity-50"
+            >
+              {devices.map((d) => (
+                <option key={d.deviceId} value={d.deviceId}>
+                  {d.label || `Microphone ${d.deviceId.slice(0, 6)}`}
+                </option>
+              ))}
+            </select>
+          )}
+          {!recording && (
+            <button
+              onClick={startRecording}
+              className="flex h-8 items-center gap-1.5 rounded bg-rose-500 px-3 text-xs font-semibold text-white transition-colors hover:bg-rose-400"
+            >
+              <Mic className="h-3.5 w-3.5" />
+              Record from {formatTime(time)}
+            </button>
+          )}
+          <span className="text-xs text-white/40">
+            {recording
+              ? "Recording — the song is rolling underneath."
+              : "The take lands at the playhead. Move it there first."}
+          </span>
+        </div>
+      )}
+
+      {audioError && (
+        <div className="flex shrink-0 items-center gap-2 border-b border-white/10 bg-red-500/10 px-4 py-2 text-xs text-red-300">
+          <span className="flex-1">{audioError}</span>
+          <button onClick={() => setAudioError(null)} className="text-red-300/60 hover:text-red-200">
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* Tracks — names and lanes share one scroller so a tall lyric track
           can never slide out of line with the labels beside it. */}
@@ -746,7 +1305,7 @@ export default function TrackEditor({
               className="sticky left-0 z-40 shrink-0 border-r border-b border-white/10 bg-black"
               style={{ width: GUTTER }}
             />
-            <Ruler duration={duration} zoom={zoom} width={width} beat={beatSeconds} onSeek={seek} />
+            <Ruler duration={duration} zoom={zoom} width={width} beat={beatSeconds} onSeek={seekTo} />
           </div>
 
           {/* Lyric track */}
@@ -830,6 +1389,87 @@ export default function TrackEditor({
                       {clip.fadeOut && <span className="ml-1 opacity-70">◿</span>}
                     </ClipBox>
                   ))}
+              </div>
+            </div>
+          ))}
+
+          {/* Recorded takes — one lane each, sliding to line up with the song. */}
+          {audio.map((track) => (
+            <div
+              key={track.id}
+              className="flex border-b border-white/10"
+              style={{ height: LANE_HEIGHT + TRACK_PAD * 2 }}
+            >
+              <TrackName>
+                <span className={track.muted ? "text-white/25" : "text-rose-400"}>
+                  {track.type === "vocals" ? (
+                    <Mic className="h-3 w-3" />
+                  ) : (
+                    <Music3 className="h-3 w-3" />
+                  )}
+                </span>
+                <span
+                  className={`flex-1 truncate normal-case ${track.muted ? "text-white/25" : "text-white/70"}`}
+                  title={`${track.name} — ${formatTime(track.durationSec)}`}
+                >
+                  {track.name}
+                </span>
+                {!track.syncedAt && userId && (
+                  <span title="Waiting to reach the cloud">
+                    <Cloud className="h-3 w-3 text-amber-400" />
+                  </span>
+                )}
+                <input
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.05}
+                  value={track.volume}
+                  onChange={(e) => setTakeVolume(track.id, Number(e.target.value))}
+                  aria-label={`${track.name} volume`}
+                  className="h-1 w-10 accent-rose-500"
+                />
+                <button
+                  onClick={() => toggleTakeMute(track.id)}
+                  title={track.muted ? "Unmute" : "Mute"}
+                  className="text-white/30 transition-colors hover:text-white"
+                >
+                  {track.muted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
+                </button>
+                <button
+                  onClick={() => deleteTake(track)}
+                  title={`Delete ${track.name}`}
+                  aria-label={`Delete ${track.name}`}
+                  className="text-white/30 transition-colors hover:text-red-400"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </TrackName>
+              <div className="relative" style={{ width, touchAction: "none" }}>
+                <Grid duration={duration} zoom={zoom} beat={beatSeconds} />
+                <ClipBox
+                  left={trackStart(track) * zoom}
+                  width={Math.max(2, track.durationSec * zoom)}
+                  top={TRACK_PAD}
+                  selected={false}
+                  className={
+                    track.muted
+                      ? "bg-white/5 text-white/30"
+                      : "bg-rose-500/25 text-rose-50"
+                  }
+                  edgeClass="bg-rose-400"
+                  title={`${track.name} — starts at ${formatArrangementTime(trackStart(track))}, drag to line it up`}
+                  onPointerDown={(e) =>
+                    beginDrag(
+                      e,
+                      { id: track.id, start: trackStart(track), end: trackEnd(track) },
+                      "audio",
+                      "move"
+                    )
+                  }
+                >
+                  {track.name}
+                </ClipBox>
               </div>
             </div>
           ))}
