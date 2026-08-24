@@ -45,48 +45,12 @@ type ProblemType =
   | "area"
   | "perimeter";
 
-type HintOp =
-  | "+"
-  | "-"
-  | "tens-ones"
-  | "mental-add"
-  | "mental-sub"
-  | "add-100"
-  | "comparison"
-  | "three-add"
-  | "fact-family"
-  | "count-next"
-  | "count-prev"
-  | "make-10"
-  | "teen-decompose"
-  | "sub-mult-10"
-  | "equal-sign"
-  | "unknown-addend"
-  | "add-regroup"
-  | "sub-regroup"
-  | "tens-ones-3"
-  | "skip-count"
-  | "mental-add-100"
-  | "mental-sub-100"
-  | "odd-even"
-  | "array"
-  | "multiply"
-  | "divide"
-  | "multiply-tens"
-  | "round"
-  | "fraction-line"
-  | "equiv-fractions"
-  | "compare-fractions"
-  | "area"
-  | "perimeter";
-
 interface Problem {
   id: string;
   type: ProblemType;
   question: string;
   answer: number | string;
   options: (number | string)[];
-  visualHint: { left: number; right: number; operator: HintOp; extra?: string };
   signature: string;
 }
 
@@ -341,7 +305,6 @@ function buildProblem(type: ProblemType, min: number, max: number): Problem {
       question: `${left} + ${right} = ?`,
       answer,
       options: numOpts(answer),
-      visualHint: { left, right, operator: "+" },
       signature: `add:${Math.min(left, right)},${Math.max(left, right)}`,
     };
   }
@@ -356,7 +319,6 @@ function buildProblem(type: ProblemType, min: number, max: number): Problem {
       question: `${left} - ${right} = ?`,
       answer,
       options: numOpts(answer),
-      visualHint: { left, right, operator: "-" },
       signature: `sub:${left},${right}`,
     };
   }
@@ -371,7 +333,6 @@ function buildProblem(type: ProblemType, min: number, max: number): Problem {
       question: `${tens} tens and ${ones} ones = ?`,
       answer,
       options: numOpts(answer),
-      visualHint: { left: tens, right: ones, operator: "tens-ones" },
       signature: `place:${tens},${ones}`,
     };
   }
@@ -386,7 +347,6 @@ function buildProblem(type: ProblemType, min: number, max: number): Problem {
       question: isAdd ? `${base} + 10 = ?` : `${base} - 10 = ?`,
       answer,
       options: numOpts(answer),
-      visualHint: { left: base, right: 10, operator: isAdd ? "mental-add" : "mental-sub" },
       signature: `mental${isAdd ? "+" : "-"}:${base}`,
     };
   }
@@ -415,7 +375,6 @@ function buildProblem(type: ProblemType, min: number, max: number): Problem {
       question: `${left} + ${right} = ?`,
       answer,
       options: numOpts(answer),
-      visualHint: { left, right, operator: "add-100" },
       signature: `add100:${left},${right}`,
     };
   }
@@ -430,7 +389,6 @@ function buildProblem(type: ProblemType, min: number, max: number): Problem {
       question: `${a}   ?   ${b}`,
       answer,
       options: ["<", "=", ">"],
-      visualHint: { left: a, right: b, operator: "comparison" },
       signature: `cmp:${a},${b}`,
     };
   }
@@ -446,7 +404,6 @@ function buildProblem(type: ProblemType, min: number, max: number): Problem {
       question: `${a} + ${b} + ${c} = ?`,
       answer,
       options: numOpts(answer),
-      visualHint: { left: a, right: b, operator: "three-add", extra: String(c) },
       signature: `3add:${[a, b, c].sort().join(",")}`,
     };
   }
@@ -464,7 +421,6 @@ function buildProblem(type: ProblemType, min: number, max: number): Problem {
       question: `${a} + ${b} = ${sum}. So ${sum} − ${knownSubtract} = ?`,
       answer,
       options: numOpts(answer),
-      visualHint: { left: a, right: b, operator: "fact-family" },
       signature: `ff:${Math.min(a, b)},${Math.max(a, b)}`,
     };
   }
@@ -485,7 +441,6 @@ function buildProblem(type: ProblemType, min: number, max: number): Problem {
       question,
       answer,
       options: numOpts(answer),
-      visualHint: { left: start, right: 0, operator: isNext ? "count-next" : "count-prev" },
       signature: `count:${isNext ? "next" : "prev"}-${start}`,
     };
   }
@@ -505,7 +460,6 @@ function buildProblem(type: ProblemType, min: number, max: number): Problem {
       question,
       answer,
       options: numOpts(answer),
-      visualHint: { left: start, right: 0, operator: isNext ? "count-next" : "count-prev" },
       signature: `c1:${isNext ? "n" : "p"}-${start}`,
     };
   }
@@ -519,7 +473,6 @@ function buildProblem(type: ProblemType, min: number, max: number): Problem {
       question: `Count by 10s: ${step - 10 > 0 ? step - 10 + ", " : ""}${step}, ?`,
       answer,
       options: numOpts(answer),
-      visualHint: { left: step, right: 10, operator: "skip-count", extra: "10" },
       signature: `c10:${step}`,
     };
   }
@@ -533,7 +486,6 @@ function buildProblem(type: ProblemType, min: number, max: number): Problem {
       question: `${a} + ? = 10`,
       answer,
       options: numOpts(answer),
-      visualHint: { left: a, right: answer, operator: "make-10" },
       signature: `mk10:${a}`,
     };
   }
@@ -548,7 +500,6 @@ function buildProblem(type: ProblemType, min: number, max: number): Problem {
       question: `${teen} = 10 + ?`,
       answer,
       options: numOpts(answer),
-      visualHint: { left: 10, right: ones, operator: "teen-decompose" },
       signature: `teen:${teen}`,
     };
   }
@@ -565,7 +516,6 @@ function buildProblem(type: ProblemType, min: number, max: number): Problem {
       question: `${a} − ${b} = ?`,
       answer,
       options: numOpts(answer),
-      visualHint: { left: a, right: b, operator: "sub-mult-10" },
       signature: `subm10:${a},${b}`,
     };
   }
@@ -605,7 +555,6 @@ function buildProblem(type: ProblemType, min: number, max: number): Problem {
       question: `${v.left} = ${v.right}`,
       answer,
       options: ["True", "False"],
-      visualHint: { left: 0, right: 0, operator: "equal-sign", extra: `${v.left}|${v.right}` },
       signature: `eq:${v.left}=${v.right}`,
     };
   }
@@ -620,7 +569,6 @@ function buildProblem(type: ProblemType, min: number, max: number): Problem {
       question: `${known} + ? = ${sum}`,
       answer,
       options: numOpts(answer),
-      visualHint: { left: known, right: answer, operator: "unknown-addend", extra: String(sum) },
       signature: `unk:${known},${sum}`,
     };
   }
@@ -638,7 +586,6 @@ function buildProblem(type: ProblemType, min: number, max: number): Problem {
       question: `${a} + ${b} = ?`,
       answer,
       options: numOpts(answer),
-      visualHint: { left: a, right: b, operator: "add-regroup" },
       signature: `addr:${a},${b}`,
     };
   }
@@ -653,7 +600,6 @@ function buildProblem(type: ProblemType, min: number, max: number): Problem {
       question: `${a} − ${b} = ?`,
       answer,
       options: numOpts(answer),
-      visualHint: { left: a, right: b, operator: "sub-regroup" },
       signature: `subr:${a},${b}`,
     };
   }
@@ -669,7 +615,6 @@ function buildProblem(type: ProblemType, min: number, max: number): Problem {
       question: `${h} hundreds + ${t} tens + ${o} ones = ?`,
       answer,
       options: numOpts(answer),
-      visualHint: { left: h, right: t, operator: "tens-ones-3", extra: String(o) },
       signature: `pv3:${h},${t},${o}`,
     };
   }
@@ -689,7 +634,6 @@ function buildProblem(type: ProblemType, min: number, max: number): Problem {
       question: `Skip count by ${s.n}s: ${start - s.n}, ${start}, ?`,
       answer,
       options: numOpts(answer),
-      visualHint: { left: start, right: s.n, operator: "skip-count", extra: String(s.n) },
       signature: `skip:${s.n}-${start}`,
     };
   }
@@ -704,7 +648,6 @@ function buildProblem(type: ProblemType, min: number, max: number): Problem {
       question: `${a}   ?   ${b}`,
       answer,
       options: ["<", "=", ">"],
-      visualHint: { left: a, right: b, operator: "comparison" },
       signature: `cmp3:${a},${b}`,
     };
   }
@@ -719,7 +662,6 @@ function buildProblem(type: ProblemType, min: number, max: number): Problem {
       question: isAdd ? `${base} + 100 = ?` : `${base} − 100 = ?`,
       answer,
       options: numOpts(answer),
-      visualHint: { left: base, right: 100, operator: isAdd ? "mental-add-100" : "mental-sub-100" },
       signature: `m100:${isAdd ? "+" : "-"}-${base}`,
     };
   }
@@ -733,7 +675,6 @@ function buildProblem(type: ProblemType, min: number, max: number): Problem {
       question: `Is ${n} odd or even?`,
       answer,
       options: ["Odd", "Even"],
-      visualHint: { left: n, right: 0, operator: "odd-even" },
       signature: `oe:${n}`,
     };
   }
@@ -748,7 +689,6 @@ function buildProblem(type: ProblemType, min: number, max: number): Problem {
       question: `${rows} rows of ${cols} = ?`,
       answer,
       options: numOpts(answer),
-      visualHint: { left: rows, right: cols, operator: "array" },
       signature: `arr:${rows}x${cols}`,
     };
   }
@@ -765,7 +705,6 @@ function buildProblem(type: ProblemType, min: number, max: number): Problem {
       question: `${a} × ${b} = ?`,
       answer,
       options: numOpts(answer),
-      visualHint: { left: a, right: b, operator: "multiply" },
       signature: `mul:${Math.min(a, b)},${Math.max(a, b)}`,
     };
   }
@@ -780,7 +719,6 @@ function buildProblem(type: ProblemType, min: number, max: number): Problem {
       question: `${single} × ${tens} = ?`,
       answer,
       options: numOpts(answer),
-      visualHint: { left: single, right: tens, operator: "multiply-tens" },
       signature: `mt:${single},${tens}`,
     };
   }
@@ -795,7 +733,6 @@ function buildProblem(type: ProblemType, min: number, max: number): Problem {
       question: `${dividend} ÷ ${divisor} = ?`,
       answer: quotient,
       options: numOpts(quotient),
-      visualHint: { left: dividend, right: divisor, operator: "divide" },
       signature: `div:${dividend},${divisor}`,
     };
   }
@@ -811,7 +748,6 @@ function buildProblem(type: ProblemType, min: number, max: number): Problem {
       question: `Round ${n} to the nearest ${place}.`,
       answer,
       options: numOpts(answer),
-      visualHint: { left: n, right: place, operator: "round" },
       signature: `rnd:${n},${place}`,
     };
   }
@@ -834,7 +770,6 @@ function buildProblem(type: ProblemType, min: number, max: number): Problem {
       question: `Which fraction is at the marked spot on the number line?`,
       answer,
       options: Array.from(optSet).sort(() => Math.random() - 0.5),
-      visualHint: { left: a, right: b, operator: "fraction-line" },
       signature: `fline:${a}/${b}`,
     };
   }
@@ -865,7 +800,6 @@ function buildProblem(type: ProblemType, min: number, max: number): Problem {
       question: `${p.a}/${p.b} = ?/${newDenom}`,
       answer,
       options: Array.from(optSet).sort(() => Math.random() - 0.5),
-      visualHint: { left: p.a, right: p.b, operator: "equiv-fractions", extra: `${newNum}/${newDenom}` },
       signature: `eqf:${p.a}/${p.b}=${newNum}/${newDenom}`,
     };
   }
@@ -896,7 +830,6 @@ function buildProblem(type: ProblemType, min: number, max: number): Problem {
       question: `${a1}/${b1}   ?   ${a2}/${b2}`,
       answer,
       options: ["<", "=", ">"],
-      visualHint: { left: a1, right: a2, operator: "compare-fractions", extra: `${b1},${b2}` },
       signature: `cmpf:${a1}/${b1}vs${a2}/${b2}`,
     };
   }
@@ -911,7 +844,6 @@ function buildProblem(type: ProblemType, min: number, max: number): Problem {
       question: `Area of ${w} × ${h} rectangle = ? sq units`,
       answer,
       options: numOpts(answer),
-      visualHint: { left: w, right: h, operator: "area" },
       signature: `area:${Math.min(w, h)},${Math.max(w, h)}`,
     };
   }
@@ -926,7 +858,6 @@ function buildProblem(type: ProblemType, min: number, max: number): Problem {
       question: `Perimeter of ${w} × ${h} rectangle = ?`,
       answer,
       options: numOpts(answer),
-      visualHint: { left: w, right: h, operator: "perimeter" },
       signature: `peri:${Math.min(w, h)},${Math.max(w, h)}`,
     };
   }
@@ -964,466 +895,6 @@ async function postQuestionProgress(
     console.error("Failed to save progress", e);
   }
 }
-
-// ─── Visual Scaffolding ───────────────────────────────────────────────────────
-
-function FractionBar({ hint }: { hint: string }) {
-  // Parse "a/b"; default to 1/2 if malformed
-  const m = hint.match(/^(\d+)\/(\d+)$/);
-  const num = m ? Math.min(parseInt(m[1], 10), parseInt(m[2], 10)) : 1;
-  const parts = m ? Math.max(parseInt(m[2], 10), 1) : 2;
-  const w = 200,
-    h = 40,
-    gap = 3;
-  const pw = (w - gap * (parts - 1)) / parts;
-  return (
-    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`}>
-      {Array.from({ length: parts }, (_, i) => (
-        <rect
-          key={i}
-          x={i * (pw + gap)}
-          y={0}
-          width={pw}
-          height={h}
-          fill={i < num ? "#a855f7" : "#334155"}
-          rx={4}
-        />
-      ))}
-    </svg>
-  );
-}
-
-// ASCII number line marking the fraction a/b within 0..1
-function FractionNumberLine({ a, b }: { a: number; b: number }) {
-  const cells: string[] = [];
-  for (let i = 0; i <= b; i++) {
-    cells.push(i === a ? "▼" : " ");
-  }
-  const top = cells.join("   ");
-  const bar = "0" + "─".repeat(b * 4 - 1) + "1";
-  const ticks = "│" + " ".repeat(3) + "├───".repeat(b - 1) + "─┤";
-  return (
-    <pre className='font-mono text-yellow-300 text-base sm:text-lg leading-tight bg-slate-950 px-3 py-2 rounded-lg border border-yellow-400/30'>
-      {top}
-      {"\n"}
-      {ticks.slice(0, bar.length)}
-      {"\n"}
-      {bar}
-    </pre>
-  );
-}
-
-const VisualScaffolding = ({ hint }: { hint: Problem["visualHint"] }) => {
-  if (hint.operator === "tens-ones") {
-    return (
-      <div className='flex flex-col items-center gap-2 p-3 bg-white/10 rounded-2xl border border-white/20'>
-        <div className='flex gap-3'>
-          {Array.from({ length: hint.left }).map((_, i) => (
-            <div key={i} className='flex flex-col gap-0.5'>
-              <span className='text-[8px] text-blue-300 text-center'>Ten</span>
-              <div className='grid grid-cols-1 gap-0.5 bg-blue-500/30 p-0.5 rounded border border-blue-400'>
-                {Array.from({ length: 10 }).map((_, j) => (
-                  <div key={j} className='w-2.5 h-2.5 bg-blue-400 rounded-sm' />
-                ))}
-              </div>
-            </div>
-          ))}
-          <div className='flex flex-wrap gap-0.5 max-w-[80px] items-center'>
-            {Array.from({ length: hint.right }).map((_, i) => (
-              <div key={i} className='w-2.5 h-2.5 bg-emerald-400 rounded-sm' />
-            ))}
-          </div>
-        </div>
-        <p className='text-[10px] text-blue-200'>Blue stacks = 10, green blocks = 1</p>
-      </div>
-    );
-  }
-
-  if (hint.operator === "mental-add" || hint.operator === "mental-sub") {
-    const isAdd = hint.operator === "mental-add";
-    const result = isAdd ? hint.left + 10 : hint.left - 10;
-    return (
-      <div className='flex flex-col items-center gap-2 p-3 bg-white/10 rounded-2xl border border-white/20'>
-        <div className='flex items-center gap-3 text-2xl font-black'>
-          <span className='text-white'>{hint.left}</span>
-          <span className={isAdd ? "text-emerald-400" : "text-rose-400"}>{isAdd ? "+10" : "−10"}</span>
-          <span className='text-white/40'>=</span>
-          <span className='text-yellow-400'>{result}</span>
-        </div>
-        <p className='text-[10px] text-blue-200'>
-          {isAdd ? "The tens digit goes up by 1!" : "The tens digit goes down by 1!"}
-        </p>
-      </div>
-    );
-  }
-
-  if (hint.operator === "add-100") {
-    return (
-      <div className='flex flex-col items-center gap-2 p-3 bg-white/10 rounded-2xl border border-white/20'>
-        <div className='flex items-center gap-3 text-2xl font-black'>
-          <span className='text-blue-300'>{hint.left}</span>
-          <span className='text-white'>+</span>
-          <span className='text-emerald-300'>{hint.right}</span>
-        </div>
-        <p className='text-[10px] text-blue-200'>Think about the tens and ones separately!</p>
-      </div>
-    );
-  }
-
-  if (hint.operator === "comparison") {
-    return (
-      <div className='flex flex-col items-center gap-2 p-3 bg-white/10 rounded-2xl border border-white/20'>
-        <div className='flex items-center gap-4 text-3xl font-black'>
-          <span className='text-blue-300'>{hint.left}</span>
-          <div className='flex flex-col items-center text-sm text-slate-400 gap-0.5'>
-            <span>{">"} = greater than</span>
-            <span>{"<"} = less than</span>
-            <span>= means equal</span>
-          </div>
-          <span className='text-emerald-300'>{hint.right}</span>
-        </div>
-      </div>
-    );
-  }
-
-  if (hint.operator === "fact-family") {
-    const sum = hint.left + hint.right;
-    return (
-      <div className='flex flex-col items-center gap-2 p-3 bg-white/10 rounded-2xl border border-white/20'>
-        <div className='text-xl font-bold text-center space-y-1'>
-          <div>
-            <span className='text-emerald-300'>{hint.left}</span>
-            <span className='text-white'> + </span>
-            <span className='text-purple-300'>{hint.right}</span>
-            <span className='text-white'> = </span>
-            <span className='text-yellow-300'>{sum}</span>
-          </div>
-          <div className='text-slate-400 text-sm'>↕ flip it!</div>
-          <div>
-            <span className='text-yellow-300'>{sum}</span>
-            <span className='text-white'> − </span>
-            <span className='text-purple-300'>{hint.right}</span>
-            <span className='text-white'> = </span>
-            <span className='text-emerald-300'>{hint.left}</span>
-          </div>
-        </div>
-        <p className='text-[10px] text-blue-200'>Addition and subtraction are opposites!</p>
-      </div>
-    );
-  }
-
-  if (hint.operator === "count-next" || hint.operator === "count-prev") {
-    const isNext = hint.operator === "count-next";
-    const n = hint.left;
-    const nums: (number | string)[] = isNext ? [n - 1, n, "?"] : ["?", n, n + 1];
-    return (
-      <div className='flex flex-col items-center gap-2 p-3 bg-white/10 rounded-2xl border border-white/20'>
-        <div className='flex items-center gap-2'>
-          {nums.map((num, i) => (
-            <div
-              key={i}
-              className={`w-14 h-12 rounded-lg flex items-center justify-center text-lg font-bold ${num === "?" ? "bg-yellow-500/30 border-2 border-yellow-400 text-yellow-400" : "bg-white/10 text-white"}`}
-            >
-              {num}
-            </div>
-          ))}
-        </div>
-        <p className='text-[10px] text-blue-200'>{isNext ? "Count up — what comes next?" : "Count back — what comes before?"}</p>
-      </div>
-    );
-  }
-
-  if (hint.operator === "make-10") {
-    return (
-      <div className='flex flex-col items-center gap-2 p-3 bg-white/10 rounded-2xl border border-white/20'>
-        <div className='flex items-center gap-1'>
-          {Array.from({ length: 10 }).map((_, i) => (
-            <div
-              key={i}
-              className={`w-4 h-4 rounded-sm ${i < hint.left ? "bg-orange-400" : "bg-slate-600 border border-slate-500"}`}
-            />
-          ))}
-        </div>
-        <p className='text-[10px] text-blue-200'>How many empty squares to fill 10?</p>
-      </div>
-    );
-  }
-
-  if (hint.operator === "teen-decompose") {
-    return (
-      <div className='flex flex-col items-center gap-2 p-3 bg-white/10 rounded-2xl border border-white/20'>
-        <div className='flex gap-3 items-center'>
-          <div className='grid grid-cols-1 gap-0.5 bg-blue-500/30 p-1 rounded border border-blue-400'>
-            {Array.from({ length: 10 }).map((_, j) => (
-              <div key={j} className='w-3 h-3 bg-blue-400 rounded-sm' />
-            ))}
-          </div>
-          <span className='text-2xl text-white'>+</span>
-          <div className='flex flex-wrap gap-0.5 max-w-[80px]'>
-            {Array.from({ length: hint.right }).map((_, i) => (
-              <div key={i} className='w-3 h-3 bg-emerald-400 rounded-sm' />
-            ))}
-          </div>
-        </div>
-        <p className='text-[10px] text-blue-200'>One ten + some ones</p>
-      </div>
-    );
-  }
-
-  if (hint.operator === "sub-mult-10") {
-    return (
-      <div className='flex flex-col items-center gap-2 p-3 bg-white/10 rounded-2xl border border-white/20'>
-        <div className='flex items-center gap-3 text-2xl font-black'>
-          <span className='text-white'>{hint.left}</span>
-          <span className='text-rose-400'>− {hint.right}</span>
-          <span className='text-white/40'>=</span>
-          <span className='text-yellow-400'>{hint.left - hint.right}</span>
-        </div>
-        <p className='text-[10px] text-blue-200'>Subtract tens from tens.</p>
-      </div>
-    );
-  }
-
-  if (hint.operator === "equal-sign") {
-    const [l, r] = (hint.extra ?? " | ").split("|");
-    return (
-      <div className='flex flex-col items-center gap-2 p-3 bg-white/10 rounded-2xl border border-white/20'>
-        <div className='flex items-center gap-3 text-2xl font-black text-white'>
-          <span>{l}</span><span className='text-yellow-300'>=</span><span>{r}</span>
-        </div>
-        <p className='text-[10px] text-blue-200'>Both sides should equal the same.</p>
-      </div>
-    );
-  }
-
-  if (hint.operator === "unknown-addend") {
-    const sum = parseInt(hint.extra ?? "0", 10);
-    return (
-      <div className='flex flex-col items-center gap-2 p-3 bg-white/10 rounded-2xl border border-white/20'>
-        <div className='flex items-center gap-3 text-2xl font-black text-white'>
-          <span className='text-orange-300'>{hint.left}</span>
-          <span>+</span>
-          <span className='text-yellow-400'>?</span>
-          <span>=</span>
-          <span className='text-emerald-300'>{sum}</span>
-        </div>
-        <p className='text-[10px] text-blue-200'>Count up from {hint.left} to {sum}.</p>
-      </div>
-    );
-  }
-
-  if (hint.operator === "add-regroup" || hint.operator === "sub-regroup") {
-    const isAdd = hint.operator === "add-regroup";
-    return (
-      <div className='flex flex-col items-center gap-2 p-3 bg-white/10 rounded-2xl border border-white/20'>
-        <div className='font-mono text-3xl text-white'>
-          <div className='text-right'>{hint.left}</div>
-          <div className='text-right border-b border-white/30'>{isAdd ? "+" : "−"} {hint.right}</div>
-        </div>
-        <p className='text-[10px] text-blue-200'>Stack the digits and add tens-to-tens, ones-to-ones.</p>
-      </div>
-    );
-  }
-
-  if (hint.operator === "tens-ones-3") {
-    const ones = parseInt(hint.extra ?? "0", 10);
-    return (
-      <div className='flex flex-col items-center gap-2 p-3 bg-white/10 rounded-2xl border border-white/20'>
-        <div className='flex items-center gap-2 text-base font-black'>
-          <span className='text-rose-300'>{hint.left}×100</span>
-          <span className='text-white'>+</span>
-          <span className='text-blue-300'>{hint.right}×10</span>
-          <span className='text-white'>+</span>
-          <span className='text-emerald-300'>{ones}</span>
-        </div>
-        <p className='text-[10px] text-blue-200'>Hundreds, tens, ones.</p>
-      </div>
-    );
-  }
-
-  if (hint.operator === "skip-count") {
-    return (
-      <div className='flex flex-col items-center gap-2 p-3 bg-white/10 rounded-2xl border border-white/20'>
-        <div className='flex items-center gap-2'>
-          <div className='w-14 h-12 rounded-lg bg-white/10 text-white flex items-center justify-center text-lg font-bold'>{hint.left - hint.right}</div>
-          <div className='w-14 h-12 rounded-lg bg-white/10 text-white flex items-center justify-center text-lg font-bold'>{hint.left}</div>
-          <div className='w-14 h-12 rounded-lg bg-yellow-500/30 border-2 border-yellow-400 text-yellow-400 flex items-center justify-center text-lg font-bold'>?</div>
-        </div>
-        <p className='text-[10px] text-blue-200'>Add {hint.right} each step.</p>
-      </div>
-    );
-  }
-
-  if (hint.operator === "mental-add-100" || hint.operator === "mental-sub-100") {
-    const isAdd = hint.operator === "mental-add-100";
-    const result = isAdd ? hint.left + 100 : hint.left - 100;
-    return (
-      <div className='flex flex-col items-center gap-2 p-3 bg-white/10 rounded-2xl border border-white/20'>
-        <div className='flex items-center gap-3 text-2xl font-black'>
-          <span className='text-white'>{hint.left}</span>
-          <span className={isAdd ? "text-emerald-400" : "text-rose-400"}>{isAdd ? "+100" : "−100"}</span>
-          <span className='text-white/40'>=</span>
-          <span className='text-yellow-400'>{result}</span>
-        </div>
-        <p className='text-[10px] text-blue-200'>The hundreds digit changes by 1!</p>
-      </div>
-    );
-  }
-
-  if (hint.operator === "odd-even") {
-    return (
-      <div className='flex flex-col items-center gap-2 p-3 bg-white/10 rounded-2xl border border-white/20'>
-        <p className='text-[10px] text-blue-200'>Pair the number up — does one have a partner left over?</p>
-      </div>
-    );
-  }
-
-  if (hint.operator === "array") {
-    return (
-      <div className='flex flex-col items-center gap-2 p-3 bg-white/10 rounded-2xl border border-white/20'>
-        <div className='flex flex-col gap-1'>
-          {Array.from({ length: hint.left }).map((_, r) => (
-            <div key={r} className='flex gap-1'>
-              {Array.from({ length: hint.right }).map((__, c) => (
-                <div key={c} className='w-4 h-4 bg-emerald-400 rounded-sm' />
-              ))}
-            </div>
-          ))}
-        </div>
-        <p className='text-[10px] text-blue-200'>{hint.left} rows × {hint.right} per row</p>
-      </div>
-    );
-  }
-
-  if (hint.operator === "multiply") {
-    return (
-      <div className='flex flex-col items-center gap-2 p-3 bg-white/10 rounded-2xl border border-white/20'>
-        <div className='flex flex-col gap-1'>
-          {Array.from({ length: Math.min(hint.left, 10) }).map((_, r) => (
-            <div key={r} className='flex gap-1'>
-              {Array.from({ length: Math.min(hint.right, 10) }).map((__, c) => (
-                <div key={c} className='w-3 h-3 bg-orange-400 rounded-sm' />
-              ))}
-            </div>
-          ))}
-        </div>
-        <p className='text-[10px] text-blue-200'>{hint.left} groups of {hint.right}</p>
-      </div>
-    );
-  }
-
-  if (hint.operator === "multiply-tens") {
-    return (
-      <div className='flex flex-col items-center gap-2 p-3 bg-white/10 rounded-2xl border border-white/20'>
-        <div className='flex items-center gap-2 text-xl font-black'>
-          <span className='text-white'>{hint.left} × {hint.right}</span>
-          <span className='text-white/40'>=</span>
-          <span className='text-yellow-300'>{hint.left} × {hint.right / 10}</span>
-          <span className='text-white/40'>tens</span>
-        </div>
-        <p className='text-[10px] text-blue-200'>Multiply, then add a zero.</p>
-      </div>
-    );
-  }
-
-  if (hint.operator === "divide") {
-    const groups = hint.left / hint.right;
-    return (
-      <div className='flex flex-col items-center gap-2 p-3 bg-white/10 rounded-2xl border border-white/20'>
-        <div className='flex flex-wrap gap-2 justify-center max-w-[260px]'>
-          {Array.from({ length: groups }).map((_, g) => (
-            <div key={g} className='flex gap-0.5 bg-white/5 p-1 rounded'>
-              {Array.from({ length: hint.right }).map((__, i) => (
-                <div key={i} className='w-2.5 h-2.5 bg-purple-400 rounded-sm' />
-              ))}
-            </div>
-          ))}
-        </div>
-        <p className='text-[10px] text-blue-200'>{hint.left} split into groups of {hint.right}</p>
-      </div>
-    );
-  }
-
-  if (hint.operator === "round") {
-    const n = hint.left, place = hint.right;
-    const rounded = Math.round(n / place) * place;
-    return (
-      <div className='flex flex-col items-center gap-2 p-3 bg-white/10 rounded-2xl border border-white/20'>
-        <div className='flex items-center gap-3 text-xl font-black text-white'>
-          <span>{n}</span>
-          <span className='text-yellow-300'>→</span>
-          <span className='text-emerald-300'>{rounded}</span>
-        </div>
-        <p className='text-[10px] text-blue-200'>Round to the nearest {place}.</p>
-      </div>
-    );
-  }
-
-  if (hint.operator === "fraction-line") {
-    return (
-      <div className='flex flex-col items-center gap-2 p-3 bg-white/10 rounded-2xl border border-white/20'>
-        <FractionNumberLine a={hint.left} b={hint.right} />
-        <p className='text-[10px] text-blue-200'>The ▼ marks the spot between 0 and 1.</p>
-      </div>
-    );
-  }
-
-  if (hint.operator === "equiv-fractions") {
-    return (
-      <div className='flex flex-col items-center gap-2 p-3 bg-white/10 rounded-2xl border border-white/20'>
-        <FractionBar hint={`${hint.left}/${hint.right}`} />
-        <span className='text-yellow-300 text-sm'>=</span>
-        <FractionBar hint={hint.extra ?? ""} />
-        <p className='text-[10px] text-blue-200'>Same amount, different pieces.</p>
-      </div>
-    );
-  }
-
-  if (hint.operator === "compare-fractions") {
-    const [b1s, b2s] = (hint.extra ?? "0,0").split(",");
-    return (
-      <div className='flex flex-col items-center gap-2 p-3 bg-white/10 rounded-2xl border border-white/20'>
-        <FractionBar hint={`${hint.left}/${b1s}`} />
-        <FractionBar hint={`${hint.right}/${b2s}`} />
-        <p className='text-[10px] text-blue-200'>Which purple bar is longer?</p>
-      </div>
-    );
-  }
-
-  if (hint.operator === "area") {
-    return (
-      <div className='flex flex-col items-center gap-2 p-3 bg-white/10 rounded-2xl border border-white/20'>
-        <div className='flex flex-col gap-0.5'>
-          {Array.from({ length: hint.right }).map((_, r) => (
-            <div key={r} className='flex gap-0.5'>
-              {Array.from({ length: hint.left }).map((__, c) => (
-                <div key={c} className='w-3 h-3 bg-emerald-400/70 border border-emerald-300' />
-              ))}
-            </div>
-          ))}
-        </div>
-        <p className='text-[10px] text-blue-200'>Count the squares: {hint.left} × {hint.right}</p>
-      </div>
-    );
-  }
-
-  if (hint.operator === "perimeter") {
-    return (
-      <div className='flex flex-col items-center gap-2 p-3 bg-white/10 rounded-2xl border border-white/20'>
-        <div
-          className='border-2 border-yellow-300 bg-slate-800/60 flex items-center justify-center text-xs text-yellow-200'
-          style={{ width: `${hint.left * 12}px`, height: `${hint.right * 12}px`, minWidth: 40, minHeight: 30 }}
-        >
-          {hint.left}×{hint.right}
-        </div>
-        <p className='text-[10px] text-blue-200'>Add up all 4 sides: {hint.left} + {hint.right} + {hint.left} + {hint.right}</p>
-      </div>
-    );
-  }
-
-  // Plain addition / subtraction gets no scaffolding — counting dots gave the answer away.
-  return null;
-};
 
 // ─── Audio ────────────────────────────────────────────────────────────────────
 
@@ -1986,9 +1457,6 @@ export default function SpaceMathPage() {
                       <Volume2 className='w-5 h-5' /> Read aloud
                     </button>
                   )}
-                </div>
-                <div className='flex justify-center mb-2 shrink-0 empty:hidden'>
-                  <VisualScaffolding hint={problem.visualHint} />
                 </div>
                 <div className={`grid gap-2 sm:gap-3 flex-1 min-h-0 ${isThreeOptions ? "grid-cols-3" : "grid-cols-2"}`}>
                   {problem.options.map((opt, i) => (
