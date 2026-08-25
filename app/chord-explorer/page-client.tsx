@@ -79,80 +79,94 @@ interface LabeledShape {
   shape: ChordShape;
   label: string;
   position?: string;
-  /** Fret the moveable shape's root sits on — undefined for fixed open shapes. */
-  rootFret?: number;
 }
 
-// A moveable barre shape repeats every 12 frets. 15 is the highest root fret we
-// offer so the rest of the shape still lands on a standard neck.
-const MAX_BARRE_FRET = 15;
+/** Highest fret a finger is asked to reach — past this the shape is off the neck. */
+const MAX_FRET = 17;
 
-/** Highest fret a user can move a progression to. */
-const MAX_TARGET_FRET = 12;
+/** Standard tuning, as MIDI note numbers: E2 A2 D3 G3 B3 E4. */
+const STRING_MIDI = [40, 45, 50, 55, 59, 64];
 
-// `null` means "wherever the chord naturally sits" — open shapes near the nut
-// plus the lowest barre placement, which is how the panel behaved originally.
-const POSITION_OPTIONS: { value: number | null; label: string }[] = [
-  { value: null, label: "Open / lowest position" },
-  ...Array.from({ length: MAX_TARGET_FRET }, (_, i) => ({
-    value: i + 1,
-    label: `Around fret ${i + 1}`,
-  })),
-];
+/** The notes a shape actually sounds, in MIDI numbers, lowest string first. */
+const shapePitches = (shape: ChordShape): number[] =>
+  shape.frets
+    .map((fret, i) => (fret < 0 ? null : STRING_MIDI[i] + fret))
+    .filter((pitch): pitch is number => pitch !== null);
 
-/** Pick the octave placement of a moveable shape whose root sits closest to `targetFret`. */
-const placeBarre = (baseShift: number, targetFret: number) => {
-  let best = baseShift;
-  for (let shift = baseShift; shift <= MAX_BARRE_FRET; shift += 12) {
-    if (Math.abs(shift - targetFret) < Math.abs(best - targetFret)) best = shift;
-  }
-  return best;
+/**
+ * How high a voicing sits. The average of the notes it sounds is what the ear
+ * calls "higher up the neck": the bass note alone can't separate an open C from
+ * a C barre that shares that bass but sits above it on every other string. The
+ * bass breaks ties, so two voicings centred alike order by their bottom end.
+ */
+const voicingHeight = (shape: ChordShape): { center: number; bass: number } => {
+  const pitches = shapePitches(shape);
+  if (!pitches.length) return { center: 0, bass: 0 };
+  return {
+    center: pitches.reduce((sum, pitch) => sum + pitch, 0) / pitches.length,
+    bass: Math.min(...pitches),
+  };
 };
 
-const getVoicings = (note: string, type: string, targetFret: number | null = null): LabeledShape[] => {
-  const voicings: LabeledShape[] = [];
+/** One rung of a chord's ladder up the neck. */
+interface NeckVoicing extends LabeledShape {
+  /** Identity of this rung, so a chord pinned to it survives a re-render. */
+  id: string;
+  center: number;
+  bass: number;
+}
+
+/**
+ * Every playable way to sound this chord, ordered from the lowest-sounding to
+ * the highest. Moveable barre shapes repeat every 12 frets, so each one is
+ * offered at every octave that still fits on the neck — that repetition is what
+ * gives the progression somewhere to go when it is moved up or down.
+ */
+const getNeckVoicings = (note: string, type: string): NeckVoicing[] => {
+  const voicings: NeckVoicing[] = [];
   const seen = new Set<string>();
 
-  const add = (shape: ChordShape | null, label: string, position?: string, rootFret?: number) => {
+  const add = (shape: ChordShape | null, id: string, label: string, position?: string) => {
     if (!shape) return;
+    if (shape.frets.some((fret) => fret > MAX_FRET)) return;
     const key = shape.frets.join(",");
     if (seen.has(key)) return;
     seen.add(key);
-    voicings.push({ shape, label, position, rootFret });
+    voicings.push({ shape, id, label, position, ...voicingHeight(shape) });
   };
 
-  // Library shapes are anchored at the nut, so they only apply when the user
-  // hasn't asked for a specific spot on the neck.
-  if (targetFret === null) {
-    const canonical = flatToSharp[note] ?? note;
-    const enharmonic = sharpToFlat[canonical] ?? flatToSharp[note];
+  const canonical = flatToSharp[note] ?? note;
+  const enharmonic = sharpToFlat[canonical] ?? flatToSharp[note];
 
-    for (const n of [note, canonical, enharmonic].filter(Boolean) as string[]) {
-      const shapes = chordShapes[buildChordKey(n, type)];
-      if (shapes?.length) {
-        shapes.forEach((s, i) => add(s, i === 0 ? "Open / Standard" : `Open Alt ${i + 1}`));
-        break;
-      }
+  for (const n of [note, canonical, enharmonic].filter(Boolean) as string[]) {
+    const shapes = chordShapes[buildChordKey(n, type)];
+    if (shapes?.length) {
+      shapes.forEach((s, i) => add(s, `open-${i}`, i === 0 ? "Open / Standard" : `Open Alt ${i + 1}`));
+      break;
     }
   }
 
-  const addBarre = (template: ChordShape | undefined, label: string, baseShift: number) => {
+  const addBarre = (template: ChordShape | undefined, key: string, label: string, baseShift: number) => {
     if (!template) return;
-    const shift = targetFret === null ? baseShift : placeBarre(baseShift, targetFret);
-    add(transposeShape(template, shift), label, shift === 0 ? "Open" : `${shift}fr`, shift);
+    for (let shift = baseShift; shift <= MAX_FRET; shift += 12) {
+      add(transposeShape(template, shift), `${key}-${shift}`, label, shift === 0 ? "Open" : `${shift}fr`);
+    }
   };
 
-  addBarre(eShapeTemplates[type], "E-Shape Barre", semitoneFromE(note));
-  addBarre(aShapeTemplates[type], "A-Shape Barre", semitoneFromA(note));
+  addBarre(eShapeTemplates[type], "e", "E-Shape Barre", semitoneFromE(note));
+  addBarre(aShapeTemplates[type], "a", "A-Shape Barre", semitoneFromA(note));
 
-  // Whichever moveable shape lands nearest the requested fret becomes the default.
-  if (targetFret !== null) {
-    voicings.sort(
-      (a, b) => Math.abs((a.rootFret ?? 0) - targetFret) - Math.abs((b.rootFret ?? 0) - targetFret)
-    );
-  }
+  return voicings.sort((a, b) => a.center - b.center || a.bass - b.bass);
+};
 
-  return voicings;
+/** The Chord Types cards want each shape once, where it naturally falls. */
+const getVoicings = (note: string, type: string): LabeledShape[] => {
+  const seen = new Set<string>();
+  return getNeckVoicings(note, type).filter((v) => {
+    if (seen.has(v.label)) return false;
+    seen.add(v.label);
+    return true;
+  });
 };
 
 // ── Inversions ────────────────────────────────────────────────────────────────
@@ -325,24 +339,30 @@ function ProgressionChordCard({
   roman,
   note,
   quality,
-  targetFret,
-  voicingLabel,
+  voicings,
+  step,
+  pinnedId,
   useFlats,
-  onVoicingChange,
+  onPick,
 }: {
   roman: string;
   note: string;
   quality: ChordQuality;
-  targetFret: number | null;
-  voicingLabel?: string;
+  /** This chord's rungs, lowest-sounding first. */
+  voicings: NeckVoicing[];
+  /** How far up the ladder the whole progression has been moved. */
+  step: number;
+  /** Set when this one chord was picked by hand, overriding the step. */
+  pinnedId?: string;
   useFlats: boolean;
-  onVoicingChange: (voicingLabel: string) => void;
+  onPick: (voicingId: string) => void;
 }) {
-  const voicings = useMemo(() => getVoicings(note, quality, targetFret), [note, quality, targetFret]);
-  // Selection is tracked by label so a chosen shape survives a position change;
-  // when that shape isn't available at the new position we fall back to the
-  // best fit, which getVoicings has already sorted to the front.
-  const selectedIndex = Math.max(0, voicings.findIndex((v) => v.label === voicingLabel));
+  // Chords run out of neck at different points — a chord with fewer rungs than
+  // the step asks for holds at its highest rather than dropping out, which is
+  // what keeps a progression moving as a whole.
+  const stepped = Math.min(Math.max(0, step), Math.max(0, voicings.length - 1));
+  const pinnedIndex = pinnedId ? voicings.findIndex((v) => v.id === pinnedId) : -1;
+  const selectedIndex = pinnedIndex >= 0 ? pinnedIndex : stepped;
   const selected = voicings[selectedIndex];
   const shape = selected?.shape ?? null;
   const label = formatChordLabel(note, quality);
@@ -367,13 +387,13 @@ function ProgressionChordCard({
       )}
       {voicings.length > 0 && (
         <select
-          value={selected?.label ?? ""}
-          onChange={(e) => onVoicingChange(e.target.value)}
-          title="Swap the voicing or chord shape used for this chord"
+          value={selected?.id ?? ""}
+          onChange={(e) => onPick(e.target.value)}
+          title="Pin this one chord to a shape, wherever the rest of the progression sits"
           className="w-full max-w-[150px] rounded-lg border border-border bg-transparent px-2 py-1.5 text-xs dark:border-neutral-600 dark:bg-neutral-900"
         >
           {voicings.map((v) => (
-            <option key={v.label} value={v.label}>
+            <option key={v.id} value={v.id}>
               {v.label}
               {v.position ? ` (${v.position})` : ""}
             </option>
@@ -407,8 +427,10 @@ export default function ChordExplorerPage() {
     progression: string;
     byIndex: Record<number, string>;
   }>({ progression: selectedProgressionName, byIndex: {} });
-  // Which spot on the neck the whole progression should sit at. null = open / lowest.
-  const [progressionFret, setProgressionFret] = useState<number | null>(null);
+  // How far up the neck the whole progression has been moved: 0 is the
+  // lowest-sounding voicing of every chord, and each step up trades it for the
+  // next one that sounds higher.
+  const [progressionStep, setProgressionStep] = useState(0);
 
   const selectedProgressionDef = useMemo(
     () =>
@@ -426,19 +448,35 @@ export default function ChordExplorerPage() {
     [selectedProgressionDef, selectedNote, useFlats]
   );
 
-  // Voicing picks survive key and fretboard-position changes, but not a switch
-  // to a different progression.
-  const activeVoicings =
+  // Each chord's rungs up the neck, lowest-sounding first.
+  const progressionVoicingSets = useMemo(
+    () => progressionChords.map((c) => getNeckVoicings(c.note, c.quality)),
+    [progressionChords]
+  );
+
+  // The longest ladder in the progression is as far as the whole thing can go.
+  const maxStep = Math.max(0, ...progressionVoicingSets.map((v) => v.length - 1));
+  const clampedStep = Math.min(progressionStep, maxStep);
+
+  // Pinned chords survive a key change, but not a switch to another progression.
+  const pinnedVoicings =
     progressionVoicings.progression === selectedProgressionName ? progressionVoicings.byIndex : {};
 
-  const handleProgressionVoicingChange = (index: number, voicingLabel: string) => {
+  const handleProgressionVoicingChange = (index: number, voicingId: string) => {
     setProgressionVoicings((prev) => ({
       progression: selectedProgressionName,
       byIndex:
         prev.progression === selectedProgressionName
-          ? { ...prev.byIndex, [index]: voicingLabel }
-          : { [index]: voicingLabel },
+          ? { ...prev.byIndex, [index]: voicingId }
+          : { [index]: voicingId },
     }));
+  };
+
+  // Moving the progression is a statement about all of it, so it releases the
+  // chords that were pinned by hand rather than leaving some behind.
+  const moveProgression = (delta: number) => {
+    setProgressionStep(Math.min(maxStep, Math.max(0, clampedStep + delta)));
+    setProgressionVoicings({ progression: selectedProgressionName, byIndex: {} });
   };
 
   const handleNoteClick = (note: string) => setSelectedNote(note);
@@ -572,32 +610,52 @@ export default function ChordExplorerPage() {
             </p>
           </div>
 
-          {/* Move the whole progression up or down the neck */}
+          {/* Play the whole progression higher or lower on the neck */}
           <div className="flex shrink-0 flex-col gap-1">
-            <label
-              htmlFor="progression-fret-position"
+            <p
               className="text-xs font-semibold uppercase tracking-wider text-black/50 dark:text-white/50"
-              title="Move the entire progression to a different spot on the fretboard — every chord switches to the moveable barre shape that sits closest to the fret you pick, so the whole progression stays under one hand position"
+              title="Move the whole progression up or down the neck. Every chord swaps to its next voicing in that direction, so the progression keeps its shape while the pitch rises or falls"
             >
-              Fretboard Position
-            </label>
-            <select
-              id="progression-fret-position"
-              value={progressionFret ?? ""}
-              onChange={(e) => setProgressionFret(e.target.value === "" ? null : Number(e.target.value))}
-              title="Move the entire progression to a different spot on the fretboard"
-              className="min-h-[44px] w-full min-w-[180px] rounded-lg border border-border bg-transparent px-2 py-1.5 text-sm dark:border-neutral-600 dark:bg-neutral-900"
-            >
-              {POSITION_OPTIONS.map((option) => (
-                <option key={option.label} value={option.value ?? ""}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            <p className="max-w-[220px] text-xs text-black/40 dark:text-neutral-500">
-              {progressionFret === null
-                ? "Open chords near the nut wherever they exist."
-                : `Barre shapes nearest fret ${progressionFret}. Each card's dropdown still swaps between the E- and A-shape.`}
+              Neck Position
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => moveProgression(-1)}
+                disabled={clampedStep <= 0}
+                title="Play the progression lower — every chord drops to its next lower-sounding voicing"
+                aria-label="Move the progression down the neck"
+                className={`${TOUCH_BUTTON} ${
+                  clampedStep <= 0
+                    ? "border-border opacity-40"
+                    : "border-border hover:bg-foreground/10"
+                }`}
+              >
+                ↓ Lower
+              </button>
+              <span
+                className="min-w-[64px] text-center text-xs tabular-nums text-black/50 dark:text-white/50"
+                title="Which rung of the neck the progression is on, out of the rungs its chords have"
+              >
+                {clampedStep + 1} / {maxStep + 1}
+              </span>
+              <button
+                onClick={() => moveProgression(1)}
+                disabled={clampedStep >= maxStep}
+                title="Play the progression higher — every chord climbs to its next higher-sounding voicing"
+                aria-label="Move the progression up the neck"
+                className={`${TOUCH_BUTTON} ${
+                  clampedStep >= maxStep
+                    ? "border-border opacity-40"
+                    : "border-border hover:bg-foreground/10"
+                }`}
+              >
+                ↑ Higher
+              </button>
+            </div>
+            <p className="max-w-[240px] text-xs text-black/40 dark:text-neutral-500">
+              {clampedStep === 0
+                ? "The lowest way to play it — open chords wherever they exist."
+                : "Higher up the neck. A chord that has run out of neck holds at its highest."}
             </p>
           </div>
         </div>
@@ -609,10 +667,11 @@ export default function ChordExplorerPage() {
               roman={c.roman}
               note={c.note}
               quality={c.quality}
-              targetFret={progressionFret}
-              voicingLabel={activeVoicings[i]}
+              voicings={progressionVoicingSets[i] ?? []}
+              step={clampedStep}
+              pinnedId={pinnedVoicings[i]}
               useFlats={useFlats}
-              onVoicingChange={(voicingLabel) => handleProgressionVoicingChange(i, voicingLabel)}
+              onPick={(voicingId) => handleProgressionVoicingChange(i, voicingId)}
             />
           ))}
         </div>
@@ -661,7 +720,7 @@ export default function ChordExplorerPage() {
       id: "progression-generator",
       title: "Chord Progressions",
       tooltip:
-        "Click through the sidebar to hear progressions grouped by the feeling they create — the chords render in your selected key, and the Roman numeral pattern stays fixed while the actual chords follow your root note. Use the Fretboard Position dropdown to slide the whole progression up or down the neck, and each card's dropdown to swap in a different voicing. Drag the panel's corner to make the list taller.",
+        "Click through the sidebar to hear progressions grouped by the feeling they create — the chords render in your selected key, and the Roman numeral pattern stays fixed while the actual chords follow your root note. Lower and Higher play the whole progression further down or up the neck, and each card's dropdown pins one chord to a shape of your choosing. Drag the panel's corner to make the list taller.",
       defaultColSpan: 12,
       defaultRowSpan: 6,
       content: progressionContent,
