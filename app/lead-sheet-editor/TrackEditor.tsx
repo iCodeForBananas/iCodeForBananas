@@ -51,6 +51,7 @@ import {
   type DrumSettings,
 } from "./DrumMachine";
 import { asSectionHeader } from "./songText";
+import { DEFAULT_STRING_SETTINGS, useStringPads } from "./StringPads";
 
 // ─── Track editor ─────────────────────────────────────────────────────────────
 //
@@ -97,6 +98,7 @@ const LAYER_STYLES: Record<string, { bar: string; edge: string; dot: string }> =
   drum: { bar: "bg-emerald-500/25 text-emerald-100", edge: "bg-emerald-400", dot: "bg-emerald-400" },
   claps: { bar: "bg-sky-500/25 text-sky-100", edge: "bg-sky-400", dot: "bg-sky-400" },
   shimmer: { bar: "bg-violet-500/25 text-violet-100", edge: "bg-violet-400", dot: "bg-violet-400" },
+  drone: { bar: "bg-amber-500/25 text-amber-100", edge: "bg-amber-400", dot: "bg-amber-400" },
 };
 
 const layerStyle = (layer: string) =>
@@ -132,19 +134,24 @@ interface DragState {
 interface SongSettings {
   bpm: number;
   drums: DrumSettings;
+  /** The song's key, which is the note the drone track holds. */
+  key: string | null;
 }
 
-/** Tempo and kit, read off the header block the same way the editor writes it. */
+/** Tempo, key and kit, read off the header block the same way the editor writes it. */
 function readSongSettings(rawText: string): SongSettings {
   let bpm = 120;
   let drums = DEFAULT_DRUM_SETTINGS;
+  let key: string | null = null;
   for (const line of rawText.split("\n")) {
     if (asSectionHeader(line) !== null) break;
     const tempo = line.match(/\bTempo:\s*(\d+)\b/i);
     if (tempo) bpm = Math.min(300, Math.max(30, parseInt(tempo[1], 10)));
+    const inKey = line.match(/\bKey:\s*([A-G][#b]?m?)\b/i);
+    if (inKey) key = inKey[1];
     if (hasDrumSettingsLine(line)) drums = parseDrumSettingsLine(line) ?? drums;
   }
-  return { bpm, drums };
+  return { bpm, drums, key };
 }
 
 // ─── Recorded audio ───────────────────────────────────────────────────────────
@@ -390,6 +397,16 @@ export default function TrackEditor({
     activeLayers.has("shimmer"),
     activeLayers.has("drum")
   );
+
+  // The drone holds the song's key underneath everything for as long as its
+  // clip runs — the same pad the preview's strings play, gated by a track
+  // instead of a toolbar button. A sheet with no Key: line holds G, the same
+  // fallback the pad has always used.
+  useStringPads(settings.key, playing && activeLayers.has("drone"), {
+    ...DEFAULT_STRING_SETTINGS,
+    mode: "drone",
+    volume: DEFAULT_STRING_SETTINGS.volume * fadeGain,
+  });
 
   // ── Clip edits ─────────────────────────────────────────────────────────────
 

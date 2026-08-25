@@ -60,7 +60,7 @@ const ENTRIES: Entry[] = [
   {
     title: "Sound tags",
     blurb:
-      "A tag in square brackets on a time-stamped line switches a sound on or off during playback. [drum] starts the drum machine, [/drum] stops it, and the same works for claps and shimmer. Use as many as you like — the band drops out and comes back in wherever you mark it.",
+      "A tag in square brackets on a time-stamped line switches a sound on or off during playback. [drum] starts the drum machine, [/drum] stops it, and the same works for claps, shimmer and drone. Use as many as you like — the band drops out and comes back in wherever you mark it.",
     example:
       "[Intro]\n@0:00 [drum]\n@0:08 [G]Driving down an [D]empty road\n\n[Chorus]\n@0:44 [claps, shimmer]\n\n[Bridge]\n@1:30 [/all]\n@1:30 [Em]just voice and guitar here\n@1:52 [drum, fade-in]\n@1:52 [C]and the band comes back in",
     notes: [
@@ -69,6 +69,7 @@ const ENTRIES: Entry[] = [
       "Add fade-in or fade-out to ride the volume over four seconds instead of snapping — [drum, fade-out] fades the drums away.",
       "A tag only fires on a line that starts with a time stamp — without one there is no moment for it to happen at.",
       "You can hang a tag off a lyric line instead of giving it its own line — @1:30 [/drum] [Em]just voice works the same.",
+      "[drone] holds the Key: from the header, so a song without one drones on G.",
       "Chords are safe: only the known sound names count as tags, so [G] and [Am7/C] stay chords.",
       "Tags are stripped out of the previewed and printed sheet, so a tag on its own line reads as blank on the page.",
       "Only playback moves the sounds. Open a sheet without pressing Play and the toggles stay under your own control.",
@@ -100,7 +101,8 @@ const TAG_REFERENCE: { tag: string; does: string }[] = [
   { tag: "[drum]", does: "Start the drum machine" },
   { tag: "[claps]", does: "Start handclaps on 2 and 4" },
   { tag: "[shimmer]", does: "Start the airy shimmer texture" },
-  { tag: "[/drum]", does: "Stop the drums — same for [/claps] and [/shimmer]" },
+  { tag: "[drone]", does: "Hold the song's key underneath as a sustained pad" },
+  { tag: "[/drum]", does: "Stop the drums — same for [/claps], [/shimmer] and [/drone]" },
   { tag: "[/all]", does: "Stop everything that is playing" },
   { tag: "fade-in", does: "Modifier: fade the sound up over four seconds" },
   { tag: "fade-out", does: "Modifier: fade the sound away over four seconds" },

@@ -61,6 +61,7 @@ import {
 } from "../../DrumMachine";
 import {
   StringPadsControl,
+  useStringPads,
   DEFAULT_STRING_SETTINGS,
   normalizeStringSettings,
   type StringPadsSettings,
@@ -487,12 +488,13 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
   const [beatsPerBar, setBeatsPerBar] = useState(() => loadBeatsPerBar(id));
   const [metronomeOn, setMetronomeOn] = useState(false);
   // Open-ended layer state: any cue tag layer name lives here.
-  // Currently wired: "drum", "claps", "shimmer". Future layers are tracked
-  // automatically and just need synthesis code to act on them.
+  // Currently wired: "drum", "claps", "shimmer", "drone". Future layers are
+  // tracked automatically and just need synthesis code to act on them.
   const [activeLayers, setActiveLayers] = useState<Set<string>>(new Set());
   const drumRunning    = activeLayers.has("drum");
   const clapsRunning   = activeLayers.has("claps");
   const shimmerRunning = activeLayers.has("shimmer");
+  const droneRunning   = activeLayers.has("drone");
   const toggleLayer = (name: string) =>
     setActiveLayers((prev) => {
       const next = new Set(prev);
@@ -529,6 +531,11 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
     () => (sheet?.key ? transposeKey(sheet.key, transposeSteps) : null),
     [sheet?.key, transposeSteps]
   );
+
+  // A [drone] cue holds the key under the section it covers. It is the same pad
+  // the Strings control plays, but driven by the sheet rather than by hand, so
+  // an arrangement laid out on the tracks sounds the same here as it did there.
+  useStringPads(soundingKey, droneRunning, { ...stringSettings, mode: "drone" });
 
   // A YouTube link in the song promotes the recording to the transport's clock.
   // The stopwatch stays wired up underneath as the fallback for a video that
