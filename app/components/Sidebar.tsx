@@ -18,12 +18,9 @@ const CATEGORIES: Category[] = ["Music", "Tools", "Education", "Experiments"];
 export const LINKS: { href: string; text: string; category: Category; auth?: boolean; abbr?: string }[] = [
   // Music
   { href: "/chord-explorer", text: "Chord Explorer", category: "Music", abbr: "CE" },
-  { href: "/chord-finder", text: "Chord Finder", category: "Music", abbr: "CF" },
-  { href: "/chord-positions", text: "Chord Positions", category: "Music", abbr: "CP" },
   { href: "/circle-of-fifths", text: "Circle of Fifths", category: "Music", abbr: "CI" },
   { href: "/fretboard-quiz", text: "Fretboard Quiz", category: "Music" },
   { href: "/lead-sheet-editor", text: "Lead Sheet Editor", category: "Music", abbr: "LS" },
-  { href: "/scale-tool", text: "Scale Tool", category: "Music", abbr: "ST" },
   // Tools
   { href: "/workout-tracker", text: "Workout Tracker", category: "Tools" },
   // Education

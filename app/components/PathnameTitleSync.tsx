@@ -8,7 +8,6 @@ const TITLES: Record<string, string> = {
   "/ascii-player":                        "ASCII Player | iCodeForBananas",
   "/brainy-bloom":                        "Brainy Bloom | iCodeForBananas",
   "/chord-diagrams":                      "Chord Diagrams | iCodeForBananas",
-  "/chord-finder":                        "Chord Finder | iCodeForBananas",
   "/chord-inversions":                    "Chord Inversions | iCodeForBananas",
   "/chord-progressions":                  "Chord Progressions | iCodeForBananas",
   "/chord-voicings":                      "Chord Voicings | iCodeForBananas",

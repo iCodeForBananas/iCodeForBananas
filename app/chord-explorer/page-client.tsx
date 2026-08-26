@@ -26,6 +26,7 @@ import ChordDiagram from "../components/ChordDiagram";
 import BentoBoard, { type BentoPanel } from "../components/BentoBoard";
 import ScaleTool from "../components/ScaleTool";
 import CircleOfFifths from "../components/CircleOfFifths";
+import ChordFinder from "../components/ChordFinder";
 
 // ── Chord type groups ─────────────────────────────────────────────────────────
 
@@ -455,6 +456,9 @@ export default function ChordExplorerPage() {
 
   const displayNotes = useFlats ? flatNotes : sharpNotes;
   const chordLabel = formatChordLabel(selectedNote, selectedType);
+  // Panels that think in sharps only — the scale and the fretboard — need the
+  // root spelled their way, whichever way the page is showing it.
+  const canonicalNote = flatToSharp[selectedNote] ?? selectedNote;
 
   const invVoicing: InvVoicing | null = selectedType === "Major" ? "Major" : selectedType === "Minor" ? "Minor" : null;
   const inversions = useMemo(
@@ -549,6 +553,13 @@ export default function ChordExplorerPage() {
   };
 
   const handleNoteClick = (note: string) => setSelectedNote(note);
+
+  // A key clicked on the wheel comes back spelled however the wheel spells it,
+  // so re-spell it the way the page is currently showing notes.
+  const handleCircleSelect = (note: string) => {
+    const asSharp = flatToSharp[note] ?? note;
+    setSelectedNote(useFlats ? sharpToFlat[asSharp] ?? asSharp : asSharp);
+  };
 
   const handleFlatsToggle = () => {
     const next = !useFlats;
@@ -793,7 +804,13 @@ export default function ChordExplorerPage() {
         "The Circle of Fifths — keys close together on the wheel share the most notes and sound natural played in sequence. Hover a key to preview it.",
       defaultColSpan: 5,
       defaultRowSpan: 4,
-      content: <CircleOfFifths showChordPanel={false} />,
+      content: (
+        <CircleOfFifths
+          showChordPanel={false}
+          activeNote={selectedNote}
+          onSelectNote={handleCircleSelect}
+        />
+      ),
     },
     {
       id: "inversions",
@@ -808,10 +825,19 @@ export default function ChordExplorerPage() {
       id: "scale",
       title: "Scale Tool",
       tooltip:
-        "See every note of a scale laid out across all six strings and every fret — great for understanding where you can solo or add a melody over your chord progression.",
+        "See every note of a scale laid out across all six strings and every fret — great for understanding where you can solo or add a melody over your chord progression. The scale is built on the Root Note you picked at the top of the page.",
       defaultColSpan: 12,
       defaultRowSpan: 5,
-      content: <ScaleTool />,
+      content: <ScaleTool rootKey={canonicalNote} />,
+    },
+    {
+      id: "finder",
+      title: "Chord Finder",
+      tooltip:
+        "Work the other way round: click notes on the fretboard and this names every chord they spell. Positions of your Root Note are outlined so you can see where it sits on the neck.",
+      defaultColSpan: 12,
+      defaultRowSpan: 6,
+      content: <ChordFinder rootNote={canonicalNote} />,
     },
     {
       id: "progression-generator",

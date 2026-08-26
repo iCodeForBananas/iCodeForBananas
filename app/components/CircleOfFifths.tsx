@@ -96,7 +96,21 @@ const formatChordLabel = (note: string, type: string) => {
   return `${note} ${type}`;
 };
 
-export default function CircleOfFifths({ showChordPanel = true }: { showChordPanel?: boolean } = {}) {
+/**
+ * `activeNote` lights the wheel from outside — pass the page's root note and the
+ * key it names is marked wherever it appears, as a major key and as a minor one.
+ * With `onSelectNote` the wheel stops holding its own selection and reports
+ * clicks upward instead, so the page's root note stays the single source.
+ */
+export default function CircleOfFifths({
+  showChordPanel = true,
+  activeNote,
+  onSelectNote,
+}: {
+  showChordPanel?: boolean;
+  activeNote?: string;
+  onSelectNote?: (note: string) => void;
+} = {}) {
   const [hoveredKey, setHoveredKey] = useState<{
     chord: string;
     frets: (number | null)[];
@@ -129,7 +143,28 @@ export default function CircleOfFifths({ showChordPanel = true }: { showChordPan
   const majorTypes = chordTypes.filter((t) => t !== "Minor" && t !== "m7");
   const minorTypes = chordTypes.filter((t) => t === "Minor" || t === "m7");
 
-  const activeKey = hoveredKey || selectedKey;
+  // The page's root note, as a sharp name, so flats and sharps match the wheel.
+  const canonicalActive = activeNote ? flatToSharp[activeNote] ?? activeNote : null;
+  const matchesActive = (chord: string, type: "major" | "minor") => {
+    if (!canonicalActive) return false;
+    const note = parseChordNote(chord, type);
+    return (flatToSharp[note] ?? note) === canonicalActive;
+  };
+
+  // With nothing hovered or clicked, the page's root note is what the wheel
+  // shows — the major key of that name.
+  const syncedKey = useMemo(() => {
+    if (!canonicalActive) return null;
+    const entry = circleData.find((d) => {
+      const note = parseChordNote(d.major, "major");
+      return (flatToSharp[note] ?? note) === canonicalActive;
+    });
+    return entry
+      ? { chord: entry.major, frets: entry.majorFrets, type: "major" as const }
+      : null;
+  }, [canonicalActive]);
+
+  const activeKey = hoveredKey || selectedKey || syncedKey;
   const rootNote = activeKey ? parseChordNote(activeKey.chord, activeKey.type) : null;
   const isMinorContext = activeKey?.type === "minor";
   const chordType = isMinorContext ? minorChordType : majorChordType;
@@ -149,8 +184,12 @@ export default function CircleOfFifths({ showChordPanel = true }: { showChordPan
   const currentShape = voicings[clampedIndex]?.shape ?? null;
 
   const selectKey = (chord: string, frets: (number | null)[], type: "major" | "minor") => {
-    setSelectedKey({ chord, frets, type });
     setVoicingIndex(0);
+    if (onSelectNote) {
+      onSelectNote(parseChordNote(chord, type));
+      return;
+    }
+    setSelectedKey({ chord, frets, type });
   };
 
   return (
@@ -175,7 +214,7 @@ export default function CircleOfFifths({ showChordPanel = true }: { showChordPan
 
           {circleData.map((data, index) => {
             const pos = getPosition(index, outerRadius);
-            const isActive = activeKey?.chord === data.major;
+            const isActive = activeKey?.chord === data.major || matchesActive(data.major, "major");
             return (
               <g key={`major-${index}`}>
                 <circle
@@ -200,7 +239,7 @@ export default function CircleOfFifths({ showChordPanel = true }: { showChordPan
 
           {circleData.map((data, index) => {
             const pos = getPosition(index, innerRadius);
-            const isActive = activeKey?.chord === data.minor;
+            const isActive = activeKey?.chord === data.minor || matchesActive(data.minor, "minor");
             return (
               <g key={`minor-${index}`}>
                 <circle

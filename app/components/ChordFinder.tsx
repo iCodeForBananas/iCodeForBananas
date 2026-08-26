@@ -51,7 +51,12 @@ function identifyChords(selectedNotes: string[]): ChordMatch[] {
   return results;
 }
 
-export default function ChordFinder() {
+/**
+ * `rootNote` is the page's Root Note. The finder still works bottom-up — you
+ * pick notes and it names them — so the root only marks where it sits on the
+ * neck rather than choosing anything for you.
+ */
+export default function ChordFinder({ rootNote }: { rootNote?: string } = {}) {
   const tuning = defaultTuning;
   const totalFrets = 12;
 
@@ -107,6 +112,8 @@ export default function ChordFinder() {
     if (m.matchType === "subset") return `Missing ${m.missingCount}`;
     return `+${m.extraCount} extra`;
   };
+
+  const rootUpper = rootNote ? rootNote.toUpperCase() : null;
 
   const matchTypeBadgeClass = (m: ChordMatch) => {
     if (m.matchType === "exact") return "bg-green-900/30 text-green-400 border border-green-700";
@@ -185,6 +192,7 @@ export default function ChordFinder() {
                   const isSelected = selectedPositions.has(posKey);
                   const isPinnedNote = pinnedChord ? pinnedNoteSet.has(note) : false;
                   const isHighlighted = pinnedChord ? isPinnedNote : isSelected;
+                  const isRoot = rootUpper !== null && note === rootUpper;
 
                   return (
                     <div
@@ -193,7 +201,12 @@ export default function ChordFinder() {
                       className={`note transition-colors select-none ${fret === 0 ? "open" : ""} ${
                         isHighlighted ? "highlight" : pinnedChord ? "opacity-40" : "cursor-pointer hover:bg-[#facc15]"
                       }`}
-                      title={`${note} — string ${stringIndex + 1}, fret ${fret}`}
+                      style={isRoot ? { boxShadow: "inset 0 0 0 2px #facc15" } : undefined}
+                      title={
+                        isRoot
+                          ? `${note} — string ${stringIndex + 1}, fret ${fret} (your root note)`
+                          : `${note} — string ${stringIndex + 1}, fret ${fret}`
+                      }
                     >
                       {note}
                     </div>

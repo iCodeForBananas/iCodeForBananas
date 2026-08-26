@@ -3,8 +3,6 @@
 import { useState, useMemo } from "react";
 import { allNotes, getNoteAt } from "@/app/lib/music";
 
-const ROOT_KEYS = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
-
 // `anchors` are the five scale degrees the five box shapes start from — the
 // pentatonic skeleton of the scale. Everything about positions falls out of these.
 const SCALE_TYPES: Record<string, { intervals: number[]; degrees: string[]; anchors: number[] }> = {
@@ -50,8 +48,11 @@ function lsGet(key: string, fallback: string): string {
 
 const mod12 = (n: number) => ((n % 12) + 12) % 12;
 
-export default function ScaleTool() {
-  const [rootKey,    setRootKey]    = useState(() => lsGet("st-root",   "C"));
+/**
+ * `rootKey` is owned by the page so one Root Note drives every panel — the
+ * scale has no root of its own to fall out of step with the chords.
+ */
+export default function ScaleTool({ rootKey }: { rootKey: string }) {
   const [scaleType,  setScaleType]  = useState(() => lsGet("st-scale",  "Major"));
   const [numFrets,   setNumFrets]   = useState(() => parseInt(lsGet("st-frets", "15")));
   const [tuningName, setTuningName] = useState(() => lsGet("st-tuning", "Standard (EADGBE)"));
@@ -213,20 +214,6 @@ export default function ScaleTool() {
     <div className="flex flex-col gap-5 min-w-0">
       {/* Controls */}
       <div className="flex flex-wrap gap-4 items-end">
-        <label className="flex flex-col gap-1" title="The starting note of the scale — all other notes are built relative to this one">
-          <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#888" }}>
-            Root Key
-          </span>
-          <select
-            value={rootKey}
-            onChange={e => { setRootKey(e.target.value); localStorage.setItem("st-root", e.target.value); }}
-            title="Choose the root note — this is the 'home base' note that the scale is built around"
-            style={selStyle}
-          >
-            {ROOT_KEYS.map(k => <option key={k} value={k}>{k}</option>)}
-          </select>
-        </label>
-
         <label className="flex flex-col gap-1" title="The type of scale — each scale has a unique pattern of notes that gives it a distinctive sound and mood">
           <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#888" }}>
             Scale
