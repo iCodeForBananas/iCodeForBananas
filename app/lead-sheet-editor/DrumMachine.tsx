@@ -72,6 +72,91 @@ export const DRUM_PATTERNS: Pattern[] = [
     snare: [0,0,0,0, 1,0,1,0, 0,0,0,0, 1,0,1,0],
     hihat: [0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0],
   },
+  // ── More roots & folk ─────────────────────────────────────────────────────
+  //
+  // Acoustic indie folk, in the same vein as Folk Stomp and Indie Kick: stomps
+  // and claps, brush snare, and a couple of 6/8 and 3/4 feels that use 12 of
+  // the 16 steps the way Waltz Feel does.
+  {
+    name: "Barn Stomp",
+    // Folk Stomp with the second stomp answered on the "and" of 3 and a snare
+    // pickup on the "a" of 4 — the same beat, but leaning forward.
+    kick:  [1,0,0,0, 0,0,0,0, 1,0,1,0, 0,0,0,0],
+    snare: [0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,1],
+    hihat: [1,0,1,0, 1,0,1,0, 1,0,1,0, 1,0,1,0],
+  },
+  {
+    name: "Campfire Clap",
+    // Everyone joins in on 2 and 4. No hats, stomp pushing off the "and" of 2,
+    // and the clap doubling on the "a" of 4 to hand the bar back.
+    kick:  [1,0,0,0, 0,0,1,0, 1,0,0,0, 0,0,0,0],
+    snare: [0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,1],
+    hihat: [0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0],
+  },
+  {
+    name: "Big Chorus",
+    // The last-chorus lift: kick on all four, snare on the backbeat and its
+    // "and", hats stuttering into the bar line.
+    kick:  [1,0,0,0, 1,0,0,0, 1,0,0,0, 1,0,0,0],
+    snare: [0,0,0,0, 1,0,1,0, 0,0,0,0, 1,0,1,0],
+    hihat: [1,0,1,0, 1,0,1,0, 1,0,1,0, 1,0,1,1],
+  },
+  {
+    name: "Banjo Roll",
+    // Rolling 16th hats under a kick that keeps moving — drive for a picked
+    // banjo or a strummed 8th-note guitar part.
+    kick:  [1,0,1,0, 0,0,1,0, 1,0,0,0, 0,0,1,0],
+    snare: [0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0],
+    hihat: [1,1,1,1, 1,1,1,1, 1,1,1,1, 1,1,1,1],
+  },
+  {
+    name: "Train Beat",
+    // Country/bluegrass chug: brush snare running 8ths and 16ths the whole bar
+    // with the kick only marking 1 and 3. Set the snare to Brush for this one.
+    kick:  [1,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0],
+    snare: [0,0,1,0, 1,1,1,1, 0,0,1,0, 1,1,1,1],
+    hihat: [0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0],
+  },
+  {
+    name: "Brush Shuffle",
+    // Triplet lean: hats on the beat and the "a", snare answering just ahead of
+    // each backbeat. The porch version of Shuffle.
+    kick:  [1,0,0,0, 0,0,0,1, 1,0,0,0, 0,0,0,0],
+    snare: [0,0,0,1, 1,0,0,0, 0,0,0,1, 1,0,0,1],
+    hihat: [1,0,0,1, 1,0,0,1, 1,0,0,1, 1,0,0,1],
+  },
+  {
+    name: "Floor Tom",
+    // No hats, no backbeat until 3 — the big open tom pulse a song builds on
+    // before the kit comes in.
+    kick:  [1,0,1,0, 0,0,1,0, 1,0,1,0, 0,0,0,0],
+    snare: [0,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0],
+    hihat: [0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0],
+  },
+  {
+    name: "Porch Sway",
+    // 6/8 across 12 of the 16 steps: kick on 1 and the last eighth so the bar
+    // rocks back, snare on the 6/8 backbeat.
+    kick:  [1,0,0,0, 0,0,0,0, 0,0,1,0, 0,0,0,0],
+    snare: [0,0,0,0, 0,0,1,0, 0,0,0,0, 0,0,0,0],
+    hihat: [1,0,1,0, 1,0,1,0, 1,0,1,0, 0,0,0,0],
+  },
+  {
+    name: "Sea Shanty",
+    // 6/8 stomp with no hats at all — two stomps and two claps a bar, the beat
+    // a room full of people can keep without being taught it.
+    kick:  [1,0,0,0, 0,0,1,0, 0,0,0,0, 0,0,0,0],
+    snare: [0,0,0,0, 1,0,0,0, 0,0,1,0, 0,0,0,0],
+    hihat: [0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0],
+  },
+  {
+    name: "Mountain Waltz",
+    // 3/4 over 12 steps like Waltz Feel, but oom-pah-pah: kick on 1 and 3,
+    // snare on 2, hats swung so the turn of the bar lilts.
+    kick:  [1,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0],
+    snare: [0,0,0,0, 1,0,0,0, 0,0,0,0, 0,0,0,0],
+    hihat: [1,0,0,1, 1,0,0,1, 1,0,0,1, 0,0,0,0],
+  },
   {
     name: "Reggae One Drop",
     kick:  [0,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0],
@@ -330,7 +415,11 @@ export const DRUM_PATTERNS: Pattern[] = [
 
 const PATTERN_GROUP_NAMES: { label: string; names: string[] }[] = [
   { label: "Backbeat & rock",     names: ["Half-time", "Slow Groove", "March", "Stomp Clap"] },
-  { label: "Roots & folk",        names: ["Folk Stomp", "Indie Kick", "Stomp & Brush", "Boom-Chick"] },
+  { label: "Roots & folk",        names: [
+    "Folk Stomp", "Indie Kick", "Barn Stomp", "Campfire Clap", "Big Chorus", "Banjo Roll",
+    "Train Beat", "Brush Shuffle", "Stomp & Brush", "Boom-Chick", "Floor Tom",
+    "Porch Sway", "Sea Shanty", "Mountain Waltz",
+  ] },
   { label: "Dance floor",         names: ["4 on the Floor", "Disco Floor", "Two-Step"] },
   { label: "Hip-hop, funk & R&B", names: ["Sexy Beat", "Boom Bap", "Funk Break", "Second Line"] },
   { label: "Slow & sultry",       names: ["Neo Soul", "Slow Jam", "Quiet Storm", "Body Roll", "Silk Shuffle", "Steppers", "Slow Wine", "Velvet Rope", "Late Night", "Last Dance"] },
