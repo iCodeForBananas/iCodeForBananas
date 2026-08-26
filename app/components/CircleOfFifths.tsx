@@ -1,129 +1,50 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import "./circleOfFifths.css";
-import ChordDiagram from "./ChordDiagram";
-import {
-  type ChordShape,
-  chordTypes,
-  chordShapes,
-  eShapeTemplates,
-  aShapeTemplates,
-  buildChordKey,
-  transposeShape,
-  semitoneFromE,
-  semitoneFromA,
-  sharpToFlat,
-  flatToSharp,
-} from "../lib/chordShapes";
+import { flatToSharp } from "../lib/chordShapes";
 
 interface ChordInfo {
   major: string;
   minor: string;
-  majorFrets: (number | null)[];
-  minorFrets: (number | null)[];
-}
-
-interface LabeledShape {
-  shape: ChordShape;
-  label: string;
 }
 
 const circleData: ChordInfo[] = [
-  { major: "C", minor: "Am", majorFrets: [null, 3, 2, 0, 1, 0], minorFrets: [null, 0, 2, 2, 1, 0] },
-  { major: "G", minor: "Em", majorFrets: [3, 2, 0, 0, 0, 3], minorFrets: [0, 2, 2, 0, 0, 0] },
-  { major: "D", minor: "Bm", majorFrets: [null, null, 0, 2, 3, 2], minorFrets: [null, 2, 4, 4, 3, 2] },
-  { major: "A", minor: "F♯m", majorFrets: [null, 0, 2, 2, 2, 0], minorFrets: [2, 4, 4, 2, 2, 2] },
-  { major: "E", minor: "C♯m", majorFrets: [0, 2, 2, 1, 0, 0], minorFrets: [null, 4, 6, 6, 5, 4] },
-  { major: "B", minor: "G♯m", majorFrets: [null, 2, 4, 4, 4, 2], minorFrets: [4, 6, 6, 4, 4, 4] },
-  { major: "F♯/G♭", minor: "D♯m/E♭m", majorFrets: [2, 4, 4, 3, 2, 2], minorFrets: [null, 6, 8, 8, 7, 6] },
-  { major: "D♭", minor: "B♭m", majorFrets: [null, 4, 6, 6, 6, 4], minorFrets: [null, 1, 3, 3, 2, 1] },
-  { major: "A♭", minor: "Fm", majorFrets: [4, 6, 6, 5, 4, 4], minorFrets: [1, 3, 3, 1, 1, 1] },
-  { major: "E♭", minor: "Cm", majorFrets: [null, 6, 8, 8, 8, 6], minorFrets: [null, 3, 5, 5, 4, 3] },
-  { major: "B♭", minor: "Gm", majorFrets: [null, 1, 3, 3, 3, 1], minorFrets: [3, 5, 5, 3, 3, 3] },
-  { major: "F", minor: "Dm", majorFrets: [1, 3, 3, 2, 1, 1], minorFrets: [null, null, 0, 2, 3, 1] },
+  { major: "C",      minor: "Am" },
+  { major: "G",      minor: "Em" },
+  { major: "D",      minor: "Bm" },
+  { major: "A",      minor: "F♯m" },
+  { major: "E",      minor: "C♯m" },
+  { major: "B",      minor: "G♯m" },
+  { major: "F♯/G♭",  minor: "D♯m/E♭m" },
+  { major: "D♭",     minor: "B♭m" },
+  { major: "A♭",     minor: "Fm" },
+  { major: "E♭",     minor: "Cm" },
+  { major: "B♭",     minor: "Gm" },
+  { major: "F",      minor: "Dm" },
 ];
 
-const getAllVoicings = (note: string, type: string): LabeledShape[] => {
-  const voicings: LabeledShape[] = [];
-  const seenFrets = new Set<string>();
-
-  const addIfNew = (shape: ChordShape | null | undefined, label: string) => {
-    if (!shape) return;
-    const key = shape.frets.join(",");
-    if (seenFrets.has(key)) return;
-    seenFrets.add(key);
-    voicings.push({ shape, label });
-  };
-
-  const canonicalNote = flatToSharp[note] ?? note;
-  const enharmonic = sharpToFlat[canonicalNote] ?? flatToSharp[note];
-
-  for (const n of [note, canonicalNote, enharmonic].filter(Boolean) as string[]) {
-    const key = buildChordKey(n, type);
-    const shapes = chordShapes[key];
-    if (shapes && shapes.length > 0) {
-      shapes.forEach((s, i) => addIfNew(s, i === 0 ? "Standard" : `Standard (${i + 1})`));
-      break;
-    }
-  }
-
-  const aTemplate = aShapeTemplates[type];
-  if (aTemplate) {
-    const shift = semitoneFromA(note);
-    const aShape = transposeShape(aTemplate, shift);
-    if (aShape) addIfNew(aShape, shift === 0 ? "A-Shape (Open)" : `A-Shape (${shift}fr)`);
-  }
-
-  const eTemplate = eShapeTemplates[type];
-  if (eTemplate) {
-    const shift = semitoneFromE(note);
-    const eShape = transposeShape(eTemplate, shift);
-    if (eShape) addIfNew(eShape, shift === 0 ? "E-Shape (Open)" : `E-Shape (${shift}fr)`);
-  }
-
-  return voicings;
-};
-
+/** The plain note a wheel label names: "F♯/G♭" → "F#", "B♭m" → "Bb". */
 const parseChordNote = (chord: string, type: "major" | "minor"): string => {
   const primary = chord.split("/")[0];
   const ascii = primary.replace(/♯/g, "#").replace(/♭/g, "b");
   return type === "minor" ? ascii.replace(/m$/, "") : ascii;
 };
 
-const formatChordLabel = (note: string, type: string) => {
-  if (["6", "7", "m7", "9", "13"].includes(type)) return `${note}${type}`;
-  return `${note} ${type}`;
-};
-
 /**
- * `activeNote` lights the wheel from outside — pass the page's root note and the
- * key it names is marked wherever it appears, as a major key and as a minor one.
- * With `onSelectNote` the wheel stops holding its own selection and reports
- * clicks upward instead, so the page's root note stays the single source.
+ * A wheel the page drives. `activeNote` is the page's root note, marked wherever
+ * it appears — as a major key and as the minor key of the same name — and a
+ * click reports the key upward rather than being remembered here, so the page's
+ * root note stays the single source of truth.
  */
 export default function CircleOfFifths({
-  showChordPanel = true,
   activeNote,
   onSelectNote,
 }: {
-  showChordPanel?: boolean;
-  activeNote?: string;
-  onSelectNote?: (note: string) => void;
-} = {}) {
-  const [hoveredKey, setHoveredKey] = useState<{
-    chord: string;
-    frets: (number | null)[];
-    type: "major" | "minor";
-  } | null>(null);
-  const [selectedKey, setSelectedKey] = useState<{
-    chord: string;
-    frets: (number | null)[];
-    type: "major" | "minor";
-  } | null>(null);
-  const [majorChordType, setMajorChordType] = useState("Major");
-  const [minorChordType, setMinorChordType] = useState("Minor");
-  const [voicingIndex, setVoicingIndex] = useState(0);
+  activeNote: string;
+  onSelectNote: (note: string) => void;
+}) {
+  const [hoveredChord, setHoveredChord] = useState<string | null>(null);
 
   const centerX = 250;
   const centerY = 250;
@@ -140,57 +61,21 @@ export default function CircleOfFifths({
     };
   };
 
-  const majorTypes = chordTypes.filter((t) => t !== "Minor" && t !== "m7");
-  const minorTypes = chordTypes.filter((t) => t === "Minor" || t === "m7");
-
-  // The page's root note, as a sharp name, so flats and sharps match the wheel.
-  const canonicalActive = activeNote ? flatToSharp[activeNote] ?? activeNote : null;
-  const matchesActive = (chord: string, type: "major" | "minor") => {
-    if (!canonicalActive) return false;
+  // Compare as sharps so a page showing flats still lights the right key.
+  const canonicalActive = flatToSharp[activeNote] ?? activeNote;
+  const isActive = (chord: string, type: "major" | "minor") => {
+    if (hoveredChord === chord) return true;
     const note = parseChordNote(chord, type);
     return (flatToSharp[note] ?? note) === canonicalActive;
   };
 
-  // With nothing hovered or clicked, the page's root note is what the wheel
-  // shows — the major key of that name.
-  const syncedKey = useMemo(() => {
-    if (!canonicalActive) return null;
-    const entry = circleData.find((d) => {
-      const note = parseChordNote(d.major, "major");
-      return (flatToSharp[note] ?? note) === canonicalActive;
-    });
-    return entry
-      ? { chord: entry.major, frets: entry.majorFrets, type: "major" as const }
-      : null;
-  }, [canonicalActive]);
-
-  const activeKey = hoveredKey || selectedKey || syncedKey;
-  const rootNote = activeKey ? parseChordNote(activeKey.chord, activeKey.type) : null;
-  const isMinorContext = activeKey?.type === "minor";
-  const chordType = isMinorContext ? minorChordType : majorChordType;
-  const activeTypes = isMinorContext ? minorTypes : majorTypes;
-
-  const setChordType = (t: string) => {
-    if (isMinorContext) setMinorChordType(t);
-    else setMajorChordType(t);
-  };
-
-  const voicings = useMemo(() => {
-    if (!rootNote) return [];
-    return getAllVoicings(rootNote, chordType);
-  }, [rootNote, chordType]);
-
-  const clampedIndex = Math.min(voicingIndex, Math.max(0, voicings.length - 1));
-  const currentShape = voicings[clampedIndex]?.shape ?? null;
-
-  const selectKey = (chord: string, frets: (number | null)[], type: "major" | "minor") => {
-    setVoicingIndex(0);
-    if (onSelectNote) {
-      onSelectNote(parseChordNote(chord, type));
-      return;
-    }
-    setSelectedKey({ chord, frets, type });
-  };
+  // Hover and click behave the same on the circle and on its label, so both
+  // carry the same handlers.
+  const keyHandlers = (chord: string, type: "major" | "minor") => ({
+    onMouseEnter: () => setHoveredChord(chord),
+    onMouseLeave: () => setHoveredChord(null),
+    onClick: () => onSelectNote(parseChordNote(chord, type)),
+  });
 
   return (
     <div className='circle-of-fifths-container'>
@@ -214,22 +99,20 @@ export default function CircleOfFifths({
 
           {circleData.map((data, index) => {
             const pos = getPosition(index, outerRadius);
-            const isActive = activeKey?.chord === data.major || matchesActive(data.major, "major");
+            const active = isActive(data.major, "major");
+            const handlers = keyHandlers(data.major, "major");
             return (
               <g key={`major-${index}`}>
+                <title>{`${data.major} major — click to make it your root note`}</title>
                 <circle
-                  cx={pos.x} cy={pos.y} r={isActive ? 30 : 27}
-                  className={`key-circle major-key${isActive ? " active" : ""}`}
-                  onMouseEnter={() => setHoveredKey({ chord: data.major, frets: data.majorFrets, type: "major" })}
-                  onMouseLeave={() => setHoveredKey(null)}
-                  onClick={() => selectKey(data.major, data.majorFrets, "major")}
+                  cx={pos.x} cy={pos.y} r={active ? 30 : 27}
+                  className={`key-circle major-key${active ? " active" : ""}`}
+                  {...handlers}
                 />
                 <text
                   x={pos.x} y={pos.y} textAnchor='middle' dominantBaseline='middle'
-                  className={`key-text${isActive ? " active" : ""}`}
-                  onMouseEnter={() => setHoveredKey({ chord: data.major, frets: data.majorFrets, type: "major" })}
-                  onMouseLeave={() => setHoveredKey(null)}
-                  onClick={() => selectKey(data.major, data.majorFrets, "major")}
+                  className={`key-text${active ? " active" : ""}`}
+                  {...handlers}
                 >
                   {data.major}
                 </text>
@@ -239,22 +122,20 @@ export default function CircleOfFifths({
 
           {circleData.map((data, index) => {
             const pos = getPosition(index, innerRadius);
-            const isActive = activeKey?.chord === data.minor || matchesActive(data.minor, "minor");
+            const active = isActive(data.minor, "minor");
+            const handlers = keyHandlers(data.minor, "minor");
             return (
               <g key={`minor-${index}`}>
+                <title>{`${data.minor} — the relative minor of ${data.major}, click to make its root note yours`}</title>
                 <circle
-                  cx={pos.x} cy={pos.y} r={isActive ? 25 : 22}
-                  className={`key-circle minor-key${isActive ? " active" : ""}`}
-                  onMouseEnter={() => setHoveredKey({ chord: data.minor, frets: data.minorFrets, type: "minor" })}
-                  onMouseLeave={() => setHoveredKey(null)}
-                  onClick={() => selectKey(data.minor, data.minorFrets, "minor")}
+                  cx={pos.x} cy={pos.y} r={active ? 25 : 22}
+                  className={`key-circle minor-key${active ? " active" : ""}`}
+                  {...handlers}
                 />
                 <text
                   x={pos.x} y={pos.y} textAnchor='middle' dominantBaseline='middle'
-                  className={`key-text minor-text${isActive ? " active" : ""}`}
-                  onMouseEnter={() => setHoveredKey({ chord: data.minor, frets: data.minorFrets, type: "minor" })}
-                  onMouseLeave={() => setHoveredKey(null)}
-                  onClick={() => selectKey(data.minor, data.minorFrets, "minor")}
+                  className={`key-text minor-text${active ? " active" : ""}`}
+                  {...handlers}
                 >
                   {data.minor}
                 </text>
@@ -270,55 +151,6 @@ export default function CircleOfFifths({
           </text>
         </svg>
       </div>
-
-      {showChordPanel && (
-      <div className='chord-column'>
-        {activeKey && rootNote ? (
-          <div className='chord-display'>
-            {/* Chord type — all 13 types for the selected root */}
-            <label className='voicing-label'>Chord Type</label>
-            <select
-              value={chordType}
-              onChange={(e) => { setChordType(e.target.value); setVoicingIndex(0); }}
-              className='voicing-select'
-            >
-              {activeTypes.map((t) => (
-                <option key={t} value={t}>{formatChordLabel(rootNote, t)}</option>
-              ))}
-            </select>
-
-            {/* Position — Standard / A-Shape / E-Shape */}
-            {voicings.length > 1 && (
-              <>
-                <label className='voicing-label'>Voicing</label>
-                <select
-                  value={clampedIndex}
-                  onChange={(e) => setVoicingIndex(Number(e.target.value))}
-                  className='voicing-select'
-                >
-                  {voicings.map((v, i) => (
-                    <option key={i} value={i}>{v.label}</option>
-                  ))}
-                </select>
-              </>
-            )}
-
-            {currentShape ? (
-              <>
-                <ChordDiagram shape={currentShape} label={formatChordLabel(rootNote, chordType)} />
-                <p className='text-xs mt-3 text-center opacity-40 uppercase tracking-wider'>Click to add to favorites</p>
-              </>
-            ) : (
-              <p className='text-sm text-center opacity-40 mt-4'>No voicing available</p>
-            )}
-          </div>
-        ) : (
-          <div className='chord-placeholder'>
-            <p className='text-base text-center'>Hover over a key to see its guitar chord</p>
-          </div>
-        )}
-      </div>
-      )}
     </div>
   );
 }

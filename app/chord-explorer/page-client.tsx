@@ -801,16 +801,10 @@ export default function ChordExplorerPage() {
       id: "circle",
       title: "Circle of Fifths",
       tooltip:
-        "The Circle of Fifths — keys close together on the wheel share the most notes and sound natural played in sequence. Hover a key to preview it.",
+        "The Circle of Fifths — keys close together on the wheel share the most notes and sound natural played in sequence. Your Root Note is marked wherever it appears, and clicking any key makes it the new root for the whole page.",
       defaultColSpan: 5,
       defaultRowSpan: 4,
-      content: (
-        <CircleOfFifths
-          showChordPanel={false}
-          activeNote={selectedNote}
-          onSelectNote={handleCircleSelect}
-        />
-      ),
+      content: <CircleOfFifths activeNote={selectedNote} onSelectNote={handleCircleSelect} />,
     },
     {
       id: "inversions",
