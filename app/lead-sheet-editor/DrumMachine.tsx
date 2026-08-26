@@ -236,6 +236,90 @@ export const DRUM_PATTERNS: Pattern[] = [
     snare: [0,0,0,0, 0,0,1,0, 0,0,0,0, 0,0,0,0],
     hihat: [1,0,1,0, 1,0,1,0, 1,0,1,0, 0,0,0,0],
   },
+  // ── Slow & sultry ─────────────────────────────────────────────────────────
+  //
+  // Slow-dance R&B for an acoustic track: brush snare and folk kick, mostly in
+  // the 65–95 bpm range where a half-time backbeat still moves.
+  {
+    name: "Neo Soul",
+    // Half-time — one backbeat on 3, so the bar breathes twice as slow as the
+    // hats. Kick answers itself on the "a" of 1 and the "and" of 3.
+    kick:  [1,0,0,1, 0,0,0,0, 0,0,1,0, 0,0,0,0],
+    snare: [0,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0],
+    hihat: [1,0,1,0, 1,1,1,0, 1,0,1,0, 1,1,1,0],
+  },
+  {
+    name: "Slow Jam",
+    // 90s quiet-storm backbeat: kick on 1 and the "and" of 2 and 3, with a
+    // 16th pickup on the "a" of 4 that pulls the bar over.
+    kick:  [1,0,0,0, 0,0,1,0, 0,0,1,0, 0,0,0,1],
+    snare: [0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0],
+    hihat: [1,0,1,0, 1,0,1,1, 1,0,1,0, 1,1,1,0],
+  },
+  {
+    name: "Quiet Storm",
+    // The sparest of the set. Kick on 1 and the "and" of 3, snare on 3 alone,
+    // hats only on the quarters with a whisper on the "a" before 3 and 1.
+    kick:  [1,0,0,0, 0,0,0,0, 0,0,1,0, 0,0,0,0],
+    snare: [0,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,0],
+    hihat: [1,0,0,0, 1,0,0,1, 1,0,0,0, 1,0,0,1],
+  },
+  {
+    name: "Body Roll",
+    // Tresillo kick (1, "and" of 2, 4) under a straight backbeat, offbeat hats
+    // on the "and" of every beat — the one that gets hips going at a crawl.
+    kick:  [1,0,0,0, 0,0,1,0, 0,0,0,0, 1,0,0,1],
+    snare: [0,0,0,0, 1,0,0,0, 0,0,0,1, 1,0,0,0],
+    hihat: [0,0,1,0, 0,0,1,0, 0,0,1,0, 0,0,1,0],
+  },
+  {
+    name: "Silk Shuffle",
+    // Swung 16ths: hats on the beat and the "a", so every pair leans late.
+    // Kick lands on the "a" of 2 and the "and" of 3 and 4.
+    kick:  [1,0,0,0, 0,0,0,1, 0,0,1,0, 0,0,1,0],
+    snare: [0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0],
+    hihat: [1,0,0,1, 1,0,0,1, 1,0,0,1, 1,0,1,1],
+  },
+  {
+    name: "Steppers",
+    // Grown-folks two-step: four on the floor slowed way down, snare answering
+    // on the "and" of 3 as well as the backbeats. Danceable without rushing.
+    kick:  [1,0,0,0, 1,0,0,0, 1,0,0,0, 1,0,0,1],
+    snare: [0,0,0,0, 1,0,0,0, 0,0,1,0, 1,0,0,0],
+    hihat: [0,0,1,0, 0,0,1,0, 0,0,1,0, 0,1,1,0],
+  },
+  {
+    name: "Slow Wine",
+    // Dancehall grind at half speed — kick on 1 and 3 with an "a" of 3 double,
+    // snare hitting the syncopations, hats staying off the downbeat.
+    kick:  [1,0,0,0, 0,0,0,0, 1,0,0,1, 0,0,0,0],
+    snare: [0,0,0,1, 0,0,0,0, 1,0,0,0, 0,0,1,0],
+    hihat: [0,0,1,0, 1,0,1,0, 0,0,1,0, 1,0,1,0],
+  },
+  {
+    name: "Velvet Rope",
+    // Snaps and space: backbeat on 2 and 4, syncopated kick, no hats at all.
+    // Turn the claps layer on and this is the whole groove.
+    kick:  [1,0,0,0, 0,0,1,0, 0,0,0,0, 0,0,1,0],
+    snare: [0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0],
+    hihat: [0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0],
+  },
+  {
+    name: "Late Night",
+    // Drunk-feel lean: the snare sits on the "e" of 2 and 4 instead of the
+    // beat, so the backbeat drags behind the hats all bar.
+    kick:  [1,0,0,1, 0,0,0,0, 0,1,0,0, 0,0,1,0],
+    snare: [0,0,0,0, 0,1,0,0, 0,0,0,0, 0,1,0,0],
+    hihat: [1,0,1,0, 1,0,1,0, 1,0,1,1, 1,0,1,0],
+  },
+  {
+    name: "Last Dance",
+    // Half-time close: one kick, one backbeat on 3, and a 16th snare and hat
+    // flourish across beat 4 to turn the bar over.
+    kick:  [1,0,0,0, 0,0,0,0, 0,0,0,1, 0,0,0,0],
+    snare: [0,0,0,0, 0,0,0,0, 1,0,0,0, 0,0,0,1],
+    hihat: [1,0,1,0, 1,0,1,0, 1,0,1,0, 1,1,1,1],
+  },
 ];
 
 // ── Dropdown grouping ────────────────────────────────────────────────────────
@@ -249,6 +333,7 @@ const PATTERN_GROUP_NAMES: { label: string; names: string[] }[] = [
   { label: "Roots & folk",        names: ["Folk Stomp", "Indie Kick", "Stomp & Brush", "Boom-Chick"] },
   { label: "Dance floor",         names: ["4 on the Floor", "Disco Floor", "Two-Step"] },
   { label: "Hip-hop, funk & R&B", names: ["Sexy Beat", "Boom Bap", "Funk Break", "Second Line"] },
+  { label: "Slow & sultry",       names: ["Neo Soul", "Slow Jam", "Quiet Storm", "Body Roll", "Silk Shuffle", "Steppers", "Slow Wine", "Velvet Rope", "Late Night", "Last Dance"] },
   { label: "Latin & global",      names: ["Tresillo Pop", "Dembow", "Afrobeats", "Samba Step", "Bossa Nova", "Reggae One Drop"] },
   { label: "Jazz & swing",        names: ["Shuffle", "Swing Beat"] },
   { label: "Airy & emotional",    names: ["Heartbeat", "Floating", "Rainfall", "6/8 Ballad", "Waltz Feel"] },
