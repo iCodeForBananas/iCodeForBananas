@@ -33,6 +33,13 @@ const POSITIONS = [
   { label: "5th", fill: "#c084fc", stroke: "#6b21a8" },
 ];
 
+// The root note keeps one colour of its own, whichever position it falls in —
+// a red that none of the five position colours can be confused with.
+const ROOT_FILL         = "#ef4444";
+const ROOT_STROKE       = "#ffffff";
+const ROOT_TEXT         = "#ffffff";
+const ROOT_MUTED_STROKE = "#8f4b4b";
+
 const MUTED_FILL   = "#4a4238";
 const MUTED_STROKE = "#6b6154";
 const MUTED_TEXT   = "#9a9186";
@@ -393,14 +400,18 @@ export default function ScaleTool({ rootKey }: { rootKey: string }) {
                   <title>{dotLabel}</title>
                   <circle
                     cx={cx(col)} cy={cy(s)} r={DR}
-                    fill={shown ? colour.fill : MUTED_FILL}
-                    stroke={shown ? (isRoot ? "#fff" : colour.stroke) : MUTED_STROKE}
-                    strokeWidth={shown && isRoot ? 2.5 : 1.5}
+                    fill={shown ? (isRoot ? ROOT_FILL : colour.fill) : MUTED_FILL}
+                    stroke={
+                      shown
+                        ? (isRoot ? ROOT_STROKE : colour.stroke)
+                        : (isRoot ? ROOT_MUTED_STROKE : MUTED_STROKE)
+                    }
+                    strokeWidth={isRoot ? 2.5 : 1.5}
                   />
                   <text
                     x={cx(col)} y={cy(s)}
                     textAnchor="middle" dominantBaseline="central"
-                    fill={shown ? "#000" : MUTED_TEXT}
+                    fill={shown ? (isRoot ? ROOT_TEXT : "#000") : MUTED_TEXT}
                     fontSize={note.length > 1 ? 8 : 9}
                     fontWeight="bold"
                     fontFamily="system-ui, -apple-system, sans-serif"
@@ -469,28 +480,37 @@ export default function ScaleTool({ rootKey }: { rootKey: string }) {
             {selectedPos !== null && ` — ${POSITIONS[selectedPos].label} position`}
           </div>
           <div className="flex flex-wrap gap-2">
-            {scaleNoteList.map(({ note, degree }, i) => (
-              <div
-                key={i}
-                className="flex flex-col items-center rounded-lg px-3 py-2"
-                title={
-                  note === rootKey
-                    ? `${note} — the root note (degree ${degree}), the 'home base' of this scale`
-                    : `${note} — scale degree ${degree}`
-                }
-                style={{
-                  background: note === rootKey ? "#f59e0b" : "#facc15",
-                  minWidth: 44,
-                }}
-              >
-                <span className="text-sm font-bold leading-tight" style={{ color: "#000" }}>
-                  {note}
-                </span>
-                <span className="text-xs leading-tight" style={{ color: "rgba(0,0,0,0.55)" }}>
-                  {degree}
-                </span>
-              </div>
-            ))}
+            {scaleNoteList.map(({ note, degree }, i) => {
+              const isRoot = note === rootKey;
+              return (
+                <div
+                  key={i}
+                  className="flex flex-col items-center rounded-lg px-3 py-2"
+                  title={
+                    isRoot
+                      ? `${note} — the root note (degree ${degree}), the 'home base' of this scale`
+                      : `${note} — scale degree ${degree}`
+                  }
+                  style={{
+                    background: isRoot ? ROOT_FILL : "#facc15",
+                    minWidth: 44,
+                  }}
+                >
+                  <span
+                    className="text-sm font-bold leading-tight"
+                    style={{ color: isRoot ? ROOT_TEXT : "#000" }}
+                  >
+                    {note}
+                  </span>
+                  <span
+                    className="text-xs leading-tight"
+                    style={{ color: isRoot ? "rgba(255,255,255,0.75)" : "rgba(0,0,0,0.55)" }}
+                  >
+                    {degree}
+                  </span>
+                </div>
+              );
+            })}
           </div>
           {selectedPos !== null && (
             <div className="text-xs mt-3" style={{ color: "#888" }}>
@@ -535,7 +555,7 @@ export default function ScaleTool({ rootKey }: { rootKey: string }) {
           <div className="flex items-center gap-2 mt-1 pt-2" style={{ borderTop: "1px solid #222" }}>
             <div
               className="w-5 h-5 rounded-full shrink-0"
-              style={{ background: "#facc15", border: "2.5px solid #fff" }}
+              style={{ background: ROOT_FILL, border: `2.5px solid ${ROOT_STROKE}` }}
             />
             <span className="text-sm" style={{ color: "#ccc" }}>
               Root note ({rootKey})
