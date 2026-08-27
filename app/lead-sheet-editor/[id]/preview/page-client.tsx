@@ -379,6 +379,7 @@ const SheetContent = memo(function SheetContent({
   activeCueIndex = null,
   onSeekToLine,
   onEditLine,
+  onInsertLine,
   bpm,
 }: {
   sheet: LeadSheet;
@@ -392,6 +393,8 @@ const SheetContent = memo(function SheetContent({
   onSeekToLine?: (sectionIndex: number, lineIndex: number) => void;
   /** Present only in edit mode — it turns every line into a tap target. */
   onEditLine?: (sectionIndex: number, lineIndex: number) => void;
+  /** Opens a blank line at an index that doesn't exist yet — the end of a section. */
+  onInsertLine?: (sectionIndex: number, lineIndex: number) => void;
   /** Tempo the song's beat markers are read at — the live one, not the saved one. */
   bpm?: number;
 }) {
@@ -537,6 +540,16 @@ const SheetContent = memo(function SheetContent({
                     </div>
                   );
                 })}
+                {onInsertLine && (
+                  <button
+                    type='button'
+                    onClick={() => onInsertLine(sectionIndex, lines.length)}
+                    className='flex w-full items-center justify-center gap-1.5 rounded border border-dashed border-black/15 py-2 text-[0.8em] font-medium text-black/40 transition-colors duration-150 hover:border-yellow-400 hover:bg-yellow-50 hover:text-black/70 dark:border-white/20 dark:text-white/40 dark:hover:bg-yellow-400/10 dark:hover:text-white/70'
+                  >
+                    <Plus className='w-3.5 h-3.5' />
+                    Add line
+                  </button>
+                )}
               </div>
               {section.notes && (
                 <p className={`mt-3 italic text-black/50 dark:text-white/40 ${fullscreen ? "text-[1em]" : "text-[0.875em]"}`}>
@@ -779,11 +792,32 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
     [sheet]
   );
 
-  const saveLine = async (text: string) => {
+  // A line that doesn't exist yet: the end of a section, or the gap under the
+  // line just saved. Nothing is written until it's saved, so backing out of one
+  // leaves the song exactly as it was.
+  const openLineInsert = useCallback(
+    (sectionIndex: number, lineIndex: number) => {
+      if (!sheet) return;
+      const section = sheet.sections[sectionIndex];
+      if (!section) return;
+      setLineError(null);
+      setEditTarget({
+        sectionIndex,
+        lineIndex,
+        sectionLabel: section.label || section.type,
+        text: "",
+        insert: true,
+      });
+    },
+    [sheet]
+  );
+
+  const saveLine = async (text: string, andAnother = false) => {
     if (!sheet || !editTarget) return;
-    const { sectionIndex, lineIndex } = editTarget;
-    if (text === editTarget.text) {
-      setEditTarget(null);
+    const { sectionIndex, lineIndex, insert } = editTarget;
+    if (!insert && text === editTarget.text) {
+      if (andAnother) openLineInsert(sectionIndex, lineIndex + 1);
+      else setEditTarget(null);
       return;
     }
     setLineSaving(true);
@@ -791,7 +825,8 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
     const sections = sheet.sections.map((section, i) => {
       if (i !== sectionIndex) return section;
       const lines = (section.content ?? "").split("\n");
-      lines[lineIndex] = text;
+      if (insert) lines.splice(lineIndex, 0, text);
+      else lines[lineIndex] = text;
       return { ...section, content: lines.join("\n") };
     });
     const updatedAt = new Date().toISOString();
@@ -812,7 +847,10 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
       }
       setSheet(next);
       await cacheSheet(next);
-      setEditTarget(null);
+      // Carrying on down the section: the next line opens where this one left
+      // off, so a verse is typed in one go.
+      if (andAnother) openLineInsert(sectionIndex, lineIndex + 1);
+      else setEditTarget(null);
       // A line fixed on stage belongs in History like one typed in the editor.
       // It rides along after the save, so a failed snapshot never costs the edit.
       snapshotRevision(sb, id, serializeSheet(next)).catch(() => {});
@@ -1206,6 +1244,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                 <SheetContent
                   sheet={sheet}
                   onEditLine={editMode ? openLineEditor : undefined}
+                  onInsertLine={editMode ? openLineInsert : undefined}
                   fullscreen
                   columnCount={columnCount}
                   columnWidthVw={columnWidthVw}
@@ -1383,6 +1422,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                   <SheetContent
                     sheet={sheet}
                     onEditLine={editMode ? openLineEditor : undefined}
+                    onInsertLine={editMode ? openLineInsert : undefined}
                     fullscreen={false}
                     columnCount={columnCount}
                     columnWidthVw={columnWidthVw}
@@ -1414,7 +1454,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
 
         {editTarget && (
           <LineEditor
-            key={`${editTarget.sectionIndex}:${editTarget.lineIndex}`}
+            key={`${editTarget.sectionIndex}:${editTarget.lineIndex}:${editTarget.insert ? "new" : "edit"}`}
             target={editTarget}
             transposeSteps={transposeSteps}
             saving={lineSaving}

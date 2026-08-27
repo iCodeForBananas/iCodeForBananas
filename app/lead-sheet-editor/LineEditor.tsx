@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Check, X } from "lucide-react";
+import { Check, CornerDownLeft, Plus, X } from "lucide-react";
 import { ChordLyricLine } from "./shared";
 
 /** Which line of the song was tapped, and what it says right now. */
@@ -12,6 +12,11 @@ export interface LineTarget {
   sectionLabel: string;
   /** The line exactly as stored: chord brackets, cue tags and @0:12 markers included. */
   text: string;
+  /**
+   * True when there is no line here yet and saving should push one in at this
+   * index rather than overwrite what's already there.
+   */
+  insert?: boolean;
 }
 
 /**
@@ -22,6 +27,9 @@ export interface LineTarget {
  *
  * It edits the line as *stored*, not as displayed: brackets, cue tags and time
  * markers all come through untouched unless they're typed over.
+ *
+ * Saving with "and another" keeps the sheet open on a fresh line underneath,
+ * which is how a verse gets typed in one sitting instead of one tap per line.
  */
 export default function LineEditor({
   target,
@@ -36,7 +44,8 @@ export default function LineEditor({
   transposeSteps?: number;
   saving?: boolean;
   error?: string | null;
-  onSave: (text: string) => void;
+  /** `andAnother` asks for a fresh line below once this one is stored. */
+  onSave: (text: string, andAnother: boolean) => void;
   onCancel: () => void;
 }) {
   const [text, setText] = useState(target.text);
@@ -76,9 +85,9 @@ export default function LineEditor({
     };
   }, []);
 
-  const save = () => {
+  const save = (andAnother = false) => {
     if (saving) return;
-    onSave(text);
+    onSave(text, andAnother);
   };
 
   return (
@@ -104,7 +113,7 @@ export default function LineEditor({
               {target.sectionLabel}
             </span>
             <span className='text-xs text-gray-500 dark:text-neutral-400 truncate'>
-              Line {target.lineIndex + 1}
+              {target.insert ? "New line" : `Line ${target.lineIndex + 1}`}
             </span>
           </div>
           <button
@@ -123,10 +132,11 @@ export default function LineEditor({
             value={text}
             onChange={(e) => setText(e.target.value.replace(/\n/g, ""))}
             onKeyDown={(e) => {
-              // One line in, one line out — Enter is Save, not a new line.
+              // One line in, one line out — Enter saves rather than typing a
+              // newline, and Shift+Enter carries on to the next line.
               if (e.key === "Enter") {
                 e.preventDefault();
-                save();
+                save(e.shiftKey);
               }
             }}
             rows={2}
@@ -161,14 +171,26 @@ export default function LineEditor({
             </button>
             <button
               type='button'
-              onClick={save}
+              onClick={() => save()}
               disabled={saving}
               className='h-12 flex-[2] flex items-center justify-center gap-1.5 rounded-xl text-sm font-semibold bg-black hover:bg-black/80 text-yellow-400 dark:bg-yellow-400 dark:text-black dark:hover:bg-yellow-300 transition-colors duration-150 disabled:opacity-60'
             >
               <Check className='w-4 h-4' />
-              {saving ? "Saving..." : "Save"}
+              {saving ? "Saving..." : target.insert ? "Add line" : "Save"}
             </button>
           </div>
+
+          <button
+            type='button'
+            onClick={() => save(true)}
+            disabled={saving}
+            title='Shift + Enter'
+            className='mt-2 h-11 w-full flex items-center justify-center gap-1.5 rounded-xl border border-dashed border-gray-300 dark:border-neutral-600 text-sm font-medium text-gray-600 dark:text-neutral-300 hover:border-yellow-400 hover:bg-yellow-50 dark:hover:bg-yellow-400/10 transition-colors duration-150 disabled:opacity-60'
+          >
+            <Plus className='w-4 h-4' />
+            {target.insert ? "Add and keep going" : "Save and add a line below"}
+            <CornerDownLeft className='w-3.5 h-3.5 opacity-40' />
+          </button>
         </div>
 
         {/* Home-indicator gap on phones, nothing on anything else. */}
