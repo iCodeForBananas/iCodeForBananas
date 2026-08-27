@@ -23,6 +23,7 @@ import {
   ChevronDown,
   ChevronUp,
   Mic,
+  PencilLine,
 } from "lucide-react";
 import {
   type LeadSheet,
@@ -35,6 +36,9 @@ import {
   useSongDocumentTitle,
 } from "../../shared";
 import { cacheSheet, getCachedSheet } from "../../offlineCache";
+import LineEditor, { type LineTarget } from "../../LineEditor";
+import { serializeSheet } from "../../serialize";
+import { snapshotRevision } from "../../revisions";
 import { transposeKey, transposeText } from "../../../lib/transpose";
 import { progressionFrom } from "../../progression";
 import { buildTimeline, cueAt, lineKey, type Timeline } from "../../timing";
@@ -299,6 +303,48 @@ function PlayControl({
   );
 }
 
+/**
+ * The switch between reading the song and fixing it. Edit mode stays on the
+ * preview — same page, same layout, lines just become tap targets.
+ */
+function LineEditControl({ active, onToggle }: { active: boolean; onToggle: () => void }) {
+  return (
+    <button
+      type='button'
+      onClick={onToggle}
+      aria-pressed={active}
+      title={active ? "Stop editing lines" : "Tap a line to edit just that line"}
+      className={`h-9 flex items-center gap-1.5 px-2.5 rounded-lg text-sm font-medium transition-colors duration-150 print:hidden ${
+        active
+          ? "bg-yellow-400 text-black hover:bg-yellow-300"
+          : "bg-gray-100 dark:bg-neutral-800 hover:bg-gray-200 dark:hover:bg-neutral-700 text-gray-700 dark:text-neutral-200"
+      }`}
+    >
+      <PencilLine className='w-4 h-4' />
+      <span className='hidden sm:inline'>{active ? "Editing" : "Edit Lines"}</span>
+    </button>
+  );
+}
+
+function EditModeBanner({ onDone, className = "" }: { onDone: () => void; className?: string }) {
+  return (
+    <div
+      className={`flex items-center justify-between gap-2 border-t border-yellow-300/60 bg-yellow-50 py-1.5 dark:border-yellow-400/20 dark:bg-yellow-400/10 print:hidden ${className}`}
+    >
+      <span className='text-xs font-medium text-yellow-800 dark:text-yellow-300'>
+        Tap a line to edit it — one line, one save.
+      </span>
+      <button
+        type='button'
+        onClick={onDone}
+        className='h-7 shrink-0 rounded-lg bg-yellow-400 px-2.5 text-xs font-semibold text-black hover:bg-yellow-300 transition-colors duration-150'
+      >
+        Done
+      </button>
+    </div>
+  );
+}
+
 function NextSongControl({
   setIds,
   pos,
@@ -331,6 +377,7 @@ const SheetContent = memo(function SheetContent({
   timeline,
   activeCueIndex = null,
   onSeekToLine,
+  onEditLine,
   bpm,
 }: {
   sheet: LeadSheet;
@@ -342,6 +389,8 @@ const SheetContent = memo(function SheetContent({
   timeline?: Timeline;
   activeCueIndex?: number | null;
   onSeekToLine?: (sectionIndex: number, lineIndex: number) => void;
+  /** Present only in edit mode — it turns every line into a tap target. */
+  onEditLine?: (sectionIndex: number, lineIndex: number) => void;
   /** Tempo the song's beat markers are read at — the live one, not the saved one. */
   bpm?: number;
 }) {
@@ -410,25 +459,62 @@ const SheetContent = memo(function SheetContent({
                   so nothing renders a horizontal scrollbar on screen or in print. */}
               <div className='space-y-3'>
                 {lines.map((line, i) => {
-                  if (line.trim() === "") return <div key={i} className='h-3' />;
+                  if (line.trim() === "") {
+                    // Editing makes the gaps tappable too — a blank line is
+                    // where the next lyric goes.
+                    return onEditLine ? (
+                      <button
+                        key={i}
+                        type='button'
+                        onClick={() => onEditLine(sectionIndex, i)}
+                        aria-label={`Edit blank line ${i + 1}`}
+                        className='block w-full h-8 rounded border border-dashed border-black/10 dark:border-white/15 hover:border-yellow-400 hover:bg-yellow-50 dark:hover:bg-yellow-400/10 transition-colors duration-150'
+                      />
+                    ) : (
+                      <div key={i} className='h-3' />
+                    );
+                  }
                   const cueInfo  = getCueTagInfo(line);
                   const displayLine = cueInfo ? stripCueMarkers(line) : line;
                   const cueIndex = timeline?.lineCue.get(lineKey(sectionIndex, i));
                   const active = cueIndex !== undefined && cueIndex === activeCueIndex;
+                  // Editing wins over seeking: a tap in edit mode is meant for
+                  // the keyboard, not the transport.
+                  const seekable = !onEditLine && cueIndex !== undefined && !!onSeekToLine;
                   return (
                     <div
                       key={i}
                       data-active-cue={active || undefined}
+                      role={onEditLine || seekable ? "button" : undefined}
+                      tabIndex={onEditLine ? 0 : undefined}
                       onClick={
-                        cueIndex !== undefined && onSeekToLine
-                          ? () => onSeekToLine(sectionIndex, i)
+                        onEditLine
+                          ? () => onEditLine(sectionIndex, i)
+                          : seekable
+                            ? () => onSeekToLine!(sectionIndex, i)
+                            : undefined
+                      }
+                      onKeyDown={
+                        onEditLine
+                          ? (e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                onEditLine(sectionIndex, i);
+                              }
+                            }
                           : undefined
                       }
                       className={`rounded px-2 transition-colors duration-150 ${
                         active
                           ? "bg-yellow-200/70 shadow-[inset_3px_0_0_0_#facc15] dark:bg-yellow-400/20"
                           : ""
-                      } ${cueIndex !== undefined && onSeekToLine ? "cursor-pointer print:cursor-auto" : ""}`}
+                      } ${
+                        onEditLine
+                          ? "cursor-pointer py-1.5 border border-dashed border-black/10 dark:border-white/15 hover:border-yellow-400 hover:bg-yellow-50 dark:hover:bg-yellow-400/10 active:bg-yellow-100 dark:active:bg-yellow-400/20"
+                          : seekable
+                            ? "cursor-pointer print:cursor-auto"
+                            : ""
+                      }`}
                     >
                       {cueInfo && (
                         <span
@@ -478,6 +564,12 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
   const [columnCount, setColumnCount] = useState(() => loadColumnCount(id));
   const [columnWidthVw, setColumnWidthVw] = useState(() => loadColumnWidthVw(id));
   const [transposeSteps, setTransposeSteps] = useState(0);
+  // Edit mode is a layer over the preview, not a different page: the song keeps
+  // its size, columns and key, and every line becomes something you can tap.
+  const [editMode, setEditMode] = useState(false);
+  const [editTarget, setEditTarget] = useState<LineTarget | null>(null);
+  const [lineSaving, setLineSaving] = useState(false);
+  const [lineError, setLineError] = useState<string | null>(null);
   const [setIds, setSetIds] = useState<string[] | null>(null);
   const [setPos, setSetPos] = useState(0);
   const [playbackOpen, setPlaybackOpen] = useState(false);
@@ -667,6 +759,68 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
     },
     [timeline, seek]
   );
+
+  // A tapped line opens as it is *stored* — brackets, cue tags and @0:12
+  // markers included — so what comes back can go straight back into the song.
+  const openLineEditor = useCallback(
+    (sectionIndex: number, lineIndex: number) => {
+      if (!sheet) return;
+      const section = sheet.sections[sectionIndex];
+      if (!section) return;
+      setLineError(null);
+      setEditTarget({
+        sectionIndex,
+        lineIndex,
+        sectionLabel: section.label || section.type,
+        text: (section.content ?? "").split("\n")[lineIndex] ?? "",
+      });
+    },
+    [sheet]
+  );
+
+  const saveLine = async (text: string) => {
+    if (!sheet || !editTarget) return;
+    const { sectionIndex, lineIndex } = editTarget;
+    if (text === editTarget.text) {
+      setEditTarget(null);
+      return;
+    }
+    setLineSaving(true);
+    setLineError(null);
+    const sections = sheet.sections.map((section, i) => {
+      if (i !== sectionIndex) return section;
+      const lines = (section.content ?? "").split("\n");
+      lines[lineIndex] = text;
+      return { ...section, content: lines.join("\n") };
+    });
+    const updatedAt = new Date().toISOString();
+    const next: LeadSheet = { ...sheet, sections, updated_at: updatedAt };
+    try {
+      const sb = createClient()!;
+      // Anyone can read a song; only its owner can write one. An update that
+      // touches no row is RLS turning the edit down, not a success.
+      const { data, error } = await sb
+        .from("lead_sheets")
+        .update({ sections, updated_at: updatedAt })
+        .eq("id", id)
+        .select("id");
+      if (error) throw error;
+      if (!data || data.length === 0) {
+        setLineError("This song belongs to someone else, so it can't be edited here.");
+        return;
+      }
+      setSheet(next);
+      await cacheSheet(next);
+      setEditTarget(null);
+      // A line fixed on stage belongs in History like one typed in the editor.
+      // It rides along after the save, so a failed snapshot never costs the edit.
+      snapshotRevision(sb, id, serializeSheet(next)).catch(() => {});
+    } catch {
+      setLineError("Couldn't save that line — check your connection and try again.");
+    } finally {
+      setLineSaving(false);
+    }
+  };
 
   const openPlayback = () => {
     if (!hasTiming) return;
@@ -919,6 +1073,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                     </div>
                     <div className='flex items-center gap-1.5 shrink-0'>
                       <PlayControl hasTiming={hasTiming} videoLink={videoLink} withVideo={withVideo} onWithVideoToggle={() => setWithVideo((v) => !v)} open={playbackOpen} onOpen={openPlayback} onClose={closePlayback} />
+                      <LineEditControl active={editMode} onToggle={() => setEditMode((on) => !on)} />
                       {setIds && <NextSongControl setIds={setIds} pos={setPos} onNext={goToNextSong} />}
                       <button
                         onClick={() => setToolbarOpen((o) => !o)}
@@ -1048,11 +1203,13 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                       </div>
                     </div>
                   </div>
+                  {editMode && <EditModeBanner onDone={() => setEditMode(false)} className='-mx-4 px-4' />}
                 </div>
               </div>
               <div className='py-8' style={{ fontSize: `${fontScale}%` }}>
                 <SheetContent
                   sheet={sheet}
+                  onEditLine={editMode ? openLineEditor : undefined}
                   fullscreen
                   columnCount={columnCount}
                   columnWidthVw={columnWidthVw}
@@ -1090,6 +1247,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                   </div>
                   <div className='flex items-center gap-1.5 shrink-0'>
                     <PlayControl hasTiming={hasTiming} videoLink={videoLink} withVideo={withVideo} onWithVideoToggle={() => setWithVideo((v) => !v)} open={playbackOpen} onOpen={openPlayback} onClose={closePlayback} />
+                    <LineEditControl active={editMode} onToggle={() => setEditMode((on) => !on)} />
                     {setIds && <NextSongControl setIds={setIds} pos={setPos} onNext={goToNextSong} />}
                     <button
                       onClick={() => setToolbarOpen((o) => !o)}
@@ -1225,6 +1383,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                     </div>
                   </div>
                 </div>
+                {editMode && <EditModeBanner onDone={() => setEditMode(false)} className='px-4 sm:px-6' />}
               </div>
 
               {/* Scrollable content */}
@@ -1232,6 +1391,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                 <div className='w-full py-8 px-4 sm:px-0' style={{ fontSize: `${fontScale}%` }}>
                   <SheetContent
                     sheet={sheet}
+                    onEditLine={editMode ? openLineEditor : undefined}
                     fullscreen={false}
                     columnCount={columnCount}
                     columnWidthVw={columnWidthVw}
@@ -1259,6 +1419,18 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
 
         {playbackOpen && videoLink && withVideo && (
           <YouTubePanel link={videoLink} status={video.status} mount={video.mount} />
+        )}
+
+        {editTarget && (
+          <LineEditor
+            key={`${editTarget.sectionIndex}:${editTarget.lineIndex}`}
+            target={editTarget}
+            transposeSteps={transposeSteps}
+            saving={lineSaving}
+            error={lineError}
+            onSave={saveLine}
+            onCancel={() => setEditTarget(null)}
+          />
         )}
 
         {playbackOpen && (

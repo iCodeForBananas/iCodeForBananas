@@ -15,15 +15,14 @@ import {
   OfflineBadge,
 } from "../../shared";
 import { asSectionHeader, isChordName } from "../../songText";
+import { serializeSheet } from "../../serialize";
+import { snapshotRevision } from "../../revisions";
 import { cacheSheet, getCachedSheet } from "../../offlineCache";
 import { clearAllMarkers, parseTimeMarker } from "../../timing";
 import {
   type DrumSettings,
   DEFAULT_DRUM_SETTINGS,
-  formatDrumSettings,
   hasDrumSettingsLine,
-  isDefaultDrumSettings,
-  normalizeDrumSettings,
   parseDrumSettingsLine,
   stripDrumSettings,
 } from "../../DrumMachine";
@@ -73,40 +72,6 @@ function replaceChord(text: string, from: string, to: string): string {
       );
     })
     .join("\n");
-}
-
-function serializeSheet(sheet: LeadSheet): string {
-  const parts: string[] = [sheet.title || ""];
-
-  const meta: string[] = [];
-  if (sheet.key) meta.push(`Key: ${sheet.key}`);
-  if (sheet.tempo) meta.push(`Tempo: ${sheet.tempo}`);
-  if (meta.length) parts.push(meta.join("  "));
-
-  // A kit left at defaults isn't worth a line — songs you never touched the
-  // drums on stay clean. Changing anything writes the line on the next open.
-  const drums = normalizeDrumSettings(sheet.metadata?.drums);
-  if (!isDefaultDrumSettings(drums)) parts.push(formatDrumSettings(drums));
-
-  parts.push("");
-
-  if (sheet.general_notes) {
-    parts.push(sheet.general_notes);
-    parts.push("");
-  }
-
-  for (const section of sheet.sections) {
-    parts.push(`[${section.label || section.type}]`);
-    if (section.content) parts.push(section.content);
-    if (section.notes) {
-      for (const line of section.notes.split("\n")) {
-        parts.push(line.trim() ? `> ${line}` : "");
-      }
-    }
-    parts.push("");
-  }
-
-  return parts.join("\n").trimEnd();
 }
 
 function parseText(text: string): Partial<LeadSheet> {
@@ -357,21 +322,7 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
       const shouldSnapshot = manual || (now - lastRevisionAt.current > 5 * 60 * 1000);
       if (shouldSnapshot) {
         lastRevisionAt.current = now;
-        const sb = getSb();
-        // Insert new revision
-        await sb
-          .from("lead_sheet_revisions")
-          .insert({ lead_sheet_id: sheetId, raw_text: rawText });
-        // Prune to 100 most recent
-        const { data: all } = await sb
-          .from("lead_sheet_revisions")
-          .select("id")
-          .eq("lead_sheet_id", sheetId)
-          .order("created_at", { ascending: false });
-        if (all && all.length > 100) {
-          const toDelete = all.slice(100).map((r: { id: string }) => r.id);
-          await sb.from("lead_sheet_revisions").delete().in("id", toDelete);
-        }
+        await snapshotRevision(getSb(), sheetId, rawText);
       }
     } catch {
       setSaveError(true);
