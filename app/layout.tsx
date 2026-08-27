@@ -12,6 +12,7 @@ import Sidebar from "./components/Sidebar";
 import MusicFavoritesBar from "./components/MusicFavoritesBar";
 import PathnameTitleSync from "./components/PathnameTitleSync";
 import CopyPageHandler from "./components/CopyPageHandler";
+import InstallPrompt from "./components/InstallPrompt";
 
 export const viewport: Viewport = {
   themeColor: "#facc15",
@@ -49,6 +50,14 @@ export default function RootLayout({
             __html: `(function(){try{var t=localStorage.getItem('theme');var d=window.matchMedia('(prefers-color-scheme:dark)').matches;if(t==='dark'||(t===null&&d)){document.documentElement.classList.add('dark')}}catch(e){}})()`,
           }}
         />
+        {/* Chrome offers the install prompt once, early — often before React
+            has hydrated — and hands it to the page to fire later. Stash it
+            here so InstallPrompt can adopt it whenever it mounts. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{window.__installPromptEvent=null;window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();window.__installPromptEvent=e;window.dispatchEvent(new Event('installpromptready'))});window.addEventListener('appinstalled',function(){window.__installPromptEvent=null})}catch(e){}})()`,
+          }}
+        />
         <Script async src='https://www.googletagmanager.com/gtag/js?id=G-P12WB5Q85R' strategy='afterInteractive' />
         <Script id='google-analytics' strategy='afterInteractive'>
           {`
@@ -75,6 +84,7 @@ export default function RootLayout({
         <SpeedInsights />
         <PathnameTitleSync />
         <CopyPageHandler />
+        <InstallPrompt />
       </body>
     </html>
   );
