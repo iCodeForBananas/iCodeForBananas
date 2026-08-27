@@ -1,6 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import {
+  DEFAULT_ACCENT,
+  accentByName,
+  accentNameFrom,
+  isAccentName,
+  playAccentStep,
+} from "./accents";
 
 // ── Patterns ────────────────────────────────────────────────────────────────
 // 16 steps of 16th notes. 1 = hit, 0 = rest.
@@ -454,6 +461,8 @@ export interface DrumSettings {
   pattern: string;
   kick: KickStyle;
   snare: SnareStyle;
+  /** Which accent part the Shimmer layer plays; see ACCENT_VARIATIONS. */
+  shimmer: string;
   volume: number;
 }
 
@@ -461,6 +470,7 @@ export const DEFAULT_DRUM_SETTINGS: DrumSettings = {
   pattern: DRUM_PATTERNS[0].name,
   kick: "folk",
   snare: "regular",
+  shimmer: DEFAULT_ACCENT,
   volume: 0.8,
 };
 
@@ -474,6 +484,7 @@ export function normalizeDrumSettings(raw: unknown): DrumSettings {
     pattern: known ? (r.pattern as string) : DEFAULT_DRUM_SETTINGS.pattern,
     kick:    r.kick === "808" ? "808" : "folk",
     snare:   r.snare === "brush" ? "brush" : "regular",
+    shimmer: isAccentName(r.shimmer) ? r.shimmer : DEFAULT_DRUM_SETTINGS.shimmer,
     volume:  Math.min(1, Math.max(0, volume)),
   };
 }
@@ -489,6 +500,7 @@ export function isDefaultDrumSettings(s: DrumSettings): boolean {
     s.pattern === DEFAULT_DRUM_SETTINGS.pattern &&
     s.kick === DEFAULT_DRUM_SETTINGS.kick &&
     s.snare === DEFAULT_DRUM_SETTINGS.snare &&
+    s.shimmer === DEFAULT_DRUM_SETTINGS.shimmer &&
     s.volume === DEFAULT_DRUM_SETTINGS.volume
   );
 }
@@ -498,15 +510,20 @@ export function isDefaultDrumSettings(s: DrumSettings): boolean {
 // The settings also live in the song text as a preamble line, alongside Key and
 // Tempo, so they can be read and edited by hand:
 //
-//   Drums: Stomp & Brush, folk kick, brush snare, 80%
+//   Drums: Stomp & Brush, folk kick, brush snare, Tambourine, 80%
 //
-// No pattern name contains a comma, so comma-separated fields parse cleanly.
+// No pattern or accent name contains a comma, so comma-separated fields parse
+// cleanly.
 
 const DRUMS_LINE_RE = /\bDrums:\s*([^\n|]*)/i;
 
 /** The `Drums: …` line as written into the song text. */
 export function formatDrumSettings(s: DrumSettings): string {
-  return `Drums: ${s.pattern}, ${s.kick} kick, ${s.snare} snare, ${Math.round(s.volume * 100)}%`;
+  const parts = [s.pattern, `${s.kick} kick`, `${s.snare} snare`];
+  // Only worth naming when it isn't the shimmer the layer has always played.
+  if (s.shimmer !== DEFAULT_DRUM_SETTINGS.shimmer) parts.push(s.shimmer);
+  parts.push(`${Math.round(s.volume * 100)}%`);
+  return `Drums: ${parts.join(", ")}`;
 }
 
 /**
@@ -524,8 +541,11 @@ export function parseDrumSettingsLine(line: string): DrumSettings | null {
   for (const field of fields) {
     const lower = field.toLowerCase();
     const pattern = DRUM_PATTERNS.find((p) => p.name.toLowerCase() === lower);
+    const accent = accentNameFrom(field);
     if (pattern) {
       settings.pattern = pattern.name;
+    } else if (accent) {
+      settings.shimmer = accent;
     } else if (/\bfolk\b/.test(lower) && /kick/.test(lower)) {
       settings.kick = "folk";
     } else if (/\b808\b/.test(lower)) {
@@ -813,25 +833,6 @@ function playClap(ctx: BaseAudioContext, dst: AudioNode, when: number) {
   }
 }
 
-/** Shimmer — soft high-freq noise on every step for a continuous airy sparkle texture */
-function playShimmer(ctx: BaseAudioContext, dst: AudioNode, when: number) {
-  const len = Math.ceil(ctx.sampleRate * 0.14);
-  const buf = ctx.createBuffer(1, len, ctx.sampleRate);
-  const d = buf.getChannelData(0);
-  for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
-  const src = ctx.createBufferSource();
-  src.buffer = buf;
-  const hp = ctx.createBiquadFilter();
-  hp.type = "highpass";
-  hp.frequency.value = 6000;
-  const g = ctx.createGain();
-  g.gain.setValueAtTime(0, when);
-  g.gain.linearRampToValueAtTime(0.055, when + 0.015);
-  g.gain.exponentialRampToValueAtTime(0.001, when + 0.11);
-  src.connect(hp); hp.connect(g); g.connect(dst);
-  src.start(when); src.stop(when + 0.14);
-}
-
 // ── WAV export ────────────────────────────────────────────────────────────────
 
 /** Encode an AudioBuffer as a 16-bit PCM WAV Blob. */
@@ -879,6 +880,7 @@ async function renderDrumToWav(
   snareStyle: SnareStyle,
   clapsEnabled: boolean,
   shimmerEnabled: boolean,
+  shimmerVariation: string,
   volume: number,
   durationSec: number,
 ): Promise<Blob> {
@@ -892,6 +894,7 @@ async function renderDrumToWav(
 
   const stepDur = 15 / bpm; // seconds per 16th note
   const pat = DRUM_PATTERNS[patternIdx];
+  const accent = accentByName(shimmerVariation);
   let when = 0;
   let step = 0;
 
@@ -906,7 +909,7 @@ async function renderDrumToWav(
     }
     if (pat.hihat[step]) playHihat(ctx, master, when);
     if (clapsEnabled && (step === 4 || step === 12)) playClap(ctx, master, when);
-    if (shimmerEnabled) playShimmer(ctx, master, when);
+    if (shimmerEnabled) playAccentStep(ctx, master, when, accent, step, stepDur);
 
     when += stepDur;
     step = (step + 1) % 16;
@@ -936,6 +939,8 @@ export function useDrumScheduler(
   clapsEnabled: boolean,
   shimmerEnabled: boolean,
   drumsEnabled = true,
+  /** Which accent part the shimmer layer plays; see ACCENT_VARIATIONS. */
+  shimmerVariation: string = DEFAULT_ACCENT,
 ): number {
   const ctxRef            = useRef<AudioContext | null>(null);
   const masterRef         = useRef<GainNode | null>(null);
@@ -950,6 +955,7 @@ export function useDrumScheduler(
   const clapsEnabledRef   = useRef(clapsEnabled);
   const shimmerEnabledRef = useRef(shimmerEnabled);
   const drumsEnabledRef   = useRef(drumsEnabled);
+  const accentRef         = useRef(accentByName(shimmerVariation));
   const [activeStep, setActiveStep] = useState(-1);
 
   // Keep refs in sync so the scheduler loop picks up changes without restart
@@ -960,6 +966,7 @@ export function useDrumScheduler(
   useEffect(() => { clapsEnabledRef.current = clapsEnabled; }, [clapsEnabled]);
   useEffect(() => { shimmerEnabledRef.current = shimmerEnabled; }, [shimmerEnabled]);
   useEffect(() => { drumsEnabledRef.current = drumsEnabled; }, [drumsEnabled]);
+  useEffect(() => { accentRef.current = accentByName(shimmerVariation); }, [shimmerVariation]);
   useEffect(() => {
     volumeRef.current = volume;
     if (masterRef.current) masterRef.current.gain.value = volume;
@@ -1014,8 +1021,11 @@ export function useDrumScheduler(
         }
         // Claps on beats 2 and 4 (steps 4 and 12)
         if (clapsEnabledRef.current && (step === 4 || step === 12)) playClap(ctx, dst, when);
-        // Shimmer on every step — continuous high-freq sparkle
-        if (shimmerEnabledRef.current) playShimmer(ctx, dst, when);
+        // Shimmer plays whatever accent part the song picked, on that part's
+        // own rhythm — a tambourine on the backbeat isn't a shaker turned down.
+        if (shimmerEnabledRef.current) {
+          playAccentStep(ctx, dst, when, accentRef.current, step, stepDur);
+        }
 
         // Update visual indicator at the right moment
         const delayMs = Math.max(0, (when - ctx.currentTime) * 1000);
@@ -1069,14 +1079,15 @@ export function DrumMachineControl({
   /** Passed through to the scheduler — toggle is a standalone button in the toolbar. */
   shimmerEnabled: boolean;
 }) {
-  const { kick: kickStyle, snare: snareStyle, volume } = settings;
+  const { kick: kickStyle, snare: snareStyle, shimmer: shimmerVariation, volume } = settings;
+  const accent = accentByName(shimmerVariation);
   const patternIdx = patternIndex(settings.pattern);
   // Claps and shimmer are layers of their own: either one runs the scheduler
   // even with the kit off, so a claps-only or shimmer-only section works.
   const schedulerRunning = running || clapsEnabled || shimmerEnabled;
   const activeStep = useDrumScheduler(
     bpm, patternIdx, schedulerRunning, volume, kickStyle, snareStyle,
-    clapsEnabled, shimmerEnabled, running,
+    clapsEnabled, shimmerEnabled, running, shimmerVariation,
   );
   const pat = DRUM_PATTERNS[patternIdx];
 
@@ -1091,7 +1102,7 @@ export function DrumMachineControl({
     try {
       const blob = await renderDrumToWav(
         bpm, patternIdx, kickStyle, snareStyle,
-        clapsEnabled, shimmerEnabled, volume, mins * 60,
+        clapsEnabled, shimmerEnabled, shimmerVariation, volume, mins * 60,
       );
       const patName = settings.pattern.toLowerCase().replace(/\s+/g, "-");
       const ts = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
@@ -1205,7 +1216,8 @@ export function DrumMachineControl({
           {Array.from({ length: 16 }, (_, i) => {
             const hasKit  = running && (pat.kick[i] || pat.snare[i] || pat.hihat[i]);
             const hasClap = clapsEnabled && (i === 4 || i === 12);
-            const hasHit  = hasKit || hasClap || shimmerEnabled;
+            const hasAccent = shimmerEnabled && accent.pattern[i] > 0;
+            const hasHit  = hasKit || hasClap || hasAccent;
             return (
               <div
                 key={i}

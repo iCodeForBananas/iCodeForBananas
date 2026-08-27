@@ -395,7 +395,8 @@ export default function TrackEditor({
     settings.drums.snare,
     activeLayers.has("claps"),
     activeLayers.has("shimmer"),
-    activeLayers.has("drum")
+    activeLayers.has("drum"),
+    settings.drums.shimmer
   );
 
   // The drone holds the song's key underneath everything for as long as its

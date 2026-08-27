@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Check, Copy, X } from "lucide-react";
 import { DRUM_PATTERNS } from "./DrumMachine";
+import { ACCENT_GROUPS } from "./accents";
 
 // ─── Reference content ────────────────────────────────────────────────────────
 //
@@ -80,9 +81,10 @@ const ENTRIES: Entry[] = [
     title: "Drum kit settings",
     blurb:
       "A Drums: line in the header picks the pattern and kit for this song. Changing the drum controls in preview writes this line for you, so hand-editing is for when you already know what you want.",
-    example: "Drums: Folk Stomp, folk kick, regular snare, 80%",
+    example: "Drums: Folk Stomp, folk kick, brush snare, Tambourine, 80%",
     notes: [
       "Kick is folk or 808, snare is regular or brush, and the percentage is volume.",
+      "An accent name — Tambourine, Egg Shaker, Sleigh Bells — says what the shimmer layer plays. Leave it out and it stays the airy sparkle it has always been.",
       "Leave the line off entirely and the song uses the default kit.",
     ],
   },
@@ -100,7 +102,7 @@ const ENTRIES: Entry[] = [
 const TAG_REFERENCE: { tag: string; does: string }[] = [
   { tag: "[drum]", does: "Start the drum machine" },
   { tag: "[claps]", does: "Start handclaps on 2 and 4" },
-  { tag: "[shimmer]", does: "Start the airy shimmer texture" },
+  { tag: "[shimmer]", does: "Start the accent percussion — whichever one the Drums: line picked" },
   { tag: "[drone]", does: "Hold the song's key underneath as a sustained pad" },
   { tag: "[/drum]", does: "Stop the drums — same for [/claps], [/shimmer] and [/drone]" },
   { tag: "[/all]", does: "Stop everything that is playing" },
@@ -231,6 +233,30 @@ export default function SyntaxHelp({ onClose }: { onClose: () => void }) {
                 </span>
               ))}
             </div>
+          </section>
+
+          {/* Same trick for the accents — the roster is the list. */}
+          <section>
+            <h3 className="text-sm font-medium text-yellow-400">Shimmer accents</h3>
+            <p className="mt-1 text-xs leading-relaxed text-white/60">
+              What the shimmer layer can play. Name one on the Drums: line, or pick it in preview.
+            </p>
+            {ACCENT_GROUPS.map((group) => (
+              <div key={group.label} className="mt-2">
+                <p className="text-[0.7rem] uppercase tracking-wide text-white/40">{group.label}</p>
+                <div className="mt-1 flex flex-wrap gap-1.5">
+                  {group.items.map((item) => (
+                    <span
+                      key={item.name}
+                      title={item.description}
+                      className="rounded border border-white/10 bg-white/5 px-2 py-1 font-mono text-[0.7rem] text-white/70"
+                    >
+                      {item.name}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))}
           </section>
         </div>
 

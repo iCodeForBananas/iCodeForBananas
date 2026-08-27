@@ -57,6 +57,7 @@ import {
   parseCueEvents,
   stripCueMarkers,
 } from "../../cues";
+import { ShimmerControl } from "../../accents";
 import {
   DrumMachineControl,
   DEFAULT_DRUM_SETTINGS,
@@ -1131,18 +1132,13 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                         >
                           Claps
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => toggleLayer("shimmer")}
-                          title="Shimmer — soft high-freq sparkle on every step"
-                          className={`h-8 px-2.5 text-xs font-medium rounded-lg border transition-colors duration-100 flex-shrink-0 ${
-                            shimmerRunning
-                              ? "bg-sky-400 text-white border-sky-400"
-                              : "bg-gray-100 dark:bg-neutral-800 text-gray-600 dark:text-neutral-300 border-gray-200 dark:border-neutral-700 hover:bg-gray-200 dark:hover:bg-neutral-700"
-                          }`}
-                        >
-                          Shimmer
-                        </button>
+                        <ShimmerControl
+                          running={shimmerRunning}
+                          onToggle={() => toggleLayer("shimmer")}
+                          variation={drumSettings.shimmer}
+                          onVariationChange={(shimmer) => updateDrumSettings({ shimmer })}
+                          bpm={bpm}
+                        />
                         <StringPadsControl
                           songKey={soundingKey}
                           progression={progression}
@@ -1311,18 +1307,13 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                       >
                         Claps
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => toggleLayer("shimmer")}
-                        title="Shimmer — soft high-freq sparkle on every step"
-                        className={`h-8 px-2.5 text-xs font-medium rounded-lg border transition-colors duration-100 flex-shrink-0 ${
-                          shimmerRunning
-                            ? "bg-sky-400 text-white border-sky-400"
-                            : "bg-gray-100 dark:bg-neutral-800 text-gray-600 dark:text-neutral-300 border-gray-200 dark:border-neutral-700 hover:bg-gray-200 dark:hover:bg-neutral-700"
-                        }`}
-                      >
-                        Shimmer
-                      </button>
+                      <ShimmerControl
+                        running={shimmerRunning}
+                        onToggle={() => toggleLayer("shimmer")}
+                        variation={drumSettings.shimmer}
+                        onVariationChange={(shimmer) => updateDrumSettings({ shimmer })}
+                        bpm={bpm}
+                      />
                       <StringPadsControl
                         songKey={soundingKey}
                         progression={progression}
