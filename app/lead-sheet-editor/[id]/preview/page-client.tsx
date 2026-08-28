@@ -37,6 +37,13 @@ import {
 } from "../../shared";
 import { cacheSheet, getCachedSheet } from "../../offlineCache";
 import LineEditor, { type LineTarget } from "../../LineEditor";
+import {
+  LineDndProvider,
+  SortableLine,
+  SortableLines,
+  lineDragId,
+  type LinePos,
+} from "../../LineReorder";
 import { serializeSheet } from "../../serialize";
 import { snapshotRevision } from "../../revisions";
 import { transposeKey, transposeText } from "../../../lib/transpose";
@@ -327,13 +334,30 @@ function LineEditControl({ active, onToggle }: { active: boolean; onToggle: () =
   );
 }
 
-function EditModeBanner({ onDone, className = "" }: { onDone: () => void; className?: string }) {
+function EditModeBanner({
+  onDone,
+  error = null,
+  className = "",
+}: {
+  onDone: () => void;
+  /** Takes the banner over when a drag couldn't be saved. */
+  error?: string | null;
+  className?: string;
+}) {
   return (
     <div
-      className={`flex items-center justify-between gap-2 border-t border-yellow-300/60 bg-yellow-50 py-1.5 dark:border-yellow-400/20 dark:bg-yellow-400/10 print:hidden ${className}`}
+      className={`flex items-center justify-between gap-2 border-t py-1.5 print:hidden ${
+        error
+          ? "border-red-300/60 bg-red-50 dark:border-red-400/20 dark:bg-red-500/10"
+          : "border-yellow-300/60 bg-yellow-50 dark:border-yellow-400/20 dark:bg-yellow-400/10"
+      } ${className}`}
     >
-      <span className='text-xs font-medium text-yellow-800 dark:text-yellow-300'>
-        Tap a line to edit it — one line, one save.
+      <span
+        className={`text-xs font-medium ${
+          error ? "text-red-700 dark:text-red-400" : "text-yellow-800 dark:text-yellow-300"
+        }`}
+      >
+        {error ?? "Tap a line to edit it, or drag its grip to move it."}
       </span>
       <button
         type='button'
@@ -380,6 +404,7 @@ const SheetContent = memo(function SheetContent({
   onSeekToLine,
   onEditLine,
   onInsertLine,
+  onMoveLine,
   bpm,
 }: {
   sheet: LeadSheet;
@@ -395,6 +420,8 @@ const SheetContent = memo(function SheetContent({
   onEditLine?: (sectionIndex: number, lineIndex: number) => void;
   /** Opens a blank line at an index that doesn't exist yet — the end of a section. */
   onInsertLine?: (sectionIndex: number, lineIndex: number) => void;
+  /** Present in edit mode — gives every line a grip and accepts the drop. */
+  onMoveLine?: (from: LinePos, to: LinePos) => void;
   /** Tempo the song's beat markers are read at — the live one, not the saved one. */
   bpm?: number;
 }) {
@@ -462,20 +489,34 @@ const SheetContent = memo(function SheetContent({
               {/* No overflow-x here: long lines wrap rather than scroll sideways,
                   so nothing renders a horizontal scrollbar on screen or in print. */}
               <div className='space-y-3'>
+                <SortableLines enabled={!!onMoveLine} sectionIndex={sectionIndex} count={lines.length}>
                 {lines.map((line, i) => {
+                  // The grip and the row travel together; without reordering the
+                  // row is returned exactly as it always was.
+                  const dragId = lineDragId(sectionIndex, i);
+                  const withGrip = (row: React.ReactNode) =>
+                    onMoveLine ? (
+                      <SortableLine key={dragId} id={dragId}>
+                        {row}
+                      </SortableLine>
+                    ) : (
+                      row
+                    );
                   if (line.trim() === "") {
                     // Editing makes the gaps tappable too — a blank line is
                     // where the next lyric goes.
-                    return onEditLine ? (
-                      <button
-                        key={i}
-                        type='button'
-                        onClick={() => onEditLine(sectionIndex, i)}
-                        aria-label={`Edit blank line ${i + 1}`}
-                        className='block w-full h-8 rounded border border-dashed border-black/10 dark:border-white/15 hover:border-yellow-400 hover:bg-yellow-50 dark:hover:bg-yellow-400/10 transition-colors duration-150'
-                      />
-                    ) : (
-                      <div key={i} className='h-3' />
+                    return withGrip(
+                      onEditLine ? (
+                        <button
+                          key={i}
+                          type='button'
+                          onClick={() => onEditLine(sectionIndex, i)}
+                          aria-label={`Edit blank line ${i + 1}`}
+                          className='block w-full h-8 rounded border border-dashed border-black/10 dark:border-white/15 hover:border-yellow-400 hover:bg-yellow-50 dark:hover:bg-yellow-400/10 transition-colors duration-150'
+                        />
+                      ) : (
+                        <div key={i} className='h-3' />
+                      )
                     );
                   }
                   const cueInfo  = getCueTagInfo(line);
@@ -485,7 +526,7 @@ const SheetContent = memo(function SheetContent({
                   // Editing wins over seeking: a tap in edit mode is meant for
                   // the keyboard, not the transport.
                   const seekable = !onEditLine && cueIndex !== undefined && !!onSeekToLine;
-                  return (
+                  return withGrip(
                     <div
                       key={i}
                       data-active-cue={active || undefined}
@@ -540,6 +581,7 @@ const SheetContent = memo(function SheetContent({
                     </div>
                   );
                 })}
+                </SortableLines>
                 {onInsertLine && (
                   <button
                     type='button'
@@ -584,6 +626,14 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
   const [editTarget, setEditTarget] = useState<LineTarget | null>(null);
   const [lineSaving, setLineSaving] = useState(false);
   const [lineError, setLineError] = useState<string | null>(null);
+  // A failed drag has no sheet open to report into, so it borrows the banner.
+  const [moveError, setMoveError] = useState<string | null>(null);
+  const moveErrorTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const flashMoveError = (message: string) => {
+    setMoveError(message);
+    if (moveErrorTimer.current) clearTimeout(moveErrorTimer.current);
+    moveErrorTimer.current = setTimeout(() => setMoveError(null), 5000);
+  };
   const [setIds, setSetIds] = useState<string[] | null>(null);
   const [setPos, setSetPos] = useState(0);
   const [playbackOpen, setPlaybackOpen] = useState(false);
@@ -812,6 +862,55 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
     [sheet]
   );
 
+  /**
+   * Write a new set of sections to the song. Returns false when the update
+   * touched no row, which is RLS turning down an edit to someone else's song.
+   */
+  const commitSections = async (sections: Section[]): Promise<boolean> => {
+    if (!sheet) return false;
+    const updatedAt = new Date().toISOString();
+    const next: LeadSheet = { ...sheet, sections, updated_at: updatedAt };
+    const sb = createClient()!;
+    const { data, error } = await sb
+      .from("lead_sheets")
+      .update({ sections, updated_at: updatedAt })
+      .eq("id", id)
+      .select("id");
+    if (error) throw error;
+    if (!data || data.length === 0) return false;
+    setSheet(next);
+    await cacheSheet(next);
+    // A line fixed on stage belongs in History like one typed in the editor.
+    // It rides along after the save, so a failed snapshot never costs the edit.
+    snapshotRevision(sb, id, serializeSheet(next)).catch(() => {});
+    return true;
+  };
+
+  /** Every line of the song, section by section, ready to be spliced. */
+  const linesOf = (sections: Section[]) => sections.map((s) => (s.content ?? "").split("\n"));
+
+  // Dropped somewhere new: pull the line out of where it was and put it back in
+  // at the other end. Within a section that's a reorder; across two it's a move,
+  // and the drop side decided whether it lands above or below the line it hit.
+  const moveLine = async (from: LinePos, to: LinePos) => {
+    if (!sheet) return;
+    const lines = linesOf(sheet.sections);
+    const source = lines[from.sectionIndex];
+    const target = lines[to.sectionIndex];
+    if (!source || !target) return;
+    const [text] = source.splice(from.lineIndex, 1);
+    if (text === undefined) return;
+    const at = Math.max(0, Math.min(target.length, to.lineIndex));
+    target.splice(at, 0, text);
+    const sections = sheet.sections.map((section, i) => ({ ...section, content: lines[i].join("\n") }));
+    try {
+      const ok = await commitSections(sections);
+      if (!ok) flashMoveError("This song belongs to someone else, so it can't be edited here.");
+    } catch {
+      flashMoveError("Couldn't move that line — check your connection and try again.");
+    }
+  };
+
   const saveLine = async (text: string, andAnother = false) => {
     if (!sheet || !editTarget) return;
     const { sectionIndex, lineIndex, insert } = editTarget;
@@ -829,37 +928,28 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
       else lines[lineIndex] = text;
       return { ...section, content: lines.join("\n") };
     });
-    const updatedAt = new Date().toISOString();
-    const next: LeadSheet = { ...sheet, sections, updated_at: updatedAt };
     try {
-      const sb = createClient()!;
-      // Anyone can read a song; only its owner can write one. An update that
-      // touches no row is RLS turning the edit down, not a success.
-      const { data, error } = await sb
-        .from("lead_sheets")
-        .update({ sections, updated_at: updatedAt })
-        .eq("id", id)
-        .select("id");
-      if (error) throw error;
-      if (!data || data.length === 0) {
+      if (!(await commitSections(sections))) {
         setLineError("This song belongs to someone else, so it can't be edited here.");
         return;
       }
-      setSheet(next);
-      await cacheSheet(next);
       // Carrying on down the section: the next line opens where this one left
       // off, so a verse is typed in one go.
       if (andAnother) openLineInsert(sectionIndex, lineIndex + 1);
       else setEditTarget(null);
-      // A line fixed on stage belongs in History like one typed in the editor.
-      // It rides along after the save, so a failed snapshot never costs the edit.
-      snapshotRevision(sb, id, serializeSheet(next)).catch(() => {});
     } catch {
       setLineError("Couldn't save that line — check your connection and try again.");
     } finally {
       setLineSaving(false);
     }
   };
+
+  /** The text of a line being dragged, for the card that follows the finger. */
+  const lineTextAt = useCallback(
+    ({ sectionIndex, lineIndex }: LinePos) =>
+      (sheet?.sections[sectionIndex]?.content ?? "").split("\n")[lineIndex] ?? "",
+    [sheet]
+  );
 
   const openPlayback = () => {
     if (!hasTiming) return;
@@ -963,6 +1053,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
   };
 
   useEffect(() => () => { if (bpmSaveTimer.current) clearTimeout(bpmSaveTimer.current); }, []);
+  useEffect(() => () => { if (moveErrorTimer.current) clearTimeout(moveErrorTimer.current); }, []);
 
   // The drum machine's pattern and voicing are part of how the song is played,
   // so they ride along on the sheet's metadata instead of living on this device.
@@ -1237,14 +1328,16 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                       </div>
                     </div>
                   </div>
-                  {editMode && <EditModeBanner onDone={() => setEditMode(false)} className='-mx-4 px-4' />}
+                  {editMode && <EditModeBanner error={moveError} onDone={() => setEditMode(false)} className='-mx-4 px-4' />}
                 </div>
               </div>
               <div className='py-8' style={{ fontSize: `${fontScale}%` }}>
+                <LineDndProvider onMove={editMode ? moveLine : undefined} lineTextAt={lineTextAt}>
                 <SheetContent
                   sheet={sheet}
                   onEditLine={editMode ? openLineEditor : undefined}
                   onInsertLine={editMode ? openLineInsert : undefined}
+                  onMoveLine={editMode ? moveLine : undefined}
                   fullscreen
                   columnCount={columnCount}
                   columnWidthVw={columnWidthVw}
@@ -1254,6 +1347,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                   onSeekToLine={playbackOpen ? seekToLine : undefined}
                   bpm={bpm}
                 />
+                </LineDndProvider>
               </div>
               {playbackOpen && <div className='h-44' />}
             </div>
@@ -1413,16 +1507,18 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                     </div>
                   </div>
                 </div>
-                {editMode && <EditModeBanner onDone={() => setEditMode(false)} className='px-4 sm:px-6' />}
+                {editMode && <EditModeBanner error={moveError} onDone={() => setEditMode(false)} className='px-4 sm:px-6' />}
               </div>
 
               {/* Scrollable content */}
               <div className='flex-1 overflow-y-auto overflow-x-hidden'>
                 <div className='w-full py-8 px-4 sm:px-0' style={{ fontSize: `${fontScale}%` }}>
+                  <LineDndProvider onMove={editMode ? moveLine : undefined} lineTextAt={lineTextAt}>
                   <SheetContent
                     sheet={sheet}
                     onEditLine={editMode ? openLineEditor : undefined}
                     onInsertLine={editMode ? openLineInsert : undefined}
+                    onMoveLine={editMode ? moveLine : undefined}
                     fullscreen={false}
                     columnCount={columnCount}
                     columnWidthVw={columnWidthVw}
@@ -1432,6 +1528,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                     onSeekToLine={playbackOpen ? seekToLine : undefined}
                   bpm={bpm}
                   />
+                  </LineDndProvider>
                 </div>
                 {playbackOpen && <div className='h-44' />}
               </div>
