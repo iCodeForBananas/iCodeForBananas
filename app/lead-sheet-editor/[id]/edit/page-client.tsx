@@ -10,7 +10,7 @@ import {
   type LeadSheet,
   type LeadSheetMetadata,
   type Section,
-  type SectionType,
+  inferSectionType,
   migrateSection,
   OfflineBadge,
 } from "../../shared";
@@ -31,17 +31,6 @@ import TrackEditor from "../../TrackEditor";
 import SyntaxHelp from "../../SyntaxHelp";
 
 // ─── Text ↔ LeadSheet ─────────────────────────────────────────────────────────
-
-function inferSectionType(label: string): SectionType {
-  const l = label.toLowerCase();
-  if (l.includes("intro")) return "intro";
-  if (l.includes("pre-chorus") || l.includes("prechorus") || l.includes("pre chorus")) return "pre-chorus";
-  if (l.includes("chorus")) return "chorus";
-  if (l.includes("verse")) return "verse";
-  if (l.includes("bridge")) return "bridge";
-  if (l.includes("outro")) return "outro";
-  return "other";
-}
 
 // ─── Bulk chord replace ───────────────────────────────────────────────────────
 

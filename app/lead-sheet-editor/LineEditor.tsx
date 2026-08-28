@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, CornerDownLeft, Plus, X } from "lucide-react";
 import { ChordLyricLine } from "./shared";
+import { asSectionHeader } from "./songText";
 
 /** Which line of the song was tapped, and what it says right now. */
 export interface LineTarget {
@@ -50,6 +51,10 @@ export default function LineEditor({
 }) {
   const [text, setText] = useState(target.text);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  // A line that is nothing but a name in brackets isn't a chord, it's the top
+  // of a new part of the song — the preview has to say so, since [Chorus] and
+  // [C] look like the same thing until you know the rule.
+  const sectionHeader = asSectionHeader(text);
 
   // Open with the caret at the end of the line, keyboard already up.
   useEffect(() => {
@@ -149,7 +154,21 @@ export default function LineEditor({
             <div className='text-[0.65rem] font-medium uppercase tracking-wide text-gray-400 dark:text-neutral-500 mb-1'>
               Preview
             </div>
-            <ChordLyricLine line={text} />
+            {sectionHeader !== null ? (
+              <div className='flex flex-wrap items-center gap-2'>
+                <span
+                  className='text-[0.7rem] font-bold uppercase tracking-widest px-2 py-1 rounded'
+                  style={{ background: "#facc15", color: "#000" }}
+                >
+                  {sectionHeader}
+                </span>
+                <span className='text-xs text-gray-500 dark:text-neutral-400'>
+                  starts a new section here
+                </span>
+              </div>
+            ) : (
+              <ChordLyricLine line={text} />
+            )}
           </div>
 
           {transposeSteps !== 0 && (

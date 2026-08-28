@@ -91,6 +91,44 @@ export function makeSection(type: SectionType = "verse"): Section {
   };
 }
 
+/** The type a section name reads as — "Chorus 2" is a chorus, "Vamp" is other. */
+export function inferSectionType(label: string): SectionType {
+  const l = label.toLowerCase();
+  if (l.includes("intro")) return "intro";
+  if (l.includes("pre-chorus") || l.includes("prechorus") || l.includes("pre chorus")) return "pre-chorus";
+  if (l.includes("chorus")) return "chorus";
+  if (l.includes("verse")) return "verse";
+  if (l.includes("bridge")) return "bridge";
+  if (l.includes("outro")) return "outro";
+  return "other";
+}
+
+/**
+ * What to call the next section of a type: "Verse" until there is one, then
+ * "Verse 2", "Verse 3" — counting whatever numbers the song already uses rather
+ * than how many sections carry the name, so a deleted Verse 2 isn't reissued.
+ */
+export function nextSectionLabel(sections: Section[], type: SectionType): string {
+  const base = type.charAt(0).toUpperCase() + type.slice(1);
+  const lower = base.toLowerCase();
+  let highest = 0;
+  let taken = false;
+  for (const section of sections) {
+    const label = (section.label || section.type).trim().toLowerCase();
+    if (label === lower) {
+      taken = true;
+      highest = Math.max(highest, 1);
+      continue;
+    }
+    const m = label.match(/^(.*?)\s+(\d+)$/);
+    if (m && m[1] === lower) {
+      taken = true;
+      highest = Math.max(highest, parseInt(m[2], 10));
+    }
+  }
+  return taken ? `${base} ${highest + 1}` : base;
+}
+
 export function migrateSection(s: Section): Section {
   if (s.content !== undefined && s.content !== "") return s;
   const legacy = s.lyrics ?? "";

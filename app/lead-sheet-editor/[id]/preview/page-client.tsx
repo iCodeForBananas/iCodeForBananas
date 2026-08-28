@@ -28,6 +28,8 @@ import {
 import {
   type LeadSheet,
   type Section,
+  type SectionType,
+  inferSectionType,
   migrateSection,
   ChordLyricLine,
   getPlainText,
@@ -37,6 +39,8 @@ import {
 } from "../../shared";
 import { cacheSheet, getCachedSheet } from "../../offlineCache";
 import LineEditor, { type LineTarget } from "../../LineEditor";
+import SectionEditor from "../../SectionEditor";
+import { asSectionHeader } from "../../songText";
 import {
   LineDndProvider,
   SortableLine,
@@ -405,6 +409,7 @@ const SheetContent = memo(function SheetContent({
   onEditLine,
   onInsertLine,
   onMoveLine,
+  onAddSection,
   bpm,
 }: {
   sheet: LeadSheet;
@@ -422,6 +427,8 @@ const SheetContent = memo(function SheetContent({
   onInsertLine?: (sectionIndex: number, lineIndex: number) => void;
   /** Present in edit mode — gives every line a grip and accepts the drop. */
   onMoveLine?: (from: LinePos, to: LinePos) => void;
+  /** Opens the new-section sheet, landing the section after the one given. */
+  onAddSection?: (afterIndex: number) => void;
   /** Tempo the song's beat markers are read at — the live one, not the saved one. */
   bpm?: number;
 }) {
@@ -582,15 +589,30 @@ const SheetContent = memo(function SheetContent({
                   );
                 })}
                 </SortableLines>
-                {onInsertLine && (
-                  <button
-                    type='button'
-                    onClick={() => onInsertLine(sectionIndex, lines.length)}
-                    className='flex w-full items-center justify-center gap-1.5 rounded border border-dashed border-black/15 py-2 text-[0.8em] font-medium text-black/40 transition-colors duration-150 hover:border-yellow-400 hover:bg-yellow-50 hover:text-black/70 dark:border-white/20 dark:text-white/40 dark:hover:bg-yellow-400/10 dark:hover:text-white/70'
-                  >
-                    <Plus className='w-3.5 h-3.5' />
-                    Add line
-                  </button>
+                {(onInsertLine || onAddSection) && (
+                  <div className='flex gap-2'>
+                    {onInsertLine && (
+                      <button
+                        type='button'
+                        onClick={() => onInsertLine(sectionIndex, lines.length)}
+                        className='flex flex-1 items-center justify-center gap-1.5 rounded border border-dashed border-black/15 py-2 text-[0.8em] font-medium text-black/40 transition-colors duration-150 hover:border-yellow-400 hover:bg-yellow-50 hover:text-black/70 dark:border-white/20 dark:text-white/40 dark:hover:bg-yellow-400/10 dark:hover:text-white/70'
+                      >
+                        <Plus className='w-3.5 h-3.5' />
+                        Add line
+                      </button>
+                    )}
+                    {onAddSection && (
+                      <button
+                        type='button'
+                        onClick={() => onAddSection(sectionIndex)}
+                        title='Start a new verse, chorus or bridge after this one'
+                        className='flex items-center justify-center gap-1.5 rounded border border-dashed border-black/15 px-3 py-2 text-[0.8em] font-medium text-black/40 transition-colors duration-150 hover:border-yellow-400 hover:bg-yellow-50 hover:text-black/70 dark:border-white/20 dark:text-white/40 dark:hover:bg-yellow-400/10 dark:hover:text-white/70'
+                      >
+                        <Plus className='w-3.5 h-3.5' />
+                        Section
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
               {section.notes && (
@@ -601,6 +623,16 @@ const SheetContent = memo(function SheetContent({
             </div>
           );
         })}
+        {onAddSection && sheet.sections.length === 0 && (
+          <button
+            type='button'
+            onClick={() => onAddSection(-1)}
+            className='flex w-full items-center justify-center gap-1.5 rounded border border-dashed border-black/15 py-3 text-[0.8em] font-medium text-black/40 transition-colors duration-150 hover:border-yellow-400 hover:bg-yellow-50 hover:text-black/70 dark:border-white/20 dark:text-white/40 dark:hover:bg-yellow-400/10 dark:hover:text-white/70'
+          >
+            <Plus className='w-3.5 h-3.5' />
+            Add section
+          </button>
+        )}
       </div>
     </div>
   );
@@ -624,6 +656,8 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
   // its size, columns and key, and every line becomes something you can tap.
   const [editMode, setEditMode] = useState(false);
   const [editTarget, setEditTarget] = useState<LineTarget | null>(null);
+  /** Index the new section lands after; -1 puts it at the top of a bare song. */
+  const [sectionAfter, setSectionAfter] = useState<number | null>(null);
   const [lineSaving, setLineSaving] = useState(false);
   const [lineError, setLineError] = useState<string | null>(null);
   // A failed drag has no sheet open to report into, so it borrows the banner.
@@ -846,21 +880,43 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
   // line just saved. Nothing is written until it's saved, so backing out of one
   // leaves the song exactly as it was.
   const openLineInsert = useCallback(
-    (sectionIndex: number, lineIndex: number) => {
-      if (!sheet) return;
-      const section = sheet.sections[sectionIndex];
-      if (!section) return;
+    (sectionIndex: number, lineIndex: number, sectionLabel?: string) => {
+      const section = sheet?.sections[sectionIndex];
+      const label = sectionLabel ?? (section ? section.label || section.type : null);
+      if (!label) return;
       setLineError(null);
-      setEditTarget({
-        sectionIndex,
-        lineIndex,
-        sectionLabel: section.label || section.type,
-        text: "",
-        insert: true,
-      });
+      setEditTarget({ sectionIndex, lineIndex, sectionLabel: label, text: "", insert: true });
     },
     [sheet]
   );
+
+  // Adding a part of the song: an empty section with one blank line to tap.
+  const addSection = async (type: SectionType, label: string) => {
+    if (!sheet || sectionAfter === null) return;
+    const section: Section = {
+      id: crypto.randomUUID(),
+      type,
+      label,
+      content: "",
+      notes: "",
+    };
+    const sections = [...sheet.sections];
+    sections.splice(sectionAfter + 1, 0, section);
+    setSectionAfter(null);
+    try {
+      if (!(await commitSections(sections))) {
+        flashMoveError("This song belongs to someone else, so it can't be edited here.");
+        return;
+      }
+      // Straight into typing it, which is what adding a chorus is really for.
+      // The new section already has one empty line, so this fills that in
+      // rather than pushing a second blank one under it.
+      setLineError(null);
+      setEditTarget({ sectionIndex: sectionAfter + 1, lineIndex: 0, sectionLabel: label, text: "" });
+    } catch {
+      flashMoveError("Couldn't add that section — check your connection and try again.");
+    }
+  };
 
   /**
    * Write a new set of sections to the song. Returns false when the update
@@ -911,6 +967,47 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
     }
   };
 
+  /**
+   * A line that reads as a header — [Chorus] on its own, not a chord — isn't a
+   * lyric at all: it starts a new part of the song, and everything below it in
+   * the section belongs to that part. Same reading the text editor gives it,
+   * so a song says the same thing whichever end it was typed from.
+   */
+  const splitAtHeader = (
+    sections: Section[],
+    sectionIndex: number,
+    lineIndex: number,
+    insert: boolean,
+    label: string
+  ) => {
+    const source = sections[sectionIndex];
+    const lines = (source.content ?? "").split("\n");
+    // On an edit the header line replaced a lyric, which the new heading is
+    // now standing in for; on an insert there was never a line there.
+    if (!insert) lines.splice(lineIndex, 1);
+    const before = lines.slice(0, lineIndex);
+    const after = lines.slice(lineIndex);
+    const created: Section = {
+      id: crypto.randomUUID(),
+      type: inferSectionType(label),
+      label,
+      content: after.join("\n"),
+      notes: "",
+    };
+    const next = [...sections];
+    // A section left with nothing at all goes; one with lines or a performance
+    // note above the split keeps both.
+    const replaced = before.length === 0 && !source.notes;
+    if (replaced) next.splice(sectionIndex, 1, created);
+    else next.splice(sectionIndex, 1, { ...source, content: before.join("\n") }, created);
+    return {
+      sections: next,
+      newIndex: replaced ? sectionIndex : sectionIndex + 1,
+      newLineIndex: after.length,
+      label,
+    };
+  };
+
   const saveLine = async (text: string, andAnother = false) => {
     if (!sheet || !editTarget) return;
     const { sectionIndex, lineIndex, insert } = editTarget;
@@ -921,21 +1018,27 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
     }
     setLineSaving(true);
     setLineError(null);
-    const sections = sheet.sections.map((section, i) => {
-      if (i !== sectionIndex) return section;
-      const lines = (section.content ?? "").split("\n");
-      if (insert) lines.splice(lineIndex, 0, text);
-      else lines[lineIndex] = text;
-      return { ...section, content: lines.join("\n") };
-    });
+    const header = asSectionHeader(text);
+    const split =
+      header !== null ? splitAtHeader(sheet.sections, sectionIndex, lineIndex, !!insert, header) : null;
+    const sections =
+      split?.sections ??
+      sheet.sections.map((section, i) => {
+        if (i !== sectionIndex) return section;
+        const lines = (section.content ?? "").split("\n");
+        if (insert) lines.splice(lineIndex, 0, text);
+        else lines[lineIndex] = text;
+        return { ...section, content: lines.join("\n") };
+      });
     try {
       if (!(await commitSections(sections))) {
         setLineError("This song belongs to someone else, so it can't be edited here.");
         return;
       }
-      // Carrying on down the section: the next line opens where this one left
-      // off, so a verse is typed in one go.
-      if (andAnother) openLineInsert(sectionIndex, lineIndex + 1);
+      // Carrying on: after a header that's the first line of the part it just
+      // started, otherwise the next line down.
+      if (andAnother && split) openLineInsert(split.newIndex, split.newLineIndex, split.label);
+      else if (andAnother) openLineInsert(sectionIndex, lineIndex + 1);
       else setEditTarget(null);
     } catch {
       setLineError("Couldn't save that line — check your connection and try again.");
@@ -1338,6 +1441,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                   onEditLine={editMode ? openLineEditor : undefined}
                   onInsertLine={editMode ? openLineInsert : undefined}
                   onMoveLine={editMode ? moveLine : undefined}
+                  onAddSection={editMode ? setSectionAfter : undefined}
                   fullscreen
                   columnCount={columnCount}
                   columnWidthVw={columnWidthVw}
@@ -1519,6 +1623,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                     onEditLine={editMode ? openLineEditor : undefined}
                     onInsertLine={editMode ? openLineInsert : undefined}
                     onMoveLine={editMode ? moveLine : undefined}
+                    onAddSection={editMode ? setSectionAfter : undefined}
                     fullscreen={false}
                     columnCount={columnCount}
                     columnWidthVw={columnWidthVw}
@@ -1558,6 +1663,19 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
             error={lineError}
             onSave={saveLine}
             onCancel={() => setEditTarget(null)}
+          />
+        )}
+
+        {sectionAfter !== null && sheet && (
+          <SectionEditor
+            sections={sheet.sections}
+            afterLabel={
+              sheet.sections[sectionAfter]
+                ? sheet.sections[sectionAfter].label || sheet.sections[sectionAfter].type
+                : null
+            }
+            onAdd={addSection}
+            onCancel={() => setSectionAfter(null)}
           />
         )}
 
