@@ -196,8 +196,10 @@ export default function ScaleTool({ rootKey }: { rootKey: string }) {
 
   // Center x of column (0 = open string, 1..n = fret n)
   const cx = (col: number) => LW + col * FW + FW / 2;
-  // Center y of string row (0 = low E at top, 5 = high e at bottom)
-  const cy = (s: number)   => HH + s * SH + SH / 2;
+  // Center y of string row. Rows run the way the neck looks when you glance down
+  // at it playing — the highest string on top, the lowest on the bottom — so
+  // string 0 (the lowest) takes the last row.
+  const cy = (s: number)   => HH + (tuning.length - 1 - s) * SH + SH / 2;
 
   const nutX = LW + FW;
 
