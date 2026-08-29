@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Check, CornerDownLeft, Plus, X } from "lucide-react";
+import { Check, CornerDownLeft, Plus, Trash2, X } from "lucide-react";
 import { ChordLyricLine } from "./shared";
 import { asSectionHeader } from "./songText";
 
@@ -55,6 +55,9 @@ export default function LineEditor({
   // of a new part of the song — the preview has to say so, since [Chorus] and
   // [C] look like the same thing until you know the rule.
   const sectionHeader = asSectionHeader(text);
+  // An emptied line is a deleted line — the song keeps no gap where one used to
+  // be. Say so on the button, since Save doing a delete is worth reading first.
+  const deletes = !target.insert && text.trim() === "";
 
   // Open with the caret at the end of the line, keyboard already up.
   useEffect(() => {
@@ -194,8 +197,8 @@ export default function LineEditor({
               disabled={saving}
               className='h-12 flex-[2] flex items-center justify-center gap-1.5 rounded-xl text-sm font-semibold bg-black hover:bg-black/80 text-yellow-400 dark:bg-yellow-400 dark:text-black dark:hover:bg-yellow-300 transition-colors duration-150 disabled:opacity-60'
             >
-              <Check className='w-4 h-4' />
-              {saving ? "Saving..." : target.insert ? "Add line" : "Save"}
+              {deletes ? <Trash2 className='w-4 h-4' /> : <Check className='w-4 h-4' />}
+              {saving ? "Saving..." : deletes ? "Delete line" : target.insert ? "Add line" : "Save"}
             </button>
           </div>
 
@@ -207,7 +210,11 @@ export default function LineEditor({
             className='mt-2 h-11 w-full flex items-center justify-center gap-1.5 rounded-xl border border-dashed border-gray-300 dark:border-neutral-600 text-sm font-medium text-gray-600 dark:text-neutral-300 hover:border-yellow-400 hover:bg-yellow-50 dark:hover:bg-yellow-400/10 transition-colors duration-150 disabled:opacity-60'
           >
             <Plus className='w-4 h-4' />
-            {target.insert ? "Add and keep going" : "Save and add a line below"}
+            {deletes
+              ? "Delete and add a line below"
+              : target.insert
+                ? "Add and keep going"
+                : "Save and add a line below"}
             <CornerDownLeft className='w-3.5 h-3.5 opacity-40' />
           </button>
         </div>

@@ -1008,9 +1008,50 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
     };
   };
 
+  /**
+   * Take a line out of the song. Emptying the box is how a line gets deleted —
+   * leaving the gap behind would only make a blank line to tap past next time.
+   */
+  const deleteLine = async (sectionIndex: number, lineIndex: number, andAnother: boolean) => {
+    if (!sheet) return;
+    setLineSaving(true);
+    setLineError(null);
+    const sections = sheet.sections.map((section, i) => {
+      if (i !== sectionIndex) return section;
+      const lines = (section.content ?? "").split("\n");
+      lines.splice(lineIndex, 1);
+      return { ...section, content: lines.join("\n") };
+    });
+    try {
+      if (!(await commitSections(sections))) {
+        setLineError("This song belongs to someone else, so it can't be edited here.");
+        return;
+      }
+      // Whatever was under it has moved up into the gap, so carrying on means
+      // the same index again, not the next one.
+      if (andAnother) openLineInsert(sectionIndex, lineIndex);
+      else setEditTarget(null);
+    } catch {
+      setLineError("Couldn't remove that line — check your connection and try again.");
+    } finally {
+      setLineSaving(false);
+    }
+  };
+
   const saveLine = async (text: string, andAnother = false) => {
     if (!sheet || !editTarget) return;
     const { sectionIndex, lineIndex, insert } = editTarget;
+    // Nothing left in the box: delete the line rather than store an empty one.
+    // On an insert there is no line yet, so a blank one simply never gets made.
+    if (text.trim() === "") {
+      if (!insert) {
+        await deleteLine(sectionIndex, lineIndex, andAnother);
+        return;
+      }
+      if (andAnother) openLineInsert(sectionIndex, lineIndex);
+      else setEditTarget(null);
+      return;
+    }
     if (!insert && text === editTarget.text) {
       if (andAnother) openLineInsert(sectionIndex, lineIndex + 1);
       else setEditTarget(null);
