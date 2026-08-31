@@ -22,6 +22,13 @@ import {
   noteAtDegree,
   type ChordQuality,
 } from "../lib/chordProgressions";
+import {
+  TRIAD_STRING_SETS,
+  TRIAD_INVERSIONS,
+  triadSpecFor,
+  triadVoicings,
+  degreeFormula,
+} from "../lib/triads";
 import ChordDiagram from "../components/ChordDiagram";
 import BentoBoard, { type BentoPanel } from "../components/BentoBoard";
 import ScaleTool from "../components/ScaleTool";
@@ -282,6 +289,9 @@ const VOICING_LABEL_TOOLTIPS: Record<string, string> = {
   "Open / Standard": "A standard open chord — uses open (unfretted) strings, typically the easiest to play",
   "E-Shape Barre":   "A moveable barre chord using the E chord template — press all strings with your index finger and slide this shape up the neck to change the key",
   "A-Shape Barre":   "A moveable barre chord using the A chord template — very common moveable shape for guitar",
+  "Root Position":   "The note that names the chord is the lowest of the three",
+  "1st Inversion":   "The middle note of the chord is on the bottom — lighter, less settled",
+  "2nd Inversion":   "The fifth is on the bottom — open and floating, a good passing shape",
 };
 
 function VoicingCard({
@@ -466,6 +476,16 @@ export default function ChordExplorerPage() {
     [selectedNote, invVoicing]
   );
 
+  // Every chord type on this page is either a triad or a triad with more piled
+  // on top, so the panel always has something to show — for a Maj9 it is the
+  // major triad underneath it, which is the part worth moving around the neck.
+  const triadSpec = useMemo(() => triadSpecFor(selectedType), [selectedType]);
+  const triadShapes = useMemo(
+    () => (triadSpec ? triadVoicings(selectedNote, triadSpec.intervals) : []),
+    [selectedNote, triadSpec]
+  );
+  const triadLabel = triadSpec ? formatChordLabel(selectedNote, triadSpec.quality) : "";
+
   const [selectedProgressionName, setSelectedProgressionName] = useState(PROGRESSION_GROUPS[0].items[0].name);
   // Per-chord voicing picks, scoped to the progression they were made on so
   // switching progressions starts fresh without a reset effect.
@@ -612,6 +632,90 @@ export default function ChordExplorerPage() {
     </p>
   );
 
+  // Grouped by string set rather than by inversion: the exercise is to stay on
+  // three strings and walk the shapes up the neck, so the column you are working
+  // in is the thing to hold still.
+  const triadsContent = !triadSpec ? (
+    <p className="text-sm text-black/40 dark:text-neutral-500">
+      This chord type isn&apos;t built on a triad. Pick a Major, Minor or Sus chord to see its shapes.
+    </p>
+  ) : (
+    <div className="flex flex-col gap-4">
+      <p className="text-sm text-black/50 dark:text-neutral-400">
+        {triadSpec.exact ? (
+          <>
+            Every way to play <span className="font-semibold text-black dark:text-white">{triadLabel}</span> as
+            three notes on three adjacent strings.
+          </>
+        ) : (
+          <>
+            The <span className="font-semibold text-black dark:text-white">{triadLabel}</span> triad inside{" "}
+            <span className="font-semibold text-black dark:text-white">{chordLabel}</span> — the three notes at its
+            core, without the extensions stacked on top.
+          </>
+        )}{" "}
+        <span
+          className="text-black/35 dark:text-neutral-500"
+          title="A pitch repeats every twelve frets, so these are all the shapes there are — past fret 12 the same ones come round again an octave higher"
+        >
+          These are all of them; above fret 12 they repeat an octave up.
+        </span>
+      </p>
+
+      <div className="grid grid-cols-1 gap-y-6 sm:grid-cols-3 sm:gap-y-0 divide-y sm:divide-y-0 sm:divide-x divide-gray-200 dark:divide-neutral-700">
+        {TRIAD_STRING_SETS.map((set, idx) => {
+          const shapes = triadShapes
+            .filter((v) => v.stringSet === set.key)
+            .sort((a, b) => a.startFret - b.startFret);
+          return (
+            <div
+              key={set.key}
+              className={`flex flex-col gap-1 pt-6 sm:pt-0${idx === 0 ? "" : " sm:pl-6"}${idx === TRIAD_STRING_SETS.length - 1 ? "" : " sm:pr-6"}`}
+            >
+              <span
+                className="text-sm font-semibold text-black dark:text-white"
+                title={`Three-note shapes played on ${set.label.replace("Strings ", "strings ")} — string 6 is the thickest, string 1 the thinnest`}
+              >
+                {set.label}
+              </span>
+              <span
+                className="text-xs text-black/40 dark:text-neutral-500 mb-4"
+                title="How many shapes there are on this string set — one for each inversion"
+              >
+                {shapes.length} shape{shapes.length === 1 ? "" : "s"}
+              </span>
+              <div className="grid gap-6" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))" }}>
+                {shapes.map((v) => {
+                  const inv = TRIAD_INVERSIONS.find((i) => i.key === v.inversion)!;
+                  return (
+                    <div key={v.id} className="flex flex-col items-center gap-1">
+                      <VoicingCard
+                        shape={v.shape}
+                        chordLabel={triadLabel}
+                        sublabel={inv.label}
+                        useFlats={useFlats}
+                      />
+                      <span
+                        className="text-xs text-black/35 dark:text-neutral-500 text-center tabular-nums"
+                        title={`${
+                          v.startFret === 0
+                            ? "Played at the open position, near the headstock"
+                            : `Start your fretting hand around fret ${v.startFret}`
+                        } — then the notes of the chord in the order this shape stacks them, lowest string first`}
+                      >
+                        {v.startFret === 0 ? "Open" : `${v.startFret}fr`} · {degreeFormula(triadSpec.intervals, v.inversion)}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+
   // Sidebar rather than a dropdown: the whole point is scanning the feelings
   // and clicking through them quickly, which a closed <select> can't do.
   const progressionContent = (
@@ -745,6 +849,15 @@ export default function ChordExplorerPage() {
       defaultColSpan: 12,
       defaultRowSpan: 4,
       content: inversionsContent,
+    },
+    {
+      id: "triads",
+      title: "Triad Shapes",
+      tooltip:
+        "Every way to play this chord as just three notes on three adjacent strings — each inversion, on each string set, at the place on the neck where it sits. Small shapes like these are how you play a progression without moving your hand far, and how you comp behind a singer without covering them up. For a 7th or extended chord you get the triad at its core.",
+      defaultColSpan: 12,
+      defaultRowSpan: 7,
+      content: triadsContent,
     },
     {
       id: "scale",
