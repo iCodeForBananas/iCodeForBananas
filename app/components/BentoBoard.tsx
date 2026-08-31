@@ -308,7 +308,16 @@ export default function BentoBoard({
     .filter((x): x is { layout: PanelLayout; panel: BentoPanel } => Boolean(x.panel));
 
   return (
-    <div ref={containerRef} className="flex flex-col gap-3">
+    // Room to drag past the last panel. A panel is resized by pulling its
+    // bottom-right corner, and the pointer cannot travel below the window — so
+    // a board ending flush with the viewport leaves the bottom row no way to
+    // grow. Two grid rows of empty space below it is somewhere to pull into.
+    // Only on the wide layout: the narrow one stacks panels and cannot resize.
+    <div
+      ref={containerRef}
+      className="flex flex-col gap-3"
+      style={narrow ? undefined : { paddingBottom: ROW_PX * 2 }}
+    >
       {narrow ? (
         // Stacked, full-width panels on small screens — drag/resize disabled.
         <div className="flex flex-col gap-4">
