@@ -14,7 +14,7 @@ import { DEFAULT_BPM, parseTimeMarker } from "./timing";
 // alone so chords keep rendering as chords.
 
 /** Layers the scheduler knows how to play. Adding a sound? Add its name here. */
-export const CUE_LAYERS = ["drum", "claps", "shimmer", "drone"] as const;
+export const CUE_LAYERS = ["drum", "claps", "shimmer", "drone", "sub"] as const;
 
 export type CueLayer = (typeof CUE_LAYERS)[number];
 
@@ -27,6 +27,7 @@ export const LAYER_LABELS: Record<string, string> = {
   claps: "claps",
   shimmer: "shimmer",
   drone: "drone",
+  sub: "sub bass",
   all: "everything",
 };
 

@@ -37,6 +37,8 @@ export interface LeadSheetMetadata {
   drums?: { pattern?: string; kick?: string; snare?: string; volume?: number };
   /** String pad state; see normalizeStringSettings in StringPads.tsx. */
   strings?: { mode?: string; style?: string; volume?: number };
+  /** Sub bass walk-down state; see normalizeSubBassSettings in SubBass.tsx. */
+  subBass?: { notes?: string; octave?: number; rate?: string; tone?: string; volume?: number };
 }
 
 export interface LeadSheet {

@@ -61,7 +61,7 @@ const ENTRIES: Entry[] = [
   {
     title: "Sound tags",
     blurb:
-      "A tag in square brackets on a time-stamped line switches a sound on or off during playback. [drum] starts the drum machine, [/drum] stops it, and the same works for claps, shimmer and drone. Use as many as you like — the band drops out and comes back in wherever you mark it.",
+      "A tag in square brackets on a time-stamped line switches a sound on or off during playback. [drum] starts the drum machine, [/drum] stops it, and the same works for claps, shimmer, drone and sub. Use as many as you like — the band drops out and comes back in wherever you mark it.",
     example:
       "[Intro]\n@0:00 [drum]\n@0:08 [G]Driving down an [D]empty road\n\n[Chorus]\n@0:44 [claps, shimmer]\n\n[Bridge]\n@1:30 [/all]\n@1:30 [Em]just voice and guitar here\n@1:52 [drum, fade-in]\n@1:52 [C]and the band comes back in",
     notes: [
@@ -71,6 +71,7 @@ const ENTRIES: Entry[] = [
       "A tag only fires on a line that starts with a time stamp — without one there is no moment for it to happen at.",
       "You can hang a tag off a lyric line instead of giving it its own line — @1:30 [/drum] [Em]just voice works the same.",
       "[drone] holds the Key: from the header, so a song without one drones on G.",
+      "[sub] walks the sub bass down the notes on the Sub bass: line, one note at a time.",
       "Chords are safe: only the known sound names count as tags, so [G] and [Am7/C] stay chords.",
       "Tags are stripped out of the previewed and printed sheet, so a tag on its own line reads as blank on the page.",
       "Only playback moves the sounds. Open a sheet without pressing Play and the toggles stay under your own control.",
@@ -89,6 +90,21 @@ const ENTRIES: Entry[] = [
     ],
   },
   {
+    title: "Sub bass walk-down",
+    blurb:
+      "A Sub bass: line gives the song a deep, pitched drum that walks down a line of notes — one thump per note, each one lower than the last. Type bare note names and the octaves work themselves out; the walk only ever descends, and starts over at the top when it loops. It never reads the song's chords, so it works on a sheet whose chords aren't written down.",
+    example: "Sub bass: G F# F E, oct 2, bar, round, 70%",
+    notes: [
+      "Give it as many notes as you like, separated by spaces, commas or dashes — G F# F E, G, F#, F, E and G-F#-F-E all read the same.",
+      "Each note lands below the one before it, so a repeated note (G G) drops an octave rather than sitting still.",
+      "Put an octave on a note — G2 — to pin it there, which is how you jump the walk back up partway through.",
+      "oct sets where the walk starts, 1 to 3. Lower it to sit the whole line deeper.",
+      "The note length is 2 bars, bar, half bar or beat — how long each thump holds at the song's tempo.",
+      "Tone is sub, round or punch: sub is nearly a pure sine, round carries the note on small speakers, punch is the drum end of it.",
+      "Changing the sub bass controls in preview writes this line for you, and [sub] switches it on mid-song.",
+    ],
+  },
+  {
     title: "YouTube backing track",
     blurb:
       "Paste a YouTube link anywhere in the song and Play rides the recording instead of a stopwatch, so the highlight follows what you're actually hearing.",
@@ -104,7 +120,8 @@ const TAG_REFERENCE: { tag: string; does: string }[] = [
   { tag: "[claps]", does: "Start handclaps on 2 and 4" },
   { tag: "[shimmer]", does: "Start the accent percussion — whichever one the Drums: line picked" },
   { tag: "[drone]", does: "Hold the song's key underneath as a sustained pad" },
-  { tag: "[/drum]", does: "Stop the drums — same for [/claps], [/shimmer] and [/drone]" },
+  { tag: "[sub]", does: "Walk the sub bass down the notes the Sub bass: line names" },
+  { tag: "[/drum]", does: "Stop the drums — same for [/claps], [/shimmer], [/drone] and [/sub]" },
   { tag: "[/all]", does: "Stop everything that is playing" },
   { tag: "fade-in", does: "Modifier: fade the sound up over four seconds" },
   { tag: "fade-out", does: "Modifier: fade the sound away over four seconds" },

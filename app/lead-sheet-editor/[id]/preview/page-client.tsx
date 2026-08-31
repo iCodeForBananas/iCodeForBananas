@@ -82,6 +82,12 @@ import {
   normalizeStringSettings,
   type StringPadsSettings,
 } from "../../StringPads";
+import {
+  SubBassControl,
+  DEFAULT_SUB_BASS_SETTINGS,
+  normalizeSubBassSettings,
+  type SubBassSettings,
+} from "../../SubBass";
 
 // Per-song localStorage keys: leadSheet:${id}:fontScale, leadSheet:${id}:columnCount,
 // leadSheet:${id}:columnWidthVw, leadSheet:${id}:beatsPerBar
@@ -694,6 +700,8 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
   const [drumSettings, setDrumSettings] = useState<DrumSettings>(DEFAULT_DRUM_SETTINGS);
   const [stringSettings, setStringSettings] = useState<StringPadsSettings>(DEFAULT_STRING_SETTINGS);
   const stringsRunning = activeLayers.has("strings");
+  const [subBassSettings, setSubBassSettings] = useState<SubBassSettings>(DEFAULT_SUB_BASS_SETTINGS);
+  const subRunning = activeLayers.has("sub");
   const [withVideo, setWithVideo] = useState(true);
   const [localVolume, _setLocalVolume] = useState<number | null>(null);
   const localVolumeRef = useRef<number | null>(null);
@@ -701,6 +709,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
   const bpmSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const drumSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const stringSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const subBassSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fadeTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastCueEventIdxRef = useRef<number>(-2); // -2 = uninitialized
 
@@ -1242,6 +1251,29 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
 
   useEffect(() => () => { if (stringSaveTimer.current) clearTimeout(stringSaveTimer.current); }, []);
 
+  // The walk the sub bass plays is part of the arrangement, not a preference of
+  // this browser — someone opening the sheet on stage should get the same notes.
+  const updateSubBassSettings = (patch: Partial<SubBassSettings>) => {
+    const next = { ...subBassSettings, ...patch };
+    setSubBassSettings(next);
+    setSheet((prev) => (prev ? { ...prev, metadata: { ...prev.metadata, subBass: next } } : prev));
+    if (subBassSaveTimer.current) clearTimeout(subBassSaveTimer.current);
+    subBassSaveTimer.current = setTimeout(async () => {
+      const metadata = { ...sheet?.metadata, subBass: next };
+      try {
+        await createClient()!
+          .from("lead_sheets")
+          .update({ metadata, updated_at: new Date().toISOString() })
+          .eq("id", id);
+        if (sheet) await cacheSheet({ ...sheet, metadata });
+      } catch {
+        // Offline or not the owner — the walk still plays as typed.
+      }
+    }, 800);
+  };
+
+  useEffect(() => () => { if (subBassSaveTimer.current) clearTimeout(subBassSaveTimer.current); }, []);
+
   // When a fade is in progress, override the volume without touching persisted settings
   const effectiveDrumSettings = localVolume !== null
     ? { ...drumSettings, volume: localVolume }
@@ -1272,6 +1304,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
         setBpm(data.tempo ? clampBpm(data.tempo) : DEFAULT_BPM);
         setDrumSettings(normalizeDrumSettings(data.metadata?.drums));
         setStringSettings(normalizeStringSettings(data.metadata?.strings));
+        setSubBassSettings(normalizeSubBassSettings(data.metadata?.subBass));
         setOffline(false);
         await cacheSheet(data);
       }
@@ -1282,6 +1315,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
         setBpm(cached.tempo ? clampBpm(cached.tempo) : DEFAULT_BPM);
         setDrumSettings(normalizeDrumSettings(cached.metadata?.drums));
         setStringSettings(normalizeStringSettings(cached.metadata?.strings));
+        setSubBassSettings(normalizeSubBassSettings(cached.metadata?.subBass));
         setOffline(true);
       }
     }
@@ -1362,7 +1396,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                   {/* Collapsible controls panel */}
                   <div
                     className='overflow-hidden transition-all duration-300 ease-in-out'
-                    style={{ maxHeight: toolbarOpen ? "500px" : "0px", opacity: toolbarOpen ? 1 : 0 }}
+                    style={{ maxHeight: toolbarOpen ? "640px" : "0px", opacity: toolbarOpen ? 1 : 0 }}
                   >
                     <div className='pb-3 pt-1'>
                       {/* Row 1: Display */}
@@ -1421,6 +1455,15 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                           onToggle={() => toggleLayer("strings")}
                           settings={stringSettings}
                           onSettingsChange={updateStringSettings}
+                        />
+                        <SubBassControl
+                          bpm={bpm}
+                          beatsPerBar={beatsPerBar}
+                          transposeSteps={transposeSteps}
+                          running={subRunning}
+                          onToggle={() => toggleLayer("sub")}
+                          settings={subBassSettings}
+                          onSettingsChange={updateSubBassSettings}
                         />
                         <button
                           type="button"
@@ -1536,7 +1579,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                 {/* Collapsible controls panel */}
                 <div
                   className='overflow-hidden transition-all duration-300 ease-in-out'
-                  style={{ maxHeight: toolbarOpen ? "500px" : "0px", opacity: toolbarOpen ? 1 : 0 }}
+                  style={{ maxHeight: toolbarOpen ? "640px" : "0px", opacity: toolbarOpen ? 1 : 0 }}
                 >
                   <div className='px-4 pb-3 pt-1 sm:px-6'>
                     {/* Row 1: Display */}
@@ -1601,6 +1644,15 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                         onToggle={() => toggleLayer("strings")}
                         settings={stringSettings}
                         onSettingsChange={updateStringSettings}
+                      />
+                      <SubBassControl
+                        bpm={bpm}
+                        beatsPerBar={beatsPerBar}
+                        transposeSteps={transposeSteps}
+                        running={subRunning}
+                        onToggle={() => toggleLayer("sub")}
+                        settings={subBassSettings}
+                        onSettingsChange={updateSubBassSettings}
                       />
                       <button
                         type="button"

@@ -4,6 +4,11 @@ import {
   isDefaultDrumSettings,
   normalizeDrumSettings,
 } from "./DrumMachine";
+import {
+  formatSubBassSettings,
+  isDefaultSubBassSettings,
+  normalizeSubBassSettings,
+} from "./SubBass";
 
 /**
  * The song as the plain text the editor types and revision history diffs.
@@ -21,6 +26,10 @@ export function serializeSheet(sheet: LeadSheet): string {
   // drums on stay clean. Changing anything writes the line on the next open.
   const drums = normalizeDrumSettings(sheet.metadata?.drums);
   if (!isDefaultDrumSettings(drums)) parts.push(formatDrumSettings(drums));
+
+  // Same rule for the sub bass walk: a song nobody set one on stays clean.
+  const subBass = normalizeSubBassSettings(sheet.metadata?.subBass);
+  if (!isDefaultSubBassSettings(subBass)) parts.push(formatSubBassSettings(subBass));
 
   parts.push("");
 

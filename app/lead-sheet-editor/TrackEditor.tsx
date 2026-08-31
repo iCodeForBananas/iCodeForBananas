@@ -52,6 +52,14 @@ import {
 } from "./DrumMachine";
 import { asSectionHeader } from "./songText";
 import { DEFAULT_STRING_SETTINGS, useStringPads } from "./StringPads";
+import {
+  DEFAULT_SUB_BASS_SETTINGS,
+  hasSubBassSettingsLine,
+  parseSubBassSettingsLine,
+  useSubBassWalk,
+  walkFromSettings,
+  type SubBassSettings,
+} from "./SubBass";
 
 // ─── Track editor ─────────────────────────────────────────────────────────────
 //
@@ -136,6 +144,8 @@ interface SongSettings {
   drums: DrumSettings;
   /** The song's key, which is the note the drone track holds. */
   key: string | null;
+  /** The walk the sub bass track plays; see the Sub bass: line in SubBass.tsx. */
+  subBass: SubBassSettings;
 }
 
 /** Tempo, key and kit, read off the header block the same way the editor writes it. */
@@ -143,6 +153,7 @@ function readSongSettings(rawText: string): SongSettings {
   let bpm = 120;
   let drums = DEFAULT_DRUM_SETTINGS;
   let key: string | null = null;
+  let subBass = DEFAULT_SUB_BASS_SETTINGS;
   for (const line of rawText.split("\n")) {
     if (asSectionHeader(line) !== null) break;
     const tempo = line.match(/\bTempo:\s*(\d+)\b/i);
@@ -150,8 +161,9 @@ function readSongSettings(rawText: string): SongSettings {
     const inKey = line.match(/\bKey:\s*([A-G][#b]?m?)\b/i);
     if (inKey) key = inKey[1];
     if (hasDrumSettingsLine(line)) drums = parseDrumSettingsLine(line) ?? drums;
+    if (hasSubBassSettingsLine(line)) subBass = parseSubBassSettingsLine(line) ?? subBass;
   }
-  return { bpm, drums, key };
+  return { bpm, drums, key, subBass };
 }
 
 // ─── Recorded audio ───────────────────────────────────────────────────────────
@@ -407,6 +419,17 @@ export default function TrackEditor({
     ...DEFAULT_STRING_SETTINGS,
     mode: "drone",
     volume: DEFAULT_STRING_SETTINGS.volume * fadeGain,
+  });
+
+  // The sub bass track walks down whatever notes the song's `Sub bass:` line
+  // names, which is why that line exists — the arranger reads the text, not the
+  // sheet's metadata, so without it a laid-out walk would play someone else's
+  // notes. Bars are counted as four beats here, the same assumption the drum
+  // patterns on these tracks are written to.
+  const subBassWalk = useMemo(() => walkFromSettings(settings.subBass), [settings.subBass]);
+  useSubBassWalk(subBassWalk, settings.bpm, 4, playing && activeLayers.has("sub"), {
+    ...settings.subBass,
+    volume: settings.subBass.volume * fadeGain,
   });
 
   // ── Clip edits ─────────────────────────────────────────────────────────────
