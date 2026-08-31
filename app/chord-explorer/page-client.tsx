@@ -863,7 +863,7 @@ export default function ChordExplorerPage() {
       id: "scale",
       title: "Scale Tool",
       tooltip:
-        "See every note of a scale laid out across all six strings and every fret — great for understanding where you can solo or add a melody over your chord progression. The scale is built on the Root Note you picked at the top of the page.",
+        "See every note of a scale laid out across all six strings and every fret — great for understanding where you can solo or add a melody over your chord progression. Pick a CAGED shape to narrow it to one position: the stretch of neck around one of the five chord shapes, with that chord ringed inside it. The scale is built on the Root Note you picked at the top of the page.",
       defaultColSpan: 12,
       defaultRowSpan: 5,
       content: <ScaleTool rootKey={canonicalNote} />,

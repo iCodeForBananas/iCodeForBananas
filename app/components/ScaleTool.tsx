@@ -2,20 +2,29 @@
 
 import { useState, useMemo } from "react";
 import { allNotes, getNoteAt } from "@/app/lib/music";
+import {
+  CAGED_ORDER,
+  CAGED_BLURB,
+  cagedPositions,
+  isStandardTuning,
+  type CagedKey,
+  type Tonality,
+} from "@/app/lib/caged";
 
-// `anchors` are the five scale degrees the five box shapes start from — the
-// pentatonic skeleton of the scale. Everything about positions falls out of these.
-const SCALE_TYPES: Record<string, { intervals: number[]; degrees: string[]; anchors: number[] }> = {
-  "Major":            { intervals: [0, 2, 4, 5, 7, 9, 11], degrees: ["1","2","3","4","5","6","7"],        anchors: [0, 2, 4, 7, 9] },
-  "Minor":            { intervals: [0, 2, 3, 5, 7, 8, 10], degrees: ["1","2","b3","4","5","b6","b7"],     anchors: [0, 3, 5, 7, 10] },
-  "Pentatonic Major": { intervals: [0, 2, 4, 7, 9],        degrees: ["1","2","3","5","6"],                anchors: [0, 2, 4, 7, 9] },
-  "Pentatonic Minor": { intervals: [0, 3, 5, 7, 10],       degrees: ["1","b3","4","5","b7"],              anchors: [0, 3, 5, 7, 10] },
-  "Blues":            { intervals: [0, 3, 5, 6, 7, 10],    degrees: ["1","b3","4","b5","5","b7"],         anchors: [0, 3, 5, 7, 10] },
-  "Dorian":           { intervals: [0, 2, 3, 5, 7, 9, 10], degrees: ["1","2","b3","4","5","6","b7"],      anchors: [0, 3, 5, 7, 10] },
-  "Phrygian":         { intervals: [0, 1, 3, 5, 7, 8, 10], degrees: ["1","b2","b3","4","5","b6","b7"],    anchors: [0, 3, 5, 7, 10] },
-  "Lydian":           { intervals: [0, 2, 4, 6, 7, 9, 11], degrees: ["1","2","3","#4","5","6","7"],       anchors: [0, 2, 4, 7, 9] },
-  "Mixolydian":       { intervals: [0, 2, 4, 5, 7, 9, 10], degrees: ["1","2","3","4","5","6","b7"],       anchors: [0, 2, 4, 7, 9] },
-  "Locrian":          { intervals: [0, 1, 3, 5, 6, 8, 10], degrees: ["1","b2","b3","4","b5","b6","b7"],   anchors: [0, 3, 5, 6, 10] },
+// `tonality` is which triad the CAGED shapes are drawn as — a scale with a flat
+// third wants the minor forms, or the shape sitting under the notes is not the
+// chord they belong to.
+const SCALE_TYPES: Record<string, { intervals: number[]; degrees: string[]; tonality: Tonality }> = {
+  "Major":            { intervals: [0, 2, 4, 5, 7, 9, 11], degrees: ["1","2","3","4","5","6","7"],        tonality: "major" },
+  "Minor":            { intervals: [0, 2, 3, 5, 7, 8, 10], degrees: ["1","2","b3","4","5","b6","b7"],     tonality: "minor" },
+  "Pentatonic Major": { intervals: [0, 2, 4, 7, 9],        degrees: ["1","2","3","5","6"],                tonality: "major" },
+  "Pentatonic Minor": { intervals: [0, 3, 5, 7, 10],       degrees: ["1","b3","4","5","b7"],              tonality: "minor" },
+  "Blues":            { intervals: [0, 3, 5, 6, 7, 10],    degrees: ["1","b3","4","b5","5","b7"],         tonality: "minor" },
+  "Dorian":           { intervals: [0, 2, 3, 5, 7, 9, 10], degrees: ["1","2","b3","4","5","6","b7"],      tonality: "minor" },
+  "Phrygian":         { intervals: [0, 1, 3, 5, 7, 8, 10], degrees: ["1","b2","b3","4","5","b6","b7"],    tonality: "minor" },
+  "Lydian":           { intervals: [0, 2, 4, 6, 7, 9, 11], degrees: ["1","2","3","#4","5","6","7"],       tonality: "major" },
+  "Mixolydian":       { intervals: [0, 2, 4, 5, 7, 9, 10], degrees: ["1","2","3","4","5","6","b7"],       tonality: "major" },
+  "Locrian":          { intervals: [0, 1, 3, 5, 6, 8, 10], degrees: ["1","b2","b3","4","b5","b6","b7"],   tonality: "minor" },
 };
 
 const TUNINGS: Record<string, string[]> = {
@@ -25,13 +34,20 @@ const TUNINGS: Record<string, string[]> = {
   "Open E (EBEG#BE)":  ["E","B","E","G#","B","E"],
 };
 
-const POSITIONS = [
-  { label: "1st", fill: "#facc15", stroke: "#78600a" },
-  { label: "2nd", fill: "#4ade80", stroke: "#166534" },
-  { label: "3rd", fill: "#38bdf8", stroke: "#075985" },
-  { label: "4th", fill: "#f472b6", stroke: "#9d174d" },
-  { label: "5th", fill: "#c084fc", stroke: "#6b21a8" },
-];
+const SHAPE_COLOURS: Record<CagedKey, { fill: string; stroke: string }> = {
+  C: { fill: "#facc15", stroke: "#78600a" },
+  A: { fill: "#4ade80", stroke: "#166534" },
+  G: { fill: "#38bdf8", stroke: "#075985" },
+  E: { fill: "#f472b6", stroke: "#9d174d" },
+  D: { fill: "#c084fc", stroke: "#6b21a8" },
+};
+
+// Every scale note, when no one shape is picked out.
+const ALL_FILL   = "#facc15";
+const ALL_STROKE = "#78600a";
+
+// The ring drawn around the notes that make up the chord shape itself.
+const CHORD_RING = "#ffffff";
 
 // The root note keeps one colour of its own, whichever position it falls in —
 // a red that none of the five position colours can be confused with.
@@ -53,7 +69,6 @@ function lsGet(key: string, fallback: string): string {
   return localStorage.getItem(key) ?? fallback;
 }
 
-const mod12 = (n: number) => ((n % 12) + 12) % 12;
 
 /**
  * `rootKey` is owned by the page so one Root Note drives every panel — the
@@ -63,12 +78,15 @@ export default function ScaleTool({ rootKey }: { rootKey: string }) {
   const [scaleType,  setScaleType]  = useState(() => lsGet("st-scale",  "Major"));
   const [numFrets,   setNumFrets]   = useState(() => parseInt(lsGet("st-frets", "15")));
   const [tuningName, setTuningName] = useState(() => lsGet("st-tuning", "Standard (EADGBE)"));
-  const [position,   setPosition]   = useState(() => lsGet("st-position", "all"));
+  const [shapeKey,   setShapeKey]   = useState(() => lsGet("st-caged", "all"));
 
   const tuning    = TUNINGS[tuningName]    ?? TUNINGS["Standard (EADGBE)"];
   const scaleData = SCALE_TYPES[scaleType] ?? SCALE_TYPES["Major"];
 
-  const selectedPos = position === "all" ? null : parseInt(position);
+  const selectedShape = (CAGED_ORDER as readonly string[]).includes(shapeKey)
+    ? (shapeKey as CagedKey)
+    : null;
+  const standardTuning = isStandardTuning(tuning);
 
   const scaleNotes = useMemo(() => {
     const ri = allNotes.indexOf(rootKey);
@@ -85,102 +103,35 @@ export default function ScaleTool({ rootKey }: { rootKey: string }) {
     }));
   }, [rootKey, scaleData]);
 
-  // ── Positions ───────────────────────────────────────────────────────────────
-  // Pitch of each open string, in semitones above the lowest string.
-  const openPitches = useMemo(() => {
-    const idx = tuning.map(n => allNotes.indexOf(n));
-    const out = [0];
-    for (let i = 1; i < idx.length; i++) {
-      const step = mod12(idx[i] - idx[i - 1]) || 12;
-      out.push(out[i - 1] + step);
-    }
-    return out;
-  }, [tuning]);
+  // ── CAGED positions ─────────────────────────────────────────────────────────
+  //
+  // A position is the stretch of neck one of the five chord shapes lives in, so
+  // there is nothing to work out here about hand span or where a box "should"
+  // begin — the chord decides, and the scale notes around it come along.
+  const allPositions = useMemo(
+    () => cagedPositions(rootKey, tuning, scaleData.tonality, numFrets),
+    [rootKey, tuning, scaleData.tonality, numFrets]
+  );
 
-  // Fret of the root on the lowest string — every position is measured from it.
-  const rootFret = useMemo(() => {
-    const ri = allNotes.indexOf(rootKey);
-    const oi = allNotes.indexOf(tuning[0]);
-    if (ri < 0 || oi < 0) return 0;
-    return mod12(ri - oi);
-  }, [rootKey, tuning]);
+  /** Every copy of the picked shape that lands on this neck, lowest first. */
+  const shapeSpans = useMemo(
+    () => (selectedShape ? allPositions.filter(p => p.key === selectedShape) : []),
+    [allPositions, selectedShape]
+  );
 
-  // Walk the scale up the neck one string at a time. Each position starts on its
-  // anchor degree on the lowest string, takes every scale note within a hand's
-  // reach, then carries on from the next note up on the string above — which is
-  // what puts the familiar kink in the shape at the B string.
-  const positions = useMemo(() => {
-    const { intervals, anchors } = scaleData;
-    const reach = intervals.length <= 6 ? 3 : 4; // two notes per string, or three
-    const inScale = (pitch: number) => intervals.includes(mod12(pitch - rootFret));
-    const nextIn  = (pitch: number) => { let q = pitch + 1; while (!inScale(q)) q++; return q; };
+  const inSelectedShape = (fret: number) =>
+    shapeSpans.some(p => fret >= p.low && fret <= p.high);
 
-    return anchors.map(deg => {
-      const dots: { s: number; fret: number }[] = [];
-      let cursor = rootFret + deg;
-      for (let s = 0; s < tuning.length; s++) {
-        let fret = cursor - openPitches[s];
-        while (fret < 0) { cursor = nextIn(cursor); fret = cursor - openPitches[s]; }
-        const limit = fret + reach;
-        let pitch = cursor;
-        while (fret <= limit) {
-          dots.push({ s, fret });
-          pitch = nextIn(pitch);
-          fret = pitch - openPitches[s];
-        }
-        cursor = pitch;
+  /** The notes spelling the chord the picked shape is built on. */
+  const chordDots = useMemo(() => {
+    const set = new Set<string>();
+    for (const p of shapeSpans) {
+      for (const { s, fret } of p.chord) {
+        if (fret >= 0 && fret <= numFrets) set.add(`${s}-${fret}`);
       }
-      return dots;
-    });
-  }, [scaleData, rootFret, openPitches, tuning]);
-
-  // Each shape repeats every octave, so paint every copy that fits on the neck.
-  const positionSets = useMemo(() =>
-    positions.map(dots => {
-      const set = new Set<string>();
-      dots.forEach(({ s, fret }) => {
-        for (let k = -2; k <= 2; k++) {
-          const f = fret + 12 * k;
-          if (f >= 0 && f <= numFrets) set.add(`${s}-${f}`);
-        }
-      });
-      return set;
-    }),
-  [positions, numFrets]);
-
-  // Where each position begins, as an offset from the root. Used to hand every
-  // fret to one position when all five are shown at once.
-  const bands = useMemo(() => {
-    const arr = positions.map((dots, p) => ({
-      p,
-      rel: mod12(Math.min(...dots.map(d => d.fret)) - rootFret),
-    }));
-    arr.sort((a, b) => a.rel - b.rel);
-    return arr;
-  }, [positions, rootFret]);
-
-  const positionOfFret = (fret: number) => {
-    const rel = mod12(fret - rootFret);
-    let p = bands[bands.length - 1].p;
-    for (const b of bands) if (b.rel <= rel) p = b.p;
-    return p;
-  };
-
-  // Fret range of every copy of the selected shape that lands on the neck.
-  const positionSpans = useMemo(() => {
-    if (selectedPos === null) return [];
-    const frets = positions[selectedPos].map(d => d.fret);
-    const lo = Math.min(...frets);
-    const hi = Math.max(...frets);
-    const out: { start: number; end: number }[] = [];
-    for (let k = -2; k <= 2; k++) {
-      const a = lo + 12 * k;
-      const b = hi + 12 * k;
-      if (b < 0 || a > numFrets) continue;
-      out.push({ start: Math.max(0, a), end: Math.min(numFrets, b) });
     }
-    return out;
-  }, [positions, selectedPos, numFrets]);
+    return set;
+  }, [shapeSpans, numFrets]);
 
   // Fretboard SVG constants
   const FW = 52;  // column width per fret
@@ -214,9 +165,9 @@ export default function ScaleTool({ rootKey }: { rootKey: string }) {
     outline: "none",
   };
 
-  const choosePosition = (value: string) => {
-    setPosition(value);
-    localStorage.setItem("st-position", value);
+  const chooseShape = (value: string) => {
+    setShapeKey(value);
+    localStorage.setItem("st-caged", value);
   };
 
   return (
@@ -272,41 +223,42 @@ export default function ScaleTool({ rootKey }: { rootKey: string }) {
 
         <div
           className="flex flex-col gap-1.5"
-          title="The scale falls into five box shapes up the neck. Pick one to drill it on its own, or show all five at once."
+          title="CAGED: the five chord shapes a guitar can hold, and the five places on the neck the scale sits around them. Pick one to drill it, or show every note at once."
         >
           <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#888" }}>
-            Position
+            CAGED shape
           </span>
           <div className="flex gap-1.5">
             <button
               type="button"
-              onClick={() => choosePosition("all")}
-              title="Show the whole neck, with each fret coloured by the position it belongs to"
+              onClick={() => chooseShape("all")}
+              title="Show every note of the scale on the whole neck, with the root note marked"
               className="rounded-lg px-2.5 py-1 text-sm font-semibold cursor-pointer"
               style={{
-                background: selectedPos === null ? "#facc15" : "#111",
-                color:      selectedPos === null ? "#000"    : "#888",
-                border: `1px solid ${selectedPos === null ? "#facc15" : "#333"}`,
+                background: selectedShape === null ? ALL_FILL : "#111",
+                color:      selectedShape === null ? "#000"   : "#888",
+                border: `1px solid ${selectedShape === null ? ALL_FILL : "#333"}`,
               }}
             >
               All
             </button>
-            {POSITIONS.map((p, i) => {
-              const active = selectedPos === i;
+            {CAGED_ORDER.map(key => {
+              const active = selectedShape === key;
+              const colour = SHAPE_COLOURS[key];
               return (
                 <button
-                  key={i}
+                  key={key}
                   type="button"
-                  onClick={() => choosePosition(String(i))}
-                  title={`Show only the ${p.label} position — one box shape, repeated up the neck`}
+                  onClick={() => chooseShape(key)}
+                  title={`${key} shape — ${CAGED_BLURB[key]}`}
                   className="rounded-lg px-2.5 py-1 text-sm font-semibold cursor-pointer"
                   style={{
-                    background: active ? p.fill : "#111",
-                    color:      active ? "#000" : p.fill,
-                    border: `1px solid ${active ? p.fill : "#333"}`,
+                    background: active ? colour.fill : "#111",
+                    color:      active ? "#000" : colour.fill,
+                    border: `1px solid ${active ? colour.fill : "#333"}`,
                   }}
                 >
-                  {i + 1}
+                  {key}
                 </button>
               );
             })}
@@ -326,13 +278,13 @@ export default function ScaleTool({ rootKey }: { rootKey: string }) {
           {/* Open string area (before nut) */}
           <rect x={LW} y={HH} width={FW} height={6 * SH} fill="#1e1205" />
 
-          {/* Highlighted band behind the selected position */}
-          {selectedPos !== null && positionSpans.map(({ start, end }, i) => (
+          {/* Highlighted band behind each copy of the selected shape */}
+          {selectedShape !== null && shapeSpans.map((p, i) => (
             <rect
               key={i}
-              x={LW + start * FW} y={HH}
-              width={(end - start + 1) * FW} height={6 * SH}
-              fill={POSITIONS[selectedPos].fill}
+              x={LW + p.low * FW} y={HH}
+              width={(p.high - p.low + 1) * FW} height={6 * SH}
+              fill={SHAPE_COLOURS[selectedShape].fill}
               opacity={0.09}
             />
           ))}
@@ -383,16 +335,22 @@ export default function ScaleTool({ rootKey }: { rootKey: string }) {
               const note = getNoteAt(openNote, col);
               if (!scaleNotes.has(note)) return null;
               const isRoot = note === rootKey;
-              const posIdx = positionOfFret(col);
-              const shown  = selectedPos === null || positionSets[selectedPos].has(`${s}-${col}`);
-              const colour = POSITIONS[selectedPos === null ? posIdx : selectedPos];
+              const shown  = selectedShape === null || inSelectedShape(col);
+              const colour = selectedShape === null
+                ? { fill: ALL_FILL, stroke: ALL_STROKE }
+                : SHAPE_COLOURS[selectedShape];
+              // A note that is part of the chord the shape is named for — the
+              // thing the whole position is hanging off.
+              const inChord = selectedShape !== null && shown && chordDots.has(`${s}-${col}`);
 
               const where = col === 0 ? ", open string" : `, fret ${col}`;
-              const posLabel = selectedPos === null
-                ? ` — ${POSITIONS[posIdx].label} position`
+              const posLabel = selectedShape === null
+                ? ""
                 : shown
-                  ? ` — ${POSITIONS[selectedPos].label} position`
-                  : " — outside this position";
+                  ? inChord
+                    ? ` — in the ${selectedShape} shape, and part of its chord`
+                    : ` — in the ${selectedShape} shape`
+                  : ` — outside the ${selectedShape} shape`;
               const dotLabel = isRoot
                 ? `Root note — ${note} (the home base of the ${rootKey} ${scaleType} scale)${where}${posLabel}`
                 : `Scale note — ${note}${where}${posLabel}`;
@@ -400,6 +358,12 @@ export default function ScaleTool({ rootKey }: { rootKey: string }) {
               return (
                 <g key={`${s}-${col}`} opacity={shown ? 1 : 0.45}>
                   <title>{dotLabel}</title>
+                  {inChord && (
+                    <circle
+                      cx={cx(col)} cy={cy(s)} r={DR + 4}
+                      fill="none" stroke={CHORD_RING} strokeWidth={1.75} opacity={0.85}
+                    />
+                  )}
                   <circle
                     cx={cx(col)} cy={cy(s)} r={DR}
                     fill={shown ? (isRoot ? ROOT_FILL : colour.fill) : MUTED_FILL}
@@ -448,14 +412,13 @@ export default function ScaleTool({ rootKey }: { rootKey: string }) {
             Open
           </text>
           {Array.from({ length: numFrets }, (_, i) => i + 1).map(fret => {
-            const lit = selectedPos !== null
-              && positionSpans.some(r => fret >= r.start && fret <= r.end);
+            const lit = selectedShape !== null && inSelectedShape(fret);
             return (
               <text
                 key={fret}
                 x={cx(fret)} y={HH / 2}
                 textAnchor="middle" dominantBaseline="central"
-                fill={lit ? POSITIONS[selectedPos].fill : "#9a8a6a"}
+                fill={lit ? SHAPE_COLOURS[selectedShape].fill : "#9a8a6a"}
                 fontSize={11}
                 fontWeight={lit ? "bold" : "normal"}
                 fontFamily="system-ui, -apple-system, sans-serif"
@@ -479,7 +442,7 @@ export default function ScaleTool({ rootKey }: { rootKey: string }) {
             style={{ color: "#666" }}
           >
             {rootKey} {scaleType}
-            {selectedPos !== null && ` — ${POSITIONS[selectedPos].label} position`}
+            {selectedShape !== null && ` — ${selectedShape} shape`}
           </div>
           <div className="flex flex-wrap gap-2">
             {scaleNoteList.map(({ note, degree }, i) => {
@@ -514,13 +477,34 @@ export default function ScaleTool({ rootKey }: { rootKey: string }) {
               );
             })}
           </div>
-          {selectedPos !== null && (
-            <div className="text-xs mt-3" style={{ color: "#888" }}>
-              {positionSpans.length > 0
-                ? `Play it between frets ${positionSpans
-                    .map(r => `${r.start}–${r.end}`)
-                    .join(" and ")}.`
-                : "This position sits past the last visible fret — drag the Frets slider up to reach it."}
+          {selectedShape !== null && (
+            <div className="text-xs mt-3 flex flex-col gap-1" style={{ color: "#888" }}>
+              <span>{CAGED_BLURB[selectedShape]}.</span>
+              {shapeSpans.length > 0 ? (
+                <span>
+                  Play it between frets{" "}
+                  {shapeSpans.map(p => `${p.low}–${p.high}`).join(" and ")}.{" "}
+                  {standardTuning ? (
+                    <>
+                      The ringed notes are the {rootKey}{" "}
+                      {scaleData.tonality === "minor" ? "minor" : "major"} chord itself — everything
+                      else in the box is a note you can play around it.
+                    </>
+                  ) : (
+                    <>The ringed notes are where the shape&apos;s own fingers land.</>
+                  )}
+                </span>
+              ) : (
+                <span>
+                  This shape sits past the last visible fret — drag the Frets slider up to reach it.
+                </span>
+              )}
+              {!standardTuning && (
+                <span style={{ color: "#c08a3e" }}>
+                  CAGED is a standard-tuning system. The positions follow your tuning&apos;s roots,
+                  but the ringed shape only spells a chord in standard tuning.
+                </span>
+              )}
             </div>
           )}
         </div>
@@ -534,34 +518,48 @@ export default function ScaleTool({ rootKey }: { rootKey: string }) {
             className="text-xs font-semibold uppercase tracking-wider mb-1"
             style={{ color: "#666" }}
           >
-            Positions
+            CAGED shapes
           </div>
-          {POSITIONS.map((p, i) => (
+          {CAGED_ORDER.map(key => (
             <button
-              key={i}
+              key={key}
               type="button"
-              onClick={() => choosePosition(selectedPos === i ? "all" : String(i))}
-              title={`${p.label} position — click to drill it on its own`}
+              onClick={() => chooseShape(selectedShape === key ? "all" : key)}
+              title={`${key} shape — ${CAGED_BLURB[key]}`}
               className="flex items-center gap-2 cursor-pointer text-left"
-              style={{ opacity: selectedPos === null || selectedPos === i ? 1 : 0.4 }}
+              style={{ opacity: selectedShape === null || selectedShape === key ? 1 : 0.4 }}
             >
               <div
                 className="w-5 h-5 rounded-full shrink-0"
-                style={{ background: p.fill, border: `1.5px solid ${p.stroke}` }}
+                style={{
+                  background: SHAPE_COLOURS[key].fill,
+                  border: `1.5px solid ${SHAPE_COLOURS[key].stroke}`,
+                }}
               />
               <span className="text-sm" style={{ color: "#ccc" }}>
-                {p.label} position
+                {key} shape
               </span>
             </button>
           ))}
-          <div className="flex items-center gap-2 mt-1 pt-2" style={{ borderTop: "1px solid #222" }}>
-            <div
-              className="w-5 h-5 rounded-full shrink-0"
-              style={{ background: ROOT_FILL, border: `2.5px solid ${ROOT_STROKE}` }}
-            />
-            <span className="text-sm" style={{ color: "#ccc" }}>
-              Root note ({rootKey})
-            </span>
+          <div className="flex flex-col gap-2 mt-1 pt-2" style={{ borderTop: "1px solid #222" }}>
+            <div className="flex items-center gap-2">
+              <div
+                className="w-5 h-5 rounded-full shrink-0"
+                style={{ background: ROOT_FILL, border: `2.5px solid ${ROOT_STROKE}` }}
+              />
+              <span className="text-sm" style={{ color: "#ccc" }}>
+                Root note ({rootKey})
+              </span>
+            </div>
+            <div className="flex items-center gap-2" title="These notes spell the chord the shape is named after">
+              <div
+                className="w-5 h-5 rounded-full shrink-0"
+                style={{ background: "transparent", border: `2px solid ${CHORD_RING}` }}
+              />
+              <span className="text-sm" style={{ color: "#ccc" }}>
+                In the chord shape
+              </span>
+            </div>
           </div>
         </div>
       </div>
