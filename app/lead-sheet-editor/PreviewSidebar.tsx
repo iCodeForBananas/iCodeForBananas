@@ -520,11 +520,7 @@ export default function PreviewSidebar(props: PreviewSidebarProps) {
 
             <SidebarSection title='Edit'>
               <LineEditControl active={props.editMode} onToggle={props.onEditModeToggle} />
-              <button
-                type='button'
-                onClick={props.onOpenEditor}
-                className='h-9 w-full flex items-center gap-2 px-2.5 rounded-lg text-sm font-medium bg-black hover:bg-black/80 text-yellow-400 transition-colors duration-150'
-              >
+              <button type='button' onClick={props.onOpenEditor} className={ROW_BTN}>
                 <Pencil className='w-4 h-4' /> Open Editor
               </button>
             </SidebarSection>
