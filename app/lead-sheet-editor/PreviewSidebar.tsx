@@ -47,25 +47,31 @@ export const DEFAULT_COLUMN_WIDTH_VW = 30;
 const OPEN_WIDTH = "w-[19rem]";
 const RAIL_WIDTH = "w-14";
 
-/** Full-width row button — the shape every plain action in the sidebar takes. */
-const ROW_BTN =
-  "h-9 w-full flex items-center gap-2 px-2.5 rounded-lg text-sm font-medium bg-gray-100 dark:bg-neutral-800 hover:bg-gray-200 dark:hover:bg-neutral-700 text-gray-700 dark:text-neutral-200 transition-colors duration-150";
+/**
+ * One row of the sidebar. Every tool is a full-width line separated from its
+ * neighbours by a hairline rather than boxed in a border of its own — a column
+ * of nested boxes reads as clutter at the size these controls run to.
+ */
+const ROW = "h-11 w-full flex items-center gap-2.5 px-3 text-sm font-medium transition-colors duration-150";
+const ROW_BTN = `${ROW} text-gray-700 dark:text-neutral-200 hover:bg-gray-100 dark:hover:bg-neutral-800`;
 
 /** One labelled block of the sidebar — the unit the whole column scrolls through. */
 function SidebarSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className='border-b border-gray-200 dark:border-neutral-800 px-3 py-3'>
-      <h2 className='mb-2 text-[11px] font-semibold uppercase tracking-widest text-gray-400 dark:text-neutral-500 select-none'>
+    <section>
+      <h2 className='px-3 pt-4 pb-1.5 text-[11px] font-semibold uppercase tracking-widest text-gray-400 dark:text-neutral-500 select-none'>
         {title}
       </h2>
-      <div className='flex flex-col gap-2'>{children}</div>
+      <div className='divide-y divide-gray-200 border-y border-gray-200 dark:divide-neutral-800 dark:border-neutral-800'>
+        {children}
+      </div>
     </section>
   );
 }
 
 function ColumnCountControl({ count, onChange }: { count: number; onChange: (next: number) => void }) {
   return (
-    <div className='flex flex-wrap items-center gap-1 rounded-lg border border-gray-200 dark:border-neutral-700 px-1.5 py-1 print:hidden'>
+    <div className='flex flex-wrap items-center gap-1 px-3 py-2 print:hidden'>
       <span className='text-sm font-medium text-gray-700 dark:text-neutral-200 select-none'>Cols</span>
       <button
         type='button'
@@ -92,7 +98,7 @@ function ColumnCountControl({ count, onChange }: { count: number; onChange: (nex
 
 function ColumnWidthControl({ width, onChange }: { width: number; onChange: (next: number) => void }) {
   return (
-    <div className='flex flex-wrap items-center gap-1 rounded-lg border border-gray-200 dark:border-neutral-700 px-1.5 py-1 print:hidden'>
+    <div className='flex flex-wrap items-center gap-1 px-3 py-2 print:hidden'>
       <span className='text-sm font-medium text-gray-700 dark:text-neutral-200 select-none'>Width</span>
       <button
         type='button'
@@ -119,7 +125,7 @@ function ColumnWidthControl({ width, onChange }: { width: number; onChange: (nex
 
 function FontScaleControl({ scale, onChange }: { scale: number; onChange: (next: number) => void }) {
   return (
-    <div className='flex flex-wrap items-center gap-1 rounded-lg border border-gray-200 dark:border-neutral-700 px-1.5 py-1 print:hidden'>
+    <div className='flex flex-wrap items-center gap-1 px-3 py-2 print:hidden'>
       <span className='text-sm font-medium text-gray-700 dark:text-neutral-200 select-none'>Size</span>
       <button
         type='button'
@@ -147,7 +153,7 @@ function FontScaleControl({ scale, onChange }: { scale: number; onChange: (next:
 function TransposeControl({ steps, onChange }: { steps: number; onChange: (next: number) => void }) {
   const offsetLabel = steps > 0 ? `+${steps}` : steps < 0 ? `${steps}` : "±0";
   return (
-    <div className='flex flex-wrap items-center gap-1 rounded-lg border border-gray-200 dark:border-neutral-700 px-1.5 py-1 print:hidden'>
+    <div className='flex flex-wrap items-center gap-1 px-3 py-2 print:hidden'>
       <button
         type='button'
         onClick={() => onChange(steps - 1)}
@@ -192,16 +198,14 @@ function PlayControl({
   onOpen: () => void;
   onClose: () => void;
 }) {
-  const playBtnClass = `h-10 flex-1 flex items-center justify-center gap-1.5 px-3 text-sm font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed ${
-    videoLink ? "rounded-l-lg" : "rounded-lg"
-  } ${
+  const playBtnClass = `h-11 flex-1 flex items-center gap-2.5 px-3 text-sm font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed ${
     open
       ? "bg-yellow-400 text-black hover:bg-yellow-300"
-      : "bg-gray-100 dark:bg-neutral-800 hover:bg-gray-200 dark:hover:bg-neutral-700 text-gray-700 dark:text-neutral-200"
+      : "text-gray-700 dark:text-neutral-200 hover:bg-gray-100 dark:hover:bg-neutral-800"
   }`;
 
   return (
-    <div className='flex w-full items-center print:hidden'>
+    <div className='flex w-full items-stretch print:hidden'>
       <button
         type='button'
         onClick={open ? onClose : onOpen}
@@ -221,14 +225,14 @@ function PlayControl({
           type='button'
           onClick={onWithVideoToggle}
           title={withVideo ? "YouTube video enabled — click to play without it" : "Click to play with the linked YouTube video"}
-          className={`h-10 flex items-center px-2 rounded-r-lg border-l text-sm transition-colors duration-150 ${
+          className={`h-11 flex items-center px-3 border-l border-gray-200 dark:border-neutral-800 text-sm transition-colors duration-150 ${
             open
               ? withVideo
                 ? "bg-yellow-300 text-black border-yellow-500/60 hover:bg-yellow-200"
                 : "bg-yellow-400 text-black/40 border-yellow-500/40 hover:bg-yellow-300"
               : withVideo
-                ? "bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 border-gray-200 dark:border-neutral-600 hover:bg-blue-200 dark:hover:bg-blue-900/60"
-                : "bg-gray-100 dark:bg-neutral-800 text-gray-400 dark:text-neutral-500 border-gray-200 dark:border-neutral-700 hover:bg-gray-200 dark:hover:bg-neutral-700"
+                ? "text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/40"
+                : "text-gray-400 dark:text-neutral-500 hover:bg-gray-100 dark:hover:bg-neutral-800"
           }`}
         >
           <Youtube className='w-4 h-4' />
@@ -249,10 +253,10 @@ function LineEditControl({ active, onToggle }: { active: boolean; onToggle: () =
       onClick={onToggle}
       aria-pressed={active}
       title={active ? "Stop editing lines" : "Tap a line to edit just that line"}
-      className={`h-9 w-full flex items-center gap-2 px-2.5 rounded-lg text-sm font-medium transition-colors duration-150 print:hidden ${
+      className={`${ROW} print:hidden ${
         active
           ? "bg-yellow-400 text-black hover:bg-yellow-300"
-          : "bg-gray-100 dark:bg-neutral-800 hover:bg-gray-200 dark:hover:bg-neutral-700 text-gray-700 dark:text-neutral-200"
+          : "text-gray-700 dark:text-neutral-200 hover:bg-gray-100 dark:hover:bg-neutral-800"
       }`}
     >
       <PencilLine className='w-4 h-4' />
@@ -276,7 +280,7 @@ function NextSongControl({
       type='button'
       onClick={() => !isLast && onNext(setIds[pos + 1], pos + 1)}
       disabled={isLast}
-      className={`${ROW_BTN} justify-between disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-gray-100 dark:disabled:hover:bg-neutral-800 print:hidden`}
+      className={`${ROW_BTN} justify-between disabled:opacity-40 disabled:hover:bg-transparent dark:disabled:hover:bg-transparent print:hidden`}
     >
       {isLast ? "End of Set" : `Next Song (${pos + 2} of ${setIds.length})`}
       {!isLast && <ArrowRight className='w-4 h-4' />}
@@ -474,10 +478,10 @@ export default function PreviewSidebar(props: PreviewSidebarProps) {
                 type='button'
                 onClick={props.onClapsToggle}
                 title='Hand claps on beats 2 & 4'
-                className={`h-9 w-full px-2.5 text-sm font-medium rounded-lg border text-left transition-colors duration-100 ${
+                className={`${ROW} ${
                   props.clapsRunning
-                    ? "bg-amber-400 text-white border-amber-400"
-                    : "bg-gray-100 dark:bg-neutral-800 text-gray-600 dark:text-neutral-300 border-gray-200 dark:border-neutral-700 hover:bg-gray-200 dark:hover:bg-neutral-700"
+                    ? "bg-amber-400 text-white hover:bg-amber-300"
+                    : "text-gray-700 dark:text-neutral-200 hover:bg-gray-100 dark:hover:bg-neutral-800"
                 }`}
               >
                 Claps
@@ -529,10 +533,10 @@ export default function PreviewSidebar(props: PreviewSidebarProps) {
               <button
                 type='button'
                 onClick={props.onCopy}
-                className={`h-9 w-full flex items-center gap-2 px-2.5 rounded-lg text-sm font-medium transition-colors duration-150 ${
+                className={`${ROW} ${
                   props.copied
-                    ? "bg-blue-100 hover:bg-blue-200 text-blue-700"
-                    : "bg-gray-100 hover:bg-gray-200 text-gray-700 dark:bg-neutral-800 dark:hover:bg-neutral-700 dark:text-neutral-200"
+                    ? "bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400"
+                    : "text-gray-700 dark:text-neutral-200 hover:bg-gray-100 dark:hover:bg-neutral-800"
                 }`}
               >
                 {props.copied ? <Check className='w-4 h-4' /> : <Copy className='w-4 h-4' />}
@@ -541,10 +545,10 @@ export default function PreviewSidebar(props: PreviewSidebarProps) {
               <button
                 type='button'
                 onClick={props.onShare}
-                className={`h-9 w-full flex items-center gap-2 px-2.5 rounded-lg text-sm font-medium transition-colors duration-150 ${
+                className={`${ROW} ${
                   props.shared
-                    ? "bg-blue-100 hover:bg-blue-200 text-blue-700"
-                    : "bg-gray-100 hover:bg-gray-200 text-gray-700 dark:bg-neutral-800 dark:hover:bg-neutral-700 dark:text-neutral-200"
+                    ? "bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400"
+                    : "text-gray-700 dark:text-neutral-200 hover:bg-gray-100 dark:hover:bg-neutral-800"
                 }`}
               >
                 {props.shared ? <Check className='w-4 h-4' /> : <Link2 className='w-4 h-4' />}

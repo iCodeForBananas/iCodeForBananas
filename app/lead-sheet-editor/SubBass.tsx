@@ -595,7 +595,7 @@ export function SubBassControl({
   }, [walk]);
 
   return (
-    <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-gray-200 dark:border-neutral-700 px-2 py-1 print:hidden">
+    <div className="flex flex-wrap items-center gap-1.5 px-3 py-2 print:hidden">
       {/* On/off */}
       <button
         type="button"

@@ -5,14 +5,17 @@ import { Check, X } from "lucide-react";
 import { SECTION_TYPES, nextSectionLabel, type Section, type SectionType } from "./shared";
 
 /**
- * Naming a new part of the song. Typing [Chorus] into a line does the same
- * thing, but only if you already know that — this is the door with a sign on
- * it: pick what kind of part it is, take the name it suggests or write your
- * own, and it lands under the section you were looking at.
+ * Naming a part of the song. Typing [Chorus] into a line does the same thing,
+ * but only if you already know that — this is the door with a sign on it: pick
+ * what kind of part it is, take the name it suggests or write your own.
+ *
+ * With `editing` it renames the part instead of adding one, which is what
+ * tapping a section's badge in the preview's edit mode opens.
  */
 export default function SectionEditor({
   sections,
   afterLabel,
+  editing = null,
   onAdd,
   onCancel,
 }: {
@@ -20,13 +23,19 @@ export default function SectionEditor({
   sections: Section[];
   /** The section this one will follow, or null when the song has none yet. */
   afterLabel: string | null;
+  /** The section being renamed. Null adds a new one instead. */
+  editing?: Section | null;
+  /** Takes the chosen type and name — a new section's, or the edited one's. */
   onAdd: (type: SectionType, label: string) => void;
   onCancel: () => void;
 }) {
-  const [type, setType] = useState<SectionType>("verse");
-  const [label, setLabel] = useState(() => nextSectionLabel(sections, "verse"));
+  const [type, setType] = useState<SectionType>(editing?.type ?? "verse");
+  const [label, setLabel] = useState(
+    () => editing?.label || (editing ? editing.type : nextSectionLabel(sections, "verse"))
+  );
   // Whether the name is still the suggestion, and so free to follow the type.
-  const [named, setNamed] = useState(false);
+  // An existing name is already the section's own, so it never gets rewritten.
+  const [named, setNamed] = useState(!!editing);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -41,7 +50,8 @@ export default function SectionEditor({
     if (!named) setLabel(nextSectionLabel(sections, next));
   };
 
-  const add = () => onAdd(type, label.trim() || nextSectionLabel(sections, type));
+  const suggested = editing ? editing.label || editing.type : nextSectionLabel(sections, type);
+  const add = () => onAdd(type, label.trim() || suggested);
 
   return (
     <div
@@ -53,17 +63,17 @@ export default function SectionEditor({
       <div
         role='dialog'
         aria-modal='true'
-        aria-label='New section'
+        aria-label={editing ? "Rename section" : "New section"}
         className='w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl bg-white dark:bg-neutral-900 shadow-2xl border-t sm:border border-gray-200 dark:border-neutral-700'
       >
         <div className='flex items-center justify-between gap-2 px-4 pt-3 pb-2'>
           <span className='text-sm font-semibold text-black dark:text-white'>
-            New section{afterLabel ? ` after ${afterLabel}` : ""}
+            {editing ? "Section name" : `New section${afterLabel ? ` after ${afterLabel}` : ""}`}
           </span>
           <button
             type='button'
             onClick={onCancel}
-            aria-label='Close without adding'
+            aria-label='Close without saving'
             className='h-9 w-9 flex items-center justify-center rounded-lg text-gray-500 dark:text-neutral-400 hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors duration-150'
           >
             <X className='w-5 h-5' />
@@ -104,7 +114,7 @@ export default function SectionEditor({
                 add();
               }
             }}
-            placeholder={nextSectionLabel(sections, type)}
+            placeholder={suggested}
             className='mt-1 w-full rounded-xl border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-950 px-3 py-2.5 text-[16px] text-black dark:text-white outline-none focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/40'
           />
 
@@ -116,7 +126,7 @@ export default function SectionEditor({
               className='inline-block text-[0.7rem] font-bold uppercase tracking-widest px-2 py-1 rounded'
               style={{ background: "#facc15", color: "#000" }}
             >
-              {label.trim() || nextSectionLabel(sections, type)}
+              {label.trim() || suggested}
             </span>
           </div>
 
@@ -134,7 +144,7 @@ export default function SectionEditor({
               className='h-12 flex-[2] flex items-center justify-center gap-1.5 rounded-xl text-sm font-semibold bg-black hover:bg-black/80 text-yellow-400 dark:bg-yellow-400 dark:text-black dark:hover:bg-yellow-300 transition-colors duration-150'
             >
               <Check className='w-4 h-4' />
-              Add section
+              {editing ? "Save name" : "Add section"}
             </button>
           </div>
         </div>

@@ -4,7 +4,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState, use } from "re
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/app/hooks/useAuth";
-import { Plus } from "lucide-react";
+import { Pencil, Plus } from "lucide-react";
 import {
   type LeadSheet,
   type Section,
@@ -166,6 +166,7 @@ const SheetContent = memo(function SheetContent({
   onInsertLine,
   onMoveLine,
   onAddSection,
+  onEditSection,
   bpm,
 }: {
   sheet: LeadSheet;
@@ -185,6 +186,8 @@ const SheetContent = memo(function SheetContent({
   onMoveLine?: (from: LinePos, to: LinePos) => void;
   /** Opens the new-section sheet, landing the section after the one given. */
   onAddSection?: (afterIndex: number) => void;
+  /** Present in edit mode — makes a section's badge the way to rename it. */
+  onEditSection?: (sectionIndex: number) => void;
   /** Tempo the song's beat markers are read at — the live one, not the saved one. */
   bpm?: number;
 }) {
@@ -242,12 +245,25 @@ const SheetContent = memo(function SheetContent({
           return (
             <div key={section.id} style={{ breakInside: "avoid" }}>
               <div className='mb-4'>
-                <span
-                  className='text-[0.75em] font-bold uppercase tracking-widest px-2 py-1 rounded'
-                  style={{ background: "#facc15", color: "#000" }}
-                >
-                  {section.label || section.type}
-                </span>
+                {onEditSection ? (
+                  <button
+                    type='button'
+                    onClick={() => onEditSection(sectionIndex)}
+                    title='Rename this section'
+                    className='inline-flex items-center gap-1.5 text-[0.75em] font-bold uppercase tracking-widest px-2 py-1 rounded transition-opacity duration-150 hover:opacity-80'
+                    style={{ background: "#facc15", color: "#000" }}
+                  >
+                    {section.label || section.type}
+                    <Pencil className='w-3 h-3' />
+                  </button>
+                ) : (
+                  <span
+                    className='text-[0.75em] font-bold uppercase tracking-widest px-2 py-1 rounded'
+                    style={{ background: "#facc15", color: "#000" }}
+                  >
+                    {section.label || section.type}
+                  </span>
+                )}
               </div>
               {/* No overflow-x here: long lines wrap rather than scroll sideways,
                   so nothing renders a horizontal scrollbar on screen or in print. */}
@@ -414,6 +430,8 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
   const [editTarget, setEditTarget] = useState<LineTarget | null>(null);
   /** Index the new section lands after; -1 puts it at the top of a bare song. */
   const [sectionAfter, setSectionAfter] = useState<number | null>(null);
+  /** Index of the section whose name is open for editing. */
+  const [sectionEdit, setSectionEdit] = useState<number | null>(null);
   const [lineSaving, setLineSaving] = useState(false);
   const [lineError, setLineError] = useState<string | null>(null);
   // A failed drag has no sheet open to report into, so it borrows the banner.
@@ -682,6 +700,24 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
       setEditTarget({ sectionIndex: sectionAfter + 1, lineIndex: 0, sectionLabel: label, text: "" });
     } catch {
       flashMoveError("Couldn't add that section — check your connection and try again.");
+    }
+  };
+
+  // Renaming a part of the song where it is read: the badge over each section
+  // is the handle, so nothing has to be retyped as [Chorus] to fix a name.
+  const renameSection = async (type: SectionType, label: string) => {
+    if (!sheet || sectionEdit === null) return;
+    const index = sectionEdit;
+    setSectionEdit(null);
+    const sections = sheet.sections.map((section, i) =>
+      i === index ? { ...section, type, label } : section
+    );
+    try {
+      if (!(await commitSections(sections))) {
+        flashMoveError("This song belongs to someone else, so it can't be edited here.");
+      }
+    } catch {
+      flashMoveError("Couldn't rename that section — check your connection and try again.");
     }
   };
 
@@ -1186,9 +1222,9 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
           <div className='fixed inset-0 z-50 flex bg-white dark:bg-black'>
             {toolSidebar}
             <div className='flex flex-col flex-1 min-w-0'>
-              {editMode && <EditModeBanner error={moveError} onDone={() => setEditMode(false)} className='px-4' />}
+              {editMode && <EditModeBanner error={moveError} onDone={() => setEditMode(false)} className='px-6 sm:px-8' />}
               <div className='flex-1 overflow-y-auto overflow-x-hidden'>
-                <div className='py-8' style={{ fontSize: `${fontScale}%` }}>
+                <div className='w-full px-6 py-8 sm:px-8' style={{ fontSize: `${fontScale}%` }}>
                   <LineDndProvider onMove={editMode ? moveLine : undefined} lineTextAt={lineTextAt}>
                     <SheetContent
                       sheet={sheet}
@@ -1196,6 +1232,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                       onInsertLine={editMode ? openLineInsert : undefined}
                       onMoveLine={editMode ? moveLine : undefined}
                       onAddSection={editMode ? setSectionAfter : undefined}
+                      onEditSection={editMode ? setSectionEdit : undefined}
                       fullscreen
                       columnCount={columnCount}
                       columnWidthVw={columnWidthVw}
@@ -1216,10 +1253,10 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
             <div className='relative flex flex-1 min-h-0 rounded-none border-none bg-white dark:bg-black overflow-hidden'>
               {toolSidebar}
               <div className='flex flex-col flex-1 min-w-0'>
-                {editMode && <EditModeBanner error={moveError} onDone={() => setEditMode(false)} className='px-4 sm:px-6' />}
+                {editMode && <EditModeBanner error={moveError} onDone={() => setEditMode(false)} className='px-6 sm:px-8' />}
                 {/* Scrollable content */}
                 <div className='flex-1 overflow-y-auto overflow-x-hidden'>
-                  <div className='w-full py-8 px-4 sm:px-0' style={{ fontSize: `${fontScale}%` }}>
+                  <div className='w-full px-6 py-8 sm:px-8' style={{ fontSize: `${fontScale}%` }}>
                     <LineDndProvider onMove={editMode ? moveLine : undefined} lineTextAt={lineTextAt}>
                       <SheetContent
                         sheet={sheet}
@@ -1227,6 +1264,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                         onInsertLine={editMode ? openLineInsert : undefined}
                         onMoveLine={editMode ? moveLine : undefined}
                         onAddSection={editMode ? setSectionAfter : undefined}
+                        onEditSection={editMode ? setSectionEdit : undefined}
                         fullscreen={false}
                         columnCount={columnCount}
                         columnWidthVw={columnWidthVw}
@@ -1266,6 +1304,11 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
             saving={lineSaving}
             error={lineError}
             onSave={saveLine}
+            onDelete={
+              editTarget.insert
+                ? undefined
+                : () => deleteLine(editTarget.sectionIndex, editTarget.lineIndex, false)
+            }
             onCancel={() => setEditTarget(null)}
           />
         )}
@@ -1280,6 +1323,16 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
             }
             onAdd={addSection}
             onCancel={() => setSectionAfter(null)}
+          />
+        )}
+
+        {sectionEdit !== null && sheet.sections[sectionEdit] && (
+          <SectionEditor
+            sections={sheet.sections}
+            afterLabel={null}
+            editing={sheet.sections[sectionEdit]}
+            onAdd={renameSection}
+            onCancel={() => setSectionEdit(null)}
           />
         )}
 

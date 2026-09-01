@@ -38,6 +38,7 @@ export default function LineEditor({
   saving = false,
   error = null,
   onSave,
+  onDelete,
   onCancel,
 }: {
   target: LineTarget;
@@ -47,6 +48,8 @@ export default function LineEditor({
   error?: string | null;
   /** `andAnother` asks for a fresh line below once this one is stored. */
   onSave: (text: string, andAnother: boolean) => void;
+  /** Throws the line away outright. Absent on a line that isn't in the song yet. */
+  onDelete?: () => void;
   onCancel: () => void;
 }) {
   const [text, setText] = useState(target.text);
@@ -184,6 +187,18 @@ export default function LineEditor({
           {error && <p className='mt-2 text-xs font-medium text-red-600 dark:text-red-400'>{error}</p>}
 
           <div className='mt-4 flex gap-2'>
+            {onDelete && !target.insert && (
+              <button
+                type='button'
+                onClick={onDelete}
+                disabled={saving}
+                title='Delete this line'
+                aria-label='Delete this line'
+                className='h-12 w-12 shrink-0 flex items-center justify-center rounded-xl bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-500/10 dark:text-red-400 dark:hover:bg-red-500/20 transition-colors duration-150 disabled:opacity-60'
+              >
+                <Trash2 className='w-5 h-5' />
+              </button>
+            )}
             <button
               type='button'
               onClick={onCancel}

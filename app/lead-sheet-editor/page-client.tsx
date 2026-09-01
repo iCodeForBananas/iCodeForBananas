@@ -1,14 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/app/hooks/useAuth";
 import Link from "next/link";
-import { Plus, Trash2, Music, Eye, Pencil, Copy, Check, Link2, ListMusic } from "lucide-react";
+import { Plus, Trash2, Music, Eye, Pencil, Copy, Check, Link2, ListMusic, Star } from "lucide-react";
 import type { LeadSheet } from "./shared";
 import { makeSection, getPlainText, OfflineBadge } from "./shared";
-import { cacheSheetList, getCachedSheetList } from "./offlineCache";
+import { cacheSheet, cacheSheetList, getCachedSheetList } from "./offlineCache";
 
 export default function LeadSheetList() {
   const { user, loading: authLoading } = useAuth();
@@ -16,7 +16,25 @@ export default function LeadSheetList() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [sharedId, setSharedId] = useState<string | null>(null);
   const [offline, setOffline] = useState(false);
+  const [favoriteError, setFavoriteError] = useState<string | null>(null);
   const router = useRouter();
+
+  // Songs read alphabetically, with the starred ones held at the top — the set
+  // being played this month sits where a thumb lands, and everything else stays
+  // where its name says it should be.
+  const sortedSheets = useMemo(
+    () =>
+      [...sheets].sort((a, b) => {
+        const aFav = a.metadata?.favorite ? 0 : 1;
+        const bFav = b.metadata?.favorite ? 0 : 1;
+        if (aFav !== bFav) return aFav - bFav;
+        return (a.title || "Untitled").localeCompare(b.title || "Untitled", undefined, {
+          sensitivity: "base",
+          numeric: true,
+        });
+      }),
+    [sheets]
+  );
 
   const getSb = () => createClient()!;
 
@@ -70,6 +88,27 @@ export default function LeadSheetList() {
     await navigator.clipboard.writeText(`${window.location.origin}/lead-sheet-editor/share/${id}`);
     setSharedId(id);
     setTimeout(() => setSharedId(null), 2000);
+  }
+
+  /**
+   * Star or unstar a song. The flag rides on the sheet's own metadata rather
+   * than this device, so a set starred on a laptop is still starred on the
+   * phone that gets played from. The row moves as soon as it's tapped and goes
+   * back where it was if the write is refused.
+   */
+  async function toggleFavorite(sheet: LeadSheet) {
+    const next = !sheet.metadata?.favorite;
+    const metadata = { ...(sheet.metadata ?? {}), favorite: next };
+    setFavoriteError(null);
+    setSheets((prev) => prev.map((s) => (s.id === sheet.id ? { ...s, metadata } : s)));
+    try {
+      const { error } = await getSb().from("lead_sheets").update({ metadata }).eq("id", sheet.id);
+      if (error) throw error;
+      await cacheSheet({ ...sheet, metadata });
+    } catch {
+      setSheets((prev) => prev.map((s) => (s.id === sheet.id ? sheet : s)));
+      setFavoriteError("Couldn't save that favorite — check your connection and try again.");
+    }
   }
 
   async function deleteSheet(id: string) {
@@ -154,6 +193,9 @@ export default function LeadSheetList() {
           </div>
 
           <div className='flex-1 overflow-auto p-4 sm:p-6 flex flex-col'>
+            {favoriteError && (
+              <p className='mb-3 text-sm font-medium text-red-500'>{favoriteError}</p>
+            )}
             {sheets.length === 0 ? (
               <div className='flex-1 flex flex-col items-center justify-center text-[#373A40]/40 dark:text-white/40'>
                 <Music className='w-12 h-12 mb-3 opacity-40' />
@@ -161,13 +203,27 @@ export default function LeadSheetList() {
               </div>
             ) : (
               <div className='space-y-2'>
-                {sheets.map((sheet) => (
+                {sortedSheets.map((sheet) => (
                   <div
                     key={sheet.id}
                     className='flex flex-col md:flex-row md:items-center md:justify-between gap-2 p-4 border border-[#373A40]/20 dark:border-white/20 rounded-lg hover:border-black dark:hover:border-white transition-colors group cursor-pointer'
                     onClick={() => router.push(`/lead-sheet-editor/${sheet.id}/preview`)}
                   >
-                    <div className='flex-1 min-w-0'>
+                    <div className='flex flex-1 min-w-0 items-start gap-2'>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); toggleFavorite(sheet); }}
+                        title={sheet.metadata?.favorite ? "Remove from favorites" : "Keep this song at the top"}
+                        aria-label={sheet.metadata?.favorite ? "Remove from favorites" : "Add to favorites"}
+                        aria-pressed={!!sheet.metadata?.favorite}
+                        className={`-ml-1 shrink-0 rounded p-1 transition-colors ${
+                          sheet.metadata?.favorite
+                            ? "text-yellow-400 hover:text-yellow-300"
+                            : "text-[#373A40]/30 dark:text-white/30 hover:text-yellow-400"
+                        }`}
+                      >
+                        <Star className='w-5 h-5' fill={sheet.metadata?.favorite ? "currentColor" : "none"} />
+                      </button>
+                      <div className='min-w-0'>
                       <div className='font-semibold text-black dark:text-white'>
                         {sheet.title || "Untitled"}
                       </div>
@@ -176,6 +232,7 @@ export default function LeadSheetList() {
                         {sheet.tempo && <span>{sheet.tempo} BPM</span>}
                         <span>{sheet.sections?.length ?? 0} sections</span>
                         <span>{new Date(sheet.updated_at).toLocaleDateString()}</span>
+                      </div>
                       </div>
                     </div>
                     <div className='flex flex-wrap items-center gap-1.5 md:ml-3 shrink-0'>

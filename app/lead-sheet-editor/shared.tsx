@@ -33,6 +33,8 @@ export interface Section {
  * before a key existed, sheets cached offline).
  */
 export interface LeadSheetMetadata {
+  /** Pinned to the top of the song list. */
+  favorite?: boolean;
   /** Drum machine state; see normalizeDrumSettings in DrumMachine.tsx. */
   drums?: { pattern?: string; kick?: string; snare?: string; volume?: number };
   /** String pad state; see normalizeStringSettings in StringPads.tsx. */

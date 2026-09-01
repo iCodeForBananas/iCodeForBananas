@@ -66,7 +66,7 @@ export function MetronomeControl({
   const [draft, setDraft] = useState<string | null>(null);
 
   return (
-    <div className='flex flex-wrap items-center gap-1 rounded-lg border border-gray-200 dark:border-neutral-700 px-1.5 py-1 print:hidden'>
+    <div className='flex flex-wrap items-center gap-1 px-3 py-2 print:hidden'>
       <span className='text-sm font-medium text-gray-700 dark:text-neutral-200 select-none'>BPM</span>
       <button
         type='button'

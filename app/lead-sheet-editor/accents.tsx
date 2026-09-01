@@ -689,7 +689,7 @@ export function ShimmerControl({
   const current = useMemo(() => accentByName(variation), [variation]);
 
   return (
-    <div className='flex flex-wrap items-center gap-1 rounded-lg border border-gray-200 dark:border-neutral-700 px-1.5 py-1 print:hidden'>
+    <div className='flex flex-wrap items-center gap-1 px-3 py-2 print:hidden'>
       <button
         type='button'
         onClick={onToggle}
