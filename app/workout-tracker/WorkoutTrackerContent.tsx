@@ -118,23 +118,31 @@ export default function WorkoutTrackerContent() {
     reload();
   };
 
-  // chart data: all logged exercises over time (weight defaults to 0)
-  const exercisesWithLogs = useMemo(() => {
-    return COMPOUND.filter((c) => logs.some((l) => l.exercise === c.name));
+  // chart data: logged exercises over the last three months (weight defaults to 0)
+  const chartLogs = useMemo(() => {
+    const cutoff = new Date();
+    cutoff.setHours(0, 0, 0, 0);
+    cutoff.setMonth(cutoff.getMonth() - 3);
+    const min = cutoff.getTime();
+    return logs.filter((l) => dayMs(l.date) >= min);
   }, [logs]);
 
+  const exercisesWithLogs = useMemo(() => {
+    return COMPOUND.filter((c) => chartLogs.some((l) => l.exercise === c.name));
+  }, [chartLogs]);
+
   const chartData = useMemo(() => {
-    const dates = [...new Set(logs.map((l) => l.date))].sort();
+    const dates = [...new Set(chartLogs.map((l) => l.date))].sort();
     return dates.map((d) => {
       // numeric timestamp: spaces points by real elapsed time, not by index
       const row: Record<string, string | number> = { date: d, t: dayMs(d) };
       for (const ex of exercisesWithLogs) {
-        const entry = logs.find((l) => l.exercise === ex.name && l.date === d);
+        const entry = chartLogs.find((l) => l.exercise === ex.name && l.date === d);
         if (entry) row[ex.name] = entry.weight ?? 0;
       }
       return row;
     });
-  }, [logs, exercisesWithLogs]);
+  }, [chartLogs, exercisesWithLogs]);
 
   // One tick per week, or per month once the span gets long, so the gaps
   // between sessions stay readable rather than collapsing to even spacing.
