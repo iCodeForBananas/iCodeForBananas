@@ -80,16 +80,14 @@ export default function WorkoutTrackerContent() {
   const [weight, setWeight] = useState("");
   const [page, setPage] = useState(0);
   const PAGE_SIZE = 10;
+  // Reads are public: anyone can see the log. Writes stay behind auth, both
+  // here and in the workout_logs RLS policies.
   const reload = useCallback(async () => {
-    if (!user) return;
     const sb = getSupabase();
     if (!sb) return;
-    const { data } = await sb
-      .from("workout_logs")
-      .select("id, user_id, exercise, date, weight")
-      .eq("user_id", user.id);
+    const { data } = await sb.from("workout_logs").select("id, user_id, exercise, date, weight");
     setLogs((data as LogEntry[]) ?? []);
-  }, [user]);
+  }, []);
   useEffect(() => {
     reload();
   }, [reload]);
@@ -325,7 +323,11 @@ export default function WorkoutTrackerContent() {
 
   const allEntriesContent = (() => {
     if (logs.length === 0) {
-      return <p className='text-sm text-black/40 dark:text-neutral-500'>No entries yet. Log a workout above to get started.</p>;
+      return (
+        <p className='text-sm text-black/40 dark:text-neutral-500'>
+          {user ? "No entries yet. Log a workout above to get started." : "No entries yet."}
+        </p>
+      );
     }
     const sorted = [...logs].sort(
       (a, b) => b.date.localeCompare(a.date) || a.exercise.localeCompare(b.exercise),
@@ -353,14 +355,15 @@ export default function WorkoutTrackerContent() {
                   <span className='text-black/50 dark:text-white/50 ml-1 text-xs'>@ {l.weight} lbs</span>
                 )}
               </div>
-              <button
-                onClick={() => remove(l.id)}
-                className='shrink-0 w-11 h-11 flex items-center justify-center text-xl text-black/25 hover:text-red-500 dark:text-white/25 -mr-2'
-                aria-label='Delete'
-                style={{ display: user ? undefined : "none" }}
-              >
-                ×
-              </button>
+              {user?.id === l.user_id && (
+                <button
+                  onClick={() => remove(l.id)}
+                  className='shrink-0 w-11 h-11 flex items-center justify-center text-xl text-black/25 hover:text-red-500 dark:text-white/25 -mr-2'
+                  aria-label='Delete'
+                >
+                  ×
+                </button>
+              )}
             </div>
           ))}
         </div>
@@ -409,7 +412,9 @@ export default function WorkoutTrackerContent() {
     {
       id: "entries",
       title: "All Entries",
-      tooltip: "Every workout you've logged, sorted newest first. Click × to delete an entry.",
+      tooltip: user
+        ? "Every workout you've logged, sorted newest first. Click × to delete an entry."
+        : "Every workout logged, sorted newest first.",
       defaultColSpan: 12,
       defaultRowSpan: 4,
       content: allEntriesContent,
