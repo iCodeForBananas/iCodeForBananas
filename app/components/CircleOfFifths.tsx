@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import "./circleOfFifths.css";
-import { flatToSharp } from "../lib/chordShapes";
+import ChordDiagram from "./ChordDiagram";
+import { flatToSharp, resolveChordShape } from "../lib/chordShapes";
 
 interface ChordInfo {
   major: string;
@@ -24,6 +26,9 @@ const circleData: ChordInfo[] = [
   { major: "F",      minor: "Dm" },
 ];
 
+/** Roughly how tall the chord diagram renders, for deciding which side of a key it fits on. */
+const PREVIEW_HEIGHT = 200;
+
 /** The plain note a wheel label names: "F♯/G♭" → "F#", "B♭m" → "Bb". */
 const parseChordNote = (chord: string, type: "major" | "minor"): string => {
   const primary = chord.split("/")[0];
@@ -44,7 +49,17 @@ export default function CircleOfFifths({
   activeNote: string;
   onSelectNote: (note: string) => void;
 }) {
-  const [hoveredChord, setHoveredChord] = useState<string | null>(null);
+  // The key under the cursor, carrying where its circle sits on screen so the
+  // chord diagram can be pinned beside it.
+  const [hovered, setHovered] = useState<{
+    chord: string;
+    note: string;
+    type: "major" | "minor";
+    x: number;
+    y: number;
+    radius: number;
+  } | null>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
 
   const centerX = 250;
   const centerY = 250;
@@ -64,23 +79,51 @@ export default function CircleOfFifths({
   // Compare as sharps so a page showing flats still lights the right key.
   const canonicalActive = flatToSharp[activeNote] ?? activeNote;
   const isActive = (chord: string, type: "major" | "minor") => {
-    if (hoveredChord === chord) return true;
+    if (hovered?.chord === chord) return true;
     const note = parseChordNote(chord, type);
     return (flatToSharp[note] ?? note) === canonicalActive;
   };
 
   // Hover and click behave the same on the circle and on its label, so both
   // carry the same handlers.
-  const keyHandlers = (chord: string, type: "major" | "minor") => ({
-    onMouseEnter: () => setHoveredChord(chord),
-    onMouseLeave: () => setHoveredChord(null),
+  const keyHandlers = (
+    chord: string,
+    type: "major" | "minor",
+    index: number,
+    ringRadius: number,
+    keyRadius: number,
+  ) => ({
+    onMouseEnter: () => {
+      const rect = svgRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      // The wheel scales with its container, so read the key's screen position
+      // off the rendered svg rather than the viewBox.
+      const pos = getPosition(index, ringRadius);
+      const scale = rect.width / 500;
+      setHovered({
+        chord,
+        note: parseChordNote(chord, type),
+        type,
+        x: rect.left + pos.x * scale,
+        y: rect.top + pos.y * scale,
+        radius: keyRadius * scale,
+      });
+    },
+    onMouseLeave: () => setHovered(null),
     onClick: () => onSelectNote(parseChordNote(chord, type)),
   });
+
+  // A hovered key names one plain chord — "F♯/G♭" is F♯ major, "B♭m" is B♭ minor —
+  // and its grip appears next to the key, so practising the circle never means
+  // looking something up somewhere else.
+  const previewName = hovered ? hovered.chord.split("/")[0] : null;
+  const previewShape = hovered ? resolveChordShape(hovered.note, hovered.type === "minor" ? "Minor" : "Major") : null;
+  const previewBelow = hovered ? hovered.y - hovered.radius < PREVIEW_HEIGHT : false;
 
   return (
     <div className='circle-of-fifths-container'>
       <div className='circle-column'>
-        <svg viewBox='0 0 500 500' className='circle-svg'>
+        <svg ref={svgRef} viewBox='0 0 500 500' className='circle-svg'>
           <circle cx={centerX} cy={centerY} r={outerRadius} className='outer-ring' />
           <circle cx={centerX} cy={centerY} r={innerRadius} className='inner-ring' />
 
@@ -100,7 +143,7 @@ export default function CircleOfFifths({
           {circleData.map((data, index) => {
             const pos = getPosition(index, outerRadius);
             const active = isActive(data.major, "major");
-            const handlers = keyHandlers(data.major, "major");
+            const handlers = keyHandlers(data.major, "major", index, outerRadius, active ? 30 : 27);
             return (
               <g key={`major-${index}`}>
                 <title>{`${data.major} major — click to make it your root note`}</title>
@@ -123,7 +166,7 @@ export default function CircleOfFifths({
           {circleData.map((data, index) => {
             const pos = getPosition(index, innerRadius);
             const active = isActive(data.minor, "minor");
-            const handlers = keyHandlers(data.minor, "minor");
+            const handlers = keyHandlers(data.minor, "minor", index, innerRadius, active ? 25 : 22);
             return (
               <g key={`minor-${index}`}>
                 <title>{`${data.minor} — the relative minor of ${data.major}, click to make its root note yours`}</title>
@@ -150,6 +193,23 @@ export default function CircleOfFifths({
             Fifths
           </text>
         </svg>
+
+        {hovered &&
+          previewShape &&
+          previewName &&
+          createPortal(
+            <div
+              className='chord-preview'
+              style={{
+                left: hovered.x,
+                top: previewBelow ? hovered.y + hovered.radius + 10 : hovered.y - hovered.radius - 10,
+                transform: previewBelow ? "translate(-50%, 0)" : "translate(-50%, -100%)",
+              }}
+            >
+              <ChordDiagram shape={previewShape} label={previewName} useFlats={previewName.includes("♭")} />
+            </div>,
+            document.body,
+          )}
       </div>
     </div>
   );

@@ -40,6 +40,26 @@
   }
 }
 
+/* The hovered key's chord, pinned beside it. Inert to the pointer so drifting
+   over the diagram never counts as leaving the key. */
+.chord-preview {
+  position: fixed;
+  z-index: 50;
+  pointer-events: none;
+  padding: 0.5rem;
+  border-radius: 0.75rem;
+  /* Same surface as the page's chord cards: the diagram's yellow dots vanish
+     against the yellow page background. */
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.dark .chord-preview {
+  background: #262626;
+  border-color: #404040;
+}
+
 .outer-ring {
   fill: none;
   stroke: rgba(250, 204, 21, 0.1);
