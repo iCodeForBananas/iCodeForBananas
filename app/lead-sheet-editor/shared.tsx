@@ -241,7 +241,7 @@ export function ChordLyricLine({
   if (!hasChords) {
     return (
       <p
-        className={`leadsheet-lyric font-mono whitespace-pre-wrap break-words ${large ? "text-[1.5em]" : "text-[1em]"} leading-relaxed text-black dark:text-white`}
+        className={`leadsheet-lyric leadsheet-doc whitespace-pre-wrap break-words ${large ? "text-[1.5em]" : "text-[1em]"} leading-relaxed text-black dark:text-white`}
       >
         {timeChip}
         {body || "\u00A0"}
@@ -250,13 +250,13 @@ export function ChordLyricLine({
   }
 
   return (
-    <p className={`font-mono whitespace-pre-wrap break-words ${large ? "text-[1.5em]" : "text-[1em]"} leading-relaxed`}>
+    <p className={`leadsheet-doc whitespace-pre-wrap break-words ${large ? "text-[1.5em]" : "text-[1em]"} leading-relaxed`}>
       {timeChip}
       {segments.map((seg, i) => (
         <span key={i}>
           {seg.chord && (
             <ChordHoverPopover chord={seg.chord}>
-              <span className="leadsheet-chord font-bold text-amber-600 dark:text-yellow-400">
+              <span className="leadsheet-chord font-semibold text-amber-600 dark:text-yellow-400">
                 [{seg.chord}]
               </span>
             </ChordHoverPopover>

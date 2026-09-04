@@ -650,7 +650,7 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
               onChange={(e) => handleChange(e.target.value)}
               placeholder={PLACEHOLDER}
               spellCheck={false}
-              className="w-full max-w-3xl h-full overflow-auto outline-none resize-none font-mono text-base leading-relaxed bg-transparent text-black dark:text-white placeholder:text-[#373A40]/30 dark:placeholder:text-white/30"
+              className="leadsheet-doc w-full max-w-3xl h-full overflow-auto outline-none resize-none text-base leading-relaxed bg-transparent text-black dark:text-white placeholder:text-[#373A40]/30 dark:placeholder:text-white/30"
             />
           </div>
         </div>

@@ -153,7 +153,7 @@ export default function LineEditor({
             rows={2}
             spellCheck
             autoCapitalize='sentences'
-            className='w-full resize-none rounded-xl border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-950 px-3 py-2.5 font-mono text-[16px] leading-relaxed text-black dark:text-white outline-none focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/40'
+            className='leadsheet-doc w-full resize-none rounded-xl border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-950 px-3 py-2.5 text-[16px] leading-relaxed text-black dark:text-white outline-none focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/40'
           />
 
           <div className='mt-3 rounded-xl bg-gray-50 dark:bg-neutral-800/60 px-3 py-2'>

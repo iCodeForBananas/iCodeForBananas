@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
+import { Fraunces } from "next/font/google";
 import Script from "next/script";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
@@ -13,6 +14,23 @@ import MusicFavoritesBar from "./components/MusicFavoritesBar";
 import PathnameTitleSync from "./components/PathnameTitleSync";
 import CopyPageHandler from "./components/CopyPageHandler";
 import InstallPrompt from "./components/InstallPrompt";
+
+/**
+ * Song titles and library headers only. Fraunces carries an optical size axis,
+ * so the letterforms are redrawn rather than just scaled as the size changes;
+ * `font-optical-sizing: auto` in globals.css is what makes the browser use it.
+ *
+ * Loaded as a variable font, which next/font requires in order to request the
+ * opsz axis at all. That means the weight axis ships continuous rather than as
+ * the three named weights the system uses; the rule against 700 is enforced by
+ * not writing it, not by the font file. See font.weight in tokens/.
+ */
+const fraunces = Fraunces({
+  subsets: ["latin"],
+  axes: ["opsz"],
+  variable: "--font-fraunces",
+  display: "swap",
+});
 
 export const viewport: Viewport = {
   themeColor: "#facc15",
@@ -42,7 +60,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang='en' suppressHydrationWarning>
+    // The font variables go on <html>, not <body>: they are referenced from
+    // :root in globals.css, and a custom property whose value points at a
+    // variable defined further down the tree computes to nothing at all.
+    <html
+      lang='en'
+      className={`${GeistSans.variable} ${GeistMono.variable} ${fraunces.variable}`}
+      suppressHydrationWarning
+    >
       <head>
         {/* Inline theme init — runs before paint to prevent flash */}
         <script
@@ -68,7 +93,7 @@ export default function RootLayout({
           `}
         </Script>
       </head>
-      <body className={`${GeistSans.variable} ${GeistMono.variable} antialiased`}>
+      <body className='antialiased'>
         <ThemeProvider>
           <FavoriteChordsProvider>
             <div id='app-shell' className='flex h-dvh overflow-hidden font-sans'>

@@ -108,6 +108,78 @@
   /* Not an override of Tailwind's own --ease-out, which is a gentler curve and
      is still in use across the older tools. */
   --ease-ui: var(--ds-ease-out);
+
+  /* Three families. The stacks themselves are on :root below as --ds-font-*,
+     and these map them onto Tailwind's names so the font-sans / font-mono /
+     font-display utilities exist and so var(--font-mono) resolves anywhere.
+     The indirection is load-bearing: naming the source variable --font-mono
+     too would emit `--font-mono: var(--font-mono)`, a self-reference that
+     leaves the property invalid at computed-value time and silently drops any
+     rule using it back to the inherited family. */
+  --font-sans: var(--ds-font-sans);
+  --font-mono: var(--ds-font-mono);
+  --font-display: var(--ds-font-display);
+
+  /* The type scale, named by pixel size. Each step carries its own tracking
+     and leading, so `text-32` is the whole typographic decision rather than
+     just a size that then needs two more classes to look right. */
+  --text-10: var(--ds-font-size-10);
+  --text-10--line-height: var(--ds-font-leading-10);
+  --text-10--letter-spacing: var(--ds-font-tracking-10);
+  --text-12: var(--ds-font-size-12);
+  --text-12--line-height: var(--ds-font-leading-12);
+  --text-12--letter-spacing: var(--ds-font-tracking-12);
+  --text-13: var(--ds-font-size-13);
+  --text-13--line-height: var(--ds-font-leading-13);
+  --text-13--letter-spacing: var(--ds-font-tracking-13);
+  --text-15: var(--ds-font-size-15);
+  --text-15--line-height: var(--ds-font-leading-15);
+  --text-15--letter-spacing: var(--ds-font-tracking-15);
+  --text-16: var(--ds-font-size-16);
+  --text-16--line-height: var(--ds-font-leading-16);
+  --text-16--letter-spacing: var(--ds-font-tracking-16);
+  --text-17: var(--ds-font-size-17);
+  --text-17--line-height: var(--ds-font-leading-17);
+  --text-17--letter-spacing: var(--ds-font-tracking-17);
+  --text-20: var(--ds-font-size-20);
+  --text-20--line-height: var(--ds-font-leading-20);
+  --text-20--letter-spacing: var(--ds-font-tracking-20);
+  --text-24: var(--ds-font-size-24);
+  --text-24--line-height: var(--ds-font-leading-24);
+  --text-24--letter-spacing: var(--ds-font-tracking-24);
+  --text-32: var(--ds-font-size-32);
+  --text-32--line-height: var(--ds-font-leading-32);
+  --text-32--letter-spacing: var(--ds-font-tracking-32);
+  --text-48: var(--ds-font-size-48);
+  --text-48--line-height: var(--ds-font-leading-48);
+  --text-48--letter-spacing: var(--ds-font-tracking-48);
+}
+
+/* Sans is UI chrome, mono is the lyric and chord document pane, display is song
+   titles and library headers and nothing else. next/font generates the three
+   --font-*-* variables on <body>; these add the fallback stack that gets used
+   while a face is still loading, or if one fails to. */
+:root {
+  --ds-font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --ds-font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  --ds-font-display: var(--font-fraunces), ui-serif, Georgia, "Times New Roman", serif;
+}
+
+/* auto is already the initial value, so this changes nothing today. It is
+   written down so that a later reset setting `font-optical-sizing: none`
+   cannot silently flatten Fraunces back to a single scaled drawing. */
+:root {
+  font-optical-sizing: auto;
+}
+
+/* The lyric and chord document pane. Every glyph advances by the same width,
+   which is what keeps a chord over the syllable it belongs to, and tabular
+   figures keep that true for numbers even if the family is ever swapped for a
+   proportional one. See scripts/typography-check.mjs, which proves it. */
+.leadsheet-doc {
+  font-family: var(--ds-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-variant-ligatures: none;
 }
 
 @theme inline {
@@ -128,10 +200,6 @@
   --color-bb-text: #e0e0e0;
   --color-bb-muted: #a0a0a0;
   --color-bb-accent: #bb86fc;
-
-  /* Fonts from next/font */
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
 
   /* PavePlan Pro brand tokens */
   --color-brand-primary: #141414;

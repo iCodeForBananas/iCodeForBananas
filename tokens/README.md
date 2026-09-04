@@ -44,6 +44,48 @@ The same physics forces `color.primary.text`, `color.danger`, `color.success`
 and `color.accent.solid` to differ between themes: no single lightness is
 legible as text on both a near-black and a near-white surface.
 
+## Typography
+
+Three families, loaded by `next/font` and self-hosted at build time:
+
+| | | |
+|---|---|---|
+| `--font-sans` | Geist Sans | UI chrome |
+| `--font-mono` | Geist Mono | the lyric and chord document pane |
+| `--font-display` | Fraunces, optical sizing on | song titles and library headers, nothing else |
+
+The stacks live on `:root` in `app/globals.css` as `--ds-font-*`, not in this
+directory, because only that file knows the variable names `next/font`
+generates. Two things about that wiring are easy to break:
+
+- The generated font variables go on `<html>`, not `<body>`. A custom property
+  on `:root` that references a variable defined further down the tree computes
+  to nothing, and every rule using it silently falls back to the inherited
+  family.
+- `@theme inline` emits the keys it declares, so naming the source variable
+  `--font-mono` as well would produce `--font-mono: var(--font-mono)`. That
+  self-reference leaves the property invalid at computed-value time, with the
+  same silent fallback. Hence the `--ds-` indirection.
+
+The scale is `font.size` / `font.tracking` / `font.leading` here, mapped onto
+Tailwind's `--text-*` so one class carries size, tracking and leading together:
+`text-32` is the whole typographic decision, not a size that then needs two
+more classes to look right.
+
+Weights stop at 600. See `font.weight`.
+
+### Column alignment
+
+The document pane is `.leadsheet-doc`: the mono family, `tabular-nums`, and
+ligatures off, so every glyph advances by the same width and a chord stays over
+the syllable it belongs to. `npm run type:check` drives a real browser and
+measures it, because font metrics are not knowable from the source. It proves a
+chord does not move when the lyric under it grows, that a chord row and a lyric
+row agree column for column, that digits do not shift, and that weight 600 does
+not widen a line.
+
+It needs the app running (`npm run build && npm start`), and takes `BASE_URL`.
+
 ## What is deliberately not tokenized here
 
 Spacing, radii and durations exist as tokens but are **not** mapped into
