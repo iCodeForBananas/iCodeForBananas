@@ -12,12 +12,13 @@ Only stop and say something if that can't be done cleanly — `main` has moved
 ahead so it isn't a fast-forward, or the checks below don't pass. Never push
 red.
 
-Before pushing, run all three from the repo root:
+Before pushing, run all four from the repo root:
 
 ```
 npx tsc --noEmit
 npx eslint <changed files>
 npm run build
+npm test
 ```
 
 The repo carries some pre-existing lint warnings and at least one pre-existing
@@ -45,10 +46,20 @@ Some files are internally mixed (a mostly-CRLF file with a couple of bare-LF
 lines), which is why a whole-file re-encode is not a safe shortcut. After
 editing, `git diff --ignore-all-space --stat` should match `git diff --stat`.
 
-## Verifying UI changes
+## Tests and verification
 
-There is no test runner. For anything user-facing, drive the built app in
-Chromium (`/opt/pw-browsers/chromium`, `playwright-core`) and assert on what
+Vitest covers the pure logic: chord grammar, transposition, anything that is a
+function of its arguments and nothing else. `npm test` runs it, `npm run
+test:watch` while working. Tests sit next to what they test as `*.test.ts`.
+
+Anything that depends on how a browser lays text out, resolves a CSS variable,
+or picks a font is not testable there. Those live in `scripts/` and drive real
+Chromium against a built app: `npm run type:check` for column alignment in the
+lead sheet, `npm run tokens:check` for contrast (that one needs no browser).
+
+For anything user-facing beyond what those cover, drive the built app in
+Chromium (`/opt/pw-browsers/chromium`, driven by the globally installed
+`playwright` at `/opt/node22/lib/node_modules/playwright`) and assert on what
 actually rendered rather than only reading the diff.
 
 Supabase is not authorized in remote sessions, so routes that load a sheet or a

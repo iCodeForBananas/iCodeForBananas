@@ -7,6 +7,8 @@
     "build": "cross-env NODE_OPTIONS=--max-old-space-size=4096 next build",
     "start": "next start",
     "lint": "eslint",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "tokens:build": "node scripts/build-tokens.mjs",
     "tokens:check": "node scripts/contrast-check.mjs",
     "type:check": "node scripts/typography-check.mjs"
@@ -49,7 +51,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/leaflet": "^1.9.21",
-    "@types/node": "^20",
+    "@types/node": "^22.20.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "cross-env": "^10.1.0",
@@ -57,6 +59,7 @@
     "eslint-config-next": "16.1.1",
     "style-dictionary": "^4.4.0",
     "tailwindcss": "^4",
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "vitest": "^5.0.0"
   }
 }

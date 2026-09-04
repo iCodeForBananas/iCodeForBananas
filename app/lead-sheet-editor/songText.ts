@@ -1,15 +1,12 @@
 // ─── Song text shapes ───────────────────────────────────────────────────
 //
 // Telling a section header from a chord is the one question every reader of
-// a sheet has to answer first, so it lives on its own with no dependencies.
+// a sheet has to answer first. The rule itself lives in app/lib/chordGrammar
+// so that transposition, bulk replace and the progression view all decide it
+// the same way; this module is only about the shape of a line.
 
-// A standalone [text] line is a section header unless the text looks like a chord.
-const CHORD_RE = /^[A-G][b#]?(m|maj|min|dim|aug|sus|add|dom)?(\d+)?(\/[A-G][b#]?)?$/;
-
-/** Does the text inside a bracket read as a chord rather than a name? */
-export function isChordName(inner: string): boolean {
-  return CHORD_RE.test(inner);
-}
+export { isChordName } from "../lib/chordGrammar";
+import { isChordName } from "../lib/chordGrammar";
 
 /** The label of a section-header line, or null when the line is anything else. */
 export function asSectionHeader(line: string): string | null {
