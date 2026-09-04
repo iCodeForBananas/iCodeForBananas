@@ -1,0 +1,99 @@
+/**
+ * GENERATED FILE. Do not edit.
+ *
+ * Source: tokens/ (W3C DTCG format). Rebuild with `npm run tokens:build`.
+ *
+ * Dark is the default and lives on :root. Light overrides Layer 2
+ * semantics only; Layer 1 primitives are identical in both themes.
+ */
+
+:root {
+  --ds-palette-neutral-1: oklch(0.16 0.008 80);
+  --ds-palette-neutral-2: oklch(0.19 0.009 80);
+  --ds-palette-neutral-3: oklch(0.23 0.010 80);
+  --ds-palette-neutral-4: oklch(0.27 0.011 81);
+  --ds-palette-neutral-5: oklch(0.32 0.012 81);
+  --ds-palette-neutral-6: oklch(0.38 0.012 82);
+  --ds-palette-neutral-7: oklch(0.46 0.012 82);
+  --ds-palette-neutral-8: oklch(0.55 0.011 83);
+  --ds-palette-neutral-9: oklch(0.65 0.010 83);
+  --ds-palette-neutral-10: oklch(0.76 0.008 84);
+  --ds-palette-neutral-11: oklch(0.87 0.006 84);
+  --ds-palette-neutral-12: oklch(0.97 0.004 85);
+  --ds-palette-amber-1: oklch(0.24 0.035 80);
+  --ds-palette-amber-2: oklch(0.33 0.060 81);
+  --ds-palette-amber-3: oklch(0.45 0.090 83);
+  --ds-palette-amber-4: oklch(0.62 0.125 84);
+  --ds-palette-amber-5: oklch(0.75 0.150 85);
+  --ds-palette-amber-6: oklch(0.93 0.078 87);
+  --ds-palette-amber-solid: oklch(0.851 0.161 85); /** Amber at full strength: a filled button, the active state of a control. Whatever sits on top of this is palette.amber.contrast, never white. See that token. */
+  --ds-palette-amber-hover: oklch(0.884 0.184 92); /** Hover for a solid amber fill. Brighter than solid, not darker. On a dark UI, lifting toward the light is what reads as 'closer to the pointer'. Chroma here is past the sRGB boundary (max is ~0.161 at this lightness): it renders as written on a P3 display and clips to the gamut edge on an sRGB one. That is deliberate, and npm run tokens:check measures the clipped result, so the contrast numbers hold either way. */
+  --ds-palette-amber-text: oklch(0.856 0.176 88); /** Amber as a text or icon color on a dark surface. Not for light surfaces; step 3 is the light-surface equivalent. Sits a hair outside sRGB (max is ~0.174 at this lightness), which is below the threshold of visible clipping. */
+  --ds-palette-amber-contrast: oklch(0.20 0.020 80); /** The near-black label that goes on top of amber.solid. THIS IS NOT A BUG AND MUST NOT BE 'FIXED' TO WHITE. Amber at L 0.851 is a light color: white on it lands near 1.4:1, failing every contrast target there is, while this near-black lands near 9:1. Every design system with a light-yellow primary has to make this call, and the label is the side that gives. */
+  --ds-palette-teal-1: oklch(0.62 0.105 190); /** Only light theme uses this. Teal at step 2 clears 3:1 against a dark surface but lands near 2.2:1 against a near-white one, so light needs its own step. */
+  --ds-palette-teal-2: oklch(0.72 0.12 190);
+  --ds-palette-teal-3: oklch(0.80 0.11 190);
+  --ds-palette-danger-1: oklch(0.55 0.185 30);
+  --ds-palette-danger-2: oklch(0.64 0.20 30);
+  --ds-palette-success-1: oklch(0.51 0.140 150);
+  --ds-palette-success-2: oklch(0.72 0.15 150);
+  --ds-palette-white: oklch(1 0 0);
+  --ds-palette-alpha-light-6: oklch(1 0 0 / 0.06);
+  --ds-palette-alpha-light-12: oklch(1 0 0 / 0.12);
+  --ds-palette-alpha-dark-8: oklch(0 0 0 / 0.08);
+  --ds-palette-alpha-dark-14: oklch(0 0 0 / 0.14);
+  --ds-space-2: 2px;
+  --ds-space-4: 4px;
+  --ds-space-8: 8px;
+  --ds-space-12: 12px;
+  --ds-space-16: 16px;
+  --ds-space-24: 24px;
+  --ds-space-32: 32px;
+  --ds-space-48: 48px;
+  --ds-space-64: 64px;
+  --ds-space-96: 96px;
+  --ds-radius-2: 2px;
+  --ds-radius-4: 4px;
+  --ds-radius-6: 6px;
+  --ds-radius-8: 8px;
+  --ds-radius-12: 12px;
+  --ds-radius-16: 16px;
+  --ds-radius-full: 9999px;
+  --ds-duration-120: 120ms;
+  --ds-duration-180: 180ms;
+  --ds-duration-240: 240ms;
+  --ds-duration-320: 320ms;
+  --ds-ease-out: cubic-bezier(0.16, 1, 0.3, 1); /** A hard decelerating curve: almost all of the distance is covered in the first third of the duration, so motion arrives rather than drifts. This is the only easing curve in the system. Linear is acceptable for a progress indicator and nothing else. */
+  --ds-color-surface-sunken: var(--ds-palette-neutral-1);
+  --ds-color-surface-base: var(--ds-palette-neutral-2);
+  --ds-color-surface-raised: var(--ds-palette-neutral-3);
+  --ds-color-surface-overlay: var(--ds-palette-neutral-4);
+  --ds-color-border-subtle: var(--ds-palette-alpha-light-6);
+  --ds-color-border-strong: var(--ds-palette-alpha-light-12);
+  --ds-color-text-primary: var(--ds-palette-neutral-12);
+  --ds-color-text-muted: var(--ds-palette-neutral-9); /** Secondary text: labels, metadata, timestamps. Still clears 4.5:1 on surface.base. It is muted, not disabled, and there is deliberately no third dimmer tier, because a third tier is where hierarchy turns into illegibility. */
+  --ds-color-text-on-primary: var(--ds-palette-amber-contrast); /** The label on a filled amber control. Resolves to a near-black, and that is correct: see palette.amber.contrast for why it can never be white. Identical in both themes, because primary.solid is identical in both themes. */
+  --ds-color-primary-solid: var(--ds-palette-amber-solid);
+  --ds-color-primary-hover: var(--ds-palette-amber-hover);
+  --ds-color-primary-text: var(--ds-palette-amber-text); /** Amber as text or an icon rather than a fill: a link, an active nav item, a chord symbol. This is the token that has to flip between themes, because amber bright enough to read on near-black is far too light to read on near-white. */
+  --ds-color-accent-solid: var(--ds-palette-teal-2); /** The teal counter-accent as a fill, for a second axis of meaning that would be ambiguous in amber. The intended first use is marking a capo transform as distinct from a key change. */
+  --ds-color-danger: var(--ds-palette-danger-2);
+  --ds-color-success: var(--ds-palette-success-2);
+  --ds-color-focus-ring: var(--ds-palette-amber-text); /** Always visible, never removed. An outline may be replaced with a different visible treatment; it may not be replaced with nothing. This is the one place the accent appears without being the primary action, because the user put it there by pressing Tab. */
+}
+
+[data-theme="light"] {
+  --ds-color-surface-sunken: var(--ds-palette-neutral-11);
+  --ds-color-surface-base: var(--ds-palette-neutral-12);
+  --ds-color-surface-raised: var(--ds-palette-white);
+  --ds-color-surface-overlay: var(--ds-palette-white);
+  --ds-color-border-subtle: var(--ds-palette-alpha-dark-8);
+  --ds-color-border-strong: var(--ds-palette-alpha-dark-14);
+  --ds-color-text-primary: var(--ds-palette-neutral-1);
+  --ds-color-text-muted: var(--ds-palette-neutral-6);
+  --ds-color-primary-text: var(--ds-palette-amber-3); /** Amber text has to drop a long way in lightness to survive on a near-white surface. amber.text at L 0.856 lands near 1.2:1 here, which is invisible. This is the single most likely token for someone to 'simplify' back to the brand value; doing so would delete the text. */
+  --ds-color-accent-solid: var(--ds-palette-teal-1);
+  --ds-color-danger: var(--ds-palette-danger-1);
+  --ds-color-success: var(--ds-palette-success-1);
+  --ds-color-focus-ring: var(--ds-palette-amber-3);
+}

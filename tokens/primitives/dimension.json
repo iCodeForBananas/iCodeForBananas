@@ -1,0 +1,26 @@
+{
+  "space": {
+    "$description": "Layer 1. 4px-based scale, named by pixel value so there is no scale position to memorize. Deliberately identical to Tailwind's default numeric spacing scale (space.16 is p-4), so the utility classes already in the codebase are on-system and do not need rewriting. These exist so CSS written outside Tailwind resolves to the same numbers.",
+    "2":  { "$type": "dimension", "$value": "2px" },
+    "4":  { "$type": "dimension", "$value": "4px" },
+    "8":  { "$type": "dimension", "$value": "8px" },
+    "12": { "$type": "dimension", "$value": "12px" },
+    "16": { "$type": "dimension", "$value": "16px" },
+    "24": { "$type": "dimension", "$value": "24px" },
+    "32": { "$type": "dimension", "$value": "32px" },
+    "48": { "$type": "dimension", "$value": "48px" },
+    "64": { "$type": "dimension", "$value": "64px" },
+    "96": { "$type": "dimension", "$value": "96px" }
+  },
+
+  "radius": {
+    "$description": "Layer 1. 6 is the workhorse: a button, an input, a menu item and a card all use it unless there is a reason otherwise. 2 and 4 are for things nested inside something already rounded. 12 and 16 are for full-bleed panels only. Needing a value that is not on this list usually means the element is the wrong size.",
+    "2":    { "$type": "dimension", "$value": "2px" },
+    "4":    { "$type": "dimension", "$value": "4px" },
+    "6":    { "$type": "dimension", "$value": "6px" },
+    "8":    { "$type": "dimension", "$value": "8px" },
+    "12":   { "$type": "dimension", "$value": "12px" },
+    "16":   { "$type": "dimension", "$value": "16px" },
+    "full": { "$type": "dimension", "$value": "9999px" }
+  }
+}

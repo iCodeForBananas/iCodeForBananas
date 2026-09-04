@@ -1,0 +1,14 @@
+{
+  "duration": {
+    "$description": "Layer 1. 120 is a state change you should not consciously see (hover, focus). 180 is the default for anything that moves or fades. 240 is a panel or popover entering. 320 is a full-screen transition and is the ceiling: past that the interface feels like it is thinking rather than responding. Anything using these must also honor prefers-reduced-motion; the tokens do not do that for you.",
+    "120": { "$type": "duration", "$value": "120ms" },
+    "180": { "$type": "duration", "$value": "180ms" },
+    "240": { "$type": "duration", "$value": "240ms" },
+    "320": { "$type": "duration", "$value": "320ms" }
+  },
+
+  "ease": {
+    "$description": "Layer 1. One curve for the whole system.",
+    "out": { "$type": "cubicBezier", "$value": [0.16, 1, 0.3, 1], "$description": "A hard decelerating curve: almost all of the distance is covered in the first third of the duration, so motion arrives rather than drifts. This is the only easing curve in the system. Linear is acceptable for a progress indicator and nothing else." }
+  }
+}

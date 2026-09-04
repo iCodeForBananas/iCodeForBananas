@@ -6,7 +6,9 @@
     "dev": "cross-env NODE_OPTIONS=--max-old-space-size=4096 next dev",
     "build": "cross-env NODE_OPTIONS=--max-old-space-size=4096 next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "tokens:build": "node scripts/build-tokens.mjs",
+    "tokens:check": "node scripts/contrast-check.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-ses": "^3.1049.0",
@@ -52,6 +54,7 @@
     "cross-env": "^10.1.0",
     "eslint": "^9",
     "eslint-config-next": "16.1.1",
+    "style-dictionary": "^4.4.0",
     "tailwindcss": "^4",
     "typescript": "5.9.3"
   }

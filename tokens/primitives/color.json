@@ -1,0 +1,67 @@
+{
+  "palette": {
+    "$description": "Layer 1 primitives. Raw values only, no meaning attached. Component code never names these; it goes through the Layer 2 semantic aliases in tokens/semantic. Layer 1 is identical in every theme.",
+
+    "neutral": {
+      "$description": "Warm neutral ramp at hue ~80. Chroma stays at or below 0.015 so it reads as neutral rather than tinted, but never as the dead grey of a chroma-zero scale. Step 1 is the darkest, step 12 the lightest, in both themes; it is the semantic layer that decides which end means 'background'.",
+      "1":  { "$type": "color", "$value": "oklch(0.16 0.008 80)" },
+      "2":  { "$type": "color", "$value": "oklch(0.19 0.009 80)" },
+      "3":  { "$type": "color", "$value": "oklch(0.23 0.010 80)" },
+      "4":  { "$type": "color", "$value": "oklch(0.27 0.011 81)" },
+      "5":  { "$type": "color", "$value": "oklch(0.32 0.012 81)" },
+      "6":  { "$type": "color", "$value": "oklch(0.38 0.012 82)" },
+      "7":  { "$type": "color", "$value": "oklch(0.46 0.012 82)" },
+      "8":  { "$type": "color", "$value": "oklch(0.55 0.011 83)" },
+      "9":  { "$type": "color", "$value": "oklch(0.65 0.010 83)" },
+      "10": { "$type": "color", "$value": "oklch(0.76 0.008 84)" },
+      "11": { "$type": "color", "$value": "oklch(0.87 0.006 84)" },
+      "12": { "$type": "color", "$value": "oklch(0.97 0.004 85)" }
+    },
+
+    "amber": {
+      "$description": "The one accent that carries the brand. Steps 1 to 6 are a monotonic ramp for tints, borders and text on light surfaces. The four named variants below are not ramp positions: they are the specific values the brand is defined by, and three of them sit at almost the same lightness rather than in sequence.",
+      "1": { "$type": "color", "$value": "oklch(0.24 0.035 80)" },
+      "2": { "$type": "color", "$value": "oklch(0.33 0.060 81)" },
+      "3": { "$type": "color", "$value": "oklch(0.45 0.090 83)" },
+      "4": { "$type": "color", "$value": "oklch(0.62 0.125 84)" },
+      "5": { "$type": "color", "$value": "oklch(0.75 0.150 85)" },
+      "6": { "$type": "color", "$value": "oklch(0.93 0.078 87)" },
+      "solid":    { "$type": "color", "$value": "oklch(0.851 0.161 85)", "$description": "Amber at full strength: a filled button, the active state of a control. Whatever sits on top of this is palette.amber.contrast, never white. See that token." },
+      "hover":    { "$type": "color", "$value": "oklch(0.884 0.184 92)", "$description": "Hover for a solid amber fill. Brighter than solid, not darker. On a dark UI, lifting toward the light is what reads as 'closer to the pointer'. Chroma here is past the sRGB boundary (max is ~0.161 at this lightness): it renders as written on a P3 display and clips to the gamut edge on an sRGB one. That is deliberate, and npm run tokens:check measures the clipped result, so the contrast numbers hold either way." },
+      "text":     { "$type": "color", "$value": "oklch(0.856 0.176 88)", "$description": "Amber as a text or icon color on a dark surface. Not for light surfaces; step 3 is the light-surface equivalent. Sits a hair outside sRGB (max is ~0.174 at this lightness), which is below the threshold of visible clipping." },
+      "contrast": { "$type": "color", "$value": "oklch(0.20 0.020 80)", "$description": "The near-black label that goes on top of amber.solid. THIS IS NOT A BUG AND MUST NOT BE 'FIXED' TO WHITE. Amber at L 0.851 is a light color: white on it lands near 1.4:1, failing every contrast target there is, while this near-black lands near 9:1. Every design system with a light-yellow primary has to make this call, and the label is the side that gives." }
+    },
+
+    "teal": {
+      "$description": "Cool counter-accent at hue ~190. Used sparingly, and never competing with amber for the same job. Its purpose is a second, orthogonal axis of meaning, not a second brand color.",
+      "1": { "$type": "color", "$value": "oklch(0.62 0.105 190)", "$description": "Only light theme uses this. Teal at step 2 clears 3:1 against a dark surface but lands near 2.2:1 against a near-white one, so light needs its own step." },
+      "2": { "$type": "color", "$value": "oklch(0.72 0.12 190)" },
+      "3": { "$type": "color", "$value": "oklch(0.80 0.11 190)" }
+    },
+
+    "danger": {
+      "$description": "Step 1 is for light theme, step 2 for dark. A status color has to be legible as text on whatever surface it lands on, and no single lightness manages that against both a near-black and a near-white background.",
+      "1": { "$type": "color", "$value": "oklch(0.55 0.185 30)" },
+      "2": { "$type": "color", "$value": "oklch(0.64 0.20 30)" }
+    },
+
+    "success": {
+      "$description": "Step 1 is for light theme, step 2 for dark. See danger.",
+      "1": { "$type": "color", "$value": "oklch(0.51 0.140 150)" },
+      "2": { "$type": "color", "$value": "oklch(0.72 0.15 150)" }
+    },
+    "white":   { "$type": "color", "$value": "oklch(1 0 0)" },
+
+    "alpha": {
+      "$description": "Translucent hairlines. Borders use these rather than an opaque neutral so that one border value reads correctly at every surface elevation instead of needing a variant per surface.",
+      "light": {
+        "6":  { "$type": "color", "$value": "oklch(1 0 0 / 0.06)" },
+        "12": { "$type": "color", "$value": "oklch(1 0 0 / 0.12)" }
+      },
+      "dark": {
+        "8":  { "$type": "color", "$value": "oklch(0 0 0 / 0.08)" },
+        "14": { "$type": "color", "$value": "oklch(0 0 0 / 0.14)" }
+      }
+    }
+  }
+}

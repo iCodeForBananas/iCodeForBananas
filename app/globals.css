@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./tokens.css";
 
 #main-content {
   -webkit-overflow-scrolling: touch;
@@ -63,6 +64,50 @@
 
   /* Light gray so the fretboard stays visible against dark containers */
   --chord-ink: #e5e5e5;
+}
+
+/* ── Design system ────────────────────────────────────────────────────────
+   The songwriting tools read from these and nothing else. Values come from
+   app/tokens.css, which is generated from tokens/ by `npm run tokens:build`.
+
+   Only colors and the easing curve are mapped here, because the rest of the
+   scale already matches Tailwind's defaults and re-declaring it would create a
+   second source of truth that could drift:
+
+     spacing   space.16 is p-4. Tailwind's numeric scale is the same 4px scale.
+     radius    rounded-md is 6px, the workhorse. xs/sm/md/lg/xl/2xl are already
+               2/4/6/8/12/16, so the token scale is Tailwind's radius scale.
+     duration  duration-120 / 180 / 240 / 320 compile to those millisecond
+               values natively.
+
+   The Tailwind key names are shortened where the token name would have
+   stuttered: `line` for color.border (border-line-subtle, not
+   border-border-subtle) and `ink` for color.text (text-ink-muted). */
+@theme inline {
+  --color-surface-sunken: var(--ds-color-surface-sunken);
+  --color-surface-base: var(--ds-color-surface-base);
+  --color-surface-raised: var(--ds-color-surface-raised);
+  --color-surface-overlay: var(--ds-color-surface-overlay);
+
+  --color-line-subtle: var(--ds-color-border-subtle);
+  --color-line-strong: var(--ds-color-border-strong);
+
+  --color-ink-primary: var(--ds-color-text-primary);
+  --color-ink-muted: var(--ds-color-text-muted);
+  --color-ink-on-primary: var(--ds-color-text-on-primary);
+
+  --color-primary-solid: var(--ds-color-primary-solid);
+  --color-primary-hover: var(--ds-color-primary-hover);
+  --color-primary-text: var(--ds-color-primary-text);
+
+  --color-accent-solid: var(--ds-color-accent-solid);
+  --color-danger: var(--ds-color-danger);
+  --color-success: var(--ds-color-success);
+  --color-focus: var(--ds-color-focus-ring);
+
+  /* Not an override of Tailwind's own --ease-out, which is a gentler curve and
+     is still in use across the older tools. */
+  --ease-ui: var(--ds-ease-out);
 }
 
 @theme inline {

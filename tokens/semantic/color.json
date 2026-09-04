@@ -1,0 +1,41 @@
+{
+  "color": {
+    "$description": "Layer 2 semantics. These are the only color tokens component code is allowed to name. Every value is a reference into Layer 1 and every name describes the job the color does, never what it looks like: repoint a primitive and this file still reads correctly. The values here are the DARK theme, which is the default and lives on :root. tokens/themes/light.json overrides this same set and nothing else.",
+
+    "surface": {
+      "$description": "Elevation on a dark UI is expressed by stepping this token, not by stacking shadows. sunken sits behind everything (the page, an inset field, a track well), base is the default plane, raised is a card or panel on it, overlay is a menu, popover or dialog above the whole thing. Four steps is the entire vocabulary; needing a fifth means something is nested too deep.",
+      "sunken":  { "$type": "color", "$value": "{palette.neutral.1}" },
+      "base":    { "$type": "color", "$value": "{palette.neutral.2}" },
+      "raised":  { "$type": "color", "$value": "{palette.neutral.3}" },
+      "overlay": { "$type": "color", "$value": "{palette.neutral.4}" }
+    },
+
+    "border": {
+      "$description": "Hairlines, always translucent so one value holds up over any surface step. subtle is the default and is nearly invisible by design: it should separate, not divide. strong is for a control that has to read as an editable boundary.",
+      "subtle": { "$type": "color", "$value": "{palette.alpha.light.6}" },
+      "strong": { "$type": "color", "$value": "{palette.alpha.light.12}" }
+    },
+
+    "text": {
+      "primary":    { "$type": "color", "$value": "{palette.neutral.12}" },
+      "muted":      { "$type": "color", "$value": "{palette.neutral.9}", "$description": "Secondary text: labels, metadata, timestamps. Still clears 4.5:1 on surface.base. It is muted, not disabled, and there is deliberately no third dimmer tier, because a third tier is where hierarchy turns into illegibility." },
+      "on-primary": { "$type": "color", "$value": "{palette.amber.contrast}", "$description": "The label on a filled amber control. Resolves to a near-black, and that is correct: see palette.amber.contrast for why it can never be white. Identical in both themes, because primary.solid is identical in both themes." }
+    },
+
+    "primary": {
+      "$description": "The amber accent in its three jobs. For the one action in a view that matters most. A screen with three primary buttons has none.",
+      "solid": { "$type": "color", "$value": "{palette.amber.solid}" },
+      "hover": { "$type": "color", "$value": "{palette.amber.hover}" },
+      "text":  { "$type": "color", "$value": "{palette.amber.text}", "$description": "Amber as text or an icon rather than a fill: a link, an active nav item, a chord symbol. This is the token that has to flip between themes, because amber bright enough to read on near-black is far too light to read on near-white." }
+    },
+
+    "accent": {
+      "solid": { "$type": "color", "$value": "{palette.teal.2}", "$description": "The teal counter-accent as a fill, for a second axis of meaning that would be ambiguous in amber. The intended first use is marking a capo transform as distinct from a key change." }
+    },
+
+    "danger":  { "$type": "color", "$value": "{palette.danger.2}" },
+    "success": { "$type": "color", "$value": "{palette.success.2}" },
+
+    "focus-ring": { "$type": "color", "$value": "{palette.amber.text}", "$description": "Always visible, never removed. An outline may be replaced with a different visible treatment; it may not be replaced with nothing. This is the one place the accent appears without being the primary action, because the user put it there by pressing Tab." }
+  }
+}

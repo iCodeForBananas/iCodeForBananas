@@ -1,0 +1,38 @@
+{
+  "light": {
+    "$description": "Light theme. Overrides Layer 2 semantics ONLY, emitted under [data-theme=\"light\"]. Layer 1 primitives are never redefined per theme: when a value must change between themes, the fix is to point the semantic alias at a different primitive, not to redefine the primitive. Anything absent here inherits its dark value on purpose, which is why text.on-primary and primary.solid are not listed.",
+
+    "color": {
+      "surface": {
+        "$description": "Elevation runs the other way in light: raised means whiter, not lighter grey. overlay and raised share a value because the neutral ramp tops out at white, so an overlay is separated from a raised card by its shadow instead. That is the normal light-theme convention.",
+        "sunken":  { "$type": "color", "$value": "{palette.neutral.11}" },
+        "base":    { "$type": "color", "$value": "{palette.neutral.12}" },
+        "raised":  { "$type": "color", "$value": "{palette.white}" },
+        "overlay": { "$type": "color", "$value": "{palette.white}" }
+      },
+
+      "border": {
+        "subtle": { "$type": "color", "$value": "{palette.alpha.dark.8}" },
+        "strong": { "$type": "color", "$value": "{palette.alpha.dark.14}" }
+      },
+
+      "text": {
+        "primary": { "$type": "color", "$value": "{palette.neutral.1}" },
+        "muted":   { "$type": "color", "$value": "{palette.neutral.6}" }
+      },
+
+      "primary": {
+        "text": { "$type": "color", "$value": "{palette.amber.3}", "$description": "Amber text has to drop a long way in lightness to survive on a near-white surface. amber.text at L 0.856 lands near 1.2:1 here, which is invisible. This is the single most likely token for someone to 'simplify' back to the brand value; doing so would delete the text." }
+      },
+
+      "accent": {
+        "solid": { "$type": "color", "$value": "{palette.teal.1}" }
+      },
+
+      "danger":  { "$type": "color", "$value": "{palette.danger.1}" },
+      "success": { "$type": "color", "$value": "{palette.success.1}" },
+
+      "focus-ring": { "$type": "color", "$value": "{palette.amber.3}" }
+    }
+  }
+}
