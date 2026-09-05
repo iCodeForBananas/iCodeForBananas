@@ -9,6 +9,7 @@ import { Plus, Trash2, Music, Eye, Pencil, Copy, Check, Link2, ListMusic, Star }
 import type { LeadSheet } from "./shared";
 import { makeSection, getPlainText, OfflineBadge } from "./shared";
 import { cacheSheet, cacheSheetList, getCachedSheetList } from "./offlineCache";
+import { useCommands } from "@/app/components/ui/command-palette";
 
 export default function LeadSheetList() {
   const { user, loading: authLoading } = useAuth();
@@ -77,6 +78,38 @@ export default function LeadSheetList() {
       .single();
     if (data) router.push(`/lead-sheet-editor/${data.id}/edit`);
   }
+
+  // Every song by name, plus the one thing you do when none of them is what
+  // you wanted. Rebuilt when the library changes; `run` reads nothing that is
+  // not in the dependency list.
+  const commands = useMemo(
+    () => [
+      {
+        id: "song:new",
+        label: "Create song",
+        group: "Library",
+        keywords: "new add write",
+        run: () => void createSheet(),
+      },
+      {
+        id: "setlists",
+        label: "Go to setlists",
+        group: "Library",
+        keywords: "set list gig show",
+        run: () => router.push("/lead-sheet-editor/setlists"),
+      },
+      ...sortedSheets.map((sheet) => ({
+        id: `song:${sheet.id}`,
+        label: sheet.title || "Untitled",
+        group: "Songs",
+        hint: [sheet.key, sheet.tempo ? `${sheet.tempo} bpm` : null].filter(Boolean).join("  "),
+        run: () => router.push(`/lead-sheet-editor/${sheet.id}/preview`),
+      })),
+    ],
+    // createSheet closes over `user` and `router`, both of which are listed.
+    [sortedSheets, router, user] // eslint-disable-line react-hooks/exhaustive-deps
+  );
+  useCommands("library", commands);
 
   async function handleCopyText(sheet: LeadSheet) {
     await navigator.clipboard.writeText(getPlainText(sheet));

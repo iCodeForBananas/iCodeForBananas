@@ -86,6 +86,30 @@ not widen a line.
 
 It needs the app running (`npm run build && npm start`), and takes `BASE_URL`.
 
+## Components
+
+`app/components/ui/` is the component base: Base UI primitives for behaviour,
+this token system for everything visible. It holds no colour, spacing, radius or
+duration literal at all; a few one-off layout values (a blur radius, a viewport
+offset, a scale factor) are written inline because they are none of those four
+and belong to one component.
+
+Elevation is the surface step, sunken to base to raised to overlay. `shadow`
+only adds what a step cannot: one soft shadow plus a hairline inset highlight,
+and a stronger one for an overlay that has to read as detached.
+
+Two things in this layer are load-bearing and easy to undo:
+
+- **`cn()` is taught the type scale.** `text-13` is a size and
+  `text-ink-muted` is a colour, and tailwind-merge cannot tell them apart, so
+  by default it files them together and keeps one. That silently deleted the
+  near-black label from the primary button and left near-white text on amber.
+  `app/lib/utils.test.ts` pins it.
+- **No `outline-none` on a focusable control.** In Tailwind v4 it sets the
+  outline style through a variable that `focus-visible:outline-2` then reads,
+  so the two together produce a 2px outline that does not draw. Write
+  `focus-visible:outline-solid` and leave the default alone.
+
 ## What is deliberately not tokenized here
 
 Spacing, radii and durations exist as tokens but are **not** mapped into

@@ -1,0 +1,16 @@
+{
+  "shadow": {
+    "$description": "Layer 2. Elevation on a dark UI is carried by the surface step, not by shadow; these only add the last bit of separation that a stepped surface cannot give on its own, and in light theme they do most of the work because the surfaces there are all near-white. One soft shadow plus a hairline inset highlight is the whole budget. Values are pre-composed CSS strings rather than DTCG's structured shadow object, because that object has no way to express an inset and both of these need one.",
+
+    "raised": {
+      "$type": "shadow",
+      "$value": "0 1px 2px 0 oklch(0 0 0 / 0.28), inset 0 1px 0 0 oklch(1 0 0 / 0.04)",
+      "$description": "A card or panel sitting on the base plane. The inset line is a single hairline of light along the top edge, the way a raised physical surface catches the light above it. Barely visible by design."
+    },
+    "overlay": {
+      "$type": "shadow",
+      "$value": "0 8px 24px -8px oklch(0 0 0 / 0.45), 0 2px 6px -2px oklch(0 0 0 / 0.3), inset 0 1px 0 0 oklch(1 0 0 / 0.05)",
+      "$description": "A menu, popover or dialog floating over the whole page. The one place a shadow is allowed to be noticeable, because an overlay has to read as detached rather than merely lighter. Still soft and still tight: a large blur with a negative spread, not a heavy drop shadow."
+    }
+  }
+}

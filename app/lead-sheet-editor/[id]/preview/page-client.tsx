@@ -17,6 +17,7 @@ import {
   useSongDocumentTitle,
 } from "../../shared";
 import { cacheSheet, getCachedSheet } from "../../offlineCache";
+import { useCommands } from "@/app/components/ui/command-palette";
 import LineEditor, { type LineTarget } from "../../LineEditor";
 import SectionEditor from "../../SectionEditor";
 import { asSectionHeader } from "../../songText";
@@ -426,6 +427,41 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
   const [transposeSteps, setTransposeSteps] = useState(0);
   // Edit mode is a layer over the preview, not a different page: the song keeps
   // its size, columns and key, and every line becomes something you can tap.
+  const songCommands = useMemo(
+    () => [
+      {
+        id: "transpose:up",
+        label: "Transpose up a semitone",
+        group: "This song",
+        keywords: "key pitch higher raise",
+        run: () => setTransposeSteps((steps) => steps + 1),
+      },
+      {
+        id: "transpose:down",
+        label: "Transpose down a semitone",
+        group: "This song",
+        keywords: "key pitch lower drop",
+        run: () => setTransposeSteps((steps) => steps - 1),
+      },
+      {
+        id: "transpose:reset",
+        label: "Back to the written key",
+        group: "This song",
+        keywords: "transpose reset original concert",
+        run: () => setTransposeSteps(0),
+      },
+      {
+        id: "performance",
+        label: "Toggle performance mode",
+        group: "This song",
+        keywords: "fullscreen stage live big large play",
+        run: () => setFullscreen((on) => !on),
+      },
+    ],
+    []
+  );
+  useCommands("song", songCommands);
+
   const [editMode, setEditMode] = useState(false);
   const [editTarget, setEditTarget] = useState<LineTarget | null>(null);
   /** Index the new section lands after; -1 puts it at the top of a bare song. */

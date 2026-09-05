@@ -113,6 +113,8 @@
   --ds-color-danger: var(--ds-palette-danger-2);
   --ds-color-success: var(--ds-palette-success-2);
   --ds-color-focus-ring: var(--ds-palette-amber-text); /** Always visible, never removed. An outline may be replaced with a different visible treatment; it may not be replaced with nothing. This is the one place the accent appears without being the primary action, because the user put it there by pressing Tab. */
+  --ds-shadow-raised: 0 1px 2px 0 oklch(0 0 0 / 0.28), inset 0 1px 0 0 oklch(1 0 0 / 0.04); /** A card or panel sitting on the base plane. The inset line is a single hairline of light along the top edge, the way a raised physical surface catches the light above it. Barely visible by design. */
+  --ds-shadow-overlay: 0 8px 24px -8px oklch(0 0 0 / 0.45), 0 2px 6px -2px oklch(0 0 0 / 0.3), inset 0 1px 0 0 oklch(1 0 0 / 0.05); /** A menu, popover or dialog floating over the whole page. The one place a shadow is allowed to be noticeable, because an overlay has to read as detached rather than merely lighter. Still soft and still tight: a large blur with a negative spread, not a heavy drop shadow. */
 }
 
 [data-theme="light"] {

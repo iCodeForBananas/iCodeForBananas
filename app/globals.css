@@ -109,6 +109,10 @@
      is still in use across the older tools. */
   --ease-ui: var(--ds-ease-out);
 
+  /* Two elevations, no more. Anything needing a third is nested too deep. */
+  --shadow-raised: var(--ds-shadow-raised);
+  --shadow-overlay: var(--ds-shadow-overlay);
+
   /* Three families. The stacks themselves are on :root below as --ds-font-*,
      and these map them onto Tailwind's names so the font-sans / font-mono /
      font-display utilities exist and so var(--font-mono) resolves anywhere.
