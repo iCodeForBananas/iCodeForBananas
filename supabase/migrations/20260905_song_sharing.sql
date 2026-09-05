@@ -20,6 +20,7 @@ DROP POLICY IF EXISTS "Public read" ON lead_sheets;
 -- Unlisted and public are both readable by id; the difference is that only
 -- public songs are listed anywhere, which is a query concern rather than a
 -- policy one.
+DROP POLICY IF EXISTS "Anyone may read a shared song" ON lead_sheets;
 CREATE POLICY "Anyone may read a shared song"
   ON lead_sheets FOR SELECT
   USING (visibility IN ('unlisted', 'public'));
@@ -59,6 +60,7 @@ CREATE INDEX IF NOT EXISTS song_comments_sheet_idx
 
 -- Readable wherever the song is readable, so a private song's comments are as
 -- private as it is.
+DROP POLICY IF EXISTS "Comments follow the song's visibility" ON song_comments;
 CREATE POLICY "Comments follow the song's visibility"
   ON song_comments FOR SELECT
   USING (
@@ -70,6 +72,7 @@ CREATE POLICY "Comments follow the song's visibility"
   );
 
 -- Anyone who can read a shared song may comment on it.
+DROP POLICY IF EXISTS "Signed-in readers may comment" ON song_comments;
 CREATE POLICY "Signed-in readers may comment"
   ON song_comments FOR INSERT
   WITH CHECK (
@@ -83,6 +86,7 @@ CREATE POLICY "Signed-in readers may comment"
 
 -- Your own comment is yours; the song's owner can also remove one from their
 -- song, which is the minimum a person needs to look after their own page.
+DROP POLICY IF EXISTS "Authors and the song owner may delete a comment" ON song_comments;
 CREATE POLICY "Authors and the song owner may delete a comment"
   ON song_comments FOR DELETE
   USING (
