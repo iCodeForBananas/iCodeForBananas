@@ -67,12 +67,12 @@ export function MetronomeControl({
 
   return (
     <div className='flex flex-wrap items-center gap-1 px-3 py-2 print:hidden'>
-      <span className='text-sm font-medium text-gray-700 dark:text-neutral-200 select-none'>BPM</span>
+      <span className='text-sm font-medium text-ink-primary select-none'>BPM</span>
       <button
         type='button'
         onClick={() => onBpmChange(bpm - 1)}
         disabled={bpm <= MIN_BPM}
-        className='h-10 w-10 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-neutral-800 hover:bg-gray-200 dark:hover:bg-neutral-700 text-gray-700 dark:text-neutral-200 font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed'
+        className='h-10 w-10 flex items-center justify-center rounded-lg bg-surface-raised hover:bg-surface-overlay text-ink-primary font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed'
         aria-label='Decrease tempo'
       >
         <Minus className='w-4 h-4' />
@@ -90,13 +90,13 @@ export function MetronomeControl({
         }}
         onBlur={() => setDraft(null)}
         aria-label='Beats per minute'
-        className='h-10 w-14 rounded-lg bg-gray-100 dark:bg-neutral-800 text-center text-sm font-medium text-gray-700 dark:text-neutral-200 outline-none focus:ring-1 focus:ring-gray-400'
+        className='h-10 w-14 rounded-lg bg-surface-raised text-center text-sm font-medium text-ink-primary outline-none focus:ring-1 focus:ring-focus'
       />
       <button
         type='button'
         onClick={() => onBpmChange(bpm + 1)}
         disabled={bpm >= MAX_BPM}
-        className='h-10 w-10 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-neutral-800 hover:bg-gray-200 dark:hover:bg-neutral-700 text-gray-700 dark:text-neutral-200 font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed'
+        className='h-10 w-10 flex items-center justify-center rounded-lg bg-surface-raised hover:bg-surface-overlay text-ink-primary font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed'
         aria-label='Increase tempo'
       >
         <Plus className='w-4 h-4' />
@@ -106,7 +106,7 @@ export function MetronomeControl({
         onChange={(e) => onBeatsPerBarChange(parseInt(e.target.value, 10))}
         aria-label='Beats per bar'
         title='Beats per bar — the first beat flashes brightest'
-        className='h-10 rounded-lg bg-gray-100 dark:bg-neutral-800 px-1 text-sm font-medium text-gray-700 dark:text-neutral-200 outline-none'
+        className='h-10 rounded-lg bg-surface-raised px-1 text-sm font-medium text-ink-primary outline-none'
       >
         {BEATS_PER_BAR_OPTIONS.map((n) => (
           <option key={n} value={n}>
@@ -120,8 +120,8 @@ export function MetronomeControl({
         title={running ? "Stop the metronome" : "Blink a silent beat over the sheet"}
         className={`h-10 flex items-center gap-1.5 px-3 rounded-lg text-sm font-medium transition-colors duration-150 ${
           running
-            ? "bg-yellow-400 text-black hover:bg-yellow-300"
-            : "bg-gray-100 dark:bg-neutral-800 hover:bg-gray-200 dark:hover:bg-neutral-700 text-gray-700 dark:text-neutral-200"
+            ? "bg-primary-solid text-ink-on-primary hover:bg-primary-hover"
+            : "bg-surface-raised hover:bg-surface-overlay text-ink-primary"
         }`}
       >
         {running ? <Square className='w-4 h-4' /> : <CircleDot className='w-4 h-4' />}
@@ -167,7 +167,7 @@ export function MetronomeOverlay({
       {/* Viewport ring — keyed on the beat so the fade restarts each time */}
       <div
         key={`ring-${beat}`}
-        className='absolute inset-0 border-yellow-400'
+        className='absolute inset-0 border-primary-solid'
         style={{
           borderWidth: downbeat ? 14 : 8,
           animation: `leadsheetRingPulse ${flashMs}ms ease-out forwards`,
@@ -176,10 +176,10 @@ export function MetronomeOverlay({
 
       {/* Dial — dark disc so the count reads the same in either theme */}
       <div className={`absolute right-4 ${lifted ? "bottom-48" : "bottom-6"} flex flex-col items-center gap-2`}>
-        <div className='relative flex h-28 w-28 items-center justify-center rounded-full border-4 border-yellow-400/25 bg-black/80 sm:h-36 sm:w-36'>
+        <div className='relative flex h-28 w-28 items-center justify-center rounded-full border-4 border-primary-solid/25 bg-surface-sunken/80 sm:h-36 sm:w-36'>
           <div
             key={`dot-${beat}`}
-            className='absolute -inset-2 rounded-full border-yellow-400'
+            className='absolute -inset-2 rounded-full border-primary-solid'
             style={{
               borderWidth: downbeat ? 12 : 6,
               animation: `leadsheetBeatPulse ${flashMs}ms ease-out forwards`,
@@ -194,7 +194,7 @@ export function MetronomeOverlay({
               cy='50'
               r={SWEEP_RADIUS}
               fill='none'
-              stroke='#facc15'
+              stroke='var(--ds-color-primary-solid)'
               strokeOpacity={0.18}
               strokeWidth='7'
             />
@@ -204,7 +204,7 @@ export function MetronomeOverlay({
               cy='50'
               r={SWEEP_RADIUS}
               fill='none'
-              stroke='#facc15'
+              stroke='var(--ds-color-primary-solid)'
               strokeWidth='7'
               strokeLinecap='round'
               transform='rotate(-90 50 50)'
@@ -216,11 +216,11 @@ export function MetronomeOverlay({
             />
           </svg>
 
-          <span className='relative text-5xl font-bold tabular-nums text-yellow-400 sm:text-6xl'>
+          <span className='relative text-5xl font-bold tabular-nums text-primary-text sm:text-6xl'>
             {beatInBar + 1}
           </span>
         </div>
-        <span className='rounded bg-black/70 px-2 py-0.5 text-xs font-medium tabular-nums text-white'>
+        <span className='rounded bg-surface-sunken/70 px-2 py-0.5 text-xs font-medium tabular-nums text-ink-primary'>
           {bpm} BPM · {beatsPerBar}/4
         </span>
       </div>

@@ -33,6 +33,12 @@
   --ds-palette-teal-1: oklch(0.62 0.105 190); /** Only light theme uses this. Teal at step 2 clears 3:1 against a dark surface but lands near 2.2:1 against a near-white one, so light needs its own step. */
   --ds-palette-teal-2: oklch(0.72 0.12 190);
   --ds-palette-teal-3: oklch(0.80 0.11 190);
+  --ds-palette-track-1: oklch(0.62 0.155 275);
+  --ds-palette-track-2: oklch(0.62 0.165 305);
+  --ds-palette-track-3: oklch(0.62 0.170 15);
+  --ds-palette-track-4: oklch(0.68 0.125 230);
+  --ds-palette-track-5: oklch(0.68 0.135 155);
+  --ds-palette-track-6: oklch(0.66 0.140 45);
   --ds-palette-danger-1: oklch(0.55 0.185 30);
   --ds-palette-danger-2: oklch(0.64 0.20 30);
   --ds-palette-success-1: oklch(0.51 0.140 150);
@@ -110,6 +116,12 @@
   --ds-color-primary-hover: var(--ds-palette-amber-hover);
   --ds-color-primary-text: var(--ds-palette-amber-text); /** Amber as text or an icon rather than a fill: a link, an active nav item, a chord symbol. This is the token that has to flip between themes, because amber bright enough to read on near-black is far too light to read on near-white. */
   --ds-color-accent-solid: var(--ds-palette-teal-2); /** The teal counter-accent as a fill, for a second axis of meaning that would be ambiguous in amber. The intended first use is marking a capo transform as distinct from a key change. */
+  --ds-color-track-1: var(--ds-palette-track-1);
+  --ds-color-track-2: var(--ds-palette-track-2);
+  --ds-color-track-3: var(--ds-palette-track-3);
+  --ds-color-track-4: var(--ds-palette-track-4);
+  --ds-color-track-5: var(--ds-palette-track-5);
+  --ds-color-track-6: var(--ds-palette-track-6);
   --ds-color-danger: var(--ds-palette-danger-2);
   --ds-color-success: var(--ds-palette-success-2);
   --ds-color-focus-ring: var(--ds-palette-amber-text); /** Always visible, never removed. An outline may be replaced with a different visible treatment; it may not be replaced with nothing. This is the one place the accent appears without being the primary action, because the user put it there by pressing Tab. */

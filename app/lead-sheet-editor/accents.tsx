@@ -697,8 +697,8 @@ export function ShimmerControl({
         title={`${current.name} — ${current.description}`}
         className={`h-8 px-2.5 text-xs font-medium rounded-md border transition-colors duration-100 flex-shrink-0 ${
           running
-            ? "bg-sky-400 text-white border-sky-400"
-            : "bg-gray-100 dark:bg-neutral-800 text-gray-600 dark:text-neutral-300 border-gray-200 dark:border-neutral-700 hover:bg-gray-200 dark:hover:bg-neutral-700"
+            ? "bg-track-4 text-ink-primary border-track-4"
+            : "bg-surface-raised text-ink-primary border-line-subtle hover:bg-surface-overlay"
         }`}
       >
         Shimmer
@@ -713,7 +713,7 @@ export function ShimmerControl({
         }}
         aria-label='Shimmer accent'
         title={current.description}
-        className='h-8 max-w-[9.5rem] text-xs rounded-md border border-gray-200 dark:border-neutral-700 bg-gray-100 dark:bg-neutral-800 text-gray-700 dark:text-neutral-200 px-1 focus:outline-none'
+        className='h-8 max-w-[9.5rem] text-xs rounded-md border border-line-subtle bg-surface-raised text-ink-primary px-1 focus:outline-none'
       >
         {ACCENT_GROUPS.map((group) => (
           <optgroup key={group.label} label={group.label}>

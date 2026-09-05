@@ -316,10 +316,10 @@ export function YouTubePanel({
   const [open, setOpen] = useState(true);
 
   return (
-    <div className="fixed bottom-32 left-4 z-[61] w-64 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg dark:border-neutral-700 dark:bg-neutral-900 print:hidden">
+    <div className="fixed bottom-32 left-4 z-[61] w-64 overflow-hidden rounded-xl border border-line-subtle bg-surface-base shadow-lg border-line-subtle bg-surface-base print:hidden">
       <div className="flex items-center gap-2 px-3 py-2">
-        <Youtube className="h-4 w-4 shrink-0 text-red-600" />
-        <span className="min-w-0 flex-1 truncate text-xs font-medium text-gray-700 dark:text-neutral-200">
+        <Youtube className="h-4 w-4 shrink-0 text-danger" />
+        <span className="min-w-0 flex-1 truncate text-xs font-medium text-ink-primary">
           {status === "error"
             ? "Video unavailable"
             : status === "ready"
@@ -330,7 +330,7 @@ export function YouTubePanel({
           type="button"
           onClick={() => setOpen((o) => !o)}
           aria-label={open ? "Hide video" : "Show video"}
-          className="flex h-6 w-6 items-center justify-center rounded text-gray-500 transition-colors duration-150 hover:bg-gray-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
+          className="flex h-6 w-6 items-center justify-center rounded text-ink-muted transition-colors duration-150 hover:bg-surface-raised text-ink-muted hover:bg-surface-raised"
         >
           {open ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
         </button>
@@ -342,13 +342,13 @@ export function YouTubePanel({
       </div>
 
       {status === "error" && (
-        <p className="px-3 py-2 text-[0.7rem] leading-snug text-gray-500 dark:text-neutral-400">
+        <p className="px-3 py-2 text-[0.7rem] leading-snug text-ink-muted">
           This one can&apos;t be embedded — playback fell back to the stopwatch.{" "}
           <a
             href={link.url}
             target="_blank"
             rel="noreferrer"
-            className="underline hover:text-gray-700 dark:hover:text-neutral-200"
+            className="underline hover:text-ink-primary"
           >
             Open on YouTube
           </a>
@@ -356,7 +356,7 @@ export function YouTubePanel({
       )}
 
       {status === "ready" && link.startSeconds > 0 && (
-        <p className="px-3 pb-2 text-[0.7rem] text-gray-400 dark:text-neutral-500">
+        <p className="px-3 pb-2 text-[0.7rem] text-ink-muted">
           Song starts {link.startSeconds}s into the video
         </p>
       )}

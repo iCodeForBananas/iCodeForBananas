@@ -92,7 +92,7 @@ export const KEYS = [
 
 export function OfflineBadge() {
   return (
-    <span className="flex items-center gap-1.5 text-xs font-medium text-amber-600 dark:text-amber-400">
+    <span className="flex items-center gap-1.5 text-xs font-medium text-primary-text text-primary-text">
       <WifiOff className="w-3.5 h-3.5" />
       Offline — showing cached version
     </span>
@@ -249,7 +249,7 @@ export function ChordLyricLine({
   const hasChords = segments.some((s) => s.chord);
 
   const timeChip = showTime && marker && (
-    <span className="mr-2 select-none rounded bg-black/5 px-1.5 py-0.5 align-middle font-mono text-[0.7em] text-black/40 dark:bg-white/10 dark:text-white/40 print:hidden">
+    <span className="mr-2 select-none rounded bg-surface-raised px-1.5 py-0.5 align-middle font-mono text-[0.7em] text-ink-muted bg-surface-raised text-ink-muted print:hidden">
       {formatTime(marker.start)}
     </span>
   );
@@ -257,7 +257,7 @@ export function ChordLyricLine({
   if (!hasChords) {
     return (
       <p
-        className={`leadsheet-lyric leadsheet-doc whitespace-pre-wrap break-words ${large ? "text-[1.5em]" : "text-[1em]"} leading-relaxed text-black dark:text-white`}
+        className={`leadsheet-lyric leadsheet-doc whitespace-pre-wrap break-words ${large ? "text-[1.5em]" : "text-[1em]"} leading-relaxed text-ink-primary`}
       >
         {timeChip}
         {body || "\u00A0"}
@@ -272,12 +272,12 @@ export function ChordLyricLine({
         <span key={i}>
           {seg.chord && (
             <ChordHoverPopover chord={seg.chord}>
-              <span className="leadsheet-chord font-semibold text-amber-600 dark:text-yellow-400">
+              <span className="leadsheet-chord font-semibold text-primary-text text-primary-text">
                 [{seg.chord}]
               </span>
             </ChordHoverPopover>
           )}
-          <span className="leadsheet-lyric text-black dark:text-white">{seg.lyric}</span>
+          <span className="leadsheet-lyric text-ink-primary">{seg.lyric}</span>
         </span>
       ))}
     </p>

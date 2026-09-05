@@ -23,6 +23,19 @@ repointing a primitive leaves the file still reading correctly.
 **Layer 3, component tokens.** Does not exist yet, on purpose. Add one only
 when a component genuinely needs a knob of its own, not in advance.
 
+## Track colours
+
+`color.track.1` to `.6` are a categorical set, for things that differ in kind
+rather than in importance: a recorded track, a drum voice, a pad. They are the
+one place a colour carries identity instead of meaning, which is why they are a
+flat set rather than a ramp and why none of them is the brand. Assign them in
+order and let them repeat.
+
+They take a near-black label for the same reason the amber does, and on a light
+surface a track swatch draws a `border.strong` outline: a fill this saturated
+cannot clear 3:1 against near-white at a lightness that also carries that
+label. `tokens:check` records that as a mitigation rather than a pass.
+
 ## Themes
 
 Dark is the default and lives on `:root`. `[data-theme="light"]` overrides

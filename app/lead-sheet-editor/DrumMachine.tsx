@@ -1127,8 +1127,8 @@ export function DrumMachineControl({
         title={running ? "Stop drums" : "Start drums"}
         className={`h-8 w-8 flex items-center justify-center rounded-md transition-colors duration-150 flex-shrink-0 ${
           running
-            ? "bg-indigo-500 text-white hover:bg-indigo-600"
-            : "bg-gray-100 dark:bg-neutral-800 text-gray-600 dark:text-neutral-300 hover:bg-gray-200 dark:hover:bg-neutral-700"
+            ? "bg-track-1 text-ink-primary hover:bg-track-1/80"
+            : "bg-surface-raised text-ink-primary hover:bg-surface-overlay"
         }`}
       >
         {/* Drum icon */}
@@ -1153,7 +1153,7 @@ export function DrumMachineControl({
         value={patternIdx}
         onChange={(e) => onSettingsChange({ pattern: DRUM_PATTERNS[Number(e.target.value)].name })}
         aria-label="Drum pattern"
-        className="h-8 text-xs rounded-md border border-gray-200 dark:border-neutral-700 bg-gray-100 dark:bg-neutral-800 text-gray-700 dark:text-neutral-200 px-1 focus:outline-none"
+        className="h-8 text-xs rounded-md border border-line-subtle bg-surface-raised text-ink-primary px-1 focus:outline-none"
       >
         {PATTERN_GROUPS.map((group) => (
           <optgroup key={group.label} label={group.label}>
@@ -1167,7 +1167,7 @@ export function DrumMachineControl({
       </select>
 
       {/* Kick style toggle: Folk / 808 */}
-      <div className="flex rounded-md overflow-hidden border border-gray-200 dark:border-neutral-700 flex-shrink-0">
+      <div className="flex rounded-md overflow-hidden border border-line-subtle flex-shrink-0">
         {(["folk", "808"] as const).map((style) => (
           <button
             key={style}
@@ -1176,9 +1176,9 @@ export function DrumMachineControl({
             className={`px-2 h-7 text-xs font-medium transition-colors duration-100 ${
               kickStyle === style
                 ? style === "808"
-                  ? "bg-orange-500 text-white"
-                  : "bg-indigo-500 text-white"
-                : "bg-gray-100 dark:bg-neutral-800 text-gray-500 dark:text-neutral-400 hover:bg-gray-200 dark:hover:bg-neutral-700"
+                  ? "bg-track-6 text-ink-primary"
+                  : "bg-track-1 text-ink-primary"
+                : "bg-surface-raised text-ink-muted hover:bg-surface-overlay"
             }`}
             aria-label={`${style === "808" ? "TR-808" : "Folk"} kick`}
             title={style === "808" ? "TR-808 sub-bass kick" : "Folk acoustic kick"}
@@ -1189,7 +1189,7 @@ export function DrumMachineControl({
       </div>
 
       {/* Snare style toggle: Regular / Brush */}
-      <div className="flex rounded-md overflow-hidden border border-gray-200 dark:border-neutral-700 flex-shrink-0">
+      <div className="flex rounded-md overflow-hidden border border-line-subtle flex-shrink-0">
         {(["regular", "brush"] as const).map((style) => (
           <button
             key={style}
@@ -1198,9 +1198,9 @@ export function DrumMachineControl({
             className={`px-2 h-7 text-xs font-medium transition-colors duration-100 ${
               snareStyle === style
                 ? style === "brush"
-                  ? "bg-emerald-600 text-white"
-                  : "bg-indigo-500 text-white"
-                : "bg-gray-100 dark:bg-neutral-800 text-gray-500 dark:text-neutral-400 hover:bg-gray-200 dark:hover:bg-neutral-700"
+                  ? "bg-track-5 text-ink-primary"
+                  : "bg-track-1 text-ink-primary"
+                : "bg-surface-raised text-ink-muted hover:bg-surface-overlay"
             }`}
             aria-label={`${style === "brush" ? "Brushed" : "Regular"} snare`}
             title={style === "brush" ? "Brushed snare" : "Regular snare"}
@@ -1223,10 +1223,10 @@ export function DrumMachineControl({
                 key={i}
                 className={`w-1 h-3 rounded-sm transition-colors duration-75 ${
                   i === activeStep
-                    ? "bg-indigo-500"
+                    ? "bg-track-1"
                     : hasHit
-                    ? "bg-gray-400 dark:bg-neutral-500"
-                    : "bg-gray-200 dark:bg-neutral-700"
+                    ? "bg-surface-overlay bg-surface-overlay"
+                    : "bg-surface-overlay bg-surface-overlay"
                 }`}
               />
             );
@@ -1244,7 +1244,7 @@ export function DrumMachineControl({
         onChange={(e) => onSettingsChange({ volume: Number(e.target.value) })}
         aria-label={`Drum volume ${Math.round(volume * 100)}%`}
         title={`Volume: ${Math.round(volume * 100)}%`}
-        className="w-14 h-1 accent-indigo-500 flex-shrink-0"
+        className="w-14 h-1 accent-track-1 flex-shrink-0"
       />
 
       {/* Download WAV */}
@@ -1254,7 +1254,7 @@ export function DrumMachineControl({
           onClick={() => setShowDlPicker(true)}
           title="Download drum track as WAV"
           aria-label="Download drum track as WAV"
-          className="h-7 px-2 text-xs font-medium rounded-md border border-gray-200 dark:border-neutral-700 bg-gray-100 dark:bg-neutral-800 text-gray-500 dark:text-neutral-400 hover:bg-gray-200 dark:hover:bg-neutral-700 flex-shrink-0"
+          className="h-7 px-2 text-xs font-medium rounded-md border border-line-subtle bg-surface-raised text-ink-muted hover:bg-surface-overlay flex-shrink-0"
         >
           ↓ WAV
         </button>
@@ -1269,14 +1269,14 @@ export function DrumMachineControl({
             onChange={(e) => setDlMinutes(e.target.value)}
             aria-label="Duration in minutes"
             title="Duration in minutes"
-            className="w-14 h-7 text-xs rounded-md border border-gray-200 dark:border-neutral-700 bg-gray-100 dark:bg-neutral-800 text-gray-700 dark:text-neutral-200 px-1.5 focus:outline-none"
+            className="w-14 h-7 text-xs rounded-md border border-line-subtle bg-surface-raised text-ink-primary px-1.5 focus:outline-none"
           />
-          <span className="text-[10px] text-gray-400 dark:text-neutral-500">min</span>
+          <span className="text-[10px] text-ink-muted">min</span>
           <button
             type="button"
             onClick={handleDownload}
             disabled={rendering}
-            className="h-7 px-2 text-xs font-medium rounded-md border border-indigo-400 bg-indigo-500 text-white hover:bg-indigo-600 disabled:opacity-50 flex-shrink-0"
+            className="h-7 px-2 text-xs font-medium rounded-md border border-track-1 bg-track-1 text-ink-primary hover:bg-track-1/80 disabled:opacity-50 flex-shrink-0"
           >
             {rendering ? "…" : "↓"}
           </button>
@@ -1284,7 +1284,7 @@ export function DrumMachineControl({
             type="button"
             onClick={() => setShowDlPicker(false)}
             aria-label="Cancel download"
-            className="h-7 px-1.5 text-xs rounded-md border border-gray-200 dark:border-neutral-700 bg-gray-100 dark:bg-neutral-800 text-gray-400 hover:bg-gray-200 dark:hover:bg-neutral-700 flex-shrink-0"
+            className="h-7 px-1.5 text-xs rounded-md border border-line-subtle bg-surface-raised text-ink-muted hover:bg-surface-overlay flex-shrink-0"
           >
             ✕
           </button>

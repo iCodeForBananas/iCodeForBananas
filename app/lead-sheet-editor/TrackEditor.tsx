@@ -103,14 +103,14 @@ const BEATS_PER_BAR = 4;
 const FADE_SECONDS = 4;
 
 const LAYER_STYLES: Record<string, { bar: string; edge: string; dot: string }> = {
-  drum: { bar: "bg-emerald-500/25 text-emerald-100", edge: "bg-emerald-400", dot: "bg-emerald-400" },
-  claps: { bar: "bg-sky-500/25 text-sky-100", edge: "bg-sky-400", dot: "bg-sky-400" },
-  shimmer: { bar: "bg-violet-500/25 text-violet-100", edge: "bg-violet-400", dot: "bg-violet-400" },
-  drone: { bar: "bg-amber-500/25 text-amber-100", edge: "bg-amber-400", dot: "bg-amber-400" },
+  drum: { bar: "bg-track-5/25 text-ink-on-primary", edge: "bg-track-5", dot: "bg-track-5" },
+  claps: { bar: "bg-track-4/25 text-ink-on-primary", edge: "bg-track-4", dot: "bg-track-4" },
+  shimmer: { bar: "bg-track-2/25 text-ink-on-primary", edge: "bg-track-2", dot: "bg-track-2" },
+  drone: { bar: "bg-track-6/25 text-ink-on-primary", edge: "bg-primary-solid", dot: "bg-primary-solid" },
 };
 
 const layerStyle = (layer: string) =>
-  LAYER_STYLES[layer] ?? { bar: "bg-white/15 text-white", edge: "bg-white/60", dot: "bg-white/60" };
+  LAYER_STYLES[layer] ?? { bar: "bg-surface-raised text-ink-primary", edge: "bg-surface-overlay", dot: "bg-surface-overlay" };
 
 type Selection = { kind: "lyric" | "sound"; id: string } | null;
 
@@ -237,11 +237,11 @@ function LevelMeter({ level }: { level: number }) {
     <div className="flex h-5 items-end gap-0.5">
       {Array.from({ length: bars }, (_, i) => {
         const active = level >= (i + 1) / bars;
-        const color = i < 7 ? "bg-green-500" : i < 9 ? "bg-yellow-400" : "bg-red-500";
+        const color = i < 7 ? "bg-success" : i < 9 ? "bg-primary-solid" : "bg-danger";
         return (
           <div
             key={i}
-            className={`w-1.5 rounded-sm transition-all duration-75 ${active ? color : "bg-white/15"}`}
+            className={`w-1.5 rounded-sm transition-all duration-75 ${active ? color : "bg-surface-raised"}`}
             style={{ height: `${40 + i * 7}%` }}
           />
         );
@@ -1084,14 +1084,14 @@ export default function TrackEditor({
   const unplaced = lyrics.length - placedLyrics.length;
 
   return (
-    <div className="fixed inset-0 z-[70] flex flex-col bg-black">
+    <div className="fixed inset-0 z-[70] flex flex-col bg-surface-base">
       {/* Header */}
-      <div className="flex shrink-0 items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
+      <div className="flex shrink-0 items-center justify-between gap-3 border-b border-line-subtle px-4 py-3">
         <div className="flex items-center gap-3">
-          <Music3 className="h-4 w-4 text-yellow-400" />
+          <Music3 className="h-4 w-4 text-primary-text" />
           <div>
-            <h2 className="text-sm font-medium text-white">Arrange</h2>
-            <p className="text-xs text-white/40">
+            <h2 className="text-sm font-medium text-ink-primary">Arrange</h2>
+            <p className="text-xs text-ink-muted">
               Drag a clip to move it, pull its edges to change how long it holds.
             </p>
           </div>
@@ -1099,18 +1099,18 @@ export default function TrackEditor({
         <div className="flex items-center gap-2">
           {videoLink && (
             <div className="flex items-center gap-2">
-              <span className="text-xs text-white/40">
+              <span className="text-xs text-ink-muted">
                 {videoStatus === "error" ? "Video unavailable" : "Timing against the video"}
               </span>
               {/* Never unmounted while the arranger is open — a destroyed iframe
                   stops playing, and the audio is the whole point. */}
-              <div ref={videoMount} className="h-14 w-24 overflow-hidden rounded bg-black" />
+              <div ref={videoMount} className="h-14 w-24 overflow-hidden rounded bg-surface-base" />
             </div>
           )}
           <button
             onClick={close}
             aria-label="Close arranger"
-            className="text-white/50 transition-colors hover:text-white"
+            className="text-ink-muted transition-colors hover:text-ink-primary"
           >
             <X className="h-4 w-4" />
           </button>
@@ -1118,21 +1118,21 @@ export default function TrackEditor({
       </div>
 
       {/* Toolbar */}
-      <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-white/10 px-4 py-2">
+      <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-line-subtle px-4 py-2">
         <button
           onClick={togglePlay}
           disabled={!playback.ready}
-          className="flex h-9 items-center gap-2 rounded bg-yellow-400 px-3 text-sm font-medium text-black transition-colors hover:bg-yellow-300 disabled:opacity-30"
+          className="flex h-9 items-center gap-2 rounded bg-primary-solid px-3 text-sm font-medium text-ink-on-primary transition-colors hover:bg-primary-hover disabled:opacity-30"
         >
           {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
           {playing ? "Pause" : "Play"}
         </button>
-        <span className="w-16 font-mono text-sm tabular-nums text-yellow-400">{formatTime(time)}</span>
+        <span className="w-16 font-mono text-sm tabular-nums text-primary-text">{formatTime(time)}</span>
 
         {recording ? (
           <button
             onClick={stopRecording}
-            className="flex h-9 items-center gap-2 rounded bg-red-500 px-3 text-sm font-medium text-white transition-colors hover:bg-red-400"
+            className="flex h-9 items-center gap-2 rounded bg-danger px-3 text-sm font-medium text-ink-primary transition-colors hover:bg-danger"
           >
             <Square className="h-3.5 w-3.5 fill-current" />
             Stop
@@ -1143,8 +1143,8 @@ export default function TrackEditor({
             title="Record a take onto its own track, from the playhead"
             className={`flex h-9 items-center gap-2 rounded px-3 text-sm font-medium transition-colors ${
               arming
-                ? "bg-rose-500 text-white hover:bg-rose-400"
-                : "text-white/60 ring-1 ring-white/20 hover:text-white hover:ring-white/50"
+                ? "bg-track-3 text-ink-primary hover:bg-track-3/80"
+                : "text-ink-muted ring-1 ring-line-subtle hover:text-ink-primary hover:ring-focus"
             }`}
           >
             <Mic className="h-4 w-4" />
@@ -1153,29 +1153,29 @@ export default function TrackEditor({
         )}
         {recording && <LevelMeter level={level} />}
 
-        <div className="mx-1 w-px self-stretch bg-white/15" />
+        <div className="mx-1 w-px self-stretch bg-surface-raised" />
 
         <button
           onClick={() => setZoom((z) => Math.max(MIN_ZOOM, z / 1.4))}
           aria-label="Zoom out"
-          className="flex h-9 w-9 items-center justify-center rounded text-white/60 ring-1 ring-white/20 transition-colors hover:text-white hover:ring-white/50"
+          className="flex h-9 w-9 items-center justify-center rounded text-ink-muted ring-1 ring-line-subtle transition-colors hover:text-ink-primary hover:ring-focus"
         >
           <ZoomOut className="h-4 w-4" />
         </button>
         <button
           onClick={() => setZoom((z) => Math.min(MAX_ZOOM, z * 1.4))}
           aria-label="Zoom in"
-          className="flex h-9 w-9 items-center justify-center rounded text-white/60 ring-1 ring-white/20 transition-colors hover:text-white hover:ring-white/50"
+          className="flex h-9 w-9 items-center justify-center rounded text-ink-muted ring-1 ring-line-subtle transition-colors hover:text-ink-primary hover:ring-focus"
         >
           <ZoomIn className="h-4 w-4" />
         </button>
 
-        <label className="ml-1 flex items-center gap-1.5 text-xs text-white/40">
+        <label className="ml-1 flex items-center gap-1.5 text-xs text-ink-muted">
           Snap
           <select
             value={snapBeats}
             onChange={(e) => setSnapBeats(parseFloat(e.target.value))}
-            className="rounded border border-white/20 bg-black px-2 py-1.5 text-xs text-white outline-none focus:border-white/60"
+            className="rounded border border-line-strong bg-surface-base px-2 py-1.5 text-xs text-ink-primary outline-none focus:border-line-strong"
           >
             {SNAP_CHOICES.map((choice) => (
               <option key={choice.label} value={choice.beats}>
@@ -1187,17 +1187,17 @@ export default function TrackEditor({
 
         {/* Selected clip */}
         {selectedSound && (
-          <div className="ml-1 flex items-center gap-2 rounded border border-white/15 px-2 py-1">
-            <span className="text-xs font-medium uppercase tracking-wide text-white/60">
+          <div className="ml-1 flex items-center gap-2 rounded border border-line-subtle px-2 py-1">
+            <span className="text-xs font-medium uppercase tracking-wide text-ink-muted">
               {layerLabel(selectedSound.layer)}
             </span>
-            <span className="font-mono text-xs tabular-nums text-white/40">
+            <span className="font-mono text-xs tabular-nums text-ink-muted">
               {formatArrangementTime(selectedSound.start)}–{formatArrangementTime(selectedSound.end)}
             </span>
             <button
               onClick={() => patchSound(selectedSound.id, { fadeIn: !selectedSound.fadeIn })}
               className={`rounded px-1.5 py-0.5 text-xs transition-colors ${
-                selectedSound.fadeIn ? "bg-yellow-400 text-black" : "text-white/50 hover:text-white"
+                selectedSound.fadeIn ? "bg-primary-solid text-ink-on-primary" : "text-ink-muted hover:text-ink-primary"
               }`}
             >
               Fade in
@@ -1205,7 +1205,7 @@ export default function TrackEditor({
             <button
               onClick={() => patchSound(selectedSound.id, { fadeOut: !selectedSound.fadeOut })}
               className={`rounded px-1.5 py-0.5 text-xs transition-colors ${
-                selectedSound.fadeOut ? "bg-yellow-400 text-black" : "text-white/50 hover:text-white"
+                selectedSound.fadeOut ? "bg-primary-solid text-ink-on-primary" : "text-ink-muted hover:text-ink-primary"
               }`}
             >
               Fade out
@@ -1213,24 +1213,24 @@ export default function TrackEditor({
             <button
               onClick={removeSelected}
               aria-label="Delete clip"
-              className="text-white/40 transition-colors hover:text-red-400"
+              className="text-ink-muted transition-colors hover:text-danger"
             >
               <Trash2 className="h-3.5 w-3.5" />
             </button>
           </div>
         )}
         {selectedLyric && (
-          <div className="ml-1 flex items-center gap-2 rounded border border-white/15 px-2 py-1">
-            <span className="max-w-[16rem] truncate font-mono text-xs text-white/70">
+          <div className="ml-1 flex items-center gap-2 rounded border border-line-subtle px-2 py-1">
+            <span className="max-w-[16rem] truncate font-mono text-xs text-ink-muted">
               {selectedLyric.text || "(blank line)"}
             </span>
-            <span className="font-mono text-xs tabular-nums text-white/40">
+            <span className="font-mono text-xs tabular-nums text-ink-muted">
               {formatArrangementTime(selectedLyric.start)}–{formatArrangementTime(selectedLyric.end)}
             </span>
             <button
               onClick={removeSelected}
               title="Give this line's time back to the line above"
-              className="text-xs text-white/40 transition-colors hover:text-white"
+              className="text-xs text-ink-muted transition-colors hover:text-ink-primary"
             >
               Untime
             </button>
@@ -1241,7 +1241,7 @@ export default function TrackEditor({
           <button
             onClick={resetAll}
             title="Put every clip back where the song has it"
-            className="flex h-9 items-center gap-1.5 rounded px-3 text-sm font-medium text-white/50 transition-colors hover:text-white"
+            className="flex h-9 items-center gap-1.5 rounded px-3 text-sm font-medium text-ink-muted transition-colors hover:text-ink-primary"
           >
             <RotateCcw className="h-3.5 w-3.5" />
             Reset
@@ -1251,7 +1251,7 @@ export default function TrackEditor({
               onClick={exportWAV}
               disabled={exporting || recording}
               title="Mix every un-muted take down to one WAV"
-              className="flex h-9 items-center gap-1.5 rounded px-3 text-sm font-medium text-white/50 transition-colors hover:text-white disabled:opacity-30"
+              className="flex h-9 items-center gap-1.5 rounded px-3 text-sm font-medium text-ink-muted transition-colors hover:text-ink-primary disabled:opacity-30"
             >
               <Download className="h-3.5 w-3.5" />
               {exporting ? "Mixing…" : "Export"}
@@ -1260,7 +1260,7 @@ export default function TrackEditor({
           <button
             onClick={apply}
             disabled={!dirty}
-            className="flex h-9 items-center gap-2 rounded bg-yellow-400 px-4 text-sm font-medium text-black transition-colors hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-30"
+            className="flex h-9 items-center gap-2 rounded bg-primary-solid px-4 text-sm font-medium text-ink-on-primary transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-30"
           >
             <Check className="h-4 w-4" />
             Apply to song
@@ -1272,19 +1272,19 @@ export default function TrackEditor({
           from. Recording rolls the song underneath, so a take is played against
           the drums and the takes already down rather than against silence. */}
       {(arming || recording) && (
-        <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-white/10 bg-rose-500/10 px-4 py-2">
+        <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-line-subtle bg-track-3/10 px-4 py-2">
           <input
             value={takeName}
             onChange={(e) => setTakeName(e.target.value)}
             disabled={recording}
             placeholder="Take name"
-            className="h-8 w-40 rounded border border-white/20 bg-black px-2 text-sm text-white outline-none focus:border-white/60 disabled:opacity-50"
+            className="h-8 w-40 rounded border border-line-strong bg-surface-base px-2 text-sm text-ink-primary outline-none focus:border-line-strong disabled:opacity-50"
           />
           <select
             value={takeType}
             onChange={(e) => setTakeType(e.target.value as LocalTrack["type"])}
             disabled={recording}
-            className="h-8 rounded border border-white/20 bg-black px-2 text-sm text-white outline-none focus:border-white/60 disabled:opacity-50"
+            className="h-8 rounded border border-line-strong bg-surface-base px-2 text-sm text-ink-primary outline-none focus:border-line-strong disabled:opacity-50"
           >
             <option value="guitar">Guitar</option>
             <option value="vocals">Vocals</option>
@@ -1295,7 +1295,7 @@ export default function TrackEditor({
               value={deviceId}
               onChange={(e) => setDeviceId(e.target.value)}
               disabled={recording}
-              className="h-8 max-w-56 flex-1 rounded border border-white/20 bg-black px-2 text-sm text-white outline-none focus:border-white/60 disabled:opacity-50"
+              className="h-8 max-w-56 flex-1 rounded border border-line-strong bg-surface-base px-2 text-sm text-ink-primary outline-none focus:border-line-strong disabled:opacity-50"
             >
               {devices.map((d) => (
                 <option key={d.deviceId} value={d.deviceId}>
@@ -1307,13 +1307,13 @@ export default function TrackEditor({
           {!recording && (
             <button
               onClick={startRecording}
-              className="flex h-8 items-center gap-1.5 rounded bg-rose-500 px-3 text-xs font-semibold text-white transition-colors hover:bg-rose-400"
+              className="flex h-8 items-center gap-1.5 rounded bg-track-3 px-3 text-xs font-semibold text-ink-primary transition-colors hover:bg-track-3/80"
             >
               <Mic className="h-3.5 w-3.5" />
               Record from {formatTime(time)}
             </button>
           )}
-          <span className="text-xs text-white/40">
+          <span className="text-xs text-ink-muted">
             {recording
               ? "Recording — the song is rolling underneath."
               : "The take lands at the playhead. Move it there first."}
@@ -1322,9 +1322,9 @@ export default function TrackEditor({
       )}
 
       {audioError && (
-        <div className="flex shrink-0 items-center gap-2 border-b border-white/10 bg-red-500/10 px-4 py-2 text-xs text-red-300">
+        <div className="flex shrink-0 items-center gap-2 border-b border-line-subtle bg-danger/10 px-4 py-2 text-xs text-danger">
           <span className="flex-1">{audioError}</span>
-          <button onClick={() => setAudioError(null)} className="text-red-300/60 hover:text-red-200">
+          <button onClick={() => setAudioError(null)} className="text-danger/60 hover:text-danger">
             ✕
           </button>
         </div>
@@ -1341,18 +1341,18 @@ export default function TrackEditor({
       <div ref={scrollRef} className="min-h-0 flex-1 overflow-auto">
         <div data-timeline className="relative" style={{ width: GUTTER + width }}>
           {/* Ruler */}
-          <div className="sticky top-0 z-30 flex h-8 bg-black">
+          <div className="sticky top-0 z-30 flex h-8 bg-surface-base">
             <div
-              className="sticky left-0 z-40 shrink-0 border-r border-b border-white/10 bg-black"
+              className="sticky left-0 z-40 shrink-0 border-r border-b border-line-subtle bg-surface-base"
               style={{ width: GUTTER }}
             />
             <Ruler duration={duration} zoom={zoom} width={width} beat={beatSeconds} onSeek={seekTo} />
           </div>
 
           {/* Lyric track */}
-          <div className="flex border-b border-white/10" style={{ height: lyricHeight }}>
+          <div className="flex border-b border-line-subtle" style={{ height: lyricHeight }}>
             <TrackName>
-              <span className="text-yellow-400">Lyrics</span>
+              <span className="text-primary-text">Lyrics</span>
             </TrackName>
             <div
               className="relative"
@@ -1367,8 +1367,8 @@ export default function TrackEditor({
                   width={Math.max(2, (clip.end - clip.start) * zoom)}
                   top={TRACK_PAD + (lyricLanes.get(clip) ?? 0) * (LANE_HEIGHT + LANE_GAP)}
                   selected={selected?.kind === "lyric" && selected.id === clip.id}
-                  className="bg-yellow-400/20 text-yellow-50"
-                  edgeClass="bg-yellow-400"
+                  className="bg-primary-solid/20 text-ink-on-primary"
+                  edgeClass="bg-primary-solid"
                   title={`${clip.section} — ${formatArrangementTime(clip.start)}`}
                   onPointerDown={(e, mode) => beginDrag(e, clip, "lyric", mode)}
                 >
@@ -1382,17 +1382,17 @@ export default function TrackEditor({
           {tracks.map((layer) => (
             <div
               key={layer}
-              className="flex border-b border-white/10"
+              className="flex border-b border-line-subtle"
               style={{ height: LANE_HEIGHT + TRACK_PAD * 2 }}
             >
               <TrackName>
                 <span className={`h-2 w-2 shrink-0 rounded-full ${layerStyle(layer).dot}`} />
-                <span className="flex-1 truncate text-white/70">{layerLabel(layer)}</span>
+                <span className="flex-1 truncate text-ink-muted">{layerLabel(layer)}</span>
                 <button
                   onClick={() => addClipAtPlayhead(layer)}
                   title={`Add a ${layerLabel(layer)} clip at the playhead`}
                   aria-label={`Add a ${layerLabel(layer)} clip`}
-                  className="text-white/30 transition-colors hover:text-white"
+                  className="text-ink-muted transition-colors hover:text-ink-primary"
                 >
                   <Plus className="h-3.5 w-3.5" />
                 </button>
@@ -1400,7 +1400,7 @@ export default function TrackEditor({
                   onClick={() => removeTrack(layer)}
                   title={`Remove the ${layerLabel(layer)} track`}
                   aria-label={`Remove the ${layerLabel(layer)} track`}
-                  className="text-white/30 transition-colors hover:text-red-400"
+                  className="text-ink-muted transition-colors hover:text-danger"
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>
@@ -1438,11 +1438,11 @@ export default function TrackEditor({
           {audio.map((track) => (
             <div
               key={track.id}
-              className="flex border-b border-white/10"
+              className="flex border-b border-line-subtle"
               style={{ height: LANE_HEIGHT + TRACK_PAD * 2 }}
             >
               <TrackName>
-                <span className={track.muted ? "text-white/25" : "text-rose-400"}>
+                <span className={track.muted ? "text-ink-muted" : "text-track-3"}>
                   {track.type === "vocals" ? (
                     <Mic className="h-3 w-3" />
                   ) : (
@@ -1450,14 +1450,14 @@ export default function TrackEditor({
                   )}
                 </span>
                 <span
-                  className={`flex-1 truncate normal-case ${track.muted ? "text-white/25" : "text-white/70"}`}
+                  className={`flex-1 truncate normal-case ${track.muted ? "text-ink-muted" : "text-ink-muted"}`}
                   title={`${track.name} — ${formatTime(track.durationSec)}`}
                 >
                   {track.name}
                 </span>
                 {!track.syncedAt && userId && (
                   <span title="Waiting to reach the cloud">
-                    <Cloud className="h-3 w-3 text-amber-400" />
+                    <Cloud className="h-3 w-3 text-primary-text" />
                   </span>
                 )}
                 <input
@@ -1468,12 +1468,12 @@ export default function TrackEditor({
                   value={track.volume}
                   onChange={(e) => setTakeVolume(track.id, Number(e.target.value))}
                   aria-label={`${track.name} volume`}
-                  className="h-1 w-10 accent-rose-500"
+                  className="h-1 w-10 accent-track-3"
                 />
                 <button
                   onClick={() => toggleTakeMute(track.id)}
                   title={track.muted ? "Unmute" : "Mute"}
-                  className="text-white/30 transition-colors hover:text-white"
+                  className="text-ink-muted transition-colors hover:text-ink-primary"
                 >
                   {track.muted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
                 </button>
@@ -1481,7 +1481,7 @@ export default function TrackEditor({
                   onClick={() => deleteTake(track)}
                   title={`Delete ${track.name}`}
                   aria-label={`Delete ${track.name}`}
-                  className="text-white/30 transition-colors hover:text-red-400"
+                  className="text-ink-muted transition-colors hover:text-danger"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>
@@ -1495,10 +1495,10 @@ export default function TrackEditor({
                   selected={false}
                   className={
                     track.muted
-                      ? "bg-white/5 text-white/30"
-                      : "bg-rose-500/25 text-rose-50"
+                      ? "bg-surface-raised text-ink-muted"
+                      : "bg-track-3/25 text-ink-on-primary"
                   }
-                  edgeClass="bg-rose-400"
+                  edgeClass="bg-track-3"
                   title={`${track.name} — starts at ${formatArrangementTime(trackStart(track))}, drag to line it up`}
                   onPointerDown={(e) =>
                     beginDrag(
@@ -1517,17 +1517,17 @@ export default function TrackEditor({
 
           {/* Playhead — behind the sticky names, so it slides under them. */}
           <div
-            className="pointer-events-none absolute top-0 bottom-0 z-10 w-px bg-red-500"
+            className="pointer-events-none absolute top-0 bottom-0 z-10 w-px bg-danger"
             style={{ left: GUTTER + time * zoom }}
           >
-            <div className="absolute -left-1 top-0 h-2 w-2 rounded-full bg-red-500" />
+            <div className="absolute -left-1 top-0 h-2 w-2 rounded-full bg-danger" />
           </div>
         </div>
       </div>
       </div>
 
       {/* Footer */}
-      <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1 border-t border-white/10 px-4 py-2 text-xs text-white/35">
+      <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1 border-t border-line-subtle px-4 py-2 text-xs text-ink-muted">
         <span>Space plays · ← → jump 5s · Delete removes a clip</span>
         <span>Drag from the library onto the tracks · drag a clip back to shelve it.</span>
         {unplaced > 0 && (
@@ -1543,7 +1543,7 @@ export default function TrackEditor({
           what it landed on. */}
       {ghost && (
         <div
-          className="pointer-events-none fixed z-[90] max-w-64 truncate rounded bg-yellow-400 px-2 py-1 text-xs font-medium text-black shadow-lg"
+          className="pointer-events-none fixed z-[90] max-w-64 truncate rounded bg-primary-solid px-2 py-1 text-xs font-medium text-ink-on-primary shadow-lg"
           style={{ left: ghost.x + 14, top: ghost.y + 14 }}
         >
           {ghost.label}
@@ -1575,17 +1575,17 @@ function Library({
   return (
     <div
       data-library
-      className="flex shrink-0 flex-col border-r border-white/10 bg-black"
+      className="flex shrink-0 flex-col border-r border-line-subtle bg-surface-base"
       style={{ width: LIBRARY_WIDTH }}
     >
-      <div className="flex shrink-0 items-center gap-2 border-b border-white/10 px-3 py-2">
-        <ListMusic className="h-3.5 w-3.5 text-yellow-400" />
-        <span className="text-xs font-medium uppercase tracking-wide text-white/60">Library</span>
-        <span className="ml-auto font-mono text-xs tabular-nums text-white/30">{count}</span>
+      <div className="flex shrink-0 items-center gap-2 border-b border-line-subtle px-3 py-2">
+        <ListMusic className="h-3.5 w-3.5 text-primary-text" />
+        <span className="text-xs font-medium uppercase tracking-wide text-ink-muted">Library</span>
+        <span className="ml-auto font-mono text-xs tabular-nums text-ink-muted">{count}</span>
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-2 py-2">
-        <div className="mb-1 px-1 text-[0.65rem] font-medium uppercase tracking-wide text-white/30">
+        <div className="mb-1 px-1 text-[0.65rem] font-medium uppercase tracking-wide text-ink-muted">
           Sounds
         </div>
         <div className="mb-3 flex flex-wrap gap-1">
@@ -1596,7 +1596,7 @@ function Library({
                 onGrab(e, { kind: "sound", layer, label: layerLabel(layer) })
               }
               title={`Drag ${layerLabel(layer)} onto the timeline`}
-              className={`flex cursor-grab items-center gap-1.5 rounded px-2 py-1 text-xs text-white/70 ring-1 ring-white/15 transition-colors select-none hover:ring-white/40 active:cursor-grabbing`}
+              className={`flex cursor-grab items-center gap-1.5 rounded px-2 py-1 text-xs text-ink-muted ring-1 ring-line-subtle transition-colors select-none hover:ring-focus active:cursor-grabbing`}
               style={{ touchAction: "none" }}
             >
               <span className={`h-2 w-2 shrink-0 rounded-full ${layerStyle(layer).dot}`} />
@@ -1606,13 +1606,13 @@ function Library({
         </div>
 
         {count === 0 ? (
-          <p className="px-1 py-3 text-xs text-white/30">
+          <p className="px-1 py-3 text-xs text-ink-muted">
             Every line is on the timeline. Drag one back here to shelve it.
           </p>
         ) : (
           groups.map((group, i) => (
             <div key={`${group.section}:${i}`} className="mb-3">
-              <div className="mb-1 px-1 text-[0.65rem] font-medium uppercase tracking-wide text-white/30">
+              <div className="mb-1 px-1 text-[0.65rem] font-medium uppercase tracking-wide text-ink-muted">
                 {group.section || "Song"}
               </div>
               <div className="flex flex-col gap-0.5">
@@ -1627,7 +1627,7 @@ function Library({
                       })
                     }
                     title={clip.text || "(blank line)"}
-                    className="cursor-grab truncate rounded bg-white/5 px-2 py-1 text-xs text-white/60 transition-colors select-none hover:bg-white/10 hover:text-white active:cursor-grabbing"
+                    className="cursor-grab truncate rounded bg-surface-raised px-2 py-1 text-xs text-ink-muted transition-colors select-none hover:bg-surface-raised hover:text-ink-primary active:cursor-grabbing"
                     style={{ touchAction: "none" }}
                   >
                     {clip.text || "·"}
@@ -1648,7 +1648,7 @@ function Library({
 function TrackName({ children }: { children: React.ReactNode }) {
   return (
     <div
-      className="sticky left-0 z-20 flex shrink-0 items-start gap-2 border-r border-white/10 bg-black px-3 pt-2 text-xs font-medium uppercase tracking-wide"
+      className="sticky left-0 z-20 flex shrink-0 items-start gap-2 border-r border-line-subtle bg-surface-base px-3 pt-2 text-xs font-medium uppercase tracking-wide"
       style={{ width: GUTTER }}
     >
       {children}
@@ -1689,7 +1689,7 @@ function Ruler({
 
   return (
     <div
-      className="relative h-8 shrink-0 cursor-pointer border-b border-white/10 bg-black"
+      className="relative h-8 shrink-0 cursor-pointer border-b border-line-subtle bg-surface-base"
       style={{ width, touchAction: "none" }}
       onPointerDown={(e) => {
         const bounds = e.currentTarget.getBoundingClientRect();
@@ -1698,10 +1698,10 @@ function Ruler({
     >
       {ticks.map(({ bar, seconds }) => (
         <div key={bar} className="absolute top-0 h-full" style={{ left: seconds * zoom }}>
-          <div className="h-2 w-px bg-white/25" />
-          <span className="absolute left-1 top-1.5 font-mono text-[0.65rem] tabular-nums text-white/40">
+          <div className="h-2 w-px bg-surface-overlay" />
+          <span className="absolute left-1 top-1.5 font-mono text-[0.65rem] tabular-nums text-ink-muted">
             {bar + 1}
-            <span className="ml-1 text-white/20">{formatTime(seconds)}</span>
+            <span className="ml-1 text-ink-muted">{formatTime(seconds)}</span>
           </span>
         </div>
       ))}
@@ -1720,7 +1720,7 @@ function Grid({ duration, zoom, beat }: { duration: number; zoom: number; beat: 
       {lines.map((seconds) => (
         <div
           key={seconds}
-          className="pointer-events-none absolute top-0 bottom-0 w-px bg-white/5"
+          className="pointer-events-none absolute top-0 bottom-0 w-px bg-surface-raised"
           style={{ left: seconds * zoom }}
         />
       ))}
@@ -1754,7 +1754,7 @@ function ClipBox({
       title={title}
       onPointerDown={(e) => onPointerDown(e, "move")}
       className={`absolute flex cursor-grab items-center overflow-hidden rounded px-2 text-xs whitespace-nowrap select-none active:cursor-grabbing ${className} ${
-        selected ? "ring-2 ring-yellow-300" : ""
+        selected ? "ring-2 ring-focus" : ""
       }`}
       style={{ left, width, top, height: LANE_HEIGHT, touchAction: "none" }}
     >

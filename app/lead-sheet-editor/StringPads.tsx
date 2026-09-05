@@ -493,15 +493,15 @@ export function StringPadsControl({
         }
         className={`h-8 w-8 flex items-center justify-center rounded-md transition-colors duration-150 flex-shrink-0 ${
           running
-            ? "bg-violet-500 text-white hover:bg-violet-600"
-            : "bg-gray-100 dark:bg-neutral-800 text-gray-600 dark:text-neutral-300 hover:bg-gray-200 dark:hover:bg-neutral-700"
+            ? "bg-track-2 text-ink-primary hover:bg-track-2/80"
+            : "bg-surface-raised text-ink-primary hover:bg-surface-overlay"
         }`}
       >
         <StringsIcon />
       </button>
 
       {/* Chords / drone */}
-      <div className="flex rounded-md overflow-hidden border border-gray-200 dark:border-neutral-700 flex-shrink-0">
+      <div className="flex rounded-md overflow-hidden border border-line-subtle flex-shrink-0">
         {(["arpeggio", "drone"] as const).map((mode) => (
           <button
             key={mode}
@@ -510,8 +510,8 @@ export function StringPadsControl({
             disabled={mode === "arpeggio" && !canArpeggiate}
             className={`px-2 h-7 text-xs font-medium transition-colors duration-100 disabled:opacity-40 disabled:cursor-not-allowed ${
               settings.mode === mode
-                ? "bg-violet-500 text-white"
-                : "bg-gray-100 dark:bg-neutral-800 text-gray-500 dark:text-neutral-400 hover:bg-gray-200 dark:hover:bg-neutral-700"
+                ? "bg-track-2 text-ink-primary"
+                : "bg-surface-raised text-ink-muted hover:bg-surface-overlay"
             }`}
             title={
               mode === "arpeggio"
@@ -531,7 +531,7 @@ export function StringPadsControl({
         value={settings.style}
         onChange={(e) => onSettingsChange({ style: e.target.value as StringStyle })}
         title="Pad voice"
-        className="h-7 text-xs font-medium rounded-md border border-gray-200 dark:border-neutral-700 bg-gray-100 dark:bg-neutral-800 text-gray-700 dark:text-neutral-200 px-1.5 flex-shrink-0 cursor-pointer"
+        className="h-7 text-xs font-medium rounded-md border border-line-subtle bg-surface-raised text-ink-primary px-1.5 flex-shrink-0 cursor-pointer"
       >
         <option value="warm">Warm</option>
         <option value="bright">Bright</option>
@@ -550,15 +550,15 @@ export function StringPadsControl({
         onChange={(e) => onSettingsChange({ volume: Number(e.target.value) })}
         aria-label={`String pads volume ${Math.round(settings.volume * 100)}%`}
         title={`Volume: ${Math.round(settings.volume * 100)}%`}
-        className="w-14 h-1 accent-violet-500 flex-shrink-0"
+        className="w-14 h-1 accent-track-2 flex-shrink-0"
       />
 
       {/* What's sounding: the chord being played, or the key it's droning on */}
       <span
         className="text-xs font-medium px-1.5 py-0.5 rounded flex-shrink-0 select-none tabular-nums"
         style={{
-          background: running ? "#8b5cf6" : undefined,
-          color: running ? "#fff" : undefined,
+          background: running ? "var(--ds-color-track-2)" : undefined,
+          color: running ? "var(--ds-color-text-on-primary)" : undefined,
         }}
         title={
           arpeggiating

@@ -33,6 +33,16 @@
       "solid": { "$type": "color", "$value": "{palette.teal.2}", "$description": "The teal counter-accent as a fill, for a second axis of meaning that would be ambiguous in amber. The intended first use is marking a capo transform as distinct from a key change." }
     },
 
+    "track": {
+      "$description": "Identity colours for tracks, voices and pads. Assign them in order and let them repeat; nothing about track 1 makes it more important than track 4. Like the amber, they take a near-black label: at this lightness white lands near 2.5:1 and the label would be the thing that gives.",
+      "1": { "$type": "color", "$value": "{palette.track.1}" },
+      "2": { "$type": "color", "$value": "{palette.track.2}" },
+      "3": { "$type": "color", "$value": "{palette.track.3}" },
+      "4": { "$type": "color", "$value": "{palette.track.4}" },
+      "5": { "$type": "color", "$value": "{palette.track.5}" },
+      "6": { "$type": "color", "$value": "{palette.track.6}" }
+    },
+
     "danger":  { "$type": "color", "$value": "{palette.danger.2}" },
     "success": { "$type": "color", "$value": "{palette.success.2}" },
 

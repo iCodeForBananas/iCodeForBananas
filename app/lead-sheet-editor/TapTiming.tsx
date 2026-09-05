@@ -150,22 +150,22 @@ export default function TapTiming({
   }, [cursor]);
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 p-2 sm:p-6">
-      <div className="flex max-h-full w-full max-w-2xl flex-col overflow-hidden rounded-lg border border-white/15 bg-black">
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-surface-sunken/70 p-2 sm:p-6">
+      <div className="flex max-h-full w-full max-w-2xl flex-col overflow-hidden rounded-lg border border-line-subtle bg-surface-base">
         {/* Header */}
-        <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
+        <div className="flex items-center justify-between gap-3 border-b border-line-subtle px-4 py-3">
           <div>
-            <h2 className="text-sm font-medium text-white">Tap Timing</h2>
-            <p className="text-xs text-white/40">
+            <h2 className="text-sm font-medium text-ink-primary">Tap Timing</h2>
+            <p className="text-xs text-ink-muted">
               Start the song, then tap Space as each line comes in.
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <span className="font-mono text-2xl tabular-nums text-yellow-400">{formatTime(elapsed)}</span>
+            <span className="font-mono text-2xl tabular-nums text-primary-text">{formatTime(elapsed)}</span>
             <button
               onClick={onClose}
               aria-label="Close tap timing"
-              className="text-white/50 transition-colors hover:text-white"
+              className="text-ink-muted transition-colors hover:text-ink-primary"
             >
               <X className="h-4 w-4" />
             </button>
@@ -185,12 +185,12 @@ export default function TapTiming({
                 key={i}
                 data-cursor={atCursor || undefined}
                 className={`flex items-baseline gap-2 rounded px-2 py-1 font-mono text-sm ${
-                  atCursor ? "bg-yellow-400/20 ring-1 ring-yellow-400" : ""
+                  atCursor ? "bg-primary-solid/20 ring-1 ring-focus" : ""
                 }`}
               >
                 <span
                   className={`w-12 shrink-0 text-right text-xs tabular-nums ${
-                    stamp !== undefined ? "text-yellow-400" : "text-white/20"
+                    stamp !== undefined ? "text-primary-text" : "text-ink-muted"
                   }`}
                 >
                   {stamp !== undefined ? formatTime(stamp) : isTarget ? "—" : ""}
@@ -198,10 +198,10 @@ export default function TapTiming({
                 <span
                   className={
                     isHeader
-                      ? "font-bold uppercase tracking-widest text-white/70"
+                      ? "font-bold uppercase tracking-widest text-ink-muted"
                       : isTarget
-                        ? "text-white"
-                        : "text-white/40"
+                        ? "text-ink-primary"
+                        : "text-ink-muted"
                   }
                 >
                   {stripTimeMarker(line)}
@@ -210,17 +210,17 @@ export default function TapTiming({
             );
           })}
           {targets.length === 0 && (
-            <p className="py-8 text-center text-sm text-white/40">
+            <p className="py-8 text-center text-sm text-ink-muted">
               Nothing to time yet — add a section like [Verse 1] with some lines under it.
             </p>
           )}
         </div>
 
         {/* Transport */}
-        <div className="flex flex-wrap items-center gap-2 border-t border-white/10 px-4 py-3">
+        <div className="flex flex-wrap items-center gap-2 border-t border-line-subtle px-4 py-3">
           <button
             onClick={() => setRunning((r) => !r)}
-            className="flex h-10 items-center gap-2 rounded bg-black px-4 text-sm font-medium text-yellow-400 ring-1 ring-white/30 transition-colors hover:ring-white"
+            className="flex h-10 items-center gap-2 rounded bg-surface-base px-4 text-sm font-medium text-primary-text ring-1 ring-line-strong transition-colors hover:ring-focus"
           >
             {running ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
             {running ? "Pause" : elapsed > 0 ? "Resume" : "Start"}
@@ -228,7 +228,7 @@ export default function TapTiming({
           <button
             onClick={tap}
             disabled={!running || done}
-            className="h-10 flex-1 rounded bg-yellow-400 px-4 text-sm font-medium text-black transition-colors hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-30"
+            className="h-10 flex-1 rounded bg-primary-solid px-4 text-sm font-medium text-ink-on-primary transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-30"
           >
             {done ? "All lines timed" : "Tap line in  (Space)"}
           </button>
@@ -237,7 +237,7 @@ export default function TapTiming({
             disabled={cursor === 0}
             title="Undo last tap (Backspace)"
             aria-label="Undo last tap"
-            className="flex h-10 w-10 items-center justify-center rounded text-white/70 ring-1 ring-white/30 transition-colors hover:text-white hover:ring-white disabled:opacity-30"
+            className="flex h-10 w-10 items-center justify-center rounded text-ink-muted ring-1 ring-line-strong transition-colors hover:text-ink-primary hover:ring-focus disabled:opacity-30"
           >
             <Undo2 className="h-4 w-4" />
           </button>
@@ -246,7 +246,7 @@ export default function TapTiming({
             disabled={done}
             title="Skip this line (↓)"
             aria-label="Skip this line"
-            className="flex h-10 w-10 items-center justify-center rounded text-white/70 ring-1 ring-white/30 transition-colors hover:text-white hover:ring-white disabled:opacity-30"
+            className="flex h-10 w-10 items-center justify-center rounded text-ink-muted ring-1 ring-line-strong transition-colors hover:text-ink-primary hover:ring-focus disabled:opacity-30"
           >
             <SkipForward className="h-4 w-4" />
           </button>
@@ -254,21 +254,21 @@ export default function TapTiming({
             onClick={reset}
             title="Start over"
             aria-label="Start over"
-            className="flex h-10 w-10 items-center justify-center rounded text-white/70 ring-1 ring-white/30 transition-colors hover:text-white hover:ring-white"
+            className="flex h-10 w-10 items-center justify-center rounded text-ink-muted ring-1 ring-line-strong transition-colors hover:text-ink-primary hover:ring-focus"
           >
             <RotateCcw className="h-4 w-4" />
           </button>
-          <div className="w-px self-stretch bg-white/20" />
+          <div className="w-px self-stretch bg-surface-overlay" />
           <button
             onClick={clearTimings}
-            className="h-10 rounded px-3 text-sm font-medium text-white/50 transition-colors hover:text-white"
+            className="h-10 rounded px-3 text-sm font-medium text-ink-muted transition-colors hover:text-ink-primary"
           >
             Clear all
           </button>
           <button
             onClick={apply}
             disabled={stamps.size === 0}
-            className="flex h-10 items-center gap-2 rounded bg-yellow-400 px-4 text-sm font-medium text-black transition-colors hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-30"
+            className="flex h-10 items-center gap-2 rounded bg-primary-solid px-4 text-sm font-medium text-ink-on-primary transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-30"
           >
             <Check className="h-4 w-4" />
             Save {stamps.size} time{stamps.size === 1 ? "" : "s"}

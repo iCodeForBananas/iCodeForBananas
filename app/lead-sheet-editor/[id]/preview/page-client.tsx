@@ -254,7 +254,7 @@ const SheetContent = memo(function SheetContent({
                     onClick={() => onEditSection(sectionIndex)}
                     title='Rename this section'
                     className='inline-flex items-center gap-1.5 text-[0.75em] font-bold uppercase tracking-widest px-2 py-1 rounded transition-opacity duration-150 hover:opacity-80'
-                    style={{ background: "#facc15", color: "#000" }}
+                    style={{ background: "var(--ds-color-primary-solid)", color: "var(--ds-color-text-on-primary)" }}
                   >
                     {section.label || section.type}
                     <Pencil className='w-3 h-3' />
@@ -262,7 +262,7 @@ const SheetContent = memo(function SheetContent({
                 ) : (
                   <span
                     className='text-[0.75em] font-bold uppercase tracking-widest px-2 py-1 rounded'
-                    style={{ background: "#facc15", color: "#000" }}
+                    style={{ background: "var(--ds-color-primary-solid)", color: "var(--ds-color-text-on-primary)" }}
                   >
                     {section.label || section.type}
                   </span>
@@ -333,7 +333,7 @@ const SheetContent = memo(function SheetContent({
                       }
                       className={`rounded px-2 transition-colors duration-150 ${
                         active
-                          ? "bg-primary-solid/20 shadow-[inset_3px_0_0_0_#facc15] dark:bg-primary-solid/20"
+                          ? "bg-primary-solid/20 shadow-[inset_3px_0_0_0_var(--ds-color-primary-solid)] dark:bg-primary-solid/20"
                           : ""
                       } ${
                         onEditLine
@@ -1250,7 +1250,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
     <>
       {/* Print-only view: chrome-free layout that only renders when printing.
           The screen view below is hidden via print:hidden so only this prints. */}
-      <div className='hidden print:block' style={{ background: "#fff", color: "#000" }}>
+      <div className='hidden print:block' style={{ background: "#fff", color: "var(--ds-color-text-on-primary)" }}>
         <div className='leadsheet-force-light max-w-3xl mx-auto px-2 py-4' style={{ fontSize: `${fontScale}%` }}>
           <SheetContent sheet={sheet} fullscreen={false} transposeSteps={transposeSteps} />
         </div>

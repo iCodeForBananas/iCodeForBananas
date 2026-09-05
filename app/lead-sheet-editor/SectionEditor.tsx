@@ -55,7 +55,7 @@ export default function SectionEditor({
 
   return (
     <div
-      className='fixed inset-0 z-[60] flex items-end justify-center bg-black/50 sm:items-center print:hidden'
+      className='fixed inset-0 z-[60] flex items-end justify-center bg-surface-sunken/50 sm:items-center print:hidden'
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onCancel();
       }}
@@ -64,17 +64,17 @@ export default function SectionEditor({
         role='dialog'
         aria-modal='true'
         aria-label={editing ? "Rename section" : "New section"}
-        className='w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl bg-white dark:bg-neutral-900 shadow-2xl border-t sm:border border-gray-200 dark:border-neutral-700'
+        className='w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl bg-surface-base shadow-2xl border-t sm:border border-line-subtle'
       >
         <div className='flex items-center justify-between gap-2 px-4 pt-3 pb-2'>
-          <span className='text-sm font-semibold text-black dark:text-white'>
+          <span className='text-sm font-semibold text-ink-primary'>
             {editing ? "Section name" : `New section${afterLabel ? ` after ${afterLabel}` : ""}`}
           </span>
           <button
             type='button'
             onClick={onCancel}
             aria-label='Close without saving'
-            className='h-9 w-9 flex items-center justify-center rounded-lg text-gray-500 dark:text-neutral-400 hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors duration-150'
+            className='h-9 w-9 flex items-center justify-center rounded-lg text-ink-muted hover:bg-surface-raised transition-colors duration-150'
           >
             <X className='w-5 h-5' />
           </button>
@@ -90,8 +90,8 @@ export default function SectionEditor({
                 aria-pressed={type === t}
                 className={`h-10 rounded-lg px-3 text-sm font-medium capitalize transition-colors duration-150 ${
                   type === t
-                    ? "bg-yellow-400 text-black"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
+                    ? "bg-primary-solid text-ink-on-primary"
+                    : "bg-surface-raised text-ink-primary hover:bg-surface-overlay bg-surface-raised text-ink-primary hover:bg-surface-overlay"
                 }`}
               >
                 {t}
@@ -99,7 +99,7 @@ export default function SectionEditor({
             ))}
           </div>
 
-          <label className='mt-3 block text-[0.65rem] font-medium uppercase tracking-wide text-gray-400 dark:text-neutral-500'>
+          <label className='mt-3 block text-[0.65rem] font-medium uppercase tracking-wide text-ink-muted'>
             Name
           </label>
           <input
@@ -115,16 +115,16 @@ export default function SectionEditor({
               }
             }}
             placeholder={suggested}
-            className='mt-1 w-full rounded-xl border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-950 px-3 py-2.5 text-[16px] text-black dark:text-white outline-none focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/40'
+            className='mt-1 w-full rounded-xl border border-line-subtle bg-surface-base bg-surface-sunken px-3 py-2.5 text-[16px] text-ink-primary outline-none focus:border-primary-solid focus:ring-2 focus:ring-focus/40'
           />
 
-          <div className='mt-3 rounded-xl bg-gray-50 dark:bg-neutral-800/60 px-3 py-2'>
-            <div className='text-[0.65rem] font-medium uppercase tracking-wide text-gray-400 dark:text-neutral-500 mb-1'>
+          <div className='mt-3 rounded-xl bg-surface-raised bg-surface-raised px-3 py-2'>
+            <div className='text-[0.65rem] font-medium uppercase tracking-wide text-ink-muted mb-1'>
               Preview
             </div>
             <span
               className='inline-block text-[0.7rem] font-bold uppercase tracking-widest px-2 py-1 rounded'
-              style={{ background: "#facc15", color: "#000" }}
+              style={{ background: "var(--ds-color-primary-solid)", color: "var(--ds-color-text-on-primary)" }}
             >
               {label.trim() || suggested}
             </span>
@@ -134,14 +134,14 @@ export default function SectionEditor({
             <button
               type='button'
               onClick={onCancel}
-              className='h-12 flex-1 rounded-xl text-sm font-medium bg-gray-100 dark:bg-neutral-800 hover:bg-gray-200 dark:hover:bg-neutral-700 text-gray-700 dark:text-neutral-200 transition-colors duration-150'
+              className='h-12 flex-1 rounded-xl text-sm font-medium bg-surface-raised hover:bg-surface-overlay text-ink-primary transition-colors duration-150'
             >
               Cancel
             </button>
             <button
               type='button'
               onClick={add}
-              className='h-12 flex-[2] flex items-center justify-center gap-1.5 rounded-xl text-sm font-semibold bg-black hover:bg-black/80 text-yellow-400 dark:bg-yellow-400 dark:text-black dark:hover:bg-yellow-300 transition-colors duration-150'
+              className='h-12 flex-[2] flex items-center justify-center gap-1.5 rounded-xl text-sm font-semibold bg-surface-base hover:bg-surface-sunken/80 text-primary-text bg-primary-solid dark:text-ink-on-primary hover:bg-primary-hover transition-colors duration-150'
             >
               <Check className='w-4 h-4' />
               {editing ? "Save name" : "Add section"}

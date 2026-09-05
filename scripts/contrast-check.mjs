@@ -160,6 +160,21 @@ const CHECKS = [
       "border.strong outline so its boundary is discernible.",
   },
   { fg: "--ds-color-accent-solid", bg: `${S}-base`, min: 3, label: "accent.solid on surface.base" },
+
+  // The categorical set. Each has to be discernible against the plane it sits
+  // on, and each has to carry a label, which is the amber rule again: at this
+  // lightness a white label would be the thing that gives.
+  ...[1, 2, 3, 4, 5, 6].flatMap((n) => [
+    {
+      fg: `--ds-color-track-${n}`, bg: `${S}-base`, min: 3, label: `track.${n} on surface.base`,
+      mitigation:
+        "Same as the amber button: a fill this saturated cannot clear 3:1 " +
+        "against a near-white surface at a lightness that still carries a " +
+        "near-black label. On a light surface a track swatch draws a " +
+        "border.strong outline for its boundary.",
+    },
+    { fg: `${T}-on-primary`, bg: `--ds-color-track-${n}`, min: 4.5, label: `text.on-primary on track.${n}` },
+  ]),
   { fg: "--ds-color-focus-ring", bg: `${S}-base`, min: 3, label: "focus-ring on surface.base" },
   { fg: "--ds-color-focus-ring", bg: `${S}-overlay`, min: 3, label: "focus-ring on surface.overlay" },
 ];

@@ -64,7 +64,7 @@ function SheetContent({ sheet }: { sheet: LeadSheet }) {
               <div className='mb-4'>
                 <span
                   className='text-[0.75em] font-bold uppercase tracking-widest px-2 py-1 rounded'
-                  style={{ background: "#facc15", color: "#000" }}
+                  style={{ background: "var(--ds-color-primary-solid)", color: "var(--ds-color-text-on-primary)" }}
                 >
                   {section.label || section.type}
                 </span>
@@ -145,7 +145,7 @@ export default function ShareLeadSheet({ params }: { params: Promise<{ id: strin
   return (
     <>
       {/* Print-only view */}
-      <div className='hidden print:block' style={{ background: "#fff", color: "#000" }}>
+      <div className='hidden print:block' style={{ background: "#fff", color: "var(--ds-color-text-on-primary)" }}>
         <div className='max-w-3xl mx-auto px-6 py-8' style={{ fontSize: `${fontScale}%` }}>
           <SheetContent sheet={sheet} />
         </div>

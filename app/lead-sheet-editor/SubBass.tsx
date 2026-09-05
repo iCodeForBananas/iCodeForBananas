@@ -611,8 +611,8 @@ export function SubBassControl({
         }
         className={`h-8 w-8 flex items-center justify-center rounded-md transition-colors duration-150 flex-shrink-0 disabled:opacity-40 disabled:cursor-not-allowed ${
           running
-            ? "bg-rose-600 text-white hover:bg-rose-700"
-            : "bg-gray-100 dark:bg-neutral-800 text-gray-600 dark:text-neutral-300 hover:bg-gray-200 dark:hover:bg-neutral-700"
+            ? "bg-track-3 text-ink-primary hover:bg-track-3/80"
+            : "bg-surface-raised text-ink-primary hover:bg-surface-overlay"
         }`}
       >
         <SubBassIcon />
@@ -627,7 +627,7 @@ export function SubBassControl({
         spellCheck={false}
         aria-label="Sub bass notes"
         title="Notes to walk down, in order — G F# F E. Each one lands below the last, so the line keeps descending; add an octave to a note (G2) to pin it there and jump the walk back up."
-        className="w-28 h-7 text-xs font-medium rounded-md border border-gray-200 dark:border-neutral-700 bg-gray-100 dark:bg-neutral-800 text-gray-700 dark:text-neutral-200 px-1.5 focus:outline-none focus:ring-1 focus:ring-rose-500 flex-shrink-0"
+        className="w-28 h-7 text-xs font-medium rounded-md border border-line-subtle bg-surface-raised text-ink-primary px-1.5 focus:outline-none focus:ring-1 focus:ring-track-3 flex-shrink-0"
       />
 
       {/* Where the walk starts — how deep the whole thing sits */}
@@ -636,7 +636,7 @@ export function SubBassControl({
         onChange={(e) => onSettingsChange({ octave: Number(e.target.value) })}
         aria-label="Sub bass starting octave"
         title="Octave the walk starts from — lower it to sit the whole line deeper"
-        className="h-7 text-xs font-medium rounded-md border border-gray-200 dark:border-neutral-700 bg-gray-100 dark:bg-neutral-800 text-gray-700 dark:text-neutral-200 px-1 flex-shrink-0 cursor-pointer"
+        className="h-7 text-xs font-medium rounded-md border border-line-subtle bg-surface-raised text-ink-primary px-1 flex-shrink-0 cursor-pointer"
       >
         {OCTAVES.map((octave) => (
           <option key={octave} value={octave}>Oct {octave}</option>
@@ -649,7 +649,7 @@ export function SubBassControl({
         onChange={(e) => onSettingsChange({ rate: e.target.value as SubBassRate })}
         aria-label="Sub bass note length"
         title="How long each note of the walk holds, at the song's tempo"
-        className="h-7 text-xs font-medium rounded-md border border-gray-200 dark:border-neutral-700 bg-gray-100 dark:bg-neutral-800 text-gray-700 dark:text-neutral-200 px-1 flex-shrink-0 cursor-pointer"
+        className="h-7 text-xs font-medium rounded-md border border-line-subtle bg-surface-raised text-ink-primary px-1 flex-shrink-0 cursor-pointer"
       >
         {RATES.map((rate) => (
           <option key={rate} value={rate}>{RATE_LABELS[rate]}</option>
@@ -662,7 +662,7 @@ export function SubBassControl({
         onChange={(e) => onSettingsChange({ tone: e.target.value as SubBassTone })}
         aria-label="Sub bass tone"
         title="Sub is nearly a pure sine; Round carries the note on small speakers; Punch is the drum end of it"
-        className="h-7 text-xs font-medium rounded-md border border-gray-200 dark:border-neutral-700 bg-gray-100 dark:bg-neutral-800 text-gray-700 dark:text-neutral-200 px-1 flex-shrink-0 cursor-pointer"
+        className="h-7 text-xs font-medium rounded-md border border-line-subtle bg-surface-raised text-ink-primary px-1 flex-shrink-0 cursor-pointer"
       >
         {TONES.map((tone) => (
           <option key={tone} value={tone}>{TONE_LABELS[tone]}</option>
@@ -680,8 +680,8 @@ export function SubBassControl({
                 style={{ height }}
                 className={`w-1 rounded-sm transition-colors duration-75 ${
                   i === activeStep
-                    ? "bg-rose-500"
-                    : "bg-gray-300 dark:bg-neutral-600"
+                    ? "bg-track-3"
+                    : "bg-surface-overlay bg-surface-overlay"
                 }`}
               />
             );
@@ -699,15 +699,15 @@ export function SubBassControl({
         onChange={(e) => onSettingsChange({ volume: Number(e.target.value) })}
         aria-label={`Sub bass volume ${Math.round(settings.volume * 100)}%`}
         title={`Volume: ${Math.round(settings.volume * 100)}%`}
-        className="w-14 h-1 accent-rose-600 flex-shrink-0"
+        className="w-14 h-1 accent-track-3 flex-shrink-0"
       />
 
       {/* What's sounding: the note being hit, with the octave it landed in */}
       <span
         className="text-xs font-medium px-1.5 py-0.5 rounded flex-shrink-0 select-none tabular-nums"
         style={{
-          background: running && sounding ? "#e11d48" : undefined,
-          color: running && sounding ? "#fff" : undefined,
+          background: running && sounding ? "var(--ds-color-track-3)" : undefined,
+          color: running && sounding ? "var(--ds-color-text-on-primary)" : undefined,
         }}
         title={
           empty

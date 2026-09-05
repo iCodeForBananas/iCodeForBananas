@@ -148,7 +148,7 @@ function CopyButton({ text }: { text: string }) {
       }}
       aria-label="Copy example"
       title="Copy example"
-      className="flex h-7 shrink-0 items-center gap-1.5 rounded px-2 text-xs font-medium text-white/50 ring-1 ring-white/20 transition-colors hover:text-yellow-400 hover:ring-white/50"
+      className="flex h-7 shrink-0 items-center gap-1.5 rounded px-2 text-xs font-medium text-ink-muted ring-1 ring-line-subtle transition-colors hover:text-primary-text hover:ring-focus"
     >
       {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
       {copied ? "Copied" : "Copy"}
@@ -167,25 +167,25 @@ export default function SyntaxHelp({ onClose }: { onClose: () => void }) {
 
   return (
     <div
-      className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 p-2 sm:p-6"
+      className="fixed inset-0 z-[70] flex items-center justify-center bg-surface-sunken/70 p-2 sm:p-6"
       onClick={onClose}
     >
       <div
-        className="flex max-h-full w-full max-w-2xl flex-col overflow-hidden rounded-lg border border-white/15 bg-black"
+        className="flex max-h-full w-full max-w-2xl flex-col overflow-hidden rounded-lg border border-line-subtle bg-surface-base"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
+        <div className="flex items-center justify-between gap-3 border-b border-line-subtle px-4 py-3">
           <div>
-            <h2 className="text-sm font-medium text-white">Song syntax</h2>
-            <p className="text-xs text-white/40">
+            <h2 className="text-sm font-medium text-ink-primary">Song syntax</h2>
+            <p className="text-xs text-ink-muted">
               Everything you can type into a sheet, and what it does when you hit Play.
             </p>
           </div>
           <button
             onClick={onClose}
             aria-label="Close syntax help"
-            className="text-white/50 transition-colors hover:text-white"
+            className="text-ink-muted transition-colors hover:text-ink-primary"
           >
             <X className="h-4 w-4" />
           </button>
@@ -195,10 +195,10 @@ export default function SyntaxHelp({ onClose }: { onClose: () => void }) {
         <div className="flex-1 space-y-5 overflow-auto px-4 py-4">
           {ENTRIES.map((entry) => (
             <section key={entry.title}>
-              <h3 className="text-sm font-medium text-yellow-400">{entry.title}</h3>
-              <p className="mt-1 text-xs leading-relaxed text-white/60">{entry.blurb}</p>
-              <div className="mt-2 flex items-start gap-2 rounded border border-white/10 bg-white/5 px-3 py-2">
-                <pre className="flex-1 overflow-x-auto whitespace-pre font-mono text-xs leading-relaxed text-white">
+              <h3 className="text-sm font-medium text-primary-text">{entry.title}</h3>
+              <p className="mt-1 text-xs leading-relaxed text-ink-muted">{entry.blurb}</p>
+              <div className="mt-2 flex items-start gap-2 rounded border border-line-subtle bg-surface-raised px-3 py-2">
+                <pre className="flex-1 overflow-x-auto whitespace-pre font-mono text-xs leading-relaxed text-ink-primary">
                   {entry.example}
                 </pre>
                 <CopyButton text={entry.example} />
@@ -206,8 +206,8 @@ export default function SyntaxHelp({ onClose }: { onClose: () => void }) {
               {entry.notes && (
                 <ul className="mt-2 space-y-1">
                   {entry.notes.map((note) => (
-                    <li key={note} className="flex gap-2 text-xs leading-relaxed text-white/40">
-                      <span aria-hidden className="text-white/25">
+                    <li key={note} className="flex gap-2 text-xs leading-relaxed text-ink-muted">
+                      <span aria-hidden className="text-ink-muted">
                         •
                       </span>
                       <span>{note}</span>
@@ -220,15 +220,15 @@ export default function SyntaxHelp({ onClose }: { onClose: () => void }) {
 
           {/* The tag vocabulary in one glance — the table the Help button is for. */}
           <section>
-            <h3 className="text-sm font-medium text-yellow-400">Tag reference</h3>
-            <p className="mt-1 text-xs leading-relaxed text-white/60">
+            <h3 className="text-sm font-medium text-primary-text">Tag reference</h3>
+            <p className="mt-1 text-xs leading-relaxed text-ink-muted">
               Every tag the player understands, and what it does.
             </p>
-            <div className="mt-2 divide-y divide-white/5 rounded border border-white/10">
+            <div className="mt-2 divide-y divide-line-subtle rounded border border-line-subtle">
               {TAG_REFERENCE.map((tag) => (
                 <div key={tag.tag} className="flex items-baseline gap-3 px-3 py-1.5">
-                  <code className="w-28 shrink-0 font-mono text-xs text-white">{tag.tag}</code>
-                  <span className="text-xs leading-relaxed text-white/50">{tag.does}</span>
+                  <code className="w-28 shrink-0 font-mono text-xs text-ink-primary">{tag.tag}</code>
+                  <span className="text-xs leading-relaxed text-ink-muted">{tag.does}</span>
                 </div>
               ))}
             </div>
@@ -236,15 +236,15 @@ export default function SyntaxHelp({ onClose }: { onClose: () => void }) {
 
           {/* Generated from the kit itself, so the list can never drift. */}
           <section>
-            <h3 className="text-sm font-medium text-yellow-400">Drum patterns</h3>
-            <p className="mt-1 text-xs leading-relaxed text-white/60">
+            <h3 className="text-sm font-medium text-primary-text">Drum patterns</h3>
+            <p className="mt-1 text-xs leading-relaxed text-ink-muted">
               Names you can put on the Drums: line.
             </p>
             <div className="mt-2 flex flex-wrap gap-1.5">
               {DRUM_PATTERNS.map((p) => (
                 <span
                   key={p.name}
-                  className="rounded border border-white/10 bg-white/5 px-2 py-1 font-mono text-[0.7rem] text-white/70"
+                  className="rounded border border-line-subtle bg-surface-raised px-2 py-1 font-mono text-[0.7rem] text-ink-muted"
                 >
                   {p.name}
                 </span>
@@ -254,19 +254,19 @@ export default function SyntaxHelp({ onClose }: { onClose: () => void }) {
 
           {/* Same trick for the accents — the roster is the list. */}
           <section>
-            <h3 className="text-sm font-medium text-yellow-400">Shimmer accents</h3>
-            <p className="mt-1 text-xs leading-relaxed text-white/60">
+            <h3 className="text-sm font-medium text-primary-text">Shimmer accents</h3>
+            <p className="mt-1 text-xs leading-relaxed text-ink-muted">
               What the shimmer layer can play. Name one on the Drums: line, or pick it in preview.
             </p>
             {ACCENT_GROUPS.map((group) => (
               <div key={group.label} className="mt-2">
-                <p className="text-[0.7rem] uppercase tracking-wide text-white/40">{group.label}</p>
+                <p className="text-[0.7rem] uppercase tracking-wide text-ink-muted">{group.label}</p>
                 <div className="mt-1 flex flex-wrap gap-1.5">
                   {group.items.map((item) => (
                     <span
                       key={item.name}
                       title={item.description}
-                      className="rounded border border-white/10 bg-white/5 px-2 py-1 font-mono text-[0.7rem] text-white/70"
+                      className="rounded border border-line-subtle bg-surface-raised px-2 py-1 font-mono text-[0.7rem] text-ink-muted"
                     >
                       {item.name}
                     </span>
@@ -278,10 +278,10 @@ export default function SyntaxHelp({ onClose }: { onClose: () => void }) {
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end border-t border-white/10 px-4 py-3">
+        <div className="flex items-center justify-end border-t border-line-subtle px-4 py-3">
           <button
             onClick={onClose}
-            className="h-10 rounded bg-yellow-400 px-4 text-sm font-medium text-black transition-colors hover:bg-yellow-300"
+            className="h-10 rounded bg-primary-solid px-4 text-sm font-medium text-ink-on-primary transition-colors hover:bg-primary-hover"
           >
             Got it
           </button>

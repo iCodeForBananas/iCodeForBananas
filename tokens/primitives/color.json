@@ -39,6 +39,16 @@
       "3": { "$type": "color", "$value": "oklch(0.80 0.11 190)" }
     },
 
+    "track": {
+      "$description": "A categorical set, for things that differ in kind rather than in importance: a recorded track, a drum voice, a pad. These are the one place in the system where a colour carries identity instead of meaning, which is why they are a flat set rather than a ramp and why none of them is the brand. They sit at close to the same lightness so no track shouts louder than another, and far enough apart in hue to be told apart at the size of a five pixel bar.",
+      "1": { "$type": "color", "$value": "oklch(0.62 0.155 275)" },
+      "2": { "$type": "color", "$value": "oklch(0.62 0.165 305)" },
+      "3": { "$type": "color", "$value": "oklch(0.62 0.170 15)" },
+      "4": { "$type": "color", "$value": "oklch(0.68 0.125 230)" },
+      "5": { "$type": "color", "$value": "oklch(0.68 0.135 155)" },
+      "6": { "$type": "color", "$value": "oklch(0.66 0.140 45)" }
+    },
+
     "danger": {
       "$description": "Step 1 is for light theme, step 2 for dark. A status color has to be legible as text on whatever surface it lands on, and no single lightness manages that against both a near-black and a near-white background.",
       "1": { "$type": "color", "$value": "oklch(0.55 0.185 30)" },

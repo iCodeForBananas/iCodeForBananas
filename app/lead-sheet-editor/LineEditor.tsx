@@ -103,7 +103,7 @@ export default function LineEditor({
 
   return (
     <div
-      className='fixed inset-0 z-[60] flex items-end justify-center bg-black/50 sm:items-center print:hidden'
+      className='fixed inset-0 z-[60] flex items-end justify-center bg-surface-sunken/50 sm:items-center print:hidden'
       style={{ paddingBottom: keyboardInset }}
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onCancel();
@@ -113,17 +113,17 @@ export default function LineEditor({
         role='dialog'
         aria-modal='true'
         aria-label='Edit line'
-        className='w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl bg-white dark:bg-neutral-900 shadow-2xl border-t sm:border border-gray-200 dark:border-neutral-700'
+        className='w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl bg-surface-base shadow-2xl border-t sm:border border-line-subtle'
       >
         <div className='flex items-center justify-between gap-2 px-4 pt-3 pb-2'>
           <div className='flex items-center gap-2 min-w-0'>
             <span
               className='text-[0.7rem] font-bold uppercase tracking-widest px-2 py-1 rounded shrink-0'
-              style={{ background: "#facc15", color: "#000" }}
+              style={{ background: "var(--ds-color-primary-solid)", color: "var(--ds-color-text-on-primary)" }}
             >
               {target.sectionLabel}
             </span>
-            <span className='text-xs text-gray-500 dark:text-neutral-400 truncate'>
+            <span className='text-xs text-ink-muted truncate'>
               {target.insert ? "New line" : `Line ${target.lineIndex + 1}`}
             </span>
           </div>
@@ -131,7 +131,7 @@ export default function LineEditor({
             type='button'
             onClick={onCancel}
             aria-label='Close without saving'
-            className='h-9 w-9 flex items-center justify-center rounded-lg text-gray-500 dark:text-neutral-400 hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors duration-150'
+            className='h-9 w-9 flex items-center justify-center rounded-lg text-ink-muted hover:bg-surface-raised transition-colors duration-150'
           >
             <X className='w-5 h-5' />
           </button>
@@ -153,22 +153,22 @@ export default function LineEditor({
             rows={2}
             spellCheck
             autoCapitalize='sentences'
-            className='leadsheet-doc w-full resize-none rounded-xl border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-950 px-3 py-2.5 text-[16px] leading-relaxed text-black dark:text-white outline-none focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/40'
+            className='leadsheet-doc w-full resize-none rounded-xl border border-line-subtle bg-surface-base bg-surface-sunken px-3 py-2.5 text-[16px] leading-relaxed text-ink-primary outline-none focus:border-primary-solid focus:ring-2 focus:ring-focus/40'
           />
 
-          <div className='mt-3 rounded-xl bg-gray-50 dark:bg-neutral-800/60 px-3 py-2'>
-            <div className='text-[0.65rem] font-medium uppercase tracking-wide text-gray-400 dark:text-neutral-500 mb-1'>
+          <div className='mt-3 rounded-xl bg-surface-raised bg-surface-raised px-3 py-2'>
+            <div className='text-[0.65rem] font-medium uppercase tracking-wide text-ink-muted mb-1'>
               Preview
             </div>
             {sectionHeader !== null ? (
               <div className='flex flex-wrap items-center gap-2'>
                 <span
                   className='text-[0.7rem] font-bold uppercase tracking-widest px-2 py-1 rounded'
-                  style={{ background: "#facc15", color: "#000" }}
+                  style={{ background: "var(--ds-color-primary-solid)", color: "var(--ds-color-text-on-primary)" }}
                 >
                   {sectionHeader}
                 </span>
-                <span className='text-xs text-gray-500 dark:text-neutral-400'>
+                <span className='text-xs text-ink-muted'>
                   starts a new section here
                 </span>
               </div>
@@ -178,13 +178,13 @@ export default function LineEditor({
           </div>
 
           {transposeSteps !== 0 && (
-            <p className='mt-2 text-xs text-amber-600 dark:text-amber-400'>
+            <p className='mt-2 text-xs text-primary-text text-primary-text'>
               The page is transposed {transposeSteps > 0 ? `+${transposeSteps}` : transposeSteps}.
               This edits the song&apos;s written key.
             </p>
           )}
 
-          {error && <p className='mt-2 text-xs font-medium text-red-600 dark:text-red-400'>{error}</p>}
+          {error && <p className='mt-2 text-xs font-medium text-danger text-danger'>{error}</p>}
 
           <div className='mt-4 flex gap-2'>
             {onDelete && !target.insert && (
@@ -194,7 +194,7 @@ export default function LineEditor({
                 disabled={saving}
                 title='Delete this line'
                 aria-label='Delete this line'
-                className='h-12 w-12 shrink-0 flex items-center justify-center rounded-xl bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-500/10 dark:text-red-400 dark:hover:bg-red-500/20 transition-colors duration-150 disabled:opacity-60'
+                className='h-12 w-12 shrink-0 flex items-center justify-center rounded-xl bg-danger/10 text-danger hover:bg-danger/15 bg-danger/10 text-danger hover:bg-danger/20 transition-colors duration-150 disabled:opacity-60'
               >
                 <Trash2 className='w-5 h-5' />
               </button>
@@ -202,7 +202,7 @@ export default function LineEditor({
             <button
               type='button'
               onClick={onCancel}
-              className='h-12 flex-1 rounded-xl text-sm font-medium bg-gray-100 dark:bg-neutral-800 hover:bg-gray-200 dark:hover:bg-neutral-700 text-gray-700 dark:text-neutral-200 transition-colors duration-150'
+              className='h-12 flex-1 rounded-xl text-sm font-medium bg-surface-raised hover:bg-surface-overlay text-ink-primary transition-colors duration-150'
             >
               Cancel
             </button>
@@ -210,7 +210,7 @@ export default function LineEditor({
               type='button'
               onClick={() => save()}
               disabled={saving}
-              className='h-12 flex-[2] flex items-center justify-center gap-1.5 rounded-xl text-sm font-semibold bg-black hover:bg-black/80 text-yellow-400 dark:bg-yellow-400 dark:text-black dark:hover:bg-yellow-300 transition-colors duration-150 disabled:opacity-60'
+              className='h-12 flex-[2] flex items-center justify-center gap-1.5 rounded-xl text-sm font-semibold bg-surface-base hover:bg-surface-sunken/80 text-primary-text bg-primary-solid dark:text-ink-on-primary hover:bg-primary-hover transition-colors duration-150 disabled:opacity-60'
             >
               {deletes ? <Trash2 className='w-4 h-4' /> : <Check className='w-4 h-4' />}
               {saving ? "Saving..." : deletes ? "Delete line" : target.insert ? "Add line" : "Save"}
@@ -222,7 +222,7 @@ export default function LineEditor({
             onClick={() => save(true)}
             disabled={saving}
             title='Shift + Enter'
-            className='mt-2 h-11 w-full flex items-center justify-center gap-1.5 rounded-xl border border-dashed border-gray-300 dark:border-neutral-600 text-sm font-medium text-gray-600 dark:text-neutral-300 hover:border-yellow-400 hover:bg-yellow-50 dark:hover:bg-yellow-400/10 transition-colors duration-150 disabled:opacity-60'
+            className='mt-2 h-11 w-full flex items-center justify-center gap-1.5 rounded-xl border border-dashed border-line-subtle text-sm font-medium text-ink-primary hover:border-primary-solid hover:bg-primary-solid/10 hover:bg-primary-solid/10 transition-colors duration-150 disabled:opacity-60'
           >
             <Plus className='w-4 h-4' />
             {deletes

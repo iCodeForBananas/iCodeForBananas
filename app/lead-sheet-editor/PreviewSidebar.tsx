@@ -53,16 +53,16 @@ const RAIL_WIDTH = "w-14";
  * of nested boxes reads as clutter at the size these controls run to.
  */
 const ROW = "h-11 w-full flex items-center gap-2.5 px-3 text-sm font-medium transition-colors duration-150";
-const ROW_BTN = `${ROW} text-gray-700 dark:text-neutral-200 hover:bg-gray-100 dark:hover:bg-neutral-800`;
+const ROW_BTN = `${ROW} text-ink-primary hover:bg-surface-raised`;
 
 /** One labelled block of the sidebar — the unit the whole column scrolls through. */
 function SidebarSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section>
-      <h2 className='px-3 pt-4 pb-1.5 text-[11px] font-semibold uppercase tracking-widest text-gray-400 dark:text-neutral-500 select-none'>
+      <h2 className='px-3 pt-4 pb-1.5 text-[11px] font-semibold uppercase tracking-widest text-ink-muted select-none'>
         {title}
       </h2>
-      <div className='divide-y divide-gray-200 border-y border-gray-200 dark:divide-neutral-800 dark:border-neutral-800'>
+      <div className='divide-y divide-line-subtle border-y border-line-subtle divide-line-subtle border-line-subtle'>
         {children}
       </div>
     </section>
@@ -72,22 +72,22 @@ function SidebarSection({ title, children }: { title: string; children: React.Re
 function ColumnCountControl({ count, onChange }: { count: number; onChange: (next: number) => void }) {
   return (
     <div className='flex flex-wrap items-center gap-1 px-3 py-2 print:hidden'>
-      <span className='text-sm font-medium text-gray-700 dark:text-neutral-200 select-none'>Cols</span>
+      <span className='text-sm font-medium text-ink-primary select-none'>Cols</span>
       <button
         type='button'
         onClick={() => onChange(count - 1)}
         disabled={count <= MIN_COLUMN_COUNT}
-        className='h-10 w-10 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-neutral-800 hover:bg-gray-200 dark:hover:bg-neutral-700 text-gray-700 dark:text-neutral-200 font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-gray-100 dark:disabled:hover:bg-neutral-800'
+        className='h-10 w-10 flex items-center justify-center rounded-lg bg-surface-raised hover:bg-surface-overlay text-ink-primary font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-surface-raised'
         aria-label='Decrease column count'
       >
         <Minus className='w-4 h-4' />
       </button>
-      <span className='text-sm font-medium w-6 text-center text-gray-700 dark:text-neutral-200 select-none'>{count}</span>
+      <span className='text-sm font-medium w-6 text-center text-ink-primary select-none'>{count}</span>
       <button
         type='button'
         onClick={() => onChange(count + 1)}
         disabled={count >= MAX_COLUMN_COUNT}
-        className='h-10 w-10 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-neutral-800 hover:bg-gray-200 dark:hover:bg-neutral-700 text-gray-700 dark:text-neutral-200 font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-gray-100 dark:disabled:hover:bg-neutral-800'
+        className='h-10 w-10 flex items-center justify-center rounded-lg bg-surface-raised hover:bg-surface-overlay text-ink-primary font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-surface-raised'
         aria-label='Increase column count'
       >
         <Plus className='w-4 h-4' />
@@ -99,22 +99,22 @@ function ColumnCountControl({ count, onChange }: { count: number; onChange: (nex
 function ColumnWidthControl({ width, onChange }: { width: number; onChange: (next: number) => void }) {
   return (
     <div className='flex flex-wrap items-center gap-1 px-3 py-2 print:hidden'>
-      <span className='text-sm font-medium text-gray-700 dark:text-neutral-200 select-none'>Width</span>
+      <span className='text-sm font-medium text-ink-primary select-none'>Width</span>
       <button
         type='button'
         onClick={() => onChange(width - COLUMN_WIDTH_VW_STEP)}
         disabled={width <= MIN_COLUMN_WIDTH_VW}
-        className='h-10 w-10 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-neutral-800 hover:bg-gray-200 dark:hover:bg-neutral-700 text-gray-700 dark:text-neutral-200 font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-gray-100 dark:disabled:hover:bg-neutral-800'
+        className='h-10 w-10 flex items-center justify-center rounded-lg bg-surface-raised hover:bg-surface-overlay text-ink-primary font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-surface-raised'
         aria-label='Decrease column width'
       >
         <Minus className='w-4 h-4' />
       </button>
-      <span className='text-sm font-medium w-14 text-center text-gray-700 dark:text-neutral-200 select-none'>{width}vw</span>
+      <span className='text-sm font-medium w-14 text-center text-ink-primary select-none'>{width}vw</span>
       <button
         type='button'
         onClick={() => onChange(width + COLUMN_WIDTH_VW_STEP)}
         disabled={width >= MAX_COLUMN_WIDTH_VW}
-        className='h-10 w-10 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-neutral-800 hover:bg-gray-200 dark:hover:bg-neutral-700 text-gray-700 dark:text-neutral-200 font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-gray-100 dark:disabled:hover:bg-neutral-800'
+        className='h-10 w-10 flex items-center justify-center rounded-lg bg-surface-raised hover:bg-surface-overlay text-ink-primary font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-surface-raised'
         aria-label='Increase column width'
       >
         <Plus className='w-4 h-4' />
@@ -126,22 +126,22 @@ function ColumnWidthControl({ width, onChange }: { width: number; onChange: (nex
 function FontScaleControl({ scale, onChange }: { scale: number; onChange: (next: number) => void }) {
   return (
     <div className='flex flex-wrap items-center gap-1 px-3 py-2 print:hidden'>
-      <span className='text-sm font-medium text-gray-700 dark:text-neutral-200 select-none'>Size</span>
+      <span className='text-sm font-medium text-ink-primary select-none'>Size</span>
       <button
         type='button'
         onClick={() => onChange(scale - SCALE_STEP)}
         disabled={scale <= MIN_SCALE}
-        className='h-10 w-10 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-neutral-800 hover:bg-gray-200 dark:hover:bg-neutral-700 text-gray-700 dark:text-neutral-200 font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-gray-100 dark:disabled:hover:bg-neutral-800'
+        className='h-10 w-10 flex items-center justify-center rounded-lg bg-surface-raised hover:bg-surface-overlay text-ink-primary font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-surface-raised'
         aria-label='Decrease text size'
       >
         <Minus className='w-4 h-4' />
       </button>
-      <span className='text-sm font-medium w-12 text-center text-gray-700 dark:text-neutral-200 select-none'>{scale}%</span>
+      <span className='text-sm font-medium w-12 text-center text-ink-primary select-none'>{scale}%</span>
       <button
         type='button'
         onClick={() => onChange(scale + SCALE_STEP)}
         disabled={scale >= MAX_SCALE}
-        className='h-10 w-10 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-neutral-800 hover:bg-gray-200 dark:hover:bg-neutral-700 text-gray-700 dark:text-neutral-200 font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-gray-100 dark:disabled:hover:bg-neutral-800'
+        className='h-10 w-10 flex items-center justify-center rounded-lg bg-surface-raised hover:bg-surface-overlay text-ink-primary font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-surface-raised'
         aria-label='Increase text size'
       >
         <Plus className='w-4 h-4' />
@@ -159,11 +159,11 @@ function TransposeControl({ steps, onChange }: { steps: number; onChange: (next:
         onClick={() => onChange(steps - 1)}
         title='Transpose down one semitone'
         aria-label='Transpose down one semitone'
-        className='h-10 w-10 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-neutral-800 hover:bg-gray-200 dark:hover:bg-neutral-700 text-gray-700 dark:text-neutral-200 font-medium transition-colors duration-150'
+        className='h-10 w-10 flex items-center justify-center rounded-lg bg-surface-raised hover:bg-surface-overlay text-ink-primary font-medium transition-colors duration-150'
       >
         <ArrowDown className='w-4 h-4' />
       </button>
-      <span className='text-sm font-medium px-1 text-center text-gray-700 dark:text-neutral-200 select-none whitespace-nowrap'>
+      <span className='text-sm font-medium px-1 text-center text-ink-primary select-none whitespace-nowrap'>
         Transpose {offsetLabel}
       </span>
       <button
@@ -171,7 +171,7 @@ function TransposeControl({ steps, onChange }: { steps: number; onChange: (next:
         onClick={() => onChange(steps + 1)}
         title='Transpose up one semitone'
         aria-label='Transpose up one semitone'
-        className='h-10 w-10 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-neutral-800 hover:bg-gray-200 dark:hover:bg-neutral-700 text-gray-700 dark:text-neutral-200 font-medium transition-colors duration-150'
+        className='h-10 w-10 flex items-center justify-center rounded-lg bg-surface-raised hover:bg-surface-overlay text-ink-primary font-medium transition-colors duration-150'
       >
         <ArrowUp className='w-4 h-4' />
       </button>
@@ -200,8 +200,8 @@ function PlayControl({
 }) {
   const playBtnClass = `h-11 flex-1 flex items-center gap-2.5 px-3 text-sm font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed ${
     open
-      ? "bg-yellow-400 text-black hover:bg-yellow-300"
-      : "text-gray-700 dark:text-neutral-200 hover:bg-gray-100 dark:hover:bg-neutral-800"
+      ? "bg-primary-solid text-ink-on-primary hover:bg-primary-hover"
+      : "text-ink-primary hover:bg-surface-raised"
   }`;
 
   return (
@@ -225,14 +225,14 @@ function PlayControl({
           type='button'
           onClick={onWithVideoToggle}
           title={withVideo ? "YouTube video enabled — click to play without it" : "Click to play with the linked YouTube video"}
-          className={`h-11 flex items-center px-3 border-l border-gray-200 dark:border-neutral-800 text-sm transition-colors duration-150 ${
+          className={`h-11 flex items-center px-3 border-l border-line-subtle text-sm transition-colors duration-150 ${
             open
               ? withVideo
-                ? "bg-yellow-300 text-black border-yellow-500/60 hover:bg-yellow-200"
-                : "bg-yellow-400 text-black/40 border-yellow-500/40 hover:bg-yellow-300"
+                ? "bg-primary-hover text-ink-on-primary border-primary-solid/40 hover:bg-primary-hover"
+                : "bg-primary-solid text-ink-on-primary/40 border-primary-solid/30 hover:bg-primary-hover"
               : withVideo
-                ? "text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/40"
-                : "text-gray-400 dark:text-neutral-500 hover:bg-gray-100 dark:hover:bg-neutral-800"
+                ? "text-accent-solid text-accent-solid hover:bg-accent-solid/20"
+                : "text-ink-muted hover:bg-surface-raised"
           }`}
         >
           <Youtube className='w-4 h-4' />
@@ -255,8 +255,8 @@ function LineEditControl({ active, onToggle }: { active: boolean; onToggle: () =
       title={active ? "Stop editing lines" : "Tap a line to edit just that line"}
       className={`${ROW} print:hidden ${
         active
-          ? "bg-yellow-400 text-black hover:bg-yellow-300"
-          : "text-gray-700 dark:text-neutral-200 hover:bg-gray-100 dark:hover:bg-neutral-800"
+          ? "bg-primary-solid text-ink-on-primary hover:bg-primary-hover"
+          : "text-ink-primary hover:bg-surface-raised"
       }`}
     >
       <PencilLine className='w-4 h-4' />
@@ -378,35 +378,35 @@ export default function PreviewSidebar(props: PreviewSidebarProps) {
     <>
       {open && (
         <div
-          className='absolute inset-0 z-30 bg-black/40 sm:hidden print:hidden'
+          className='absolute inset-0 z-30 bg-surface-sunken/40 sm:hidden print:hidden'
           onClick={() => onOpenChange(false)}
           aria-hidden='true'
         />
       )}
       <aside
         aria-label='Preview tools'
-        className={`flex flex-col shrink-0 border-r border-gray-200 dark:border-neutral-800 bg-white dark:bg-black print:hidden ${
+        className={`flex flex-col shrink-0 border-r border-line-subtle bg-surface-base print:hidden ${
           open ? `absolute inset-y-0 left-0 z-40 ${OPEN_WIDTH} sm:static sm:z-auto` : RAIL_WIDTH
         }`}
       >
         {/* Which song this is, and the switch that gets the tools out of the way.
             The app's own menu button floats over the top-left corner on a phone,
             so the toggle starts below the band it occupies. */}
-        <div className='flex items-center gap-2 border-b border-gray-200 dark:border-neutral-800 px-2.5 py-2 pt-[46px] sm:pt-2'>
+        <div className='flex items-center gap-2 border-b border-line-subtle px-2.5 py-2 pt-[46px] sm:pt-2'>
           <button
             type='button'
             onClick={() => onOpenChange(!open)}
             aria-expanded={open}
             title={open ? "Hide tools" : "Show tools"}
             aria-label={open ? "Hide tools" : "Show tools"}
-            className='h-9 w-9 shrink-0 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-neutral-800 hover:bg-gray-200 dark:hover:bg-neutral-700 text-gray-500 dark:text-neutral-400 transition-colors duration-150'
+            className='h-9 w-9 shrink-0 flex items-center justify-center rounded-lg bg-surface-raised hover:bg-surface-overlay text-ink-muted transition-colors duration-150'
           >
             {open ? <PanelLeftClose className='w-4 h-4' /> : <PanelLeftOpen className='w-4 h-4' />}
           </button>
           {open && (
             <div className='flex min-w-0 items-center gap-2'>
               {props.offline && <OfflineBadge />}
-              <span className='truncate text-sm font-semibold text-gray-800 dark:text-neutral-100'>{props.title}</span>
+              <span className='truncate text-sm font-semibold text-ink-primary'>{props.title}</span>
             </div>
           )}
         </div>
@@ -480,8 +480,8 @@ export default function PreviewSidebar(props: PreviewSidebarProps) {
                 title='Hand claps on beats 2 & 4'
                 className={`${ROW} ${
                   props.clapsRunning
-                    ? "bg-amber-400 text-white hover:bg-amber-300"
-                    : "text-gray-700 dark:text-neutral-200 hover:bg-gray-100 dark:hover:bg-neutral-800"
+                    ? "bg-primary-solid text-ink-primary hover:bg-primary-hover"
+                    : "text-ink-primary hover:bg-surface-raised"
                 }`}
               >
                 Claps
@@ -535,8 +535,8 @@ export default function PreviewSidebar(props: PreviewSidebarProps) {
                 onClick={props.onCopy}
                 className={`${ROW} ${
                   props.copied
-                    ? "bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400"
-                    : "text-gray-700 dark:text-neutral-200 hover:bg-gray-100 dark:hover:bg-neutral-800"
+                    ? "bg-accent-solid/10 text-accent-solid bg-accent-solid/10 text-accent-solid"
+                    : "text-ink-primary hover:bg-surface-raised"
                 }`}
               >
                 {props.copied ? <Check className='w-4 h-4' /> : <Copy className='w-4 h-4' />}
@@ -547,8 +547,8 @@ export default function PreviewSidebar(props: PreviewSidebarProps) {
                 onClick={props.onShare}
                 className={`${ROW} ${
                   props.shared
-                    ? "bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400"
-                    : "text-gray-700 dark:text-neutral-200 hover:bg-gray-100 dark:hover:bg-neutral-800"
+                    ? "bg-accent-solid/10 text-accent-solid bg-accent-solid/10 text-accent-solid"
+                    : "text-ink-primary hover:bg-surface-raised"
                 }`}
               >
                 {props.shared ? <Check className='w-4 h-4' /> : <Link2 className='w-4 h-4' />}

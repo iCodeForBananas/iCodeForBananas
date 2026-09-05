@@ -60,7 +60,7 @@ export function SortableLine({ id, children }: { id: string; children: ReactNode
       ref={setNodeRef}
       style={{ transform: CSS.Translate.toString(transform), transition }}
       className={`flex items-start gap-1 rounded ${isDragging ? "opacity-40" : ""} ${
-        isOver && !isDragging ? "ring-2 ring-yellow-400" : ""
+        isOver && !isDragging ? "ring-2 ring-focus" : ""
       }`}
     >
       <button
@@ -71,7 +71,7 @@ export function SortableLine({ id, children }: { id: string; children: ReactNode
         style={{ touchAction: "none" }}
         aria-label='Drag to move this line'
         title='Drag to move this line'
-        className='mt-0.5 flex h-9 w-7 shrink-0 cursor-grab items-center justify-center rounded text-black/25 transition-colors duration-150 hover:bg-black/5 hover:text-black/60 active:cursor-grabbing dark:text-white/25 dark:hover:bg-white/10 dark:hover:text-white/60'
+        className='mt-0.5 flex h-9 w-7 shrink-0 cursor-grab items-center justify-center rounded text-ink-muted transition-colors duration-150 hover:bg-surface-raised hover:text-ink-primary active:cursor-grabbing text-ink-muted hover:bg-surface-raised hover:text-ink-muted'
       >
         <GripVertical className='h-4 w-4' />
       </button>
@@ -166,8 +166,8 @@ export function LineDndProvider({
       {children}
       <DragOverlay dropAnimation={null}>
         {dragging && (
-          <div className='flex items-center gap-1 rounded-lg border-2 border-yellow-400 bg-white px-2 py-1.5 shadow-xl dark:bg-neutral-900'>
-            <GripVertical className='h-4 w-4 shrink-0 text-black/30 dark:text-white/30' />
+          <div className='flex items-center gap-1 rounded-lg border-2 border-primary-solid bg-surface-base px-2 py-1.5 shadow-xl bg-surface-base'>
+            <GripVertical className='h-4 w-4 shrink-0 text-ink-muted text-ink-muted' />
             <div className='min-w-0'>
               <ChordLyricLine line={lineTextAt(dragging)} />
             </div>

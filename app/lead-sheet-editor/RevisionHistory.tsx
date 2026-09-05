@@ -186,19 +186,19 @@ export function RevisionHistory({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-black text-white">
+    <div className="fixed inset-0 z-50 flex flex-col bg-surface-base text-ink-primary">
       {/* Header */}
-      <div className="shrink-0 flex items-center justify-between px-6 py-4 border-b border-white/10">
+      <div className="shrink-0 flex items-center justify-between px-6 py-4 border-b border-line-subtle">
         <div className="flex items-center gap-3">
-          <Clock className="w-5 h-5 text-yellow-400" />
+          <Clock className="w-5 h-5 text-primary-text" />
           <span className="font-semibold text-lg">Revision History</span>
           {!loading && (
-            <span className="text-sm text-white/40">{revisions.length} revision{revisions.length !== 1 ? "s" : ""}</span>
+            <span className="text-sm text-ink-muted">{revisions.length} revision{revisions.length !== 1 ? "s" : ""}</span>
           )}
         </div>
         <button
           onClick={onClose}
-          className="flex items-center gap-1.5 text-white/50 hover:text-white transition-colors text-sm"
+          className="flex items-center gap-1.5 text-ink-muted hover:text-ink-primary transition-colors text-sm"
         >
           <X className="w-4 h-4" />
           Close
@@ -208,33 +208,33 @@ export function RevisionHistory({
       {/* Body */}
       <div className="flex flex-1 min-h-0">
         {/* Revision list */}
-        <div className="w-64 shrink-0 border-r border-white/10 overflow-y-auto flex flex-col">
+        <div className="w-64 shrink-0 border-r border-line-subtle overflow-y-auto flex flex-col">
           {loading ? (
-            <div className="p-6 text-white/40 text-sm">Loading...</div>
+            <div className="p-6 text-ink-muted text-sm">Loading...</div>
           ) : revisions.length === 0 ? (
-            <div className="p-6 text-white/40 text-sm">No revisions yet. Save the sheet to start tracking history.</div>
+            <div className="p-6 text-ink-muted text-sm">No revisions yet. Save the sheet to start tracking history.</div>
           ) : (
             <>
-              <div className="p-3 text-xs text-white/40 border-b border-white/10">
+              <div className="p-3 text-xs text-ink-muted border-b border-line-subtle">
                 Click to select A, click again for B — then see the diff.
               </div>
               {/* Current version at top */}
               <button
-                className={`w-full text-left px-4 py-3 border-b border-white/10 transition-colors ${
+                className={`w-full text-left px-4 py-3 border-b border-line-subtle transition-colors ${
                   selA?.id === "current" || selB?.id === "current"
                     ? selA?.id === "current"
-                      ? "bg-indigo-900/50 text-indigo-300"
-                      : "bg-yellow-900/40 text-yellow-300"
-                    : "hover:bg-white/5 text-white/70"
+                      ? "bg-track-1/20 text-track-1"
+                      : "bg-primary-solid/15 text-primary-hover"
+                    : "hover:bg-surface-raised text-ink-muted"
                 }`}
                 onClick={() => handleSelect({ id: "current", raw_text: currentRawText, created_at: new Date().toISOString(), num: 0 })}
               >
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-xs font-mono font-semibold">Current</span>
-                  {selA?.id === "current" && <span className="text-[10px] font-bold bg-indigo-500 text-white rounded px-1">A</span>}
-                  {selB?.id === "current" && <span className="text-[10px] font-bold bg-yellow-500 text-black rounded px-1">B</span>}
+                  {selA?.id === "current" && <span className="text-[10px] font-bold bg-track-1 text-ink-primary rounded px-1">A</span>}
+                  {selB?.id === "current" && <span className="text-[10px] font-bold bg-primary-solid text-ink-on-primary rounded px-1">B</span>}
                 </div>
-                <div className="text-xs text-white/30 mt-0.5">Unsaved / current</div>
+                <div className="text-xs text-ink-muted mt-0.5">Unsaved / current</div>
               </button>
               {revisions.map((rev) => {
                 const isA = selA?.id === rev.id;
@@ -243,29 +243,29 @@ export function RevisionHistory({
                   <button
                     key={rev.id}
                     onClick={() => handleSelect(rev)}
-                    className={`w-full text-left px-4 py-3 border-b border-white/5 transition-colors ${
+                    className={`w-full text-left px-4 py-3 border-b border-line-subtle transition-colors ${
                       isA
-                        ? "bg-indigo-900/50 text-indigo-300"
+                        ? "bg-track-1/20 text-track-1"
                         : isB
-                        ? "bg-yellow-900/40 text-yellow-300"
-                        : "hover:bg-white/5 text-white/70"
+                        ? "bg-primary-solid/15 text-primary-hover"
+                        : "hover:bg-surface-raised text-ink-muted"
                     }`}
                   >
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-xs font-mono font-semibold">#{rev.num}</span>
                       <div className="flex items-center gap-1">
-                        {isA && <span className="text-[10px] font-bold bg-indigo-500 text-white rounded px-1">A</span>}
-                        {isB && <span className="text-[10px] font-bold bg-yellow-500 text-black rounded px-1">B</span>}
+                        {isA && <span className="text-[10px] font-bold bg-track-1 text-ink-primary rounded px-1">A</span>}
+                        {isB && <span className="text-[10px] font-bold bg-primary-solid text-ink-on-primary rounded px-1">B</span>}
                         <button
                           onClick={(e) => { e.stopPropagation(); handleRestore(rev); }}
-                          className="text-[10px] text-white/30 hover:text-yellow-400 px-1 rounded transition-colors"
+                          className="text-[10px] text-ink-muted hover:text-primary-text px-1 rounded transition-colors"
                           title="Restore this version"
                         >
                           Restore
                         </button>
                       </div>
                     </div>
-                    <div className="text-xs text-white/40 mt-0.5" title={formatDate(rev.created_at)}>
+                    <div className="text-xs text-ink-muted mt-0.5" title={formatDate(rev.created_at)}>
                       {relativeTime(rev.created_at)}
                     </div>
                   </button>
@@ -278,28 +278,28 @@ export function RevisionHistory({
         {/* Diff panel */}
         <div className="flex-1 overflow-y-auto min-w-0">
           {!selA && !selB ? (
-            <div className="flex flex-col items-center justify-center h-full gap-3 text-white/30">
+            <div className="flex flex-col items-center justify-center h-full gap-3 text-ink-muted">
               <GitCompare className="w-10 h-10" />
               <p className="text-sm">Select two versions from the list to compare them</p>
             </div>
           ) : selA && !selB ? (
-            <div className="flex flex-col items-center justify-center h-full gap-3 text-white/30">
+            <div className="flex flex-col items-center justify-center h-full gap-3 text-ink-muted">
               <GitCompare className="w-10 h-10" />
               <p className="text-sm">Now select a second version to diff against</p>
             </div>
           ) : diffOps ? (
             <div className="flex flex-col h-full">
               {/* Diff header */}
-              <div className="shrink-0 flex items-center gap-4 px-6 py-3 border-b border-white/10 text-sm">
-                <span className="text-white/50">
+              <div className="shrink-0 flex items-center gap-4 px-6 py-3 border-b border-line-subtle text-sm">
+                <span className="text-ink-muted">
                   {[selA, selB].sort((a, b) => new Date(a!.created_at).getTime() - new Date(b!.created_at).getTime())
                     .map((r) => (r!.id === "current" ? "Current" : `#${r!.num}`))
                     .join(" → ")}
                 </span>
-                <span className="text-green-400">+{addCount}</span>
-                <span className="text-red-400">−{removeCount}</span>
+                <span className="text-success">+{addCount}</span>
+                <span className="text-danger">−{removeCount}</span>
                 {addCount === 0 && removeCount === 0 && (
-                  <span className="text-white/40">No differences</span>
+                  <span className="text-ink-muted">No differences</span>
                 )}
               </div>
               {/* Diff lines */}
@@ -309,12 +309,12 @@ export function RevisionHistory({
                     key={i}
                     className={`px-6 py-px whitespace-pre-wrap break-all leading-5 ${
                       op.type === "add"
-                        ? "bg-green-950/60 text-green-300"
+                        ? "bg-success/15 text-success"
                         : op.type === "remove"
-                        ? "bg-red-950/60 text-red-300"
+                        ? "bg-danger/15 text-danger"
                         : op.type === "skip"
-                        ? "text-white/25 text-center text-xs py-1 bg-white/5"
-                        : "text-white/60"
+                        ? "text-ink-muted text-center text-xs py-1 bg-surface-raised"
+                        : "text-ink-muted"
                     }`}
                   >
                     {op.type === "add" ? "+ " : op.type === "remove" ? "− " : op.type === "skip" ? "" : "  "}
