@@ -10,6 +10,9 @@ import type { LeadSheet } from "./shared";
 import { makeSection, getPlainText, OfflineBadge } from "./shared";
 import { cacheSheet, cacheSheetList, getCachedSheetList } from "./offlineCache";
 import { useCommands } from "@/app/components/ui/command-palette";
+import { Input } from "@/app/components/ui/input";
+import { Button } from "@/app/components/ui/button";
+import { loadDensity, saveDensity, searchLibrary, type Density } from "./library";
 
 export default function LeadSheetList() {
   const { user, loading: authLoading } = useAuth();
@@ -18,6 +21,15 @@ export default function LeadSheetList() {
   const [sharedId, setSharedId] = useState<string | null>(null);
   const [offline, setOffline] = useState(false);
   const [favoriteError, setFavoriteError] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  // Read once on mount rather than during render, so the server and the first
+  // client render agree and hydration does not complain.
+  const [density, setDensityState] = useState<Density>("comfortable");
+  useEffect(() => setDensityState(loadDensity()), []);
+  const setDensity = (next: Density) => {
+    setDensityState(next);
+    saveDensity(next);
+  };
   const router = useRouter();
 
   // Songs read alphabetically, with the starred ones held at the top — the set
@@ -78,6 +90,8 @@ export default function LeadSheetList() {
       .single();
     if (data) router.push(`/lead-sheet-editor/${data.id}/edit`);
   }
+
+  const visibleSheets = useMemo(() => searchLibrary(sortedSheets, query), [sortedSheets, query]);
 
   // Every song by name, plus the one thing you do when none of them is what
   // you wanted. Rebuilt when the library changes; `run` reads nothing that is
@@ -229,17 +243,37 @@ export default function LeadSheetList() {
             {favoriteError && (
               <p className='mb-3 text-sm font-medium text-red-500'>{favoriteError}</p>
             )}
+            <div className='mb-3 flex items-center gap-2'>
+              <Input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder='Search by title or artist'
+                aria-label='Search by title or artist'
+                data-testid='library-search'
+                className='max-w-xs'
+              />
+              <Button
+                variant='ghost'
+                size='sm'
+                onClick={() => setDensity(density === "compact" ? "comfortable" : "compact")}
+                aria-label={`Switch to ${density === "compact" ? "comfortable" : "compact"} density`}
+                data-testid='library-density'
+              >
+                {density === "compact" ? "Compact" : "Comfortable"}
+              </Button>
+            </div>
+
             {sheets.length === 0 ? (
               <div className='flex-1 flex flex-col items-center justify-center text-[#373A40]/40 dark:text-white/40'>
                 <Music className='w-12 h-12 mb-3 opacity-40' />
                 <p>No lead sheets yet. Create your first one!</p>
               </div>
             ) : (
-              <div className='space-y-2'>
-                {sortedSheets.map((sheet) => (
+              <div className={density === "compact" ? "space-y-1" : "space-y-2"}>
+                {visibleSheets.map((sheet) => (
                   <div
                     key={sheet.id}
-                    className='flex flex-col md:flex-row md:items-center md:justify-between gap-2 p-4 border border-[#373A40]/20 dark:border-white/20 rounded-lg hover:border-black dark:hover:border-white transition-colors group cursor-pointer'
+                    className={`flex flex-col md:flex-row md:items-center md:justify-between gap-2 ${density === "compact" ? "px-3 py-1.5" : "p-4"} border border-[#373A40]/20 dark:border-white/20 rounded-lg hover:border-black dark:hover:border-white transition-colors group cursor-pointer`}
                     onClick={() => router.push(`/lead-sheet-editor/${sheet.id}/preview`)}
                   >
                     <div className='flex flex-1 min-w-0 items-start gap-2'>

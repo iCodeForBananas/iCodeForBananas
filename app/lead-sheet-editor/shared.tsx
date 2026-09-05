@@ -53,6 +53,22 @@ export interface LeadSheet {
   metadata?: LeadSheetMetadata | null;
   created_at: string;
   updated_at: string;
+
+  /**
+   * The canonical song text. Null on rows the backfill has not reached, which
+   * is why every reader goes through sheetToSong in ./song rather than
+   * checking this here. See docs/chordpro-migration.md.
+   */
+  chordpro?: string | null;
+  artist?: string | null;
+  capo?: number | null;
+  time_signature?: string | null;
+
+  /** Defaults to private. See ./sharing. */
+  visibility?: "private" | "unlisted" | "public";
+  forked_from_id?: string | null;
+  forked_from_title?: string | null;
+  forked_from_author?: string | null;
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
