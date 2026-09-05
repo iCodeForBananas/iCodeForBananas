@@ -13,6 +13,9 @@ import { useCommands } from "@/app/components/ui/command-palette";
 import { Input } from "@/app/components/ui/input";
 import { Button } from "@/app/components/ui/button";
 import { loadDensity, saveDensity, searchLibrary, type Density } from "./library";
+import { VisibilityPicker } from "./VisibilityPicker";
+import { SongAttribution } from "./SongAttribution";
+import type { Visibility } from "./sharing";
 
 export default function LeadSheetList() {
   const { user, loading: authLoading } = useAuth();
@@ -124,6 +127,20 @@ export default function LeadSheetList() {
     [sortedSheets, router, user] // eslint-disable-line react-hooks/exhaustive-deps
   );
   useCommands("library", commands);
+
+  /**
+   * Who can see a song. Written straight through rather than optimistically:
+   * getting this wrong in the permissive direction is not recoverable, so the
+   * control should reflect the database rather than an intention.
+   */
+  async function setVisibility(sheet: LeadSheet, visibility: Visibility) {
+    const { error } = await getSb().from("lead_sheets").update({ visibility }).eq("id", sheet.id);
+    if (error) {
+      setFavoriteError("Could not change who can see that song.");
+      return;
+    }
+    setSheets((current) => current.map((s) => (s.id === sheet.id ? { ...s, visibility } : s)));
+  }
 
   async function handleCopyText(sheet: LeadSheet) {
     await navigator.clipboard.writeText(getPlainText(sheet));
@@ -294,8 +311,10 @@ export default function LeadSheetList() {
                       <div className='font-semibold text-black dark:text-white'>
                         {sheet.title || "Untitled"}
                       </div>
+                      <SongAttribution song={sheet} />
                       <div className='text-sm text-[#373A40]/50 dark:text-white/50 flex flex-wrap gap-3 mt-0.5'>
                         {sheet.key && <span>Key: {sheet.key}</span>}
+                        {sheet.artist && <span>{sheet.artist}</span>}
                         {sheet.tempo && <span>{sheet.tempo} BPM</span>}
                         <span>{sheet.sections?.length ?? 0} sections</span>
                         <span>{new Date(sheet.updated_at).toLocaleDateString()}</span>
@@ -310,6 +329,14 @@ export default function LeadSheetList() {
                         {copiedId === sheet.id ? <Check className='w-3.5 h-3.5' /> : <Copy className='w-3.5 h-3.5' />}
                         {copiedId === sheet.id ? "Copied!" : "Copy Text"}
                       </button>
+                      {/* Copying a link is only half the job: a private song's
+                          link opens for nobody, so the two sit together. */}
+                      <span onClick={(e) => e.stopPropagation()}>
+                        <VisibilityPicker
+                          value={sheet.visibility ?? "private"}
+                          onChange={(next) => void setVisibility(sheet, next)}
+                        />
+                      </span>
                       <button
                         onClick={(e) => { e.stopPropagation(); handleShare(sheet.id); }}
                         className='flex items-center gap-1.5 rounded border border-[#373A40]/30 dark:border-white/30 px-2 py-1 md:px-3 md:py-1.5 text-xs font-medium text-black dark:text-white/80 hover:border-black dark:hover:border-white transition-colors'

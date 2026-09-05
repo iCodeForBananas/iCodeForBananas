@@ -18,6 +18,8 @@ import {
 } from "../../shared";
 import { cacheSheet, getCachedSheet } from "../../offlineCache";
 import { useCommands } from "@/app/components/ui/command-palette";
+import { PerformanceView } from "../../PerformanceView";
+import { sheetToSong } from "../../song";
 import LineEditor, { type LineTarget } from "../../LineEditor";
 import SectionEditor from "../../SectionEditor";
 import { asSectionHeader } from "../../songText";
@@ -427,6 +429,8 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
   const [transposeSteps, setTransposeSteps] = useState(0);
   // Edit mode is a layer over the preview, not a different page: the song keeps
   // its size, columns and key, and every line becomes something you can tap.
+  const [performing, setPerforming] = useState(false);
+
   const songCommands = useMemo(
     () => [
       {
@@ -454,8 +458,8 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
         id: "performance",
         label: "Toggle performance mode",
         group: "This song",
-        keywords: "fullscreen stage live big large play",
-        run: () => setFullscreen((on) => !on),
+        keywords: "fullscreen stage live big large play autoscroll",
+        run: () => setPerforming((on) => !on),
       },
     ],
     []
@@ -1251,6 +1255,15 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
           <SheetContent sheet={sheet} fullscreen={false} transposeSteps={transposeSteps} />
         </div>
       </div>
+
+      {performing && (
+        <PerformanceView
+          song={sheetToSong(sheet)}
+          songId={id}
+          view={{ transpose: transposeSteps, capo: sheet.capo ?? 0 }}
+          onExit={() => setPerforming(false)}
+        />
+      )}
 
       {/* Screen view */}
       <div className='print:hidden flex flex-col flex-1 min-h-0'>

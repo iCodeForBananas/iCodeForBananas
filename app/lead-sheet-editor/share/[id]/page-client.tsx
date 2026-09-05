@@ -11,6 +11,9 @@ import {
   printSong,
   useSongDocumentTitle,
 } from "../../shared";
+import { DuplicateButton } from "../../DuplicateButton";
+import { SongAttribution } from "../../SongAttribution";
+import { SongComments } from "../../SongComments";
 
 const FONT_SCALE_KEY = "lead-sheet-print-font-scale";
 const MIN_SCALE = 70;
@@ -82,6 +85,15 @@ function SheetContent({ sheet }: { sheet: LeadSheet }) {
           );
         })}
       </div>
+    </div>
+  );
+}
+
+function SharedSongFooter({ sheet }: { sheet: LeadSheet }) {
+  return (
+    <div className='mx-auto max-w-3xl px-6 pb-16 print:hidden'>
+      <DuplicateButton song={{ ...sheet, author_name: null }} />
+      <SongComments songId={sheet.id} />
     </div>
   );
 }
@@ -179,9 +191,11 @@ export default function ShareLeadSheet({ params }: { params: Promise<{ id: strin
             </div>
           </div>
         </div>
-        <div className='max-w-3xl mx-auto px-6 pb-16' style={{ fontSize: `${fontScale}%` }}>
+        <div className='max-w-3xl mx-auto px-6 pb-8' style={{ fontSize: `${fontScale}%` }}>
+          <SongAttribution song={sheet} className='mb-4' />
           <SheetContent sheet={sheet} />
         </div>
+        <SharedSongFooter sheet={sheet} />
       </div>
     </>
   );
