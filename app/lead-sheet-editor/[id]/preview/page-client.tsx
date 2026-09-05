@@ -134,13 +134,13 @@ function EditModeBanner({
     <div
       className={`flex items-center justify-between gap-2 border-t py-1.5 print:hidden ${
         error
-          ? "border-red-300/60 bg-red-50 dark:border-red-400/20 dark:bg-red-500/10"
-          : "border-yellow-300/60 bg-yellow-50 dark:border-yellow-400/20 dark:bg-yellow-400/10"
+          ? "border-danger/30 bg-danger/10 border-danger/30 dark:bg-danger/100/10"
+          : "border-primary-solid/30 bg-primary-solid/10 border-line-subtle dark:bg-primary-solid/10"
       } ${className}`}
     >
       <span
         className={`text-xs font-medium ${
-          error ? "text-red-700 dark:text-red-400" : "text-yellow-800 dark:text-yellow-300"
+          error ? "text-danger dark:text-danger" : "text-primary-text text-primary-hover"
         }`}
       >
         {error ?? "Tap a line to edit it, or drag its grip to move it."}
@@ -148,7 +148,7 @@ function EditModeBanner({
       <button
         type='button'
         onClick={onDone}
-        className='h-7 shrink-0 rounded-lg bg-yellow-400 px-2.5 text-xs font-semibold text-black hover:bg-yellow-300 transition-colors duration-150'
+        className='h-7 shrink-0 rounded-lg bg-primary-solid px-2.5 text-xs font-semibold text-ink-primary hover:bg-primary-hover transition-colors duration-150'
       >
         Done
       </button>
@@ -198,28 +198,28 @@ const SheetContent = memo(function SheetContent({
   const columnsActive = !!(columnCount || columnWidthVw);
   return (
     <div>
-      <div className={`mb-8 border-b-2 border-black dark:border-neutral-600 pb-6 ${columnsActive ? "max-w-3xl mx-auto" : ""}`}>
+      <div className={`mb-8 border-b-2 border-line-strong border-line-subtle pb-6 ${columnsActive ? "max-w-3xl mx-auto" : ""}`}>
         <h1
-          className={`font-bold leading-tight mb-3 text-black dark:text-neutral-100 ${fullscreen ? "text-[3em]" : "text-[2.25em]"}`}
+          className={`font-bold leading-tight mb-3 text-ink-primary ${fullscreen ? "text-[3em]" : "text-[2.25em]"}`}
         >
           {sheet.title || "Untitled"}
         </h1>
         <div className='flex flex-wrap gap-6 text-[0.875em]'>
           {sheet.key && (
             <span>
-              <span className='uppercase tracking-wider text-[0.75em] text-black/50 dark:text-white/40 mr-1'>Key</span>
-              <span className='font-bold text-black dark:text-neutral-100 text-[1em]'>{sheet.key}</span>
+              <span className='uppercase tracking-wider text-[0.75em] text-ink-muted text-ink-muted mr-1'>Key</span>
+              <span className='font-bold text-ink-primary text-[1em]'>{sheet.key}</span>
             </span>
           )}
           {sheet.tempo && (
             <span>
-              <span className='uppercase tracking-wider text-[0.75em] text-black/50 dark:text-white/40 mr-1'>Tempo</span>
-              <span className='font-bold text-black dark:text-neutral-100 text-[1em]'>{sheet.tempo} BPM</span>
+              <span className='uppercase tracking-wider text-[0.75em] text-ink-muted text-ink-muted mr-1'>Tempo</span>
+              <span className='font-bold text-ink-primary text-[1em]'>{sheet.tempo} BPM</span>
             </span>
           )}
         </div>
         {sheet.general_notes && (
-          <p className={`mt-3 italic text-black/60 dark:text-white/50 ${fullscreen ? "text-[1em]" : "text-[0.875em]"}`}>
+          <p className={`mt-3 italic text-ink-muted text-ink-muted ${fullscreen ? "text-[1em]" : "text-[0.875em]"}`}>
             {sheet.general_notes}
           </p>
         )}
@@ -294,7 +294,7 @@ const SheetContent = memo(function SheetContent({
                           type='button'
                           onClick={() => onEditLine(sectionIndex, i)}
                           aria-label={`Edit blank line ${i + 1}`}
-                          className='block w-full h-8 rounded border border-dashed border-black/10 dark:border-white/15 hover:border-yellow-400 hover:bg-yellow-50 dark:hover:bg-yellow-400/10 transition-colors duration-150'
+                          className='block w-full h-8 rounded border border-dashed border-line-strong/10 border-line-subtle hover:border-line-strong hover:bg-surface-raised transition-colors duration-150'
                         />
                       ) : (
                         <div key={i} className='h-3' />
@@ -333,11 +333,11 @@ const SheetContent = memo(function SheetContent({
                       }
                       className={`rounded px-2 transition-colors duration-150 ${
                         active
-                          ? "bg-yellow-200/70 shadow-[inset_3px_0_0_0_#facc15] dark:bg-yellow-400/20"
+                          ? "bg-primary-solid/20 shadow-[inset_3px_0_0_0_#facc15] dark:bg-primary-solid/20"
                           : ""
                       } ${
                         onEditLine
-                          ? "cursor-pointer py-1.5 border border-dashed border-black/10 dark:border-white/15 hover:border-yellow-400 hover:bg-yellow-50 dark:hover:bg-yellow-400/10 active:bg-yellow-100 dark:active:bg-yellow-400/20"
+                          ? "cursor-pointer py-1.5 border border-dashed border-line-strong/10 border-line-subtle hover:border-line-strong hover:bg-surface-raised active:bg-primary-solid/15 active:bg-primary-solid/20"
                           : seekable
                             ? "cursor-pointer print:cursor-auto"
                             : ""
@@ -347,8 +347,8 @@ const SheetContent = memo(function SheetContent({
                         <span
                           className={`inline-flex items-center gap-1 text-[0.65em] font-bold tracking-wide uppercase px-1.5 py-0.5 rounded mr-2 print:hidden ${
                             !cueInfo.isStop
-                              ? "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400"
-                              : "bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-400"
+                              ? "bg-success/15 text-success bg-success/15 text-success"
+                              : "bg-danger/15 text-danger bg-danger/15 dark:text-danger"
                           }`}
                         >
                           🥁 {cueInfo.label}
@@ -370,7 +370,7 @@ const SheetContent = memo(function SheetContent({
                       <button
                         type='button'
                         onClick={() => onInsertLine(sectionIndex, lines.length)}
-                        className='flex flex-1 items-center justify-center gap-1.5 rounded border border-dashed border-black/15 py-2 text-[0.8em] font-medium text-black/40 transition-colors duration-150 hover:border-yellow-400 hover:bg-yellow-50 hover:text-black/70 dark:border-white/20 dark:text-white/40 dark:hover:bg-yellow-400/10 dark:hover:text-white/70'
+                        className='flex flex-1 items-center justify-center gap-1.5 rounded border border-dashed border-line-strong/15 py-2 text-[0.8em] font-medium text-ink-muted transition-colors duration-150 hover:border-primary-solid hover:bg-primary-solid/10 hover:text-ink-primary border-line-subtle text-ink-muted dark:hover:bg-primary-solid/10 dark:hover:text-ink-primary/70'
                       >
                         <Plus className='w-3.5 h-3.5' />
                         Add line
@@ -381,7 +381,7 @@ const SheetContent = memo(function SheetContent({
                         type='button'
                         onClick={() => onAddSection(sectionIndex)}
                         title='Start a new verse, chorus or bridge after this one'
-                        className='flex items-center justify-center gap-1.5 rounded border border-dashed border-black/15 px-3 py-2 text-[0.8em] font-medium text-black/40 transition-colors duration-150 hover:border-yellow-400 hover:bg-yellow-50 hover:text-black/70 dark:border-white/20 dark:text-white/40 dark:hover:bg-yellow-400/10 dark:hover:text-white/70'
+                        className='flex items-center justify-center gap-1.5 rounded border border-dashed border-line-strong/15 px-3 py-2 text-[0.8em] font-medium text-ink-muted transition-colors duration-150 hover:border-primary-solid hover:bg-primary-solid/10 hover:text-ink-primary border-line-subtle text-ink-muted dark:hover:bg-primary-solid/10 dark:hover:text-ink-primary/70'
                       >
                         <Plus className='w-3.5 h-3.5' />
                         Section
@@ -391,7 +391,7 @@ const SheetContent = memo(function SheetContent({
                 )}
               </div>
               {section.notes && (
-                <p className={`mt-3 italic text-black/50 dark:text-white/40 ${fullscreen ? "text-[1em]" : "text-[0.875em]"}`}>
+                <p className={`mt-3 italic text-ink-muted text-ink-muted ${fullscreen ? "text-[1em]" : "text-[0.875em]"}`}>
                   ↳ {section.notes}
                 </p>
               )}
@@ -402,7 +402,7 @@ const SheetContent = memo(function SheetContent({
           <button
             type='button'
             onClick={() => onAddSection(-1)}
-            className='flex w-full items-center justify-center gap-1.5 rounded border border-dashed border-black/15 py-3 text-[0.8em] font-medium text-black/40 transition-colors duration-150 hover:border-yellow-400 hover:bg-yellow-50 hover:text-black/70 dark:border-white/20 dark:text-white/40 dark:hover:bg-yellow-400/10 dark:hover:text-white/70'
+            className='flex w-full items-center justify-center gap-1.5 rounded border border-dashed border-line-strong/15 py-3 text-[0.8em] font-medium text-ink-muted transition-colors duration-150 hover:border-primary-solid hover:bg-primary-solid/10 hover:text-ink-primary border-line-subtle text-ink-muted dark:hover:bg-primary-solid/10 dark:hover:text-ink-primary/70'
           >
             <Plus className='w-3.5 h-3.5' />
             Add section
@@ -1158,10 +1158,10 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
 
   if (authLoading || loading) {
     return (
-      <div className='flex flex-col flex-1 min-h-0 bg-white dark:bg-black'>
+      <div className='flex flex-col flex-1 min-h-0 bg-surface-base'>
         <div className='flex flex-col flex-1 min-h-0 p-2 sm:p-4'>
           <div className='flex flex-col flex-1 min-h-0 rounded-none border-none overflow-hidden'>
-            <div className='flex-1 flex items-center justify-center text-black/50 dark:text-white/40'>Loading...</div>
+            <div className='flex-1 flex items-center justify-center text-ink-muted text-ink-muted'>Loading...</div>
           </div>
         </div>
       </div>
@@ -1170,10 +1170,10 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
 
   if (!user || !sheet) {
     return (
-      <div className='flex flex-col flex-1 min-h-0 bg-white dark:bg-black'>
+      <div className='flex flex-col flex-1 min-h-0 bg-surface-base'>
         <div className='flex flex-col flex-1 min-h-0 p-2 sm:p-4'>
           <div className='flex flex-col flex-1 min-h-0 rounded-none border-none overflow-hidden'>
-            <div className='flex-1 flex items-center justify-center text-black/50 dark:text-white/40'>Sheet not found.</div>
+            <div className='flex-1 flex items-center justify-center text-ink-muted text-ink-muted'>Sheet not found.</div>
           </div>
         </div>
       </div>
@@ -1268,7 +1268,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
       {/* Screen view */}
       <div className='print:hidden flex flex-col flex-1 min-h-0'>
         {fullscreen ? (
-          <div className='fixed inset-0 z-50 flex bg-white dark:bg-black'>
+          <div className='fixed inset-0 z-50 flex bg-surface-base'>
             {toolSidebar}
             <div className='flex flex-col flex-1 min-w-0'>
               {editMode && <EditModeBanner error={moveError} onDone={() => setEditMode(false)} className='px-6 sm:px-8' />}
@@ -1299,7 +1299,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
           </div>
         ) : (
           <div className='flex flex-col flex-1 min-h-0 p-0 sm:p-4'>
-            <div className='relative flex flex-1 min-h-0 rounded-none border-none bg-white dark:bg-black overflow-hidden'>
+            <div className='relative flex flex-1 min-h-0 rounded-none border-none bg-surface-base overflow-hidden'>
               {toolSidebar}
               <div className='flex flex-col flex-1 min-w-0'>
                 {editMode && <EditModeBanner error={moveError} onDone={() => setEditMode(false)} className='px-6 sm:px-8' />}

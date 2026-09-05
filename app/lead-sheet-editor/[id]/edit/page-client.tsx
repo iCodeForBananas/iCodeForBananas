@@ -419,8 +419,8 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
             otherwise hold the editor at full height when a phone keyboard
             shrinks the viewport and push the text under the keyboard. */}
         <main className="flex flex-col flex-1 min-h-0! p-2 sm:p-4">
-          <div className="flex flex-col flex-1 min-h-0 rounded-none border-none bg-black overflow-hidden">
-            <div className="flex-1 flex items-center justify-center text-white/50">Loading...</div>
+          <div className="flex flex-col flex-1 min-h-0 rounded-none border-none bg-surface-base overflow-hidden">
+            <div className="flex-1 flex items-center justify-center text-ink-muted">Loading...</div>
           </div>
         </main>
       </div>
@@ -434,8 +434,8 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
             otherwise hold the editor at full height when a phone keyboard
             shrinks the viewport and push the text under the keyboard. */}
         <main className="flex flex-col flex-1 min-h-0! p-2 sm:p-4">
-          <div className="flex flex-col flex-1 min-h-0 rounded-none border-none bg-black overflow-hidden">
-            <div className="flex-1 flex items-center justify-center text-white/50">Sheet not found.</div>
+          <div className="flex flex-col flex-1 min-h-0 rounded-none border-none bg-surface-base overflow-hidden">
+            <div className="flex-1 flex items-center justify-center text-ink-muted">Sheet not found.</div>
           </div>
         </main>
       </div>
@@ -445,13 +445,13 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
   return (
     <div className="flex flex-col flex-1 min-h-0">
       <main className="flex flex-col flex-1 min-h-0 p-2 sm:p-4">
-        <div className="flex flex-col flex-1 min-h-0 rounded-none border-none bg-black overflow-hidden">
+        <div className="flex flex-col flex-1 min-h-0 rounded-none border-none bg-surface-base overflow-hidden">
           {/* Toolbar */}
           <div className="shrink-0">
             <div className="flex items-center justify-between px-4 py-3 sm:px-6 sm:py-4">
               <button
                 onClick={handleBack}
-                className="flex items-center gap-2 text-white/50 hover:text-black dark:hover:text-white transition-colors text-sm font-medium"
+                className="flex items-center gap-2 text-ink-muted hover:text-ink-primary transition-colors text-sm font-medium"
               >
                 <ArrowLeft className="w-4 h-4" />
                 All Sheets
@@ -459,7 +459,7 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
               <div className="flex items-center gap-2 flex-wrap justify-end">
                 {offline && <OfflineBadge />}
                 {saveError && (
-                  <span className="flex items-center gap-1 text-xs font-medium text-amber-600 dark:text-amber-400">
+                  <span className="flex items-center gap-1 text-xs font-medium text-primary-text">
                     Save failed
                   </span>
                 )}
@@ -467,7 +467,7 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
                 <button
                   onClick={() => setHelpOpen(true)}
                   title="What can I type into a song? Time stamps, drum triggers, chords…"
-                  className="flex items-center gap-1.5 rounded border border-[#373A40]/30 dark:border-white/30 px-3 py-2 text-sm font-medium text-black dark:text-white/80 hover:border-black dark:hover:border-white hover:bg-black hover:text-yellow-400 transition-colors"
+                  className="flex items-center gap-1.5 rounded border border-line-strong px-3 py-2 text-sm font-medium text-ink-primary/80 hover:border-line-strong hover:bg-surface-base hover:text-primary-text transition-colors"
                 >
                   <HelpCircle className="w-4 h-4" />
                   Help
@@ -476,8 +476,8 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
                   onClick={replaceOpen ? closeReplace : openReplace}
                   className={`flex items-center gap-1.5 rounded border px-3 py-2 text-sm font-medium transition-colors ${
                     replaceOpen
-                      ? "border-black dark:border-white bg-black text-yellow-400"
-                      : "border-[#373A40]/30 dark:border-white/30 text-black dark:text-white/80 hover:border-black dark:hover:border-white hover:bg-black hover:text-yellow-400"
+                      ? "border-line-strong border-line-strong bg-surface-base text-primary-text"
+                      : "border-line-strong text-ink-primary/80 hover:border-line-strong hover:bg-surface-base hover:text-primary-text"
                   }`}
                 >
                   <Replace className="w-4 h-4" />
@@ -486,7 +486,7 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
                 <button
                   onClick={() => setArrangeOpen(true)}
                   title="Lay the song out on tracks — drag each line and each sound to where it belongs"
-                  className="flex items-center gap-1.5 rounded border border-[#373A40]/30 dark:border-white/30 px-3 py-2 text-sm font-medium text-black dark:text-white/80 hover:border-black dark:hover:border-white hover:bg-black hover:text-yellow-400 transition-colors"
+                  className="flex items-center gap-1.5 rounded border border-line-strong px-3 py-2 text-sm font-medium text-ink-primary/80 hover:border-line-strong hover:bg-surface-base hover:text-primary-text transition-colors"
                 >
                   <SlidersHorizontal className="w-4 h-4" />
                   Arrange
@@ -494,7 +494,7 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
                 <button
                   onClick={() => setTapOpen(true)}
                   title="Tap along with the song to time each line"
-                  className="flex items-center gap-1.5 rounded border border-[#373A40]/30 dark:border-white/30 px-3 py-2 text-sm font-medium text-black dark:text-white/80 hover:border-black dark:hover:border-white hover:bg-black hover:text-yellow-400 transition-colors"
+                  className="flex items-center gap-1.5 rounded border border-line-strong px-3 py-2 text-sm font-medium text-ink-primary/80 hover:border-line-strong hover:bg-surface-base hover:text-primary-text transition-colors"
                 >
                   <Timer className="w-4 h-4" />
                   Tap Timing
@@ -507,7 +507,7 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
                       ? `Remove all ${timingCount} time stamp${timingCount === 1 ? "" : "s"} so you can re-time the song`
                       : "This song has no time stamps"
                   }
-                  className="flex items-center gap-1.5 rounded border border-[#373A40]/30 dark:border-white/30 px-3 py-2 text-sm font-medium text-black dark:text-white/80 hover:border-black dark:hover:border-white hover:bg-black hover:text-yellow-400 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  className="flex items-center gap-1.5 rounded border border-line-strong px-3 py-2 text-sm font-medium text-ink-primary/80 hover:border-line-strong hover:bg-surface-base hover:text-primary-text disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                 >
                   <TimerOff className="w-4 h-4" />
                   Clear Times
@@ -520,41 +520,41 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
                       ? "Play through the sheet, highlighting each line in time"
                       : "Time some lines first — use Tap Timing, or type @0:12 at the start of a line"
                   }
-                  className="flex items-center gap-1.5 rounded border border-[#373A40]/30 dark:border-white/30 px-3 py-2 text-sm font-medium text-black dark:text-white/80 hover:border-black dark:hover:border-white hover:bg-black hover:text-yellow-400 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  className="flex items-center gap-1.5 rounded border border-line-strong px-3 py-2 text-sm font-medium text-ink-primary/80 hover:border-line-strong hover:bg-surface-base hover:text-primary-text disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                 >
                   <Play className="w-4 h-4" />
                   Play
                 </button>
                 <button
                   onClick={handlePreview}
-                  className="flex items-center gap-1.5 rounded border border-[#373A40]/30 dark:border-white/30 px-3 py-2 text-sm font-medium text-black dark:text-white/80 hover:border-black dark:hover:border-white hover:bg-black hover:text-yellow-400 transition-colors"
+                  className="flex items-center gap-1.5 rounded border border-line-strong px-3 py-2 text-sm font-medium text-ink-primary/80 hover:border-line-strong hover:bg-surface-base hover:text-primary-text transition-colors"
                 >
                   <Eye className="w-4 h-4" />
                   Preview
                 </button>
                 <button
                   onClick={() => setHistoryOpen(true)}
-                  className="flex items-center gap-1.5 rounded border border-[#373A40]/30 dark:border-white/30 px-3 py-2 text-sm font-medium text-black dark:text-white/80 hover:border-black dark:hover:border-white hover:bg-black hover:text-yellow-400 transition-colors"
+                  className="flex items-center gap-1.5 rounded border border-line-strong px-3 py-2 text-sm font-medium text-ink-primary/80 hover:border-line-strong hover:bg-surface-base hover:text-primary-text transition-colors"
                   title="View revision history"
                 >
                   <Clock className="w-4 h-4" />
                   History
                 </button>
 
-                <div className="w-px self-stretch bg-black/20 dark:bg-white/20" />
+                <div className="w-px self-stretch bg-surface-base/20 dark:bg-surface-base/20" />
 
                 <button
                   onClick={() => saveSheet(true)}
                   disabled={!dirty || saving}
-                  className="flex items-center gap-2 rounded bg-black px-4 py-2 text-sm font-medium text-yellow-400 hover:bg-black/80 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  className="flex items-center gap-2 rounded bg-primary-solid px-4 py-2 text-sm font-medium text-ink-on-primary hover:bg-primary-hover disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                 >
                   <Save className="w-4 h-4" />
                   {saving ? "Saving..." : dirty ? "Save" : "Saved"}
                 </button>
 
-                <div className="w-px self-stretch bg-black/20 dark:bg-white/20" />
+                <div className="w-px self-stretch bg-surface-base/20 dark:bg-surface-base/20" />
 
-                <div className="relative flex items-center gap-1.5 rounded border border-[#373A40]/30 dark:border-white/30 px-3 py-2 text-sm font-medium text-black dark:text-white/80 hover:border-black dark:hover:border-white hover:bg-black hover:text-yellow-400 transition-colors">
+                <div className="relative flex items-center gap-1.5 rounded border border-line-strong px-3 py-2 text-sm font-medium text-ink-primary/80 hover:border-line-strong hover:bg-surface-base hover:text-primary-text transition-colors">
                   <Sparkles className="w-4 h-4" />
                   Get Feedback
                   <select
@@ -577,10 +577,10 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
             </div>
 
             {replaceOpen && (
-              <div className="border-t border-white/10 px-4 py-3 sm:px-6">
+              <div className="border-t border-line-subtle px-4 py-3 sm:px-6">
                 <div className="max-w-3xl mx-auto flex flex-wrap items-center gap-2">
                   {chordsInSheet.length === 0 ? (
-                    <span className="text-sm text-white/50">No chords in this sheet yet.</span>
+                    <span className="text-sm text-ink-muted">No chords in this sheet yet.</span>
                   ) : (
                     <>
                       <select
@@ -589,7 +589,7 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
                           setFindChord(e.target.value);
                           setReplaceResult("");
                         }}
-                        className="rounded border border-white/30 bg-black px-2 py-2 text-sm font-mono text-white outline-none focus:border-white"
+                        className="rounded border border-line-strong bg-surface-base px-2 py-2 text-sm font-mono text-ink-primary outline-none focus:border-line-strong"
                       >
                         {chordsInSheet.map(({ chord, count }) => (
                           <option key={chord} value={chord}>
@@ -597,7 +597,7 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
                           </option>
                         ))}
                       </select>
-                      <span className="text-white/40 text-sm">→</span>
+                      <span className="text-ink-muted text-sm">→</span>
                       <input
                         ref={replaceInputRef}
                         value={replaceWith}
@@ -616,23 +616,23 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
                         }}
                         placeholder="New chord"
                         spellCheck={false}
-                        className="w-32 rounded border border-white/30 bg-black px-2 py-2 text-sm font-mono text-white placeholder:text-white/30 outline-none focus:border-white"
+                        className="w-32 rounded border border-line-strong bg-surface-base px-2 py-2 text-sm font-mono text-ink-primary placeholder:text-ink-muted outline-none focus:border-line-strong"
                       />
                       <button
                         onClick={applyReplace}
                         disabled={!canReplace}
-                        className="rounded bg-black border border-white/30 px-3 py-2 text-sm font-medium text-yellow-400 hover:border-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        className="rounded bg-surface-base border border-line-strong px-3 py-2 text-sm font-medium text-primary-text hover:border-line-strong disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                       >
                         Replace All
                       </button>
                       {replaceResult && (
-                        <span className="text-xs text-white/50">{replaceResult}</span>
+                        <span className="text-xs text-ink-muted">{replaceResult}</span>
                       )}
                     </>
                   )}
                   <button
                     onClick={closeReplace}
-                    className="ml-auto text-white/50 hover:text-white transition-colors"
+                    className="ml-auto text-ink-muted hover:text-ink-primary transition-colors"
                     aria-label="Close replace"
                   >
                     <X className="w-4 h-4" />
@@ -650,7 +650,7 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
               onChange={(e) => handleChange(e.target.value)}
               placeholder={PLACEHOLDER}
               spellCheck={false}
-              className="leadsheet-doc w-full max-w-3xl h-full overflow-auto outline-none resize-none text-base leading-relaxed bg-transparent text-black dark:text-white placeholder:text-[#373A40]/30 dark:placeholder:text-white/30"
+              className="leadsheet-doc w-full max-w-3xl h-full overflow-auto outline-none resize-none text-base leading-relaxed bg-transparent text-ink-primary placeholder:text-ink-muted dark:placeholder:text-ink-muted"
             />
           </div>
         </div>

@@ -185,9 +185,9 @@ export default function LeadSheetList() {
       <div className='flex flex-col flex-1 min-h-0'>
         <main className='flex flex-col flex-1 min-h-0 p-2 sm:p-4'>
           <div
-            className='flex flex-col flex-1 min-h-0 rounded-none border-none bg-black overflow-hidden'
+            className='flex flex-col flex-1 min-h-0 rounded-none border-none bg-surface-base overflow-hidden'
           >
-            <div className='flex-1 flex items-center justify-center text-white/50'>Loading...</div>
+            <div className='flex-1 flex items-center justify-center text-ink-muted'>Loading...</div>
           </div>
         </main>
       </div>
@@ -199,20 +199,20 @@ export default function LeadSheetList() {
       <div className='flex flex-col flex-1 min-h-0'>
         <main className='flex flex-col flex-1 min-h-0 p-2 sm:p-4'>
           <div
-            className='flex flex-col flex-1 min-h-0 rounded-none border-none bg-black overflow-hidden'
+            className='flex flex-col flex-1 min-h-0 rounded-none border-none bg-surface-base overflow-hidden'
           >
             <div className='shrink-0'>
               <div className='px-4 pt-4 pb-3 sm:px-6 sm:pt-6 sm:pb-5'>
-                <h1 className='text-lg sm:text-xl font-bold leading-tight text-yellow-400'>
+                <h1 className='text-lg sm:text-xl font-bold leading-tight text-primary-text'>
                   Lead Sheet Editor
                 </h1>
               </div>
             </div>
             <div className='flex-1 overflow-auto p-4 sm:p-6 flex flex-col items-center justify-center text-center'>
-              <p className='text-white/60 mb-6'>Sign in to create and manage your lead sheets.</p>
+              <p className='text-ink-muted mb-6'>Sign in to create and manage your lead sheets.</p>
               <Link
                 href='/login'
-                className='inline-block rounded bg-black px-6 py-2 text-sm font-medium text-yellow-400'
+                className='inline-block rounded bg-surface-base px-6 py-2 text-sm font-medium text-primary-text'
               >
                 Sign In
               </Link>
@@ -227,12 +227,12 @@ export default function LeadSheetList() {
     <div className='flex flex-col flex-1 min-h-0'>
       <main className='flex flex-col flex-1 min-h-0 p-2 sm:p-4'>
         <div
-          className='flex flex-col flex-1 min-h-0 rounded-none border-none bg-black overflow-hidden'
+          className='flex flex-col flex-1 min-h-0 rounded-none border-none bg-surface-base overflow-hidden'
         >
           <div className='shrink-0'>
             <div className='flex flex-col gap-3 px-4 pt-4 pb-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:pt-6 sm:pb-5'>
               <div className='flex items-center gap-3'>
-                <h1 className='text-lg sm:text-xl font-bold leading-tight text-yellow-400'>
+                <h1 className='text-lg sm:text-xl font-bold leading-tight text-primary-text'>
                   Lead Sheet Editor
                 </h1>
                 {offline && <OfflineBadge />}
@@ -240,14 +240,14 @@ export default function LeadSheetList() {
               <div className='flex items-center gap-2'>
                 <Link
                   href='/lead-sheet-editor/setlists'
-                  className='flex items-center gap-2 rounded border border-white/30 px-4 py-2 text-sm font-medium text-white/80 hover:border-white transition-colors'
+                  className='flex items-center gap-2 rounded border border-line-strong px-4 py-2 text-sm font-medium text-ink-primary hover:border-line-strong transition-colors'
                 >
                   <ListMusic className='w-4 h-4' />
                   Setlists
                 </Link>
                 <button
                   onClick={createSheet}
-                  className='flex items-center gap-2 rounded bg-black px-4 py-2 text-sm font-medium text-yellow-400 hover:bg-black/80 transition-colors'
+                  className='flex items-center gap-2 rounded bg-primary-solid px-4 py-2 text-sm font-medium text-ink-on-primary hover:bg-primary-hover transition-colors'
                 >
                   <Plus className='w-4 h-4' />
                   New Sheet
@@ -258,7 +258,7 @@ export default function LeadSheetList() {
 
           <div className='flex-1 overflow-auto p-4 sm:p-6 flex flex-col'>
             {favoriteError && (
-              <p className='mb-3 text-sm font-medium text-red-500'>{favoriteError}</p>
+              <p className='mb-3 text-sm font-medium text-danger'>{favoriteError}</p>
             )}
             <div className='mb-3 flex items-center gap-2'>
               <Input
@@ -281,7 +281,7 @@ export default function LeadSheetList() {
             </div>
 
             {sheets.length === 0 ? (
-              <div className='flex-1 flex flex-col items-center justify-center text-[#373A40]/40 dark:text-white/40'>
+              <div className='flex-1 flex flex-col items-center justify-center text-ink-muted'>
                 <Music className='w-12 h-12 mb-3 opacity-40' />
                 <p>No lead sheets yet. Create your first one!</p>
               </div>
@@ -290,7 +290,7 @@ export default function LeadSheetList() {
                 {visibleSheets.map((sheet) => (
                   <div
                     key={sheet.id}
-                    className={`flex flex-col md:flex-row md:items-center md:justify-between gap-2 ${density === "compact" ? "px-3 py-1.5" : "p-4"} border border-[#373A40]/20 dark:border-white/20 rounded-lg hover:border-black dark:hover:border-white transition-colors group cursor-pointer`}
+                    className={`flex flex-col md:flex-row md:items-center md:justify-between gap-2 ${density === "compact" ? "px-3 py-1.5" : "p-4"} border border-line-subtle rounded-lg hover:border-line-strong transition-colors group cursor-pointer`}
                     onClick={() => router.push(`/lead-sheet-editor/${sheet.id}/preview`)}
                   >
                     <div className='flex flex-1 min-w-0 items-start gap-2'>
@@ -301,18 +301,18 @@ export default function LeadSheetList() {
                         aria-pressed={!!sheet.metadata?.favorite}
                         className={`-ml-1 shrink-0 rounded p-1 transition-colors ${
                           sheet.metadata?.favorite
-                            ? "text-yellow-400 hover:text-yellow-300"
-                            : "text-[#373A40]/30 dark:text-white/30 hover:text-yellow-400"
+                            ? "text-primary-text hover:text-primary-hover"
+                            : "text-ink-muted hover:text-primary-text"
                         }`}
                       >
                         <Star className='w-5 h-5' fill={sheet.metadata?.favorite ? "currentColor" : "none"} />
                       </button>
                       <div className='min-w-0'>
-                      <div className='font-semibold text-black dark:text-white'>
+                      <div className='font-semibold text-ink-primary'>
                         {sheet.title || "Untitled"}
                       </div>
                       <SongAttribution song={sheet} />
-                      <div className='text-sm text-[#373A40]/50 dark:text-white/50 flex flex-wrap gap-3 mt-0.5'>
+                      <div className='text-sm text-ink-muted flex flex-wrap gap-3 mt-0.5'>
                         {sheet.key && <span>Key: {sheet.key}</span>}
                         {sheet.artist && <span>{sheet.artist}</span>}
                         {sheet.tempo && <span>{sheet.tempo} BPM</span>}
@@ -324,7 +324,7 @@ export default function LeadSheetList() {
                     <div className='flex flex-wrap items-center gap-1.5 md:ml-3 shrink-0'>
                       <button
                         onClick={(e) => { e.stopPropagation(); handleCopyText(sheet); }}
-                        className='flex items-center gap-1.5 rounded border border-[#373A40]/30 dark:border-white/30 px-2 py-1 md:px-3 md:py-1.5 text-xs font-medium text-black dark:text-white/80 hover:border-black dark:hover:border-white transition-colors'
+                        className='flex items-center gap-1.5 rounded border border-line-strong px-2 py-1 md:px-3 md:py-1.5 text-xs font-medium text-ink-primary/80 hover:border-line-strong transition-colors'
                       >
                         {copiedId === sheet.id ? <Check className='w-3.5 h-3.5' /> : <Copy className='w-3.5 h-3.5' />}
                         {copiedId === sheet.id ? "Copied!" : "Copy Text"}
@@ -339,21 +339,21 @@ export default function LeadSheetList() {
                       </span>
                       <button
                         onClick={(e) => { e.stopPropagation(); handleShare(sheet.id); }}
-                        className='flex items-center gap-1.5 rounded border border-[#373A40]/30 dark:border-white/30 px-2 py-1 md:px-3 md:py-1.5 text-xs font-medium text-black dark:text-white/80 hover:border-black dark:hover:border-white transition-colors'
+                        className='flex items-center gap-1.5 rounded border border-line-strong px-2 py-1 md:px-3 md:py-1.5 text-xs font-medium text-ink-primary/80 hover:border-line-strong transition-colors'
                       >
                         {sharedId === sheet.id ? <Check className='w-3.5 h-3.5' /> : <Link2 className='w-3.5 h-3.5' />}
                         {sharedId === sheet.id ? "Copied!" : "Share"}
                       </button>
                       <button
                         onClick={(e) => { e.stopPropagation(); router.push(`/lead-sheet-editor/${sheet.id}/edit`); }}
-                        className='flex items-center gap-1.5 rounded border border-[#373A40]/30 dark:border-white/30 px-2 py-1 md:px-3 md:py-1.5 text-xs font-medium text-black dark:text-white/80 hover:border-black dark:hover:border-white transition-colors'
+                        className='flex items-center gap-1.5 rounded border border-line-strong px-2 py-1 md:px-3 md:py-1.5 text-xs font-medium text-ink-primary/80 hover:border-line-strong transition-colors'
                       >
                         <Pencil className='w-3.5 h-3.5' />
                         Edit
                       </button>
                       <button
                         onClick={(e) => { e.stopPropagation(); router.push(`/lead-sheet-editor/${sheet.id}/preview`); }}
-                        className='flex items-center gap-1.5 rounded bg-black px-2 py-1 md:px-3 md:py-1.5 text-xs font-medium text-yellow-400 hover:bg-black/80 transition-colors'
+                        className='flex items-center gap-1.5 rounded bg-primary-solid px-2 py-1 md:px-3 md:py-1.5 text-xs font-medium text-ink-on-primary hover:bg-primary-hover transition-colors'
                       >
                         <Eye className='w-3.5 h-3.5' />
                         Preview
@@ -363,7 +363,7 @@ export default function LeadSheetList() {
                           e.stopPropagation();
                           if (confirm(`Delete "${sheet.title}"?`)) deleteSheet(sheet.id);
                         }}
-                        className='opacity-100 md:opacity-0 md:group-hover:opacity-100 p-1.5 text-[#373A40]/40 dark:text-white/40 hover:text-red-500 transition-all ml-1'
+                        className='opacity-100 md:opacity-0 md:group-hover:opacity-100 p-1.5 text-ink-muted hover:text-danger transition-all ml-1'
                       >
                         <Trash2 className='w-4 h-4' />
                       </button>

@@ -116,9 +116,9 @@ export default function SetlistDetail({ params }: { params: Promise<{ id: string
       <div className='flex flex-col flex-1 min-h-0'>
         <main className='flex flex-col flex-1 min-h-0 p-2 sm:p-4'>
           <div
-            className='flex flex-col flex-1 min-h-0 rounded-none border-none bg-black overflow-hidden'
+            className='flex flex-col flex-1 min-h-0 rounded-none border-none bg-surface-base overflow-hidden'
           >
-            <div className='flex-1 flex items-center justify-center text-white/50'>Loading...</div>
+            <div className='flex-1 flex items-center justify-center text-ink-muted'>Loading...</div>
           </div>
         </main>
       </div>
@@ -130,9 +130,9 @@ export default function SetlistDetail({ params }: { params: Promise<{ id: string
       <div className='flex flex-col flex-1 min-h-0'>
         <main className='flex flex-col flex-1 min-h-0 p-2 sm:p-4'>
           <div
-            className='flex flex-col flex-1 min-h-0 rounded-none border-none bg-black overflow-hidden'
+            className='flex flex-col flex-1 min-h-0 rounded-none border-none bg-surface-base overflow-hidden'
           >
-            <div className='flex-1 flex items-center justify-center text-white/50'>Setlist not found.</div>
+            <div className='flex-1 flex items-center justify-center text-ink-muted'>Setlist not found.</div>
           </div>
         </main>
       </div>
@@ -143,26 +143,26 @@ export default function SetlistDetail({ params }: { params: Promise<{ id: string
     <div className='flex flex-col flex-1 min-h-0'>
       <main className='flex flex-col flex-1 min-h-0 p-2 sm:p-4'>
         <div
-          className='flex flex-col flex-1 min-h-0 rounded-none border-none bg-black overflow-hidden'
+          className='flex flex-col flex-1 min-h-0 rounded-none border-none bg-surface-base overflow-hidden'
         >
           <div className='shrink-0'>
             <div className='flex flex-wrap items-center justify-between gap-3 px-4 pt-4 pb-3 sm:px-6 sm:pt-6 sm:pb-5'>
               <div className='flex items-center gap-3 min-w-0'>
                 <Link
                   href='/lead-sheet-editor/setlists'
-                  className='flex items-center gap-2 text-white/50 hover:text-black dark:hover:text-white transition-colors text-sm font-medium shrink-0'
+                  className='flex items-center gap-2 text-ink-muted hover:text-ink-primary transition-colors text-sm font-medium shrink-0'
                 >
                   <ArrowLeft className='w-4 h-4' />
                   Setlists
                 </Link>
-                <h1 className='text-lg sm:text-xl font-bold leading-tight truncate text-yellow-400'>
+                <h1 className='text-lg sm:text-xl font-bold leading-tight truncate text-primary-text'>
                   {name}
                 </h1>
               </div>
               <div className='flex items-center gap-2 shrink-0'>
                 <button
                   onClick={openPicker}
-                  className='flex items-center gap-2 rounded border border-[#373A40]/30 dark:border-white/30 px-4 py-2 text-sm font-medium text-black dark:text-white/80 hover:border-black dark:hover:border-white transition-colors'
+                  className='flex items-center gap-2 rounded border border-line-strong px-4 py-2 text-sm font-medium text-ink-primary/80 hover:border-line-strong transition-colors'
                 >
                   <Plus className='w-4 h-4' />
                   Add Song
@@ -170,7 +170,7 @@ export default function SetlistDetail({ params }: { params: Promise<{ id: string
                 <button
                   onClick={startSet}
                   disabled={songs.length === 0}
-                  className='flex items-center gap-2 rounded bg-black px-4 py-2 text-sm font-medium text-yellow-400 hover:bg-black/80 transition-colors disabled:opacity-30 disabled:cursor-not-allowed'
+                  className='flex items-center gap-2 rounded bg-primary-solid px-4 py-2 text-sm font-medium text-ink-on-primary hover:bg-primary-hover transition-colors disabled:opacity-30 disabled:cursor-not-allowed'
                 >
                   <Play className='w-4 h-4' />
                   Start Set
@@ -181,7 +181,7 @@ export default function SetlistDetail({ params }: { params: Promise<{ id: string
 
           <div className='flex-1 overflow-auto p-4 sm:p-6 flex flex-col'>
             {songs.length === 0 ? (
-              <div className='flex-1 flex flex-col items-center justify-center text-white/40'>
+              <div className='flex-1 flex flex-col items-center justify-center text-ink-muted'>
                 <Music className='w-12 h-12 mb-3 opacity-40' />
                 <p>No songs yet. Add one to get started!</p>
               </div>
@@ -190,15 +190,15 @@ export default function SetlistDetail({ params }: { params: Promise<{ id: string
                 {songs.map((song, index) => (
                   <div
                     key={song.id}
-                    className='flex items-center justify-between p-4 border border-[#373A40]/20 dark:border-white/20 rounded-lg'
+                    className='flex items-center justify-between p-4 border border-line-subtle rounded-lg'
                   >
                     <div className='flex items-center gap-3 min-w-0'>
-                      <span className='text-sm font-mono text-white/40 w-6 text-right shrink-0'>{index + 1}</span>
+                      <span className='text-sm font-mono text-ink-muted w-6 text-right shrink-0'>{index + 1}</span>
                       <div className='min-w-0'>
-                        <div className='font-semibold truncate text-black dark:text-white'>
+                        <div className='font-semibold truncate text-ink-primary'>
                           {song.lead_sheets?.title || "Untitled"}
                         </div>
-                        <div className='text-sm text-white/50 flex flex-wrap gap-3 mt-0.5'>
+                        <div className='text-sm text-ink-muted flex flex-wrap gap-3 mt-0.5'>
                           {song.lead_sheets?.key && <span>Key: {song.lead_sheets.key}</span>}
                           {song.lead_sheets?.tempo && <span>{song.lead_sheets.tempo} BPM</span>}
                         </div>
@@ -208,7 +208,7 @@ export default function SetlistDetail({ params }: { params: Promise<{ id: string
                       <button
                         onClick={() => moveSong(index, -1)}
                         disabled={index === 0}
-                        className='p-1.5 text-white/40 hover:text-black dark:hover:text-white disabled:opacity-20 disabled:cursor-not-allowed transition-colors'
+                        className='p-1.5 text-ink-muted hover:text-ink-primary disabled:opacity-20 disabled:cursor-not-allowed transition-colors'
                         aria-label='Move up'
                       >
                         <ArrowUp className='w-4 h-4' />
@@ -216,14 +216,14 @@ export default function SetlistDetail({ params }: { params: Promise<{ id: string
                       <button
                         onClick={() => moveSong(index, 1)}
                         disabled={index === songs.length - 1}
-                        className='p-1.5 text-white/40 hover:text-black dark:hover:text-white disabled:opacity-20 disabled:cursor-not-allowed transition-colors'
+                        className='p-1.5 text-ink-muted hover:text-ink-primary disabled:opacity-20 disabled:cursor-not-allowed transition-colors'
                         aria-label='Move down'
                       >
                         <ArrowDown className='w-4 h-4' />
                       </button>
                       <button
                         onClick={() => removeSong(song.id)}
-                        className='p-1.5 text-white/40 hover:text-red-500 transition-colors ml-1'
+                        className='p-1.5 text-ink-muted hover:text-danger transition-colors ml-1'
                         aria-label='Remove song'
                       >
                         <Trash2 className='w-4 h-4' />
@@ -239,21 +239,21 @@ export default function SetlistDetail({ params }: { params: Promise<{ id: string
 
       {showPicker && (
         <div
-          className='fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4'
+          className='fixed inset-0 bg-surface-base/50 z-50 flex items-center justify-center p-4'
           onClick={() => setShowPicker(false)}
         >
           <div
-            className='rounded-2xl shadow-2xl w-full max-w-md max-h-[80vh] flex flex-col overflow-hidden bg-white dark:bg-neutral-900'
+            className='rounded-2xl shadow-2xl w-full max-w-md max-h-[80vh] flex flex-col overflow-hidden bg-surface-base'
             style={{ border: "1px solid var(--border-color)" }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className='flex items-center justify-between border-b px-4 py-3' style={{ borderColor: "var(--border-color)" }}>
-              <h2 className='font-bold text-black dark:text-white'>
+              <h2 className='font-bold text-ink-primary'>
                 Add Song
               </h2>
               <button
                 onClick={() => setShowPicker(false)}
-                className='p-1 text-white/50 hover:text-black dark:hover:text-white transition-colors'
+                className='p-1 text-ink-muted hover:text-ink-primary transition-colors'
                 aria-label='Close'
               >
                 <X className='w-4 h-4' />
@@ -261,24 +261,24 @@ export default function SetlistDetail({ params }: { params: Promise<{ id: string
             </div>
             <div className='flex-1 overflow-auto p-2'>
               {available.length === 0 ? (
-                <div className='p-6 text-center text-white/40'>All your lead sheets are already in this set.</div>
+                <div className='p-6 text-center text-ink-muted'>All your lead sheets are already in this set.</div>
               ) : (
                 available.map((sheet) => (
                   <button
                     key={sheet.id}
                     onClick={() => addSong(sheet.id)}
-                    className='w-full flex items-center justify-between text-left p-3 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors'
+                    className='w-full flex items-center justify-between text-left p-3 rounded-lg hover:bg-surface-raised transition-colors'
                   >
                     <div className='min-w-0'>
-                      <div className='font-semibold truncate text-black dark:text-white'>
+                      <div className='font-semibold truncate text-ink-primary'>
                         {sheet.title || "Untitled"}
                       </div>
-                      <div className='text-sm text-white/50 flex flex-wrap gap-3 mt-0.5'>
+                      <div className='text-sm text-ink-muted flex flex-wrap gap-3 mt-0.5'>
                         {sheet.key && <span>Key: {sheet.key}</span>}
                         {sheet.tempo && <span>{sheet.tempo} BPM</span>}
                       </div>
                     </div>
-                    <Plus className='w-4 h-4 text-white/40 shrink-0' />
+                    <Plus className='w-4 h-4 text-ink-muted shrink-0' />
                   </button>
                 ))
               )}
