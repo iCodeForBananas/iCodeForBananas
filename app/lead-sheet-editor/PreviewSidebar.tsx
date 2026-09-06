@@ -19,16 +19,14 @@ import {
   Play,
   Plus,
   Printer,
+  Sliders,
+  Square,
   Youtube,
 } from "lucide-react";
 import { OfflineBadge } from "./shared";
 import type { YouTubeLink } from "./youtube";
-import type { Chord } from "./progression";
 import { MetronomeControl } from "./Metronome";
-import { ShimmerControl } from "./accents";
-import { DrumMachineControl, type DrumSettings } from "./DrumMachine";
-import { StringPadsControl, type StringPadsSettings } from "./StringPads";
-import { SubBassControl, type SubBassSettings } from "./SubBass";
+import { KIT_LAYERS, LAYER_LABELS, hasLayer, matchesPreset, type KitSettings } from "./kit";
 
 export const MIN_SCALE = 70;
 export const MAX_SCALE = 160;
@@ -288,6 +286,67 @@ function NextSongControl({
   );
 }
 
+/**
+ * The whole backing track, as one row.
+ *
+ * This replaced five: a drum machine with its own pattern picker, a claps
+ * toggle, a shimmer picker, a string pad and a sub bass, each with its own
+ * popover fighting for the same 19rem of width. Everything they did lives in
+ * the Kit Designer now, and what is left here is the two things worth having in
+ * the sidebar — whether it is playing, and a way in.
+ */
+function KitControl({
+  kit,
+  playing,
+  onPlayingChange,
+  onOpen,
+}: {
+  kit: KitSettings;
+  playing: boolean;
+  onPlayingChange: (playing: boolean) => void;
+  onOpen: () => void;
+}) {
+  const on = KIT_LAYERS.filter((layer) => hasLayer(kit, layer));
+  const summary =
+    on.length === 0
+      ? "Nothing switched on"
+      : on.map((layer) => LAYER_LABELS[layer]).join(" · ");
+  const name = kit.preset
+    ? matchesPreset(kit)
+      ? kit.preset
+      : `${kit.preset} · edited`
+    : "Custom kit";
+
+  return (
+    <div className='flex items-center gap-2 px-3 py-2 print:hidden'>
+      <button
+        type='button'
+        onClick={() => onPlayingChange(!playing)}
+        disabled={on.length === 0}
+        aria-label={playing ? "Stop the kit" : "Play the kit"}
+        title={on.length === 0 ? "Open the kit and switch something on" : playing ? "Stop the kit" : "Play the kit"}
+        className={`h-10 w-10 shrink-0 flex items-center justify-center rounded-lg transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed ${
+          playing
+            ? "bg-primary-solid text-ink-on-primary hover:bg-primary-hover"
+            : "bg-surface-raised text-ink-primary hover:bg-surface-overlay"
+        }`}
+      >
+        {playing ? <Square className='w-4 h-4' /> : <Play className='w-4 h-4' />}
+      </button>
+      <button
+        type='button'
+        onClick={onOpen}
+        title='Design the beat, the bass and the voices'
+        className='flex min-w-0 flex-1 flex-col items-start rounded-lg px-2 py-1 text-left transition-colors duration-150 hover:bg-surface-raised'
+      >
+        <span className='w-full truncate text-sm font-medium text-ink-primary'>{name}</span>
+        <span className='w-full truncate text-[11px] text-ink-muted'>{summary}</span>
+      </button>
+      <Sliders className='w-4 h-4 shrink-0 text-ink-muted' aria-hidden='true' />
+    </div>
+  );
+}
+
 export interface PreviewSidebarProps {
   /** Collapsed, the sidebar keeps a rail with just the toggle on it. */
   open: boolean;
@@ -332,27 +391,11 @@ export interface PreviewSidebarProps {
   onBeatsPerBarChange: (next: number) => void;
   metronomeOn: boolean;
   onMetronomeToggle: () => void;
-  drumRunning: boolean;
-  onDrumToggle: () => void;
-  /** The kit as it sounds right now — cue tags may be driving it. */
-  drumSettings: DrumSettings;
-  /** What the shimmer control edits: the song's own setting, not the cued one. */
-  shimmerVariation: string;
-  onDrumSettingsChange: (patch: Partial<DrumSettings>) => void;
-  clapsRunning: boolean;
-  onClapsToggle: () => void;
-  shimmerRunning: boolean;
-  onShimmerToggle: () => void;
-  stringsRunning: boolean;
-  onStringsToggle: () => void;
-  stringSettings: StringPadsSettings;
-  onStringSettingsChange: (patch: Partial<StringPadsSettings>) => void;
-  songKey: string | null;
-  progression: Chord[];
-  subRunning: boolean;
-  onSubToggle: () => void;
-  subBassSettings: SubBassSettings;
-  onSubBassSettingsChange: (patch: Partial<SubBassSettings>) => void;
+  /** The whole backing track, for the summary line under the Kit row. */
+  kit: KitSettings;
+  kitPlaying: boolean;
+  onKitPlayingChange: (playing: boolean) => void;
+  onOpenKit: () => void;
 
   // Edit
   editMode: boolean;
@@ -465,52 +508,11 @@ export default function PreviewSidebar(props: PreviewSidebarProps) {
                 running={props.metronomeOn}
                 onToggle={props.onMetronomeToggle}
               />
-              <DrumMachineControl
-                bpm={props.bpm}
-                running={props.drumRunning}
-                onToggle={props.onDrumToggle}
-                settings={props.drumSettings}
-                onSettingsChange={props.onDrumSettingsChange}
-                clapsEnabled={props.clapsRunning}
-                shimmerEnabled={props.shimmerRunning}
-              />
-              <button
-                type='button'
-                onClick={props.onClapsToggle}
-                title='Hand claps on beats 2 & 4'
-                className={`${ROW} ${
-                  props.clapsRunning
-                    ? "bg-primary-solid text-ink-on-primary hover:bg-primary-hover"
-                    : "text-ink-primary hover:bg-surface-raised"
-                }`}
-              >
-                Claps
-              </button>
-              <ShimmerControl
-                running={props.shimmerRunning}
-                onToggle={props.onShimmerToggle}
-                variation={props.shimmerVariation}
-                onVariationChange={(shimmer) => props.onDrumSettingsChange({ shimmer })}
-                bpm={props.bpm}
-              />
-              <StringPadsControl
-                songKey={props.songKey}
-                progression={props.progression}
-                bpm={props.bpm}
-                beatsPerBar={props.beatsPerBar}
-                running={props.stringsRunning}
-                onToggle={props.onStringsToggle}
-                settings={props.stringSettings}
-                onSettingsChange={props.onStringSettingsChange}
-              />
-              <SubBassControl
-                bpm={props.bpm}
-                beatsPerBar={props.beatsPerBar}
-                transposeSteps={props.transposeSteps}
-                running={props.subRunning}
-                onToggle={props.onSubToggle}
-                settings={props.subBassSettings}
-                onSettingsChange={props.onSubBassSettingsChange}
+              <KitControl
+                kit={props.kit}
+                playing={props.kitPlaying}
+                onPlayingChange={props.onKitPlayingChange}
+                onOpen={props.onOpenKit}
               />
               <button
                 type='button'

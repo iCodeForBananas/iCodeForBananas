@@ -44,9 +44,9 @@ import { findYouTubeLinkInText } from "./youtube";
 import { useYouTubePlayback } from "./YouTubePlayer";
 import {
   DEFAULT_DRUM_SETTINGS,
+  effectiveGrid,
   hasDrumSettingsLine,
   parseDrumSettingsLine,
-  patternIndex,
   useDrumScheduler,
   type DrumSettings,
 } from "./DrumMachine";
@@ -398,9 +398,13 @@ export default function TrackEditor({
     return Math.max(0, Math.min(1, gain));
   }, [sounds, time]);
 
+  // The steps the arrangement plays: the beat as edited, or the library
+  // pattern it names. Same grid the preview plays, from the same settings.
+  const drumGrid = useMemo(() => effectiveGrid(settings.drums), [settings.drums]);
+
   useDrumScheduler(
     settings.bpm,
-    patternIndex(settings.drums.pattern),
+    drumGrid,
     playing && activeLayers.size > 0,
     settings.drums.volume * fadeGain,
     settings.drums.kick,

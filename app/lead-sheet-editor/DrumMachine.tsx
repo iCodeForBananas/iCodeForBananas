@@ -450,6 +450,79 @@ export const PATTERN_GROUPS: { label: string; items: { name: string; index: numb
   return rest.length ? [...grouped, { label: "More", items: rest }] : grouped;
 })();
 
+// ── The grid ─────────────────────────────────────────────────────────────────
+//
+// A pattern from the library is stored as its name. A pattern somebody edited
+// is stored as its steps, because there is no name to look it up by — that is
+// the whole difference between picking a beat and writing one.
+
+export const STEPS_PER_BAR = 16;
+
+/** The four lanes a beat is written on, in the order they stack on screen. */
+export const GRID_LANES = ["kick", "snare", "hihat", "clap"] as const;
+export type GridLane = (typeof GRID_LANES)[number];
+
+export type DrumGrid = Record<GridLane, number[]>;
+
+/** The name a pattern takes once it has been edited away from the library. */
+export const CUSTOM_PATTERN = "Custom";
+
+export function emptyGrid(): DrumGrid {
+  return {
+    kick:  Array(STEPS_PER_BAR).fill(0),
+    snare: Array(STEPS_PER_BAR).fill(0),
+    hihat: Array(STEPS_PER_BAR).fill(0),
+    clap:  Array(STEPS_PER_BAR).fill(0),
+  };
+}
+
+/** Sixteen 0/1s, however short, long or nonsensical the input was. */
+function normalizeLane(raw: unknown): number[] {
+  const lane = Array(STEPS_PER_BAR).fill(0);
+  if (!Array.isArray(raw)) return lane;
+  for (let i = 0; i < STEPS_PER_BAR; i++) lane[i] = raw[i] ? 1 : 0;
+  return lane;
+}
+
+export function normalizeGrid(raw: unknown): DrumGrid | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+  const grid = emptyGrid();
+  let any = false;
+  for (const lane of GRID_LANES) {
+    if (r[lane] !== undefined) any = true;
+    grid[lane] = normalizeLane(r[lane]);
+  }
+  return any ? grid : null;
+}
+
+/**
+ * A library pattern as an editable grid. The clap lane starts on beats 2 and 4,
+ * which is where the claps layer has always put them, so opening a pattern in
+ * the editor shows what it already sounds like rather than an empty lane.
+ */
+export function gridFromPattern(name: string): DrumGrid {
+  const pat = DRUM_PATTERNS[patternIndex(name)];
+  const clap = Array(STEPS_PER_BAR).fill(0);
+  clap[4] = 1;
+  clap[12] = 1;
+  return {
+    kick:  [...pat.kick],
+    snare: [...pat.snare],
+    hihat: [...pat.hihat],
+    clap,
+  };
+}
+
+export function gridsEqual(a: DrumGrid, b: DrumGrid): boolean {
+  return GRID_LANES.every((lane) => a[lane].every((v, i) => v === b[lane][i]));
+}
+
+/** The steps actually played: what was edited, or the pattern that was picked. */
+export function effectiveGrid(s: DrumSettings): DrumGrid {
+  return s.steps ?? gridFromPattern(s.pattern);
+}
+
 // ── Settings ─────────────────────────────────────────────────────────────────
 
 export type KickStyle  = "folk" | "808";
@@ -459,6 +532,14 @@ export type SnareStyle = "regular" | "brush";
 export interface DrumSettings {
   /** Pattern name rather than index, so reordering DRUM_PATTERNS can't reassign it. */
   pattern: string;
+  /**
+   * The edited steps, or null to play the named pattern as the library has it.
+   *
+   * Both are kept: `pattern` stays the name the edit started from, so the
+   * designer can say what was changed and offer to put it back, and a song
+   * saved before the grid existed simply has null here and sounds the same.
+   */
+  steps: DrumGrid | null;
   kick: KickStyle;
   snare: SnareStyle;
   /** Which accent part the Shimmer layer plays; see ACCENT_VARIATIONS. */
@@ -468,6 +549,7 @@ export interface DrumSettings {
 
 export const DEFAULT_DRUM_SETTINGS: DrumSettings = {
   pattern: DRUM_PATTERNS[0].name,
+  steps: null,
   kick: "folk",
   snare: "regular",
   shimmer: DEFAULT_ACCENT,
@@ -482,6 +564,7 @@ export function normalizeDrumSettings(raw: unknown): DrumSettings {
   const volume = typeof r.volume === "number" && isFinite(r.volume) ? r.volume : DEFAULT_DRUM_SETTINGS.volume;
   return {
     pattern: known ? (r.pattern as string) : DEFAULT_DRUM_SETTINGS.pattern,
+    steps:   normalizeGrid(r.steps),
     kick:    r.kick === "808" ? "808" : "folk",
     snare:   r.snare === "brush" ? "brush" : "regular",
     shimmer: isAccentName(r.shimmer) ? r.shimmer : DEFAULT_DRUM_SETTINGS.shimmer,
@@ -498,6 +581,7 @@ export function patternIndex(name: string): number {
 export function isDefaultDrumSettings(s: DrumSettings): boolean {
   return (
     s.pattern === DEFAULT_DRUM_SETTINGS.pattern &&
+    s.steps === null &&
     s.kick === DEFAULT_DRUM_SETTINGS.kick &&
     s.snare === DEFAULT_DRUM_SETTINGS.snare &&
     s.shimmer === DEFAULT_DRUM_SETTINGS.shimmer &&
@@ -517,12 +601,39 @@ export function isDefaultDrumSettings(s: DrumSettings): boolean {
 
 const DRUMS_LINE_RE = /\bDrums:\s*([^\n|]*)/i;
 
+/**
+ * One lane as sixteen characters — `x` for a hit, `-` for a rest, written as
+ * `k=x---x---x---x---`. Four of those are the whole beat, and they stay
+ * readable and editable in the song text, which a JSON array would not be.
+ */
+const LANE_KEYS: Record<GridLane, string> = { kick: "k", snare: "s", hihat: "h", clap: "c" };
+
+function encodeLane(lane: number[]): string {
+  return lane.map((v) => (v ? "x" : "-")).join("");
+}
+
+function decodeLane(text: string): number[] {
+  const lane = Array(STEPS_PER_BAR).fill(0);
+  for (let i = 0; i < Math.min(STEPS_PER_BAR, text.length); i++) {
+    lane[i] = text[i] === "x" || text[i] === "X" || text[i] === "1" ? 1 : 0;
+  }
+  return lane;
+}
+
+const LANE_FIELD_RE = /^([kshc])\s*=\s*([-x1 0]{1,16})$/i;
+
 /** The `Drums: …` line as written into the song text. */
 export function formatDrumSettings(s: DrumSettings): string {
   const parts = [s.pattern, `${s.kick} kick`, `${s.snare} snare`];
   // Only worth naming when it isn't the shimmer the layer has always played.
   if (s.shimmer !== DEFAULT_DRUM_SETTINGS.shimmer) parts.push(s.shimmer);
   parts.push(`${Math.round(s.volume * 100)}%`);
+  // An edited beat writes its steps out; a library pattern is fully described
+  // by its name, and spelling its steps out would just be noise that goes stale
+  // the moment the library pattern is revised.
+  if (s.steps) {
+    for (const lane of GRID_LANES) parts.push(`${LANE_KEYS[lane]}=${encodeLane(s.steps[lane])}`);
+  }
   return `Drums: ${parts.join(", ")}`;
 }
 
@@ -542,7 +653,16 @@ export function parseDrumSettingsLine(line: string): DrumSettings | null {
     const lower = field.toLowerCase();
     const pattern = DRUM_PATTERNS.find((p) => p.name.toLowerCase() === lower);
     const accent = accentNameFrom(field);
-    if (pattern) {
+    const lane = field.match(LANE_FIELD_RE);
+    if (lane) {
+      // A lane field means the beat was written rather than picked, so the
+      // grid is built up field by field from whichever lanes are present.
+      const key = lane[1].toLowerCase();
+      const laneName = GRID_LANES.find((n) => LANE_KEYS[n] === key)!;
+      settings.steps = { ...(settings.steps ?? emptyGrid()), [laneName]: decodeLane(lane[2].replace(/\s/g, "")) };
+    } else if (lower === CUSTOM_PATTERN.toLowerCase()) {
+      settings.pattern = CUSTOM_PATTERN;
+    } else if (pattern) {
       settings.pattern = pattern.name;
     } else if (accent) {
       settings.shimmer = accent;
@@ -873,9 +993,9 @@ function encodeWav(buffer: AudioBuffer): Blob {
 }
 
 /** Render the current drum settings to a WAV Blob using OfflineAudioContext. */
-async function renderDrumToWav(
+export async function renderDrumToWav(
   bpm: number,
-  patternIdx: number,
+  grid: DrumGrid,
   kickStyle: KickStyle,
   snareStyle: SnareStyle,
   clapsEnabled: boolean,
@@ -893,22 +1013,21 @@ async function renderDrumToWav(
   master.connect(ctx.destination);
 
   const stepDur = 15 / bpm; // seconds per 16th note
-  const pat = DRUM_PATTERNS[patternIdx];
   const accent = accentByName(shimmerVariation);
   let when = 0;
   let step = 0;
 
   while (when < durationSec) {
-    if (pat.kick[step]) {
+    if (grid.kick[step]) {
       if (kickStyle === "808") playKick808(ctx, master, when);
       else playKick(ctx, master, when);
     }
-    if (pat.snare[step]) {
+    if (grid.snare[step]) {
       if (snareStyle === "brush") playSnareBrush(ctx, master, when);
       else playSnare(ctx, master, when);
     }
-    if (pat.hihat[step]) playHihat(ctx, master, when);
-    if (clapsEnabled && (step === 4 || step === 12)) playClap(ctx, master, when);
+    if (grid.hihat[step]) playHihat(ctx, master, when);
+    if (clapsEnabled && grid.clap[step]) playClap(ctx, master, when);
     if (shimmerEnabled) playAccentStep(ctx, master, when, accent, step, stepDur);
 
     when += stepDur;
@@ -931,7 +1050,7 @@ const TICK_MS   = 22;    // scheduler polling interval
  */
 export function useDrumScheduler(
   bpm: number,
-  patternIdx: number,
+  grid: DrumGrid,
   running: boolean,
   volume: number,
   kickStyle: KickStyle,
@@ -947,7 +1066,7 @@ export function useDrumScheduler(
   const nextTimeRef       = useRef(0);
   const stepRef           = useRef(0);
   const timerRef          = useRef<ReturnType<typeof setInterval> | null>(null);
-  const patternIdxRef     = useRef(patternIdx);
+  const gridRef           = useRef(grid);
   const bpmRef            = useRef(bpm);
   const volumeRef         = useRef(volume);
   const kickStyleRef      = useRef(kickStyle);
@@ -959,7 +1078,7 @@ export function useDrumScheduler(
   const [activeStep, setActiveStep] = useState(-1);
 
   // Keep refs in sync so the scheduler loop picks up changes without restart
-  useEffect(() => { patternIdxRef.current = patternIdx; }, [patternIdx]);
+  useEffect(() => { gridRef.current = grid; }, [grid]);
   useEffect(() => { bpmRef.current = bpm; }, [bpm]);
   useEffect(() => { kickStyleRef.current = kickStyle; }, [kickStyle]);
   useEffect(() => { snareStyleRef.current = snareStyle; }, [snareStyle]);
@@ -1002,25 +1121,26 @@ export function useDrumScheduler(
 
     const tick = () => {
       const stepDur = 15 / bpmRef.current; // 60 / (bpm * 4) seconds per 16th note
-      const pat     = DRUM_PATTERNS[patternIdxRef.current];
+      const grid    = gridRef.current;
 
       while (nextTimeRef.current < ctx.currentTime + LOOKAHEAD) {
         const step = stepRef.current;
         const when = nextTimeRef.current;
 
         if (drumsEnabledRef.current) {
-          if (pat.kick[step]) {
+          if (grid.kick[step]) {
             if (kickStyleRef.current === "808") playKick808(ctx, dst, when);
             else playKick(ctx, dst, when);
           }
-          if (pat.snare[step]) {
+          if (grid.snare[step]) {
             if (snareStyleRef.current === "brush") playSnareBrush(ctx, dst, when);
             else playSnare(ctx, dst, when);
           }
-          if (pat.hihat[step]) playHihat(ctx, dst, when);
+          if (grid.hihat[step]) playHihat(ctx, dst, when);
         }
-        // Claps on beats 2 and 4 (steps 4 and 12)
-        if (clapsEnabledRef.current && (step === 4 || step === 12)) playClap(ctx, dst, when);
+        // Claps follow their own lane. A library pattern's lane is beats 2 and
+        // 4, which is where this layer has always put them.
+        if (clapsEnabledRef.current && grid.clap[step]) playClap(ctx, dst, when);
         // Shimmer plays whatever accent part the song picked, on that part's
         // own rhythm — a tambourine on the backbeat isn't a shaker turned down.
         if (shimmerEnabledRef.current) {
@@ -1055,241 +1175,4 @@ export function useDrumScheduler(
   }, []);
 
   return activeStep;
-}
-
-// ── DrumMachineControl component ──────────────────────────────────────────────
-
-export function DrumMachineControl({
-  bpm,
-  running,
-  onToggle,
-  settings,
-  onSettingsChange,
-  clapsEnabled,
-  shimmerEnabled,
-}: {
-  bpm: number;
-  running: boolean;
-  onToggle: () => void;
-  settings: DrumSettings;
-  /** Called with just the fields that changed; the owner merges and persists. */
-  onSettingsChange: (patch: Partial<DrumSettings>) => void;
-  /** Passed through to the scheduler — toggle is a standalone button in the toolbar. */
-  clapsEnabled: boolean;
-  /** Passed through to the scheduler — toggle is a standalone button in the toolbar. */
-  shimmerEnabled: boolean;
-}) {
-  const { kick: kickStyle, snare: snareStyle, shimmer: shimmerVariation, volume } = settings;
-  const accent = accentByName(shimmerVariation);
-  const patternIdx = patternIndex(settings.pattern);
-  // Claps and shimmer are layers of their own: either one runs the scheduler
-  // even with the kit off, so a claps-only or shimmer-only section works.
-  const schedulerRunning = running || clapsEnabled || shimmerEnabled;
-  const activeStep = useDrumScheduler(
-    bpm, patternIdx, schedulerRunning, volume, kickStyle, snareStyle,
-    clapsEnabled, shimmerEnabled, running, shimmerVariation,
-  );
-  const pat = DRUM_PATTERNS[patternIdx];
-
-  const [showDlPicker, setShowDlPicker] = useState(false);
-  const [dlMinutes, setDlMinutes] = useState("2");
-  const [rendering, setRendering] = useState(false);
-
-  async function handleDownload() {
-    const mins = parseFloat(dlMinutes);
-    if (!mins || mins <= 0) return;
-    setRendering(true);
-    try {
-      const blob = await renderDrumToWav(
-        bpm, patternIdx, kickStyle, snareStyle,
-        clapsEnabled, shimmerEnabled, shimmerVariation, volume, mins * 60,
-      );
-      const patName = settings.pattern.toLowerCase().replace(/\s+/g, "-");
-      const ts = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
-      const filename = `drums-${patName}-${bpm}bpm-${mins}min-${ts}.wav`;
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url; a.download = filename; a.click();
-      URL.revokeObjectURL(url);
-      setShowDlPicker(false);
-    } finally {
-      setRendering(false);
-    }
-  }
-
-  return (
-    <div className="flex flex-wrap items-center gap-1.5 px-3 py-2 print:hidden">
-      {/* Toggle button */}
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-label={running ? "Stop drums" : "Start drums"}
-        title={running ? "Stop drums" : "Start drums"}
-        className={`h-8 w-8 flex items-center justify-center rounded-md transition-colors duration-150 flex-shrink-0 ${
-          running
-            ? "bg-track-1 text-ink-primary hover:bg-track-1/80"
-            : "bg-surface-raised text-ink-primary hover:bg-surface-overlay"
-        }`}
-      >
-        {/* Drum icon */}
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <ellipse cx="12" cy="8" rx="10" ry="4" />
-          <path d="M2 8v8c0 2.2 4.5 4 10 4s10-1.8 10-4V8" />
-          <line x1="2" y1="12" x2="22" y2="12" />
-        </svg>
-      </button>
-
-      {/* Pattern selector */}
-      <select
-        value={patternIdx}
-        onChange={(e) => onSettingsChange({ pattern: DRUM_PATTERNS[Number(e.target.value)].name })}
-        aria-label="Drum pattern"
-        className="h-8 text-xs rounded-md border border-line-subtle bg-surface-raised text-ink-primary px-1 focus:outline-none"
-      >
-        {PATTERN_GROUPS.map((group) => (
-          <optgroup key={group.label} label={group.label}>
-            {group.items.map((item) => (
-              <option key={item.name} value={item.index}>
-                {item.name}
-              </option>
-            ))}
-          </optgroup>
-        ))}
-      </select>
-
-      {/* Kick style toggle: Folk / 808 */}
-      <div className="flex rounded-md overflow-hidden border border-line-subtle flex-shrink-0">
-        {(["folk", "808"] as const).map((style) => (
-          <button
-            key={style}
-            type="button"
-            onClick={() => onSettingsChange({ kick: style })}
-            className={`px-2 h-7 text-xs font-medium transition-colors duration-100 ${
-              kickStyle === style
-                ? style === "808"
-                  ? "bg-track-6 text-ink-primary"
-                  : "bg-track-1 text-ink-primary"
-                : "bg-surface-raised text-ink-muted hover:bg-surface-overlay"
-            }`}
-            aria-label={`${style === "808" ? "TR-808" : "Folk"} kick`}
-            title={style === "808" ? "TR-808 sub-bass kick" : "Folk acoustic kick"}
-          >
-            {style === "808" ? "808" : "Folk"}
-          </button>
-        ))}
-      </div>
-
-      {/* Snare style toggle: Regular / Brush */}
-      <div className="flex rounded-md overflow-hidden border border-line-subtle flex-shrink-0">
-        {(["regular", "brush"] as const).map((style) => (
-          <button
-            key={style}
-            type="button"
-            onClick={() => onSettingsChange({ snare: style })}
-            className={`px-2 h-7 text-xs font-medium transition-colors duration-100 ${
-              snareStyle === style
-                ? style === "brush"
-                  ? "bg-track-5 text-ink-primary"
-                  : "bg-track-1 text-ink-primary"
-                : "bg-surface-raised text-ink-muted hover:bg-surface-overlay"
-            }`}
-            aria-label={`${style === "brush" ? "Brushed" : "Regular"} snare`}
-            title={style === "brush" ? "Brushed snare" : "Regular snare"}
-          >
-            {style === "brush" ? "Brush" : "Snare"}
-          </button>
-        ))}
-      </div>
-
-      {/* 16-step indicator — visible whenever something is sounding */}
-      {schedulerRunning && (
-        <div className="flex gap-px" aria-hidden="true">
-          {Array.from({ length: 16 }, (_, i) => {
-            const hasKit  = running && (pat.kick[i] || pat.snare[i] || pat.hihat[i]);
-            const hasClap = clapsEnabled && (i === 4 || i === 12);
-            const hasAccent = shimmerEnabled && accent.pattern[i] > 0;
-            const hasHit  = hasKit || hasClap || hasAccent;
-            return (
-              <div
-                key={i}
-                className={`w-1 h-3 rounded-sm transition-colors duration-75 ${
-                  i === activeStep
-                    ? "bg-track-1"
-                    : hasHit
-                    ? "bg-surface-overlay bg-surface-overlay"
-                    : "bg-surface-overlay bg-surface-overlay"
-                }`}
-              />
-            );
-          })}
-        </div>
-      )}
-
-      {/* Volume slider */}
-      <input
-        type="range"
-        min={0}
-        max={1}
-        step={0.05}
-        value={volume}
-        onChange={(e) => onSettingsChange({ volume: Number(e.target.value) })}
-        aria-label={`Drum volume ${Math.round(volume * 100)}%`}
-        title={`Volume: ${Math.round(volume * 100)}%`}
-        className="w-14 h-1 accent-track-1 flex-shrink-0"
-      />
-
-      {/* Download WAV */}
-      {!showDlPicker ? (
-        <button
-          type="button"
-          onClick={() => setShowDlPicker(true)}
-          title="Download drum track as WAV"
-          aria-label="Download drum track as WAV"
-          className="h-7 px-2 text-xs font-medium rounded-md border border-line-subtle bg-surface-raised text-ink-muted hover:bg-surface-overlay flex-shrink-0"
-        >
-          ↓ WAV
-        </button>
-      ) : (
-        <div className="flex items-center gap-1 flex-shrink-0">
-          <input
-            type="number"
-            min={0.1}
-            max={60}
-            step={0.5}
-            value={dlMinutes}
-            onChange={(e) => setDlMinutes(e.target.value)}
-            aria-label="Duration in minutes"
-            title="Duration in minutes"
-            className="w-14 h-7 text-xs rounded-md border border-line-subtle bg-surface-raised text-ink-primary px-1.5 focus:outline-none"
-          />
-          <span className="text-[10px] text-ink-muted">min</span>
-          <button
-            type="button"
-            onClick={handleDownload}
-            disabled={rendering}
-            className="h-7 px-2 text-xs font-medium rounded-md border border-track-1 bg-track-1 text-ink-primary hover:bg-track-1/80 disabled:opacity-50 flex-shrink-0"
-          >
-            {rendering ? "…" : "↓"}
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowDlPicker(false)}
-            aria-label="Cancel download"
-            className="h-7 px-1.5 text-xs rounded-md border border-line-subtle bg-surface-raised text-ink-muted hover:bg-surface-overlay flex-shrink-0"
-          >
-            ✕
-          </button>
-        </div>
-      )}
-    </div>
-  );
 }

@@ -1,7 +1,5 @@
 "use client";
 
-import { useMemo } from "react";
-
 // ─── Accent percussion ────────────────────────────────────────────────────────
 //
 // The layer the toolbar calls Shimmer: the small percussion that sits on top of
@@ -663,68 +661,4 @@ export function auditionAccent(name: string, bpm: number) {
   }
   const bar = stepDur * 16;
   setTimeout(() => ctx.close().catch(() => {}), (bar + 2) * 1000);
-}
-
-// ── Control ──────────────────────────────────────────────────────────────────
-
-/**
- * The Shimmer layer's toolbar control: a toggle, and the variation it plays.
- * Same shape as the drum machine's — a switch plus what the switch turns on.
- */
-export function ShimmerControl({
-  running,
-  onToggle,
-  variation,
-  onVariationChange,
-  bpm,
-}: {
-  running: boolean;
-  onToggle: () => void;
-  /** Variation name; an unknown one falls back to the default. */
-  variation: string;
-  onVariationChange: (name: string) => void;
-  /** Tempo the one-bar audition plays at. */
-  bpm: number;
-}) {
-  const current = useMemo(() => accentByName(variation), [variation]);
-
-  return (
-    <div className='flex flex-wrap items-center gap-1 px-3 py-2 print:hidden'>
-      <button
-        type='button'
-        onClick={onToggle}
-        aria-pressed={running}
-        title={`${current.name} — ${current.description}`}
-        className={`h-8 px-2.5 text-xs font-medium rounded-md border transition-colors duration-100 flex-shrink-0 ${
-          running
-            ? "bg-track-4 text-ink-primary border-track-4"
-            : "bg-surface-raised text-ink-primary border-line-subtle hover:bg-surface-overlay"
-        }`}
-      >
-        Shimmer
-      </button>
-      <select
-        value={current.name}
-        onChange={(e) => {
-          onVariationChange(e.target.value);
-          // The audition is for choosing; when the layer is already running,
-          // the change speaks for itself on the next bar.
-          if (!running) auditionAccent(e.target.value, bpm);
-        }}
-        aria-label='Shimmer accent'
-        title={current.description}
-        className='h-8 max-w-[9.5rem] text-xs rounded-md border border-line-subtle bg-surface-raised text-ink-primary px-1 focus:outline-none'
-      >
-        {ACCENT_GROUPS.map((group) => (
-          <optgroup key={group.label} label={group.label}>
-            {group.items.map((item) => (
-              <option key={item.name} value={item.name}>
-                {item.name}
-              </option>
-            ))}
-          </optgroup>
-        ))}
-      </select>
-    </div>
-  );
 }

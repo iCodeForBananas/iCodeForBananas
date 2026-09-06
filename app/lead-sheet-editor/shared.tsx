@@ -36,11 +36,19 @@ export interface LeadSheetMetadata {
   /** Pinned to the top of the song list. */
   favorite?: boolean;
   /** Drum machine state; see normalizeDrumSettings in DrumMachine.tsx. */
-  drums?: { pattern?: string; kick?: string; snare?: string; volume?: number };
+  drums?: { pattern?: string; steps?: unknown; kick?: string; snare?: string; volume?: number };
   /** String pad state; see normalizeStringSettings in StringPads.tsx. */
   strings?: { mode?: string; style?: string; volume?: number };
   /** Sub bass walk-down state; see normalizeSubBassSettings in SubBass.tsx. */
   subBass?: { notes?: string; octave?: number; rate?: string; tone?: string; volume?: number };
+  /** Which parts of the kit are on, and the preset they came from; see kit.ts. */
+  kit?: { preset?: string | null; layers?: string[] };
+  /**
+   * Rows predate every key above, and rows written by a newer build may carry
+   * keys this one has never heard of. Both are read through the normalizers,
+   * so an unknown key is simply carried along rather than dropped on save.
+   */
+  [key: string]: unknown;
 }
 
 export interface LeadSheet {

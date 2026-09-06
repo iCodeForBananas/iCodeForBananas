@@ -49,22 +49,9 @@ import {
   parseCueEvents,
   stripCueMarkers,
 } from "../../cues";
-import {
-  DEFAULT_DRUM_SETTINGS,
-  normalizeDrumSettings,
-  type DrumSettings,
-} from "../../DrumMachine";
-import {
-  useStringPads,
-  DEFAULT_STRING_SETTINGS,
-  normalizeStringSettings,
-  type StringPadsSettings,
-} from "../../StringPads";
-import {
-  DEFAULT_SUB_BASS_SETTINGS,
-  normalizeSubBassSettings,
-  type SubBassSettings,
-} from "../../SubBass";
+import { DEFAULT_KIT, kitFromMetadata, kitToMetadata, type KitSettings } from "../../kit";
+import { KitPlayer } from "../../KitPlayer";
+import KitDesigner from "../../KitDesigner";
 import PreviewSidebar, {
   MIN_SCALE,
   MAX_SCALE,
@@ -75,6 +62,9 @@ import PreviewSidebar, {
   MAX_COLUMN_WIDTH_VW,
   DEFAULT_COLUMN_WIDTH_VW,
 } from "../../PreviewSidebar";
+
+/** Nothing sounding. Hoisted so the memo below keeps one identity for it. */
+const NO_LAYERS: ReadonlySet<string> = new Set<string>();
 
 // Per-song localStorage keys: leadSheet:${id}:fontScale, leadSheet:${id}:columnCount,
 // leadSheet:${id}:columnWidthVw, leadSheet:${id}:beatsPerBar
@@ -493,33 +483,29 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
   const [bpm, setBpm] = useState(DEFAULT_BPM);
   const [beatsPerBar, setBeatsPerBar] = useState(() => loadBeatsPerBar(id));
   const [metronomeOn, setMetronomeOn] = useState(false);
-  // Open-ended layer state: any cue tag layer name lives here.
-  // Currently wired: "drum", "claps", "shimmer", "drone". Future layers are
-  // tracked automatically and just need synthesis code to act on them.
+  // Open-ended layer state: any cue tag layer name lives here, and the cue
+  // events during a timed playback are what write it. Every name the kit knows
+  // is wired — drum, claps, shimmer, sub, strings — plus drone, which is the
+  // pad holding the key rather than walking the chords. A cue naming something
+  // else is still tracked here and simply makes no sound until something
+  // downstream acts on it.
   const [activeLayers, setActiveLayers] = useState<Set<string>>(new Set());
-  const drumRunning    = activeLayers.has("drum");
-  const clapsRunning   = activeLayers.has("claps");
-  const shimmerRunning = activeLayers.has("shimmer");
-  const droneRunning   = activeLayers.has("drone");
-  const toggleLayer = (name: string) =>
-    setActiveLayers((prev) => {
-      const next = new Set(prev);
-      next.has(name) ? next.delete(name) : next.add(name);
-      return next;
-    });
-  const [drumSettings, setDrumSettings] = useState<DrumSettings>(DEFAULT_DRUM_SETTINGS);
-  const [stringSettings, setStringSettings] = useState<StringPadsSettings>(DEFAULT_STRING_SETTINGS);
-  const stringsRunning = activeLayers.has("strings");
-  const [subBassSettings, setSubBassSettings] = useState<SubBassSettings>(DEFAULT_SUB_BASS_SETTINGS);
-  const subRunning = activeLayers.has("sub");
+  const [kit, setKit] = useState<KitSettings>(DEFAULT_KIT);
+  const [kitOpen, setKitOpen] = useState(false);
+  /**
+   * The kit's own transport, which is not the same as the song's.
+   *
+   * Pressing play on the kit sounds whatever the kit has switched on and loops
+   * it. Timed playback is the other way round: the song's cues decide what is
+   * sounding bar by bar, and this stands aside for them.
+   */
+  const [kitPlaying, setKitPlaying] = useState(false);
   const [withVideo, setWithVideo] = useState(true);
   const [localVolume, _setLocalVolume] = useState<number | null>(null);
   const localVolumeRef = useRef<number | null>(null);
   const setLocalVolume = (v: number | null) => { localVolumeRef.current = v; _setLocalVolume(v); };
   const bpmSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const drumSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const stringSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const subBassSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const kitSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fadeTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastCueEventIdxRef = useRef<number>(-2); // -2 = uninitialized
 
@@ -547,11 +533,6 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
     [sheet?.key, transposeSteps]
   );
 
-  // A [drone] cue holds the key under the section it covers. It is the same pad
-  // the Strings control plays, but driven by the sheet rather than by hand, so
-  // an arrangement laid out on the tracks sounds the same here as it did there.
-  useStringPads(soundingKey, droneRunning, { ...stringSettings, mode: "drone" });
-
   // A YouTube link in the song promotes the recording to the transport's clock.
   // The stopwatch stays wired up underneath as the fallback for a video that
   // won't embed.
@@ -569,6 +550,15 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
   const cueEvents = useMemo(
     () => (sheet ? parseCueEvents(sheet.sections, bpm) : []),
     [sheet, bpm]
+  );
+
+  // Which layers are sounding right now. The song's cues own this while a timed
+  // playback is running; the rest of the time it is the kit's own set, gated on
+  // the kit's transport.
+  const cueDriven = playbackOpen && cueEvents.length > 0;
+  const soundingLayers = useMemo(
+    () => (cueDriven ? activeLayers : kitPlaying ? new Set<string>(kit.layers) : NO_LAYERS),
+    [cueDriven, activeLayers, kitPlaying, kit.layers],
   );
 
   // When playback closes, reset the tracker (leave drum state for manual control).
@@ -620,7 +610,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
 
         if (stoppingDrum) {
           if (ev.fadeOut) {
-            const startVol = localVolumeRef.current ?? drumSettings.volume;
+            const startVol = localVolumeRef.current ?? kit.drums.volume;
             let elapsed = 0;
             const FADE_MS = 4000, STEP_MS = 50;
             setLocalVolume(startVol);
@@ -653,7 +643,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
 
         if (startingDrum) {
           if (ev.fadeIn) {
-            const targetVol = drumSettings.volume;
+            const targetVol = kit.drums.volume;
             setLocalVolume(0);
             setActiveLayers((prev) => new Set([...prev, "drum"]));
             let elapsed = 0;
@@ -672,7 +662,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
         }
       }
     }
-  }, [time, playbackOpen, cueEvents, drumSettings.volume]);
+  }, [time, playbackOpen, cueEvents, kit.drums.volume]);
 
   const seekToLine = useCallback(
     (sectionIndex: number, lineIndex: number) => {
@@ -1042,16 +1032,22 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
   useEffect(() => () => { if (bpmSaveTimer.current) clearTimeout(bpmSaveTimer.current); }, []);
   useEffect(() => () => { if (moveErrorTimer.current) clearTimeout(moveErrorTimer.current); }, []);
 
-  // The drum machine's pattern and voicing are part of how the song is played,
-  // so they ride along on the sheet's metadata instead of living on this device.
-  // Debounced like the tempo — the volume slider fires on every drag.
-  const updateDrumSettings = (patch: Partial<DrumSettings>) => {
-    const next = { ...drumSettings, ...patch };
-    setDrumSettings(next);
-    setSheet((prev) => (prev ? { ...prev, metadata: { ...prev.metadata, drums: next } } : prev));
-    if (drumSaveTimer.current) clearTimeout(drumSaveTimer.current);
-    drumSaveTimer.current = setTimeout(async () => {
-      const metadata = { ...sheet?.metadata, drums: next };
+  /**
+   * The kit is part of how the song is played, so it rides along on the sheet's
+   * metadata rather than living on this device — someone opening the sheet on
+   * stage gets the same beat, the same bass and the same voices.
+   *
+   * Written back under the four keys it was read from, which is what keeps the
+   * arranger and the `Drums:` line in the song text working unchanged. Debounced
+   * like the tempo, because a level slider fires on every pixel of a drag.
+   */
+  const updateKit = (next: KitSettings) => {
+    setKit(next);
+    const patch = kitToMetadata(next);
+    setSheet((prev) => (prev ? { ...prev, metadata: { ...prev.metadata, ...patch } } : prev));
+    if (kitSaveTimer.current) clearTimeout(kitSaveTimer.current);
+    kitSaveTimer.current = setTimeout(async () => {
+      const metadata = { ...sheet?.metadata, ...patch };
       try {
         await createClient()!
           .from("lead_sheets")
@@ -1064,54 +1060,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
     }, 800);
   };
 
-  useEffect(() => () => { if (drumSaveTimer.current) clearTimeout(drumSaveTimer.current); }, []);
-
-  const updateStringSettings = (patch: Partial<StringPadsSettings>) => {
-    const next = { ...stringSettings, ...patch };
-    setStringSettings(next);
-    setSheet((prev) => (prev ? { ...prev, metadata: { ...prev.metadata, strings: next } } : prev));
-    if (stringSaveTimer.current) clearTimeout(stringSaveTimer.current);
-    stringSaveTimer.current = setTimeout(async () => {
-      const metadata = { ...sheet?.metadata, strings: next };
-      try {
-        await createClient()!
-          .from("lead_sheets")
-          .update({ metadata, updated_at: new Date().toISOString() })
-          .eq("id", id);
-        if (sheet) await cacheSheet({ ...sheet, metadata });
-      } catch {}
-    }, 800);
-  };
-
-  useEffect(() => () => { if (stringSaveTimer.current) clearTimeout(stringSaveTimer.current); }, []);
-
-  // The walk the sub bass plays is part of the arrangement, not a preference of
-  // this browser — someone opening the sheet on stage should get the same notes.
-  const updateSubBassSettings = (patch: Partial<SubBassSettings>) => {
-    const next = { ...subBassSettings, ...patch };
-    setSubBassSettings(next);
-    setSheet((prev) => (prev ? { ...prev, metadata: { ...prev.metadata, subBass: next } } : prev));
-    if (subBassSaveTimer.current) clearTimeout(subBassSaveTimer.current);
-    subBassSaveTimer.current = setTimeout(async () => {
-      const metadata = { ...sheet?.metadata, subBass: next };
-      try {
-        await createClient()!
-          .from("lead_sheets")
-          .update({ metadata, updated_at: new Date().toISOString() })
-          .eq("id", id);
-        if (sheet) await cacheSheet({ ...sheet, metadata });
-      } catch {
-        // Offline or not the owner — the walk still plays as typed.
-      }
-    }, 800);
-  };
-
-  useEffect(() => () => { if (subBassSaveTimer.current) clearTimeout(subBassSaveTimer.current); }, []);
-
-  // When a fade is in progress, override the volume without touching persisted settings
-  const effectiveDrumSettings = localVolume !== null
-    ? { ...drumSettings, volume: localVolume }
-    : drumSettings;
+  useEffect(() => () => { if (kitSaveTimer.current) clearTimeout(kitSaveTimer.current); }, []);
 
   const updateBeatsPerBar = (next: number) => {
     setBeatsPerBar(next);
@@ -1136,9 +1085,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
       if (data) {
         setSheet({ ...data, sections: data.sections.map(migrateSection) });
         setBpm(data.tempo ? clampBpm(data.tempo) : DEFAULT_BPM);
-        setDrumSettings(normalizeDrumSettings(data.metadata?.drums));
-        setStringSettings(normalizeStringSettings(data.metadata?.strings));
-        setSubBassSettings(normalizeSubBassSettings(data.metadata?.subBass));
+        setKit(kitFromMetadata(data.metadata));
         setOffline(false);
         await cacheSheet(data);
       }
@@ -1147,9 +1094,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
       if (cached) {
         setSheet({ ...cached, sections: cached.sections.map(migrateSection) });
         setBpm(cached.tempo ? clampBpm(cached.tempo) : DEFAULT_BPM);
-        setDrumSettings(normalizeDrumSettings(cached.metadata?.drums));
-        setStringSettings(normalizeStringSettings(cached.metadata?.strings));
-        setSubBassSettings(normalizeSubBassSettings(cached.metadata?.subBass));
+        setKit(kitFromMetadata(cached.metadata));
         setOffline(true);
       }
     }
@@ -1217,25 +1162,10 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
       onBeatsPerBarChange={updateBeatsPerBar}
       metronomeOn={metronomeOn}
       onMetronomeToggle={() => setMetronomeOn((on) => !on)}
-      drumRunning={drumRunning}
-      onDrumToggle={() => toggleLayer("drum")}
-      drumSettings={effectiveDrumSettings}
-      shimmerVariation={drumSettings.shimmer}
-      onDrumSettingsChange={updateDrumSettings}
-      clapsRunning={clapsRunning}
-      onClapsToggle={() => toggleLayer("claps")}
-      shimmerRunning={shimmerRunning}
-      onShimmerToggle={() => toggleLayer("shimmer")}
-      stringsRunning={stringsRunning}
-      onStringsToggle={() => toggleLayer("strings")}
-      stringSettings={stringSettings}
-      onStringSettingsChange={updateStringSettings}
-      songKey={soundingKey}
-      progression={progression}
-      subRunning={subRunning}
-      onSubToggle={() => toggleLayer("sub")}
-      subBassSettings={subBassSettings}
-      onSubBassSettingsChange={updateSubBassSettings}
+      kit={kit}
+      kitPlaying={kitPlaying}
+      onKitPlayingChange={setKitPlaying}
+      onOpenKit={() => setKitOpen(true)}
       editMode={editMode}
       onEditModeToggle={() => setEditMode((on) => !on)}
       copied={copied}
@@ -1330,6 +1260,32 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
               </div>
             </div>
           </div>
+        )}
+
+        {/* The kit, playing. Mounted here rather than inside the designer so
+            that closing the designer does not stop the music, and outside the
+            sidebar so that collapsing the sidebar does not either. */}
+        <KitPlayer
+          kit={kit}
+          layers={soundingLayers}
+          bpm={bpm}
+          beatsPerBar={beatsPerBar}
+          progression={progression}
+          songKey={soundingKey}
+          transposeSteps={transposeSteps}
+          drumVolume={localVolume}
+        />
+
+        {kitOpen && (
+          <KitDesigner
+            kit={kit}
+            onChange={updateKit}
+            bpm={bpm}
+            onBpmChange={updateBpm}
+            playing={kitPlaying}
+            onPlayingChange={setKitPlaying}
+            onClose={() => setKitOpen(false)}
+          />
         )}
 
         {metronomeOn && (

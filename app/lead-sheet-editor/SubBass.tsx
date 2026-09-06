@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 // ─── Sub bass walk-down ───────────────────────────────────────────────────────
 //
@@ -147,8 +147,16 @@ export function buildWalk(
 /** How much of a bar one note gets. */
 export type SubBassRate = "2bar" | "bar" | "half" | "beat";
 
-/** The voice of a single hit — how much of it is felt and how much is heard. */
-export type SubBassTone = "sub" | "round" | "punch";
+/**
+ * The voice of a single hit — how much of it is felt and how much is heard.
+ *
+ * The four run from the deepest to the most forward: `sub` is nearly a pure
+ * sine you feel more than hear, `round` adds enough octave to carry on a
+ * laptop, `punch` is the drum end of it, and `808` is the long saturated one
+ * that slides from the note before it. They are stored by these names rather
+ * than by index so a new voice can be added anywhere in the list.
+ */
+export type SubBassTone = "sub" | "round" | "punch" | "808";
 
 export interface SubBassSettings {
   /** The walk as typed, e.g. "G F# F E". Parsed by parseNoteList. */
@@ -169,7 +177,7 @@ export const DEFAULT_SUB_BASS_SETTINGS: SubBassSettings = {
 };
 
 const RATES: SubBassRate[] = ["2bar", "bar", "half", "beat"];
-const TONES: SubBassTone[] = ["sub", "round", "punch"];
+export const TONES: SubBassTone[] = ["sub", "round", "punch", "808"];
 
 /**
  * Octaves the walk can start from. Below 1 there is no room left to descend
@@ -319,17 +327,70 @@ interface ToneShape {
   harmonic: number;
   /** Level of the noise transient on the attack. */
   click: number;
+  /**
+   * How hard the fundamental is driven into a soft clipper, 0 for none. Odd
+   * harmonics of a 45 Hz sine land in the range a laptop can actually move air
+   * at, which is the whole trick behind an 808 that reads as huge on a phone
+   * and still measures as sub on a meter.
+   */
+  drive: number;
+  /**
+   * Seconds spent sliding up or down from the previous note instead of
+   * starting on this one. This is the part that makes a run of 808s read as
+   * one instrument being played rather than a row of separate hits.
+   */
+  glide: number;
+  /**
+   * Make-up trim, so every voice peaks in the same place.
+   *
+   * A driven voice sums its clipped branch on top of the clean one and comes
+   * out well past full scale — rendering one 808 hit through an
+   * OfflineAudioContext peaked at 1.40 before this existed, and anything over
+   * 1.0 is clipped by the destination into something that is distorted by
+   * accident rather than by design. 0.62 brings that back to about 0.87, in
+   * line with the other three. Measured rather than guessed.
+   */
+  level: number;
 }
 
 const TONE_SHAPES: Record<SubBassTone, ToneShape> = {
-  // Nearly a pure sine — the deepest of the three, and the one that needs a
+  // Nearly a pure sine — the deepest of the four, and the one that needs a
   // real speaker to hear rather than feel.
-  sub:   { dropOctaves: 1.6, dropTime: 0.055, maxDecay: 1.10, harmonic: 0.05, click: 0.00 },
+  sub:   { dropOctaves: 1.6, dropTime: 0.055, maxDecay: 1.10, harmonic: 0.05, click: 0.00, drive: 0.00, glide: 0,     level: 1.00 },
   // Enough of an octave above the fundamental to carry the note on a laptop.
-  round: { dropOctaves: 1.2, dropTime: 0.070, maxDecay: 1.40, harmonic: 0.22, click: 0.04 },
+  round: { dropOctaves: 1.2, dropTime: 0.070, maxDecay: 1.40, harmonic: 0.22, click: 0.04, drive: 0.00, glide: 0,     level: 1.00 },
   // The drum end of it: fast drop, hard front, short tail.
-  punch: { dropOctaves: 2.2, dropTime: 0.022, maxDecay: 0.55, harmonic: 0.14, click: 0.16 },
+  punch: { dropOctaves: 2.2, dropTime: 0.022, maxDecay: 0.55, harmonic: 0.14, click: 0.16, drive: 0.00, glide: 0,     level: 1.00 },
+  // The long one. Barely any drop, because the pitch is the point and a swoop
+  // would smear it; a hard front from the clipper instead of from a noise
+  // burst; and a tail that runs as long as the step will let it.
+  "808": { dropOctaves: 0.5, dropTime: 0.018, maxDecay: 2.60, harmonic: 0.10, click: 0.06, drive: 0.85, glide: 0.055, level: 0.62 },
 };
+
+/**
+ * Soft-clip curve for the drive stage — tanh, sampled.
+ *
+ * Built once per context and shared: a WaveShaper's curve is a Float32Array the
+ * node only reads, so every 808 in a song can point at the same one, and
+ * rebuilding a 1k table per hit at sixteenth-note rates is exactly the kind of
+ * per-note allocation that makes a scheduler stutter.
+ */
+type DriveCurve = Float32Array<ArrayBuffer>;
+
+const driveCurveByContext = new WeakMap<BaseAudioContext, DriveCurve>();
+
+function driveCurve(ctx: BaseAudioContext): DriveCurve {
+  const cached = driveCurveByContext.get(ctx);
+  if (cached) return cached;
+  const n = 1024;
+  const curve = new Float32Array(new ArrayBuffer(n * 4)) as DriveCurve;
+  for (let i = 0; i < n; i++) {
+    const x = (i / (n - 1)) * 2 - 1;
+    curve[i] = Math.tanh(x * 2.2);
+  }
+  driveCurveByContext.set(ctx, curve);
+  return curve;
+}
 
 /**
  * One hit. Everything is scheduled up front against `when` and stops on its
@@ -345,6 +406,11 @@ export function playSubHit(
   when: number,
   hold: number,
   tone: SubBassTone,
+  /**
+   * The note before this one, for the voices that slide. Null on the first hit
+   * of a run, where there is nothing to slide from and the pitch drop stands in.
+   */
+  fromHz: number | null = null,
 ) {
   const shape = TONE_SHAPES[tone];
   const decay = Math.max(0.12, Math.min(shape.maxDecay, hold * 0.92));
@@ -352,19 +418,54 @@ export function playSubHit(
 
   const body = ctx.createGain();
   body.gain.setValueAtTime(0, when);
-  body.gain.linearRampToValueAtTime(1, when + attack);
+  body.gain.linearRampToValueAtTime(shape.level, when + attack);
   body.gain.exponentialRampToValueAtTime(0.0008, when + decay);
   body.connect(dst);
 
   // Fundamental: starts above the note and falls into it. The drop is what
   // makes a sustained sine read as a struck thing.
+  //
+  // A gliding voice starts on the previous note instead and slides, which is a
+  // different gesture: the drop says "struck", the glide says "still the same
+  // string". A repeated note has nothing to slide across, so it drops.
   const osc = ctx.createOscillator();
   osc.type = "sine";
-  osc.frequency.setValueAtTime(hz * Math.pow(2, shape.dropOctaves), when);
-  osc.frequency.exponentialRampToValueAtTime(hz, when + Math.min(shape.dropTime, decay));
+  const glideFrom = shape.glide > 0 && fromHz !== null && Math.abs(fromHz - hz) > 0.5 ? fromHz : null;
+  if (glideFrom !== null) {
+    osc.frequency.setValueAtTime(glideFrom, when);
+    osc.frequency.exponentialRampToValueAtTime(hz, when + Math.min(shape.glide, decay));
+  } else {
+    osc.frequency.setValueAtTime(hz * Math.pow(2, shape.dropOctaves), when);
+    osc.frequency.exponentialRampToValueAtTime(hz, when + Math.min(shape.dropTime, decay));
+  }
   const oscGain = ctx.createGain();
   oscGain.gain.value = 0.9;
   osc.connect(oscGain);
+
+  if (shape.drive > 0) {
+    // Clipped and clean in parallel rather than in series. All-clipped loses
+    // the weight the fundamental is there for; this keeps the sine underneath
+    // and lays the harmonics it needs to be heard on top of it.
+    const shaper = ctx.createWaveShaper();
+    shaper.curve = driveCurve(ctx);
+    shaper.oversample = "2x";
+    const driveIn = ctx.createGain();
+    driveIn.gain.value = 1 + shape.drive * 3;
+    const driveOut = ctx.createGain();
+    driveOut.gain.value = shape.drive * 0.32;
+    // Above the fundamental only: the clipper's low harmonics would just add
+    // more of what is already there, and its top end is where the note lives
+    // on a speaker too small to reproduce it.
+    const shape_hp = ctx.createBiquadFilter();
+    shape_hp.type = "highpass";
+    shape_hp.frequency.value = Math.max(80, hz * 1.5);
+    oscGain.connect(driveIn);
+    driveIn.connect(shaper);
+    shaper.connect(shape_hp);
+    shape_hp.connect(driveOut);
+    driveOut.connect(body);
+  }
+
   oscGain.connect(body);
   osc.start(when);
   osc.stop(when + decay + 0.05);
@@ -484,7 +585,12 @@ export function useSubBassWalk(
       while (nextStepRef.current < ctx.currentTime + LOOKAHEAD) {
         const when = nextStepRef.current;
         const index = indexRef.current % steps.length;
-        playSubHit(ctx, master, steps[index].hz, when, holdSeconds, toneRef.current);
+        // The note before this one in the walk, which the gliding voices slide
+        // from. On the very first hit there is none.
+        const prev = indexRef.current === 0
+          ? null
+          : steps[(indexRef.current - 1) % steps.length].hz;
+        playSubHit(ctx, master, steps[index].hz, when, holdSeconds, toneRef.current, prev);
 
         // The hit is scheduled before it sounds, so the badge waits for it.
         const delayMs = Math.max(0, (when - ctx.currentTime) * 1000);
@@ -526,197 +632,19 @@ export function walkFromSettings(settings: SubBassSettings, transposeSteps = 0):
   return buildWalk(parseNoteList(settings.notes), settings.octave, transposeSteps);
 }
 
-// ── Control component ─────────────────────────────────────────────────────────
+// ── Names ─────────────────────────────────────────────────────────────────────
 
-/** A drum head with a descending line through it — a pitched drum going down. */
-function SubBassIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <ellipse cx="12" cy="6" rx="9" ry="3.5" />
-      <path d="M3 6v10c0 1.9 4 3.5 9 3.5s9-1.6 9-3.5V6" />
-      <path d="M7 10.5l3.5 3 3.5-3 3 4.5" />
-    </svg>
-  );
-}
-
-const RATE_LABELS: Record<SubBassRate, string> = {
-  "2bar": "2 bars",
-  bar: "1 bar",
-  half: "½ bar",
-  beat: "beat",
-};
-
-const TONE_LABELS: Record<SubBassTone, string> = {
+export const TONE_LABELS: Record<SubBassTone, string> = {
   sub: "Sub",
   round: "Round",
   punch: "Punch",
+  "808": "808",
 };
 
-const OCTAVES = Array.from(
-  { length: MAX_OCTAVE - MIN_OCTAVE + 1 },
-  (_, i) => MIN_OCTAVE + i
-);
-
-export function SubBassControl({
-  bpm,
-  beatsPerBar,
-  transposeSteps = 0,
-  running,
-  onToggle,
-  settings,
-  onSettingsChange,
-}: {
-  bpm: number;
-  beatsPerBar: number;
-  /** Follows the sheet on screen, so the walk stays in the key being read. */
-  transposeSteps?: number;
-  running: boolean;
-  onToggle: () => void;
-  settings: SubBassSettings;
-  /** Called with just the fields that changed; the owner merges and persists. */
-  onSettingsChange: (patch: Partial<SubBassSettings>) => void;
-}) {
-  const walk = useMemo(
-    () => walkFromSettings(settings, transposeSteps),
-    [settings, transposeSteps]
-  );
-  const activeStep = useSubBassWalk(walk, bpm, beatsPerBar, running && walk.length > 0, settings);
-  const sounding = activeStep >= 0 && activeStep < walk.length ? walk[activeStep] : null;
-  const empty = walk.length === 0;
-
-  // The bars are the shape of the walk, so they are scaled to its own range
-  // rather than to the whole audible one — a four-semitone descent still reads
-  // as a staircase instead of four bars the same height.
-  const span = useMemo(() => {
-    if (walk.length === 0) return { low: 0, height: 1 };
-    const low = Math.min(...walk.map((step) => step.midi));
-    const high = Math.max(...walk.map((step) => step.midi));
-    return { low, height: Math.max(1, high - low) };
-  }, [walk]);
-
-  return (
-    <div className="flex flex-wrap items-center gap-1.5 px-3 py-2 print:hidden">
-      {/* On/off */}
-      <button
-        type="button"
-        onClick={onToggle}
-        disabled={empty}
-        aria-label={running ? "Stop sub bass" : "Start sub bass"}
-        title={
-          empty
-            ? "Type some note names — G F# F E — to give the sub bass a walk"
-            : running
-            ? "Stop the sub bass walk"
-            : `Sub bass walking down: ${walk.map((step) => step.label).join(" → ")}`
-        }
-        className={`h-8 w-8 flex items-center justify-center rounded-md transition-colors duration-150 flex-shrink-0 disabled:opacity-40 disabled:cursor-not-allowed ${
-          running
-            ? "bg-track-3 text-ink-primary hover:bg-track-3/80"
-            : "bg-surface-raised text-ink-primary hover:bg-surface-overlay"
-        }`}
-      >
-        <SubBassIcon />
-      </button>
-
-      {/* The walk itself — bare note names, as many as you like */}
-      <input
-        type="text"
-        value={settings.notes}
-        onChange={(e) => onSettingsChange({ notes: e.target.value.slice(0, 200) })}
-        placeholder="G F# F E"
-        spellCheck={false}
-        aria-label="Sub bass notes"
-        title="Notes to walk down, in order — G F# F E. Each one lands below the last, so the line keeps descending; add an octave to a note (G2) to pin it there and jump the walk back up."
-        className="w-28 h-7 text-xs font-medium rounded-md border border-line-subtle bg-surface-raised text-ink-primary px-1.5 focus:outline-none focus:ring-1 focus:ring-track-3 flex-shrink-0"
-      />
-
-      {/* Where the walk starts — how deep the whole thing sits */}
-      <select
-        value={settings.octave}
-        onChange={(e) => onSettingsChange({ octave: Number(e.target.value) })}
-        aria-label="Sub bass starting octave"
-        title="Octave the walk starts from — lower it to sit the whole line deeper"
-        className="h-7 text-xs font-medium rounded-md border border-line-subtle bg-surface-raised text-ink-primary px-1 flex-shrink-0 cursor-pointer"
-      >
-        {OCTAVES.map((octave) => (
-          <option key={octave} value={octave}>Oct {octave}</option>
-        ))}
-      </select>
-
-      {/* How long each note holds before the next one lands */}
-      <select
-        value={settings.rate}
-        onChange={(e) => onSettingsChange({ rate: e.target.value as SubBassRate })}
-        aria-label="Sub bass note length"
-        title="How long each note of the walk holds, at the song's tempo"
-        className="h-7 text-xs font-medium rounded-md border border-line-subtle bg-surface-raised text-ink-primary px-1 flex-shrink-0 cursor-pointer"
-      >
-        {RATES.map((rate) => (
-          <option key={rate} value={rate}>{RATE_LABELS[rate]}</option>
-        ))}
-      </select>
-
-      {/* Voice of a single hit */}
-      <select
-        value={settings.tone}
-        onChange={(e) => onSettingsChange({ tone: e.target.value as SubBassTone })}
-        aria-label="Sub bass tone"
-        title="Sub is nearly a pure sine; Round carries the note on small speakers; Punch is the drum end of it"
-        className="h-7 text-xs font-medium rounded-md border border-line-subtle bg-surface-raised text-ink-primary px-1 flex-shrink-0 cursor-pointer"
-      >
-        {TONES.map((tone) => (
-          <option key={tone} value={tone}>{TONE_LABELS[tone]}</option>
-        ))}
-      </select>
-
-      {/* The walk as steps — height shows how far each note has fallen */}
-      {walk.length > 0 && (
-        <div className="flex items-end gap-px h-4" aria-hidden="true">
-          {walk.map((step, i) => {
-            const height = 4 + Math.round(((step.midi - span.low) / span.height) * 10);
-            return (
-              <div
-                key={i}
-                style={{ height }}
-                className={`w-1 rounded-sm transition-colors duration-75 ${
-                  i === activeStep
-                    ? "bg-track-3"
-                    : "bg-surface-overlay bg-surface-overlay"
-                }`}
-              />
-            );
-          })}
-        </div>
-      )}
-
-      {/* Volume */}
-      <input
-        type="range"
-        min={0}
-        max={1}
-        step={0.05}
-        value={settings.volume}
-        onChange={(e) => onSettingsChange({ volume: Number(e.target.value) })}
-        aria-label={`Sub bass volume ${Math.round(settings.volume * 100)}%`}
-        title={`Volume: ${Math.round(settings.volume * 100)}%`}
-        className="w-14 h-1 accent-track-3 flex-shrink-0"
-      />
-
-      {/* What's sounding: the note being hit, with the octave it landed in */}
-      <span
-        className="text-xs font-medium px-1.5 py-0.5 rounded flex-shrink-0 select-none tabular-nums"
-        style={{
-          background: running && sounding ? "var(--ds-color-track-3)" : undefined,
-          color: running && sounding ? "var(--ds-color-text-on-primary)" : undefined,
-        }}
-        title={
-          empty
-            ? "No readable notes yet"
-            : "The note sounding now, in the octave the walk put it in"
-        }
-      >
-        {sounding?.label ?? (empty ? "—" : `${walk.length} notes`)}
-      </span>
-    </div>
-  );
-}
+/** What each voice is for, in the one line the picker has room for. */
+export const TONE_BLURBS: Record<SubBassTone, string> = {
+  sub: "Deep and clean. Felt more than heard on a laptop.",
+  round: "Deep with an octave on top, so the note reads anywhere.",
+  punch: "Short and hard. Sits with the kick rather than under it.",
+  "808": "Long, saturated, slides between notes. The trap one.",
+};
