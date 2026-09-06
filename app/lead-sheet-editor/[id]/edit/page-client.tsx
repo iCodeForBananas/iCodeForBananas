@@ -14,7 +14,12 @@ import {
   migrateSection,
   OfflineBadge,
 } from "../../shared";
-import { asSectionHeader, isChordName } from "../../songText";
+import {
+  asSectionHeader,
+  hasRetiredSettings,
+  isChordName,
+  stripRetiredSettings,
+} from "../../songText";
 import { serializeSheet } from "../../serialize";
 import { snapshotRevision } from "../../revisions";
 import { cacheSheet, getCachedSheet } from "../../offlineCache";
@@ -26,13 +31,6 @@ import {
   parseDrumSettingsLine,
   stripDrumSettings,
 } from "../../DrumMachine";
-import {
-  type SubBassSettings,
-  DEFAULT_SUB_BASS_SETTINGS,
-  hasSubBassSettingsLine,
-  parseSubBassSettingsLine,
-  stripSubBassSettings,
-} from "../../SubBass";
 import TapTiming from "../../TapTiming";
 import TrackEditor from "../../TrackEditor";
 import SyntaxHelp from "../../SyntaxHelp";
@@ -81,7 +79,6 @@ function parseText(text: string): Partial<LeadSheet> {
   let key = "";
   let tempo: number | null = null;
   let drums: DrumSettings | null = null;
-  let subBass: SubBassSettings | null = null;
   const preambleLines: string[] = [];
 
   // Preamble: lines before first section header
@@ -90,13 +87,12 @@ function parseText(text: string): Partial<LeadSheet> {
     const keyMatch = line.match(/Key:\s*([A-G][#b]?m?)\b/i);
     const tempoMatch = line.match(/\bTempo:\s*(\d+)\b/i);
     const drumMatch = hasDrumSettingsLine(line);
-    const subMatch = hasSubBassSettingsLine(line);
+    const retired = hasRetiredSettings(line);
     if (keyMatch) key = keyMatch[1];
     if (tempoMatch) tempo = parseInt(tempoMatch[1]);
     if (drumMatch) drums = parseDrumSettingsLine(line);
-    if (subMatch) subBass = parseSubBassSettingsLine(line);
-    if (keyMatch || tempoMatch || drumMatch || subMatch) {
-      const stripped = stripSubBassSettings(stripDrumSettings(line))
+    if (keyMatch || tempoMatch || drumMatch || retired) {
+      const stripped = stripRetiredSettings(stripDrumSettings(line))
         .replace(/Key:\s*[A-G][#b]?m?\b/gi, "")
         .replace(/\bTempo:\s*\d+\b/gi, "")
         .replace(/\|/g, "")
@@ -111,7 +107,6 @@ function parseText(text: string): Partial<LeadSheet> {
   // No line means the kit is back to defaults — deleting it resets the song.
   const metadata: LeadSheetMetadata = {
     drums: drums ?? DEFAULT_DRUM_SETTINGS,
-    subBass: subBass ?? DEFAULT_SUB_BASS_SETTINGS,
   };
 
   // Sections

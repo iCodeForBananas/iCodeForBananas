@@ -37,10 +37,13 @@ export interface LeadSheetMetadata {
   favorite?: boolean;
   /** Drum machine state; see normalizeDrumSettings in DrumMachine.tsx. */
   drums?: { pattern?: string; steps?: unknown; kick?: string; snare?: string; volume?: number };
-  /** String pad state; see normalizeStringSettings in StringPads.tsx. */
-  strings?: { mode?: string; style?: string; volume?: number };
-  /** Sub bass walk-down state; see normalizeSubBassSettings in SubBass.tsx. */
-  subBass?: { notes?: string; octave?: number; rate?: string; tone?: string; volume?: number };
+  /**
+   * The pad and the bass walk-down, which no longer exist. Rows written while
+   * they did still carry them; nothing reads or writes them now, and nothing
+   * deletes them either.
+   */
+  strings?: unknown;
+  subBass?: unknown;
   /** Which parts of the kit are on, and the preset they came from; see kit.ts. */
   kit?: { preset?: string | null; layers?: string[] };
   /**

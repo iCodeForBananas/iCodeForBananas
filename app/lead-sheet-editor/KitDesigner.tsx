@@ -16,16 +16,7 @@ import {
   type DrumGrid,
   type GridLane,
 } from "./DrumMachine";
-import { useKitPlayhead } from "./KitPlayer";
-import {
-  MAX_OCTAVE,
-  MIN_OCTAVE,
-  TONES,
-  TONE_BLURBS,
-  TONE_LABELS,
-  parseNoteList,
-  type SubBassRate,
-} from "./SubBass";
+import { useKitStep } from "./KitPlayer";
 import {
   KIT_LAYERS,
   LAYER_LABELS,
@@ -40,11 +31,11 @@ import {
 /**
  * The whole backing track in one sheet.
  *
- * What used to be five separate rows down the sidebar — drums, claps, shimmer,
- * pad, sub bass — each with its own toggle and its own popover, is one place
- * here: pick a preset, or write the beat on the grid and shape the bass under
- * it. It plays the whole time it is open, through the page's KitPlayer rather
- * than one of its own, so closing it changes nothing about what you hear.
+ * What used to be several separate rows down the sidebar, each with its own
+ * toggle and its own popover, is one place here: pick a preset, or write the
+ * beat on the grid. It plays the whole time it is open, through the page's
+ * KitPlayer rather than one of its own, so closing it changes nothing about
+ * what you hear.
  *
  * Edits land on the kit immediately. There is no draft copy and no cancel,
  * because everything in here is audible the moment it changes and hearing it is
@@ -68,7 +59,7 @@ export default function KitDesigner({
   onPlayingChange: (playing: boolean) => void;
   onClose: () => void;
 }) {
-  const [tab, setTab] = useState<"presets" | "beat" | "bass" | "mix">("presets");
+  const [tab, setTab] = useState<"presets" | "beat" | "mix">("presets");
 
   // Escape closes, the way every other sheet in the editor does.
   useEffect(() => {
@@ -153,7 +144,6 @@ export default function KitDesigner({
         <div className='min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4'>
           {tab === "presets" && <PresetsTab kit={kit} onChange={onChange} onBpmChange={onBpmChange} />}
           {tab === "beat" && <BeatTab kit={kit} onChange={onChange} />}
-          {tab === "bass" && <BassTab kit={kit} onChange={onChange} />}
           {tab === "mix" && <MixTab kit={kit} onChange={onChange} bpm={bpm} />}
         </div>
       </div>
@@ -163,10 +153,9 @@ export default function KitDesigner({
 
 // ── Chrome ────────────────────────────────────────────────────────────────────
 
-const TABS: { id: "presets" | "beat" | "bass" | "mix"; label: string }[] = [
+const TABS: { id: "presets" | "beat" | "mix"; label: string }[] = [
   { id: "presets", label: "Presets" },
   { id: "beat", label: "Beat" },
-  { id: "bass", label: "Bass" },
   { id: "mix", label: "Mix" },
 ];
 
@@ -175,7 +164,7 @@ function TabBar({
   onChange,
 }: {
   tab: string;
-  onChange: (tab: "presets" | "beat" | "bass" | "mix") => void;
+  onChange: (tab: "presets" | "beat" | "mix") => void;
 }) {
   return (
     <div role='tablist' className='flex shrink-0 gap-1 border-b border-line-subtle px-2'>
@@ -317,8 +306,7 @@ function PresetsTab({
   return (
     <div className='flex flex-col gap-5'>
       <p className='text-12 text-ink-muted'>
-        A preset sets the beat, the voices, the bass and what is switched on, all at once. Your
-        bass notes are left alone — those belong to the song.
+        A preset sets the beat, the voices, the levels and what is switched on, all at once.
       </p>
       {PRESET_GROUPS.map((group) => (
         <div key={group.label} className='flex flex-col gap-2'>
@@ -333,7 +321,7 @@ function PresetsTab({
                   key={preset.name}
                   type='button'
                   onClick={() => {
-                    onChange(applyPreset(preset, kit));
+                    onChange(applyPreset(preset));
                     onBpmChange(preset.bpm);
                   }}
                   className={cn(
@@ -470,7 +458,7 @@ function StepGrid({
 }
 
 function BeatTab({ kit, onChange }: { kit: KitSettings; onChange: (next: KitSettings) => void }) {
-  const { step } = useKitPlayhead();
+  const step = useKitStep();
   const grid = useMemo(() => effectiveGrid(kit.drums), [kit.drums]);
   const library = useMemo(() => gridFromPattern(kit.drums.pattern), [kit.drums.pattern]);
   const edited = kit.drums.steps !== null && !gridsEqual(grid, library);
@@ -580,119 +568,7 @@ function BeatTab({ kit, onChange }: { kit: KitSettings; onChange: (next: KitSett
   );
 }
 
-// ── Bass ──────────────────────────────────────────────────────────────────────
-
-const RATE_OPTIONS: { value: SubBassRate; label: string }[] = [
-  { value: "2bar", label: "2 bars" },
-  { value: "bar", label: "1 bar" },
-  { value: "half", label: "½ bar" },
-  { value: "beat", label: "Beat" },
-];
-
-function BassTab({ kit, onChange }: { kit: KitSettings; onChange: (next: KitSettings) => void }) {
-  const { bassStep } = useKitPlayhead();
-  const notes = useMemo(() => parseNoteList(kit.bass.notes), [kit.bass.notes]);
-
-  const set = (patch: Partial<KitSettings["bass"]>) =>
-    onChange({ ...kit, bass: { ...kit.bass, ...patch } });
-
-  return (
-    <div className='flex flex-col gap-5'>
-      <Field label='Shape'>
-        <div className='grid gap-2 sm:grid-cols-2'>
-          {TONES.map((tone) => (
-            <button
-              key={tone}
-              type='button'
-              aria-pressed={kit.bass.tone === tone}
-              onClick={() => set({ tone })}
-              className={cn(
-                "flex flex-col gap-0.5 rounded-lg border p-3 text-left",
-                "transition-colors duration-120 ease-ui motion-reduce:transition-none",
-                "focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
-                kit.bass.tone === tone
-                  ? "border-primary-solid bg-primary-solid/10"
-                  : "border-line-subtle bg-surface-raised hover:bg-surface-overlay",
-              )}
-            >
-              <span className='text-13 font-medium text-ink-primary'>{TONE_LABELS[tone]}</span>
-              <span className='text-12 text-ink-muted'>{TONE_BLURBS[tone]}</span>
-            </button>
-          ))}
-        </div>
-      </Field>
-
-      <Field label='Notes' hint='the root movement, walking down'>
-        <input
-          type='text'
-          value={kit.bass.notes}
-          onChange={(e) => set({ notes: e.target.value.slice(0, 200) })}
-          placeholder='G F# F E'
-          aria-label='Bass notes'
-          spellCheck={false}
-          className={cn(
-            "h-9 w-full rounded-md border border-line-subtle bg-surface-sunken px-2 font-mono text-13 text-ink-primary",
-            "placeholder:text-ink-muted",
-            "focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
-          )}
-        />
-        <div className='flex flex-wrap gap-1'>
-          {notes.length === 0 ? (
-            <span className='text-12 text-ink-muted'>
-              No notes read yet — letters A–G, sharps and flats, spaces between.
-            </span>
-          ) : (
-            notes.map((_, i) => (
-              <span
-                key={i}
-                className={cn(
-                  "rounded px-1.5 py-0.5 font-mono text-10 tabular-nums",
-                  i === bassStep
-                    ? "bg-primary-solid text-ink-on-primary"
-                    : "bg-surface-raised text-ink-muted",
-                )}
-              >
-                {kit.bass.notes.trim().split(/[\s,|/–—-]+/).filter(Boolean)[i] ?? ""}
-              </span>
-            ))
-          )}
-        </div>
-      </Field>
-
-      <div className='grid gap-4 sm:grid-cols-2'>
-        <Field label='One note lasts'>
-          <Choices
-            ariaLabel='Bass rate'
-            value={kit.bass.rate}
-            onChange={(rate) => set({ rate })}
-            options={RATE_OPTIONS}
-          />
-        </Field>
-        <Field label='Octave'>
-          <Choices
-            ariaLabel='Bass octave'
-            value={String(kit.bass.octave)}
-            onChange={(octave) => set({ octave: parseInt(octave, 10) })}
-            options={Array.from({ length: MAX_OCTAVE - MIN_OCTAVE + 1 }, (_, i) => ({
-              value: String(MIN_OCTAVE + i),
-              label: String(MIN_OCTAVE + i),
-            }))}
-          />
-        </Field>
-      </div>
-    </div>
-  );
-}
-
 // ── Mix ───────────────────────────────────────────────────────────────────────
-
-const PAD_STYLES = [
-  { value: "warm", label: "Warm" },
-  { value: "bright", label: "Bright" },
-  { value: "ethereal", label: "Ethereal" },
-  { value: "lush", label: "Lush" },
-  { value: "organ", label: "Organ" },
-] as const;
 
 function MixTab({
   kit,
@@ -708,42 +584,11 @@ function MixTab({
       <Field label='Levels'>
         <div className='flex flex-col gap-3 pt-1'>
           <LevelSlider
-            label='Drums'
+            label='Kit'
             value={kit.drums.volume}
             onChange={(volume) => onChange({ ...kit, drums: { ...kit.drums, volume } })}
           />
-          <LevelSlider
-            label='Bass'
-            value={kit.bass.volume}
-            onChange={(volume) => onChange({ ...kit, bass: { ...kit.bass, volume } })}
-          />
-          <LevelSlider
-            label='Pad'
-            value={kit.pad.volume}
-            onChange={(volume) => onChange({ ...kit, pad: { ...kit.pad, volume } })}
-          />
         </div>
-      </Field>
-
-      <Field label='Pad voice'>
-        <Choices
-          ariaLabel='Pad voice'
-          value={kit.pad.style}
-          onChange={(style) => onChange({ ...kit, pad: { ...kit.pad, style } })}
-          options={PAD_STYLES.map((s) => ({ value: s.value, label: s.label }))}
-        />
-      </Field>
-
-      <Field label='Pad plays' hint="the song's chords, or one held chord off the key">
-        <Choices
-          ariaLabel='Pad mode'
-          value={kit.pad.mode}
-          onChange={(mode) => onChange({ ...kit, pad: { ...kit.pad, mode } })}
-          options={[
-            { value: "arpeggio", label: "The chords" },
-            { value: "drone", label: "A drone" },
-          ]}
-        />
       </Field>
 
       <button

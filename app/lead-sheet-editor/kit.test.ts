@@ -15,14 +15,9 @@ import {
   type DrumSettings,
 } from "./DrumMachine";
 import {
-  DEFAULT_SUB_BASS_SETTINGS,
-  TONES,
-  formatSubBassSettings,
-  normalizeSubBassSettings,
-  parseSubBassSettingsLine,
-} from "./SubBass";
-import {
   DEFAULT_KIT,
+  KIT_LAYERS,
+  KIT_PRESETS,
   applyPreset,
   kitFromMetadata,
   kitIsSilent,
@@ -111,57 +106,35 @@ describe("drum grid", () => {
   });
 });
 
-describe("bass voices", () => {
-  it("offers the 808 alongside the three that came before it", () => {
-    expect(TONES).toEqual(["sub", "round", "punch", "808"]);
-  });
-
-  it("round-trips the 808 through the song text", () => {
-    const settings = { ...DEFAULT_SUB_BASS_SETTINGS, tone: "808" as const, notes: "C G A F" };
-    const parsed = parseSubBassSettingsLine(formatSubBassSettings(settings));
-    expect(parsed!.tone).toBe("808");
-    expect(parsed!.notes).toBe("C G A F");
-  });
-
-  it("keeps the voice a song already had", () => {
-    expect(normalizeSubBassSettings({ tone: "punch" }).tone).toBe("punch");
-    expect(normalizeSubBassSettings({ tone: "808" }).tone).toBe("808");
-    expect(normalizeSubBassSettings({ tone: "nope" }).tone).toBe(DEFAULT_SUB_BASS_SETTINGS.tone);
-  });
-});
-
 describe("kit presets", () => {
   it("every preset names a pattern, an accent and levels that exist", () => {
     expect(kitPresetProblems()).toEqual([]);
   });
 
-  it("applying one sets the whole kit and keeps the song's own bass notes", () => {
-    const start: KitSettings = {
-      ...DEFAULT_KIT,
-      bass: { ...DEFAULT_KIT.bass, notes: "C G Am F" },
-    };
+  it("applying one sets the whole kit", () => {
     const trap = presetByName("Trap 808")!;
-    const kit = applyPreset(trap, start);
+    const kit = applyPreset(trap);
 
     expect(kit.preset).toBe("Trap 808");
     expect(kit.drums.pattern).toBe(trap.pattern);
     expect(kit.drums.kick).toBe("808");
-    expect(kit.bass.tone).toBe("808");
+    expect(kit.drums.shimmer).toBe(trap.shimmer);
+    expect(kit.drums.volume).toBe(trap.drumVolume);
     expect(kit.layers).toEqual(trap.layers);
-    // The walk is the song's, not the preset's.
-    expect(kit.bass.notes).toBe("C G Am F");
+  });
+
+  it("only ever switches on layers the kit still has", () => {
+    for (const preset of KIT_PRESETS) {
+      for (const layer of preset.layers) expect(KIT_LAYERS).toContain(layer);
+    }
   });
 
   it("drops an edited beat when a preset is applied, so the name and the sound agree", () => {
-    const edited: KitSettings = {
-      ...DEFAULT_KIT,
-      drums: { ...DEFAULT_KIT.drums, steps: WRITTEN },
-    };
-    expect(applyPreset(presetByName("Disco")!, edited).drums.steps).toBeNull();
+    expect(applyPreset(presetByName("Disco")!).drums.steps).toBeNull();
   });
 
   it("knows when a kit still matches the preset it names", () => {
-    const kit = applyPreset(presetByName("Boom Bap")!, DEFAULT_KIT);
+    const kit = applyPreset(presetByName("Boom Bap")!);
     expect(matchesPreset(kit)).toBe(true);
 
     const nudged = { ...kit, drums: { ...kit.drums, volume: 0.42 } };
@@ -170,14 +143,14 @@ describe("kit presets", () => {
     const restepped = { ...kit, drums: { ...kit.drums, steps: WRITTEN } };
     expect(matchesPreset(restepped)).toBe(false);
 
-    const relayered = { ...kit, layers: [...kit.layers, "strings" as const] };
+    const relayered: KitSettings = { ...kit, layers: [...kit.layers, "shimmer"] };
     expect(matchesPreset(relayered)).toBe(false);
   });
 });
 
 describe("kit storage", () => {
   it("round-trips through the metadata keys the song already used", () => {
-    const kit = applyPreset(presetByName("Neo Soul")!, DEFAULT_KIT);
+    const kit = applyPreset(presetByName("Neo Soul")!);
     const restored = kitFromMetadata(kitToMetadata(kit));
     expect(restored).toEqual(kit);
   });
@@ -185,26 +158,40 @@ describe("kit storage", () => {
   it("opens a sheet that predates the kit with its old sound and nothing playing", () => {
     const kit = kitFromMetadata({
       drums: { pattern: "Disco Floor", kick: "808", snare: "brush", volume: 0.6 },
-      subBass: { notes: "E D C B", tone: "round", octave: 2 },
     });
     expect(kit.preset).toBeNull();
     expect(kit.layers).toEqual([]);
     expect(kit.drums.pattern).toBe("Disco Floor");
     expect(kit.drums.kick).toBe("808");
-    expect(kit.bass.notes).toBe("E D C B");
     expect(kitIsSilent(kit)).toBe(true);
   });
 
+  it("ignores the pad and the bass walk a sheet may still be carrying", () => {
+    const stored = {
+      drums: { pattern: "Boom Bap" },
+      subBass: { notes: "E D C B", tone: "round", octave: 2 },
+      strings: { mode: "drone", style: "lush", volume: 0.4 },
+      kit: { layers: ["drum", "sub", "strings"] },
+    };
+    const kit = kitFromMetadata(stored);
+    expect(kit.layers).toEqual(["drum"]);
+    expect(kit).not.toHaveProperty("bass");
+    expect(kit).not.toHaveProperty("pad");
+    // Writing it back names only the keys the kit owns, so the row keeps the
+    // rest of what it had rather than having it cleared out from under it.
+    expect(Object.keys(kitToMetadata(kit)).sort()).toEqual(["drums", "kit"]);
+  });
+
   it("keeps the layer order the app renders in, whatever order they were stored", () => {
-    const kit = kitFromMetadata({ kit: { layers: ["strings", "drum", "nonsense", "sub"] } });
-    expect(kit.layers).toEqual(["drum", "sub", "strings"]);
+    const kit = kitFromMetadata({ kit: { layers: ["shimmer", "drum", "nonsense"] } });
+    expect(kit.layers).toEqual(["drum", "shimmer"]);
   });
 
   it("adds and removes one layer without disturbing the others", () => {
-    let kit: KitSettings = { ...DEFAULT_KIT, layers: ["drum", "sub"] };
-    kit = toggleLayer(kit, "strings");
-    expect(kit.layers).toEqual(["drum", "sub", "strings"]);
-    kit = toggleLayer(kit, "sub");
-    expect(kit.layers).toEqual(["drum", "strings"]);
+    let kit: KitSettings = { ...DEFAULT_KIT, layers: ["drum", "shimmer"] };
+    kit = toggleLayer(kit, "claps");
+    expect(kit.layers).toEqual(["drum", "claps", "shimmer"]);
+    kit = toggleLayer(kit, "shimmer");
+    expect(kit.layers).toEqual(["drum", "claps"]);
   });
 });

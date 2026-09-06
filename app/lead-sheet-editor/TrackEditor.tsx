@@ -51,15 +51,6 @@ import {
   type DrumSettings,
 } from "./DrumMachine";
 import { asSectionHeader } from "./songText";
-import { DEFAULT_STRING_SETTINGS, useStringPads } from "./StringPads";
-import {
-  DEFAULT_SUB_BASS_SETTINGS,
-  hasSubBassSettingsLine,
-  parseSubBassSettingsLine,
-  useSubBassWalk,
-  walkFromSettings,
-  type SubBassSettings,
-} from "./SubBass";
 
 // ─── Track editor ─────────────────────────────────────────────────────────────
 //
@@ -106,7 +97,6 @@ const LAYER_STYLES: Record<string, { bar: string; edge: string; dot: string }> =
   drum: { bar: "bg-track-5/25 text-ink-on-primary", edge: "bg-track-5", dot: "bg-track-5" },
   claps: { bar: "bg-track-4/25 text-ink-on-primary", edge: "bg-track-4", dot: "bg-track-4" },
   shimmer: { bar: "bg-track-2/25 text-ink-on-primary", edge: "bg-track-2", dot: "bg-track-2" },
-  drone: { bar: "bg-track-6/25 text-ink-on-primary", edge: "bg-primary-solid", dot: "bg-primary-solid" },
 };
 
 const layerStyle = (layer: string) =>
@@ -142,10 +132,7 @@ interface DragState {
 interface SongSettings {
   bpm: number;
   drums: DrumSettings;
-  /** The song's key, which is the note the drone track holds. */
   key: string | null;
-  /** The walk the sub bass track plays; see the Sub bass: line in SubBass.tsx. */
-  subBass: SubBassSettings;
 }
 
 /** Tempo, key and kit, read off the header block the same way the editor writes it. */
@@ -153,7 +140,6 @@ function readSongSettings(rawText: string): SongSettings {
   let bpm = 120;
   let drums = DEFAULT_DRUM_SETTINGS;
   let key: string | null = null;
-  let subBass = DEFAULT_SUB_BASS_SETTINGS;
   for (const line of rawText.split("\n")) {
     if (asSectionHeader(line) !== null) break;
     const tempo = line.match(/\bTempo:\s*(\d+)\b/i);
@@ -161,9 +147,8 @@ function readSongSettings(rawText: string): SongSettings {
     const inKey = line.match(/\bKey:\s*([A-G][#b]?m?)\b/i);
     if (inKey) key = inKey[1];
     if (hasDrumSettingsLine(line)) drums = parseDrumSettingsLine(line) ?? drums;
-    if (hasSubBassSettingsLine(line)) subBass = parseSubBassSettingsLine(line) ?? subBass;
   }
-  return { bpm, drums, key, subBass };
+  return { bpm, drums, key };
 }
 
 // ─── Recorded audio ───────────────────────────────────────────────────────────
@@ -414,27 +399,6 @@ export default function TrackEditor({
     activeLayers.has("drum"),
     settings.drums.shimmer
   );
-
-  // The drone holds the song's key underneath everything for as long as its
-  // clip runs — the same pad the preview's strings play, gated by a track
-  // instead of a toolbar button. A sheet with no Key: line holds G, the same
-  // fallback the pad has always used.
-  useStringPads(settings.key, playing && activeLayers.has("drone"), {
-    ...DEFAULT_STRING_SETTINGS,
-    mode: "drone",
-    volume: DEFAULT_STRING_SETTINGS.volume * fadeGain,
-  });
-
-  // The sub bass track walks down whatever notes the song's `Sub bass:` line
-  // names, which is why that line exists — the arranger reads the text, not the
-  // sheet's metadata, so without it a laid-out walk would play someone else's
-  // notes. Bars are counted as four beats here, the same assumption the drum
-  // patterns on these tracks are written to.
-  const subBassWalk = useMemo(() => walkFromSettings(settings.subBass), [settings.subBass]);
-  useSubBassWalk(subBassWalk, settings.bpm, 4, playing && activeLayers.has("sub"), {
-    ...settings.subBass,
-    volume: settings.subBass.volume * fadeGain,
-  });
 
   // ── Clip edits ─────────────────────────────────────────────────────────────
 

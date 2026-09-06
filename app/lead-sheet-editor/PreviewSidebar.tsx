@@ -287,13 +287,12 @@ function NextSongControl({
 }
 
 /**
- * The whole backing track, as one row.
+ * The kit, as one row.
  *
- * This replaced five: a drum machine with its own pattern picker, a claps
- * toggle, a shimmer picker, a string pad and a sub bass, each with its own
- * popover fighting for the same 19rem of width. Everything they did lives in
- * the Kit Designer now, and what is left here is the two things worth having in
- * the sidebar — whether it is playing, and a way in.
+ * This replaced a column of separate controls, each with its own popover
+ * fighting for the same 19rem of width. Everything they did lives in the Kit
+ * Designer now, and what is left here is the two things worth having in the
+ * sidebar — whether it is playing, and a way in.
  */
 function KitControl({
   kit,

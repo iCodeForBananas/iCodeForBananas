@@ -32,8 +32,7 @@ import {
 } from "../../LineReorder";
 import { serializeSheet } from "../../serialize";
 import { snapshotRevision } from "../../revisions";
-import { transposeKey, transposeText } from "../../../lib/transpose";
-import { progressionFrom } from "../../progression";
+import { transposeText } from "../../../lib/transpose";
 import { buildTimeline, cueAt, lineKey, type Timeline } from "../../timing";
 import { PlaybackBar, usePlayback, usePlaybackKeys } from "../../PlaybackBar";
 import { findYouTubeLink } from "../../youtube";
@@ -485,10 +484,9 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
   const [metronomeOn, setMetronomeOn] = useState(false);
   // Open-ended layer state: any cue tag layer name lives here, and the cue
   // events during a timed playback are what write it. Every name the kit knows
-  // is wired — drum, claps, shimmer, sub, strings — plus drone, which is the
-  // pad holding the key rather than walking the chords. A cue naming something
-  // else is still tracked here and simply makes no sound until something
-  // downstream acts on it.
+  // is wired — drum, claps, shimmer. A cue naming something else is still
+  // tracked here and simply makes no sound, which is what a song still carrying
+  // a [drone] or [sub] from before those layers were removed now does.
   const [activeLayers, setActiveLayers] = useState<Set<string>>(new Set());
   const [kit, setKit] = useState<KitSettings>(DEFAULT_KIT);
   const [kitOpen, setKitOpen] = useState(false);
@@ -522,16 +520,6 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
 
   const timeline = useMemo(() => buildTimeline(sheet?.sections ?? [], bpm), [sheet, bpm]);
   const hasTiming = timeline.cues.length > 0;
-
-  // What the string pads play: the song's own chords, in the key on screen.
-  const progression = useMemo(
-    () => progressionFrom(sheet?.sections ?? [], transposeSteps),
-    [sheet, transposeSteps]
-  );
-  const soundingKey = useMemo(
-    () => (sheet?.key ? transposeKey(sheet.key, transposeSteps) : null),
-    [sheet?.key, transposeSteps]
-  );
 
   // A YouTube link in the song promotes the recording to the transport's clock.
   // The stopwatch stays wired up underneath as the fallback for a video that
@@ -1265,16 +1253,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
         {/* The kit, playing. Mounted here rather than inside the designer so
             that closing the designer does not stop the music, and outside the
             sidebar so that collapsing the sidebar does not either. */}
-        <KitPlayer
-          kit={kit}
-          layers={soundingLayers}
-          bpm={bpm}
-          beatsPerBar={beatsPerBar}
-          progression={progression}
-          songKey={soundingKey}
-          transposeSteps={transposeSteps}
-          drumVolume={localVolume}
-        />
+        <KitPlayer kit={kit} layers={soundingLayers} bpm={bpm} drumVolume={localVolume} />
 
         {kitOpen && (
           <KitDesigner
