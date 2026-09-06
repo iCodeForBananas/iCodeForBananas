@@ -22,8 +22,6 @@ const TITLES: Record<string, string> = {
   "/space-math":                          "Space Math | iCodeForBananas",
   "/spelling-bee":                        "Spelling Bee | iCodeForBananas",
   "/workout-tracker":                     "Workout Tracker | iCodeForBananas",
-  "/websites/seattle-concrete":           "Seattle Concrete | iCodeForBananas",
-  "/websites/seattle-concrete/estimate":  "Concrete Estimate | iCodeForBananas",
 };
 
 export default function PathnameTitleSync() {

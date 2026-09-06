@@ -133,13 +133,6 @@ Two things in this layer are load-bearing and easy to undo:
 
 ## What is deliberately not on the system
 
-Two things in `app/` name colours of their own, and both are deliberate.
-
-**`app/websites/`** is a client's site. PavePlan Pro's orange and warm grey are
-that company's brand, declared once in `globals.css` as `--color-brand-*`;
-repainting a client site in this product's amber would be a bug, not
-consistency.
-
 **Painted scenes.** `app/shoot-simulator/ShootSimulator.tsx` is a night street
 drawn into a canvas — brick, bark, neon, graffiti, robots — and
 `SpaceBackground` in `app/space-math/SpaceMathPage.tsx` is a starfield. Layer 2
@@ -148,9 +141,9 @@ has nothing to say about what colour a comet tail is, and flattening a scene
 into four greys would delete the artwork rather than standardise it. The chrome
 around both is on the tokens.
 
-Everything else in `app/` reads Layer 2. Grepping it for a colour literal or a
-Tailwind palette class returns only those two, plus the print stylesheet, where
-white paper and black ink are the point.
+That is the only exception. Grepping `app/` for a colour literal or a Tailwind
+palette class returns those two files, plus the print stylesheet, where white
+paper and black ink are the point.
 
 ## What is deliberately not tokenized here
 

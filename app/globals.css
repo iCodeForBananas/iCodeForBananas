@@ -180,17 +180,6 @@
   font-variant-ligatures: none;
 }
 
-/* PavePlan Pro is a client's brand, not this product's, so it keeps its own
-   three colours. It is the one palette in the repo that is deliberately not
-   the design system: the paving company's orange and warm grey are theirs,
-   and repainting a client site in someone else's amber would be a bug.
-   Everything under app/websites/ is scoped to this and reads nothing above. */
-@theme inline {
-  --color-brand-primary: #141414;
-  --color-brand-accent: #f27d26;
-  --color-brand-bg: #e4e3e0;
-}
-
 main {
   min-height: 100vh;
 }
@@ -565,32 +554,3 @@ body {
   outline-offset: 2px;
 }
 
-/* ── PavePlan Pro component classes ──────────────────────────────────────── */
-.ppp-card {
-  @apply bg-white border border-brand-primary/10 rounded-xl shadow-sm overflow-hidden;
-}
-.ppp-input-label {
-  @apply text-[10px] uppercase tracking-wider font-semibold text-brand-primary/50 mb-1 block;
-}
-.ppp-input-field {
-  @apply w-full px-3 py-2 bg-brand-bg/30 border border-brand-primary/10 rounded-lg
-         focus:outline-none focus:ring-1 focus:ring-brand-accent transition-all;
-}
-.ppp-btn-primary {
-  @apply px-4 py-2 bg-brand-primary text-white rounded-lg font-medium
-         hover:bg-brand-primary/90 transition-colors disabled:opacity-50;
-}
-.ppp-btn-accent {
-  @apply px-4 py-2 bg-brand-accent text-white rounded-lg font-medium
-         hover:bg-brand-accent/90 transition-colors;
-}
-.ppp-scrollbar::-webkit-scrollbar {
-  width: 4px;
-}
-.ppp-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
-}
-.ppp-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(20, 20, 20, 0.15);
-  border-radius: 2px;
-}
