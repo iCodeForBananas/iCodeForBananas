@@ -34,31 +34,57 @@ const TUNINGS: Record<string, string[]> = {
   "Open E (EBEG#BE)":  ["E","B","E","G#","B","E"],
 };
 
+/**
+ * Which of the five CAGED shapes a note belongs to. That is identity, not
+ * importance — no shape outranks another — which is exactly what color.track
+ * is for, so they take the categorical set in CAGED order and nothing here
+ * names a hue. All five carry the same near-black label; see the amber rule
+ * in tokens/README.
+ */
 const SHAPE_COLOURS: Record<CagedKey, { fill: string; stroke: string }> = {
-  C: { fill: "#facc15", stroke: "#78600a" },
-  A: { fill: "#4ade80", stroke: "#166534" },
-  G: { fill: "#38bdf8", stroke: "#075985" },
-  E: { fill: "#f472b6", stroke: "#9d174d" },
-  D: { fill: "#c084fc", stroke: "#6b21a8" },
+  C: { fill: "var(--ds-color-track-1)", stroke: "var(--ds-color-border-strong)" },
+  A: { fill: "var(--ds-color-track-2)", stroke: "var(--ds-color-border-strong)" },
+  G: { fill: "var(--ds-color-track-3)", stroke: "var(--ds-color-border-strong)" },
+  E: { fill: "var(--ds-color-track-4)", stroke: "var(--ds-color-border-strong)" },
+  D: { fill: "var(--ds-color-track-5)", stroke: "var(--ds-color-border-strong)" },
 };
 
-// Every scale note, when no one shape is picked out.
-const ALL_FILL   = "#facc15";
-const ALL_STROKE = "#78600a";
+// Every scale note, when no one shape is picked out. No shape is being named,
+// so this is the brand rather than one of the five.
+const ALL_FILL   = "var(--ds-color-primary-solid)";
+const ALL_STROKE = "var(--ds-color-border-strong)";
 
 // The ring drawn around the notes that make up the chord shape itself.
-const CHORD_RING = "#ffffff";
+const CHORD_RING = "var(--ds-color-text-primary)";
 
-// The root note keeps one colour of its own, whichever position it falls in —
-// a red that none of the five position colours can be confused with.
-const ROOT_FILL         = "#ef4444";
-const ROOT_STROKE       = "#ffffff";
-const ROOT_TEXT         = "#ffffff";
-const ROOT_MUTED_STROKE = "#8f4b4b";
+// The root keeps one colour of its own whichever position it falls in. It is
+// the counter-accent rather than a sixth track: which shape a note belongs to
+// and whether a note is the root are two different questions, and accent.solid
+// exists for exactly that second axis.
+const ROOT_FILL         = "var(--ds-color-accent-solid)";
+const ROOT_STROKE       = "var(--ds-color-text-primary)";
+const ROOT_TEXT         = "var(--ds-color-text-on-primary)";
+const ROOT_MUTED_STROKE = "var(--ds-color-border-strong)";
 
-const MUTED_FILL   = "#4a4238";
-const MUTED_STROKE = "#6b6154";
-const MUTED_TEXT   = "#9a9186";
+// A note outside the selected shape: still on the neck, just not part of the
+// box being drilled. It drops to the surface it is drawn on rather than to a
+// dimmer version of its own colour.
+const MUTED_FILL   = "var(--ds-color-surface-raised)";
+const MUTED_STROKE = "var(--ds-color-border-strong)";
+const MUTED_TEXT   = "var(--ds-color-text-muted)";
+
+// The neck itself. A diagram of a fretboard rather than a picture of one: the
+// board is the sunken plane, the nut is ink, the wires and strings are the two
+// border weights, and the inlays are the plane the board sits on. Nothing here
+// is wood-coloured, which is what lets the whole thing survive a theme flip.
+const BOARD_BG     = "var(--ds-color-surface-sunken)";
+const BOARD_FACE   = "var(--ds-color-surface-base)";
+const BOARD_OPEN   = "var(--ds-color-surface-sunken)";
+const NUT          = "var(--ds-color-text-primary)";
+const FRET_WIRE    = "var(--ds-color-border-strong)";
+const STRING       = "var(--ds-color-border-strong)";
+const INLAY        = "var(--ds-color-border-subtle)";
+const FRET_LABEL   = "var(--ds-color-text-muted)";
 
 const FRET_MARKER_FRETS = [3, 5, 7, 9, 12, 15, 17, 19, 21, 24];
 const DOUBLE_MARKER_FRETS = new Set([12, 24]);
@@ -155,14 +181,13 @@ export default function ScaleTool({ rootKey }: { rootKey: string }) {
   const nutX = LW + FW;
 
   const selStyle: React.CSSProperties = {
-    background: "#111",
-    color: "#facc15",
-    border: "1px solid #333",
+    background: "var(--ds-color-surface-sunken)",
+    color: "var(--ds-color-text-primary)",
+    border: "1px solid var(--ds-color-border-subtle)",
     borderRadius: 8,
     padding: "6px 10px",
-    fontSize: "0.875rem",
+    fontSize: "var(--ds-font-size-13)",
     cursor: "pointer",
-    outline: "none",
   };
 
   const chooseShape = (value: string) => {
@@ -175,7 +200,7 @@ export default function ScaleTool({ rootKey }: { rootKey: string }) {
       {/* Controls */}
       <div className="flex flex-wrap gap-4 items-end">
         <label className="flex flex-col gap-1" title="The type of scale — each scale has a unique pattern of notes that gives it a distinctive sound and mood">
-          <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#888" }}>
+          <span className="text-10 font-semibold uppercase tracking-wider text-ink-muted">
             Scale
           </span>
           <select
@@ -189,7 +214,7 @@ export default function ScaleTool({ rootKey }: { rootKey: string }) {
         </label>
 
         <label className="flex flex-col gap-1" title="How your guitar strings are tuned from low E to high e — Standard EADGBE is the most common tuning for beginners">
-          <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#888" }}>
+          <span className="text-10 font-semibold uppercase tracking-wider text-ink-muted">
             Tuning
           </span>
           <select
@@ -203,7 +228,7 @@ export default function ScaleTool({ rootKey }: { rootKey: string }) {
         </label>
 
         <label className="flex flex-col gap-1.5" title="How many frets to display on the neck — drag to see more or fewer positions">
-          <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#888" }}>
+          <span className="text-10 font-semibold uppercase tracking-wider text-ink-muted">
             Frets: {numFrets}
           </span>
           <input
@@ -217,7 +242,7 @@ export default function ScaleTool({ rootKey }: { rootKey: string }) {
               localStorage.setItem("st-frets", String(v));
             }}
             title="Drag to show more or fewer frets on the neck — higher frets = higher pitch"
-            className="accent-yellow-400 w-36"
+            className="w-36 accent-primary-solid"
           />
         </label>
 
@@ -225,7 +250,7 @@ export default function ScaleTool({ rootKey }: { rootKey: string }) {
           className="flex flex-col gap-1.5"
           title="CAGED: the five chord shapes a guitar can hold, and the five places on the neck the scale sits around them. Pick one to drill it, or show every note at once."
         >
-          <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#888" }}>
+          <span className="text-10 font-semibold uppercase tracking-wider text-ink-muted">
             CAGED shape
           </span>
           <div className="flex gap-1.5">
@@ -235,9 +260,11 @@ export default function ScaleTool({ rootKey }: { rootKey: string }) {
               title="Show every note of the scale on the whole neck, with the root note marked"
               className="rounded-lg px-2.5 py-1 text-sm font-semibold cursor-pointer"
               style={{
-                background: selectedShape === null ? ALL_FILL : "#111",
-                color:      selectedShape === null ? "#000"   : "#888",
-                border: `1px solid ${selectedShape === null ? ALL_FILL : "#333"}`,
+                background: selectedShape === null ? ALL_FILL : "var(--ds-color-surface-sunken)",
+                color: selectedShape === null
+                  ? "var(--ds-color-text-on-primary)"
+                  : "var(--ds-color-text-muted)",
+                border: `1px solid ${selectedShape === null ? ALL_FILL : "var(--ds-color-border-subtle)"}`,
               }}
             >
               All
@@ -253,9 +280,9 @@ export default function ScaleTool({ rootKey }: { rootKey: string }) {
                   title={`${key} shape — ${CAGED_BLURB[key]}`}
                   className="rounded-lg px-2.5 py-1 text-sm font-semibold cursor-pointer"
                   style={{
-                    background: active ? colour.fill : "#111",
-                    color:      active ? "#000" : colour.fill,
-                    border: `1px solid ${active ? colour.fill : "#333"}`,
+                    background: active ? colour.fill : "var(--ds-color-surface-sunken)",
+                    color: active ? "var(--ds-color-text-on-primary)" : colour.fill,
+                    border: `1px solid ${active ? colour.fill : "var(--ds-color-border-subtle)"}`,
                   }}
                 >
                   {key}
@@ -267,16 +294,16 @@ export default function ScaleTool({ rootKey }: { rootKey: string }) {
       </div>
 
       {/* Fretboard */}
-      <div className="overflow-x-auto rounded-xl" style={{ background: "#0f0800" }}>
+      <div className="overflow-x-auto rounded-xl" style={{ background: BOARD_BG }}>
         <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ display: "block" }}>
           {/* Background */}
-          <rect width={W} height={H} fill="#0f0800" />
+          <rect width={W} height={H} fill={BOARD_BG} />
 
           {/* Fretboard body */}
-          <rect x={LW} y={HH} width={(numFrets + 1) * FW + PR} height={6 * SH} fill="#2c1a08" />
+          <rect x={LW} y={HH} width={(numFrets + 1) * FW + PR} height={6 * SH} fill={BOARD_FACE} />
 
           {/* Open string area (before nut) */}
-          <rect x={LW} y={HH} width={FW} height={6 * SH} fill="#1e1205" />
+          <rect x={LW} y={HH} width={FW} height={6 * SH} fill={BOARD_OPEN} />
 
           {/* Highlighted band behind each copy of the selected shape */}
           {selectedShape !== null && shapeSpans.map((p, i) => (
@@ -293,7 +320,7 @@ export default function ScaleTool({ rootKey }: { rootKey: string }) {
           <line
             x1={nutX} y1={HH + 4}
             x2={nutX} y2={HH + 6 * SH - 4}
-            stroke="#e0d4b8" strokeWidth={5} strokeLinecap="round"
+            stroke={NUT} strokeWidth={5} strokeLinecap="round"
           />
 
           {/* Fret wires */}
@@ -302,7 +329,7 @@ export default function ScaleTool({ rootKey }: { rootKey: string }) {
               key={fret}
               x1={LW + (fret + 1) * FW} y1={HH + 4}
               x2={LW + (fret + 1) * FW} y2={HH + 6 * SH - 4}
-              stroke="#7a7060" strokeWidth={1.5} strokeLinecap="round"
+              stroke={FRET_WIRE} strokeWidth={1.5} strokeLinecap="round"
             />
           ))}
 
@@ -311,11 +338,11 @@ export default function ScaleTool({ rootKey }: { rootKey: string }) {
             const x = cx(fret);
             return DOUBLE_MARKER_FRETS.has(fret) ? (
               <g key={fret}>
-                <circle cx={x} cy={(cy(1) + cy(2)) / 2} r={4.5} fill="#3a2d1a" />
-                <circle cx={x} cy={(cy(3) + cy(4)) / 2} r={4.5} fill="#3a2d1a" />
+                <circle cx={x} cy={(cy(1) + cy(2)) / 2} r={4.5} fill={INLAY} />
+                <circle cx={x} cy={(cy(3) + cy(4)) / 2} r={4.5} fill={INLAY} />
               </g>
             ) : (
-              <circle key={fret} cx={x} cy={(cy(2) + cy(3)) / 2} r={4.5} fill="#3a2d1a" />
+              <circle key={fret} cx={x} cy={(cy(2) + cy(3)) / 2} r={4.5} fill={INLAY} />
             );
           })}
 
@@ -325,7 +352,7 @@ export default function ScaleTool({ rootKey }: { rootKey: string }) {
               key={s}
               x1={LW} y1={cy(s)}
               x2={W - PR} y2={cy(s)}
-              stroke="#c8b898" strokeWidth={STRING_THICKNESS[s]}
+              stroke={STRING} strokeWidth={STRING_THICKNESS[s]}
             />
           ))}
 
@@ -377,7 +404,7 @@ export default function ScaleTool({ rootKey }: { rootKey: string }) {
                   <text
                     x={cx(col)} y={cy(s)}
                     textAnchor="middle" dominantBaseline="central"
-                    fill={shown ? (isRoot ? ROOT_TEXT : "#000") : MUTED_TEXT}
+                    fill={shown ? (isRoot ? ROOT_TEXT : "var(--ds-color-text-on-primary)") : MUTED_TEXT}
                     fontSize={note.length > 1 ? 8 : 9}
                     fontWeight="bold"
                     fontFamily="system-ui, -apple-system, sans-serif"
@@ -395,8 +422,8 @@ export default function ScaleTool({ rootKey }: { rootKey: string }) {
               key={s}
               x={LW / 2} y={cy(s)}
               textAnchor="middle" dominantBaseline="central"
-              fill="#facc15" fontSize={12} fontWeight="bold"
-              fontFamily="system-ui, -apple-system, sans-serif"
+              fill="var(--ds-color-primary-text)" fontSize={12} fontWeight={600}
+              fontFamily="var(--ds-font-sans)"
             >
               {note}
             </text>
@@ -406,8 +433,8 @@ export default function ScaleTool({ rootKey }: { rootKey: string }) {
           <text
             x={cx(0)} y={HH / 2}
             textAnchor="middle" dominantBaseline="central"
-            fill="#9a8a6a" fontSize={9}
-            fontFamily="system-ui, -apple-system, sans-serif"
+            fill={FRET_LABEL} fontSize={9}
+            fontFamily="var(--ds-font-sans)"
           >
             Open
           </text>
@@ -418,10 +445,10 @@ export default function ScaleTool({ rootKey }: { rootKey: string }) {
                 key={fret}
                 x={cx(fret)} y={HH / 2}
                 textAnchor="middle" dominantBaseline="central"
-                fill={lit ? SHAPE_COLOURS[selectedShape].fill : "#9a8a6a"}
+                fill={lit ? SHAPE_COLOURS[selectedShape].fill : FRET_LABEL}
                 fontSize={11}
-                fontWeight={lit ? "bold" : "normal"}
-                fontFamily="system-ui, -apple-system, sans-serif"
+                fontWeight={lit ? 600 : 400}
+                fontFamily="var(--ds-font-sans)"
               >
                 {fret}
               </text>
@@ -433,14 +460,8 @@ export default function ScaleTool({ rootKey }: { rootKey: string }) {
       {/* Scale info */}
       <div className="flex flex-col sm:flex-row gap-4">
         {/* Notes & degrees */}
-        <div
-          className="flex-1 rounded-xl p-4"
-          style={{ background: "#111", border: "1px solid #222" }}
-        >
-          <div
-            className="text-xs font-semibold uppercase tracking-wider mb-3"
-            style={{ color: "#666" }}
-          >
+        <div className="flex-1 rounded-xl border border-line-subtle bg-surface-raised p-4">
+          <div className="mb-3 text-10 font-semibold uppercase tracking-wider text-ink-muted">
             {rootKey} {scaleType}
             {selectedShape !== null && ` — ${selectedShape} shape`}
           </div>
@@ -457,19 +478,21 @@ export default function ScaleTool({ rootKey }: { rootKey: string }) {
                       : `${note} — scale degree ${degree}`
                   }
                   style={{
-                    background: isRoot ? ROOT_FILL : "#facc15",
+                    background: isRoot ? ROOT_FILL : ALL_FILL,
                     minWidth: 44,
                   }}
                 >
                   <span
-                    className="text-sm font-bold leading-tight"
-                    style={{ color: isRoot ? ROOT_TEXT : "#000" }}
+                    className="text-13 font-semibold leading-tight"
+                    style={{ color: isRoot ? ROOT_TEXT : "var(--ds-color-text-on-primary)" }}
                   >
                     {note}
                   </span>
+                  {/* The degree is the same label at lower emphasis, so it is
+                      the same colour held back rather than a second one. */}
                   <span
-                    className="text-xs leading-tight"
-                    style={{ color: isRoot ? "rgba(255,255,255,0.75)" : "rgba(0,0,0,0.55)" }}
+                    className="text-10 leading-tight opacity-60"
+                    style={{ color: isRoot ? ROOT_TEXT : "var(--ds-color-text-on-primary)" }}
                   >
                     {degree}
                   </span>
@@ -478,7 +501,7 @@ export default function ScaleTool({ rootKey }: { rootKey: string }) {
             })}
           </div>
           {selectedShape !== null && (
-            <div className="text-xs mt-3 flex flex-col gap-1" style={{ color: "#888" }}>
+            <div className="mt-3 flex flex-col gap-1 text-10 text-ink-muted">
               <span>{CAGED_BLURB[selectedShape]}.</span>
               {shapeSpans.length > 0 ? (
                 <span>
@@ -500,7 +523,7 @@ export default function ScaleTool({ rootKey }: { rootKey: string }) {
                 </span>
               )}
               {!standardTuning && (
-                <span style={{ color: "#c08a3e" }}>
+                <span className="text-primary-text">
                   CAGED is a standard-tuning system. The positions follow your tuning&apos;s roots,
                   but the ringed shape only spells a chord in standard tuning.
                 </span>
@@ -510,14 +533,8 @@ export default function ScaleTool({ rootKey }: { rootKey: string }) {
         </div>
 
         {/* Legend */}
-        <div
-          className="rounded-xl p-4 flex flex-col justify-center gap-2 shrink-0"
-          style={{ background: "#111", border: "1px solid #222" }}
-        >
-          <div
-            className="text-xs font-semibold uppercase tracking-wider mb-1"
-            style={{ color: "#666" }}
-          >
+        <div className="flex shrink-0 flex-col justify-center gap-2 rounded-xl border border-line-subtle bg-surface-raised p-4">
+          <div className="mb-1 text-10 font-semibold uppercase tracking-wider text-ink-muted">
             CAGED shapes
           </div>
           {CAGED_ORDER.map(key => (
@@ -536,29 +553,23 @@ export default function ScaleTool({ rootKey }: { rootKey: string }) {
                   border: `1.5px solid ${SHAPE_COLOURS[key].stroke}`,
                 }}
               />
-              <span className="text-sm" style={{ color: "#ccc" }}>
-                {key} shape
-              </span>
+              <span className="text-13 text-ink-primary">{key} shape</span>
             </button>
           ))}
-          <div className="flex flex-col gap-2 mt-1 pt-2" style={{ borderTop: "1px solid #222" }}>
+          <div className="mt-1 flex flex-col gap-2 border-t border-line-subtle pt-2">
             <div className="flex items-center gap-2">
               <div
                 className="w-5 h-5 rounded-full shrink-0"
                 style={{ background: ROOT_FILL, border: `2.5px solid ${ROOT_STROKE}` }}
               />
-              <span className="text-sm" style={{ color: "#ccc" }}>
-                Root note ({rootKey})
-              </span>
+              <span className="text-13 text-ink-primary">Root note ({rootKey})</span>
             </div>
             <div className="flex items-center gap-2" title="These notes spell the chord the shape is named after">
               <div
                 className="w-5 h-5 rounded-full shrink-0"
                 style={{ background: "transparent", border: `2px solid ${CHORD_RING}` }}
               />
-              <span className="text-sm" style={{ color: "#ccc" }}>
-                In the chord shape
-              </span>
+              <span className="text-13 text-ink-primary">In the chord shape</span>
             </div>
           </div>
         </div>

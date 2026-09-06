@@ -1,59 +1,92 @@
+/* The fretboard grid.
+   Every colour is a Layer 2 token, so the board follows the app's theme rather
+   than pinning one: a fretted note is the primary fill with the near-black
+   label the amber rule requires, an open or in-scale note is a raised surface,
+   and the wood between them is the sunken plane the whole board sits on. */
+
 .fretboard {
   display: flex;
-  border-top: 1px solid #373A40;
-  border-bottom: 1px solid #373A40;
-  transition: border-color 0.3s ease;
+  border-top: 1px solid var(--ds-color-border-subtle);
+  border-bottom: 1px solid var(--ds-color-border-subtle);
+  transition: border-color var(--ds-duration-240) var(--ds-ease-out);
 }
 
 .fret {
-  border-left: 1px solid #373A40;
+  border-left: 1px solid var(--ds-color-border-subtle);
   flex: 1;
   display: flex;
   flex-direction: column;
-  transition: border-color 0.3s ease;
+  transition: border-color var(--ds-duration-240) var(--ds-ease-out);
 }
 
 .note {
   padding: 4px;
   text-align: center;
-  font-size: 0.8rem;
-  border-bottom: 1px solid #373A40;
-  color: #000000;
-  background-color: #ffffff;
-  transition: all 0.3s ease;
+  font-size: var(--ds-font-size-13);
+  border-bottom: 1px solid var(--ds-color-border-subtle);
+  color: var(--ds-color-text-muted);
+  background-color: var(--ds-color-surface-sunken);
+  transition:
+    background-color var(--ds-duration-240) var(--ds-ease-out),
+    color var(--ds-duration-240) var(--ds-ease-out);
 }
 
 .note.open {
-  font-weight: bold;
-  background-color: #303033;
-  color: #ffffff;
+  font-weight: var(--ds-font-weight-emphasis);
+  background-color: var(--ds-color-surface-raised);
+  color: var(--ds-color-text-primary);
 }
 
 .note.scale {
-  background-color: #303033;
-  color: #ffffff;
+  background-color: var(--ds-color-surface-raised);
+  color: var(--ds-color-text-primary);
 }
 
 .note.highlight {
-  background-color: #FFD700;
-  color: #000000;
-  font-weight: bold;
+  background-color: var(--ds-color-primary-solid);
+  color: var(--ds-color-text-on-primary);
+  font-weight: var(--ds-font-weight-emphasis);
 }
 
+/* Quiz feedback: a guess that turned out to be in the scale, and one that did
+   not. A tint behind the note rather than a solid fill, because neither status
+   colour can carry a legible label in both themes — a near-black label clears
+   4.9:1 on danger in dark and only 3.4:1 in light. Putting the colour behind
+   ink text sidesteps that instead of picking a theme to fail in.
+
+   They live here rather than as utility classes on the element because .note
+   sets its own colour, and a rule in the same stylesheet is what reliably wins
+   against it. */
+.note.correct {
+  background-color: color-mix(in oklab, var(--ds-color-success) 30%, var(--ds-color-surface-raised));
+  color: var(--ds-color-text-primary);
+  font-weight: var(--ds-font-weight-emphasis);
+}
+
+.note.wrong {
+  background-color: color-mix(in oklab, var(--ds-color-danger) 30%, var(--ds-color-surface-raised));
+  color: var(--ds-color-text-primary);
+  font-weight: var(--ds-font-weight-emphasis);
+}
+
+/* Position variants of a highlighted note: which CAGED shape a note belongs to.
+   That is identity rather than importance, which is what color.track is for, so
+   they take the categorical set instead of four shades of the same yellow. All
+   four carry the same near-black label, for the reason in tokens/README. */
 .note.highlight-p0 {
-  background-color: #e6c200;
+  background-color: var(--ds-color-track-1);
 }
 
 .note.highlight-p1 {
-  background-color: #cca800;
+  background-color: var(--ds-color-track-2);
 }
 
 .note.highlight-p2 {
-  background-color: #b38f00;
+  background-color: var(--ds-color-track-3);
 }
 
 .note.highlight-p3 {
-  background-color: #d4b800;
+  background-color: var(--ds-color-track-4);
 }
 
 .fretboard-wrapper {

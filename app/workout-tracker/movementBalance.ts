@@ -28,10 +28,15 @@ export const MOVEMENT_MAP: Partial<Record<string, Movement[]>> = {
   Squat: ["legs"],
 };
 
+/**
+ * Push, pull and legs differ in kind, not in importance — a balanced week
+ * wants all three — so they take the categorical set rather than a red that
+ * would read as "push is the bad one".
+ */
 export const MOVEMENT_COLORS: Record<Movement, string> = {
-  push: "#ef4444",
-  pull: "#22c55e",
-  legs: "#3b82f6",
+  push: "var(--ds-color-track-1)",
+  pull: "var(--ds-color-track-2)",
+  legs: "var(--ds-color-track-3)",
 };
 
 export const MOVEMENT_EXERCISES = (Object.entries(MOVEMENT_MAP) as [string, Movement[]][]).reduce(

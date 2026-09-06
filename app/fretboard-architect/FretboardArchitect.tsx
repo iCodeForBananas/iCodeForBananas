@@ -47,18 +47,26 @@ const DEGREE_NAMES: Record<number, string> = {
 };
 
 const CAGED_COLORS: Record<string, { bg: string; text: string }> = {
-  C: { bg: "#3B82F6", text: "#fff" },
-  A: { bg: "#22C55E", text: "#fff" },
-  G: { bg: "#EAB308", text: "#000" },
-  E: { bg: "#F97316", text: "#fff" },
-  D: { bg: "#EF4444", text: "#fff" },
+  C: { bg: "var(--ds-color-track-1)", text: "var(--ds-color-text-on-primary)" },
+  A: { bg: "var(--ds-color-track-2)", text: "var(--ds-color-text-on-primary)" },
+  G: { bg: "var(--ds-color-track-3)", text: "var(--ds-color-text-on-primary)" },
+  E: { bg: "var(--ds-color-track-4)", text: "var(--ds-color-text-on-primary)" },
+  D: { bg: "var(--ds-color-track-5)", text: "var(--ds-color-text-on-primary)" },
 };
 
 const NNS_TENSION_COLORS: Record<string, string> = {
-  tonic: "#16a34a",
-  subdominant: "#ca8a04",
-  dominant: "#dc2626",
+  tonic: "var(--ds-color-success)",
+  subdominant: "var(--ds-color-primary-text)",
+  dominant: "var(--ds-color-danger)",
 };
+
+/**
+ * A note that is in the scale but is not the root. A tint of the brand rather
+ * than a surface step: in light theme surface.raised and surface.overlay are
+ * both white, so stepping up the elevation would have made a note in the scale
+ * and a note outside it exactly the same colour.
+ */
+const SCALE_TONE = "color-mix(in oklab, var(--ds-color-primary-solid) 22%, var(--ds-color-surface-raised))";
 
 const ROMAN = ["I","II","III","IV","V","VI","VII"];
 
@@ -201,24 +209,24 @@ const FretCell = React.memo(function FretCell({ info }: { info: CellInfo }) {
   else if (viewLayer === "scaleDegree") label = (isRoot || isScale) ? (DEGREE_NAMES[iv] ?? "") : "";
   else label = INTERVAL_NAMES[iv] ?? "";
 
-  let bg = "#1e1e1e";
-  let textColor = "#555";
-  let border = "1px solid #333";
+  let bg = "var(--ds-color-surface-raised)";
+  let textColor = "var(--ds-color-text-muted)";
+  let border = "1px solid var(--ds-color-border-subtle)";
   let fontWeight = "normal";
   let opacity = inRange ? 1 : 0.2;
 
   if (isVoicing) {
-    bg = "#a855f7";
-    textColor = "#fff";
+    bg = "var(--ds-color-accent-solid)";
+    textColor = "var(--ds-color-text-on-primary)";
     fontWeight = "bold";
     opacity = 1;
   } else if (isRoot && (isRoot)) {
-    bg = "#facc15";
-    textColor = "#000";
+    bg = "var(--ds-color-primary-solid)";
+    textColor = "var(--ds-color-text-on-primary)";
     fontWeight = "bold";
   } else if (isScale) {
-    bg = "#374151";
-    textColor = "#e5e7eb";
+    bg = SCALE_TONE;
+    textColor = "var(--ds-color-text-primary)";
   }
 
   if (showCAGED && cagedShape && (isRoot || isScale)) {
@@ -227,8 +235,8 @@ const FretCell = React.memo(function FretCell({ info }: { info: CellInfo }) {
   }
 
   if (show3NPS && is3NPS && isScale && !showCAGED) {
-    bg = "#6366f1";
-    textColor = "#fff";
+    bg = "var(--ds-color-track-6)";
+    textColor = "var(--ds-color-text-on-primary)";
   }
 
   return (
@@ -323,20 +331,20 @@ export default function FretboardArchitect() {
   const enharmonicRoot = ENHARMONIC[root] ?? null;
 
   return (
-    <div style={{ display:"flex", flexDirection:"column", height:"100%", background:"#111", color:"#e5e7eb", fontFamily:"monospace", minHeight:"100vh" }}>
+    <div style={{ display:"flex", flexDirection:"column", height:"100%", background:"var(--ds-color-surface-base)", color:"var(--ds-color-text-primary)", fontFamily:"monospace", minHeight:"100vh" }}>
       {/* Top Bar */}
-      <div style={{ padding:"8px 16px", borderBottom:"1px solid #333", display:"flex", alignItems:"center", gap:16 }}>
-        <h1 style={{ margin:0, fontSize:16, fontWeight:"bold", color:"#facc15", letterSpacing:1 }}>
+      <div style={{ padding:"8px 16px", borderBottom:"1px solid var(--ds-color-border-subtle)", display:"flex", alignItems:"center", gap:16 }}>
+        <h1 style={{ margin:0, fontSize:16, fontWeight:"bold", color:"var(--ds-color-primary-text)", letterSpacing:1 }}>
           FRETBOARD ARCHITECT
         </h1>
-        <span style={{ fontSize:11, color:"#6b7280" }}>
+        <span style={{ fontSize:11, color:"var(--ds-color-text-muted)" }}>
           {root} {scaleName} · {TOTAL_FRETS} frets · {TUNING_PRESETS[tuningKey].label}
         </span>
       </div>
 
       <div style={{ display:"flex", flex:1, overflow:"hidden" }}>
         {/* ── Left Control Panel ── */}
-        <div style={{ width:220, background:"#161616", borderRight:"1px solid #333", overflowY:"auto", padding:12, flexShrink:0, display:"flex", flexDirection:"column", gap:14 }}>
+        <div style={{ width:220, background:"var(--ds-color-surface-sunken)", borderRight:"1px solid var(--ds-color-border-subtle)", overflowY:"auto", padding:12, flexShrink:0, display:"flex", flexDirection:"column", gap:14 }}>
 
           {/* Tuning */}
           <Section title="TUNING">
@@ -345,7 +353,7 @@ export default function FretboardArchitect() {
                 {TUNING_PRESETS[k].label.split(" ")[0]}
               </RadioBtn>
             ))}
-            <div style={{ fontSize:10, color:"#9ca3af", marginTop:4 }}>
+            <div style={{ fontSize:10, color:"var(--ds-color-text-muted)", marginTop:4 }}>
               {reversedTuning.slice().reverse().join(" – ")}
             </div>
           </Section>
@@ -357,9 +365,9 @@ export default function FretboardArchitect() {
                 <button key={r} onClick={() => setRoot(r)}
                   style={{
                     padding:"2px 6px", fontSize:10, borderRadius:3, cursor:"pointer",
-                    background: root === r ? "#facc15" : "#2a2a2a",
-                    color: root === r ? "#000" : "#9ca3af",
-                    border: "1px solid " + (root === r ? "#facc15" : "#444"),
+                    background: root === r ? "var(--ds-color-primary-solid)" : "var(--ds-color-surface-raised)",
+                    color: root === r ? "var(--ds-color-text-on-primary)" : "var(--ds-color-text-muted)",
+                    border: "1px solid " + (root === r ? "var(--ds-color-primary-solid)" : "var(--ds-color-border-strong)"),
                   }}>
                   {r}{ENHARMONIC[r] ? `/${ENHARMONIC[r]}` : ""}
                 </button>
@@ -369,12 +377,12 @@ export default function FretboardArchitect() {
 
           <Section title="SCALE">
             <select value={scaleName} onChange={e => setScaleName(e.target.value)}
-              style={{ width:"100%", background:"#2a2a2a", color:"#e5e7eb", border:"1px solid #444", borderRadius:3, padding:4, fontSize:11 }}>
+              style={{ width:"100%", background:"var(--ds-color-surface-raised)", color:"var(--ds-color-text-primary)", border:"1px solid var(--ds-color-border-strong)", borderRadius:3, padding:4, fontSize:11 }}>
               {Object.keys(SCALE_DEFS).map(s => (
                 <option key={s} value={s}>{s}</option>
               ))}
             </select>
-            <div style={{ fontSize:10, color:"#9ca3af", marginTop:4 }}>
+            <div style={{ fontSize:10, color:"var(--ds-color-text-muted)", marginTop:4 }}>
               Intervals: [{scaleIntervals.join(",")}]
             </div>
           </Section>
@@ -414,17 +422,17 @@ export default function FretboardArchitect() {
             </label>
             {rangeFocus && (
               <>
-                <div style={{ fontSize:10, color:"#9ca3af", marginTop:6 }}>
+                <div style={{ fontSize:10, color:"var(--ds-color-text-muted)", marginTop:6 }}>
                   Frets {rangeStart}–{rangeEnd} (span: {rangeEnd-rangeStart})
                 </div>
                 <div style={{ display:"flex", alignItems:"center", gap:4, marginTop:4 }}>
-                  <span style={{ fontSize:9, color:"#6b7280", width:20 }}>Lo</span>
+                  <span style={{ fontSize:9, color:"var(--ds-color-text-muted)", width:20 }}>Lo</span>
                   <input type="range" min={0} max={TOTAL_FRETS-1} value={rangeStart}
                     onChange={e => { const v = +e.target.value; setRangeStart(v); if(rangeEnd < v+2) setRangeEnd(v+2); }}
                     style={{ flex:1 }} />
                 </div>
                 <div style={{ display:"flex", alignItems:"center", gap:4 }}>
-                  <span style={{ fontSize:9, color:"#6b7280", width:20 }}>Hi</span>
+                  <span style={{ fontSize:9, color:"var(--ds-color-text-muted)", width:20 }}>Hi</span>
                   <input type="range" min={rangeStart+2} max={TOTAL_FRETS} value={rangeEnd}
                     onChange={e => setRangeEnd(+e.target.value)}
                     style={{ flex:1 }} />
@@ -441,25 +449,25 @@ export default function FretboardArchitect() {
             </label>
             {showVoicingPanel && (
               <div style={{ marginTop:8, display:"flex", flexDirection:"column", gap:6 }}>
-                <div style={{ fontSize:10, color:"#9ca3af" }}>Root</div>
+                <div style={{ fontSize:10, color:"var(--ds-color-text-muted)" }}>Root</div>
                 <div style={{ display:"flex", flexWrap:"wrap", gap:3 }}>
                   {ALL_ROOTS.map(r => (
                     <button key={r} onClick={() => setVoicingRoot(r)}
                       style={{ padding:"1px 5px", fontSize:9, borderRadius:2, cursor:"pointer",
-                        background: voicingRoot === r ? "#a855f7" : "#2a2a2a",
-                        color: voicingRoot === r ? "#fff" : "#9ca3af",
-                        border:"1px solid " + (voicingRoot === r ? "#a855f7" : "#444") }}>
+                        background: voicingRoot === r ? "var(--ds-color-accent-solid)" : "var(--ds-color-surface-raised)",
+                        color: voicingRoot === r ? "var(--ds-color-text-on-primary)" : "var(--ds-color-text-muted)",
+                        border:"1px solid " + (voicingRoot === r ? "var(--ds-color-accent-solid)" : "var(--ds-color-border-strong)") }}>
                       {r}
                     </button>
                   ))}
                 </div>
-                <div style={{ fontSize:10, color:"#9ca3af" }}>Quality</div>
+                <div style={{ fontSize:10, color:"var(--ds-color-text-muted)" }}>Quality</div>
                 {(["major","minor","dom7","maj7","m7"] as const).map(q => (
                   <RadioBtn key={q} selected={voicingQuality === q} onClick={() => setVoicingQuality(q)}>
                     {q === "dom7" ? "Dominant 7" : q === "maj7" ? "Major 7" : q === "m7" ? "Minor 7" : q.charAt(0).toUpperCase()+q.slice(1)}
                   </RadioBtn>
                 ))}
-                <div style={{ fontSize:10, color:"#9ca3af", marginTop:4 }}>
+                <div style={{ fontSize:10, color:"var(--ds-color-text-muted)", marginTop:4 }}>
                   Notes: {Array.from(voicingNotes).join(" – ")}
                 </div>
                 <label style={{ display:"flex", alignItems:"center", gap:6, fontSize:11, cursor:"pointer" }}>
@@ -468,14 +476,14 @@ export default function FretboardArchitect() {
                 </label>
                 {compareMode && (
                   <>
-                    <div style={{ fontSize:10, color:"#9ca3af" }}>Compare to</div>
+                    <div style={{ fontSize:10, color:"var(--ds-color-text-muted)" }}>Compare to</div>
                     {(["major","minor","dom7","maj7","m7"] as const).map(q => (
                       <RadioBtn key={q} selected={compareQuality === q} onClick={() => setCompareQuality(q)}>
                         {q === "dom7" ? "Dominant 7" : q === "maj7" ? "Major 7" : q === "m7" ? "Minor 7" : q.charAt(0).toUpperCase()+q.slice(1)}
                       </RadioBtn>
                     ))}
                     {diffNotes.size > 0 && (
-                      <div style={{ fontSize:10, color:"#fb923c", marginTop:4 }}>
+                      <div style={{ fontSize:10, color:"var(--ds-color-track-3)", marginTop:4 }}>
                         Difference: {Array.from(diffNotes).join(" vs ")}
                       </div>
                     )}
@@ -507,11 +515,11 @@ export default function FretboardArchitect() {
                 {fretNumbers.map(({ fret, marker }) => (
                   <div key={fret} style={{
                     width:32, textAlign:"center", fontSize:9,
-                    color: marker ? "#facc15" : "#555",
+                    color: marker ? "var(--ds-color-primary-text)" : "var(--ds-color-text-muted)",
                     fontWeight: marker ? "bold" : "normal",
                   }}>
                     {fret}
-                    {marker && <div style={{ width:6, height:6, borderRadius:"50%", background:"#facc15", margin:"1px auto 0" }} />}
+                    {marker && <div style={{ width:6, height:6, borderRadius:"50%", background:"var(--ds-color-primary-solid)", margin:"1px auto 0" }} />}
                   </div>
                 ))}
               </div>
@@ -543,7 +551,7 @@ export default function FretboardArchitect() {
                 return (
                   <div key={sIdx} style={{ display:"flex", alignItems:"center", gap:1 }}>
                     {/* String label */}
-                    <div style={{ width:28, textAlign:"right", fontSize:9, color:"#6b7280", paddingRight:4, flexShrink:0 }}>
+                    <div style={{ width:28, textAlign:"right", fontSize:9, color:"var(--ds-color-text-muted)", paddingRight:4, flexShrink:0 }}>
                       {openNote}
                     </div>
                     {/* Cells */}
@@ -574,12 +582,12 @@ export default function FretboardArchitect() {
                         <div key={fret} style={{ position:"relative" }}>
                           {/* Nut line at fret 0 */}
                           {fret === 0 && (
-                            <div style={{ position:"absolute", right:-2, top:0, bottom:0, width:3, background:"#888", zIndex:1 }} />
+                            <div style={{ position:"absolute", right:-2, top:0, bottom:0, width:3, background:"var(--ds-color-border-strong)", zIndex:1 }} />
                           )}
                           {/* String line */}
                           <div style={{
                             position:"absolute", top:"50%", left:0, right:0, height:1,
-                            background: sIdx < 2 ? "#888" : sIdx < 4 ? "#aaa" : "#ccc",
+                            background: sIdx < 2 ? "var(--ds-color-border-strong)" : sIdx < 4 ? "var(--ds-color-text-muted)" : "var(--ds-color-text-primary)",
                             zIndex:0,
                           }} />
                           <div style={{ position:"relative", zIndex:2 }}>
@@ -587,7 +595,7 @@ export default function FretboardArchitect() {
                           </div>
                           {/* Diff indicator */}
                           {showVoicingPanel && compareMode && isDiff && (isRoot || isScale || voicingNotes.has(note) || compareNotes.has(note)) && (
-                            <div style={{ position:"absolute", top:-3, right:-3, width:6, height:6, borderRadius:"50%", background:"#fb923c", zIndex:3 }} />
+                            <div style={{ position:"absolute", top:-3, right:-3, width:6, height:6, borderRadius:"50%", background:"var(--ds-color-track-3)", zIndex:3 }} />
                           )}
                         </div>
                       );
@@ -602,8 +610,8 @@ export default function FretboardArchitect() {
                   <div key={fret} style={{ width:32, height:8, display:"flex", justifyContent:"center", alignItems:"center", gap:2 }}>
                     {(fret === 12 || fret === 24) && (
                       <>
-                        <div style={{ width:4, height:4, borderRadius:"50%", background:"#facc15" }} />
-                        <div style={{ width:4, height:4, borderRadius:"50%", background:"#facc15" }} />
+                        <div style={{ width:4, height:4, borderRadius:"50%", background:"var(--ds-color-primary-solid)" }} />
+                        <div style={{ width:4, height:4, borderRadius:"50%", background:"var(--ds-color-primary-solid)" }} />
                       </>
                     )}
                   </div>
@@ -613,33 +621,33 @@ export default function FretboardArchitect() {
           </div>
 
           {/* Legend */}
-          <div style={{ display:"flex", gap:12, flexWrap:"wrap", fontSize:10, color:"#9ca3af" }}>
-            <LegendDot color="#facc15" textColor="#000" label="Root" />
-            <LegendDot color="#374151" textColor="#e5e7eb" label="Scale tone" />
-            <LegendDot color="#1e1e1e" textColor="#555" label="Non-scale" />
-            {showVoicingPanel && <LegendDot color="#a855f7" textColor="#fff" label="Voicing" />}
+          <div style={{ display:"flex", gap:12, flexWrap:"wrap", fontSize:10, color:"var(--ds-color-text-muted)" }}>
+            <LegendDot color="var(--ds-color-primary-solid)" textColor="var(--ds-color-text-on-primary)" label="Root" />
+            <LegendDot color={SCALE_TONE} textColor="var(--ds-color-text-primary)" label="Scale tone" />
+            <LegendDot color="var(--ds-color-surface-raised)" textColor="var(--ds-color-text-muted)" label="Non-scale" />
+            {showVoicingPanel && <LegendDot color="var(--ds-color-accent-solid)" textColor="var(--ds-color-text-on-primary)" label="Voicing" />}
             {overlay === "caged" && Object.entries(CAGED_COLORS).map(([s,c]) => (
               <LegendDot key={s} color={c.bg} textColor={c.text} label={`${s} shape`} />
             ))}
-            {overlay === "3nps" && <LegendDot color="#6366f1" textColor="#fff" label="3NPS position" />}
+            {overlay === "3nps" && <LegendDot color="var(--ds-color-track-6)" textColor="var(--ds-color-text-on-primary)" label="3NPS position" />}
           </div>
 
           {/* NNS Panel */}
           {showNNS && nnsChords.length > 0 && (
             <div>
-              <div style={{ fontSize:11, color:"#9ca3af", marginBottom:8, textTransform:"uppercase", letterSpacing:1 }}>
+              <div style={{ fontSize:11, color:"var(--ds-color-text-muted)", marginBottom:8, textTransform:"uppercase", letterSpacing:1 }}>
                 Nashville Number System — {root} {scaleName}
               </div>
               <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
                 {nnsChords.map(chord => (
                   <div key={chord.degree} style={{
-                    background:"#1e1e1e", border:`2px solid ${NNS_TENSION_COLORS[chord.tension]}`,
+                    background:"var(--ds-color-surface-raised)", border:`2px solid ${NNS_TENSION_COLORS[chord.tension]}`,
                     borderRadius:6, padding:"8px 12px", textAlign:"center", minWidth:60,
                   }}>
-                    <div style={{ fontSize:18, fontWeight:"bold", color:"#fff" }}>
+                    <div style={{ fontSize:18, fontWeight:600, color:"var(--ds-color-text-primary)" }}>
                       {chord.roman}{chord.symbol}
                     </div>
-                    <div style={{ fontSize:11, color:"#9ca3af" }}>{chord.chordRoot}{chord.symbol}</div>
+                    <div style={{ fontSize:11, color:"var(--ds-color-text-muted)" }}>{chord.chordRoot}{chord.symbol}</div>
                     <div style={{ fontSize:9, marginTop:4, color: NNS_TENSION_COLORS[chord.tension], textTransform:"uppercase" }}>
                       {chord.tension}
                     </div>
@@ -665,7 +673,7 @@ export default function FretboardArchitect() {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
-      <div style={{ fontSize:9, color:"#6b7280", textTransform:"uppercase", letterSpacing:1.5, marginBottom:6, borderBottom:"1px solid #2a2a2a", paddingBottom:3 }}>
+      <div style={{ fontSize:9, color:"var(--ds-color-text-muted)", textTransform:"uppercase", letterSpacing:1.5, marginBottom:6, borderBottom:"1px solid var(--ds-color-border-subtle)", paddingBottom:3 }}>
         {title}
       </div>
       <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
@@ -679,9 +687,9 @@ function RadioBtn({ selected, onClick, children }: { selected: boolean; onClick:
   return (
     <button onClick={onClick} style={{
       textAlign:"left", padding:"3px 8px", fontSize:11, borderRadius:3, cursor:"pointer",
-      background: selected ? "#facc15" : "#2a2a2a",
-      color: selected ? "#000" : "#9ca3af",
-      border: "1px solid " + (selected ? "#facc15" : "#444"),
+      background: selected ? "var(--ds-color-primary-solid)" : "var(--ds-color-surface-raised)",
+      color: selected ? "var(--ds-color-text-on-primary)" : "var(--ds-color-text-muted)",
+      border: "1px solid " + (selected ? "var(--ds-color-primary-solid)" : "var(--ds-color-border-strong)"),
       fontFamily:"monospace",
     }}>
       {children}
@@ -692,7 +700,7 @@ function RadioBtn({ selected, onClick, children }: { selected: boolean; onClick:
 function LegendDot({ color, textColor, label }: { color: string; textColor: string; label: string }) {
   return (
     <span style={{ display:"flex", alignItems:"center", gap:4 }}>
-      <span style={{ width:12, height:12, borderRadius:2, background:color, display:"inline-block", border:"1px solid #444" }} />
+      <span style={{ width:12, height:12, borderRadius:2, background:color, display:"inline-block", border:"1px solid var(--ds-color-border-strong)" }} />
       {label}
     </span>
   );

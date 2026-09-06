@@ -948,10 +948,10 @@ const playSound = (type: "correct" | "incorrect" | "badge") => {
 // ─── StarBank ─────────────────────────────────────────────────────────────────
 
 const StarBank = ({ score, onClear }: { score: number; onClear: () => void }) => (
-  <div className='w-full bg-slate-900/80 border-b border-white/10 p-3 pl-14 flex items-start sm:items-center gap-4 z-50 relative min-h-[60px]'>
+  <div className='w-full bg-surface-raised/80 border-b border-line-strong p-3 pl-14 flex items-start sm:items-center gap-4 z-50 relative min-h-[60px]'>
     <button
       onClick={onClear}
-      className='text-[10px] font-bold text-rose-400 hover:text-rose-300 hover:bg-rose-400/20 uppercase bg-rose-400/10 px-2 py-1 rounded transition-colors shrink-0'
+      className='shrink-0 rounded bg-danger/10 px-2 py-1 text-10 font-semibold uppercase text-danger transition-colors duration-120 ease-ui hover:bg-danger/20'
     >
       Clear
     </button>
@@ -966,7 +966,7 @@ const StarBank = ({ score, onClear }: { score: number; onClear: () => void }) =>
             transition={{ type: "spring", stiffness: 260, damping: 20 }}
             className='w-5 h-5'
           >
-            <Star className='w-5 h-5 text-yellow-400 fill-yellow-400 drop-shadow-[0_0_4px_rgba(250,204,21,0.8)]' />
+            <Star className='w-5 h-5 text-primary-text fill-primary-solid drop-shadow-sm' />
           </motion.div>
         ))}
       </AnimatePresence>
@@ -984,17 +984,17 @@ const SessionProgressBar = ({ correct }: { correct: number }) => {
   return (
     <div className='w-full mb-2 shrink-0'>
       <div className='flex justify-between items-center mb-1.5 px-1'>
-        <div className='flex items-center gap-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider'>
-          <Star className='w-3 h-3 text-yellow-400 fill-yellow-400' />
+        <div className='flex items-center gap-1.5 text-xs font-bold text-ink-muted uppercase tracking-wider'>
+          <Star className='w-3 h-3 text-primary-text fill-primary-solid' />
           Session
         </div>
-        <span className={`text-xs font-bold ${isDone ? "text-yellow-400" : "text-slate-400"}`}>
+        <span className={`text-xs font-bold ${isDone ? "text-primary-text" : "text-ink-muted"}`}>
           {correct} / {SESSION_GOAL} correct
         </span>
       </div>
-      <div className='w-full h-2.5 bg-slate-800/80 rounded-full overflow-hidden border border-white/5'>
+      <div className='w-full h-2.5 bg-surface-raised/80 rounded-full overflow-hidden border border-line-strong'>
         <motion.div
-          className={`h-full rounded-full ${isDone ? "bg-gradient-to-r from-yellow-400 to-amber-500" : "bg-gradient-to-r from-blue-500 via-violet-500 to-emerald-500"}`}
+          className={`h-full rounded-full ${isDone ? "bg-gradient-to-r from-primary-solid to-primary-hover" : "bg-gradient-to-r from-track-4 via-track-2 to-track-5"}`}
           initial={{ width: 0 }}
           animate={{ width: `${pct}%` }}
           transition={{ type: "spring", stiffness: 80, damping: 15 }}
@@ -1006,6 +1006,15 @@ const SessionProgressBar = ({ correct }: { correct: number }) => {
 
 // ─── Static decorations (module-level so Math.random never runs during render) ─
 
+/**
+ * The starfield, nebulae and comets, painted on a canvas.
+ *
+ * The literal whites and blues below are the one thing on this page that is
+ * not a token, and deliberately: this is a picture of a night sky, not a
+ * surface. Layer 2 names planes, ink and status, and has nothing to say about
+ * what colour a comet tail is. Everything the player actually reads — the
+ * problem, the answers, the score — sits above this in tokens.
+ */
 function SpaceBackground() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -1311,14 +1320,14 @@ export default function SpaceMathPage() {
   const skillsLearned = learnedCount(topicRecords);
 
   return (
-    <div className='flex-1 bg-black text-white selection:bg-blue-500/30 relative flex flex-col overflow-hidden max-h-screen'>
+    <div className='flex-1 bg-surface-base text-ink-primary selection:bg-primary-solid/30 relative flex flex-col overflow-hidden max-h-screen'>
       <SpaceBackground />
       <StarBank score={score} onClear={clearStars} />
       <main className='relative z-10 w-full pt-4 sm:pt-6 px-4 sm:px-6 pb-20 sm:pb-24 flex flex-col items-center flex-1 min-h-0 overflow-hidden'>
         <div className='w-full flex justify-between items-center mb-3 sm:mb-4 shrink-0'>
           <div className='flex items-center gap-3'>
-            <div className='p-2 bg-blue-600 rounded-xl shadow-lg shadow-blue-600/20'>
-              <Rocket className='w-5 h-5 sm:w-6 sm:h-6 text-white' />
+            <div className='p-2 bg-primary-solid rounded-xl shadow-raised'>
+              <Rocket className='w-5 h-5 sm:w-6 sm:h-6 text-ink-on-primary' />
             </div>
             <div>
               <h1 className='text-lg sm:text-xl font-bold tracking-tight'>Space Math</h1>
@@ -1326,7 +1335,7 @@ export default function SpaceMathPage() {
           </div>
           <button
             onClick={resetGame}
-            className='text-[10px] font-bold text-slate-400 hover:text-white hover:bg-white/10 uppercase bg-white/5 px-2.5 py-1 rounded-lg transition-colors border border-white/10'
+            className='text-[10px] font-bold text-ink-muted hover:text-ink-primary hover:bg-surface-raised/10 uppercase bg-surface-raised/5 px-2.5 py-1 rounded-lg transition-colors border border-line-strong'
           >
             Reset
           </button>
@@ -1346,27 +1355,27 @@ export default function SpaceMathPage() {
                   animate={{ y: [0, -20, 0], rotate: [0, 5, 0] }}
                   transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
                 >
-                  <Rocket className='w-24 h-24 sm:w-28 sm:h-28 md:w-36 md:h-36 text-blue-500 drop-shadow-[0_0_30px_rgba(59,130,246,0.5)]' />
+                  <Rocket className='w-24 h-24 sm:w-28 sm:h-28 md:w-36 md:h-36 text-primary-text drop-shadow-lg' />
                 </motion.div>
                 <motion.div
                   className='absolute -bottom-4 -right-4'
                   animate={{ scale: [1, 1.2, 1] }}
                   transition={{ repeat: Infinity, duration: 2 }}
                 >
-                  <Sparkles className='w-10 h-10 sm:w-12 sm:h-12 text-yellow-400' />
+                  <Sparkles className='w-10 h-10 sm:w-12 sm:h-12 text-primary-text' />
                 </motion.div>
               </div>
               <div>
-                <h2 className='text-3xl sm:text-4xl md:text-5xl font-black mb-3 sm:mb-4 bg-gradient-to-b from-white to-blue-300 bg-clip-text text-transparent'>
+                <h2 className='text-3xl sm:text-4xl md:text-5xl font-black mb-3 sm:mb-4 bg-gradient-to-b from-ink-primary to-ink-muted bg-clip-text text-transparent'>
                   Ready for Launch?
                 </h2>
-                <p className='text-sm sm:text-base text-blue-200/80 font-semibold'>
+                <p className='text-sm sm:text-base text-ink-muted font-semibold'>
                   {skillsLearned} of {TOPIC_PROGRESSION.length} skills learned
                 </p>
               </div>
               <button
                 onClick={startGame}
-                className='group relative px-10 sm:px-12 py-5 sm:py-6 bg-blue-600 rounded-3xl text-xl sm:text-2xl font-bold shadow-[0_10px_0_rgb(37,99,235)] active:shadow-none active:translate-y-[10px] transition-all hover:bg-blue-500'
+                className='group relative px-10 sm:px-12 py-5 sm:py-6 bg-primary-solid text-ink-on-primary rounded-3xl text-xl sm:text-2xl font-bold shadow-[0_10px_0_var(--ds-palette-amber-3)] active:shadow-none active:translate-y-[10px] transition-all hover:bg-primary-hover'
               >
                 <span className='flex items-center gap-3'>
                   START MISSION <ChevronRight className='w-7 h-7 sm:w-8 sm:h-8' />
@@ -1406,7 +1415,7 @@ export default function SpaceMathPage() {
                           cy='112'
                           r='104'
                           fill='none'
-                          stroke='rgba(255,255,255,0.55)'
+                          stroke='var(--ds-color-border-strong)'
                           strokeWidth='14'
                         />
                         <motion.circle
@@ -1414,7 +1423,7 @@ export default function SpaceMathPage() {
                           cy='112'
                           r='104'
                           fill='none'
-                          stroke={isCorrect ? "#ffffff" : "#fde68a"}
+                          stroke={isCorrect ? "var(--ds-color-success)" : "var(--ds-color-primary-text)"}
                           strokeWidth='14'
                           strokeLinecap='round'
                           strokeDasharray={2 * Math.PI * 104}
@@ -1423,19 +1432,19 @@ export default function SpaceMathPage() {
                           transition={{ duration: 2, ease: "linear" }}
                         />
                       </svg>
-                      <div className={`p-12 rounded-full shadow-2xl ${isCorrect ? "bg-green-500" : "bg-red-500"}`}>
+                      <div className={`p-12 rounded-full shadow-2xl ${isCorrect ? "bg-success/25" : "bg-danger/25"}`}>
                         {isCorrect ? (
-                          <Check className='w-32 h-32 text-white' />
+                          <Check className='w-32 h-32 text-ink-primary' />
                         ) : (
-                          <X className='w-32 h-32 text-white' />
+                          <X className='w-32 h-32 text-ink-primary' />
                         )}
                       </div>
                     </div>
                   </motion.div>
                 )}
               </AnimatePresence>
-              <div className='w-full flex-1 min-h-0 bg-slate-900/80 backdrop-blur-xl border border-white/10 rounded-[32px] sm:rounded-[40px] p-4 sm:p-6 shadow-2xl relative overflow-hidden flex flex-col'>
-                <div className='absolute top-3 right-4 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-blue-500/20 border border-blue-400/30 text-blue-200'>
+              <div className='w-full flex-1 min-h-0 bg-surface-raised/80 backdrop-blur-xl border border-line-strong rounded-[32px] sm:rounded-[40px] p-4 sm:p-6 shadow-2xl relative overflow-hidden flex flex-col'>
+                <div className='absolute top-3 right-4 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-primary-solid/15 border border-primary-solid/30 text-ink-muted'>
                   {topicLabel}
                 </div>
                 <div className='text-center mb-2 sm:mb-3 shrink-0'>
@@ -1452,7 +1461,7 @@ export default function SpaceMathPage() {
                         u.rate = 0.85;
                         window.speechSynthesis.speak(u);
                       }}
-                      className='mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-slate-700 hover:bg-slate-600 text-blue-300 hover:text-blue-200 transition-colors text-sm font-semibold'
+                      className='mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-surface-raised hover:bg-surface-overlay text-ink-muted hover:text-ink-muted transition-colors text-sm font-semibold'
                     >
                       <Volume2 className='w-5 h-5' /> Read aloud
                     </button>
@@ -1464,7 +1473,7 @@ export default function SpaceMathPage() {
                       key={i}
                       disabled={selectedAnswer !== null}
                       onClick={() => handleAnswer(opt)}
-                      className={`flex items-center justify-center rounded-3xl text-4xl sm:text-6xl md:text-8xl font-black transition-all border-b-[6px] sm:border-b-8 ${selectedAnswer === opt ? (isCorrect ? "bg-emerald-500 border-emerald-700 text-white" : "bg-rose-500 border-rose-700 text-white") : "bg-slate-800 border-slate-950 hover:bg-slate-700 text-white active:border-b-0 active:translate-y-[6px] sm:active:translate-y-[8px]"} ${selectedAnswer !== null && opt === problem.answer && selectedAnswer !== opt ? "bg-emerald-500/50 border-emerald-700/50" : ""}`}
+                      className={`flex items-center justify-center rounded-3xl text-4xl sm:text-6xl md:text-8xl font-black transition-all border-b-[6px] sm:border-b-8 ${selectedAnswer === opt ? (isCorrect ? "bg-success/25 border-success text-ink-primary" : "bg-danger/25 border-danger text-ink-primary") : "bg-surface-raised border-line-subtle hover:bg-surface-raised text-ink-primary active:border-b-0 active:translate-y-[6px] sm:active:translate-y-[8px]"} ${selectedAnswer !== null && opt === problem.answer && selectedAnswer !== opt ? "bg-success/50 border-success/40" : ""}`}
                     >
                       {opt}
                     </button>
@@ -1486,12 +1495,12 @@ export default function SpaceMathPage() {
                   animate={{ scale: [1, 1.2, 1], rotate: [0, 10, -10, 0] }}
                   transition={{ duration: 2, repeat: Infinity }}
                 >
-                  <Trophy className='w-36 h-36 sm:w-44 sm:h-44 md:w-56 md:h-56 text-yellow-400 drop-shadow-[0_0_40px_rgba(250,204,21,0.6)]' />
+                  <Trophy className='w-36 h-36 sm:w-44 sm:h-44 md:w-56 md:h-56 text-primary-text drop-shadow-lg' />
                 </motion.div>
                 {CONFETTI.map((p, i) => (
                   <motion.div
                     key={i}
-                    className='absolute top-1/2 left-1/2 w-2 h-2 bg-yellow-400 rounded-full'
+                    className='absolute top-1/2 left-1/2 w-2 h-2 bg-primary-solid rounded-full'
                     initial={{ x: 0, y: 0 }}
                     animate={{ x: p.x, y: p.y, opacity: 0, scale: 0 }}
                     transition={{ duration: 2, repeat: Infinity, delay: p.delay }}
@@ -1499,11 +1508,11 @@ export default function SpaceMathPage() {
                 ))}
               </div>
               <div>
-                <h2 className='text-4xl sm:text-5xl md:text-6xl font-black mb-3 sm:mb-4 bg-gradient-to-r from-yellow-400 via-white to-yellow-400 bg-clip-text text-transparent animate-pulse'>
+                <h2 className='text-4xl sm:text-5xl md:text-6xl font-black mb-3 sm:mb-4 bg-gradient-to-r from-primary-text via-ink-primary to-primary-text bg-clip-text text-transparent animate-pulse'>
                   SESSION COMPLETE!
                 </h2>
-                <p className='text-2xl sm:text-3xl text-blue-200'>
-                  You answered <span className='text-white font-bold'>25</span> questions correctly!
+                <p className='text-2xl sm:text-3xl text-ink-muted'>
+                  You answered <span className='text-ink-primary font-bold'>25</span> questions correctly!
                 </p>
               </div>
               <div className='flex flex-col gap-4 items-center'>
@@ -1519,13 +1528,13 @@ export default function SpaceMathPage() {
                     setRecentSignatures([p.signature]);
                     setGameState("playing");
                   }}
-                  className='px-10 sm:px-12 py-5 sm:py-6 bg-emerald-600 rounded-3xl text-xl sm:text-2xl font-bold shadow-[0_10px_0_rgb(5,150,105)] active:shadow-none active:translate-y-[10px] transition-all hover:bg-emerald-500'
+                  className='px-10 sm:px-12 py-5 sm:py-6 bg-primary-solid text-ink-on-primary rounded-3xl text-xl sm:text-2xl font-bold shadow-[0_10px_0_var(--ds-palette-amber-3)] active:shadow-none active:translate-y-[10px] transition-all hover:bg-primary-hover'
                 >
                   KEEP GOING
                 </button>
                 <button
                   onClick={resetGame}
-                  className='px-8 py-4 bg-slate-800 rounded-2xl text-lg sm:text-xl font-bold border border-white/10 hover:bg-slate-700 transition-colors'
+                  className='px-8 py-4 bg-surface-raised rounded-2xl text-lg sm:text-xl font-bold border border-line-strong hover:bg-surface-raised transition-colors'
                 >
                   START OVER
                 </button>
@@ -1534,8 +1543,8 @@ export default function SpaceMathPage() {
           )}
         </AnimatePresence>
       </main>
-      <div className='absolute -bottom-20 -left-20 w-64 h-64 bg-purple-900/20 rounded-full blur-3xl pointer-events-none' />
-      <div className='absolute -top-20 -right-20 w-80 h-80 bg-blue-900/20 rounded-full blur-3xl pointer-events-none' />
+      <div className='absolute -bottom-20 -left-20 w-64 h-64 bg-track-2/20 rounded-full blur-3xl pointer-events-none' />
+      <div className='absolute -top-20 -right-20 w-80 h-80 bg-track-4/20 rounded-full blur-3xl pointer-events-none' />
     </div>
   );
 }

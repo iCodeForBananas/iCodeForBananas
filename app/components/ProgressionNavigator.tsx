@@ -90,7 +90,7 @@ export default function ProgressionNavigator({ startKey = "G", bpm = 80 }: Progr
   };
 
   return (
-    <div className='text-[#1A1B1E] max-w-4xl'>
+    <div className='max-w-4xl text-ink-primary'>
       <div className='flex flex-wrap gap-3 items-center mb-4'>
         <label className='font-medium'>Key:</label>
         <select
@@ -99,7 +99,7 @@ export default function ProgressionNavigator({ startKey = "G", bpm = 80 }: Progr
             setKey(e.target.value);
             reset();
           }}
-          className='bg-[#1A1B1E]/20 text-[#1A1B1E] border border-[#373A40]/20 px-3 py-1.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#facc15]'
+          className='rounded-lg border border-line-subtle bg-surface-sunken px-3 py-1.5 text-ink-primary focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus'
         >
           {KEYS.map((k) => (
             <option key={k} value={k}>
@@ -109,7 +109,7 @@ export default function ProgressionNavigator({ startKey = "G", bpm = 80 }: Progr
         </select>
         <button
           onClick={() => setPlaying((p) => !p)}
-          className='bg-[#1A1B1E] hover:bg-[#1A1B1E]/80 text-[#facc15] px-4 py-1.5 rounded-lg transition-colors font-medium'
+          className='rounded-lg bg-primary-solid px-4 py-1.5 font-medium text-ink-on-primary transition-colors duration-120 ease-ui hover:bg-primary-hover'
         >
           {playing ? "Stop" : "Play"}
         </button>
@@ -124,10 +124,10 @@ export default function ProgressionNavigator({ startKey = "G", bpm = 80 }: Progr
           const isNext = nextFs.includes(f);
           const isMinor = f === "ii" || f === "iii" || f === "vi";
 
-          let bgColor = "bg-[#1A1B1E]/70 hover:bg-[#1A1B1E]/90 text-white";
-          if (isCurrent) bgColor = "bg-[#facc15] hover:bg-[#fde047] text-[#1A1B1E]";
-          else if (isNext) bgColor = "bg-[#facc15]/60 hover:bg-[#facc15]/80 text-[#1A1B1E]";
-          else if (isMinor) bgColor = "bg-[#1A1B1E]/50 hover:bg-[#1A1B1E]/70 text-white";
+          let bgColor = "bg-surface-raised hover:bg-surface-overlay text-ink-primary";
+          if (isCurrent) bgColor = "bg-primary-solid hover:bg-primary-hover text-ink-on-primary";
+          else if (isNext) bgColor = "bg-primary-solid/50 hover:bg-primary-solid/70 text-ink-primary";
+          else if (isMinor) bgColor = "bg-surface-sunken hover:bg-surface-raised text-ink-muted";
 
           return (
             <button
@@ -143,19 +143,19 @@ export default function ProgressionNavigator({ startKey = "G", bpm = 80 }: Progr
       </div>
 
       {/* Next-step hints */}
-      <div className='mb-4 text-sm text-[#1A1B1E]/70'>
+      <div className='mb-4 text-13 text-ink-muted'>
         Next from <span className='font-bold'>{currentF}</span>: {nextFs.join(" → ")}
       </div>
 
       {/* Progression timeline */}
-      <div className='bg-[#1A1B1E]/10 p-4 rounded-xl flex gap-2 flex-wrap items-center'>
+      <div className='flex flex-wrap items-center gap-2 rounded-xl border border-line-subtle bg-surface-raised p-4'>
         {prog.map((s, i) => {
           const active = playing ? i === beat % prog.length : i === prog.length - 1;
           return (
             <div
               key={i}
               className={`px-3 py-2 rounded-lg font-bold transition-colors ${
-                active ? "bg-[#facc15] text-[#1A1B1E]" : "bg-[#1A1B1E]/20 text-[#1A1B1E]"
+                active ? "bg-primary-solid text-ink-on-primary" : "bg-surface-sunken text-ink-primary"
               }`}
             >
               {s.label}
@@ -164,21 +164,21 @@ export default function ProgressionNavigator({ startKey = "G", bpm = 80 }: Progr
         })}
         <button
           onClick={reset}
-          className='ml-auto bg-[#1A1B1E] hover:bg-[#1A1B1E]/80 text-[#facc15] px-3 py-2 rounded-lg transition-colors text-sm font-medium'
+          className='ml-auto rounded-lg border border-line-subtle bg-surface-sunken px-3 py-2 text-13 font-medium text-ink-primary transition-colors duration-120 ease-ui hover:bg-surface-overlay'
         >
           Reset
         </button>
         <button
           onClick={() => setProg((p) => p.slice(0, -1))}
           disabled={prog.length <= 1}
-          className='bg-[#1A1B1E] hover:bg-[#1A1B1E]/80 text-[#facc15] px-3 py-2 rounded-lg transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed'
+          className='rounded-lg bg-primary-solid px-3 py-2 text-13 font-medium text-ink-on-primary transition-colors duration-120 ease-ui hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50'
         >
           Undo
         </button>
       </div>
 
       {/* Tip */}
-      <div className='mt-4 text-xs text-[#1A1B1E]/60'>
+      <div className='mt-4 text-10 text-ink-muted'>
         Click chords to build a path. Only valid next steps are highlighted. Use this as a live follow-along map while
         you play.
       </div>

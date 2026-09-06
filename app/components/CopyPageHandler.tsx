@@ -58,7 +58,7 @@ export default function CopyPageHandler() {
   if (!visible) return null;
 
   return (
-    <div className='fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-slate-800 text-slate-100 px-4 py-2 rounded-lg shadow-lg text-sm pointer-events-none'>
+    <div className='fixed bottom-4 left-1/2 -translate-x-1/2 z-50 rounded-lg border border-line-subtle bg-surface-overlay px-4 py-2 text-13 text-ink-primary shadow-overlay pointer-events-none'>
       Page copied as markdown
     </div>
   );

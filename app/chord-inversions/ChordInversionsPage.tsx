@@ -156,10 +156,10 @@ export default function ChordInversionsPage() {
 
   const Section = ({ title, subtitle, items }: { title: string; subtitle: string; items: InversionShape[] }) => (
     <div className='mb-10'>
-      <h3 className='text-xl font-bold mb-1' style={{ color: "#000" }}>
+      <h3 className='text-xl font-bold mb-1' style={{ color: "var(--ds-color-text-primary)" }}>
         {title}
       </h3>
-      <p className='text-sm text-[#1A1B1E]/50 mb-4'>{subtitle}</p>
+      <p className='text-sm text-ink-muted mb-4'>{subtitle}</p>
       <div className='flex flex-wrap gap-6'>
         {items.map((item, i) => (
           <div key={i} className='flex flex-col items-center gap-1'>
@@ -176,7 +176,7 @@ export default function ChordInversionsPage() {
     >
               <div className='mb-8 flex flex-wrap items-start gap-6'>
                 <div>
-                  <p className='text-xs font-semibold text-[#1A1B1E]/50 uppercase tracking-wider mb-2'>Root Note</p>
+                  <p className='text-xs font-semibold text-ink-muted uppercase tracking-wider mb-2'>Root Note</p>
                   <div className='flex flex-wrap gap-2'>
                     {displayNotes.map((note) => {
                       const active =
@@ -186,13 +186,13 @@ export default function ChordInversionsPage() {
                         <button
                           key={note}
                           onClick={() => setSelectedNote(note)}
-                          className={`px-3 py-1 rounded border text-sm transition-colors ${active ? "bg-accent/20 border-accent font-medium" : "border-border hover:bg-foreground/10"}`}
+                          className={`px-3 py-1 rounded border text-sm transition-colors ${active ? "bg-primary-solid/20 border-primary-solid font-medium" : "border-line-subtle hover:bg-surface-overlay"}`}
                         >
                           {note}
                         </button>
                       );
                     })}
-                    <span className='mx-1 text-[#1A1B1E]/30'>|</span>
+                    <span className='mx-1 text-ink-muted'>|</span>
                     <button
                       onClick={() => {
                         const newVal = !useFlats;
@@ -205,20 +205,20 @@ export default function ChordInversionsPage() {
                           if (s) setSelectedNote(s);
                         }
                       }}
-                      className={`px-3 py-1 rounded border text-sm transition-colors ${useFlats ? "bg-accent/20 border-accent font-medium" : "border-border hover:bg-foreground/10"}`}
+                      className={`px-3 py-1 rounded border text-sm transition-colors ${useFlats ? "bg-primary-solid/20 border-primary-solid font-medium" : "border-line-subtle hover:bg-surface-overlay"}`}
                     >
                       ♭ Flats
                     </button>
                   </div>
                 </div>
                 <div>
-                  <p className='text-xs font-semibold text-[#1A1B1E]/50 uppercase tracking-wider mb-2'>Voicing</p>
+                  <p className='text-xs font-semibold text-ink-muted uppercase tracking-wider mb-2'>Voicing</p>
                   <div className='flex gap-2'>
                     {VOICINGS.map((v) => (
                       <button
                         key={v}
                         onClick={() => setVoicing(v)}
-                        className={`px-4 py-1 rounded border text-sm transition-colors ${voicing === v ? "bg-accent/20 border-accent font-medium" : "border-border hover:bg-foreground/10"}`}
+                        className={`px-4 py-1 rounded border text-sm transition-colors ${voicing === v ? "bg-primary-solid/20 border-primary-solid font-medium" : "border-line-subtle hover:bg-surface-overlay"}`}
                       >
                         {v}
                       </button>
@@ -227,7 +227,7 @@ export default function ChordInversionsPage() {
                 </div>
               </div>
 
-              <h2 className='text-2xl font-bold mb-6' style={{ color: "#000" }}>
+              <h2 className='text-2xl font-bold mb-6' style={{ color: "var(--ds-color-text-primary)" }}>
                 {chordName}
               </h2>
 

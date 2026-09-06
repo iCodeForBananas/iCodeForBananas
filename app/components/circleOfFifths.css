@@ -29,7 +29,7 @@
 .circle-svg {
   width: min(100%, 75vmin, calc(100vh - 280px));
   height: auto;
-  filter: drop-shadow(0 4px 24px rgba(0, 0, 0, 0.3));
+  filter: drop-shadow(0 4px 24px oklch(0 0 0 / 0.3));
 }
 
 @media (min-width: 700px) {
@@ -41,94 +41,107 @@
 }
 
 /* The hovered key's chord, pinned beside it. Inert to the pointer so drifting
-   over the diagram never counts as leaving the key. */
+   over the diagram never counts as leaving the key. It floats over the whole
+   page, so it takes the overlay surface and the overlay shadow rather than a
+   pair of greys picked per theme by hand. */
 .chord-preview {
   position: fixed;
   z-index: 50;
   pointer-events: none;
-  padding: 0.5rem;
-  border-radius: 0.75rem;
-  /* Same surface as the page's chord cards: the diagram's yellow dots vanish
-     against the yellow page background. */
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  padding: var(--ds-space-8);
+  border-radius: var(--ds-radius-12);
+  background: var(--ds-color-surface-overlay);
+  border: 1px solid var(--ds-color-border-subtle);
+  box-shadow: var(--ds-shadow-overlay);
 }
 
-.dark .chord-preview {
-  background: #262626;
-  border-color: #404040;
-}
-
+/* The two bands the key circles are laid out on. Faint on purpose: they group
+   the majors and the minors without competing with either. */
 .outer-ring {
   fill: none;
-  stroke: rgba(250, 204, 21, 0.1);
+  stroke: color-mix(in oklab, var(--ds-color-primary-solid) 10%, transparent);
   stroke-width: 60;
 }
 
 .inner-ring {
   fill: none;
-  stroke: rgba(250, 204, 21, 0.06);
+  stroke: color-mix(in oklab, var(--ds-color-primary-solid) 6%, transparent);
   stroke-width: 50;
 }
 
 .key-circle {
   cursor: pointer;
-  transition: all 0.25s ease;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+  transition:
+    fill var(--ds-duration-240) var(--ds-ease-out),
+    stroke var(--ds-duration-240) var(--ds-ease-out),
+    filter var(--ds-duration-240) var(--ds-ease-out);
+  filter: drop-shadow(0 2px 4px oklch(0 0 0 / 0.3));
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .key-circle {
+    transition: none;
+  }
+}
+
+/* A major key is the primary fill, so its label is the near-black
+   text.on-primary and never white. See the amber rule in tokens/README. */
 .major-key {
-  fill: #facc15;
-  stroke: #a89a00;
+  fill: var(--ds-color-primary-solid);
+  stroke: var(--ds-color-border-strong);
   stroke-width: 2;
 }
 
 .major-key:hover,
 .major-key.active {
-  fill: #fde047;
-  stroke: #facc15;
+  fill: var(--ds-color-primary-hover);
+  stroke: var(--ds-color-primary-text);
   stroke-width: 3;
-  filter: drop-shadow(0 0 12px rgba(250, 204, 21, 0.5));
+  filter: drop-shadow(0 0 12px color-mix(in oklab, var(--ds-color-primary-solid) 50%, transparent));
 }
 
+/* A minor key is the relative of the major beside it, not a lesser thing, so
+   it reads as the other surface rather than a dimmer yellow. The border is
+   what gives it a boundary in light theme, where raised is white on near-white. */
 .minor-key {
-  fill: #1a1a1a;
-  stroke: #2a2a2a;
+  fill: var(--ds-color-surface-raised);
+  stroke: var(--ds-color-border-strong);
   stroke-width: 2;
 }
 
 .minor-key:hover,
 .minor-key.active {
-  fill: #222;
-  stroke: #facc15;
+  fill: var(--ds-color-surface-overlay);
+  stroke: var(--ds-color-primary-text);
   stroke-width: 3;
-  filter: drop-shadow(0 0 10px rgba(250, 204, 21, 0.3));
+  filter: drop-shadow(0 0 10px color-mix(in oklab, var(--ds-color-primary-solid) 30%, transparent));
 }
 
 .key-text {
-  font-size: 16px;
-  font-weight: 700;
-  fill: #0a0a0a;
+  font-size: var(--ds-font-size-16);
+  font-weight: var(--ds-font-weight-emphasis);
+  fill: var(--ds-color-text-on-primary);
   cursor: pointer;
   user-select: none;
-  letter-spacing: -0.02em;
+  letter-spacing: var(--ds-font-tracking-16);
 }
 
+/* Weight stops at 600 in this system, so an active key is marked by its fill
+   and stroke rather than by a heavier cut. See font.weight in tokens/. */
 .key-text.active {
-  font-weight: 800;
+  font-weight: var(--ds-font-weight-emphasis);
 }
 
 .minor-text {
-  font-size: 13px;
-  fill: #F8F9FA;
-  font-weight: 600;
+  font-size: var(--ds-font-size-13);
+  fill: var(--ds-color-text-primary);
+  font-weight: var(--ds-font-weight-ui);
 }
 
 .center-text {
-  font-size: 15px;
-  font-weight: 700;
-  fill: rgba(250, 204, 21, 0.7);
+  font-size: var(--ds-font-size-15);
+  font-weight: var(--ds-font-weight-emphasis);
+  fill: var(--ds-color-primary-text);
   letter-spacing: 0.05em;
   text-transform: uppercase;
 }

@@ -19,16 +19,26 @@ export const useTheme = () => {
   return context;
 };
 
+/**
+ * One switch, on <html>.
+ *
+ * `data-theme` is what app/tokens.css reads: dark is the default and lives on
+ * `:root` there, so it is `[data-theme="light"]` that carries the light half of
+ * Layer 2. globals.css points Tailwind's `dark:` variant at the same attribute,
+ * so there is no second thing to keep in step — which is why the `.dark` class
+ * this used to toggle is gone.
+ *
+ * The same attribute is written by the inline script in app/layout.tsx, which
+ * runs before first paint.
+ */
 function applyTheme(t: Theme) {
-  if (t === "dark") {
-    document.documentElement.classList.add("dark");
-  } else {
-    document.documentElement.classList.remove("dark");
-  }
+  document.documentElement.setAttribute("data-theme", t);
 }
 
 export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
-  const [theme, setThemeState] = useState<Theme>("light");
+  // Matches the data-theme the server renders, so the first client render
+  // agrees with the markup; the effect below corrects it from storage.
+  const [theme, setThemeState] = useState<Theme>("dark");
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {

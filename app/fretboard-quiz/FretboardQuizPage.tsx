@@ -114,9 +114,9 @@ export default function FretboardQuizPage() {
 
   const fretboardContent = (
     <div className="flex flex-col gap-3">
-      <p className="text-sm text-black/50 dark:text-white/50">
+      <p className="text-sm text-ink-muted">
         Find every{" "}
-        <span className="font-semibold text-black dark:text-white">
+        <span className="font-semibold text-ink-primary">
           {selectedKey} {selectedScaleType}
         </span>{" "}
         note. Click a fret to guess whether that note is in the scale.
@@ -127,7 +127,7 @@ export default function FretboardQuizPage() {
           {[...Array(TOTAL_FRETS + 1).keys()].map((fret) => (
             <div
               key={fret}
-              className="fret-number text-center flex-1 text-xs text-black/40 dark:text-neutral-500"
+              className="fret-number text-center flex-1 text-xs text-ink-muted"
             >
               {fret}
             </div>
@@ -147,17 +147,13 @@ export default function FretboardQuizPage() {
                   const isGuessed = guessedNotes.has(positionKey);
                   const isIncorrect = incorrectGuesses.has(positionKey);
 
-                  const stateClass = isGuessed
-                    ? "bg-green-300"
-                    : isIncorrect
-                    ? "bg-red-300"
-                    : "";
+                  const stateClass = isGuessed ? "correct" : isIncorrect ? "wrong" : "";
 
                   return (
                     <div
                       key={reversedIndex}
                       onClick={() => handleNoteClick(stringIndex, fret)}
-                      className={`note cursor-pointer select-none transition-colors hover:bg-[#facc15] ${
+                      className={`note cursor-pointer select-none transition-colors hover:bg-primary-solid hover:text-ink-on-primary ${
                         fret === 0 ? "open" : ""
                       } ${stateClass}`}
                       title={
@@ -180,58 +176,58 @@ export default function FretboardQuizPage() {
   const scoreContent = (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap gap-3">
-        <div className="flex flex-1 min-w-[110px] flex-col gap-0.5 rounded-xl border border-gray-200 bg-white p-3 dark:border-neutral-700 dark:bg-neutral-800">
+        <div className="flex flex-1 min-w-[110px] flex-col gap-0.5 rounded-xl border border-line-subtle bg-surface-raised p-3">
           <span
-            className="text-xs font-semibold uppercase tracking-wider text-black/50 dark:text-white/50"
+            className="text-xs font-semibold uppercase tracking-wider text-ink-muted"
             title="How many of the scale's fretboard positions you have found so far"
           >
             Found
           </span>
-          <span className="text-2xl font-bold tabular-nums text-black dark:text-white">
+          <span className="text-2xl font-bold tabular-nums text-ink-primary">
             {foundCount}
-            <span className="text-base font-medium text-black/40 dark:text-neutral-500">
+            <span className="text-base font-medium text-ink-muted">
               /{totalNotesToFind}
             </span>
           </span>
         </div>
 
-        <div className="flex flex-1 min-w-[110px] flex-col gap-0.5 rounded-xl border border-gray-200 bg-white p-3 dark:border-neutral-700 dark:bg-neutral-800">
+        <div className="flex flex-1 min-w-[110px] flex-col gap-0.5 rounded-xl border border-line-subtle bg-surface-raised p-3">
           <span
-            className="text-xs font-semibold uppercase tracking-wider text-black/50 dark:text-white/50"
+            className="text-xs font-semibold uppercase tracking-wider text-ink-muted"
             title="Correct guesses as a share of every guess you have made this round"
           >
             Accuracy
           </span>
-          <span className="text-2xl font-bold tabular-nums text-black dark:text-white">
+          <span className="text-2xl font-bold tabular-nums text-ink-primary">
             {totalAttempts > 0 ? `${scorePercent}%` : "—"}
           </span>
         </div>
 
-        <div className="flex flex-1 min-w-[110px] flex-col gap-0.5 rounded-xl border border-gray-200 bg-white p-3 dark:border-neutral-700 dark:bg-neutral-800">
+        <div className="flex flex-1 min-w-[110px] flex-col gap-0.5 rounded-xl border border-line-subtle bg-surface-raised p-3">
           <span
-            className="text-xs font-semibold uppercase tracking-wider text-black/50 dark:text-white/50"
+            className="text-xs font-semibold uppercase tracking-wider text-ink-muted"
             title="Guesses on notes that are not in this scale"
           >
             Misses
           </span>
-          <span className="text-2xl font-bold tabular-nums text-black dark:text-white">
+          <span className="text-2xl font-bold tabular-nums text-ink-primary">
             {incorrectCount}
           </span>
         </div>
       </div>
 
       <div
-        className="h-2 w-full overflow-hidden rounded-full bg-black/10 dark:bg-white/10"
+        className="h-2 w-full overflow-hidden rounded-full bg-surface-sunken/70"
         title={`${foundPercent}% of this scale found`}
       >
         <div
-          className="h-full rounded-full bg-accent transition-all"
-          style={{ width: `${foundPercent}%`, background: "#facc15" }}
+          className="h-full rounded-full bg-primary-solid transition-all"
+          style={{ width: `${foundPercent}%`, background: "var(--ds-color-primary-solid)" }}
         />
       </div>
 
       {isComplete && (
-        <div className="rounded-xl border border-green-300 bg-green-50 px-4 py-3 text-sm font-medium text-green-700 dark:border-green-800 dark:bg-green-900/20 dark:text-green-400">
+        <div className="rounded-xl border border-success/40 bg-success/10 px-4 py-3 text-13 font-medium text-success">
           🎉 Every {selectedKey} {selectedScaleType} note found — {scorePercent}% accuracy.
         </div>
       )}
@@ -241,16 +237,16 @@ export default function FretboardQuizPage() {
   const legendContent = (
     <div className="flex flex-col gap-3">
       {[
-        { swatch: "bg-green-300", label: "Correct — the note is in the scale", border: "" },
-        { swatch: "bg-red-300", label: "Wrong — that note is outside the scale", border: "" },
-        { swatch: "bg-white", label: "Not guessed yet", border: "border border-gray-300" },
+        { swatch: "bg-success/30", label: "Correct — the note is in the scale", border: "border border-success/40" },
+        { swatch: "bg-danger/30", label: "Wrong — that note is outside the scale", border: "border border-danger/40" },
+        { swatch: "bg-surface-raised", label: "Not guessed yet", border: "border border-line-subtle" },
       ].map((row) => (
         <div key={row.label} className="flex items-center gap-3">
           <div className={`h-5 w-5 shrink-0 rounded ${row.swatch} ${row.border}`} />
-          <span className="text-sm text-black/60 dark:text-neutral-400">{row.label}</span>
+          <span className="text-sm text-ink-muted">{row.label}</span>
         </div>
       ))}
-      <p className="mt-1 text-xs text-black/40 dark:text-neutral-500">
+      <p className="mt-1 text-xs text-ink-muted">
         Every position is its own guess, so the same note has to be found on each string it
         appears on. Changing the key or the scale starts a fresh round.
       </p>
@@ -291,14 +287,14 @@ export default function FretboardQuizPage() {
 
       {/* ── Controls — two rows in a bento card, pinned at top ───────────────── */}
       <div
-        className="mb-4 flex flex-col gap-4 rounded-2xl bg-white dark:bg-neutral-900 p-4 sm:p-5"
+        className="mb-4 flex flex-col gap-4 rounded-2xl bg-surface-raised p-4 sm:p-5"
         style={{ border: "1px solid var(--border-color)" }}
       >
 
         {/* Row 1: Key */}
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <p
-            className="text-xs font-semibold text-black/50 dark:text-white/50 uppercase tracking-wider shrink-0"
+            className="text-xs font-semibold text-ink-muted uppercase tracking-wider shrink-0"
             title="The root note of the scale you are being quizzed on"
           >
             Key
@@ -311,8 +307,8 @@ export default function FretboardQuizPage() {
                 title={`Quiz the ${note} ${selectedScaleType} scale — starts a fresh round`}
                 className={`${TOUCH_BUTTON} ${
                   selectedKey === note
-                    ? "bg-accent/20 border-accent"
-                    : "border-border hover:bg-foreground/10"
+                    ? "bg-primary-solid/20 border-primary-solid"
+                    : "border-line-subtle hover:bg-surface-overlay"
                 }`}
               >
                 {note}
@@ -324,7 +320,7 @@ export default function FretboardQuizPage() {
         {/* Row 2: Scale, and a way to start over */}
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <p
-            className="text-xs font-semibold text-black/50 dark:text-white/50 uppercase tracking-wider shrink-0"
+            className="text-xs font-semibold text-ink-muted uppercase tracking-wider shrink-0"
             title="Which scale's notes you are hunting for — each has its own pattern and mood"
           >
             Scale
@@ -337,8 +333,8 @@ export default function FretboardQuizPage() {
                 title={SCALE_TOOLTIPS[type] ?? type}
                 className={`${TOUCH_BUTTON} ${
                   selectedScaleType === type
-                    ? "bg-accent/20 border-accent"
-                    : "border-border hover:bg-foreground/10"
+                    ? "bg-primary-solid/20 border-primary-solid"
+                    : "border-line-subtle hover:bg-surface-overlay"
                 }`}
               >
                 {type}
@@ -348,7 +344,7 @@ export default function FretboardQuizPage() {
           <button
             onClick={resetRound}
             title="Clear every guess and start this scale again"
-            className={`${TOUCH_BUTTON} ml-auto border-border hover:bg-foreground/10`}
+            className={`${TOUCH_BUTTON} ml-auto border-line-subtle hover:bg-surface-overlay`}
           >
             Restart
           </button>

@@ -33,16 +33,16 @@ export default function MovementBalancePanel({
 
   return (
     <div>
-      <p className='text-xs text-black/40 dark:text-white/40 mb-3'>sessions in last {WINDOW_DAYS} days</p>
+      <p className='text-xs text-ink-muted mb-3'>sessions in last {WINDOW_DAYS} days</p>
 
       <div className='space-y-2 mb-4'>
         {report.overworked && (
-          <div className='rounded-lg px-3 py-2 text-xs bg-amber-100 text-amber-900 dark:bg-amber-400/15 dark:text-amber-200'>
+          <div className='rounded-lg border border-primary-solid/40 bg-primary-solid/10 px-3 py-2 text-10 text-ink-primary'>
             <span className='font-semibold capitalize'>{report.overworked}</span> is {report.gap} session
             {report.gap === 1 ? "" : "s"} ahead of your lightest pattern. Lay off it until the others catch up.
           </div>
         )}
-        <div className='rounded-lg px-3 py-2 text-xs bg-black/5 text-black/70 dark:bg-white/10 dark:text-white/70'>
+        <div className='rounded-lg px-3 py-2 text-xs bg-surface-sunken/70 text-ink-muted'>
           {report.nextUp ? (
             <>
               Train next: <span className='font-semibold capitalize'>{report.nextUp}</span>
@@ -62,7 +62,7 @@ export default function MovementBalancePanel({
             onMouseLeave={() => setHoveredMovement(null)}
           >
             <div className='flex items-center gap-3'>
-              <div className='capitalize text-sm w-14 shrink-0 dark:text-white'>{load.movement}</div>
+              <div className='capitalize text-sm w-14 shrink-0'>{load.movement}</div>
               <div className='flex flex-wrap gap-1 flex-1'>
                 {Array.from({ length: load.days }, (_, i) => (
                   <span
@@ -72,21 +72,21 @@ export default function MovementBalancePanel({
                   />
                 ))}
               </div>
-              <div className='text-xs text-black/35 dark:text-white/35 w-8 shrink-0 text-right'>{load.days}x</div>
+              <div className='text-xs text-ink-muted w-8 shrink-0 text-right'>{load.days}x</div>
             </div>
             <div className='ml-[4.25rem] mt-1 text-[11px]'>
-              <span className={load.rested ? "text-black/40 dark:text-white/40" : "text-amber-600 dark:text-amber-400"}>
+              <span className={load.rested ? "text-ink-muted" : "text-primary-text"}>
                 {restLabel(load)}
               </span>
               {load.streak > 1 && (
-                <span className='text-red-600 dark:text-red-400'> · {load.streak} days in a row</span>
+                <span className='text-danger'> · {load.streak} days in a row</span>
               )}
             </div>
             {hoveredMovement === load.movement && (
-              <div className='absolute top-full left-0 mt-1 z-20 bg-[#1A1B1E] text-white text-xs rounded-lg px-3 py-2 shadow-lg pointer-events-none whitespace-nowrap'>
+              <div className='absolute top-full left-0 mt-1 z-20 whitespace-nowrap rounded-lg border border-line-subtle bg-surface-overlay px-3 py-2 text-10 text-ink-primary shadow-overlay pointer-events-none'>
                 <div className='font-semibold mb-1 capitalize'>{load.movement} exercises</div>
                 {MOVEMENT_EXERCISES[load.movement].map((ex) => (
-                  <div key={ex} className='text-white/75'>{ex}</div>
+                  <div key={ex} className='text-ink-muted'>{ex}</div>
                 ))}
               </div>
             )}

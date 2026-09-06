@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Download, X } from "lucide-react";
+import { Button } from "@/app/components/ui/button";
 
 /**
  * What Chrome fires once a site meets its install criteria — a manifest with
@@ -122,41 +123,42 @@ export default function InstallPrompt() {
 
   return (
     <div className='fixed bottom-4 left-4 right-4 z-[70] sm:left-auto sm:w-80 print:hidden'>
-      <div className='rounded-2xl border border-yellow-300 bg-white shadow-2xl dark:border-yellow-400/30 dark:bg-neutral-900'>
+      {/* An overlay, so it takes the overlay surface and the overlay shadow —
+          the one place a shadow is allowed to be noticeable, because this has
+          to read as detached from whatever page is behind it. */}
+      <div className='rounded-2xl border border-line-subtle bg-surface-overlay shadow-overlay'>
         <div className='flex items-start gap-3 p-4'>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src='/icons/icon-192.png' alt='' className='h-10 w-10 shrink-0' />
           <div className='min-w-0 flex-1'>
-            <p className='text-sm font-semibold text-black dark:text-white'>Install iCodeForBananas</p>
-            <p className='mt-0.5 text-xs text-gray-600 dark:text-neutral-400'>
+            <p className='text-13 font-medium text-ink-primary'>Install iCodeForBananas</p>
+            <p className='mt-0.5 text-12 text-ink-muted'>
               Add it to your home screen — full screen, no address bar.
             </p>
           </div>
-          <button
-            type='button'
+          <Button
+            variant='ghost'
+            size='icon'
             onClick={dismiss}
             aria-label='Dismiss install offer'
-            className='-mr-1 -mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-gray-400 transition-colors duration-150 hover:bg-gray-100 dark:hover:bg-neutral-800'
+            className='-mr-1 -mt-1'
           >
             <X className='h-4 w-4' />
-          </button>
+          </Button>
         </div>
         <div className='flex gap-2 px-4 pb-4'>
-          <button
-            type='button'
-            onClick={dismiss}
-            className='h-11 flex-1 rounded-xl bg-gray-100 text-sm font-medium text-gray-700 transition-colors duration-150 hover:bg-gray-200 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700'
-          >
+          <Button variant='secondary' size='lg' onClick={dismiss} className='h-11 flex-1 rounded-xl'>
             Not now
-          </button>
-          <button
-            type='button'
+          </Button>
+          <Button
+            variant='primary'
+            size='lg'
             onClick={install}
-            className='flex h-11 flex-[2] items-center justify-center gap-1.5 rounded-xl bg-black text-sm font-semibold text-yellow-400 transition-colors duration-150 hover:bg-black/80 dark:bg-yellow-400 dark:text-black dark:hover:bg-yellow-300'
+            className='h-11 flex-[2] gap-1.5 rounded-xl'
           >
             <Download className='h-4 w-4' />
             Install
-          </button>
+          </Button>
         </div>
       </div>
     </div>

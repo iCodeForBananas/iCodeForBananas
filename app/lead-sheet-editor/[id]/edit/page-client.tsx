@@ -541,7 +541,7 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
                   History
                 </button>
 
-                <div className="w-px self-stretch bg-surface-base/20 dark:bg-surface-base/20" />
+                <div className="w-px self-stretch bg-line-strong" />
 
                 <button
                   onClick={() => saveSheet(true)}
@@ -552,7 +552,7 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
                   {saving ? "Saving..." : dirty ? "Save" : "Saved"}
                 </button>
 
-                <div className="w-px self-stretch bg-surface-base/20 dark:bg-surface-base/20" />
+                <div className="w-px self-stretch bg-line-strong" />
 
                 <div className="relative flex items-center gap-1.5 rounded border border-line-strong px-3 py-2 text-sm font-medium text-ink-primary/80 hover:border-line-strong hover:bg-surface-base hover:text-primary-text transition-colors">
                   <Sparkles className="w-4 h-4" />
@@ -650,7 +650,7 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
               onChange={(e) => handleChange(e.target.value)}
               placeholder={PLACEHOLDER}
               spellCheck={false}
-              className="leadsheet-doc w-full max-w-3xl h-full overflow-auto outline-none resize-none text-base leading-relaxed bg-transparent text-ink-primary placeholder:text-ink-muted dark:placeholder:text-ink-muted"
+              className="leadsheet-doc w-full max-w-3xl h-full overflow-auto outline-none resize-none text-base leading-relaxed bg-transparent text-ink-primary placeholder:text-ink-muted"
             />
           </div>
         </div>

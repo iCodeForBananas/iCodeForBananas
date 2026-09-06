@@ -141,7 +141,7 @@ export default function SectionEditor({
             <button
               type='button'
               onClick={add}
-              className='h-12 flex-[2] flex items-center justify-center gap-1.5 rounded-xl text-sm font-semibold bg-surface-base hover:bg-surface-sunken/80 text-primary-text bg-primary-solid dark:text-ink-on-primary hover:bg-primary-hover transition-colors duration-150'
+              className='h-12 flex-[2] flex items-center justify-center gap-1.5 rounded-xl text-sm font-semibold bg-primary-solid text-ink-on-primary hover:bg-primary-hover transition-colors duration-150'
             >
               <Check className='w-4 h-4' />
               {editing ? "Save name" : "Add section"}

@@ -123,12 +123,12 @@ function InversionGroup({ heading, subheading, shapes, label, stringLabels }: In
   if (!shapes.length) return null;
   return (
     <div>
-      <div className="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-0.5">{heading}</div>
-      {subheading && <div className="text-xs text-gray-400 mb-3">{subheading}</div>}
+      <div className="text-xs font-semibold uppercase tracking-widest text-ink-muted mb-0.5">{heading}</div>
+      {subheading && <div className="text-xs text-ink-muted mb-3">{subheading}</div>}
       <div className="flex flex-wrap gap-6">
         {shapes.map((shape, i) => (
           <div key={i} className="flex flex-col items-center">
-            {stringLabels && <div className="text-xs text-gray-400 mb-1">{stringLabels[i]}</div>}
+            {stringLabels && <div className="text-xs text-ink-muted mb-1">{stringLabels[i]}</div>}
             <ChordDiagram shape={shape} label={label} />
           </div>
         ))}
@@ -154,7 +154,7 @@ export default function InversionPickerPage() {
     <BentoPageLayout title="Inversion Picker">
       <div className="flex flex-wrap gap-6 mb-8">
         <div>
-          <div className="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-2">Note</div>
+          <div className="text-xs font-semibold uppercase tracking-widest text-ink-muted mb-2">Note</div>
           <div className="flex flex-wrap gap-1">
             {sharpNotes.map((n) => (
               <button
@@ -162,8 +162,12 @@ export default function InversionPickerPage() {
                 onClick={() => setNote(n)}
                 className="text-xs px-2 py-1 rounded font-semibold transition-colors"
                 style={{
-                  background: note === n ? "#facc15" : "#e5e7eb",
-                  color: note === n ? "#000" : "#374151",
+                  background: note === n
+                    ? "var(--ds-color-primary-solid)"
+                    : "var(--ds-color-surface-sunken)",
+                  color: note === n
+                    ? "var(--ds-color-text-on-primary)"
+                    : "var(--ds-color-text-muted)",
                 }}
               >
                 {n}
@@ -173,7 +177,7 @@ export default function InversionPickerPage() {
         </div>
 
         <div>
-          <div className="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-2">Type</div>
+          <div className="text-xs font-semibold uppercase tracking-widest text-ink-muted mb-2">Type</div>
           <div className="flex flex-wrap gap-1">
             {chordTypes.map((t) => (
               <button
@@ -181,8 +185,12 @@ export default function InversionPickerPage() {
                 onClick={() => setType(t)}
                 className="text-xs px-2 py-1 rounded font-semibold transition-colors"
                 style={{
-                  background: type === t ? "#facc15" : "#e5e7eb",
-                  color: type === t ? "#000" : "#374151",
+                  background: type === t
+                    ? "var(--ds-color-primary-solid)"
+                    : "var(--ds-color-surface-sunken)",
+                  color: type === t
+                    ? "var(--ds-color-text-on-primary)"
+                    : "var(--ds-color-text-muted)",
                 }}
               >
                 {t}
@@ -214,7 +222,7 @@ export default function InversionPickerPage() {
           stringLabels={STRING_SET_LABELS}
         />
         {!rootPositions.length && !firstInv.length && !secondInv.length && (
-          <div className="text-sm text-gray-400">No shapes found for {label}</div>
+          <div className="text-sm text-ink-muted">No shapes found for {label}</div>
         )}
       </div>
     </BentoPageLayout>

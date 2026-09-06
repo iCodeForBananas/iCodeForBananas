@@ -77,16 +77,16 @@ export default function AsciiPlayerPage() {
     frames[currentFrame]?.slice(1).join("\n") ?? "";
 
   return (
-    <div className="flex flex-col items-center h-screen bg-[#222] text-white p-4">
+    <div className="flex h-screen flex-col items-center bg-surface-sunken p-4 text-ink-primary">
       <div className="flex gap-2 mb-4">
         {MOVIES.map((m) => (
           <button
             key={m.key}
             onClick={() => loadMovie(m.key)}
-            className={`px-4 py-2 rounded font-mono text-sm transition-colors ${
+            className={`rounded px-4 py-2 font-mono text-13 transition-colors duration-120 ease-ui ${
               currentMovie === m.key
-                ? "bg-[#0d9e73] text-white"
-                : "bg-gray-700 hover:bg-gray-600 text-gray-200"
+                ? "bg-primary-solid text-ink-on-primary"
+                : "bg-surface-raised text-ink-muted hover:bg-surface-overlay hover:text-ink-primary"
             }`}
           >
             {m.label}
@@ -95,7 +95,7 @@ export default function AsciiPlayerPage() {
       </div>
       <div className="flex-1 flex items-center justify-center">
         {loading ? (
-          <span className="font-mono text-gray-400">Loading...</span>
+          <span className="font-mono text-ink-muted">Loading...</span>
         ) : (
           <pre className="font-mono text-[31px] leading-tight whitespace-pre max-w-full overflow-hidden md:text-[16px] lg:text-[31px]">
             {frameText}

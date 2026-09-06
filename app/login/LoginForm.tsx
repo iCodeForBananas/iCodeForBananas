@@ -3,6 +3,8 @@
 import { useState, useRef } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Button } from "@/app/components/ui/button";
+import { Input } from "@/app/components/ui/input";
 
 export default function LoginForm() {
   const [email, setEmail] = useState("");
@@ -44,37 +46,33 @@ export default function LoginForm() {
 
   return (
     <div className='flex items-center justify-center min-h-screen p-4'>
-      <div
-        className='w-full max-w-sm rounded-none border-none bg-black p-8 sm:p-10'
-      >
-        <h1 className='text-lg sm:text-xl font-bold leading-tight mb-6 text-yellow-400'>
-          Sign In
-        </h1>
+      <div className='w-full max-w-sm rounded-xl border border-line-subtle bg-surface-raised p-8 shadow-raised sm:p-10'>
+        <h1 className='mb-6 font-display text-24 font-semibold text-ink-primary'>Sign In</h1>
         <form onSubmit={handleLogin} className='space-y-4'>
-          {error && <p className='text-red-500 text-sm text-center'>{error}</p>}
-          <input
+          {error && (
+            <p role='alert' className='text-center text-13 text-danger'>
+              {error}
+            </p>
+          )}
+          <Input
             type='email'
             placeholder='Email'
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className='w-full border border-[#373A40]/30 rounded px-3 py-2 text-sm'
+            className='h-10'
           />
-          <input
+          <Input
             type='password'
             placeholder='Password'
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            className='w-full border border-[#373A40]/30 rounded px-3 py-2 text-sm'
+            className='h-10'
           />
-          <button
-            type='submit'
-            disabled={loading}
-            className='w-full rounded bg-black px-5 py-2 text-sm font-medium text-[#facc15] hover:bg-black/80 disabled:opacity-50'
-          >
+          <Button type='submit' variant='primary' size='lg' disabled={loading} className='w-full'>
             {loading ? "Signing in…" : "Sign In"}
-          </button>
+          </Button>
         </form>
       </div>
     </div>

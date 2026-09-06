@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo } from "react";
 import "./fretboard.css";
+import { Button } from "@/app/components/ui/button";
 import { allNotes, getNoteAt, generateChordsAndScales, defaultTuning } from "../lib/music";
 
 interface ChordMatch {
@@ -116,49 +117,42 @@ export default function ChordFinder({ rootNote }: { rootNote?: string } = {}) {
   const rootUpper = rootNote ? rootNote.toUpperCase() : null;
 
   const matchTypeBadgeClass = (m: ChordMatch) => {
-    if (m.matchType === "exact") return "bg-green-900/30 text-green-400 border border-green-700";
-    if (m.matchType === "subset") return "bg-orange-900/30 text-orange-400 border border-orange-700";
-    return "bg-[#1A1B1E]/30 text-[#facc15] border border-[#facc15]/30";
+    if (m.matchType === "exact") return "border border-success/40 bg-success/10 text-success";
+    if (m.matchType === "subset") return "border border-line-subtle bg-surface-sunken text-ink-muted";
+    return "border border-primary-solid/30 bg-primary-solid/10 text-primary-text";
   };
 
   return (
     <div className='space-y-6'>
       {/* Pinned chord banner */}
       {pinnedChord && (
-        <div className='flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-gradient-to-r from-[#4C6EF5]/10 to-[#4C6EF5]/10 border border-[#373A40]/30 shadow-sm'>
+        <div className='flex items-center justify-between gap-3 px-4 py-3 rounded-xl border border-line-subtle bg-surface-raised shadow-raised'>
           <div>
-            <span className='text-xs font-semibold text-[#F8F9FA] uppercase tracking-wider'>Previewing</span>
+            <span className='text-10 font-semibold text-ink-muted uppercase tracking-wider'>Previewing</span>
             <div className='flex items-baseline gap-2 mt-0.5'>
-              <span className='text-lg font-bold text-[#1A1B1E]'>{pinnedChord.name}</span>
-              <span className='text-sm text-gray-500'>{pinnedChord.notes.join(" – ")}</span>
+              <span className='text-20 font-semibold text-ink-primary'>{pinnedChord.name}</span>
+              <span className='text-13 text-ink-muted'>{pinnedChord.notes.join(" – ")}</span>
             </div>
           </div>
-          <button
-            onClick={() => setPinnedChord(null)}
-            className='text-xs px-3 py-1.5 rounded-full border border-[#373A40]/50 text-[#F8F9FA] hover:bg-[#facc15] transition-colors font-medium'
-          >
+          <Button variant='ghost' size='sm' onClick={() => setPinnedChord(null)} className='rounded-full'>
             Back to selection
-          </button>
+          </Button>
         </div>
       )}
 
       {/* Clear button + selected note pills */}
       <div className='flex flex-wrap items-center gap-3'>
-        <button
-          onClick={handleClear}
-          disabled={selectedPositions.size === 0}
-          className='px-4 py-2 bg-gradient-to-r from-[#4C6EF5] to-[#4C6EF5] text-white rounded-md hover:from-[#3b5de7] hover:to-[#3b5de7] transition-all shadow-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed'
-        >
+        <Button variant='primary' size='lg' onClick={handleClear} disabled={selectedPositions.size === 0}>
           Clear
-        </button>
+        </Button>
         {selectedNotes.length === 0 ? (
-          <span className='text-[#1A1B1E]/50 text-sm italic'>No notes selected yet</span>
+          <span className='text-13 italic text-ink-muted'>No notes selected yet</span>
         ) : (
           <div className='flex flex-wrap gap-2'>
             {selectedNotes.map((note) => (
               <span
                 key={note}
-                className='px-3 py-1 rounded-full text-sm font-semibold bg-gradient-to-r from-[#4C6EF5] to-[#4C6EF5] text-white shadow-sm'
+                className='rounded-full bg-primary-solid px-3 py-1 text-13 font-medium text-ink-on-primary'
               >
                 {note}
               </span>
@@ -172,7 +166,7 @@ export default function ChordFinder({ rootNote }: { rootNote?: string } = {}) {
         {/* Fret numbers */}
         <div className='flex mb-1'>
           {[...Array(totalFrets + 1).keys()].map((fret) => (
-            <div key={fret} className='fret-number text-center flex-1 text-xs text-[#909296]'>
+            <div key={fret} className='fret-number text-center flex-1 text-10 text-ink-muted'>
               {fret}
             </div>
           ))}
@@ -199,9 +193,17 @@ export default function ChordFinder({ rootNote }: { rootNote?: string } = {}) {
                       key={reversedIndex}
                       onClick={() => (pinnedChord ? undefined : handleNoteClick(stringIndex, fret))}
                       className={`note transition-colors select-none ${fret === 0 ? "open" : ""} ${
-                        isHighlighted ? "highlight" : pinnedChord ? "opacity-40" : "cursor-pointer hover:bg-[#facc15]"
+                        isHighlighted
+                          ? "highlight"
+                          : pinnedChord
+                            ? "opacity-40"
+                            : "cursor-pointer hover:bg-primary-solid hover:text-ink-on-primary"
                       }`}
-                      style={isRoot ? { boxShadow: "inset 0 0 0 2px #facc15" } : undefined}
+                      // The root gets a ring rather than a fill: it is already
+                      // one of the highlighted notes, and a second fill colour
+                      // would say it is a different kind of note instead of the
+                      // same note with a name.
+                      style={isRoot ? { boxShadow: "inset 0 0 0 2px var(--ds-color-primary-text)" } : undefined}
                       title={
                         isRoot
                           ? `${note} — string ${stringIndex + 1}, fret ${fret} (your root note)`
@@ -220,34 +222,34 @@ export default function ChordFinder({ rootNote }: { rootNote?: string } = {}) {
       {/* Chord Results */}
       <div className='space-y-4'>
         {selectedNotes.length === 0 && (
-          <div className='rounded-xl border border-dashed border-[#373A40]/30 p-8 text-center text-[#1A1B1E]/50'>
+          <div className='rounded-xl border border-dashed border-line-subtle p-8 text-center text-ink-muted'>
             Select notes on the fretboard above to identify chords
           </div>
         )}
 
         {selectedNotes.length > 0 && exactMatches.length === 0 && partialMatches.length === 0 && (
-          <div className='rounded-xl border border-dashed border-orange-300 p-6 text-center text-orange-500'>
+          <div className='rounded-xl border border-dashed border-line-strong p-6 text-center text-ink-muted'>
             No matching chords found — try selecting different notes
           </div>
         )}
 
         {exactMatches.length > 0 && (
           <div>
-            <h3 className='text-sm font-semibold text-[#909296] uppercase tracking-wider mb-3'>Exact Matches</h3>
+            <h3 className='mb-3 text-12 font-semibold uppercase tracking-wider text-ink-muted'>Exact Matches</h3>
             <div className='flex flex-wrap gap-3'>
               {exactMatches.map((m) => (
                 <button
                   key={m.name}
                   onClick={() => handleChordPin(m)}
-                  className={`flex flex-col gap-1 px-4 py-3 rounded-xl border shadow-sm min-w-[120px] text-left transition-all ${
+                  className={`flex min-w-[120px] flex-col gap-1 rounded-xl border px-4 py-3 text-left shadow-raised transition-colors duration-120 ease-ui ${
                     pinnedChord?.name === m.name
-                      ? "border-[#373A40] bg-[#facc15]/10 ring-2 ring-[#facc15]"
-                      : "border-yellow-200 bg-yellow-50 hover:border-[#373A40]/50 hover:bg-[#facc15]/10"
+                      ? "border-primary-solid bg-primary-solid/10"
+                      : "border-line-subtle bg-surface-raised hover:border-line-strong hover:bg-surface-overlay"
                   }`}
                 >
-                  <span className='font-bold text-[#1A1B1E] text-lg leading-tight'>{m.name}</span>
-                  <span className='text-xs text-gray-500'>{m.notes.join(" – ")}</span>
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium w-fit ${matchTypeBadgeClass(m)}`}>
+                  <span className='text-20 font-semibold text-ink-primary'>{m.name}</span>
+                  <span className='text-10 text-ink-muted'>{m.notes.join(" – ")}</span>
+                  <span className={`w-fit rounded-full px-2 py-0.5 text-10 font-medium ${matchTypeBadgeClass(m)}`}>
                     {matchTypeLabel(m)}
                   </span>
                 </button>
@@ -258,21 +260,21 @@ export default function ChordFinder({ rootNote }: { rootNote?: string } = {}) {
 
         {partialMatches.length > 0 && (
           <div>
-            <h3 className='text-sm font-semibold text-[#909296] uppercase tracking-wider mb-3'>Possible Chords</h3>
+            <h3 className='mb-3 text-12 font-semibold uppercase tracking-wider text-ink-muted'>Possible Chords</h3>
             <div className='flex flex-wrap gap-3'>
               {partialMatches.map((m) => (
                 <button
                   key={m.name}
                   onClick={() => handleChordPin(m)}
-                  className={`flex flex-col gap-1 px-4 py-3 rounded-xl border shadow-sm min-w-[120px] text-left transition-all ${
+                  className={`flex min-w-[120px] flex-col gap-1 rounded-xl border px-4 py-3 text-left shadow-raised transition-colors duration-120 ease-ui ${
                     pinnedChord?.name === m.name
-                      ? "border-[#373A40] bg-[#facc15]/10 ring-2 ring-[#facc15]"
-                      : "border-[#373A40]/20 bg-[#1A1B1E]/10 hover:border-[#facc15]/50 hover:bg-[#facc15]/10"
+                      ? "border-primary-solid bg-primary-solid/10"
+                      : "border-line-subtle bg-surface-raised hover:border-line-strong hover:bg-surface-overlay"
                   }`}
                 >
-                  <span className='font-semibold text-[#1A1B1E] leading-tight'>{m.name}</span>
-                  <span className='text-xs text-gray-500'>{m.notes.join(" – ")}</span>
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium w-fit ${matchTypeBadgeClass(m)}`}>
+                  <span className='text-15 font-medium text-ink-primary'>{m.name}</span>
+                  <span className='text-10 text-ink-muted'>{m.notes.join(" – ")}</span>
+                  <span className={`w-fit rounded-full px-2 py-0.5 text-10 font-medium ${matchTypeBadgeClass(m)}`}>
                     {matchTypeLabel(m)}
                   </span>
                 </button>

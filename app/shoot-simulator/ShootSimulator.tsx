@@ -2,6 +2,22 @@
 
 import { useEffect, useRef } from "react";
 
+/**
+ * The one place in the app that is deliberately not on the design system.
+ *
+ * Everything below is painted into a single <canvas>: a night street with
+ * brick facades, plane-tree bark, neon signs, graffiti, robots and a sky
+ * gradient, plus the HUD drawn on top of it. Layer 2 names four planes, two
+ * border weights, three inks and three status colours — it has nothing to say
+ * about what colour a comet tail or a dumpster is, and repainting a scene in
+ * four greys would delete the artwork rather than standardise it.
+ *
+ * The chrome around the canvas (app/shoot-simulator/ShootSimulatorPage.tsx and
+ * the shell above it) is on the tokens like everything else, so the frame the
+ * game sits in still follows the theme. If the HUD is ever pulled out of the
+ * canvas and into the DOM, that part belongs on the tokens too.
+ */
+
 // ── Sound effects ─────────────────────────────────────────────────────────────
 
 let sfxCtx: AudioContext | null = null;

@@ -36,7 +36,19 @@ const today = () => localDateStr(new Date());
 const dayMs = (d: string) => new Date(d + "T12:00:00").getTime();
 const DAY_MS = 86400000;
 
-const COLORS = ["#ef4444", "#3b82f6", "#22c55e", "#f59e0b", "#8b5cf6", "#06b6d4", "#ec4899", "#f97316"];
+/**
+ * One colour per exercise on the chart: identity, not ranking, which is what
+ * color.track is for. There are six and the assignment wraps, exactly as
+ * tokens/README says to use them.
+ */
+const COLORS = [
+  "var(--ds-color-track-1)",
+  "var(--ds-color-track-2)",
+  "var(--ds-color-track-3)",
+  "var(--ds-color-track-4)",
+  "var(--ds-color-track-5)",
+  "var(--ds-color-track-6)",
+];
 
 export default function WorkoutTrackerContent() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
@@ -206,12 +218,12 @@ export default function WorkoutTrackerContent() {
               style={{
                 backgroundColor:
                   day.count === 0
-                    ? "#e2e8f0"
+                    ? "var(--ds-color-surface-overlay)"
                     : day.count <= 1
-                      ? "#bfdbfe"
+                      ? "color-mix(in oklab, var(--ds-color-primary-solid) 30%, var(--ds-color-surface-overlay))"
                       : day.count <= 3
-                        ? "#3b82f6"
-                        : "#1e3a8a",
+                        ? "color-mix(in oklab, var(--ds-color-primary-solid) 65%, var(--ds-color-surface-overlay))"
+                        : "var(--ds-color-primary-solid)",
               }}
               onMouseEnter={(e) => {
                 const rect = e.currentTarget.getBoundingClientRect();
@@ -230,7 +242,7 @@ export default function WorkoutTrackerContent() {
       ))}
       {hovered && (
         <div
-          className='absolute z-10 bg-[#1A1B1E] text-white text-xs rounded-lg px-3 py-2 pointer-events-none shadow-lg'
+          className='absolute z-10 rounded-lg border border-line-subtle bg-surface-overlay px-3 py-2 text-10 text-ink-primary shadow-overlay pointer-events-none'
           style={{ left: hovered.x, top: hovered.y, transform: "translate(-50%, -100%)" }}
         >
           <div className='font-semibold mb-1'>
@@ -241,7 +253,7 @@ export default function WorkoutTrackerContent() {
             })}
           </div>
           {hovered.exercises.length === 0 ? (
-            <div className='text-white/60'>No workouts</div>
+            <div className='text-ink-muted'>No workouts</div>
           ) : (
             hovered.exercises.map((e, i) => <div key={i}>{e}</div>)
           )}
@@ -255,7 +267,7 @@ export default function WorkoutTrackerContent() {
   const allEntriesContent = (() => {
     if (logs.length === 0) {
       return (
-        <p className='text-sm text-black/40 dark:text-neutral-500'>
+        <p className='text-sm text-ink-muted'>
           {user ? "No entries yet. Log a workout above to get started." : "No entries yet."}
         </p>
       );
@@ -267,15 +279,15 @@ export default function WorkoutTrackerContent() {
     const paged = sorted.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
     return (
       <>
-        <div className='text-xs text-black/40 dark:text-white/40 mb-3'>{sorted.length} total</div>
+        <div className='text-xs text-ink-muted mb-3'>{sorted.length} total</div>
         <div className='space-y-1'>
           {paged.map((l) => (
             <div
               key={l.id}
-              className='flex items-center justify-between gap-2 py-3 border-b border-black/10 dark:border-white/10 last:border-0'
+              className='flex items-center justify-between gap-2 py-3 border-b border-line-strong last:border-0'
             >
-              <div className='text-sm min-w-0 dark:text-white'>
-                <span className='text-black/50 dark:text-white/50 mr-2 text-xs shrink-0'>
+              <div className='text-sm min-w-0'>
+                <span className='text-ink-muted mr-2 text-xs shrink-0'>
                   {new Date(l.date + "T12:00:00").toLocaleDateString("en-US", {
                     month: "short",
                     day: "numeric",
@@ -283,13 +295,13 @@ export default function WorkoutTrackerContent() {
                 </span>
                 <span className='font-medium'>{l.exercise}</span>
                 {l.weight != null && l.weight > 0 && (
-                  <span className='text-black/50 dark:text-white/50 ml-1 text-xs'>@ {l.weight} lbs</span>
+                  <span className='text-ink-muted ml-1 text-xs'>@ {l.weight} lbs</span>
                 )}
               </div>
               {user?.id === l.user_id && (
                 <button
                   onClick={() => remove(l.id)}
-                  className='shrink-0 w-11 h-11 flex items-center justify-center text-xl text-black/25 hover:text-red-500 dark:text-white/25 -mr-2'
+                  className='shrink-0 w-11 h-11 flex items-center justify-center text-xl text-ink-muted hover:text-danger -mr-2'
                   aria-label='Delete'
                 >
                   ×
@@ -303,17 +315,17 @@ export default function WorkoutTrackerContent() {
             <button
               onClick={() => setPage((p) => p - 1)}
               disabled={page === 0}
-              className='text-sm px-4 py-2.5 rounded border border-black/20 dark:border-white/20 disabled:opacity-30 min-h-[44px] dark:text-white'
+              className='text-sm px-4 py-2.5 rounded border border-line-strong disabled:opacity-30 min-h-[44px]'
             >
               ← Prev
             </button>
-            <span className='text-sm text-black/50 dark:text-white/50'>
+            <span className='text-sm text-ink-muted'>
               {page + 1} / {totalPages}
             </span>
             <button
               onClick={() => setPage((p) => p + 1)}
               disabled={page >= totalPages - 1}
-              className='text-sm px-4 py-2.5 rounded border border-black/20 dark:border-white/20 disabled:opacity-30 min-h-[44px] dark:text-white'
+              className='text-sm px-4 py-2.5 rounded border border-line-strong disabled:opacity-30 min-h-[44px]'
             >
               Next →
             </button>
@@ -358,18 +370,18 @@ export default function WorkoutTrackerContent() {
     <BentoPageLayout title="Workout Tracker">
       {/* Log form */}
       {user && (
-        <div className='rounded-2xl bg-white dark:bg-neutral-900 p-4 sm:p-5 mb-4' style={{ border: "1px solid var(--border-color)" }}>
+        <div className='rounded-2xl bg-surface-raised p-4 sm:p-5 mb-4' style={{ border: "1px solid var(--border-color)" }}>
           <div className='flex flex-col sm:flex-row sm:flex-wrap gap-3 sm:items-end max-w-3xl mx-auto'>
             <input
               type='date'
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className='border border-black/20 dark:border-white/20 rounded px-3 py-2.5 text-base bg-white dark:bg-neutral-800 dark:text-white min-h-[44px] w-full sm:w-auto'
+              className='border border-line-strong rounded px-3 py-2.5 text-base bg-surface-raised min-h-[44px] w-full sm:w-auto'
             />
             <select
               value={selected}
               onChange={(e) => setSelected(e.target.value)}
-              className='border border-black/20 dark:border-white/20 rounded px-3 py-2.5 text-base min-h-[44px] w-full sm:flex-1 sm:min-w-[140px] dark:bg-neutral-800 dark:text-white'
+              className='border border-line-strong rounded px-3 py-2.5 text-base min-h-[44px] w-full sm:flex-1 sm:min-w-[140px]'
             >
               {sortedExercises.map((c) => (
                 <option key={c.name} value={c.name}>{c.name}</option>
@@ -383,11 +395,11 @@ export default function WorkoutTrackerContent() {
               placeholder='lbs'
               onChange={(e) => setWeight(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && submit()}
-              className='w-full sm:w-24 border border-black/20 dark:border-white/20 rounded px-3 py-2.5 text-base min-h-[44px] dark:bg-neutral-800 dark:text-white'
+              className='w-full sm:w-24 border border-line-strong rounded px-3 py-2.5 text-base min-h-[44px]'
             />
             <button
               onClick={submit}
-              className='w-full sm:flex-none rounded bg-black dark:bg-yellow-400 px-5 py-2.5 text-base font-medium text-yellow-400 dark:text-black hover:bg-black/80 dark:hover:bg-yellow-300 min-h-[44px]'
+              className='w-full sm:flex-none rounded bg-surface-base px-5 py-2.5 text-base font-medium text-primary-text hover:bg-surface-sunken/70 min-h-[44px]'
             >
               Submit
             </button>
@@ -397,15 +409,15 @@ export default function WorkoutTrackerContent() {
 
       {/* Weight progress chart */}
       {exercisesWithLogs.length > 0 && chartData.length > 0 && (
-        <div className='rounded-2xl bg-white dark:bg-neutral-900 mb-4' style={{ border: "1px solid var(--border-color)" }}>
+        <div className='rounded-2xl bg-surface-raised mb-4' style={{ border: "1px solid var(--border-color)" }}>
           <div className='flex items-center gap-2 border-b px-3 py-2' style={{ borderColor: "var(--border-color)" }}>
-            <h2 className='text-xs font-bold uppercase tracking-wide text-black/70 dark:text-yellow-400/70'>Weight Progress</h2>
+            <h2 className='text-xs font-bold uppercase tracking-wide text-ink-muted'>Weight Progress</h2>
           </div>
           <div className='p-4 h-72 sm:h-96'>
             <ClientOnly>
               <ResponsiveContainer width='100%' height='100%'>
                 <LineChart data={chartData}>
-                  <CartesianGrid strokeDasharray='3 3' stroke='#e5e7eb' />
+                  <CartesianGrid strokeDasharray='3 3' stroke='var(--ds-color-border-subtle)' />
                   <XAxis
                     dataKey='t'
                     type='number'

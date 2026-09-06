@@ -326,11 +326,11 @@ function VoicingCard({
   return (
     <div className="flex flex-col items-center gap-1">
       <ChordDiagram shape={shape} label={chordLabel} useFlats={useFlats} />
-      <span className="text-xs font-medium text-black/60 dark:text-neutral-400 text-center" title={sublabelTitle}>
+      <span className="text-xs font-medium text-ink-muted text-center" title={sublabelTitle}>
         {sublabel}
       </span>
       {position && (
-        <span className="text-xs text-black/35 dark:text-neutral-500 text-center" title={positionTitle}>
+        <span className="text-xs text-ink-muted text-center" title={positionTitle}>
           {position}
         </span>
       )}
@@ -426,7 +426,7 @@ function TriadStringSets({
   useFlats: boolean;
 }) {
   return (
-    <div className="grid grid-cols-1 gap-y-6 sm:grid-cols-3 sm:gap-y-0 divide-y sm:divide-y-0 sm:divide-x divide-gray-200 dark:divide-neutral-700">
+    <div className="grid grid-cols-1 gap-y-6 sm:grid-cols-3 sm:gap-y-0 divide-y sm:divide-y-0 sm:divide-x divide-line-subtle">
       {TRIAD_STRING_SETS.map((set, idx) => {
         const onSet = shapes
           .filter((v) => v.stringSet === set.key)
@@ -437,13 +437,13 @@ function TriadStringSets({
             className={`flex flex-col gap-1 pt-6 sm:pt-0${idx === 0 ? "" : " sm:pl-6"}${idx === TRIAD_STRING_SETS.length - 1 ? "" : " sm:pr-6"}`}
           >
             <span
-              className="text-sm font-semibold text-black dark:text-white"
+              className="text-sm font-semibold text-ink-primary"
               title={`Three-note shapes played on ${set.label.replace("Strings ", "strings ")} — string 6 is the thickest, string 1 the thinnest`}
             >
               {set.label}
             </span>
             <span
-              className="text-xs text-black/40 dark:text-neutral-500 mb-4"
+              className="text-xs text-ink-muted mb-4"
               title="How many shapes there are on this string set — one for each inversion"
             >
               {onSet.length} shape{onSet.length === 1 ? "" : "s"}
@@ -460,7 +460,7 @@ function TriadStringSets({
                       useFlats={useFlats}
                     />
                     <span
-                      className="text-xs text-black/35 dark:text-neutral-500 text-center tabular-nums"
+                      className="text-xs text-ink-muted text-center tabular-nums"
                       title={`${
                         v.startFret === 0
                           ? "Played at the open position, near the headstock"
@@ -505,9 +505,9 @@ function ChordTypeCard({
   const chordLabel = formatChordLabel(note, type);
 
   return (
-    <div className="flex flex-col items-center gap-2 rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-neutral-700 dark:bg-neutral-800">
+    <div className="flex flex-col items-center gap-2 rounded-xl border border-line-subtle bg-surface-raised p-4 shadow-sm">
       <span
-        className="text-xs font-semibold uppercase tracking-wider text-black/50 dark:text-white/50"
+        className="text-xs font-semibold uppercase tracking-wider text-ink-muted"
         title={CHORD_TYPE_TOOLTIPS[type] ?? type}
       >
         {type}
@@ -515,14 +515,14 @@ function ChordTypeCard({
       {selected ? (
         <ChordDiagram shape={selected.shape} label={chordLabel} useFlats={useFlats} />
       ) : (
-        <p className="text-xs text-black/40 dark:text-neutral-500">No voicing available.</p>
+        <p className="text-xs text-ink-muted">No voicing available.</p>
       )}
       {options.length > 0 && (
         <select
           value={clampedIndex}
           onChange={(e) => setVoicingIndex(Number(e.target.value))}
           title="Swap the voicing or chord shape used for this chord"
-          className="w-full max-w-[150px] rounded-lg border border-border bg-transparent px-2 py-1.5 text-xs dark:border-neutral-600 dark:bg-neutral-900"
+          className="w-full max-w-[150px] rounded-lg border border-line-subtle bg-transparent px-2 py-1.5 text-xs"
         >
           {options.map((v, i) => (
             <option key={i} value={i}>
@@ -566,10 +566,10 @@ function ProgressionChordCard({
 
   return (
     <div
-      className="flex flex-col items-center gap-2 rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-neutral-700 dark:bg-neutral-800"
+      className="flex flex-col items-center gap-2 rounded-xl border border-line-subtle bg-surface-raised p-4 shadow-sm"
     >
       <span
-        className="text-xs font-semibold tracking-wider text-black/40 dark:text-white/40"
+        className="text-xs font-semibold tracking-wider text-ink-muted"
         title="Scale degree of this chord within the key — case shows major/minor (e.g. vi vs VI), ° shows diminished"
       >
         {roman}
@@ -578,8 +578,8 @@ function ProgressionChordCard({
         <ChordDiagram shape={shape} label={label} useFlats={useFlats} />
       ) : (
         <div className="flex flex-col items-center gap-1 py-4">
-          <span className="text-sm font-semibold text-black dark:text-white">{label}</span>
-          <p className="text-xs text-black/40 dark:text-neutral-500">No voicing available.</p>
+          <span className="text-sm font-semibold text-ink-primary">{label}</span>
+          <p className="text-xs text-ink-muted">No voicing available.</p>
         </div>
       )}
       {voicings.length > 0 && (
@@ -587,7 +587,7 @@ function ProgressionChordCard({
           value={selected?.id ?? ""}
           onChange={(e) => onPick(e.target.value)}
           title="Pin this one chord to a shape, wherever the rest of the progression sits"
-          className="w-full max-w-[150px] rounded-lg border border-border bg-transparent px-2 py-1.5 text-xs dark:border-neutral-600 dark:bg-neutral-900"
+          className="w-full max-w-[150px] rounded-lg border border-line-subtle bg-transparent px-2 py-1.5 text-xs"
         >
           {voicings.map((v) => (
             <option key={v.id} value={v.id}>
@@ -756,7 +756,7 @@ export default function ChordExplorerPage() {
   );
 
   const inversionsContent = inversions ? (
-    <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-gray-200 dark:divide-neutral-700">
+    <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-line-subtle">
       {[
         {
           key: "root",
@@ -781,11 +781,11 @@ export default function ChordExplorerPage() {
         },
       ].map((inv, idx) => (
         <div key={inv.key} className={`flex flex-col gap-1 pt-6 sm:pt-0${idx === 0 ? "" : " sm:pl-6"}${idx === 2 ? "" : " sm:pr-6"}`}>
-          <span className="text-sm font-semibold text-black dark:text-white" title={inv.tooltip}>
+          <span className="text-sm font-semibold text-ink-primary" title={inv.tooltip}>
             {inv.title}
           </span>
           <span
-            className="text-xs text-black/40 dark:text-neutral-500 mb-4"
+            className="text-xs text-ink-muted mb-4"
             title="The scale degrees played from lowest to highest string — 1 is the root, 3 is the third, 5 is the fifth"
           >
             {inv.subtitle}
@@ -805,7 +805,7 @@ export default function ChordExplorerPage() {
       ))}
     </div>
   ) : (
-    <p className="text-sm text-black/40 dark:text-neutral-500">
+    <p className="text-sm text-ink-muted">
       Inversion voicings are available for Major and Minor chords. Select one to explore.
     </p>
   );
@@ -819,7 +819,7 @@ export default function ChordExplorerPage() {
       <div className="flex flex-col gap-2">
         <label className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
           <span
-            className="text-xs font-semibold uppercase tracking-wider text-black/50 dark:text-white/50 shrink-0"
+            className="text-xs font-semibold uppercase tracking-wider text-ink-muted shrink-0"
             title="Type the chords you want to play and every one of them gets its own row of triad shapes"
           >
             Progression
@@ -832,14 +832,14 @@ export default function ChordExplorerPage() {
             spellCheck={false}
             aria-label="Chord progression for triad shapes"
             title="Chords separated by spaces, commas, dashes or pipes — G C D, G, C, D and G | C | D all work. Names like Am, F#m7, Csus4 and Bb are understood."
-            className="w-full sm:max-w-sm rounded-lg border border-gray-200 dark:border-neutral-700 bg-gray-100 dark:bg-neutral-800 px-2.5 py-1.5 text-sm font-medium text-gray-800 dark:text-neutral-100 focus:outline-none focus:ring-1 focus:ring-yellow-400"
+            className="w-full sm:max-w-sm rounded-lg border border-line-subtle bg-surface-sunken px-2.5 py-1.5 text-sm font-medium text-ink-primary focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
           />
           {progressionText.trim() !== "" && (
             <button
               type="button"
               onClick={() => updateProgression("")}
               title="Clear the progression and go back to the chord picked at the top of the page"
-              className="self-start rounded-lg border border-gray-200 dark:border-neutral-700 px-2 py-1 text-xs font-medium text-black/50 dark:text-neutral-400 hover:bg-gray-100 dark:hover:bg-neutral-800 shrink-0"
+              className="self-start rounded-lg border border-line-subtle px-2 py-1 text-xs font-medium text-ink-muted hover:bg-surface-sunken shrink-0"
             >
               Clear
             </button>
@@ -847,17 +847,17 @@ export default function ChordExplorerPage() {
         </label>
 
         {unreadable.length > 0 && (
-          <p className="text-xs text-amber-600 dark:text-amber-400">
+          <p className="text-xs text-primary-text">
             Not a chord I know: {unreadable.map((t) => `"${t}"`).join(", ")}. Try names like G, Am,
             F#m7, Csus4 or Bb.
           </p>
         )}
 
-        <p className="text-sm text-black/50 dark:text-neutral-400">
+        <p className="text-sm text-ink-muted">
           {triadRows.length > 1 ? (
             <>
               A row of shapes for each chord, in the order you wrote them:{" "}
-              <span className="font-semibold text-black dark:text-white">
+              <span className="font-semibold text-ink-primary">
                 {triadRows.map((r) => r.triadLabel).join(" → ")}
               </span>
               .
@@ -866,14 +866,14 @@ export default function ChordExplorerPage() {
             triadRows[0].spec.exact ? (
               <>
                 Every way to play{" "}
-                <span className="font-semibold text-black dark:text-white">{triadRows[0].triadLabel}</span> as
+                <span className="font-semibold text-ink-primary">{triadRows[0].triadLabel}</span> as
                 three notes on three adjacent strings.
               </>
             ) : (
               <>
-                The <span className="font-semibold text-black dark:text-white">{triadRows[0].triadLabel}</span>{" "}
+                The <span className="font-semibold text-ink-primary">{triadRows[0].triadLabel}</span>{" "}
                 triad inside{" "}
-                <span className="font-semibold text-black dark:text-white">{triadRows[0].sourceLabel}</span> — the
+                <span className="font-semibold text-ink-primary">{triadRows[0].sourceLabel}</span> — the
                 three notes at its core, without the extensions stacked on top.
               </>
             )
@@ -881,7 +881,7 @@ export default function ChordExplorerPage() {
             <>Type a chord above to see its triad shapes.</>
           )}{" "}
           <span
-            className="text-black/35 dark:text-neutral-500"
+            className="text-ink-muted"
             title="A pitch repeats every twelve frets, so these are all the shapes there are — past fret 12 the same ones come round again an octave higher"
           >
             These are all of them; above fret 12 they repeat an octave up.
@@ -892,15 +892,15 @@ export default function ChordExplorerPage() {
       {triadRows.map((row, idx) => (
         <div
           key={`${row.key}-${idx}`}
-          className={idx === 0 ? undefined : "border-t border-gray-200 dark:border-neutral-700 pt-5"}
+          className={idx === 0 ? undefined : "border-t border-line-subtle pt-5"}
         >
           {/* A row only needs naming when there is more than one to tell apart. */}
           {triadRows.length > 1 && (
             <div className="mb-3 flex items-baseline gap-2">
-              <span className="text-base font-bold text-black dark:text-white">{row.triadLabel}</span>
+              <span className="text-base font-bold text-ink-primary">{row.triadLabel}</span>
               {!row.spec.exact && (
                 <span
-                  className="text-xs text-black/40 dark:text-neutral-500"
+                  className="text-xs text-ink-muted"
                   title="The extensions are not in these shapes — this is the triad they are built on"
                 >
                   the triad inside {row.sourceLabel}
@@ -924,13 +924,13 @@ export default function ChordExplorerPage() {
   const progressionContent = (
     <div className="flex h-full min-h-0 flex-col gap-4 md:flex-row">
       <div
-        className="flex max-h-64 min-h-0 shrink-0 flex-col overflow-y-auto rounded-lg border border-border md:max-h-none md:w-60 dark:border-neutral-700"
+        className="flex max-h-64 min-h-0 shrink-0 flex-col overflow-y-auto rounded-lg border border-line-subtle md:max-h-none md:w-60"
         role="listbox"
         aria-label="Chord progressions by feeling"
       >
         {PROGRESSION_GROUPS.map((group) => (
           <div key={group.label}>
-            <p className="sticky top-0 z-10 border-b border-border bg-gray-50 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-black/50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white/50">
+            <p className="sticky top-0 z-10 border-b border-line-subtle bg-surface-sunken px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
               {group.label}
             </p>
             {group.items.map((p) => {
@@ -945,12 +945,12 @@ export default function ChordExplorerPage() {
                   title={p.description}
                   className={`flex w-full flex-col items-start gap-0.5 border-l-2 px-3 py-2 text-left transition-colors ${
                     active
-                      ? "border-accent bg-accent/20"
-                      : "border-transparent hover:bg-foreground/10"
+                      ? "border-primary-solid bg-primary-solid/20"
+                      : "border-transparent hover:bg-surface-overlay"
                   }`}
                 >
-                  <span className="text-sm font-medium text-black dark:text-white">{p.name}</span>
-                  <span className="font-mono text-[11px] text-black/40 dark:text-neutral-500">{p.pattern}</span>
+                  <span className="text-sm font-medium text-ink-primary">{p.name}</span>
+                  <span className="font-mono text-[11px] text-ink-muted">{p.pattern}</span>
                 </button>
               );
             })}
@@ -961,10 +961,10 @@ export default function ChordExplorerPage() {
       <div className="flex min-h-0 flex-1 flex-col gap-4 md:overflow-y-auto">
         <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
           <div className="flex flex-col gap-1">
-            <p className="text-sm font-semibold text-black dark:text-white">{selectedProgressionDef.name}</p>
-            <p className="text-sm text-black/50 dark:text-white/50">{selectedProgressionDef.description}</p>
+            <p className="text-sm font-semibold text-ink-primary">{selectedProgressionDef.name}</p>
+            <p className="text-sm text-ink-muted">{selectedProgressionDef.description}</p>
             <p
-              className="text-xs font-mono text-black/40 dark:text-neutral-500"
+              className="text-xs font-mono text-ink-muted"
               title="The Roman numeral pattern — each numeral represents a scale degree relative to the selected root note"
             >
               {selectedProgressionDef.pattern}
@@ -976,7 +976,7 @@ export default function ChordExplorerPage() {
             <div className="flex flex-col gap-1">
               <label
                 htmlFor="progression-fret-position"
-                className="text-xs font-semibold uppercase tracking-wider text-black/50 dark:text-white/50"
+                className="text-xs font-semibold uppercase tracking-wider text-ink-muted"
                 title="Anchor the progression at a spot on the fretboard — every chord takes the voicing that puts your hand nearest that fret"
               >
                 Fretboard Position
@@ -988,7 +988,7 @@ export default function ChordExplorerPage() {
                   anchorProgression(e.target.value === "" ? null : Number(e.target.value))
                 }
                 title="Anchor the progression at a spot on the fretboard"
-                className="min-h-[44px] w-full min-w-[200px] rounded-lg border border-border bg-transparent px-2 py-1.5 text-sm dark:border-neutral-600 dark:bg-neutral-900"
+                className="min-h-[44px] w-full min-w-[200px] rounded-lg border border-line-subtle bg-transparent px-2 py-1.5 text-sm"
               >
                 {POSITION_OPTIONS.map((option) => (
                   <option key={option.label} value={option.value ?? ""}>
@@ -998,7 +998,7 @@ export default function ChordExplorerPage() {
               </select>
             </div>
 
-            <p className="max-w-[240px] text-xs text-black/40 dark:text-neutral-500">
+            <p className="max-w-[240px] text-xs text-ink-muted">
               {progressionFret === null
                 ? "The lowest way to play it — open chords wherever they exist."
                 : `Every chord in the shape that sits closest to fret ${progressionFret}.`}
@@ -1096,14 +1096,13 @@ export default function ChordExplorerPage() {
 
       {/* ── Controls — two rows in a bento card, pinned at top ───────────────── */}
       <div
-        className="mb-4 flex flex-col gap-4 rounded-2xl bg-white dark:bg-neutral-900 p-4 sm:p-5"
-        style={{ border: "1px solid var(--border-color)" }}
+        className="mb-4 flex flex-col gap-4 rounded-2xl border border-line-subtle bg-surface-raised p-4 sm:p-5"
       >
 
         {/* Row 1: Root note */}
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <p
-            className="text-xs font-semibold text-black/50 dark:text-white/50 uppercase tracking-wider shrink-0"
+            className="text-xs font-semibold text-ink-muted uppercase tracking-wider shrink-0"
             title="The starting note of your chord — this is what gives the chord its name (e.g. choosing C builds a C Major chord)"
           >
             Root Note
@@ -1119,19 +1118,19 @@ export default function ChordExplorerPage() {
                   onClick={() => handleNoteClick(note)}
                   title={`Select ${note} as your root note — builds a ${formatChordLabel(note, selectedType)} chord`}
                   className={`${TOUCH_BUTTON} ${
-                    active ? "bg-accent/20 border-accent" : "border-border hover:bg-foreground/10"
+                    active ? "bg-primary-solid/20 border-primary-solid" : "border-line-subtle hover:bg-surface-overlay"
                   }`}
                 >
                   {note}
                 </button>
               );
             })}
-            <span className="mx-1 text-black/30 dark:text-white/30 self-center">|</span>
+            <span className="mx-1 text-ink-muted self-center">|</span>
             <button
               onClick={handleFlatsToggle}
               title="Toggle between sharp (♯) and flat (♭) note names — these are the same pitches written two different ways (e.g. F♯ and G♭ are the exact same note)"
               className={`${TOUCH_BUTTON} ${
-                useFlats ? "bg-accent/20 border-accent" : "border-border hover:bg-foreground/10"
+                useFlats ? "bg-primary-solid/20 border-primary-solid" : "border-line-subtle hover:bg-surface-overlay"
               }`}
             >
               ♭ Flats
@@ -1142,7 +1141,7 @@ export default function ChordExplorerPage() {
         {/* Row 2: Chord type */}
         <div className="flex flex-wrap items-start gap-x-4 gap-y-2">
           <p
-            className="text-xs font-semibold text-black/50 dark:text-white/50 uppercase tracking-wider shrink-0 pt-1"
+            className="text-xs font-semibold text-ink-muted uppercase tracking-wider shrink-0 pt-1"
             title="The flavor of the chord — different types have very different sounds. Major sounds happy, Minor sounds darker, and the rest add color and complexity"
           >
             Chord Type
@@ -1150,7 +1149,7 @@ export default function ChordExplorerPage() {
           <div className="flex flex-wrap gap-x-6 gap-y-3">
             {TYPE_GROUPS.map((group) => (
               <div key={group.label}>
-                <p className="text-xs text-black/40 dark:text-white/40 mb-1.5" title={GROUP_TOOLTIPS[group.label]}>
+                <p className="text-xs text-ink-muted mb-1.5" title={GROUP_TOOLTIPS[group.label]}>
                   {group.label}
                 </p>
                 <div className="flex flex-wrap gap-2">
@@ -1161,8 +1160,8 @@ export default function ChordExplorerPage() {
                       title={CHORD_TYPE_TOOLTIPS[type] ?? type}
                       className={`${TOUCH_BUTTON} ${
                         selectedType === type
-                          ? "bg-accent/20 border-accent"
-                          : "border-border hover:bg-foreground/10"
+                          ? "bg-primary-solid/20 border-primary-solid"
+                          : "border-line-subtle hover:bg-surface-overlay"
                       }`}
                     >
                       {type}

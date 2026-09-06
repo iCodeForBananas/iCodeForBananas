@@ -135,7 +135,7 @@ export default function CircleOfFifths({
                 key={`line-${index}`}
                 x1={outerPos.x} y1={outerPos.y}
                 x2={innerPos.x} y2={innerPos.y}
-                stroke='rgba(250,204,21,0.15)' strokeWidth='1'
+                stroke='color-mix(in oklab, var(--ds-color-primary-solid) 15%, transparent)' strokeWidth='1'
               />
             );
           })}

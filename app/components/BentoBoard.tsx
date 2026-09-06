@@ -118,17 +118,11 @@ function PanelShell({
   resizeHandle?: ReactNode;
 }) {
   return (
-    <div
-      className="relative flex h-full min-h-0 flex-col overflow-hidden rounded-2xl bg-white dark:bg-neutral-900"
-      style={{ border: "1px solid var(--border-color)" }}
-    >
-      <div
-        className="flex shrink-0 items-center gap-2 border-b px-3 py-2"
-        style={{ borderColor: "var(--border-color)" }}
-      >
+    <div className="relative flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-line-subtle bg-surface-raised shadow-raised">
+      <div className="flex shrink-0 items-center gap-2 border-b border-line-subtle px-3 py-2">
         {dragHandle}
         <h3
-          className={`text-xs font-bold uppercase tracking-wide text-black/70 dark:text-yellow-400/70 ${tooltip ? "cursor-help" : ""}`}
+          className={`text-10 font-semibold uppercase tracking-wide text-ink-muted ${tooltip ? "cursor-help" : ""}`}
           title={tooltip}
         >
           {title}
@@ -207,7 +201,7 @@ function GridPanel({
         dragHandle={
           <button
             type="button"
-            className="-ml-1 cursor-grab touch-none rounded p-1 text-black/30 hover:text-black/60 active:cursor-grabbing dark:text-white/30 dark:hover:text-white/60"
+            className="-ml-1 cursor-grab touch-none rounded p-1 text-ink-muted hover:text-ink-primary active:cursor-grabbing"
             title="Drag to rearrange this panel"
             aria-label={`Drag to move ${panel.title}`}
             {...attributes}
@@ -221,7 +215,7 @@ function GridPanel({
             onPointerDown={startResize}
             title="Drag to resize this panel"
             aria-label={`Resize ${panel.title}`}
-            className="absolute bottom-0 right-0 h-5 w-5 cursor-nwse-resize touch-none text-black/25 hover:text-black/60 dark:text-white/25 dark:hover:text-white/60"
+            className="absolute bottom-0 right-0 h-5 w-5 cursor-nwse-resize touch-none text-ink-muted/60 hover:text-ink-primary"
           >
             <svg viewBox="0 0 20 20" className="h-full w-full">
               <path d="M19 7 L7 19 M19 12 L12 19 M19 17 L17 19" stroke="currentColor" strokeWidth="1.5" fill="none" />

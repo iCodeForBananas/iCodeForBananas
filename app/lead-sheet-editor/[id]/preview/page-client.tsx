@@ -134,13 +134,13 @@ function EditModeBanner({
     <div
       className={`flex items-center justify-between gap-2 border-t py-1.5 print:hidden ${
         error
-          ? "border-danger/30 bg-danger/10 border-danger/30 dark:bg-danger/100/10"
-          : "border-primary-solid/30 bg-primary-solid/10 border-line-subtle dark:bg-primary-solid/10"
+          ? "border-danger/30 bg-danger/10"
+          : "border-primary-solid/30 bg-primary-solid/10"
       } ${className}`}
     >
       <span
         className={`text-xs font-medium ${
-          error ? "text-danger dark:text-danger" : "text-primary-text text-primary-hover"
+          error ? "text-danger" : "text-primary-text"
         }`}
       >
         {error ?? "Tap a line to edit it, or drag its grip to move it."}
@@ -148,7 +148,7 @@ function EditModeBanner({
       <button
         type='button'
         onClick={onDone}
-        className='h-7 shrink-0 rounded-lg bg-primary-solid px-2.5 text-xs font-semibold text-ink-primary hover:bg-primary-hover transition-colors duration-150'
+        className='h-7 shrink-0 rounded-lg bg-primary-solid px-2.5 text-xs font-semibold text-ink-on-primary hover:bg-primary-hover transition-colors duration-150'
       >
         Done
       </button>
@@ -333,7 +333,7 @@ const SheetContent = memo(function SheetContent({
                       }
                       className={`rounded px-2 transition-colors duration-150 ${
                         active
-                          ? "bg-primary-solid/20 shadow-[inset_3px_0_0_0_var(--ds-color-primary-solid)] dark:bg-primary-solid/20"
+                          ? "bg-primary-solid/20 shadow-[inset_3px_0_0_0_var(--ds-color-primary-solid)]"
                           : ""
                       } ${
                         onEditLine
@@ -348,7 +348,7 @@ const SheetContent = memo(function SheetContent({
                           className={`inline-flex items-center gap-1 text-[0.65em] font-bold tracking-wide uppercase px-1.5 py-0.5 rounded mr-2 print:hidden ${
                             !cueInfo.isStop
                               ? "bg-success/15 text-success bg-success/15 text-success"
-                              : "bg-danger/15 text-danger bg-danger/15 dark:text-danger"
+                              : "bg-danger/15 text-danger"
                           }`}
                         >
                           🥁 {cueInfo.label}
@@ -370,7 +370,7 @@ const SheetContent = memo(function SheetContent({
                       <button
                         type='button'
                         onClick={() => onInsertLine(sectionIndex, lines.length)}
-                        className='flex flex-1 items-center justify-center gap-1.5 rounded border border-dashed border-line-strong/15 py-2 text-[0.8em] font-medium text-ink-muted transition-colors duration-150 hover:border-primary-solid hover:bg-primary-solid/10 hover:text-ink-primary border-line-subtle text-ink-muted dark:hover:bg-primary-solid/10 dark:hover:text-ink-primary/70'
+                        className='flex flex-1 items-center justify-center gap-1.5 rounded border border-dashed border-line-subtle py-2 text-[0.8em] font-medium text-ink-muted transition-colors duration-150 hover:border-primary-solid hover:bg-primary-solid/10 hover:text-ink-primary'
                       >
                         <Plus className='w-3.5 h-3.5' />
                         Add line
@@ -381,7 +381,7 @@ const SheetContent = memo(function SheetContent({
                         type='button'
                         onClick={() => onAddSection(sectionIndex)}
                         title='Start a new verse, chorus or bridge after this one'
-                        className='flex items-center justify-center gap-1.5 rounded border border-dashed border-line-strong/15 px-3 py-2 text-[0.8em] font-medium text-ink-muted transition-colors duration-150 hover:border-primary-solid hover:bg-primary-solid/10 hover:text-ink-primary border-line-subtle text-ink-muted dark:hover:bg-primary-solid/10 dark:hover:text-ink-primary/70'
+                        className='flex items-center justify-center gap-1.5 rounded border border-dashed border-line-subtle px-3 py-2 text-[0.8em] font-medium text-ink-muted transition-colors duration-150 hover:border-primary-solid hover:bg-primary-solid/10 hover:text-ink-primary'
                       >
                         <Plus className='w-3.5 h-3.5' />
                         Section
@@ -402,7 +402,7 @@ const SheetContent = memo(function SheetContent({
           <button
             type='button'
             onClick={() => onAddSection(-1)}
-            className='flex w-full items-center justify-center gap-1.5 rounded border border-dashed border-line-strong/15 py-3 text-[0.8em] font-medium text-ink-muted transition-colors duration-150 hover:border-primary-solid hover:bg-primary-solid/10 hover:text-ink-primary border-line-subtle text-ink-muted dark:hover:bg-primary-solid/10 dark:hover:text-ink-primary/70'
+            className='flex w-full items-center justify-center gap-1.5 rounded border border-dashed border-line-subtle py-3 text-[0.8em] font-medium text-ink-muted transition-colors duration-150 hover:border-primary-solid hover:bg-primary-solid/10 hover:text-ink-primary'
           >
             <Plus className='w-3.5 h-3.5' />
             Add section

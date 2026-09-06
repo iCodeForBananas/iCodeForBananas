@@ -19,7 +19,12 @@ const STRING_NAMES = [
   "high e (1st string)",
 ];
 
-export default function ChordDiagram({ shape, label, useFlats = false, dotColor = "#facc15" }: ChordDiagramProps) {
+export default function ChordDiagram({
+  shape,
+  label,
+  useFlats = false,
+  dotColor = "var(--ds-color-primary-solid)",
+}: ChordDiagramProps) {
   const { toggle, isFavorite } = useFavoriteChords();
   const noteNames = useFlats ? flatNotes : sharpNotes;
   const getNoteAtFret = (openNote: string, fret: number) => {
@@ -53,11 +58,16 @@ export default function ChordDiagram({ shape, label, useFlats = false, dotColor 
     <div className="flex flex-col items-center cursor-pointer group" onClick={handleClick} title={diagramTitle}>
       {label && (
         <h6 className="text-center mb-1 font-semibold text-sm flex items-center gap-1" style={{ color: "var(--chord-ink)" }}>
-          {label} <span className={`text-xs ${favorited ? "text-red-500" : "text-transparent group-hover:text-red-300"}`}>♥</span>
+          {label}{" "}
+          <span
+            className={`text-10 ${favorited ? "text-primary-text" : "text-transparent group-hover:text-primary-text/50"}`}
+          >
+            ♥
+          </span>
         </h6>
       )}
       <div className="relative" style={{ width: `${diagramWidth}px`, height: `${diagramHeight}px` }}>
-        {favorited && <div className="absolute -top-1 -right-1 w-4 h-4 text-red-500 text-xs z-10">♥</div>}
+        {favorited && <div className="absolute -top-1 -right-1 z-10 h-4 w-4 text-10 text-primary-text">♥</div>}
         <div className="relative" style={{ height: "16px", marginBottom: "2px" }}>
           {shape.frets.map((fret, i) => (
             <span
@@ -95,7 +105,7 @@ export default function ChordDiagram({ shape, label, useFlats = false, dotColor 
                 key={si}
                 className="absolute rounded-full flex items-center justify-center font-bold"
                 title={`Play the ${STRING_NAMES[si]} open (no frets pressed) — sounds the note ${note}`}
-                style={{ left: `${si * stringSpacing + 10 - dotSize / 2}px`, top: `${20 - dotSize - 2}px`, width: `${dotSize}px`, height: `${dotSize}px`, fontSize: "9px", zIndex: 2, backgroundColor: dotColor, border: `2px solid ${dotColor}`, color: "#1A1B1E" }}
+                style={{ left: `${si * stringSpacing + 10 - dotSize / 2}px`, top: `${20 - dotSize - 2}px`, width: `${dotSize}px`, height: `${dotSize}px`, fontSize: "9px", zIndex: 2, backgroundColor: dotColor, border: `2px solid ${dotColor}`, color: "var(--ds-color-text-on-primary)" }}
               >
                 {note}
               </div>
@@ -107,7 +117,7 @@ export default function ChordDiagram({ shape, label, useFlats = false, dotColor 
               key={si}
               className="absolute rounded-full flex items-center justify-center font-bold"
               title={`Press the ${STRING_NAMES[si]} at fret ${fretNum} — plays the note ${note}`}
-              style={{ left: `${si * stringSpacing + 10 - dotSize / 2}px`, top: `${20 + displayPos * fretSpacing + fretSpacing / 2 - dotSize / 2}px`, width: `${dotSize}px`, height: `${dotSize}px`, fontSize: "9px", zIndex: 2, backgroundColor: dotColor, color: "#1A1B1E" }}
+              style={{ left: `${si * stringSpacing + 10 - dotSize / 2}px`, top: `${20 + displayPos * fretSpacing + fretSpacing / 2 - dotSize / 2}px`, width: `${dotSize}px`, height: `${dotSize}px`, fontSize: "9px", zIndex: 2, backgroundColor: dotColor, color: "var(--ds-color-text-on-primary)" }}
             >
               {note}
             </div>

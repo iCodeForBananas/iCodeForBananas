@@ -32,8 +32,18 @@ const fraunces = Fraunces({
   display: "swap",
 });
 
+/**
+ * The browser chrome sits on the same plane as the page, so this is
+ * color.surface.base in each theme rather than the brand. Written as sRGB
+ * because the meta tag is read before any stylesheet: these are exactly what
+ * `oklch(0.19 0.009 80)` and `oklch(0.97 0.004 85)` resolve to, and
+ * `npm run tokens:check` is what keeps those two values honest.
+ */
 export const viewport: Viewport = {
-  themeColor: "#facc15",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f6f5f2" },
+    { media: "(prefers-color-scheme: dark)", color: "#16130f" },
+  ],
 };
 
 export const metadata: Metadata = {
@@ -65,14 +75,22 @@ export default function RootLayout({
     // variable defined further down the tree computes to nothing at all.
     <html
       lang='en'
+      // Dark is what :root carries in app/tokens.css, so it is also what the
+      // server renders. The inline script below corrects it before first paint.
+      data-theme='dark'
       className={`${GeistSans.variable} ${GeistMono.variable} ${fraunces.variable}`}
       suppressHydrationWarning
     >
       <head>
-        {/* Inline theme init — runs before paint to prevent flash */}
+        {/* Inline theme init — runs before paint to prevent flash. data-theme
+            is the only switch: app/tokens.css keys the light half of Layer 2
+            off [data-theme="light"], and globals.css points Tailwind's `dark:`
+            variant at the same attribute. The server renders data-theme="dark"
+            below, which is the token default; this corrects it to light before
+            the first paint when that is what the visitor wants. */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('theme');var d=window.matchMedia('(prefers-color-scheme:dark)').matches;if(t==='dark'||(t===null&&d)){document.documentElement.classList.add('dark')}}catch(e){}})()`,
+            __html: `(function(){try{var t=localStorage.getItem('theme');var d=window.matchMedia('(prefers-color-scheme:dark)').matches;var dark=t==='dark'||(t===null&&d);document.documentElement.setAttribute('data-theme',dark?'dark':'light')}catch(e){}})()`,
           }}
         />
         {/* Chrome offers the install prompt once, early — often before React
@@ -96,9 +114,9 @@ export default function RootLayout({
       <body className='antialiased'>
         <ThemeProvider>
           <FavoriteChordsProvider>
-            <div id='app-shell' className='flex h-dvh overflow-hidden font-sans'>
+            <div id='app-shell' className='flex h-dvh overflow-hidden bg-surface-base font-sans text-ink-primary'>
               <Sidebar />
-              <div id='main-content' className='flex-1 min-w-0 overflow-y-auto flex flex-col bg-black'>
+              <div id='main-content' className='flex-1 min-w-0 overflow-y-auto flex flex-col bg-surface-base'>
                 <MusicFavoritesBar />
                 {children}
               </div>

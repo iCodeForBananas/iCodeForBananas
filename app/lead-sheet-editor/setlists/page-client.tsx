@@ -132,7 +132,7 @@ export default function SetlistList() {
                       }
                     }}
                     placeholder='Setlist name'
-                    className='rounded border border-line-strong bg-surface-base bg-surface-raised px-3 py-2 text-sm text-ink-primary focus:outline-none focus:border-line-strong dark:focus:border-line-strong'
+                    className='rounded border border-line-subtle bg-surface-sunken px-3 py-2 text-13 text-ink-primary focus-visible:border-line-strong focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus'
                   />
                   <button
                     onClick={createSetlist}

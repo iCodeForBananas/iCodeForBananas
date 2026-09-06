@@ -204,38 +204,38 @@ const generateQuestions = (level: number): Question[] => {
 };
 
 const ParentDashboard = ({ history, onClose }: { history: UserHistory[]; onClose: () => void }) => (
-  <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-6">
+  <div className="fixed inset-0 bg-surface-sunken/70 backdrop-blur-md z-50 flex items-center justify-center p-6">
     <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-      className="bg-bb-surface rounded-3xl w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col border border-bb-card shadow-2xl">
-      <div className="p-6 border-b border-bb-card flex justify-between items-center bg-bb-card/50">
-        <h2 className="text-2xl font-bold flex items-center gap-2 text-bb-text"><Settings className="w-6 h-6" /> Parent Dashboard</h2>
-        <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-full text-bb-muted"><XCircle className="w-8 h-8" /></button>
+      className="bg-surface-sunken rounded-3xl w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col border border-line-subtle shadow-2xl">
+      <div className="p-6 border-b border-line-subtle flex justify-between items-center bg-surface-raised">
+        <h2 className="text-2xl font-bold flex items-center gap-2 text-ink-primary"><Settings className="w-6 h-6" /> Parent Dashboard</h2>
+        <button onClick={onClose} className="p-2 hover:bg-surface-raised rounded-full text-ink-muted"><XCircle className="w-8 h-8" /></button>
       </div>
       <div className="p-6 overflow-y-auto flex-1">
-        <h3 className="text-lg font-semibold mb-4 text-bb-text">Performance Metrics</h3>
+        <h3 className="text-lg font-semibold mb-4 text-ink-primary">Performance Metrics</h3>
         <table className="w-full text-left border-collapse">
-          <thead><tr className="bg-bb-card/30">
-            <th className="p-3 border border-bb-card text-bb-muted">Date</th>
-            <th className="p-3 border border-bb-card text-bb-muted">Level</th>
-            <th className="p-3 border border-bb-card text-bb-muted">Score</th>
-            <th className="p-3 border border-bb-card text-bb-muted">Avg Time (s)</th>
+          <thead><tr className="bg-surface-raised">
+            <th className="p-3 border border-line-subtle text-ink-muted">Date</th>
+            <th className="p-3 border border-line-subtle text-ink-muted">Level</th>
+            <th className="p-3 border border-line-subtle text-ink-muted">Score</th>
+            <th className="p-3 border border-line-subtle text-ink-muted">Avg Time (s)</th>
           </tr></thead>
           <tbody>
             {history.length === 0 ? (
-              <tr><td colSpan={4} className="p-8 text-center text-bb-muted italic">No history recorded yet.</td></tr>
+              <tr><td colSpan={4} className="p-8 text-center text-ink-muted italic">No history recorded yet.</td></tr>
             ) : history.map((s, i) => (
-              <tr key={i} className="hover:bg-white/5">
-                <td className="p-3 border border-bb-card text-sm text-bb-text">{s.date}</td>
-                <td className="p-3 border border-bb-card font-medium text-bb-text">{s.level}</td>
-                <td className="p-3 border border-bb-card text-green-400 font-bold">{s.score}/5</td>
-                <td className="p-3 border border-bb-card text-bb-text">{(s.timePerQuestion.reduce((a, b) => a + b, 0) / s.timePerQuestion.length).toFixed(1)}s</td>
+              <tr key={i} className="hover:bg-surface-raised">
+                <td className="p-3 border border-line-subtle text-sm text-ink-primary">{s.date}</td>
+                <td className="p-3 border border-line-subtle font-medium text-ink-primary">{s.level}</td>
+                <td className="p-3 border border-line-subtle text-success font-bold">{s.score}/5</td>
+                <td className="p-3 border border-line-subtle text-ink-primary">{(s.timePerQuestion.reduce((a, b) => a + b, 0) / s.timePerQuestion.length).toFixed(1)}s</td>
               </tr>
             ))}
           </tbody>
         </table>
-        <div className="mt-8 p-4 bg-bb-card rounded-xl border border-bb-accent/20">
-          <h4 className="font-bold mb-2 text-bb-accent">Developmental Insights</h4>
-          <p className="text-sm text-bb-muted leading-relaxed">Your child is showing consistent progress in <strong>Spatial Reasoning</strong>. Focusing on Level 4 Matrix reasoning will help develop their analytical thinking skills.</p>
+        <div className="mt-8 p-4 bg-surface-raised rounded-xl border border-primary-solid/40">
+          <h4 className="font-bold mb-2 text-primary-text">Developmental Insights</h4>
+          <p className="text-sm text-ink-muted leading-relaxed">Your child is showing consistent progress in <strong>Spatial Reasoning</strong>. Focusing on Level 4 Matrix reasoning will help develop their analytical thinking skills.</p>
         </div>
       </div>
     </motion.div>
@@ -323,22 +323,22 @@ export default function BrainyBloomPage() {
       <AnimatePresence mode="wait">
         {gameState === "home" && (
           <motion.div key="home" exit={{ opacity: 0 }}>
-            <div className="flex flex-col items-center justify-center min-h-screen p-8 bg-bb-bg">
+            <div className="flex flex-col items-center justify-center min-h-screen p-8 bg-surface-base">
               <motion.div initial={{ y: -50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="text-center mb-12">
-                <div className="bg-bb-surface p-8 rounded-full shadow-2xl inline-block mb-8 animate-wiggle border border-bb-card">
+                <div className="bg-surface-sunken p-8 rounded-full shadow-2xl inline-block mb-8 animate-wiggle border border-line-subtle">
                   <span className="text-9xl">🌸</span>
                 </div>
-                <h1 className="text-7xl font-black text-bb-text tracking-tight mb-6">Brainy Bloom</h1>
-                <p className="text-2xl text-bb-muted max-w-md mx-auto mb-12">Ready to grow your brain?</p>
+                <h1 className="text-7xl font-black text-ink-primary tracking-tight mb-6">Brainy Bloom</h1>
+                <p className="text-2xl text-ink-muted max-w-md mx-auto mb-12">Ready to grow your brain?</p>
               </motion.div>
               <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => startLevel(1)}
-                className="group relative w-full max-w-md py-12 bg-bb-accent text-bb-bg font-black text-5xl rounded-[3rem] shadow-[0_0_50px_rgba(187,134,252,0.3)] hover:shadow-[0_0_70px_rgba(187,134,252,0.5)] transition-all flex flex-col items-center gap-4">
+                className="group relative w-full max-w-md py-12 bg-primary-solid text-ink-on-primary font-black text-5xl rounded-[3rem] shadow-overlay transition-all flex flex-col items-center gap-4">
                 <span className="flex items-center gap-4">START <ChevronRight className="w-16 h-16" /></span>
                 <span className="text-xl opacity-60 font-bold uppercase tracking-widest">{LEVELS[0]?.title}</span>
               </motion.button>
               <div onMouseDown={handleLongPressStart} onMouseUp={handleLongPressEnd} onTouchStart={handleLongPressStart} onTouchEnd={handleLongPressEnd}
-                className="fixed bottom-8 right-8 p-4 bg-bb-surface/50 rounded-full cursor-help border border-bb-card">
-                <Settings className="w-6 h-6 text-bb-muted" />
+                className="fixed bottom-8 right-8 p-4 bg-surface-sunken rounded-full cursor-help border border-line-subtle">
+                <Settings className="w-6 h-6 text-ink-muted" />
               </div>
             </div>
           </motion.div>
@@ -346,21 +346,21 @@ export default function BrainyBloomPage() {
 
         {gameState === "playing" && q && (
           <motion.div key="playing" exit={{ opacity: 0 }}>
-            <div className="min-h-screen flex flex-col bg-bb-bg">
-              <div className="p-6 flex justify-between items-center bg-bb-surface border-b-4 border-bb-card">
+            <div className="min-h-screen flex flex-col bg-surface-base">
+              <div className="p-6 flex justify-between items-center bg-surface-sunken border-b-4 border-line-subtle">
                 <div className="flex items-center gap-4">
-                  <button onClick={resetAndGoHome} className="p-4 bg-bb-card rounded-2xl shadow-md text-bb-text border border-white/5"><Home className="w-8 h-8" /></button>
-                  <div className="text-bb-accent font-bold text-lg">Level {currentLevel}/5 <span className="text-bb-muted font-normal text-sm">— {LEVELS[currentLevel - 1]?.description}</span></div>
+                  <button onClick={resetAndGoHome} className="p-4 bg-surface-raised rounded-2xl shadow-md text-ink-primary border border-line-strong"><Home className="w-8 h-8" /></button>
+                  <div className="text-primary-text font-bold text-lg">Level {currentLevel}/5 <span className="text-ink-muted font-normal text-sm">— {LEVELS[currentLevel - 1]?.description}</span></div>
                 </div>
                 <div className="flex-1 px-8">
-                  <div className="h-4 bg-bb-card rounded-full overflow-hidden">
-                    <motion.div initial={{ width: 0 }} animate={{ width: `${((currentQuestionIdx + 1) / questions.length) * 100}%` }} className="h-full bg-bb-accent shadow-[0_0_10px_rgba(187,134,252,0.5)]" />
+                  <div className="h-4 bg-surface-raised rounded-full overflow-hidden">
+                    <motion.div initial={{ width: 0 }} animate={{ width: `${((currentQuestionIdx + 1) / questions.length) * 100}%` }} className="h-full bg-primary-solid" />
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   {[...Array(5)].map((_, i) => (
                     <motion.div key={i} initial={{ scale: 0 }} animate={{ scale: i < sessionScore ? 1 : 0.8 }}>
-                      <Star className={`w-10 h-10 ${i < sessionScore ? "text-yellow-400 fill-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.6)]" : "text-bb-card"}`} />
+                      <Star className={`w-10 h-10 ${i < sessionScore ? "text-primary-text fill-primary-solid " : "text-ink-muted"}`} />
                     </motion.div>
                   ))}
                 </div>
@@ -368,25 +368,25 @@ export default function BrainyBloomPage() {
               <div className="flex-1 flex flex-col items-center justify-center p-8">
                 <motion.div key={q.id} initial={{ x: 50, opacity: 0 }} animate={{ x: 0, opacity: 1 }} className="w-full max-w-3xl text-center">
                   <div className="mb-8 flex flex-col items-center">
-                    <button onClick={() => speak(q.prompt)} className="mb-6 p-6 bg-bb-surface rounded-full shadow-2xl hover:scale-105 transition-transform border border-bb-card">
-                      <Volume2 className="w-12 h-12 text-bb-accent" />
+                    <button onClick={() => speak(q.prompt)} className="mb-6 p-6 bg-surface-sunken rounded-full shadow-2xl hover:scale-105 transition-transform border border-line-subtle">
+                      <Volume2 className="w-12 h-12 text-primary-text" />
                     </button>
-                    <h2 className="text-4xl font-bold text-bb-text leading-tight">{q.prompt}</h2>
+                    <h2 className="text-4xl font-bold text-ink-primary leading-tight">{q.prompt}</h2>
                   </div>
                   {q.visualData && (
-                    <div className="mb-12 p-12 bg-bb-surface rounded-3xl border-4 border-dashed border-bb-card inline-block min-w-[300px]">
+                    <div className="mb-12 p-12 bg-surface-sunken rounded-3xl border-4 border-dashed border-line-subtle inline-block min-w-[300px]">
                       {q.visualData.target && <span className="text-9xl">{q.visualData.target}</span>}
                       {q.visualData.matrix && (
                         <div className="grid grid-cols-2 gap-8">
                           {q.visualData.matrix.flat().map((cell: string, j: number) => (
-                            <div key={j} className="w-24 h-24 bg-bb-card rounded-2xl flex items-center justify-center text-5xl shadow-inner border border-white/5">{cell}</div>
+                            <div key={j} className="w-24 h-24 bg-surface-raised rounded-2xl flex items-center justify-center text-5xl shadow-inner border border-line-strong">{cell}</div>
                           ))}
                         </div>
                       )}
                       {q.visualData.rotation && (
                         <div className="flex gap-12 items-center">
                           <span className="text-8xl">{q.visualData.rotation}</span>
-                          <span className="text-4xl text-bb-muted">➜</span>
+                          <span className="text-4xl text-ink-muted">➜</span>
                           <span className="text-8xl opacity-20">?</span>
                         </div>
                       )}
@@ -396,16 +396,16 @@ export default function BrainyBloomPage() {
                     {q.options.map((option, idx) => (
                       <button key={idx} onClick={() => handleOptionClick(option)} disabled={feedback !== null}
                         className={`h-32 text-4xl font-bold rounded-3xl transition-all shadow-xl border-2 ${
-                          feedback === "incorrect" && option === q.correctAnswer ? "bg-green-500 border-green-400 text-white scale-105 ring-4 ring-green-300"
+                          feedback === "incorrect" && option === q.correctAnswer ? "bg-success/25 border-success text-ink-primary scale-105 ring-4 ring-success"
                             : selectedOption === option
-                              ? feedback === "correct" ? "bg-green-500 border-green-400 text-white scale-105" : "bg-red-500 border-red-400 text-white animate-wiggle"
-                              : feedback ? "bg-bb-surface border-bb-card text-bb-muted opacity-50 cursor-not-allowed" : "bg-bb-surface hover:bg-bb-card border-bb-card text-bb-text active:border-bb-accent"
+                              ? feedback === "correct" ? "bg-success/25 border-success text-ink-primary scale-105" : "bg-danger/25 border-danger text-ink-primary animate-wiggle"
+                              : feedback ? "bg-surface-sunken border-line-subtle text-ink-muted opacity-50 cursor-not-allowed" : "bg-surface-sunken hover:bg-surface-raised border-line-subtle text-ink-primary active:border-primary-solid/40"
                         }`}>{option}</button>
                     ))}
                   </div>
                   {feedback === "incorrect" && (
                     <motion.button initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} onClick={handleContinue}
-                      className="mt-8 w-full py-6 bg-bb-accent text-bb-bg font-bold text-2xl rounded-3xl shadow-lg flex items-center justify-center gap-3 hover:scale-105 transition-transform">
+                      className="mt-8 w-full py-6 bg-primary-solid text-ink-on-primary font-bold text-2xl rounded-3xl shadow-lg flex items-center justify-center gap-3 hover:scale-105 transition-transform">
                       Continue to Next Question <ChevronRight className="w-8 h-8" />
                     </motion.button>
                   )}
@@ -415,8 +415,16 @@ export default function BrainyBloomPage() {
                 {feedback && (
                   <motion.div initial={{ opacity: 0, scale: 0.5 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.5 }}
                     className="fixed inset-0 flex items-center justify-center pointer-events-none z-50">
-                    <div className={`p-12 rounded-full shadow-2xl ${feedback === "correct" ? "bg-green-500" : "bg-red-500"}`}>
-                      {feedback === "correct" ? <CheckCircle2 className="w-32 h-32 text-white" /> : <XCircle className="w-32 h-32 text-white" />}
+                    <div
+                      className={`rounded-full p-12 shadow-overlay ${
+                        feedback === "correct" ? "bg-success/25" : "bg-danger/25"
+                      }`}
+                    >
+                      {feedback === "correct" ? (
+                        <CheckCircle2 className="h-32 w-32 text-success" />
+                      ) : (
+                        <XCircle className="h-32 w-32 text-danger" />
+                      )}
                     </div>
                   </motion.div>
                 )}
@@ -427,33 +435,33 @@ export default function BrainyBloomPage() {
 
         {gameState === "level_complete" && (
           <motion.div key="complete" exit={{ opacity: 0 }}>
-            <div className="min-h-screen flex flex-col items-center justify-center bg-bb-bg p-8">
+            <div className="min-h-screen flex flex-col items-center justify-center bg-surface-base p-8">
               <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-                className="bg-bb-surface p-12 rounded-[3rem] shadow-2xl text-center max-w-lg w-full border border-bb-card">
+                className="bg-surface-sunken p-12 rounded-[3rem] shadow-2xl text-center max-w-lg w-full border border-line-subtle">
                 <div className="text-8xl mb-6">🎉</div>
-                <h2 className="text-5xl font-black mb-4 text-bb-text">Amazing Job!</h2>
-                <p className="text-xl text-bb-muted mb-8">You finished Level {currentLevel} of 5!</p>
+                <h2 className="text-5xl font-black mb-4 text-ink-primary">Amazing Job!</h2>
+                <p className="text-xl text-ink-muted mb-8">You finished Level {currentLevel} of 5!</p>
                 <div className="flex justify-center gap-3 mb-8">
                   {LEVELS.map((l) => (
                     <div key={l.id} className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold border-2 ${
-                      l.id < currentLevel ? "bg-green-500 border-green-400 text-white"
-                        : l.id === currentLevel ? "bg-bb-accent border-bb-accent text-bb-bg"
-                        : "bg-bb-card border-bb-card text-bb-muted"
+                      l.id < currentLevel ? "bg-success/25 border-success text-ink-primary"
+                        : l.id === currentLevel ? "bg-primary-solid border-primary-solid/40 text-ink-on-primary"
+                        : "bg-surface-raised border-line-subtle text-ink-muted"
                     }`}>{l.id}</div>
                   ))}
                 </div>
-                <div className="bg-bb-card p-6 rounded-3xl mb-8 border border-bb-accent/10">
-                  <div className="text-sm font-bold uppercase tracking-widest text-bb-muted mb-2">Level Score</div>
-                  <div className="text-6xl font-black text-bb-text">{sessionScore}/5</div>
+                <div className="bg-surface-raised p-6 rounded-3xl mb-8 border border-primary-solid/40">
+                  <div className="text-sm font-bold uppercase tracking-widest text-ink-muted mb-2">Level Score</div>
+                  <div className="text-6xl font-black text-ink-primary">{sessionScore}/5</div>
                 </div>
                 {currentLevel < 5 ? (
                   <button onClick={() => startLevel(currentLevel + 1)}
-                    className="w-full py-6 bg-bb-accent text-bb-bg font-bold text-2xl rounded-3xl shadow-lg flex items-center justify-center gap-3 hover:scale-105 transition-transform">
+                    className="w-full py-6 bg-primary-solid text-ink-on-primary font-bold text-2xl rounded-3xl shadow-lg flex items-center justify-center gap-3 hover:scale-105 transition-transform">
                     Level {currentLevel + 1} <ChevronRight className="w-8 h-8" />
                   </button>
                 ) : (
                   <button onClick={() => { playSound("success"); setGameState("game_complete"); }}
-                    className="w-full py-6 bg-bb-accent text-bb-bg font-bold text-2xl rounded-3xl shadow-lg flex items-center justify-center gap-3 hover:scale-105 transition-transform">
+                    className="w-full py-6 bg-primary-solid text-ink-on-primary font-bold text-2xl rounded-3xl shadow-lg flex items-center justify-center gap-3 hover:scale-105 transition-transform">
                     See Results <ChevronRight className="w-8 h-8" />
                   </button>
                 )}
@@ -464,18 +472,18 @@ export default function BrainyBloomPage() {
 
         {gameState === "game_complete" && (
           <motion.div key="game_complete" exit={{ opacity: 0 }}>
-            <div className="min-h-screen flex flex-col items-center justify-center bg-bb-bg p-8">
+            <div className="min-h-screen flex flex-col items-center justify-center bg-surface-base p-8">
               <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-                className="bg-bb-surface p-12 rounded-[3rem] shadow-2xl text-center max-w-lg w-full border border-bb-card">
+                className="bg-surface-sunken p-12 rounded-[3rem] shadow-2xl text-center max-w-lg w-full border border-line-subtle">
                 <div className="text-8xl mb-6">🏆</div>
-                <h2 className="text-5xl font-black mb-4 text-bb-text">All Done!</h2>
-                <p className="text-xl text-bb-muted mb-8">You completed all 5 levels!</p>
-                <div className="bg-bb-card p-6 rounded-3xl mb-8 border border-bb-accent/10">
-                  <div className="text-sm font-bold uppercase tracking-widest text-bb-muted mb-2">Total Score</div>
-                  <div className="text-6xl font-black text-bb-text">{userState.totalScore}/25</div>
+                <h2 className="text-5xl font-black mb-4 text-ink-primary">All Done!</h2>
+                <p className="text-xl text-ink-muted mb-8">You completed all 5 levels!</p>
+                <div className="bg-surface-raised p-6 rounded-3xl mb-8 border border-primary-solid/40">
+                  <div className="text-sm font-bold uppercase tracking-widest text-ink-muted mb-2">Total Score</div>
+                  <div className="text-6xl font-black text-ink-primary">{userState.totalScore}/25</div>
                 </div>
                 <button onClick={resetAndGoHome}
-                  className="w-full py-6 bg-bb-accent text-bb-bg font-bold text-2xl rounded-3xl shadow-lg flex items-center justify-center gap-3 hover:scale-105 transition-transform">
+                  className="w-full py-6 bg-primary-solid text-ink-on-primary font-bold text-2xl rounded-3xl shadow-lg flex items-center justify-center gap-3 hover:scale-105 transition-transform">
                   <Home className="w-8 h-8" /> Play Again
                 </button>
               </motion.div>

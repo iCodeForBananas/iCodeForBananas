@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { Button } from "@/app/components/ui/button";
+import { Input } from "@/app/components/ui/input";
 
 interface GeminiKeyModalProps {
   isOpen: boolean;
@@ -68,81 +70,72 @@ export default function GeminiKeyModal({ isOpen, onClose }: GeminiKeyModalProps)
   };
 
   return (
-    <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-surface-sunken/70 p-4"
+      onClick={onClose}
+    >
       <div
-        className="rounded-lg shadow-2xl w-full max-w-md p-6 relative"
-        style={{ background: '#25262B', border: '1px solid #373A40' }}
+        className="relative w-full max-w-md rounded-lg border border-line-subtle bg-surface-overlay p-6 shadow-overlay"
         onClick={(e) => e.stopPropagation()}
       >
-        <button
+        <Button
+          variant="ghost"
+          size="icon-sm"
           onClick={onClose}
-          className="absolute top-3 right-3 rounded p-1 transition-colors"
-          style={{ color: '#909296' }}
-          onMouseEnter={e => { e.currentTarget.style.color = '#12B886'; }}
-          onMouseLeave={e => { e.currentTarget.style.color = '#909296'; }}
+          className="absolute top-3 right-3"
           aria-label="Close modal"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
           </svg>
-        </button>
+        </Button>
 
-        <h2 className="text-xl font-black uppercase tracking-widest mb-2" style={{ color: '#F8F9FA' }}>
-          Set Gemini API Key
-        </h2>
-        <p className="text-sm mb-5" style={{ color: '#909296' }}>
+        <h2 className="mb-2 font-display text-20 font-semibold text-ink-primary">Set Gemini API Key</h2>
+        <p className="mb-5 text-13 text-ink-muted">
           Your key is stored as a secure, HttpOnly cookie for 2 days and never logged.
         </p>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="relative">
-            <input
+            <Input
               ref={inputRef}
               type={showKey ? "text" : "password"}
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
               placeholder="Enter your Gemini API key"
-              className="w-full rounded px-3 py-2 pr-16 text-sm focus:outline-none"
-              style={{ background: '#1A1B1E', border: '1px solid #373A40', color: '#F8F9FA' }}
-              onFocus={e => { e.currentTarget.style.borderColor = '#12B886'; }}
-              onBlur={e => { e.currentTarget.style.borderColor = '#373A40'; }}
+              className="h-10 pr-16"
             />
             <button
               type="button"
               onClick={() => setShowKey((v) => !v)}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-xs font-semibold"
-              style={{ color: '#909296' }}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-12 font-medium text-ink-muted hover:text-ink-primary"
             >
               {showKey ? "Hide" : "Show"}
             </button>
           </div>
 
           {feedback && (
-            <p className={`text-sm font-medium ${feedback.type === "success" ? "text-green-400" : "text-red-400"}`}>
+            <p
+              role="status"
+              className={`text-13 font-medium ${feedback.type === "success" ? "text-success" : "text-danger"}`}
+            >
               {feedback.message}
             </p>
           )}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full font-bold text-sm rounded px-3 py-2 transition-colors disabled:opacity-50"
-            style={{ background: '#4C6EF5', color: '#F8F9FA' }}
-          >
+          <Button type="submit" variant="primary" disabled={loading} className="w-full">
             Save Key
-          </button>
+          </Button>
         </form>
 
-        <button
+        <Button
+          variant="danger"
           onClick={handleRemove}
           disabled={loading}
-          className="mt-3 w-full font-semibold text-sm rounded px-3 py-2 transition-colors disabled:opacity-50"
-          style={{ border: '1px solid #373A40', color: '#F8F9FA', background: 'transparent' }}
-          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(18,184,134,0.15)'; e.currentTarget.style.color = '#12B886'; e.currentTarget.style.borderColor = '#12B886'; }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#F8F9FA'; e.currentTarget.style.borderColor = '#373A40'; }}
+          className="mt-3 w-full"
         >
           Remove Key
-        </button>
+        </Button>
       </div>
     </div>
   );

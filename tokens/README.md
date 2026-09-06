@@ -1,9 +1,9 @@
 # Design tokens
 
-Source of truth for the songwriting product's visual language. W3C DTCG format
-(`$value` / `$type`). Compiled to `app/tokens.css` by `npm run tokens:build`,
-which is committed alongside the JSON so a plain `npm run build` never has to
-run Style Dictionary.
+Source of truth for the whole app's visual language — every tool, not just the
+songwriting one. W3C DTCG format (`$value` / `$type`). Compiled to
+`app/tokens.css` by `npm run tokens:build`, which is committed alongside the
+JSON so a plain `npm run build` never has to run Style Dictionary.
 
 ```
 npm run tokens:build   # tokens/ -> app/tokens.css
@@ -42,6 +42,14 @@ Dark is the default and lives on `:root`. `[data-theme="light"]` overrides
 Layer 2 semantics and nothing else. A value that has to change between themes
 is fixed by pointing the semantic alias at a different primitive, never by
 redefining the primitive.
+
+`data-theme` on `<html>` is the only switch. `app/lib/ThemeContext.tsx` writes
+it and the inline script in `app/layout.tsx` writes it again before first
+paint; `globals.css` points Tailwind's `dark:` variant at the same attribute,
+so a rule written with the variant and a rule written with a token cannot
+disagree about which theme is on. There is no `.dark` class any more, and no
+`dark:` variant left in the app either — a semantic token already carries both
+themes, which is the whole point of having them.
 
 Anything a theme does not list inherits its dark value deliberately. That is
 why `color.text.on-primary` and `color.primary.solid` appear only once.
@@ -122,6 +130,27 @@ Two things in this layer are load-bearing and easy to undo:
   outline style through a variable that `focus-visible:outline-2` then reads,
   so the two together produce a 2px outline that does not draw. Write
   `focus-visible:outline-solid` and leave the default alone.
+
+## What is deliberately not on the system
+
+Two things in `app/` name colours of their own, and both are deliberate.
+
+**`app/websites/`** is a client's site. PavePlan Pro's orange and warm grey are
+that company's brand, declared once in `globals.css` as `--color-brand-*`;
+repainting a client site in this product's amber would be a bug, not
+consistency.
+
+**Painted scenes.** `app/shoot-simulator/ShootSimulator.tsx` is a night street
+drawn into a canvas — brick, bark, neon, graffiti, robots — and
+`SpaceBackground` in `app/space-math/SpaceMathPage.tsx` is a starfield. Layer 2
+names four planes, two border weights, three inks and three status colours; it
+has nothing to say about what colour a comet tail is, and flattening a scene
+into four greys would delete the artwork rather than standardise it. The chrome
+around both is on the tokens.
+
+Everything else in `app/` reads Layer 2. Grepping it for a colour literal or a
+Tailwind palette class returns only those two, plus the print stylesheet, where
+white paper and black ink are the point.
 
 ## What is deliberately not tokenized here
 

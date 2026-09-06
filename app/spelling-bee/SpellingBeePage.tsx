@@ -105,39 +105,39 @@ function BeeCharacter({ shrugging = false }: { shrugging?: boolean }) {
         <motion.div
           animate={{ rotate: [0, 30, 0] }}
           transition={{ repeat: Infinity, duration: 0.1 }}
-          className='absolute -left-8 top-4 w-16 h-12 bg-white/60 rounded-full border-2 border-sky-200 origin-right'
+          className='absolute -left-8 top-4 w-16 h-12 bg-surface-overlay/60 rounded-full border-2 border-line-strong origin-right'
         />
         <motion.div
           animate={{ rotate: [0, -30, 0] }}
           transition={{ repeat: Infinity, duration: 0.1 }}
-          className='absolute -right-8 top-4 w-16 h-12 bg-white/60 rounded-full border-2 border-sky-200 origin-left'
+          className='absolute -right-8 top-4 w-16 h-12 bg-surface-overlay/60 rounded-full border-2 border-line-strong origin-left'
         />
-        <div className='w-full h-full bg-orange-500 rounded-full border-2 md:border-4 border-slate-900 flex flex-col overflow-hidden relative shadow-lg'>
-          <div className='h-1/4 w-full bg-slate-900/40' />
-          <div className='h-1/4 w-full bg-slate-900/90' />
-          <div className='h-1/4 w-full bg-slate-900/40' />
-          <div className='h-1/4 w-full bg-slate-900/90' />
-          <div className='absolute top-1/4 left-1/4 w-2 h-2 md:w-4 md:h-4 bg-slate-900 rounded-full'>
-            <div className='absolute top-0.5 left-0.5 w-0.5 h-0.5 md:w-1.5 md:h-1.5 bg-white rounded-full' />
+        <div className='w-full h-full bg-primary-solid rounded-full border-2 md:border-4 border-line-strong flex flex-col overflow-hidden relative shadow-raised'>
+          <div className='h-1/4 w-full bg-ink-on-primary/40' />
+          <div className='h-1/4 w-full bg-ink-on-primary/90' />
+          <div className='h-1/4 w-full bg-ink-on-primary/40' />
+          <div className='h-1/4 w-full bg-ink-on-primary/90' />
+          <div className='absolute top-1/4 left-1/4 w-2 h-2 md:w-4 md:h-4 bg-ink-on-primary rounded-full'>
+            <div className='absolute top-0.5 left-0.5 w-0.5 h-0.5 md:w-1.5 md:h-1.5 bg-ink-on-primary rounded-full' />
           </div>
-          <div className='absolute top-1/4 right-1/4 w-2 h-2 md:w-4 md:h-4 bg-slate-900 rounded-full'>
-            <div className='absolute top-0.5 left-0.5 w-0.5 h-0.5 md:w-1.5 md:h-1.5 bg-white rounded-full' />
+          <div className='absolute top-1/4 right-1/4 w-2 h-2 md:w-4 md:h-4 bg-ink-on-primary rounded-full'>
+            <div className='absolute top-0.5 left-0.5 w-0.5 h-0.5 md:w-1.5 md:h-1.5 bg-ink-on-primary rounded-full' />
           </div>
           {shrugging && (
             <>
-              <div className='absolute top-[18%] left-[18%] w-3 h-0.5 md:w-5 md:h-1 bg-slate-900 rotate-[25deg] rounded-full' />
-              <div className='absolute top-[18%] right-[18%] w-3 h-0.5 md:w-5 md:h-1 bg-slate-900 -rotate-[25deg] rounded-full' />
+              <div className='absolute top-[18%] left-[18%] w-3 h-0.5 md:w-5 md:h-1 bg-ink-on-primary rotate-[25deg] rounded-full' />
+              <div className='absolute top-[18%] right-[18%] w-3 h-0.5 md:w-5 md:h-1 bg-ink-on-primary -rotate-[25deg] rounded-full' />
             </>
           )}
           <div
-            className={`absolute bottom-1/4 left-1/2 -translate-x-1/2 w-4 h-2 md:w-8 md:h-4 ${shrugging ? "border-t-2 md:border-t-4 border-b-0" : "border-b-2 md:border-b-4"} border-slate-900 rounded-full`}
+            className={`absolute bottom-1/4 left-1/2 -translate-x-1/2 w-4 h-2 md:w-8 md:h-4 ${shrugging ? "border-t-2 md:border-t-4 border-b-0" : "border-b-2 md:border-b-4"} border-ink-on-primary rounded-full`}
           />
         </div>
-        <div className='absolute -top-4 left-1/3 w-1 h-6 bg-slate-900 -rotate-12'>
-          <div className='absolute -top-2 -left-1 w-3 h-3 bg-slate-900 rounded-full' />
+        <div className='absolute -top-4 left-1/3 w-1 h-6 bg-ink-primary -rotate-12'>
+          <div className='absolute -top-2 -left-1 w-3 h-3 bg-ink-primary rounded-full' />
         </div>
-        <div className='absolute -top-4 right-1/3 w-1 h-6 bg-slate-900 rotate-12'>
-          <div className='absolute -top-2 -left-1 w-3 h-3 bg-slate-900 rounded-full' />
+        <div className='absolute -top-4 right-1/3 w-1 h-6 bg-ink-primary rotate-12'>
+          <div className='absolute -top-2 -left-1 w-3 h-3 bg-ink-primary rounded-full' />
         </div>
       </motion.div>
     </div>
@@ -348,10 +348,10 @@ export default function SpellingBeePage() {
     const grade = gradeNameFromLevel(progress.level);
     const hasProgress = progress.totalAnswered > 0;
     return (
-      <div className='min-h-screen bg-slate-900 flex flex-col items-center justify-center p-6 font-sans'>
+      <div className='min-h-screen bg-surface-base flex flex-col items-center justify-center p-6 font-sans'>
         <div
           className='fixed inset-0 pointer-events-none opacity-[0.05]'
-          style={{ backgroundImage: "radial-gradient(#f97316 2px, transparent 2px)", backgroundSize: "40px 40px" }}
+          style={{ backgroundImage: "radial-gradient(var(--ds-color-primary-solid) 2px, transparent 2px)", backgroundSize: "40px 40px" }}
         />
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -359,12 +359,12 @@ export default function SpellingBeePage() {
           className='flex flex-col items-center gap-6 z-10 max-w-xl'
         >
           <BeeCharacter />
-          <h1 className='text-5xl font-black uppercase tracking-widest text-slate-100'>Spelling Bee</h1>
+          <h1 className='text-5xl font-black uppercase tracking-widest text-ink-muted'>Spelling Bee</h1>
           {hasProgress && (
-            <div className='bg-slate-800 border-2 border-orange-500 rounded-2xl px-6 py-4 text-center'>
-              <div className='text-orange-400 text-xs font-black uppercase tracking-widest mb-1'>Saved Progress</div>
-              <div className='text-slate-100 text-2xl font-black'>{grade}</div>
-              <div className='text-slate-400 text-sm mt-1'>
+            <div className='bg-surface-raised border-2 border-primary-solid rounded-2xl px-6 py-4 text-center'>
+              <div className='text-primary-text text-xs font-black uppercase tracking-widest mb-1'>Saved Progress</div>
+              <div className='text-ink-muted text-2xl font-black'>{grade}</div>
+              <div className='text-ink-muted text-sm mt-1'>
                 Level {progress.level.toFixed(2)} · {progress.totalCorrect}/{progress.totalAnswered} answered
               </div>
             </div>
@@ -373,14 +373,14 @@ export default function SpellingBeePage() {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={startGame}
-            className='bg-orange-500 hover:bg-orange-400 text-white px-16 py-6 rounded-full text-3xl font-black uppercase tracking-wider transition-colors shadow-[0_6px_0_rgb(154,52,18)] active:shadow-none active:translate-y-1'
+            className='bg-primary-solid hover:bg-primary-hover text-ink-on-primary px-16 py-6 rounded-full text-3xl font-black uppercase tracking-wider transition-colors shadow-[0_6px_0_var(--ds-palette-amber-3)] active:shadow-none active:translate-y-1'
           >
             {hasProgress ? "Continue" : "Start!"}
           </motion.button>
           {hasProgress && (
             <button
               onClick={resetProgress}
-              className='text-slate-500 text-sm font-bold uppercase tracking-widest hover:text-orange-400 transition-colors'
+              className='text-ink-muted text-sm font-bold uppercase tracking-widest hover:text-primary-text transition-colors'
             >
               Reset progress
             </button>
@@ -408,25 +408,25 @@ export default function SpellingBeePage() {
   const promptCta = currentQuestion.kind === "letter" ? `Find the ${currentQuestion.letter}` : null;
 
   return (
-    <div className='h-screen h-[100dvh] bg-slate-900 flex flex-col items-center p-2 md:p-8 font-sans overflow-hidden selection:bg-orange-500/30 relative'>
+    <div className='h-screen h-[100dvh] bg-surface-base flex flex-col items-center p-2 md:p-8 font-sans overflow-hidden selection:bg-primary-solid/30 relative'>
       <div className='fixed inset-0 pointer-events-none'>
-        <div className='absolute top-10 right-10 w-24 h-24 bg-slate-200 rounded-full blur-sm opacity-80 shadow-[0_0_50px_rgba(255,255,255,0.3)]' />
-        <div className='absolute top-20 left-[10%] w-2 h-2 bg-yellow-300 rounded-full blur-[2px] shadow-[0_0_10px_rgba(253,224,71,0.8)] animate-pulse' />
+        <div className='absolute top-10 right-10 w-24 h-24 bg-surface-overlay rounded-full blur-sm opacity-80 shadow-overlay' />
+        <div className='absolute top-20 left-[10%] w-2 h-2 bg-primary-solid rounded-full blur-[2px] shadow-raised animate-pulse' />
         <div
-          className='absolute bottom-40 right-[15%] w-3 h-3 bg-orange-300 rounded-full blur-[2px] shadow-[0_0_15px_rgba(253,186,116,0.8)] animate-pulse'
+          className='absolute bottom-40 right-[15%] w-3 h-3 bg-primary-solid rounded-full blur-[2px] shadow-raised animate-pulse'
           style={{ animationDelay: "1s" }}
         />
         <div
-          className='absolute top-1/2 left-[5%] w-2 h-2 bg-sky-300 rounded-full blur-[2px] shadow-[0_0_10px_rgba(125,211,252,0.8)] animate-pulse'
+          className='absolute top-1/2 left-[5%] w-2 h-2 bg-accent-solid rounded-full blur-[2px] shadow-raised animate-pulse'
           style={{ animationDelay: "0.5s" }}
         />
         <div
-          className='absolute top-1/3 right-[25%] w-1.5 h-1.5 bg-white rounded-full blur-[1px] shadow-[0_0_8px_rgba(255,255,255,0.8)] animate-pulse'
+          className='absolute top-1/3 right-[25%] w-1.5 h-1.5 bg-surface-raised rounded-full blur-[1px] shadow-raised animate-pulse'
           style={{ animationDelay: "1.5s" }}
         />
         <div
           className='absolute inset-0 opacity-[0.05]'
-          style={{ backgroundImage: "radial-gradient(#f97316 2px, transparent 2px)", backgroundSize: "40px 40px" }}
+          style={{ backgroundImage: "radial-gradient(var(--ds-color-primary-solid) 2px, transparent 2px)", backgroundSize: "40px 40px" }}
         />
       </div>
 
@@ -439,10 +439,10 @@ export default function SpellingBeePage() {
             exit={{ opacity: 0, y: -20 }}
             className={`fixed top-4 left-1/2 -translate-x-1/2 z-40 px-5 py-3 rounded-full font-black uppercase tracking-wider text-sm md:text-base flex items-center gap-2 shadow-2xl border-2 ${
               toast.kind === "gradeUp"
-                ? "bg-emerald-500 border-emerald-300 text-white"
+                ? "bg-success/25 border-success text-ink-primary"
                 : toast.kind === "mastery"
-                  ? "bg-yellow-400 border-yellow-200 text-slate-900"
-                  : "bg-slate-700 border-slate-500 text-slate-100"
+                  ? "bg-primary-solid border-primary-solid text-ink-on-primary"
+                  : "bg-surface-raised border-line-subtle text-ink-muted"
             }`}
           >
             {toast.kind === "gradeUp" && <ChevronUp className='w-5 h-5' />}
@@ -456,14 +456,14 @@ export default function SpellingBeePage() {
       {/* Header */}
       <div className='w-full max-w-4xl mb-2 md:mb-6 z-10 shrink-0'>
         <div className='flex justify-between items-center mb-2 gap-2'>
-          <h2 className='text-slate-100 text-base md:text-2xl font-black uppercase tracking-widest flex items-center gap-2 min-w-0'>
-            <Bee className='w-6 h-6 md:w-8 md:h-8 text-orange-500 shrink-0' />
+          <h2 className='text-ink-muted text-base md:text-2xl font-black uppercase tracking-widest flex items-center gap-2 min-w-0'>
+            <Bee className='w-6 h-6 md:w-8 md:h-8 text-primary-text shrink-0' />
             <span className='truncate'>{grade}</span>
-            <span className='hidden md:inline text-base text-slate-400 font-bold normal-case tracking-normal'>
+            <span className='hidden md:inline text-base text-ink-muted font-bold normal-case tracking-normal'>
               · {currentQuestion.subject} / {currentQuestion.skill}
             </span>
           </h2>
-          <div className='bg-slate-800 px-3 py-0.5 md:px-4 md:py-1 rounded-full border-2 border-slate-700 text-slate-300 text-[10px] md:text-sm font-black uppercase shadow-sm shrink-0'>
+          <div className='bg-surface-raised px-3 py-0.5 md:px-4 md:py-1 rounded-full border-2 border-line-subtle text-ink-muted text-[10px] md:text-sm font-black uppercase shadow-sm shrink-0'>
             Lvl {progress.level.toFixed(2)} · {progress.totalCorrect}/{progress.totalAnswered}
             {progress.totalAnswered > 0 && ` · ${accuracy}%`}
           </div>
@@ -476,11 +476,11 @@ export default function SpellingBeePage() {
             return (
               <div
                 key={i}
-                className={`flex-1 h-2 md:h-3 rounded-full overflow-hidden border ${isPast ? "bg-orange-500 border-orange-300" : "bg-slate-800 border-slate-700"}`}
+                className={`flex-1 h-2 md:h-3 rounded-full overflow-hidden border ${isPast ? "bg-primary-solid border-primary-solid" : "bg-surface-raised border-line-subtle"}`}
               >
                 {isCurrent && (
                   <div
-                    className='h-full bg-orange-500 transition-all duration-500'
+                    className='h-full bg-primary-solid transition-all duration-500'
                     style={{ width: `${gradeProg * 100}%` }}
                   />
                 )}
@@ -494,10 +494,10 @@ export default function SpellingBeePage() {
             {Array.from({ length: MASTERY_STREAK }).map((_, i) => (
               <div
                 key={i}
-                className={`w-1.5 h-1.5 md:w-2 md:h-2 rounded-full ${i < transient.streak ? "bg-yellow-400 shadow-[0_0_6px_rgba(250,204,21,0.8)]" : "bg-slate-700"}`}
+                className={`w-1.5 h-1.5 md:w-2 md:h-2 rounded-full ${i < transient.streak ? "bg-primary-solid shadow-raised" : "bg-surface-raised"}`}
               />
             ))}
-            <span className='text-[10px] md:text-xs text-slate-500 font-black uppercase tracking-widest ml-1'>
+            <span className='text-[10px] md:text-xs text-ink-muted font-black uppercase tracking-widest ml-1'>
               streak
             </span>
           </div>
@@ -509,7 +509,7 @@ export default function SpellingBeePage() {
 
         {/* Prompt card */}
         <div className='flex flex-col items-center gap-2 md:gap-3 shrink-0 px-4'>
-          <p className='text-slate-400 text-xs md:text-sm font-black uppercase tracking-widest text-center'>
+          <p className='text-ink-muted text-xs md:text-sm font-black uppercase tracking-widest text-center'>
             {promptHeader}
           </p>
           <motion.div
@@ -517,24 +517,24 @@ export default function SpellingBeePage() {
             initial={{ scale: 0.5, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ type: "spring", stiffness: 200, damping: 15 }}
-            className='px-6 py-5 md:px-10 md:py-8 bg-slate-800 rounded-3xl md:rounded-[2rem] border-4 md:border-8 border-slate-700 shadow-2xl min-w-[8rem] md:min-w-[12rem] text-center'
+            className='px-6 py-5 md:px-10 md:py-8 bg-surface-raised rounded-3xl md:rounded-[2rem] border-4 md:border-8 border-line-subtle shadow-2xl min-w-[8rem] md:min-w-[12rem] text-center'
           >
             {currentQuestion.kind === "emoji" && (
               <span className='text-5xl md:text-8xl leading-tight block'>{currentQuestion.emoji}</span>
             )}
             {currentQuestion.kind === "letter" && (
-              <span className='text-7xl md:text-9xl leading-none block font-black text-orange-400 font-serif'>
+              <span className='text-7xl md:text-9xl leading-none block font-black text-primary-text font-serif'>
                 {currentQuestion.letter}
               </span>
             )}
             {currentQuestion.kind === "text" && (
-              <span className='text-2xl md:text-4xl leading-snug block text-slate-100 font-black'>
+              <span className='text-2xl md:text-4xl leading-snug block text-ink-muted font-black'>
                 {currentQuestion.text}
               </span>
             )}
           </motion.div>
           {promptCta && (
-            <p className='text-slate-300 text-sm md:text-base font-black uppercase tracking-widest text-center'>
+            <p className='text-ink-muted text-sm md:text-base font-black uppercase tracking-widest text-center'>
               {promptCta}
             </p>
           )}
@@ -544,19 +544,19 @@ export default function SpellingBeePage() {
                 key={i}
                 className={`w-3.5 h-3.5 md:w-5 md:h-5 rounded-full border-2 transition-colors ${
                   i < transient.attemptsLeft
-                    ? "bg-orange-500 border-orange-300 shadow-[0_0_10px_rgba(249,115,22,0.6)]"
-                    : "bg-slate-700 border-slate-600"
+                    ? "bg-primary-solid border-primary-solid shadow-raised"
+                    : "bg-surface-raised border-line-subtle"
                 }`}
               />
             ))}
-            <span className='ml-2 text-slate-400 text-[10px] md:text-sm font-black uppercase tracking-widest'>
+            <span className='ml-2 text-ink-muted text-[10px] md:text-sm font-black uppercase tracking-widest'>
               {transient.attemptsLeft} {transient.attemptsLeft === 1 ? "try" : "tries"}
             </span>
           </div>
         </div>
 
         {/* Answer choices */}
-        <div className='w-full bg-slate-800 p-3 md:p-6 rounded-2xl md:rounded-3xl border-2 md:border-4 border-slate-700 shadow-xl shrink-0'>
+        <div className='w-full bg-surface-raised p-3 md:p-6 rounded-2xl md:rounded-3xl border-2 md:border-4 border-line-subtle shadow-xl shrink-0'>
           <div className='flex flex-wrap gap-2 md:gap-4 justify-center'>
             <AnimatePresence mode='popLayout'>
               {options.map((opt) => {
@@ -588,10 +588,10 @@ export default function SpellingBeePage() {
                         : "text-lg md:text-2xl min-w-[5rem] md:min-w-[8rem]"
                     } ${
                       isCorrect || isRevealed
-                        ? "bg-green-500 border-green-700 text-white ring-4 ring-green-400/50"
+                        ? "bg-success/25 border-success text-ink-primary ring-4 ring-success"
                         : isWrong
-                          ? "bg-red-500 border-red-700 text-white line-through"
-                          : "bg-slate-700 hover:bg-orange-500 text-slate-100 border-slate-900 hover:border-orange-700"
+                          ? "bg-danger/25 border-danger text-ink-primary line-through"
+                          : "bg-surface-raised hover:bg-primary-solid hover:text-ink-on-primary text-ink-muted border-line-subtle hover:border-primary-solid"
                     }`}
                   >
                     {opt}
@@ -610,33 +610,33 @@ export default function SpellingBeePage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className='fixed inset-0 bg-slate-900/85 backdrop-blur-sm flex items-center justify-center p-6 z-50'
+            className='fixed inset-0 bg-surface-raised/85 backdrop-blur-sm flex items-center justify-center p-6 z-50'
           >
             <motion.div
               initial={{ scale: 0.7, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              className='bg-slate-800 border-8 border-orange-500 p-10 md:p-12 rounded-3xl shadow-2xl text-center max-w-lg w-full'
+              className='bg-surface-raised border-8 border-primary-solid p-10 md:p-12 rounded-3xl shadow-2xl text-center max-w-lg w-full'
             >
-              <GraduationCap className='w-28 h-28 md:w-32 md:h-32 text-orange-400 mx-auto mb-4' />
-              <h1 className='text-4xl md:text-5xl font-black mb-3 uppercase tracking-widest text-orange-500'>
+              <GraduationCap className='w-28 h-28 md:w-32 md:h-32 text-primary-text mx-auto mb-4' />
+              <h1 className='text-4xl md:text-5xl font-black mb-3 uppercase tracking-widest text-primary-text'>
                 Graduated!
               </h1>
-              <p className='text-lg md:text-xl mb-6 font-bold text-slate-300'>
+              <p className='text-lg md:text-xl mb-6 font-bold text-ink-muted'>
                 You climbed all the way through 5th grade!
               </p>
-              <div className='flex justify-center gap-6 mb-8 text-slate-200'>
+              <div className='flex justify-center gap-6 mb-8 text-ink-muted'>
                 <div>
-                  <div className='text-3xl md:text-4xl font-black text-orange-400'>{progress.totalCorrect}</div>
-                  <div className='text-xs md:text-sm uppercase tracking-widest text-slate-400'>Correct</div>
+                  <div className='text-3xl md:text-4xl font-black text-primary-text'>{progress.totalCorrect}</div>
+                  <div className='text-xs md:text-sm uppercase tracking-widest text-ink-muted'>Correct</div>
                 </div>
                 <div>
-                  <div className='text-3xl md:text-4xl font-black text-orange-400'>{accuracy}%</div>
-                  <div className='text-xs md:text-sm uppercase tracking-widest text-slate-400'>Accuracy</div>
+                  <div className='text-3xl md:text-4xl font-black text-primary-text'>{accuracy}%</div>
+                  <div className='text-xs md:text-sm uppercase tracking-widest text-ink-muted'>Accuracy</div>
                 </div>
               </div>
               <button
                 onClick={dismissGraduation}
-                className='bg-orange-500 hover:bg-orange-400 text-white px-10 py-4 rounded-full text-xl md:text-2xl font-black uppercase tracking-wider transition-all shadow-[0_6px_0_rgb(154,52,18)] active:shadow-none active:translate-y-1 inline-flex items-center gap-2 mx-auto'
+                className='bg-primary-solid hover:bg-primary-hover text-ink-on-primary px-10 py-4 rounded-full text-xl md:text-2xl font-black uppercase tracking-wider transition-all shadow-[0_6px_0_var(--ds-palette-amber-3)] active:shadow-none active:translate-y-1 inline-flex items-center gap-2 mx-auto'
               >
                 <Crown className='w-6 h-6' /> Keep Buzzing!
               </button>

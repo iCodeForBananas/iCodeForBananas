@@ -51,7 +51,7 @@ function TuningControl({ tuning, setTuning, theme }: TuningControlProps) {
         ))}
       </div>
       <button
-        className='px-4 py-2 rounded border border-[#373A40] text-[#1A1B1E] hover:bg-[#1A1B1E] hover:text-[#FFD700]'
+        className='rounded border border-line-subtle px-4 py-2 text-ink-primary transition-colors duration-120 ease-ui hover:bg-surface-overlay'
         onClick={resetTuning}
       >
         Reset Tuning
@@ -262,13 +262,13 @@ export default function ProgressionsView() {
 
           <div className='mt-3'>
             <button
-              className='bg-[#1A1B1E] text-[#FFD700] px-4 py-2 rounded text-sm mr-2 hover:bg-[#1A1B1E]/80'
+              className='mr-2 rounded border border-line-subtle bg-surface-raised px-4 py-2 text-13 text-ink-primary transition-colors duration-120 ease-ui hover:bg-surface-overlay'
               onClick={generateProgression}
             >
               Generate Random Progression
             </button>
             <button
-              className='bg-[#FFD700] text-[#000000] px-4 py-2 rounded text-sm mr-2 hover:bg-[#e6c200]'
+              className='mr-2 rounded bg-primary-solid px-4 py-2 text-13 text-ink-on-primary transition-colors duration-120 ease-ui hover:bg-primary-hover'
               onClick={() => {
                 const progressionData = {
                   chords: chordProgression.map((e) => e.name).filter(Boolean),
@@ -281,7 +281,7 @@ export default function ProgressionsView() {
               Pin Progression
             </button>
             <button
-              className='px-4 py-2 rounded text-sm border border-red-600 text-red-600 hover:bg-red-600 hover:text-white'
+              className='rounded border border-danger/40 px-4 py-2 text-13 text-danger transition-colors duration-120 ease-ui hover:bg-danger/10'
               onClick={resetAll}
               title='Reset all selections to default values'
             >

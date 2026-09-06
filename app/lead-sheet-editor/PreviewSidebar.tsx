@@ -280,7 +280,7 @@ function NextSongControl({
       type='button'
       onClick={() => !isLast && onNext(setIds[pos + 1], pos + 1)}
       disabled={isLast}
-      className={`${ROW_BTN} justify-between disabled:opacity-40 disabled:hover:bg-transparent dark:disabled:hover:bg-transparent print:hidden`}
+      className={`${ROW_BTN} justify-between disabled:opacity-40 disabled:hover:bg-transparent print:hidden`}
     >
       {isLast ? "End of Set" : `Next Song (${pos + 2} of ${setIds.length})`}
       {!isLast && <ArrowRight className='w-4 h-4' />}
@@ -480,7 +480,7 @@ export default function PreviewSidebar(props: PreviewSidebarProps) {
                 title='Hand claps on beats 2 & 4'
                 className={`${ROW} ${
                   props.clapsRunning
-                    ? "bg-primary-solid text-ink-primary hover:bg-primary-hover"
+                    ? "bg-primary-solid text-ink-on-primary hover:bg-primary-hover"
                     : "text-ink-primary hover:bg-surface-raised"
                 }`}
               >

@@ -6,6 +6,8 @@ import { useState, useEffect } from "react";
 import { LogIn, LogOut, Moon, Sun } from "lucide-react";
 import { useAuth } from "@/app/hooks/useAuth";
 import { useTheme } from "@/app/lib/ThemeContext";
+import { Button, buttonVariants } from "@/app/components/ui/button";
+import { cn } from "@/app/lib/utils";
 
 const MOBILE_BREAKPOINT = 1024;
 const isMobileDevice = () => window.innerWidth < MOBILE_BREAKPOINT;
@@ -83,28 +85,27 @@ export default function Sidebar() {
 
   if (pathname.startsWith("/lead-sheet-editor/share/")) return null;
 
-  const navLinkStyle = (href: string) =>
-    pathname === href ? { background: "#000000", color: "#ffffff" } : { color: "#000000" };
+  /**
+   * Hover used to be four inline style writes per link, which is why the whole
+   * sidebar named its own colours: a :hover rule cannot be written inline.
+   * With the tokens it is one class list, and the active state is the primary
+   * fill with the near-black label the amber rule requires.
+   */
+  const navLinkClass = (href: string) =>
+    cn(
+      "transition-colors duration-120 ease-ui motion-reduce:transition-none",
+      "focus-visible:outline-solid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus",
+      pathname === href
+        ? "bg-primary-solid text-ink-on-primary"
+        : "text-ink-muted hover:bg-surface-overlay hover:text-ink-primary"
+    );
 
   const renderLink = (href: string, text: string) => (
     <Link
       key={href}
       href={href}
       onClick={handleLinkClick}
-      className='px-3 py-2 whitespace-nowrap transition-colors font-medium text-sm'
-      style={navLinkStyle(href)}
-      onMouseEnter={(e) => {
-        if (pathname !== href) {
-          e.currentTarget.style.background = "#000000";
-          e.currentTarget.style.color = "#ffffff";
-        }
-      }}
-      onMouseLeave={(e) => {
-        if (pathname !== href) {
-          e.currentTarget.style.background = "transparent";
-          e.currentTarget.style.color = "#000000";
-        }
-      }}
+      className={cn("px-3 py-2 whitespace-nowrap text-13 font-medium", navLinkClass(href))}
     >
       {text}
     </Link>
@@ -117,20 +118,10 @@ export default function Sidebar() {
       onClick={handleLinkClick}
       title={text}
       aria-label={text}
-      className='w-full flex items-center justify-center font-bold text-xs transition-colors'
-      style={{ ...navLinkStyle(href), height: "40px" }}
-      onMouseEnter={(e) => {
-        if (pathname !== href) {
-          e.currentTarget.style.background = "#000000";
-          e.currentTarget.style.color = "#ffffff";
-        }
-      }}
-      onMouseLeave={(e) => {
-        if (pathname !== href) {
-          e.currentTarget.style.background = "transparent";
-          e.currentTarget.style.color = "#000000";
-        }
-      }}
+      className={cn(
+        "h-10 w-full flex items-center justify-center text-12 font-semibold",
+        navLinkClass(href)
+      )}
     >
       {abbr ?? text[0].toUpperCase()}
     </Link>
@@ -143,13 +134,12 @@ export default function Sidebar() {
       {!isOpen && isMobile && (
         <button
           onClick={toggle}
-          className='fixed top-0 left-0 z-[60] px-3 flex items-center print:hidden'
-          style={{
-            height: "42px",
-            background: "#facc15",
-            color: "#000000",
-            border: "none",
-          }}
+          className={cn(
+            "fixed top-0 left-0 z-[60] h-[42px] px-3 flex items-center print:hidden",
+            "border-b border-r border-line-subtle bg-surface-raised text-ink-primary",
+            "hover:bg-surface-overlay transition-colors duration-120 ease-ui",
+            "focus-visible:outline-solid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus"
+          )}
           aria-label='Open sidebar'
         >
           <svg
@@ -164,24 +154,33 @@ export default function Sidebar() {
         </button>
       )}
 
-      {isOpen && isMobile && <div className='fixed inset-0 bg-black/50 z-30 lg:hidden print:hidden' onClick={toggle} />}
+      {isOpen && isMobile && (
+        <div
+          className='fixed inset-0 z-30 bg-surface-sunken/70 lg:hidden print:hidden'
+          onClick={toggle}
+        />
+      )}
 
+      {/* The rail is one step behind the content it navigates, not in front of
+          it: raised is the card plane, and a sidebar that shouted louder than
+          the page was what the full-bleed yellow was doing before. */}
       <aside
-        className={`fixed lg:relative h-screen flex flex-col z-40 print:hidden transition-[width] duration-200 ease-in-out ${widthClass}`}
-        style={{
-          background: "#facc15",
-          color: "var(--bg-secondary)",
-        }}
+        className={cn(
+          "fixed lg:relative h-screen flex flex-col z-40 print:hidden",
+          "border-r border-line-subtle bg-surface-sunken text-ink-primary",
+          "transition-[width] duration-200 ease-ui motion-reduce:transition-none",
+          widthClass
+        )}
       >
         <button
           onClick={toggle}
-          className='w-full flex items-center justify-center shrink-0'
-          style={{
-            height: "42px",
-            background: "#facc15",
-            color: "#000000",
-            border: "none",
-          }}
+          className={cn(
+            "h-[42px] w-full flex items-center justify-center shrink-0",
+            "border-b border-line-subtle text-ink-muted",
+            "hover:bg-surface-overlay hover:text-ink-primary",
+            "transition-colors duration-120 ease-ui motion-reduce:transition-none",
+            "focus-visible:outline-solid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus"
+          )}
           aria-label={isOpen ? "Close sidebar" : "Open sidebar"}
         >
           <svg
@@ -202,7 +201,7 @@ export default function Sidebar() {
               if (items.length === 0) return null;
               return (
                 <div key={category} className='flex flex-col'>
-                  {idx !== 0 && <div style={{ borderTop: "1px solid rgba(0, 0, 0, 0.2)" }} />}
+                  {idx !== 0 && <div className='border-t border-line-subtle' />}
                   {items.map(({ href, text, abbr }) => renderRailLink(href, text, abbr))}
                 </div>
               );
@@ -214,67 +213,34 @@ export default function Sidebar() {
           <div className='flex-1 p-6 overflow-y-auto'>
           <Link
             href='/'
-            className='font-black uppercase mb-3 block w-full'
-            style={{ color: "#000000", fontSize: "1rem", letterSpacing: "0.18em" }}
+            className={cn(
+              "mb-3 block w-full font-display text-16 font-semibold uppercase text-primary-text",
+              "tracking-[0.18em]",
+              "focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+            )}
           >
             iCodeForBananas
           </Link>
 
           <div className='flex gap-2 mt-1 mb-1'>
             {mounted && (
-              <button
+              <Button
+                variant='secondary'
+                size='icon'
                 onClick={toggleTheme}
-                className='rounded p-2 transition-colors'
-                style={{ border: "1px solid #373A40", color: "#F8F9FA", background: "#1A1B1E" }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = "#facc15";
-                  e.currentTarget.style.color = "#1A1B1E";
-                  e.currentTarget.style.borderColor = "#facc15";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "#1A1B1E";
-                  e.currentTarget.style.color = "#F8F9FA";
-                  e.currentTarget.style.borderColor = "#373A40";
-                }}
                 aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
               >
                 {theme === "dark" ? <Sun className='h-4 w-4' /> : <Moon className='h-4 w-4' />}
-              </button>
+              </Button>
             )}
             {user ? (
-              <button
-                onClick={signOut}
-                className='rounded p-2 transition-colors'
-                style={{ border: "1px solid #373A40", color: "#F8F9FA", background: "#1A1B1E" }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = "#facc15";
-                  e.currentTarget.style.color = "#1A1B1E";
-                  e.currentTarget.style.borderColor = "#facc15";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "#1A1B1E";
-                  e.currentTarget.style.color = "#F8F9FA";
-                  e.currentTarget.style.borderColor = "#373A40";
-                }}
-                aria-label='Sign out'
-              >
+              <Button variant='secondary' size='icon' onClick={signOut} aria-label='Sign out'>
                 <LogOut className='h-4 w-4' />
-              </button>
+              </Button>
             ) : (
               <Link
                 href='/login'
-                className='rounded p-2 transition-colors inline-flex items-center justify-center'
-                style={{ border: "1px solid #373A40", color: "#F8F9FA", background: "#1A1B1E" }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = "#facc15";
-                  e.currentTarget.style.color = "#1A1B1E";
-                  e.currentTarget.style.borderColor = "#facc15";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "#1A1B1E";
-                  e.currentTarget.style.color = "#F8F9FA";
-                  e.currentTarget.style.borderColor = "#373A40";
-                }}
+                className={cn(buttonVariants({ variant: "secondary", size: "icon" }))}
                 aria-label='Sign in'
               >
                 <LogIn className='h-4 w-4' />
@@ -290,10 +256,7 @@ export default function Sidebar() {
               if (items.length === 0) return null;
               return (
                 <div key={category} className='flex flex-col'>
-                  <p
-                    className='px-3 mb-1 text-[11px] font-bold uppercase tracking-wider'
-                    style={{ color: "rgba(0, 0, 0, 0.45)" }}
-                  >
+                  <p className='px-3 mb-1 text-10 font-semibold uppercase tracking-wider text-ink-muted'>
                     {category}
                   </p>
                   {items.map(({ href, text }) => renderLink(href, text))}
