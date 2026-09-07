@@ -211,6 +211,38 @@ body {
   color: var(--selection-text);
 }
 
+/* ── Native form controls ──────────────────────────────────────────
+   The browser paints scrollbars, date pickers and the panel behind an open
+   <select> from `color-scheme`, not from any of our tokens. Left at the
+   initial `normal` it assumes a light page, so on the dark theme the app's
+   near-white text was landing on a white popup and only became readable under
+   the hover highlight. Dark is the default theme, so it is the default here,
+   and the light attribute flips both together.
+
+   The option colours are then named outright rather than left to inherit. A
+   select styled `bg-transparent` — which most of them are, so the control reads
+   as part of the surface it sits on — has nothing for the popup to inherit,
+   and this way the list matches the app's raised surface in either theme
+   instead of the browser's own grey. Doing it here fixes every select at once;
+   no individual control has to carry the colour. */
+:root {
+  color-scheme: dark;
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+}
+
+option,
+optgroup {
+  background-color: var(--ds-color-surface-raised);
+  color: var(--ds-color-text-primary);
+}
+
+optgroup {
+  color: var(--ds-color-text-muted);
+}
+
 /* ── Print layout ─────────────────────────────────────────────────────────
    Lets pages render a hidden "print view" (className="hidden print:block")
    that becomes the only visible content when printing — the app shell's

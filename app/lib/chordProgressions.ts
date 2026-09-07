@@ -94,6 +94,27 @@ export const noteAtDegree = (rootNote: string, degree: number, useFlats: boolean
 // ── Curated progressions ────────────────────────────────────────────────────
 
 export const PROGRESSION_GROUPS: ProgressionGroup[] = [
+  // The ten that carry the most of popular music, ordered by roughly how much
+  // of it they carry. Every one also appears below under the feeling it
+  // creates — this group is the shortlist for "what does an audience already
+  // know in its bones", where the rest of the list answers "what mood am I
+  // after". Names are unique across the whole file because a progression is
+  // selected by name, so the duplicates here are deliberately renamed.
+  {
+    label: "Most Popular",
+    items: [
+      { name: "Four Chords", pattern: "I–V–vi–IV", description: "Behind more hits than any other progression. Bright and fully resolved, with the vi keeping it off the sugar — an audience feels it land before it can name it." },
+      { name: "Sensitive Loop", pattern: "vi–IV–I–V", description: "The same four chords started on the minor. Opens wounded and only reaches the tonic halfway through, which is why it reads as confession." },
+      { name: "Fifties Changes", pattern: "I–vi–IV–V", description: "Doo-wop, and every slow dance since. Sweet and unguarded, and the V pulls hard back to the top of the loop." },
+      { name: "Three Chords", pattern: "I–IV–V", description: "Rock, blues, country, folk, punk and most campfires. Nothing withheld and nothing surprising — everyone already knows where it goes, and that is the appeal." },
+      { name: "Jazz Cadence", pattern: "ii–V–I", description: "The strongest resolution in tonal music. Two chords of leaning and one of arrival — sophisticated, but what it delivers is plain relief." },
+      { name: "Canon Sequence", pattern: "I–V–vi–iii–IV–I–IV–V", description: "Pachelbel by way of a thousand pop songs. A bassline walking down under eight bars that never stop moving forward." },
+      { name: "Twelve-Bar Blues", pattern: "I–I–I–I–IV–IV–I–I–V–IV–I–V", description: "The oldest form still on the radio. Its hold is repetition — by the third pass the room is a bar ahead of the band." },
+      { name: "Mixolydian Rock", pattern: "I–bVII–IV", description: "A flat-seven borrowed from the parallel minor. Swaggering and faintly ancient — the home key of riff rock." },
+      { name: "Minor Axis", pattern: "i–VI–III–VII", description: "The four-chord loop moved into minor. Dark without being sad: it builds rather than mourns, which is why anthems live here." },
+      { name: "Andalusian Descent", pattern: "i–VII–VI–V", description: "A four-step walk down onto a V that never resolves. Flamenco by birth and instantly dramatic in any genre." },
+    ],
+  },
   {
     label: "Hopeful / Uplifting",
     items: [

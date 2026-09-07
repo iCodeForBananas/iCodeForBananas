@@ -12,7 +12,16 @@ import { cacheSheet, cacheSheetList, getCachedSheetList } from "./offlineCache";
 import { useCommands } from "@/app/components/ui/command-palette";
 import { Input } from "@/app/components/ui/input";
 import { Button } from "@/app/components/ui/button";
-import { loadDensity, saveDensity, searchLibrary, type Density } from "./library";
+import {
+  loadDensity,
+  loadSortOrder,
+  saveDensity,
+  saveSortOrder,
+  searchLibrary,
+  sortLibrary,
+  type Density,
+  type SortOrder,
+} from "./library";
 import { VisibilityPicker } from "./VisibilityPicker";
 import { SongAttribution } from "./SongAttribution";
 import type { Visibility } from "./sharing";
@@ -28,29 +37,25 @@ export default function LeadSheetList() {
   // Read once on mount rather than during render, so the server and the first
   // client render agree and hydration does not complain.
   const [density, setDensityState] = useState<Density>("comfortable");
-  useEffect(() => setDensityState(loadDensity()), []);
+  const [sortOrder, setSortOrderState] = useState<SortOrder>("alphabetical");
+  useEffect(() => {
+    setDensityState(loadDensity());
+    setSortOrderState(loadSortOrder());
+  }, []);
   const setDensity = (next: Density) => {
     setDensityState(next);
     saveDensity(next);
   };
+  const setSortOrder = (next: SortOrder) => {
+    setSortOrderState(next);
+    saveSortOrder(next);
+  };
   const router = useRouter();
 
-  // Songs read alphabetically, with the starred ones held at the top — the set
-  // being played this month sits where a thumb lands, and everything else stays
-  // where its name says it should be.
-  const sortedSheets = useMemo(
-    () =>
-      [...sheets].sort((a, b) => {
-        const aFav = a.metadata?.favorite ? 0 : 1;
-        const bFav = b.metadata?.favorite ? 0 : 1;
-        if (aFav !== bFav) return aFav - bFav;
-        return (a.title || "Untitled").localeCompare(b.title || "Untitled", undefined, {
-          sensitivity: "base",
-          numeric: true,
-        });
-      }),
-    [sheets]
-  );
+  // By name or by when it was last touched, whichever the picker says — with
+  // the starred ones held above either. The set being played this month sits
+  // where a thumb lands, and everything else falls where the sort puts it.
+  const sortedSheets = useMemo(() => sortLibrary(sheets, sortOrder), [sheets, sortOrder]);
 
   const getSb = () => createClient()!;
 
@@ -278,6 +283,17 @@ export default function LeadSheetList() {
               >
                 {density === "compact" ? "Compact" : "Comfortable"}
               </Button>
+              <select
+                value={sortOrder}
+                onChange={(e) => setSortOrder(e.target.value as SortOrder)}
+                aria-label='Sort songs'
+                title='Favorites stay at the top either way'
+                data-testid='library-sort'
+                className='h-8 rounded border border-line-strong bg-surface-base px-2 text-sm text-ink-primary outline-none focus:border-line-strong'
+              >
+                <option value='alphabetical'>A–Z</option>
+                <option value='recent'>Recently updated</option>
+              </select>
             </div>
 
             {sheets.length === 0 ? (
