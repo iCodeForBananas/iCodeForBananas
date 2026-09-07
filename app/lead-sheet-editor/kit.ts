@@ -12,6 +12,13 @@
  */
 import { accentByName, isAccentName } from "./accents";
 import {
+  DEFAULT_DRONE_SETTINGS,
+  DRONE_STYLES,
+  normalizeDroneSettings,
+  type DroneSettings,
+  type DroneStyle,
+} from "./Drone";
+import {
   DEFAULT_DRUM_SETTINGS,
   DRUM_PATTERNS,
   normalizeDrumSettings,
@@ -28,13 +35,14 @@ import {
  * These names are the same strings the arranger's cue layers use, so a kit
  * switched on here and a `[drum]` cue in the song text mean the same thing.
  */
-export const KIT_LAYERS = ["drum", "claps", "shimmer"] as const;
+export const KIT_LAYERS = ["drum", "claps", "shimmer", "drone"] as const;
 export type KitLayer = (typeof KIT_LAYERS)[number];
 
 export const LAYER_LABELS: Record<KitLayer, string> = {
   drum: "Drums",
   claps: "Claps",
   shimmer: "Percussion",
+  drone: "Drone",
 };
 
 export function normalizeLayers(raw: unknown): KitLayer[] {
@@ -55,12 +63,15 @@ export interface KitSettings {
   preset: string | null;
   layers: KitLayer[];
   drums: DrumSettings;
+  /** The held chord under all of it; see ./Drone. */
+  drone: DroneSettings;
 }
 
 export const DEFAULT_KIT: KitSettings = {
   preset: null,
   layers: [],
   drums: DEFAULT_DRUM_SETTINGS,
+  drone: DEFAULT_DRONE_SETTINGS,
 };
 
 /**
@@ -71,9 +82,11 @@ export const DEFAULT_KIT: KitSettings = {
  * key, which means no preset name and nothing switched on, and the player
  * starts silent exactly as it used to.
  *
- * A sheet may also still carry `subBass` and `strings` from the pad and the
- * bass walk-down. Those are not read any more, and not written either; nothing
- * deletes them, so a row keeps whatever it had.
+ * A sheet saved while the string pads existed carries the drone's style and
+ * level under `strings`, from when the two were one control. That is read as
+ * the drone when the sheet has no `drone` of its own, so a song that had a pad
+ * holding its key opens still holding it. `subBass` is not read by anything;
+ * nothing writes or deletes it either, so a row keeps whatever it had.
  */
 export function kitFromMetadata(metadata: Record<string, unknown> | null | undefined): KitSettings {
   const meta = metadata ?? {};
@@ -82,6 +95,7 @@ export function kitFromMetadata(metadata: Record<string, unknown> | null | undef
     preset: typeof kit.preset === "string" ? kit.preset : null,
     layers: normalizeLayers(kit.layers),
     drums: normalizeDrumSettings(meta.drums),
+    drone: normalizeDroneSettings(meta.drone ?? meta.strings),
   };
 }
 
@@ -96,6 +110,7 @@ export function kitFromMetadata(metadata: Record<string, unknown> | null | undef
 export function kitToMetadata(kit: KitSettings): Record<string, unknown> {
   return {
     drums: kit.drums,
+    drone: kit.drone,
     kit: { preset: kit.preset, layers: kit.layers },
   };
 }
@@ -131,6 +146,14 @@ export interface KitPreset {
   snare: SnareStyle;
   shimmer: string;
   drumVolume: number;
+  /**
+   * What the drone sounds like under this kit, and how loud.
+   *
+   * Not which chord it holds: that is the song's key, the one thing here that
+   * was written rather than chosen, and a preset has no business naming it.
+   */
+  droneStyle: DroneStyle;
+  droneVolume: number;
 }
 
 /**
@@ -152,6 +175,8 @@ export const KIT_PRESETS: KitPreset[] = [
     snare: "regular",
     shimmer: "Trap Rolls",
     drumVolume: 0.8,
+    droneStyle: "ethereal",
+    droneVolume: 0.3,
   },
   {
     name: "Boom Bap",
@@ -164,6 +189,8 @@ export const KIT_PRESETS: KitPreset[] = [
     snare: "regular",
     shimmer: "Cross-Stick",
     drumVolume: 0.85,
+    droneStyle: "warm",
+    droneVolume: 0.3,
   },
   {
     name: "Drill",
@@ -176,6 +203,8 @@ export const KIT_PRESETS: KitPreset[] = [
     snare: "regular",
     shimmer: "808 Hats",
     drumVolume: 0.7,
+    droneStyle: "ethereal",
+    droneVolume: 0.3,
   },
 
   // ── Songwriter ──────────────────────────────────────────────────────────────
@@ -190,6 +219,8 @@ export const KIT_PRESETS: KitPreset[] = [
     snare: "brush",
     shimmer: "Egg Shaker",
     drumVolume: 0.85,
+    droneStyle: "warm",
+    droneVolume: 0.35,
   },
   {
     name: "Campfire",
@@ -202,6 +233,8 @@ export const KIT_PRESETS: KitPreset[] = [
     snare: "brush",
     shimmer: "Tambourine",
     drumVolume: 0.7,
+    droneStyle: "warm",
+    droneVolume: 0.4,
   },
   {
     name: "Big Chorus",
@@ -214,6 +247,8 @@ export const KIT_PRESETS: KitPreset[] = [
     snare: "regular",
     shimmer: "Tambourine Backbeat",
     drumVolume: 0.9,
+    droneStyle: "lush",
+    droneVolume: 0.4,
   },
 
   // ── Soul and R&B ────────────────────────────────────────────────────────────
@@ -228,6 +263,8 @@ export const KIT_PRESETS: KitPreset[] = [
     snare: "brush",
     shimmer: "Cross-Stick",
     drumVolume: 0.75,
+    droneStyle: "lush",
+    droneVolume: 0.35,
   },
   {
     name: "Quiet Storm",
@@ -240,6 +277,8 @@ export const KIT_PRESETS: KitPreset[] = [
     snare: "brush",
     shimmer: "Finger Snaps",
     drumVolume: 0.65,
+    droneStyle: "lush",
+    droneVolume: 0.45,
   },
   {
     name: "Slow Jam",
@@ -252,6 +291,8 @@ export const KIT_PRESETS: KitPreset[] = [
     snare: "regular",
     shimmer: "Finger Snaps",
     drumVolume: 0.7,
+    droneStyle: "warm",
+    droneVolume: 0.4,
   },
 
   // ── Dance floor ─────────────────────────────────────────────────────────────
@@ -266,6 +307,8 @@ export const KIT_PRESETS: KitPreset[] = [
     snare: "regular",
     shimmer: "Digital Shaker",
     drumVolume: 0.85,
+    droneStyle: "bright",
+    droneVolume: 0.35,
   },
   {
     name: "Disco",
@@ -278,6 +321,8 @@ export const KIT_PRESETS: KitPreset[] = [
     snare: "regular",
     shimmer: "Cabasa",
     drumVolume: 0.85,
+    droneStyle: "bright",
+    droneVolume: 0.3,
   },
   {
     name: "Afrobeats",
@@ -290,6 +335,8 @@ export const KIT_PRESETS: KitPreset[] = [
     snare: "regular",
     shimmer: "Woodblock",
     drumVolume: 0.8,
+    droneStyle: "warm",
+    droneVolume: 0.3,
   },
 
   // ── Band ────────────────────────────────────────────────────────────────────
@@ -304,6 +351,8 @@ export const KIT_PRESETS: KitPreset[] = [
     snare: "regular",
     shimmer: "Tambourine Backbeat",
     drumVolume: 0.9,
+    droneStyle: "bright",
+    droneVolume: 0.35,
   },
   {
     name: "Reggae",
@@ -316,6 +365,8 @@ export const KIT_PRESETS: KitPreset[] = [
     snare: "regular",
     shimmer: "Cross-Stick",
     drumVolume: 0.8,
+    droneStyle: "organ",
+    droneVolume: 0.35,
   },
   {
     name: "Bossa Nova",
@@ -328,6 +379,8 @@ export const KIT_PRESETS: KitPreset[] = [
     snare: "brush",
     shimmer: "Claves",
     drumVolume: 0.7,
+    droneStyle: "warm",
+    droneVolume: 0.3,
   },
 
   // ── Sparse ──────────────────────────────────────────────────────────────────
@@ -342,6 +395,22 @@ export const KIT_PRESETS: KitPreset[] = [
     snare: "regular",
     shimmer: "Air Sparkle",
     drumVolume: 0.7,
+    droneStyle: "ethereal",
+    droneVolume: 0.45,
+  },
+  {
+    name: "Drone & Pulse",
+    group: "Sparse",
+    blurb: "A held chord and a heartbeat under it. Nothing else at all.",
+    bpm: 80,
+    layers: ["drum", "drone"],
+    pattern: "Heartbeat",
+    kick: "folk",
+    snare: "regular",
+    shimmer: "Air Sparkle",
+    drumVolume: 0.6,
+    droneStyle: "lush",
+    droneVolume: 0.5,
   },
   {
     name: "Shaker Only",
@@ -354,6 +423,8 @@ export const KIT_PRESETS: KitPreset[] = [
     snare: "regular",
     shimmer: "Egg Shaker",
     drumVolume: 0.7,
+    droneStyle: "ethereal",
+    droneVolume: 0.4,
   },
 ];
 
@@ -390,6 +461,12 @@ export function kitPresetProblems(): string[] {
     if (preset.drumVolume < 0 || preset.drumVolume > 1) {
       problems.push(`${preset.name}: drumVolume ${preset.drumVolume} is outside 0-1`);
     }
+    if (!DRONE_STYLES.some((s) => s.value === preset.droneStyle)) {
+      problems.push(`${preset.name}: no drone style named "${preset.droneStyle}"`);
+    }
+    if (preset.droneVolume < 0 || preset.droneVolume > 1) {
+      problems.push(`${preset.name}: droneVolume ${preset.droneVolume} is outside 0-1`);
+    }
     if (preset.layers.length === 0) problems.push(`${preset.name}: nothing switched on`);
   }
   return problems;
@@ -407,8 +484,12 @@ export function presetByName(name: string | null): KitPreset | null {
  * preset's pattern, which means dropping the edited steps, because keeping them
  * would leave the pattern name saying one thing and the beat sounding like
  * another.
+ *
+ * The drone's key does survive, when the kit it is replacing is passed in. A
+ * preset says what the backing sounds like; which chord it holds is a fact
+ * about the song, and changing kits is no reason to lose it.
  */
-export function applyPreset(preset: KitPreset): KitSettings {
+export function applyPreset(preset: KitPreset, current?: KitSettings): KitSettings {
   return {
     preset: preset.name,
     layers: [...preset.layers],
@@ -419,6 +500,11 @@ export function applyPreset(preset: KitPreset): KitSettings {
       snare: preset.snare,
       shimmer: preset.shimmer,
       volume: preset.drumVolume,
+    },
+    drone: {
+      key: current?.drone.key ?? DEFAULT_DRONE_SETTINGS.key,
+      style: preset.droneStyle,
+      volume: preset.droneVolume,
     },
   };
 }
@@ -431,6 +517,8 @@ export function applyPreset(preset: KitPreset): KitSettings {
 export function matchesPreset(kit: KitSettings): boolean {
   const preset = presetByName(kit.preset);
   if (!preset) return false;
+  // The drone's key is deliberately not compared: applying a preset does not
+  // set it, so it can never be the thing that differs.
   return (
     kit.drums.pattern === preset.pattern &&
     kit.drums.steps === null &&
@@ -438,6 +526,8 @@ export function matchesPreset(kit: KitSettings): boolean {
     kit.drums.snare === preset.snare &&
     kit.drums.shimmer === preset.shimmer &&
     kit.drums.volume === preset.drumVolume &&
+    kit.drone.style === preset.droneStyle &&
+    kit.drone.volume === preset.droneVolume &&
     kit.layers.length === preset.layers.length &&
     preset.layers.every((l) => kit.layers.includes(l))
   );

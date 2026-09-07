@@ -51,6 +51,7 @@ import {
   type DrumSettings,
 } from "./DrumMachine";
 import { asSectionHeader } from "./songText";
+import { DEFAULT_DRONE_SETTINGS, useDrone } from "./Drone";
 
 // ─── Track editor ─────────────────────────────────────────────────────────────
 //
@@ -97,6 +98,7 @@ const LAYER_STYLES: Record<string, { bar: string; edge: string; dot: string }> =
   drum: { bar: "bg-track-5/25 text-ink-on-primary", edge: "bg-track-5", dot: "bg-track-5" },
   claps: { bar: "bg-track-4/25 text-ink-on-primary", edge: "bg-track-4", dot: "bg-track-4" },
   shimmer: { bar: "bg-track-2/25 text-ink-on-primary", edge: "bg-track-2", dot: "bg-track-2" },
+  drone: { bar: "bg-track-6/25 text-ink-on-primary", edge: "bg-primary-solid", dot: "bg-primary-solid" },
 };
 
 const layerStyle = (layer: string) =>
@@ -132,6 +134,7 @@ interface DragState {
 interface SongSettings {
   bpm: number;
   drums: DrumSettings;
+  /** The song's key, which is the chord the drone track holds. */
   key: string | null;
 }
 
@@ -399,6 +402,16 @@ export default function TrackEditor({
     activeLayers.has("drum"),
     settings.drums.shimmer
   );
+
+  // The drone holds the song's key underneath everything for as long as its
+  // clip runs — the same chord the kit's drone layer holds, gated by a track
+  // rather than by a chip. The arranger reads the song's text, not the sheet's
+  // metadata, so it takes the drone's default voice rather than the one the
+  // designer picked; a sheet with no Key: line holds G, as it always has.
+  useDrone(playing && activeLayers.has("drone"), {
+    ...DEFAULT_DRONE_SETTINGS,
+    volume: DEFAULT_DRONE_SETTINGS.volume * fadeGain,
+  }, settings.key);
 
   // ── Clip edits ─────────────────────────────────────────────────────────────
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useSyncExternalStore } from "react";
 import { effectiveGrid, useDrumScheduler } from "./DrumMachine";
+import { useDrone } from "./Drone";
 import type { KitSettings } from "./kit";
 
 /**
@@ -22,6 +23,8 @@ export function KitPlayer({
   layers,
   bpm,
   drumVolume,
+  songKey,
+  transpose = 0,
 }: {
   kit: KitSettings;
   /**
@@ -37,6 +40,12 @@ export function KitPlayer({
    * Null the rest of the time, which is most of it.
    */
   drumVolume?: number | null;
+  /**
+   * The song's key and how far the sheet is transposed, which together are
+   * what the drone holds when it has not been given a key of its own.
+   */
+  songKey?: string | null;
+  transpose?: number;
 }) {
   const drums = layers.has("drum");
   const claps = layers.has("claps");
@@ -59,6 +68,11 @@ export function KitPlayer({
     drums,
     kit.drums.shimmer,
   );
+
+  // The drone runs on its own clock — it holds one chord rather than playing
+  // anything on the beat — so it is simply on or off, and its own swell is
+  // what a cue's fade would have been for.
+  useDrone(layers.has("drone"), kit.drone, songKey, transpose);
 
   // Publish where the loop is, for the designer's playhead. Going through a
   // store rather than a prop keeps the sixteen updates a bar off the page that

@@ -15,6 +15,13 @@ import {
   type DrumSettings,
 } from "./DrumMachine";
 import {
+  DEFAULT_DRONE_SETTINGS,
+  SONG_KEY,
+  droneKeyLabel,
+  normalizeDroneSettings,
+  resolveDroneKey,
+} from "./Drone";
+import {
   DEFAULT_KIT,
   KIT_LAYERS,
   KIT_PRESETS,
@@ -148,6 +155,62 @@ describe("kit presets", () => {
   });
 });
 
+describe("the drone", () => {
+  it("reads nothing at all as the default", () => {
+    expect(normalizeDroneSettings(undefined)).toEqual(DEFAULT_DRONE_SETTINGS);
+    expect(normalizeDroneSettings("lush")).toEqual(DEFAULT_DRONE_SETTINGS);
+  });
+
+  it("falls back to the song's key rather than holding one nobody picked", () => {
+    expect(normalizeDroneSettings({ key: "H#" }).key).toBe(SONG_KEY);
+    expect(normalizeDroneSettings({ key: "Bbm" }).key).toBe("Bbm");
+  });
+
+  it("clamps a level and rejects a style it does not have", () => {
+    expect(normalizeDroneSettings({ volume: 4 }).volume).toBe(1);
+    expect(normalizeDroneSettings({ volume: -1 }).volume).toBe(0);
+    expect(normalizeDroneSettings({ style: "trombone" }).style).toBe(DEFAULT_DRONE_SETTINGS.style);
+  });
+
+  it("follows the song's key, and its transposition with it", () => {
+    const settings = { ...DEFAULT_DRONE_SETTINGS, key: SONG_KEY };
+    expect(droneKeyLabel(resolveDroneKey(settings, "D"))).toBe("D");
+    expect(droneKeyLabel(resolveDroneKey(settings, "D", 2))).toBe("E");
+    expect(droneKeyLabel(resolveDroneKey(settings, "Bm", -1))).toBe("Bbm");
+    // Past the top of the octave and back round, rather than off the end.
+    expect(droneKeyLabel(resolveDroneKey(settings, "B", 1))).toBe("C");
+  });
+
+  it("holds a picked key exactly as picked, whatever the song does", () => {
+    const settings = { ...DEFAULT_DRONE_SETTINGS, key: "F#m" };
+    expect(droneKeyLabel(resolveDroneKey(settings, "C"))).toBe("F#m");
+    expect(droneKeyLabel(resolveDroneKey(settings, "C", 5))).toBe("F#m");
+  });
+
+  it("drones on G for a song that never said what key it is in", () => {
+    expect(droneKeyLabel(resolveDroneKey(DEFAULT_DRONE_SETTINGS, null))).toBe("G");
+    expect(droneKeyLabel(resolveDroneKey(DEFAULT_DRONE_SETTINGS, "not a key"))).toBe("G");
+  });
+
+  it("keeps the key across a preset, and takes the preset's voice", () => {
+    const before = { ...DEFAULT_KIT, drone: { key: "Eb", style: "organ" as const, volume: 0.1 } };
+    const preset = presetByName("Quiet Storm")!;
+    const after = applyPreset(preset, before);
+    expect(after.drone.key).toBe("Eb");
+    expect(after.drone.style).toBe(preset.droneStyle);
+    expect(after.drone.volume).toBe(preset.droneVolume);
+  });
+
+  it("notices a changed drone voice, but never a changed key", () => {
+    const preset = presetByName("Campfire")!;
+    const kit = applyPreset(preset);
+    expect(matchesPreset(kit)).toBe(true);
+    expect(matchesPreset({ ...kit, drone: { ...kit.drone, key: "Am" } })).toBe(true);
+    expect(matchesPreset({ ...kit, drone: { ...kit.drone, style: "bright" } })).toBe(false);
+    expect(matchesPreset({ ...kit, drone: { ...kit.drone, volume: 0.01 } })).toBe(false);
+  });
+});
+
 describe("kit storage", () => {
   it("round-trips through the metadata keys the song already used", () => {
     const kit = applyPreset(presetByName("Neo Soul")!);
@@ -166,7 +229,7 @@ describe("kit storage", () => {
     expect(kitIsSilent(kit)).toBe(true);
   });
 
-  it("ignores the pad and the bass walk a sheet may still be carrying", () => {
+  it("takes the drone from the pad a sheet may still be carrying", () => {
     const stored = {
       drums: { pattern: "Boom Bap" },
       subBass: { notes: "E D C B", tone: "round", octave: 2 },
@@ -175,11 +238,22 @@ describe("kit storage", () => {
     };
     const kit = kitFromMetadata(stored);
     expect(kit.layers).toEqual(["drum"]);
-    expect(kit).not.toHaveProperty("bass");
-    expect(kit).not.toHaveProperty("pad");
+    // The pad's style and level meant the same thing the drone's do.
+    expect(kit.drone.style).toBe("lush");
+    expect(kit.drone.volume).toBe(0.4);
+    // `mode` named an arpeggio the drone does not play, so it does not survive.
+    expect(kit.drone).not.toHaveProperty("mode");
     // Writing it back names only the keys the kit owns, so the row keeps the
-    // rest of what it had rather than having it cleared out from under it.
-    expect(Object.keys(kitToMetadata(kit)).sort()).toEqual(["drums", "kit"]);
+    // sub bass it had rather than having it cleared out from under it.
+    expect(Object.keys(kitToMetadata(kit)).sort()).toEqual(["drone", "drums", "kit"]);
+  });
+
+  it("prefers a stored drone over the pad it may have come from", () => {
+    const kit = kitFromMetadata({
+      drone: { key: "Am", style: "organ", volume: 0.2 },
+      strings: { mode: "drone", style: "lush", volume: 0.4 },
+    });
+    expect(kit.drone).toEqual({ key: "Am", style: "organ", volume: 0.2 });
   });
 
   it("keeps the layer order the app renders in, whatever order they were stored", () => {

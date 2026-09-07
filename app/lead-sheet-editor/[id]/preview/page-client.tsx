@@ -484,9 +484,9 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
   const [metronomeOn, setMetronomeOn] = useState(false);
   // Open-ended layer state: any cue tag layer name lives here, and the cue
   // events during a timed playback are what write it. Every name the kit knows
-  // is wired — drum, claps, shimmer. A cue naming something else is still
-  // tracked here and simply makes no sound, which is what a song still carrying
-  // a [drone] or [sub] from before those layers were removed now does.
+  // is wired — drum, claps, shimmer, drone. A cue naming something else is
+  // still tracked here and simply makes no sound, which is what a song still
+  // carrying a [sub] from before that layer was removed now does.
   const [activeLayers, setActiveLayers] = useState<Set<string>>(new Set());
   const [kit, setKit] = useState<KitSettings>(DEFAULT_KIT);
   const [kitOpen, setKitOpen] = useState(false);
@@ -1253,7 +1253,14 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
         {/* The kit, playing. Mounted here rather than inside the designer so
             that closing the designer does not stop the music, and outside the
             sidebar so that collapsing the sidebar does not either. */}
-        <KitPlayer kit={kit} layers={soundingLayers} bpm={bpm} drumVolume={localVolume} />
+        <KitPlayer
+          kit={kit}
+          layers={soundingLayers}
+          bpm={bpm}
+          drumVolume={localVolume}
+          songKey={sheet?.key ?? null}
+          transpose={transposeSteps}
+        />
 
         {kitOpen && (
           <KitDesigner
@@ -1264,6 +1271,8 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
             playing={kitPlaying}
             onPlayingChange={setKitPlaying}
             onClose={() => setKitOpen(false)}
+            songKey={sheet?.key ?? null}
+            transpose={transposeSteps}
           />
         )}
 

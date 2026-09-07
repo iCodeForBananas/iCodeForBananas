@@ -16,6 +16,14 @@ import {
   type DrumGrid,
   type GridLane,
 } from "./DrumMachine";
+import {
+  DRONE_KEY_GROUPS,
+  DRONE_STYLES,
+  SONG_KEY,
+  droneKeyLabel,
+  resolveDroneKey,
+  type DroneStyle,
+} from "./Drone";
 import { useKitStep } from "./KitPlayer";
 import {
   KIT_LAYERS,
@@ -50,6 +58,8 @@ export default function KitDesigner({
   playing,
   onPlayingChange,
   onClose,
+  songKey,
+  transpose = 0,
 }: {
   kit: KitSettings;
   onChange: (next: KitSettings) => void;
@@ -58,8 +68,11 @@ export default function KitDesigner({
   playing: boolean;
   onPlayingChange: (playing: boolean) => void;
   onClose: () => void;
+  /** What the drone holds when it is set to follow the song. */
+  songKey?: string | null;
+  transpose?: number;
 }) {
-  const [tab, setTab] = useState<"presets" | "beat" | "mix">("presets");
+  const [tab, setTab] = useState<TabId>("presets");
 
   // Escape closes, the way every other sheet in the editor does.
   useEffect(() => {
@@ -144,6 +157,9 @@ export default function KitDesigner({
         <div className='min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4'>
           {tab === "presets" && <PresetsTab kit={kit} onChange={onChange} onBpmChange={onBpmChange} />}
           {tab === "beat" && <BeatTab kit={kit} onChange={onChange} />}
+          {tab === "drone" && (
+            <DroneTab kit={kit} onChange={onChange} songKey={songKey} transpose={transpose} />
+          )}
           {tab === "mix" && <MixTab kit={kit} onChange={onChange} bpm={bpm} />}
         </div>
       </div>
@@ -153,19 +169,16 @@ export default function KitDesigner({
 
 // ── Chrome ────────────────────────────────────────────────────────────────────
 
-const TABS: { id: "presets" | "beat" | "mix"; label: string }[] = [
+type TabId = "presets" | "beat" | "drone" | "mix";
+
+const TABS: { id: TabId; label: string }[] = [
   { id: "presets", label: "Presets" },
   { id: "beat", label: "Beat" },
+  { id: "drone", label: "Drone" },
   { id: "mix", label: "Mix" },
 ];
 
-function TabBar({
-  tab,
-  onChange,
-}: {
-  tab: string;
-  onChange: (tab: "presets" | "beat" | "mix") => void;
-}) {
+function TabBar({ tab, onChange }: { tab: string; onChange: (tab: TabId) => void }) {
   return (
     <div role='tablist' className='flex shrink-0 gap-1 border-b border-line-subtle px-2'>
       {TABS.map((t) => (
@@ -321,7 +334,7 @@ function PresetsTab({
                   key={preset.name}
                   type='button'
                   onClick={() => {
-                    onChange(applyPreset(preset));
+                    onChange(applyPreset(preset, kit));
                     onBpmChange(preset.bpm);
                   }}
                   className={cn(
@@ -568,6 +581,89 @@ function BeatTab({ kit, onChange }: { kit: KitSettings; onChange: (next: KitSett
   );
 }
 
+// ── Drone ─────────────────────────────────────────────────────────────────────
+
+/**
+ * The held chord: which one, and what it sounds like.
+ *
+ * Two decisions, and they are different in kind. The key is a fact about the
+ * song and usually wants leaving on Song key, where it follows the header and
+ * the transpose control. The variation is a taste, which is why the blurb for
+ * the one selected sits under the row rather than on a tooltip nobody opens.
+ */
+function DroneTab({
+  kit,
+  onChange,
+  songKey,
+  transpose,
+}: {
+  kit: KitSettings;
+  onChange: (next: KitSettings) => void;
+  songKey?: string | null;
+  transpose: number;
+}) {
+  const on = hasLayer(kit, "drone");
+  const sounding = droneKeyLabel(resolveDroneKey(kit.drone, songKey, transpose));
+  const variation = DRONE_STYLES.find((s) => s.value === kit.drone.style) ?? DRONE_STYLES[0];
+
+  return (
+    <div className='flex flex-col gap-5'>
+      <p className='text-12 text-ink-muted'>
+        {on
+          ? `Holding ${sounding} under everything else.`
+          : `Switch the Drone layer on to hear it. It would hold ${sounding}.`}
+      </p>
+
+      <Field label='Key' hint='what the drone holds'>
+        <select
+          value={kit.drone.key}
+          onChange={(e) => onChange({ ...kit, drone: { ...kit.drone, key: e.target.value } })}
+          aria-label='Drone key'
+          className={cn(
+            "h-9 w-full rounded-md border border-line-subtle bg-surface-sunken px-2 text-13 text-ink-primary",
+            "focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
+          )}
+        >
+          <option value={SONG_KEY}>Song key ({sounding})</option>
+          {DRONE_KEY_GROUPS.map((group) => (
+            <optgroup key={group.label} label={group.label}>
+              {group.items.map((item) => (
+                <option key={item.value} value={item.value}>
+                  {item.label}
+                </option>
+              ))}
+            </optgroup>
+          ))}
+        </select>
+      </Field>
+      <p className='-mt-3 text-10 text-ink-muted'>
+        Song key follows the header and the transpose control. A key picked by name is held
+        exactly as picked.
+      </p>
+
+      <Field label='Variation'>
+        <Choices
+          ariaLabel='Drone variation'
+          value={kit.drone.style}
+          onChange={(style: DroneStyle) => onChange({ ...kit, drone: { ...kit.drone, style } })}
+          options={DRONE_STYLES.map((s) => ({ value: s.value, label: s.label }))}
+        />
+      </Field>
+      <p className='-mt-3 text-12 text-ink-muted'>{variation.blurb}</p>
+
+      <Field label='Level'>
+        <div className='pt-1'>
+          <LevelSlider
+            label='Drone'
+            value={kit.drone.volume}
+            onChange={(volume) => onChange({ ...kit, drone: { ...kit.drone, volume } })}
+          />
+        </div>
+      </Field>
+    </div>
+  );
+}
+
 // ── Mix ───────────────────────────────────────────────────────────────────────
 
 function MixTab({
@@ -587,6 +683,11 @@ function MixTab({
             label='Kit'
             value={kit.drums.volume}
             onChange={(volume) => onChange({ ...kit, drums: { ...kit.drums, volume } })}
+          />
+          <LevelSlider
+            label='Drone'
+            value={kit.drone.volume}
+            onChange={(volume) => onChange({ ...kit, drone: { ...kit.drone, volume } })}
           />
         </div>
       </Field>

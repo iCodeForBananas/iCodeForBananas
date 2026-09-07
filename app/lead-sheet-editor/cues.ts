@@ -14,7 +14,7 @@ import { DEFAULT_BPM, parseTimeMarker } from "./timing";
 // alone so chords keep rendering as chords.
 
 /** Layers the scheduler knows how to play. Adding a sound? Add its name here. */
-export const CUE_LAYERS = ["drum", "claps", "shimmer"] as const;
+export const CUE_LAYERS = ["drum", "claps", "shimmer", "drone"] as const;
 
 export type CueLayer = (typeof CUE_LAYERS)[number];
 
@@ -24,10 +24,10 @@ const MODIFIERS: ReadonlySet<string> = new Set(["fade-in", "fade-out"]);
 /**
  * How a layer reads on the page — "drum" is one word to type, many to hear.
  *
- * `drone` and `sub` are no longer layers, and a song written when they were
- * can still have `[drone]` in its text. They stay in the labels so that cue
- * renders as the word it was written as rather than as nothing; CUE_LAYERS is
- * what decides whether a bracket is a cue at all, and they are not in it.
+ * `sub` is not a layer any more, and a song written when it was can still have
+ * `[sub]` in its text. It stays here so that cue renders as the word it was
+ * written as rather than as nothing; CUE_LAYERS is what decides whether a
+ * bracket is a cue at all, and it is not in that.
  */
 export const LAYER_LABELS: Record<string, string> = {
   drum: "drums",
