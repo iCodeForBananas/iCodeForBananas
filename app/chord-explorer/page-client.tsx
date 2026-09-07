@@ -924,7 +924,7 @@ export default function ChordExplorerPage() {
   const progressionContent = (
     <div className="flex h-full min-h-0 flex-col gap-4 md:flex-row">
       <div
-        className="flex max-h-64 min-h-0 shrink-0 flex-col overflow-y-auto rounded-lg border border-line-subtle md:max-h-none md:w-60"
+        className="flex max-h-64 min-h-0 shrink-0 flex-col overflow-y-auto rounded-lg border border-line-subtle md:max-h-none md:w-72"
         role="listbox"
         aria-label="Chord progressions by feeling"
       >
@@ -943,14 +943,22 @@ export default function ChordExplorerPage() {
                   aria-selected={active}
                   onClick={() => setSelectedProgressionName(p.name)}
                   title={p.description}
-                  className={`flex w-full flex-col items-start gap-0.5 border-l-2 px-3 py-2 text-left transition-colors ${
+                  className={`flex w-full items-baseline gap-2 border-l-2 px-3 py-2 text-left transition-colors ${
                     active
                       ? "border-primary-solid bg-primary-solid/20"
                       : "border-transparent hover:bg-surface-overlay"
                   }`}
                 >
-                  <span className="text-sm font-medium text-ink-primary">{p.name}</span>
-                  <span className="font-mono text-[11px] text-ink-muted">{p.pattern}</span>
+                  {/* Chords first, name second: the pattern is what the list is
+                      scanned for, so it gets the fixed column and the left
+                      edge. Long ones wrap inside it rather than truncating —
+                      half a progression is worse than a taller row. */}
+                  <span className="w-24 shrink-0 font-mono text-[11px] leading-snug text-ink-muted">
+                    {p.pattern}
+                  </span>
+                  <span className="min-w-0 flex-1 text-sm font-medium text-ink-primary">
+                    {p.name}
+                  </span>
                 </button>
               );
             })}
