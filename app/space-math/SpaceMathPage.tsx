@@ -964,7 +964,7 @@ const playSound = (type: "correct" | "incorrect" | "badge") => {
 // ─── StarBank ─────────────────────────────────────────────────────────────────
 
 const StarBank = ({ score, onClear }: { score: number; onClear: () => void }) => (
-  <div className='w-full bg-surface-raised/80 border-b border-line-strong p-3 pl-14 flex items-start sm:items-center gap-4 z-50 relative min-h-[60px]'>
+  <div className='w-full p-3 pl-14 flex items-start sm:items-center gap-4 z-50 relative min-h-[60px]'>
     <button
       onClick={onClear}
       className='shrink-0 rounded bg-danger/10 px-2 py-1 text-10 font-semibold uppercase text-danger transition-colors duration-120 ease-ui hover:bg-danger/20'
@@ -1337,13 +1337,13 @@ export default function SpaceMathPage() {
   const isThreeOptions = problem && problem.options.length === 3;
 
   return (
-    <div className='flex-1 bg-surface-base text-ink-primary selection:bg-primary-solid/30 relative flex flex-col overflow-hidden max-h-screen'>
+    <div className='flex-1 bg-black text-ink-primary selection:bg-primary-solid/30 relative flex flex-col overflow-hidden max-h-screen'>
       <SpaceBackground />
       <StarBank score={score} onClear={clearStars} />
       <main className='relative z-10 w-full pt-4 sm:pt-6 px-4 sm:px-6 pb-20 sm:pb-24 flex flex-col items-center flex-1 min-h-0 overflow-hidden'>
         <div className='w-full flex justify-between items-center mb-3 sm:mb-4 shrink-0'>
           <div className='flex items-center gap-3'>
-            <div className='p-2 bg-gradient-to-br from-fuchsia-500 to-indigo-600 rounded-xl border-2 border-black shadow-[0_3px_0_#000]'>
+            <div className='p-2 bg-gradient-to-br from-fuchsia-500 to-indigo-600 rounded-md border-2 border-black shadow-[0_3px_0_#000]'>
               <Rocket className='w-5 h-5 sm:w-6 sm:h-6 text-white' />
             </div>
             <div>
@@ -1352,7 +1352,7 @@ export default function SpaceMathPage() {
           </div>
           <button
             onClick={resetGame}
-            className='text-[10px] font-bold text-ink-muted hover:text-ink-primary hover:bg-surface-raised/10 uppercase bg-surface-raised/5 px-2.5 py-1 rounded-lg transition-colors border border-line-strong'
+            className='text-[10px] font-bold text-ink-muted hover:text-ink-primary hover:bg-surface-raised/10 uppercase bg-surface-raised/5 px-2.5 py-1 rounded-md transition-colors border border-line-strong'
           >
             Reset
           </button>
@@ -1389,7 +1389,7 @@ export default function SpaceMathPage() {
               </div>
               <button
                 onClick={startGame}
-                className='group relative px-10 sm:px-12 py-5 sm:py-6 bg-gradient-to-b from-fuchsia-500 to-purple-600 text-white rounded-3xl text-xl sm:text-2xl font-bold border-4 border-black shadow-[0_10px_0_#000] active:shadow-none active:translate-y-[10px] transition-all hover:brightness-110'
+                className='group relative px-10 sm:px-12 py-5 sm:py-6 bg-gradient-to-b from-fuchsia-500 to-purple-600 text-white rounded-md text-xl sm:text-2xl font-bold border-4 border-black shadow-[0_10px_0_#000] active:shadow-none active:translate-y-[10px] transition-all hover:brightness-110'
               >
                 <span className='flex items-center gap-3'>
                   START MISSION <ChevronRight className='w-7 h-7 sm:w-8 sm:h-8' />
@@ -1459,8 +1459,8 @@ export default function SpaceMathPage() {
                   </motion.div>
                 )}
               </AnimatePresence>
-              <div className='w-full flex-1 min-h-0 p-1 rounded-[34px] sm:rounded-[42px] bg-gradient-to-br from-fuchsia-500 via-purple-500 to-cyan-500 shadow-2xl'>
-                <div className='w-full h-full bg-gradient-to-b from-slate-900 to-indigo-950 rounded-[30px] sm:rounded-[38px] p-4 sm:p-6 relative overflow-hidden flex flex-col'>
+              <div className='w-full flex-1 min-h-0 p-1 rounded-lg bg-gradient-to-br from-fuchsia-500 via-purple-500 to-cyan-500 shadow-2xl'>
+                <div className='w-full h-full bg-gradient-to-b from-slate-900 to-indigo-950 rounded-md p-4 sm:p-6 relative overflow-hidden flex flex-col'>
                   <div className='text-center mb-2 sm:mb-3 shrink-0'>
                     <h2 className='font-black mb-1 tracking-tight leading-snug text-3xl sm:text-4xl md:text-5xl break-words text-white'>
                       {problem.question}
@@ -1482,7 +1482,7 @@ export default function SpaceMathPage() {
                           key={i}
                           disabled={selectedAnswer !== null}
                           onClick={() => handleAnswer(opt)}
-                          className={`flex items-center justify-center rounded-3xl text-4xl sm:text-6xl md:text-8xl font-black text-white transition-all border-4 border-black shadow-[0_6px_0_#000] sm:shadow-[0_8px_0_#000] active:shadow-none active:translate-y-[6px] sm:active:translate-y-[8px] ${colorClasses}`}
+                          className={`flex items-center justify-center rounded-md text-4xl sm:text-6xl md:text-8xl font-black text-white transition-all border-4 border-black shadow-[0_6px_0_#000] sm:shadow-[0_8px_0_#000] active:shadow-none active:translate-y-[6px] sm:active:translate-y-[8px] ${colorClasses}`}
                         >
                           {opt}
                         </button>
@@ -1539,13 +1539,13 @@ export default function SpaceMathPage() {
                     setRecentSignatures([p.signature]);
                     setGameState("playing");
                   }}
-                  className='px-10 sm:px-12 py-5 sm:py-6 bg-gradient-to-b from-green-400 to-emerald-600 text-white rounded-3xl text-xl sm:text-2xl font-bold border-4 border-black shadow-[0_10px_0_#000] active:shadow-none active:translate-y-[10px] transition-all hover:brightness-110'
+                  className='px-10 sm:px-12 py-5 sm:py-6 bg-gradient-to-b from-green-400 to-emerald-600 text-white rounded-md text-xl sm:text-2xl font-bold border-4 border-black shadow-[0_10px_0_#000] active:shadow-none active:translate-y-[10px] transition-all hover:brightness-110'
                 >
                   KEEP GOING
                 </button>
                 <button
                   onClick={resetGame}
-                  className='px-8 py-4 bg-surface-raised rounded-2xl text-lg sm:text-xl font-bold border-2 border-black hover:bg-surface-raised transition-colors'
+                  className='px-8 py-4 bg-surface-raised rounded-md text-lg sm:text-xl font-bold border-2 border-black hover:bg-surface-raised transition-colors'
                 >
                   START OVER
                 </button>
