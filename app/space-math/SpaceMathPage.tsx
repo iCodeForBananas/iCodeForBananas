@@ -1331,7 +1331,6 @@ export default function SpaceMathPage() {
     "area", "perimeter",
   ]);
   const isReadAloud = !!problem && READ_ALOUD.has(problem.type);
-  const isLongQuestion = problem && problem.question.length > 40;
   const isThreeOptions = problem && problem.options.length === 3;
   const topicLabel = currentTopic ? TOPIC_STAGE[currentTopic.key]?.label : null;
   const skillsLearned = learnedCount(topicRecords);
@@ -1465,9 +1464,7 @@ export default function SpaceMathPage() {
                   {topicLabel}
                 </div>
                 <div className='text-center mb-2 sm:mb-3 shrink-0'>
-                  <h2
-                    className={`font-black mb-1 tracking-tight leading-snug ${isReadAloud ? "text-3xl sm:text-4xl md:text-5xl" : isLongQuestion ? "text-2xl sm:text-3xl md:text-4xl" : "text-5xl sm:text-6xl md:text-7xl"}`}
-                  >
+                  <h2 className='font-black mb-1 tracking-tight leading-snug text-3xl sm:text-4xl md:text-5xl break-words'>
                     {problem.question}
                   </h2>
                   {isReadAloud && (
