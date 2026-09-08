@@ -482,12 +482,14 @@ function buildProblem(type: ProblemType, min: number, max: number): Problem {
   }
 
   if (type === "count-by-10") {
-    const step = (Math.floor(Math.random() * 9) + 1) * 10; // 10..90
+    // No instructional prefix — just the pattern, so the step is something
+    // to notice, not something the question hands you.
+    const step = (Math.floor(Math.random() * 8) + 2) * 10; // 20..90, leaves room for one number before it
     const answer = step + 10;
     return {
       id,
       type,
-      question: `Count by 10s: ${step - 10 > 0 ? step - 10 + ", " : ""}${step}, ?`,
+      question: `${step - 10}, ${step}, ?`,
       answer,
       options: numOpts(answer),
       signature: `c10:${step}`,
@@ -648,7 +650,7 @@ function buildProblem(type: ProblemType, min: number, max: number): Problem {
     return {
       id,
       type,
-      question: `Skip count by ${s.n}s: ${start - s.n}, ${start}, ?`,
+      question: `${start - s.n}, ${start}, ?`,
       answer,
       options: numOpts(answer),
       signature: `skip:${s.n}-${start}`,
@@ -1332,7 +1334,6 @@ export default function SpaceMathPage() {
   ]);
   const isReadAloud = !!problem && READ_ALOUD.has(problem.type);
   const isThreeOptions = problem && problem.options.length === 3;
-  const topicLabel = currentTopic ? TOPIC_STAGE[currentTopic.key]?.label : null;
   const skillsLearned = learnedCount(topicRecords);
 
   return (
@@ -1460,9 +1461,6 @@ export default function SpaceMathPage() {
                 )}
               </AnimatePresence>
               <div className='w-full flex-1 min-h-0 bg-surface-raised/80 backdrop-blur-xl border border-line-strong rounded-[32px] sm:rounded-[40px] p-4 sm:p-6 shadow-2xl relative overflow-hidden flex flex-col'>
-                <div className='absolute top-3 right-4 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-primary-solid/15 border border-primary-solid/30 text-ink-muted'>
-                  {topicLabel}
-                </div>
                 <div className='text-center mb-2 sm:mb-3 shrink-0'>
                   <h2 className='font-black mb-1 tracking-tight leading-snug text-3xl sm:text-4xl md:text-5xl break-words'>
                     {problem.question}
