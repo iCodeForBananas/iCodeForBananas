@@ -12,6 +12,7 @@ const STAGE_CATEGORY: Record<number, string> = {
   4:  "addition_subtraction", // K Subtract within 10
   11: "number_sense",         // K Count by 1s to 100
   17: "number_sense",         // K Count by 10s to 100
+  18: "number_sense",         // K Count the next number
   12: "addition_subtraction", // K Make 10
   13: "number_sense",         // K Compare 1–10
   14: "geometry",             // K Shapes
@@ -96,6 +97,7 @@ const STAGE_INFO: Record<number, { label: string; standard: string }> = {
   4:  { label: "Subtract within 10",                 standard: "K.OA.A.2" },
   11: { label: "Count by 1s to 100",                 standard: "K.CC.A.1" },
   17: { label: "Count by 10s to 100",                standard: "K.CC.A.1" },
+  18: { label: "Count the next number",              standard: "K.CC.A.2" },
   12: { label: "Make 10 (find pair to make 10)",     standard: "K.OA.A.4" },
   13: { label: "Compare numbers 1–10",               standard: "K.CC.C.6" },
   14: { label: "Identify shapes (2D & 3D)",          standard: "K.G.A.2" },

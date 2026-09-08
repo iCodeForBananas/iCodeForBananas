@@ -18,6 +18,7 @@ type ProblemType =
   | "count-120"
   // K
   | "count-by-1"
+  | "count-next"
   | "count-by-10"
   | "make-10"
   | "teen-decompose"
@@ -93,6 +94,7 @@ const TOPIC_PROGRESSION: TopicDef[] = [
   { key: "add-1-5",          type: "addition",        min: 1,   max: 5   },
   { key: "sub-1-5",          type: "subtraction",     min: 1,   max: 5   },
   { key: "k-count-by-1",     type: "count-by-1",      min: 1,   max: 100 },
+  { key: "k-count-next",     type: "count-next",      min: 1,   max: 97  },
   { key: "add-1-10",         type: "addition",        min: 1,   max: 10  },
   { key: "sub-1-10",         type: "subtraction",     min: 1,   max: 10  },
   { key: "k-compare-10",     type: "comparison",      min: 1,   max: 10  },
@@ -138,6 +140,7 @@ const TOPIC_STAGE: Record<string, { id: number; label: string }> = {
   "add-1-10":        { id: 3,  label: "Add within 10" },
   "sub-1-10":        { id: 4,  label: "Subtract within 10" },
   "k-count-by-1":    { id: 11, label: "Count by 1s to 100" },
+  "k-count-next":    { id: 18, label: "Count the next number" },
   "k-count-by-10":   { id: 17, label: "Count by 10s to 100" },
   "k-make-10":       { id: 12, label: "Make 10" },
   "k-compare-10":    { id: 13, label: "Compare 1–10" },
@@ -461,6 +464,20 @@ function buildProblem(type: ProblemType, min: number, max: number): Problem {
       answer,
       options: numOpts(answer),
       signature: `c1:${isNext ? "n" : "p"}-${start}`,
+    };
+  }
+
+  if (type === "count-next") {
+    // Simplest counting drill: three numbers in a row, what comes next?
+    const start = Math.floor(Math.random() * (max - min + 1)) + min;
+    const answer = start + 3;
+    return {
+      id,
+      type,
+      question: `${start}, ${start + 1}, ${start + 2}, ?`,
+      answer,
+      options: numOpts(answer),
+      signature: `cnext:${start}`,
     };
   }
 
@@ -1307,7 +1324,7 @@ export default function SpaceMathPage() {
   };
 
   const READ_ALOUD: Set<ProblemType> = new Set([
-    "fact-family", "count-120", "count-by-1", "count-by-10", "make-10", "teen-decompose",
+    "fact-family", "count-120", "count-by-1", "count-next", "count-by-10", "make-10", "teen-decompose",
     "equal-sign", "unknown-addend",
     "skip-count", "odd-even", "array",
     "round", "fraction-line", "equiv-fractions", "compare-fractions",
