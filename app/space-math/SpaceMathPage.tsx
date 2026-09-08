@@ -228,10 +228,6 @@ function unlockedTopics(records: Record<string, TopicRecord>): TopicDef[] {
   return out;
 }
 
-function learnedCount(records: Record<string, TopicRecord>): number {
-  return TOPIC_PROGRESSION.filter((t) => records[t.key]?.learned).length;
-}
-
 // Pick the next topic. Every unlocked topic stays eligible forever — the schedule,
 // not a difficulty filter, decides what shows up, so a session naturally mixes the
 // new material with reviews of things already learned.
@@ -1339,7 +1335,6 @@ export default function SpaceMathPage() {
   };
 
   const isThreeOptions = problem && problem.options.length === 3;
-  const skillsLearned = learnedCount(topicRecords);
 
   return (
     <div className='flex-1 bg-surface-base text-ink-primary selection:bg-primary-solid/30 relative flex flex-col overflow-hidden max-h-screen'>
@@ -1391,9 +1386,6 @@ export default function SpaceMathPage() {
                 <h2 className='text-3xl sm:text-4xl md:text-5xl font-black mb-3 sm:mb-4 bg-gradient-to-r from-pink-400 via-amber-300 to-cyan-400 bg-clip-text text-transparent'>
                   Ready for Launch?
                 </h2>
-                <p className='text-sm sm:text-base text-ink-muted font-semibold'>
-                  {skillsLearned} of {TOPIC_PROGRESSION.length} skills learned
-                </p>
               </div>
               <button
                 onClick={startGame}
