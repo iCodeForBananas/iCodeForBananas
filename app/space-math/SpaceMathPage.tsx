@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Rocket, Star, Trophy, ChevronRight, Sparkles, Check, X, Volume2 } from "lucide-react";
+import { Rocket, Star, Trophy, ChevronRight, Sparkles, Check, X } from "lucide-react";
+import styles from "./space-math.module.css";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -985,7 +986,7 @@ const StarBank = ({ score, onClear }: { score: number; onClear: () => void }) =>
             transition={{ type: "spring", stiffness: 260, damping: 20 }}
             className='w-5 h-5'
           >
-            <Star className='w-5 h-5 text-primary-text fill-primary-solid drop-shadow-sm' />
+            <Star className='w-5 h-5 text-yellow-400 fill-yellow-400 drop-shadow-sm' />
           </motion.div>
         ))}
       </AnimatePresence>
@@ -1004,7 +1005,7 @@ const SessionProgressBar = ({ correct }: { correct: number }) => {
     <div className='w-full mb-2 shrink-0'>
       <div className='flex justify-between items-center mb-1.5 px-1'>
         <div className='flex items-center gap-1.5 text-xs font-bold text-ink-muted uppercase tracking-wider'>
-          <Star className='w-3 h-3 text-primary-text fill-primary-solid' />
+          <Star className='w-3 h-3 text-yellow-400 fill-yellow-400' />
           Session
         </div>
         <span className={`text-xs font-bold ${isDone ? "text-primary-text" : "text-ink-muted"}`}>
@@ -1013,7 +1014,7 @@ const SessionProgressBar = ({ correct }: { correct: number }) => {
       </div>
       <div className='w-full h-2.5 bg-surface-raised/80 rounded-full overflow-hidden border border-line-strong'>
         <motion.div
-          className={`h-full rounded-full ${isDone ? "bg-gradient-to-r from-primary-solid to-primary-hover" : "bg-gradient-to-r from-track-4 via-track-2 to-track-5"}`}
+          className={`h-full rounded-full ${isDone ? "bg-gradient-to-r from-yellow-400 to-amber-500" : "bg-gradient-to-r from-fuchsia-500 via-purple-500 to-cyan-500"}`}
           initial={{ width: 0 }}
           animate={{ width: `${pct}%` }}
           transition={{ type: "spring", stiffness: 80, damping: 15 }}
@@ -1028,11 +1029,10 @@ const SessionProgressBar = ({ correct }: { correct: number }) => {
 /**
  * The starfield, nebulae and comets, painted on a canvas.
  *
- * The literal whites and blues below are the one thing on this page that is
- * not a token, and deliberately: this is a picture of a night sky, not a
- * surface. Layer 2 names planes, ink and status, and has nothing to say about
- * what colour a comet tail is. Everything the player actually reads — the
- * problem, the answers, the score — sits above this in tokens.
+ * Like the rest of this page, these colors are literal, not design-system
+ * tokens — Space Math is meant to look like a fun kids' game, not match the
+ * rest of the site, so it deliberately opts out of the shared palette
+ * (see space-math.module.css for why that stays safe to do here).
  */
 function SpaceBackground() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -1173,6 +1173,19 @@ function readSave() {
   if (typeof window === "undefined") return null;
   try { return JSON.parse(localStorage.getItem("space-math-save") ?? "null"); } catch { return null; }
 }
+
+// Candy-bright, black-outlined answer tiles — deliberately not the shared
+// design-system tokens (see space-math.module.css). Cycled by option index
+// so the four tiles always read as distinct, playful choices rather than a
+// wall of identical grey buttons.
+const OPTION_COLORS = [
+  "from-pink-400 to-fuchsia-600",
+  "from-sky-400 to-blue-600",
+  "from-lime-400 to-green-600",
+  "from-amber-300 to-orange-500",
+];
+
+const CONFETTI_COLORS = ["bg-pink-400", "bg-cyan-400", "bg-lime-400", "bg-amber-300", "bg-fuchsia-500"];
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -1325,14 +1338,6 @@ export default function SpaceMathPage() {
     setScore(0);
   };
 
-  const READ_ALOUD: Set<ProblemType> = new Set([
-    "fact-family", "count-120", "count-by-1", "count-next", "count-by-10", "make-10", "teen-decompose",
-    "equal-sign", "unknown-addend",
-    "skip-count", "odd-even", "array",
-    "round", "fraction-line", "equiv-fractions", "compare-fractions",
-    "area", "perimeter",
-  ]);
-  const isReadAloud = !!problem && READ_ALOUD.has(problem.type);
   const isThreeOptions = problem && problem.options.length === 3;
   const skillsLearned = learnedCount(topicRecords);
 
@@ -1343,8 +1348,8 @@ export default function SpaceMathPage() {
       <main className='relative z-10 w-full pt-4 sm:pt-6 px-4 sm:px-6 pb-20 sm:pb-24 flex flex-col items-center flex-1 min-h-0 overflow-hidden'>
         <div className='w-full flex justify-between items-center mb-3 sm:mb-4 shrink-0'>
           <div className='flex items-center gap-3'>
-            <div className='p-2 bg-primary-solid rounded-xl shadow-raised'>
-              <Rocket className='w-5 h-5 sm:w-6 sm:h-6 text-ink-on-primary' />
+            <div className='p-2 bg-gradient-to-br from-fuchsia-500 to-indigo-600 rounded-xl border-2 border-black shadow-[0_3px_0_#000]'>
+              <Rocket className='w-5 h-5 sm:w-6 sm:h-6 text-white' />
             </div>
             <div>
               <h1 className='text-lg sm:text-xl font-bold tracking-tight'>Space Math</h1>
@@ -1383,7 +1388,7 @@ export default function SpaceMathPage() {
                 </motion.div>
               </div>
               <div>
-                <h2 className='text-3xl sm:text-4xl md:text-5xl font-black mb-3 sm:mb-4 bg-gradient-to-b from-ink-primary to-ink-muted bg-clip-text text-transparent'>
+                <h2 className='text-3xl sm:text-4xl md:text-5xl font-black mb-3 sm:mb-4 bg-gradient-to-r from-pink-400 via-amber-300 to-cyan-400 bg-clip-text text-transparent'>
                   Ready for Launch?
                 </h2>
                 <p className='text-sm sm:text-base text-ink-muted font-semibold'>
@@ -1392,7 +1397,7 @@ export default function SpaceMathPage() {
               </div>
               <button
                 onClick={startGame}
-                className='group relative px-10 sm:px-12 py-5 sm:py-6 bg-primary-solid text-ink-on-primary rounded-3xl text-xl sm:text-2xl font-bold shadow-[0_10px_0_var(--ds-palette-amber-3)] active:shadow-none active:translate-y-[10px] transition-all hover:bg-primary-hover'
+                className='group relative px-10 sm:px-12 py-5 sm:py-6 bg-gradient-to-b from-fuchsia-500 to-purple-600 text-white rounded-3xl text-xl sm:text-2xl font-bold border-4 border-black shadow-[0_10px_0_#000] active:shadow-none active:translate-y-[10px] transition-all hover:brightness-110'
               >
                 <span className='flex items-center gap-3'>
                   START MISSION <ChevronRight className='w-7 h-7 sm:w-8 sm:h-8' />
@@ -1432,7 +1437,7 @@ export default function SpaceMathPage() {
                           cy='112'
                           r='104'
                           fill='none'
-                          stroke='var(--ds-color-border-strong)'
+                          stroke='rgba(255,255,255,0.35)'
                           strokeWidth='14'
                         />
                         <motion.circle
@@ -1440,7 +1445,7 @@ export default function SpaceMathPage() {
                           cy='112'
                           r='104'
                           fill='none'
-                          stroke={isCorrect ? "var(--ds-color-success)" : "var(--ds-color-primary-text)"}
+                          stroke={isCorrect ? "#22c55e" : "#ef4444"}
                           strokeWidth='14'
                           strokeLinecap='round'
                           strokeDasharray={2 * Math.PI * 104}
@@ -1449,47 +1454,49 @@ export default function SpaceMathPage() {
                           transition={{ duration: 2, ease: "linear" }}
                         />
                       </svg>
-                      <div className={`p-12 rounded-full shadow-2xl ${isCorrect ? "bg-success/25" : "bg-danger/25"}`}>
+                      <div
+                        className={`p-12 rounded-full border-4 border-black shadow-2xl ${isCorrect ? "bg-green-500" : `bg-red-500 ${styles.shake}`}`}
+                      >
                         {isCorrect ? (
-                          <Check className='w-32 h-32 text-ink-primary' />
+                          <Check className='w-32 h-32 text-white' />
                         ) : (
-                          <X className='w-32 h-32 text-ink-primary' />
+                          <X className='w-32 h-32 text-white' />
                         )}
                       </div>
                     </div>
                   </motion.div>
                 )}
               </AnimatePresence>
-              <div className='w-full flex-1 min-h-0 bg-surface-raised/80 backdrop-blur-xl border border-line-strong rounded-[32px] sm:rounded-[40px] p-4 sm:p-6 shadow-2xl relative overflow-hidden flex flex-col'>
-                <div className='text-center mb-2 sm:mb-3 shrink-0'>
-                  <h2 className='font-black mb-1 tracking-tight leading-snug text-3xl sm:text-4xl md:text-5xl break-words'>
-                    {problem.question}
-                  </h2>
-                  {isReadAloud && (
-                    <button
-                      onClick={() => {
-                        window.speechSynthesis.cancel();
-                        const u = new SpeechSynthesisUtterance(problem.question);
-                        u.rate = 0.85;
-                        window.speechSynthesis.speak(u);
-                      }}
-                      className='mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-surface-raised hover:bg-surface-overlay text-ink-muted hover:text-ink-muted transition-colors text-sm font-semibold'
-                    >
-                      <Volume2 className='w-5 h-5' /> Read aloud
-                    </button>
-                  )}
-                </div>
-                <div className={`grid gap-2 sm:gap-3 flex-1 min-h-0 ${isThreeOptions ? "grid-cols-3" : "grid-cols-2"}`}>
-                  {problem.options.map((opt, i) => (
-                    <button
-                      key={i}
-                      disabled={selectedAnswer !== null}
-                      onClick={() => handleAnswer(opt)}
-                      className={`flex items-center justify-center rounded-3xl text-4xl sm:text-6xl md:text-8xl font-black transition-all border-b-[6px] sm:border-b-8 ${selectedAnswer === opt ? (isCorrect ? "bg-success/25 border-success text-ink-primary" : "bg-danger/25 border-danger text-ink-primary") : "bg-surface-raised border-line-subtle hover:bg-surface-raised text-ink-primary active:border-b-0 active:translate-y-[6px] sm:active:translate-y-[8px]"} ${selectedAnswer !== null && opt === problem.answer && selectedAnswer !== opt ? "bg-success/50 border-success/40" : ""}`}
-                    >
-                      {opt}
-                    </button>
-                  ))}
+              <div className='w-full flex-1 min-h-0 p-1 rounded-[34px] sm:rounded-[42px] bg-gradient-to-br from-fuchsia-500 via-purple-500 to-cyan-500 shadow-2xl'>
+                <div className='w-full h-full bg-gradient-to-b from-slate-900 to-indigo-950 rounded-[30px] sm:rounded-[38px] p-4 sm:p-6 relative overflow-hidden flex flex-col'>
+                  <div className='text-center mb-2 sm:mb-3 shrink-0'>
+                    <h2 className='font-black mb-1 tracking-tight leading-snug text-3xl sm:text-4xl md:text-5xl break-words text-white'>
+                      {problem.question}
+                    </h2>
+                  </div>
+                  <div className={`grid gap-2 sm:gap-3 flex-1 min-h-0 ${isThreeOptions ? "grid-cols-3" : "grid-cols-2"}`}>
+                    {problem.options.map((opt, i) => {
+                      const isSelected = selectedAnswer === opt;
+                      const isRevealCorrect = selectedAnswer !== null && !isSelected && opt === problem.answer;
+                      const colorClasses = isSelected
+                        ? isCorrect
+                          ? "bg-gradient-to-b from-green-400 to-green-600"
+                          : `bg-gradient-to-b from-red-400 to-red-600 ${styles.shake}`
+                        : isRevealCorrect
+                          ? "bg-gradient-to-b from-green-400 to-green-600"
+                          : `bg-gradient-to-b ${OPTION_COLORS[i % OPTION_COLORS.length]} hover:brightness-110`;
+                      return (
+                        <button
+                          key={i}
+                          disabled={selectedAnswer !== null}
+                          onClick={() => handleAnswer(opt)}
+                          className={`flex items-center justify-center rounded-3xl text-4xl sm:text-6xl md:text-8xl font-black text-white transition-all border-4 border-black shadow-[0_6px_0_#000] sm:shadow-[0_8px_0_#000] active:shadow-none active:translate-y-[6px] sm:active:translate-y-[8px] ${colorClasses}`}
+                        >
+                          {opt}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             </motion.div>
@@ -1512,7 +1519,7 @@ export default function SpaceMathPage() {
                 {CONFETTI.map((p, i) => (
                   <motion.div
                     key={i}
-                    className='absolute top-1/2 left-1/2 w-2 h-2 bg-primary-solid rounded-full'
+                    className={`absolute top-1/2 left-1/2 w-2 h-2 rounded-full ${CONFETTI_COLORS[i % CONFETTI_COLORS.length]}`}
                     initial={{ x: 0, y: 0 }}
                     animate={{ x: p.x, y: p.y, opacity: 0, scale: 0 }}
                     transition={{ duration: 2, repeat: Infinity, delay: p.delay }}
@@ -1520,7 +1527,7 @@ export default function SpaceMathPage() {
                 ))}
               </div>
               <div>
-                <h2 className='text-4xl sm:text-5xl md:text-6xl font-black mb-3 sm:mb-4 bg-gradient-to-r from-primary-text via-ink-primary to-primary-text bg-clip-text text-transparent animate-pulse'>
+                <h2 className='text-4xl sm:text-5xl md:text-6xl font-black mb-3 sm:mb-4 bg-gradient-to-r from-yellow-300 via-pink-400 to-purple-400 bg-clip-text text-transparent animate-pulse'>
                   SESSION COMPLETE!
                 </h2>
                 <p className='text-2xl sm:text-3xl text-ink-muted'>
@@ -1540,13 +1547,13 @@ export default function SpaceMathPage() {
                     setRecentSignatures([p.signature]);
                     setGameState("playing");
                   }}
-                  className='px-10 sm:px-12 py-5 sm:py-6 bg-primary-solid text-ink-on-primary rounded-3xl text-xl sm:text-2xl font-bold shadow-[0_10px_0_var(--ds-palette-amber-3)] active:shadow-none active:translate-y-[10px] transition-all hover:bg-primary-hover'
+                  className='px-10 sm:px-12 py-5 sm:py-6 bg-gradient-to-b from-green-400 to-emerald-600 text-white rounded-3xl text-xl sm:text-2xl font-bold border-4 border-black shadow-[0_10px_0_#000] active:shadow-none active:translate-y-[10px] transition-all hover:brightness-110'
                 >
                   KEEP GOING
                 </button>
                 <button
                   onClick={resetGame}
-                  className='px-8 py-4 bg-surface-raised rounded-2xl text-lg sm:text-xl font-bold border border-line-strong hover:bg-surface-raised transition-colors'
+                  className='px-8 py-4 bg-surface-raised rounded-2xl text-lg sm:text-xl font-bold border-2 border-black hover:bg-surface-raised transition-colors'
                 >
                   START OVER
                 </button>

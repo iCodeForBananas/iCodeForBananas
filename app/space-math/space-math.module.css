@@ -1,0 +1,30 @@
+/*
+ * Styles scoped to Space Math only (CSS Modules generate unique class names
+ * at build time, so nothing here can leak into other pages, and nothing
+ * from the shared design system can override the fun/high-contrast look
+ * this page wants instead of it).
+ */
+
+@keyframes shake {
+  10%,
+  90% {
+    transform: translate3d(-1px, 0, 0);
+  }
+  20%,
+  80% {
+    transform: translate3d(2px, 0, 0);
+  }
+  30%,
+  50%,
+  70% {
+    transform: translate3d(-5px, 0, 0);
+  }
+  40%,
+  60% {
+    transform: translate3d(5px, 0, 0);
+  }
+}
+
+.shake {
+  animation: shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
