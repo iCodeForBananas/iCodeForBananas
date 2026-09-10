@@ -5,7 +5,13 @@ import BentoPageLayout from "../components/BentoPageLayout";
 import CircleOfFifths from "../components/CircleOfFifths";
 import ChordDiagram from "../components/ChordDiagram";
 import ChordTypeCard from "../components/ChordTypeCard";
-import { TYPE_GROUPS, GROUP_TOOLTIPS, getVoicings, formatChordLabel } from "../lib/chordVoicings";
+import {
+  MAJOR_TYPE_GROUPS,
+  MINOR_TYPE_GROUPS,
+  GROUP_TOOLTIPS,
+  getVoicings,
+  formatChordLabel,
+} from "../lib/chordVoicings";
 
 interface ProgressionChord {
   /** Stable identity for this slot — two slots can share the same root note. */
@@ -34,6 +40,9 @@ function ProgressionColumn({
   const useFlats = note.includes("b");
   const basicType = quality === "minor" ? "Minor" : "Major";
   const label = formatChordLabel(note, basicType);
+  // Only the chord types that fit the quality this root was picked as — no
+  // major-family types show up under a minor root, and vice versa.
+  const typeGroups = quality === "minor" ? MINOR_TYPE_GROUPS : MAJOR_TYPE_GROUPS;
 
   const basicVoicing = useMemo(() => {
     const options = getVoicings(note, basicType);
@@ -66,7 +75,7 @@ function ProgressionColumn({
       </div>
 
       <div className="flex flex-col gap-4">
-        {TYPE_GROUPS.map((group) => (
+        {typeGroups.map((group) => (
           <div key={group.label}>
             <p
               className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-ink-muted"

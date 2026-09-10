@@ -18,14 +18,36 @@ import {
 
 // ── Chord type groups ─────────────────────────────────────────────────────────
 
+// The full catalog — every type this page knows a shape for, grouped for
+// browsing freely by anyone who wants to go from a major root to a minor
+// voicing or back (chord-explorer's Chord Types panel: no root here is
+// "a minor chord" or "a major chord," it's just a root note).
 export const TYPE_GROUPS = [
   { label: "Triads", types: ["Major", "Minor"] },
-  { label: "7th Chords", types: ["Maj7", "7", "m7"] },
+  { label: "7th Chords", types: ["Maj7", "7", "m7", "mMaj7"] },
+  { label: "Sus / Add", types: ["Sus2", "Sus4", "Add9"] },
+  { label: "Extended", types: ["6", "9", "Maj9", "13", "Maj13", "m6", "m9", "m11"] },
+] as const;
+
+export type ChordType = (typeof TYPE_GROUPS)[number]["types"][number];
+
+// The same catalog split by quality, for anything that wants to show only
+// the chords that fit a root already committed to being major or minor
+// (progression-builder's columns). Sus/Add chords have no third at all —
+// major or minor — but the shapes here are built as major-chord variants,
+// so they sit on the major side rather than in both lists.
+export const MAJOR_TYPE_GROUPS = [
+  { label: "Triads", types: ["Major"] },
+  { label: "7th Chords", types: ["Maj7", "7"] },
   { label: "Sus / Add", types: ["Sus2", "Sus4", "Add9"] },
   { label: "Extended", types: ["6", "9", "Maj9", "13", "Maj13"] },
 ] as const;
 
-export type ChordType = (typeof TYPE_GROUPS)[number]["types"][number];
+export const MINOR_TYPE_GROUPS = [
+  { label: "Triads", types: ["Minor"] },
+  { label: "7th Chords", types: ["m7", "mMaj7"] },
+  { label: "Extended", types: ["m6", "m9", "m11"] },
+] as const;
 
 export const CHORD_TYPE_TOOLTIPS: Record<string, string> = {
   Major: "Happy and bright — the most common chord type. A great starting point for any beginner",
@@ -33,6 +55,7 @@ export const CHORD_TYPE_TOOLTIPS: Record<string, string> = {
   Maj7:  "A Major chord with an added major 7th — sounds rich and jazzy",
   "7":   "A dominant 7th — bluesy and slightly tense, like a chord that 'wants' to move somewhere",
   m7:    "A minor 7th — smooth and mellow, very common in jazz and R&B",
+  mMaj7: "A minor chord with a major 7th — moody and unresolved, the classic 'spy movie' sound",
   Sus2:  "Suspended: replaces the middle note with the 2nd — creates an open, floating sound",
   Sus4:  "Suspended: replaces the middle note with the 4th — creates suspense that wants to resolve",
   Add9:  "A major chord with an added 9th — lush and colorful without being too complex",
@@ -41,6 +64,9 @@ export const CHORD_TYPE_TOOLTIPS: Record<string, string> = {
   Maj9:  "A major 7th with an added 9th — dreamy and lush",
   "13":  "A dominant chord stacked high — very jazzy and full of color",
   Maj13: "A major chord built all the way to the 13th — rich, complex jazz voicing",
+  m6:    "A minor chord with an added 6th — wistful and a little unresolved, common in jazz and bossa nova",
+  m9:    "A minor 7th with an added 9th — smooth and moody, a jazz and R&B staple",
+  m11:   "A minor chord stacked with a 7th, 9th, and 11th — dense, atmospheric, very little sense of resolving anywhere",
 };
 
 export const GROUP_TOOLTIPS: Record<string, string> = {
@@ -52,9 +78,11 @@ export const GROUP_TOOLTIPS: Record<string, string> = {
 
 // ── Format helpers ────────────────────────────────────────────────────────────
 
+const NO_SPACE_TYPES = ["6", "7", "m7", "9", "13", "m6", "m9", "m11", "mMaj7"];
+
 export const formatChordLabel = (note: string, type: string) => {
   if (type === "Diminished") return `${note}°`;
-  if (["6", "7", "m7", "9", "13"].includes(type)) return `${note}${type}`;
+  if (NO_SPACE_TYPES.includes(type)) return `${note}${type}`;
   return `${note} ${type}`;
 };
 

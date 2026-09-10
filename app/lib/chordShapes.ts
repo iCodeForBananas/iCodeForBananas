@@ -185,6 +185,10 @@ export const eShapeTemplates: Partial<Record<string, ChordShape>> = {
   "6": { frets: [0, 2, 2, 1, 2, 0], fingers: [1, 3, 4, 2, 4, 1] },
   "9": { frets: [0, 2, 0, 1, 0, 2], fingers: [1, 3, 1, 2, 1, 4] },
   "13": { frets: [0, 2, 0, 1, 2, 0], fingers: [1, 3, 1, 2, 4, 1] },
+  m6: { frets: [0, 2, 2, 0, 2, 0], fingers: [1, 2, 3, 1, 4, 1] },
+  m9: { frets: [0, 2, 0, 0, 0, 2], fingers: [1, 2, 1, 1, 1, 3] },
+  m11: { frets: [0, 0, 0, 0, 0, 2], fingers: [1, 1, 1, 1, 1, 4] },
+  mMaj7: { frets: [0, 2, 1, 0, 0, 0], fingers: [1, 3, 2, 1, 1, 1] },
 };
 
 // A-shape: root on A string (5th string). Template anchored at fret 0 = A note.
@@ -200,6 +204,11 @@ export const aShapeTemplates: Partial<Record<string, ChordShape>> = {
   "6": { frets: [-1, 0, 2, 2, 2, 2], fingers: [0, 1, 2, 3, 3, 3] },
   "9": { frets: [-1, 0, 2, 0, 0, 3], fingers: [0, 1, 3, 1, 1, 4] },
   "13": { frets: [-1, 0, 2, 0, 2, 2], fingers: [0, 1, 3, 1, 3, 3] },
+  m6: { frets: [-1, 0, 2, 2, 1, 2], fingers: [0, 1, 3, 4, 2, 4] },
+  // Drops the 5th, standard practice for a full 9th/11th voicing on five strings.
+  m9: { frets: [-1, 0, 2, 4, 1, 3], fingers: [0, 1, 2, 4, 1, 3] },
+  m11: { frets: [-1, 0, 0, 4, 1, 3], fingers: [0, 1, 1, 4, 2, 3] },
+  mMaj7: { frets: [-1, 0, 2, 1, 1, 0], fingers: [0, 1, 3, 1, 2, 1] },
 };
 
 export const normalizeTypeForShape = (type: string) => {
