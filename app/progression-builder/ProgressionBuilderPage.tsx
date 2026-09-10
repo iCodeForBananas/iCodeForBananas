@@ -13,6 +13,15 @@ import {
   getNeckVoicings,
   formatChordLabel,
 } from "../lib/chordVoicings";
+import {
+  TRIAD_STRING_SETS,
+  TRIAD_INVERSIONS,
+  triadSpecFor,
+  neckTriadVoicings,
+} from "../lib/triads";
+
+const STRING_SET_LABEL = Object.fromEntries(TRIAD_STRING_SETS.map((s) => [s.key, s.label]));
+const INVERSION_LABEL = Object.fromEntries(TRIAD_INVERSIONS.map((i) => [i.key, i.label]));
 
 /** Below this fret, a moveable shape is close enough to the nut that it's
  *  really just a variation on the open/first-position chord already shown
@@ -67,6 +76,16 @@ function ProgressionColumn({
       ),
     [note, basicType]
   );
+
+  // The small three-note grips up the neck — same quality-match and fret
+  // window as the full barre positions above, just the triad inside them.
+  const neckTriads = useMemo(() => {
+    const spec = triadSpecFor(basicType);
+    if (!spec) return [];
+    return neckTriadVoicings(note, spec.intervals).filter(
+      (v) => v.startFret > FIRST_POSITION_FRET && v.startFret <= MAX_NECK_SECTION_FRET
+    );
+  }, [note, basicType]);
 
   return (
     <div className="flex w-[340px] shrink-0 flex-col gap-4 rounded-2xl border border-line-subtle bg-surface-raised p-4 shadow-sm">
@@ -130,6 +149,32 @@ function ProgressionColumn({
                   <span className="text-10 text-ink-muted">
                     {v.label}
                     {v.position ? ` (${v.position})` : ""}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div>
+          <p
+            className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-ink-muted"
+            title={`Just the ${basicType.toLowerCase()} triad inside ${label} — three-note grips on three adjacent strings, up to the 12th fret.`}
+          >
+            {basicType} Triads Up the Neck
+          </p>
+          {neckTriads.length === 0 ? (
+            <p className="text-xs text-ink-muted">No other triad shapes within the first 12 frets.</p>
+          ) : (
+            <div className="grid grid-cols-2 gap-2">
+              {neckTriads.map((v) => (
+                <div
+                  key={v.id}
+                  className="flex flex-col items-center gap-1 rounded-xl border border-line-subtle bg-surface-raised p-3 shadow-sm"
+                >
+                  <ChordDiagram shape={v.shape} label={label} useFlats={useFlats} />
+                  <span className="text-10 text-ink-muted">
+                    {INVERSION_LABEL[v.inversion]} · {STRING_SET_LABEL[v.stringSet]} ({v.startFret}fr)
                   </span>
                 </div>
               ))}

@@ -1,4 +1,4 @@
-import { flatToSharp, sharpNotes, type ChordShape } from "./chordShapes";
+import { flatToSharp, sharpNotes, transposeShape, type ChordShape } from "./chordShapes";
 
 // ─── Triads ───────────────────────────────────────────────────────────────────
 //
@@ -220,6 +220,29 @@ export function triadVoicings(rootNote: string, intervals: readonly number[]): T
         });
         break;
       }
+    });
+  }
+
+  return voicings;
+}
+
+/**
+ * The same nine triad shapes, also offered an octave higher wherever that
+ * still fits under the fret cap — a triad shape is moveable just like a barre
+ * chord, so the grip found down low is the same grip found twelve frets up.
+ */
+export function neckTriadVoicings(rootNote: string, intervals: readonly number[]): TriadVoicing[] {
+  const base = triadVoicings(rootNote, intervals);
+  const voicings: TriadVoicing[] = [...base];
+
+  for (const voicing of base) {
+    const shape = transposeShape(voicing.shape, 12);
+    if (!shape || shape.frets.some((fret) => fret > MAX_FRET)) continue;
+    voicings.push({
+      ...voicing,
+      shape,
+      startFret: voicing.startFret + 12,
+      id: `${voicing.id}-oct12`,
     });
   }
 
