@@ -10,8 +10,16 @@ import {
   MINOR_TYPE_GROUPS,
   GROUP_TOOLTIPS,
   getVoicings,
+  getNeckVoicings,
   formatChordLabel,
 } from "../lib/chordVoicings";
+
+/** Below this fret, a moveable shape is close enough to the nut that it's
+ *  really just a variation on the open/first-position chord already shown
+ *  as the basic voicing, not a distinct "up the neck" position. */
+const FIRST_POSITION_FRET = 3;
+/** How far up the neck the "up the neck" section goes. */
+const MAX_NECK_SECTION_FRET = 12;
 
 interface ProgressionChord {
   /** Stable identity for this slot — two slots can share the same root note. */
@@ -48,6 +56,17 @@ function ProgressionColumn({
     const options = getVoicings(note, basicType);
     return options.find((v) => v.label === "Open / Standard") ?? options[0] ?? null;
   }, [note, basicType]);
+
+  // Every other place this same triad can be played higher up the neck —
+  // the open/first-position shape above already covers the first few frets,
+  // so this is deliberately everything past that, up to the 12th fret.
+  const neckPositions = useMemo(
+    () =>
+      getNeckVoicings(note, basicType).filter(
+        (v) => !v.label.startsWith("Open") && v.startFret > FIRST_POSITION_FRET && v.startFret <= MAX_NECK_SECTION_FRET
+      ),
+    [note, basicType]
+  );
 
   return (
     <div className="flex w-[340px] shrink-0 flex-col gap-4 rounded-2xl border border-line-subtle bg-surface-raised p-4 shadow-sm">
@@ -90,6 +109,33 @@ function ProgressionColumn({
             </div>
           </div>
         ))}
+
+        <div>
+          <p
+            className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-ink-muted"
+            title={`Every other place to play ${label} up to the 12th fret — the open/first-position shape is already shown above as the basic voicing.`}
+          >
+            {basicType} Positions Up the Neck
+          </p>
+          {neckPositions.length === 0 ? (
+            <p className="text-xs text-ink-muted">No other positions within the first 12 frets.</p>
+          ) : (
+            <div className="grid grid-cols-2 gap-2">
+              {neckPositions.map((v) => (
+                <div
+                  key={v.id}
+                  className="flex flex-col items-center gap-1 rounded-xl border border-line-subtle bg-surface-raised p-3 shadow-sm"
+                >
+                  <ChordDiagram shape={v.shape} label={label} useFlats={useFlats} />
+                  <span className="text-10 text-ink-muted">
+                    {v.label}
+                    {v.position ? ` (${v.position})` : ""}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
