@@ -7,8 +7,6 @@ import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/app/hooks/useAuth";
 import BentoPageLayout from "@/app/components/BentoPageLayout";
 import BentoBoard, { type BentoPanel } from "@/app/components/BentoBoard";
-import MovementBalancePanel from "./MovementBalancePanel";
-import { REST_DAYS } from "./movementBalance";
 
 interface LogEntry {
   id: string;
@@ -28,6 +26,42 @@ const COMPOUND: { name: string; type: "weighted" | "bodyweight" }[] = [
   { name: "Push-ups", type: "bodyweight" },
   { name: "Squat", type: "weighted" },
 ];
+
+const BODY_PART_MAP: Partial<Record<string, string[]>> = {
+  "Bench Press": ["chest"],
+  "Bent Over Rows": ["back"],
+  "Bulgarian Split Squats": ["legs"],
+  Deadlift: ["back", "legs"],
+  "Overhead Press": ["shoulders"],
+  "Pull-ups": ["back"],
+  "Push-ups": ["chest"],
+  Squat: ["legs"],
+};
+
+const BODY_PARTS = ["chest", "back", "shoulders", "legs"] as const;
+type BodyPart = (typeof BODY_PARTS)[number];
+
+/**
+ * One color per body part: identity, not ranking, so it takes the
+ * categorical set rather than a scale that would imply one part outranks
+ * another.
+ */
+const BODY_PART_COLORS: Record<BodyPart, string> = {
+  chest: "var(--ds-color-track-1)",
+  back: "var(--ds-color-track-2)",
+  shoulders: "var(--ds-color-track-3)",
+  legs: "var(--ds-color-track-4)",
+};
+
+const BODY_PART_EXERCISES = (Object.entries(BODY_PART_MAP) as [string, string[]][]).reduce(
+  (acc, [exercise, parts]) => {
+    parts.forEach((part) => {
+      if (part in acc) acc[part as BodyPart].push(exercise);
+    });
+    return acc;
+  },
+  { chest: [], back: [], shoulders: [], legs: [] } as Record<BodyPart, string[]>,
+);
 
 const localDateStr = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -155,6 +189,7 @@ export default function WorkoutTrackerContent() {
 
   const [hovered, setHovered] = useState<{ date: string; exercises: string[]; x: number; y: number } | null>(null);
   const [focusedExercise, setFocusedExercise] = useState<string | null>(null);
+  const [hoveredBodyPart, setHoveredBodyPart] = useState<BodyPart | null>(null);
 
   // Responsive activity graph: measure the container and compute how many weeks
   // fit at ~18px per cell so the grid is always 100% wide with no scrollbar.
@@ -203,6 +238,19 @@ export default function WorkoutTrackerContent() {
     }
     if (week.length) weeks.push(week);
     return weeks;
+  }, [logs]);
+
+  // Count distinct days logged per exercise in the last 14 days
+  const bodyPartCoverage = useMemo(() => {
+    const todayStr = localDateStr(new Date());
+    const cutoff = new Date(todayStr + "T12:00:00");
+    cutoff.setDate(cutoff.getDate() - 13);
+    const cutoffStr = localDateStr(cutoff);
+    const recentLogs = logs.filter((l) => l.date >= cutoffStr && l.date <= todayStr);
+    return BODY_PARTS.map((part) => ({
+      part,
+      days: new Set(recentLogs.filter((l) => (BODY_PART_MAP[l.exercise] ?? []).includes(part)).map((l) => l.date)).size,
+    }));
   }, [logs]);
 
   // ── Bento panel contents ──────────────────────────────────────────────────
@@ -262,7 +310,41 @@ export default function WorkoutTrackerContent() {
     </div>
   );
 
-  const balanceContent = <MovementBalancePanel entries={logs} today={today()} />;
+  const coverageContent = (
+    <div>
+      <p className='text-xs text-ink-muted mb-4'>sessions in last 14 days</p>
+      <div className='space-y-1'>
+        {bodyPartCoverage.map(({ part, days }) => (
+          <div
+            key={part}
+            className='relative flex items-center gap-3 py-3 px-3 rounded-lg cursor-default'
+            onMouseEnter={() => setHoveredBodyPart(part as BodyPart)}
+            onMouseLeave={() => setHoveredBodyPart(null)}
+          >
+            <div className='capitalize text-sm w-20'>{part}</div>
+            <div className='flex gap-1'>
+              {Array.from({ length: days }, (_, i) => (
+                <span
+                  key={i}
+                  className='w-4 h-4 rounded-sm'
+                  style={{ backgroundColor: BODY_PART_COLORS[part as BodyPart] }}
+                />
+              ))}
+            </div>
+            <div className='text-xs text-ink-muted w-8 text-right'>{days}x</div>
+            {hoveredBodyPart === part && (
+              <div className='absolute top-full left-0 mt-1 z-20 rounded-lg border border-line-subtle bg-surface-overlay px-3 py-2 text-10 text-ink-primary shadow-overlay pointer-events-none whitespace-nowrap'>
+                <div className='font-semibold mb-1 capitalize'>{part} exercises</div>
+                {BODY_PART_EXERCISES[part as BodyPart].map((ex) => (
+                  <div key={ex} className='text-ink-muted'>{ex}</div>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 
   const allEntriesContent = (() => {
     if (logs.length === 0) {
@@ -346,13 +428,11 @@ export default function WorkoutTrackerContent() {
     },
     {
       id: "coverage",
-      title: "Push / Pull / Legs",
-      tooltip:
-        "Sessions per movement pattern in the last 14 days, and how long each has rested. Keeping the three even, with at least " +
-        `${REST_DAYS} days between repeats of the same pattern, is what keeps overuse injuries away.`,
+      title: "Body Part Coverage",
+      tooltip: "How many sessions you've hit each muscle group in the last 14 days.",
       defaultColSpan: 4,
       defaultRowSpan: 3,
-      content: balanceContent,
+      content: coverageContent,
     },
     {
       id: "entries",
@@ -463,7 +543,7 @@ export default function WorkoutTrackerContent() {
         </div>
       )}
 
-      {/* Activity, Push / Pull / Legs, All Entries — bento grid */}
+      {/* Activity, Body Part Coverage, All Entries — bento grid */}
       <BentoBoard panels={bentoPanels} storageKey="workout-tracker-bento-layout" />
     </BentoPageLayout>
   );
