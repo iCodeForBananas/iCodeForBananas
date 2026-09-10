@@ -11,12 +11,15 @@ interface ProgressionChord {
   /** Stable identity for this slot — two slots can share the same root note. */
   id: string;
   note: string;
+  /** Which ring of the circle this came from — the outer major key or the inner minor one. */
+  quality: "major" | "minor";
 }
 
 /**
- * One chord in the progression: the basic (open/standard Major) voicing up
- * top, then every other chord type it could be — grouped the same way
- * chord-explorer groups them — each with its own shape/neck-position picker.
+ * One chord in the progression: its basic voicing (open/standard, in
+ * whichever quality it was picked as) up top, then every other chord type it
+ * could be — grouped the same way chord-explorer groups them — each with its
+ * own shape/neck-position picker.
  */
 function ProgressionColumn({
   chord,
@@ -27,14 +30,15 @@ function ProgressionColumn({
   index: number;
   onRemove: () => void;
 }) {
-  const { note } = chord;
+  const { note, quality } = chord;
   const useFlats = note.includes("b");
-  const label = formatChordLabel(note, "Major");
+  const basicType = quality === "minor" ? "Minor" : "Major";
+  const label = formatChordLabel(note, basicType);
 
   const basicVoicing = useMemo(() => {
-    const options = getVoicings(note, "Major");
+    const options = getVoicings(note, basicType);
     return options.find((v) => v.label === "Open / Standard") ?? options[0] ?? null;
-  }, [note]);
+  }, [note, basicType]);
 
   return (
     <div className="flex w-[340px] shrink-0 flex-col gap-4 rounded-2xl border border-line-subtle bg-surface-raised p-4 shadow-sm">
@@ -44,7 +48,7 @@ function ProgressionColumn({
         </span>
         <button
           onClick={onRemove}
-          title={`Remove ${note} from the progression`}
+          title={`Remove ${label} from the progression`}
           className="min-h-[32px] min-w-[32px] rounded-full text-sm text-ink-muted transition-colors hover:bg-danger/10 hover:text-danger"
         >
           ✕
@@ -52,7 +56,7 @@ function ProgressionColumn({
       </div>
 
       <div className="flex flex-col items-center gap-1 rounded-xl border border-primary-solid/30 bg-primary-solid/5 p-3">
-        <span className="text-24 font-semibold text-ink-primary">{note}</span>
+        <span className="text-24 font-semibold text-ink-primary">{quality === "minor" ? `${note}m` : note}</span>
         {basicVoicing ? (
           <ChordDiagram shape={basicVoicing.shape} label={label} useFlats={useFlats} />
         ) : (
@@ -86,8 +90,8 @@ export default function ProgressionBuilderPage() {
   const [progression, setProgression] = useState<ProgressionChord[]>([]);
   const nextId = useRef(0);
 
-  const addChord = (note: string) => {
-    setProgression((prev) => [...prev, { id: `${note}-${nextId.current++}`, note }]);
+  const addChord = (note: string, quality: "major" | "minor") => {
+    setProgression((prev) => [...prev, { id: `${note}-${nextId.current++}`, note, quality }]);
   };
 
   const removeChord = (id: string) => {
@@ -100,7 +104,7 @@ export default function ProgressionBuilderPage() {
 
   return (
     <BentoPageLayout title="Progression Builder">
-      <div className="flex flex-1 min-h-0 flex-col gap-6">
+      <div className="flex flex-col gap-6">
         <p className="text-sm text-ink-muted">
           Click a note on the Circle of Fifths to add it to your progression — each click appends a chord.
           Every chord you pick gets its own column below, basic voicing first, then every chord type, shape,
@@ -123,7 +127,7 @@ export default function ProgressionBuilderPage() {
                   <span key={chord.id} className="flex items-center gap-1.5 text-sm text-ink-muted">
                     {i > 0 && <span className="text-line-strong">→</span>}
                     <span className="rounded-full bg-primary-solid px-3 py-1 font-medium text-ink-on-primary">
-                      {chord.note}
+                      {chord.quality === "minor" ? `${chord.note}m` : chord.note}
                     </span>
                   </span>
                 ))}
@@ -136,7 +140,7 @@ export default function ProgressionBuilderPage() {
               </button>
             </div>
 
-            <div className="flex flex-1 min-h-0 gap-4 overflow-x-auto pb-4">
+            <div className="flex gap-4 overflow-x-auto pb-4">
               {progression.map((chord, i) => (
                 <ProgressionColumn
                   key={chord.id}

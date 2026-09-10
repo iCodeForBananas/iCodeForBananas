@@ -47,7 +47,7 @@ export default function CircleOfFifths({
   onSelectNote,
 }: {
   activeNote: string;
-  onSelectNote: (note: string) => void;
+  onSelectNote: (note: string, quality: "major" | "minor") => void;
 }) {
   // The key under the cursor, carrying where its circle sits on screen so the
   // chord diagram can be pinned beside it.
@@ -110,7 +110,7 @@ export default function CircleOfFifths({
       });
     },
     onMouseLeave: () => setHovered(null),
-    onClick: () => onSelectNote(parseChordNote(chord, type)),
+    onClick: () => onSelectNote(parseChordNote(chord, type), type),
   });
 
   // A hovered key names one plain chord — "F♯/G♭" is F♯ major, "B♭m" is B♭ minor —
