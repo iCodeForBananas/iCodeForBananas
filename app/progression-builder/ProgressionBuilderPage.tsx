@@ -77,14 +77,14 @@ function ProgressionColumn({
     [note, basicType]
   );
 
-  // The small three-note grips up the neck — same quality-match and fret
-  // window as the full barre positions above, just the triad inside them.
+  // Every three-note grip for this triad through the 12th fret — all string
+  // sets, all inversions, exhaustive rather than a sample. Unlike the full
+  // barre positions above, these don't duplicate the basic voicing shown at
+  // the top of the column, so nothing here gets excluded for sitting low.
   const neckTriads = useMemo(() => {
     const spec = triadSpecFor(basicType);
     if (!spec) return [];
-    return neckTriadVoicings(note, spec.intervals).filter(
-      (v) => v.startFret > FIRST_POSITION_FRET && v.startFret <= MAX_NECK_SECTION_FRET
-    );
+    return neckTriadVoicings(note, spec.intervals).filter((v) => v.startFret <= MAX_NECK_SECTION_FRET);
   }, [note, basicType]);
 
   return (
@@ -159,12 +159,12 @@ function ProgressionColumn({
         <div>
           <p
             className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-ink-muted"
-            title={`Just the ${basicType.toLowerCase()} triad inside ${label} — three-note grips on three adjacent strings, up to the 12th fret.`}
+            title={`Every way to play the ${basicType.toLowerCase()} triad inside ${label} on three adjacent strings — every string set, every inversion, through the 12th fret.`}
           >
-            {basicType} Triads Up the Neck
+            {basicType} Triads — Every Position
           </p>
           {neckTriads.length === 0 ? (
-            <p className="text-xs text-ink-muted">No other triad shapes within the first 12 frets.</p>
+            <p className="text-xs text-ink-muted">No triad shapes within the first 12 frets.</p>
           ) : (
             <div className="grid grid-cols-2 gap-2">
               {neckTriads.map((v) => (

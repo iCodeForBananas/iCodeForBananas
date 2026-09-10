@@ -24,6 +24,7 @@ const STRING_MIDI = [40, 45, 50, 55, 59, 64];
  * stretch, and it is the same vocabulary the Inversions panel uses.
  */
 export const TRIAD_STRING_SETS = [
+  { key: "6-5-4", label: "Strings 6-5-4", strings: [0, 1, 2] },
   { key: "5-4-3", label: "Strings 5-4-3", strings: [1, 2, 3] },
   { key: "4-3-2", label: "Strings 4-3-2", strings: [2, 3, 4] },
   { key: "3-2-1", label: "Strings 3-2-1", strings: [3, 4, 5] },
@@ -227,9 +228,12 @@ export function triadVoicings(rootNote: string, intervals: readonly number[]): T
 }
 
 /**
- * The same nine triad shapes, also offered an octave higher wherever that
- * still fits under the fret cap — a triad shape is moveable just like a barre
- * chord, so the grip found down low is the same grip found twelve frets up.
+ * The same triad shapes `triadVoicings` finds — one per string set per
+ * inversion — also offered an octave higher wherever that still fits under
+ * the fret cap. A triad shape is moveable just like a barre chord, so the
+ * grip found down low is the same grip found twelve frets up, and shifting by
+ * an octave is exhaustive: the pitches a shape sounds only repeat every 12
+ * frets, so there is no third position squeezed in between.
  */
 export function neckTriadVoicings(rootNote: string, intervals: readonly number[]): TriadVoicing[] {
   const base = triadVoicings(rootNote, intervals);
