@@ -976,6 +976,17 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
   };
 
   const handleShare = async () => {
+    // A private song's share link opens for nobody, so sharing it is what
+    // makes it unlisted.
+    if (sheet && (sheet.visibility ?? "private") === "private") {
+      try {
+        await createClient()!.from("lead_sheets").update({ visibility: "unlisted" }).eq("id", id);
+        setSheet((prev) => (prev ? { ...prev, visibility: "unlisted" } : prev));
+      } catch {
+        // Offline or not the owner — the link is copied anyway; the picker on
+        // the library page is where visibility ultimately gets fixed up.
+      }
+    }
     await navigator.clipboard.writeText(`${window.location.origin}/lead-sheet-editor/share/${id}`);
     setShared(true);
     setTimeout(() => setShared(false), 2000);

@@ -153,9 +153,15 @@ export default function LeadSheetList() {
     setTimeout(() => setCopiedId(null), 2000);
   }
 
-  async function handleShare(id: string) {
-    await navigator.clipboard.writeText(`${window.location.origin}/lead-sheet-editor/share/${id}`);
-    setSharedId(id);
+  async function handleShare(sheet: LeadSheet) {
+    // A private song's share link opens for nobody, so sharing it is what
+    // makes it unlisted — the visibility picker is there for dialing it back,
+    // not for remembering to open it up first.
+    if ((sheet.visibility ?? "private") === "private") {
+      await setVisibility(sheet, "unlisted");
+    }
+    await navigator.clipboard.writeText(`${window.location.origin}/lead-sheet-editor/share/${sheet.id}`);
+    setSharedId(sheet.id);
     setTimeout(() => setSharedId(null), 2000);
   }
 
@@ -345,8 +351,8 @@ export default function LeadSheetList() {
                         {copiedId === sheet.id ? <Check className='w-3.5 h-3.5' /> : <Copy className='w-3.5 h-3.5' />}
                         {copiedId === sheet.id ? "Copied!" : "Copy Text"}
                       </button>
-                      {/* Copying a link is only half the job: a private song's
-                          link opens for nobody, so the two sit together. */}
+                      {/* Share opens a private song up to unlisted on its own; the
+                          picker here is for dialing visibility back down or up to public. */}
                       <span onClick={(e) => e.stopPropagation()}>
                         <VisibilityPicker
                           value={sheet.visibility ?? "private"}
@@ -354,7 +360,7 @@ export default function LeadSheetList() {
                         />
                       </span>
                       <button
-                        onClick={(e) => { e.stopPropagation(); handleShare(sheet.id); }}
+                        onClick={(e) => { e.stopPropagation(); handleShare(sheet); }}
                         className='flex items-center gap-1.5 rounded border border-line-strong px-2 py-1 md:px-3 md:py-1.5 text-xs font-medium text-ink-primary/80 hover:border-line-strong transition-colors'
                       >
                         {sharedId === sheet.id ? <Check className='w-3.5 h-3.5' /> : <Link2 className='w-3.5 h-3.5' />}
