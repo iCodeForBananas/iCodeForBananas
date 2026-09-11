@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from "recharts";
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend, ReferenceLine } from "recharts";
 import ClientOnly from "@/app/lib/ClientOnly";
 import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/app/hooks/useAuth";
@@ -83,6 +83,25 @@ const COLORS = [
   "var(--ds-color-track-5)",
   "var(--ds-color-track-6)",
 ];
+
+/**
+ * Target working weights for a 5x5 program (deadlift is worked 1x5),
+ * computed as bodyweight x ratio rather than hardcoded, so the lines move
+ * with `bodyweightLbs` instead of going stale. Ratios are grouped by tier —
+ * only "intermediate" is populated today, but a "novice" or "advanced" tier
+ * slots in the same way without touching how targets are computed or drawn.
+ */
+const TARGET_CONFIG: { bodyweightLbs: number; tiers: Record<string, Record<string, number>> } = {
+  bodyweightLbs: 185,
+  tiers: {
+    intermediate: {
+      Squat: 1.25,
+      "Bench Press": 0.8,
+      Deadlift: 1.45,
+      "Overhead Press": 0.6,
+    },
+  },
+};
 
 export default function WorkoutTrackerContent() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
@@ -190,6 +209,41 @@ export default function WorkoutTrackerContent() {
   const [hovered, setHovered] = useState<{ date: string; exercises: string[]; x: number; y: number } | null>(null);
   const [focusedExercise, setFocusedExercise] = useState<string | null>(null);
   const [hoveredBodyPart, setHoveredBodyPart] = useState<BodyPart | null>(null);
+
+  // One target line per exercise per tier, in the same color as that
+  // exercise's data line. Isolating the chart to one exercise (via the
+  // legend) isolates its target lines the same way.
+  const activeTargets = useMemo(() => {
+    const lines: { exercise: string; tier: string; weight: number; color: string }[] = [];
+    for (const [tier, ratios] of Object.entries(TARGET_CONFIG.tiers)) {
+      exercisesWithLogs.forEach((ex, i) => {
+        if (focusedExercise && focusedExercise !== ex.name) return;
+        const ratio = ratios[ex.name];
+        if (ratio == null) return;
+        lines.push({
+          exercise: ex.name,
+          tier,
+          weight: Math.round(TARGET_CONFIG.bodyweightLbs * ratio),
+          color: COLORS[i % COLORS.length],
+        });
+      });
+    }
+    return lines;
+  }, [exercisesWithLogs, focusedExercise]);
+
+  // Reference lines don't factor into Recharts' own auto-domain calculation,
+  // so a target above the highest logged weight would otherwise sit outside
+  // the visible axis. Padded and rounded to a clean 5lb step to read the way
+  // Recharts' own "auto" max would have.
+  const yDomain = useMemo((): [number, number] => {
+    const loggedMax = Math.max(
+      0,
+      ...chartData.flatMap((row) => exercisesWithLogs.map((ex) => Number(row[ex.name]) || 0)),
+    );
+    const targetMax = Math.max(0, ...activeTargets.map((t) => t.weight));
+    const max = Math.max(loggedMax, targetMax);
+    return [0, Math.ceil((max * 1.08) / 5) * 5];
+  }, [chartData, exercisesWithLogs, activeTargets]);
 
   // Responsive activity graph: measure the container and compute how many weeks
   // fit at ~18px per cell so the grid is always 100% wide with no scrollbar.
@@ -493,7 +547,7 @@ export default function WorkoutTrackerContent() {
           <div className='flex items-center gap-2 border-b px-3 py-2' style={{ borderColor: "var(--border-color)" }}>
             <h2 className='text-xs font-bold uppercase tracking-wide text-ink-muted'>Weight Progress</h2>
           </div>
-          <div className='p-4 h-72 sm:h-96'>
+          <div className='p-4 h-[360px] sm:h-[480px]'>
             <ClientOnly>
               <ResponsiveContainer width='100%' height='100%'>
                 <LineChart data={chartData}>
@@ -510,7 +564,7 @@ export default function WorkoutTrackerContent() {
                       return `${dt.getMonth() + 1}/${dt.getDate()}`;
                     }}
                   />
-                  <YAxis fontSize={11} unit=' lbs' />
+                  <YAxis fontSize={11} unit=' lbs' domain={yDomain} />
                   <Tooltip
                     labelFormatter={(t) =>
                       new Date(t).toLocaleDateString("en-US", {
@@ -524,6 +578,21 @@ export default function WorkoutTrackerContent() {
                     wrapperStyle={{ fontSize: "12px", cursor: "pointer" }}
                     onClick={(e) => setFocusedExercise((prev) => (prev === e.value ? null : (e.value as string)))}
                   />
+                  {activeTargets.map((t) => (
+                    <ReferenceLine
+                      key={`${t.tier}-${t.exercise}`}
+                      y={t.weight}
+                      stroke={t.color}
+                      strokeOpacity={0.6}
+                      strokeDasharray='6 4'
+                      label={{
+                        value: `${t.exercise} ${t.tier} (${t.weight})`,
+                        position: "insideTopLeft",
+                        fill: t.color,
+                        fontSize: 10,
+                      }}
+                    />
+                  ))}
                   {exercisesWithLogs.map((ex, i) => (
                     <Line
                       key={ex.name}
