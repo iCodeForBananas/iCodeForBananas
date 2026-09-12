@@ -71,9 +71,9 @@ const DEFAULT_ZOOM = 28;
 /** Empty bars kept past the last clip so there's somewhere to drag things to. */
 const TAIL_PAD = 12;
 
-const LANE_HEIGHT = 26;
+const LANE_HEIGHT = 34;
 const LANE_GAP = 3;
-const TRACK_PAD = 6;
+const TRACK_PAD = 8;
 const GUTTER = 132;
 const LIBRARY_WIDTH = 244;
 
@@ -94,11 +94,15 @@ const BEATS_PER_BAR = 4;
 /** How long a fade takes — the same four seconds the preview's cues use. */
 const FADE_SECONDS = 4;
 
+// text-ink-on-primary is tuned for a solid, opaque fill — near-black,
+// readable on bright amber. These bars are a translucent tint over an
+// already near-black surface, so that same near-black text nearly
+// disappears; text-ink-primary (near-white) is what actually reads here.
 const LAYER_STYLES: Record<string, { bar: string; edge: string; dot: string }> = {
-  drum: { bar: "bg-track-5/25 text-ink-on-primary", edge: "bg-track-5", dot: "bg-track-5" },
-  claps: { bar: "bg-track-4/25 text-ink-on-primary", edge: "bg-track-4", dot: "bg-track-4" },
-  shimmer: { bar: "bg-track-2/25 text-ink-on-primary", edge: "bg-track-2", dot: "bg-track-2" },
-  drone: { bar: "bg-track-6/25 text-ink-on-primary", edge: "bg-primary-solid", dot: "bg-primary-solid" },
+  drum: { bar: "bg-track-5/25 text-ink-primary", edge: "bg-track-5", dot: "bg-track-5" },
+  claps: { bar: "bg-track-4/25 text-ink-primary", edge: "bg-track-4", dot: "bg-track-4" },
+  shimmer: { bar: "bg-track-2/25 text-ink-primary", edge: "bg-track-2", dot: "bg-track-2" },
+  drone: { bar: "bg-track-6/25 text-ink-primary", edge: "bg-primary-solid", dot: "bg-primary-solid" },
 };
 
 const layerStyle = (layer: string) =>
@@ -1348,7 +1352,7 @@ export default function TrackEditor({
                   width={Math.max(2, (clip.end - clip.start) * zoom)}
                   top={TRACK_PAD + (lyricLanes.get(clip) ?? 0) * (LANE_HEIGHT + LANE_GAP)}
                   selected={selected?.kind === "lyric" && selected.id === clip.id}
-                  className="bg-primary-solid/20 text-ink-on-primary"
+                  className="bg-primary-solid/20 text-ink-primary"
                   edgeClass="bg-primary-solid"
                   title={`${clip.section} — ${formatArrangementTime(clip.start)}`}
                   onPointerDown={(e, mode) => beginDrag(e, clip, "lyric", mode)}
@@ -1477,7 +1481,7 @@ export default function TrackEditor({
                   className={
                     track.muted
                       ? "bg-surface-raised text-ink-muted"
-                      : "bg-track-3/25 text-ink-on-primary"
+                      : "bg-track-3/25 text-ink-primary"
                   }
                   edgeClass="bg-track-3"
                   title={`${track.name} — starts at ${formatArrangementTime(trackStart(track))}, drag to line it up`}
@@ -1629,7 +1633,7 @@ function Library({
 function TrackName({ children }: { children: React.ReactNode }) {
   return (
     <div
-      className="sticky left-0 z-20 flex shrink-0 items-start gap-2 border-r border-line-subtle bg-surface-base px-3 pt-2 text-xs font-medium uppercase tracking-wide"
+      className="sticky left-0 z-20 flex shrink-0 items-start gap-2 border-r border-line-subtle bg-surface-base px-3 pt-2.5 text-13 font-medium uppercase tracking-wide"
       style={{ width: GUTTER }}
     >
       {children}
@@ -1734,7 +1738,7 @@ function ClipBox({
     <div
       title={title}
       onPointerDown={(e) => onPointerDown(e, "move")}
-      className={`absolute flex cursor-grab items-center overflow-hidden rounded px-2 text-xs whitespace-nowrap select-none active:cursor-grabbing ${className} ${
+      className={`absolute flex cursor-grab items-center overflow-hidden rounded px-2 text-13 font-medium whitespace-nowrap select-none active:cursor-grabbing ${className} ${
         selected ? "ring-2 ring-focus" : ""
       }`}
       style={{ left, width, top, height: LANE_HEIGHT, touchAction: "none" }}
