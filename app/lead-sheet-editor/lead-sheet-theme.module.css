@@ -1,0 +1,38 @@
+/*
+ * The lead sheet editor's own fixed identity: a deeper, layered near-black
+ * with amber as the signature accent — deliberately independent of the
+ * site-wide light/dark toggle, the same way Space Math commits to pure black
+ * regardless of theme rather than inheriting whichever the visitor is set to.
+ *
+ * This only restates the design system's own custom properties (the ones
+ * every component here already reads via bg-surface-*, text-ink-*,
+ * border-line-*, bg-primary-*) at a deeper lightness and lower chroma, so
+ * every existing class picks it up automatically — nothing below is a new
+ * color vocabulary, and nothing outside this subtree is touched. See
+ * app/tokens.css for what each token means; hue 80 matches its palette so
+ * this still reads as the same family, just pushed further toward black.
+ */
+
+.theme {
+  --ds-color-surface-sunken: oklch(0.11 0.006 80);
+  --ds-color-surface-base: oklch(0.135 0.006 80);
+  --ds-color-surface-raised: oklch(0.17 0.007 80);
+  --ds-color-surface-overlay: oklch(0.215 0.008 80);
+
+  /* Faint white, not a heavy line — unchanged from the shared dark values,
+     restated so a light-theme visitor still gets them. */
+  --ds-color-border-subtle: var(--ds-palette-alpha-light-6);
+  --ds-color-border-strong: var(--ds-palette-alpha-light-12);
+
+  --ds-color-text-primary: var(--ds-palette-neutral-12);
+  --ds-color-text-muted: var(--ds-palette-neutral-9);
+
+  /* The signature: reuses the same amber primitives the rest of the app
+     tunes for contrast (see palette.amber.contrast in tokens.css) rather
+     than a one-off yellow, so labels on a filled control stay readable. */
+  --ds-color-text-on-primary: var(--ds-palette-amber-contrast);
+  --ds-color-primary-solid: var(--ds-palette-amber-solid);
+  --ds-color-primary-hover: var(--ds-palette-amber-hover);
+  --ds-color-primary-text: var(--ds-palette-amber-text);
+  --ds-color-focus-ring: var(--ds-palette-amber-text);
+}

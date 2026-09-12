@@ -1,4 +1,5 @@
 import { CommandPaletteProvider } from "@/app/components/ui/command-palette";
+import styles from "./lead-sheet-theme.module.css";
 
 /**
  * The songwriting routes.
@@ -10,13 +11,19 @@ import { CommandPaletteProvider } from "@/app/components/ui/command-palette";
  * that is sometimes mounted on its own — the share route renders without the
  * shell around it.
  *
+ * `styles.theme` re-points those same Layer 2 custom properties to this
+ * tool's own near-black-and-amber identity — see lead-sheet-theme.module.css
+ * — so every component here keeps using the ordinary surface, ink and line
+ * classes and simply resolves them differently, regardless of the site's
+ * light/dark toggle.
+ *
  * The command palette is scoped the same way: it only ever knows about songs,
  * and keeping it here keeps its client boundary off every other page.
  */
 export default function LeadSheetLayout({ children }: { children: React.ReactNode }) {
   return (
     <CommandPaletteProvider>
-      <div className='flex min-h-full flex-1 flex-col bg-surface-base font-sans text-ink-primary'>
+      <div className={`flex min-h-full flex-1 flex-col bg-surface-base font-sans text-ink-primary ${styles.theme}`}>
         {children}
       </div>
     </CommandPaletteProvider>
