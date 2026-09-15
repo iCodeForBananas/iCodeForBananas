@@ -19,6 +19,7 @@ interface LogEntry {
 const COMPOUND: { name: string; type: "weighted" | "bodyweight" }[] = [
   { name: "Bench Press", type: "weighted" },
   { name: "Bent Over Rows", type: "weighted" },
+  { name: "Bicep Curls", type: "weighted" },
   { name: "Bulgarian Split Squats", type: "weighted" },
   { name: "Deadlift", type: "weighted" },
   { name: "Overhead Press", type: "weighted" },
@@ -30,6 +31,7 @@ const COMPOUND: { name: string; type: "weighted" | "bodyweight" }[] = [
 const BODY_PART_MAP: Partial<Record<string, string[]>> = {
   "Bench Press": ["chest"],
   "Bent Over Rows": ["back"],
+  "Bicep Curls": ["arms"],
   "Bulgarian Split Squats": ["legs"],
   Deadlift: ["back", "legs"],
   "Overhead Press": ["shoulders"],
@@ -38,7 +40,7 @@ const BODY_PART_MAP: Partial<Record<string, string[]>> = {
   Squat: ["legs"],
 };
 
-const BODY_PARTS = ["chest", "back", "shoulders", "legs"] as const;
+const BODY_PARTS = ["chest", "back", "shoulders", "arms", "legs"] as const;
 type BodyPart = (typeof BODY_PARTS)[number];
 
 /**
@@ -50,6 +52,7 @@ const BODY_PART_COLORS: Record<BodyPart, string> = {
   chest: "var(--ds-color-track-1)",
   back: "var(--ds-color-track-2)",
   shoulders: "var(--ds-color-track-3)",
+  arms: "var(--ds-color-track-5)",
   legs: "var(--ds-color-track-4)",
 };
 
@@ -60,7 +63,7 @@ const BODY_PART_EXERCISES = (Object.entries(BODY_PART_MAP) as [string, string[]]
     });
     return acc;
   },
-  { chest: [], back: [], shoulders: [], legs: [] } as Record<BodyPart, string[]>,
+  { chest: [], back: [], shoulders: [], arms: [], legs: [] } as Record<BodyPart, string[]>,
 );
 
 const localDateStr = (d: Date) =>
