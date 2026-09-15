@@ -5,6 +5,10 @@ interface BentoPageLayoutProps {
   maxWidth?: string;
   boxClassName?: string;
   titleClassName?: string;
+  /** Sits inline right after the title — a status badge, not an action. */
+  titleAdornment?: React.ReactNode;
+  /** Page-level actions (buttons, links), pinned to the header row's far side. */
+  headerActions?: React.ReactNode;
   children: React.ReactNode;
 }
 
@@ -13,6 +17,8 @@ export default function BentoPageLayout({
   maxWidth,
   boxClassName,
   titleClassName,
+  titleAdornment,
+  headerActions,
   children,
 }: BentoPageLayoutProps) {
   return (
@@ -22,12 +28,22 @@ export default function BentoPageLayout({
           className={`flex flex-col flex-1 min-h-0 rounded-none border-none bg-surface-base overflow-hidden${maxWidth ? ` ${maxWidth} mx-auto` : ""}${boxClassName ? ` ${boxClassName}` : ""}`}
         >
           <div className='shrink-0'>
-            <div className='px-4 pt-2 pb-1.5 sm:px-6 sm:pt-3 sm:pb-2.5'>
-              <h1
-                className={`font-display text-20 sm:text-24 font-semibold ${titleClassName ?? "text-ink-primary"}`}
-              >
-                {title}
-              </h1>
+            <div
+              className={
+                headerActions
+                  ? "flex flex-col gap-3 px-4 pt-2 pb-1.5 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:pt-3 sm:pb-2.5"
+                  : "px-4 pt-2 pb-1.5 sm:px-6 sm:pt-3 sm:pb-2.5"
+              }
+            >
+              <div className='flex items-center gap-3'>
+                <h1
+                  className={`font-display text-20 sm:text-24 font-semibold ${titleClassName ?? "text-ink-primary"}`}
+                >
+                  {title}
+                </h1>
+                {titleAdornment}
+              </div>
+              {headerActions && <div className='flex items-center gap-2'>{headerActions}</div>}
             </div>
           </div>
           <div className='flex-1 overflow-auto p-4 sm:p-6 flex flex-col'>{children}</div>

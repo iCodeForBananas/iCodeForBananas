@@ -1,16 +1,22 @@
 /*
- * The lead sheet editor's own fixed identity: a deeper, layered near-black
- * with amber as the signature accent — deliberately independent of the
- * site-wide light/dark toggle, the same way Space Math commits to pure black
- * regardless of theme rather than inheriting whichever the visitor is set to.
+ * The guitar tools' shared fixed identity: a deeper, layered near-black with
+ * amber as the signature accent — deliberately independent of the site-wide
+ * light/dark toggle, the same way Space Math commits to pure black regardless
+ * of theme rather than inheriting whichever the visitor is set to.
+ *
+ * One file, applied by a small layout.tsx in each guitar tool's route
+ * (progression-builder, chord-explorer, fretboard-quiz, lead-sheet-editor,
+ * chord-inversions, chord-voicings, fretboard-architect, inversion-picker)
+ * rather than copy-pasted per route, so the identity has one source of truth
+ * and every one of those tools moves together.
  *
  * This only restates the design system's own custom properties (the ones
- * every component here already reads via bg-surface-*, text-ink-*,
- * border-line-*, bg-primary-*) at a deeper lightness and lower chroma, so
- * every existing class picks it up automatically — nothing below is a new
- * color vocabulary, and nothing outside this subtree is touched. See
- * app/tokens.css for what each token means; hue 80 matches its palette so
- * this still reads as the same family, just pushed further toward black.
+ * every component already reads via bg-surface-*, text-ink-*, border-line-*,
+ * bg-primary-*) at a deeper lightness and lower chroma, so every existing
+ * class picks it up automatically — nothing below is a new color vocabulary,
+ * and nothing outside these routes is touched. See app/tokens.css for what
+ * each token means; hue 80 matches its palette so this still reads as the
+ * same family, just pushed further toward black.
  */
 
 .theme {

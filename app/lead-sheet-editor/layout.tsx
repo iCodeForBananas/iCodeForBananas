@@ -1,5 +1,5 @@
 import { CommandPaletteProvider } from "@/app/components/ui/command-palette";
-import styles from "./lead-sheet-theme.module.css";
+import styles from "@/app/components/guitar-tool-theme.module.css";
 
 /**
  * The songwriting routes.
@@ -11,11 +11,12 @@ import styles from "./lead-sheet-theme.module.css";
  * that is sometimes mounted on its own — the share route renders without the
  * shell around it.
  *
- * `styles.theme` re-points those same Layer 2 custom properties to this
- * tool's own near-black-and-amber identity — see lead-sheet-theme.module.css
- * — so every component here keeps using the ordinary surface, ink and line
- * classes and simply resolves them differently, regardless of the site's
- * light/dark toggle.
+ * `styles.theme` re-points those same Layer 2 custom properties to the
+ * guitar tools' shared near-black-and-amber identity — see
+ * app/components/guitar-tool-theme.module.css, which every other guitar
+ * tool's own layout.tsx applies the same way — so every component here keeps
+ * using the ordinary surface, ink and line classes and simply resolves them
+ * differently, regardless of the site's light/dark toggle.
  *
  * The command palette is scoped the same way: it only ever knows about songs,
  * and keeping it here keeps its client boundary off every other page.

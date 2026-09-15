@@ -8,6 +8,7 @@ import Link from "next/link";
 import { Plus, Trash2, Music, Eye, Pencil, Copy, Check, Link2, ListMusic, Star } from "lucide-react";
 import type { LeadSheet } from "./shared";
 import { makeSection, getPlainText, OfflineBadge } from "./shared";
+import BentoPageLayout from "@/app/components/BentoPageLayout";
 import { cacheSheet, cacheSheetList, getCachedSheetList } from "./offlineCache";
 import { useCommands } from "@/app/components/ui/command-palette";
 import { Input } from "@/app/components/ui/input";
@@ -193,210 +194,177 @@ export default function LeadSheetList() {
 
   if (authLoading) {
     return (
-      <div className='flex flex-col flex-1 min-h-0'>
-        <main className='flex flex-col flex-1 min-h-0 p-2 sm:p-4'>
-          <div
-            className='flex flex-col flex-1 min-h-0 rounded-none border-none bg-surface-base overflow-hidden'
-          >
-            <div className='flex-1 flex items-center justify-center text-ink-muted'>Loading...</div>
-          </div>
-        </main>
-      </div>
+      <BentoPageLayout title='Lead Sheet Editor'>
+        <div className='flex-1 flex items-center justify-center text-ink-muted'>Loading...</div>
+      </BentoPageLayout>
     );
   }
 
   if (!user) {
     return (
-      <div className='flex flex-col flex-1 min-h-0'>
-        <main className='flex flex-col flex-1 min-h-0 p-2 sm:p-4'>
-          <div
-            className='flex flex-col flex-1 min-h-0 rounded-none border-none bg-surface-base overflow-hidden'
+      <BentoPageLayout title='Lead Sheet Editor'>
+        <div className='flex-1 flex flex-col items-center justify-center text-center'>
+          <p className='text-ink-muted mb-6'>Sign in to create and manage your lead sheets.</p>
+          <Link
+            href='/login'
+            className='inline-block rounded bg-surface-base px-6 py-2 text-sm font-medium text-primary-text'
           >
-            <div className='shrink-0'>
-              <div className='px-4 pt-4 pb-3 sm:px-6 sm:pt-6 sm:pb-5'>
-                <h1 className='text-lg sm:text-xl font-bold leading-tight text-primary-text'>
-                  Lead Sheet Editor
-                </h1>
-              </div>
-            </div>
-            <div className='flex-1 overflow-auto p-4 sm:p-6 flex flex-col items-center justify-center text-center'>
-              <p className='text-ink-muted mb-6'>Sign in to create and manage your lead sheets.</p>
-              <Link
-                href='/login'
-                className='inline-block rounded bg-surface-base px-6 py-2 text-sm font-medium text-primary-text'
-              >
-                Sign In
-              </Link>
-            </div>
-          </div>
-        </main>
-      </div>
+            Sign In
+          </Link>
+        </div>
+      </BentoPageLayout>
     );
   }
 
   return (
-    <div className='flex flex-col flex-1 min-h-0'>
-      <main className='flex flex-col flex-1 min-h-0 p-2 sm:p-4'>
-        <div
-          className='flex flex-col flex-1 min-h-0 rounded-none border-none bg-surface-base overflow-hidden'
-        >
-          <div className='shrink-0'>
-            <div className='flex flex-col gap-3 px-4 pt-4 pb-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:pt-6 sm:pb-5'>
-              <div className='flex items-center gap-3'>
-                <h1 className='text-lg sm:text-xl font-bold leading-tight text-primary-text'>
-                  Lead Sheet Editor
-                </h1>
-                {offline && <OfflineBadge />}
-              </div>
-              <div className='flex items-center gap-2'>
-                <Link
-                  href='/lead-sheet-editor/setlists'
-                  className='flex items-center gap-2 rounded border border-line-strong px-4 py-2 text-sm font-medium text-ink-primary hover:border-line-strong transition-colors'
-                >
-                  <ListMusic className='w-4 h-4' />
-                  Setlists
-                </Link>
-                <button
-                  onClick={createSheet}
-                  className='flex items-center gap-2 rounded bg-primary-solid px-4 py-2 text-sm font-medium text-ink-on-primary hover:bg-primary-hover transition-colors'
-                >
-                  <Plus className='w-4 h-4' />
-                  New Sheet
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div className='flex-1 overflow-auto p-4 sm:p-6 flex flex-col'>
-            {favoriteError && (
-              <p className='mb-3 text-sm font-medium text-danger'>{favoriteError}</p>
-            )}
-            <div className='mb-3 flex items-center gap-2'>
-              <Input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder='Search by title or artist'
-                aria-label='Search by title or artist'
-                data-testid='library-search'
-                className='max-w-xs'
-              />
-              <Button
-                variant='ghost'
-                size='sm'
-                onClick={() => setDensity(density === "compact" ? "comfortable" : "compact")}
-                aria-label={`Switch to ${density === "compact" ? "comfortable" : "compact"} density`}
-                data-testid='library-density'
-              >
-                {density === "compact" ? "Compact" : "Comfortable"}
-              </Button>
-              <select
-                value={sortOrder}
-                onChange={(e) => setSortOrder(e.target.value as SortOrder)}
-                aria-label='Sort songs'
-                title='Favorites stay at the top either way'
-                data-testid='library-sort'
-                className='h-8 rounded border border-line-strong bg-surface-base px-2 text-sm text-ink-primary outline-none focus:border-line-strong'
-              >
-                <option value='alphabetical'>A–Z</option>
-                <option value='recent'>Recently updated</option>
-              </select>
-            </div>
-
-            {sheets.length === 0 ? (
-              <div className='flex-1 flex flex-col items-center justify-center text-ink-muted'>
-                <Music className='w-12 h-12 mb-3 opacity-40' />
-                <p>No lead sheets yet. Create your first one!</p>
-              </div>
-            ) : (
-              <div className={density === "compact" ? "space-y-1" : "space-y-2"}>
-                {visibleSheets.map((sheet) => (
-                  <div
-                    key={sheet.id}
-                    className={`flex flex-col md:flex-row md:items-center md:justify-between gap-2 ${density === "compact" ? "px-3 py-1.5" : "p-4"} border border-line-subtle rounded-lg hover:border-line-strong transition-colors group cursor-pointer`}
-                    onClick={() => router.push(`/lead-sheet-editor/${sheet.id}/preview`)}
-                  >
-                    <div className='flex flex-1 min-w-0 items-start gap-2'>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); toggleFavorite(sheet); }}
-                        title={sheet.metadata?.favorite ? "Remove from favorites" : "Keep this song at the top"}
-                        aria-label={sheet.metadata?.favorite ? "Remove from favorites" : "Add to favorites"}
-                        aria-pressed={!!sheet.metadata?.favorite}
-                        className={`-ml-1 shrink-0 rounded p-1 transition-colors ${
-                          sheet.metadata?.favorite
-                            ? "text-primary-text hover:text-primary-hover"
-                            : "text-ink-muted hover:text-primary-text"
-                        }`}
-                      >
-                        <Star className='w-5 h-5' fill={sheet.metadata?.favorite ? "currentColor" : "none"} />
-                      </button>
-                      <div className='min-w-0'>
-                      <div className='font-semibold text-ink-primary'>
-                        {sheet.title || "Untitled"}
-                      </div>
-                      <SongAttribution song={sheet} />
-                      <div className='text-sm text-ink-muted flex flex-wrap gap-3 mt-0.5'>
-                        {sheet.key && <span>Key: {sheet.key}</span>}
-                        {sheet.artist && <span>{sheet.artist}</span>}
-                        {sheet.tempo && <span>{sheet.tempo} BPM</span>}
-                        <span>{sheet.sections?.length ?? 0} sections</span>
-                        <span>{new Date(sheet.updated_at).toLocaleDateString()}</span>
-                      </div>
-                      </div>
-                    </div>
-                    <div className='flex flex-wrap items-center gap-1.5 md:ml-3 shrink-0'>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleCopyText(sheet); }}
-                        className='flex items-center gap-1.5 rounded border border-line-strong px-2 py-1 md:px-3 md:py-1.5 text-xs font-medium text-ink-primary/80 hover:border-line-strong transition-colors'
-                      >
-                        {copiedId === sheet.id ? <Check className='w-3.5 h-3.5' /> : <Copy className='w-3.5 h-3.5' />}
-                        {copiedId === sheet.id ? "Copied!" : "Copy Text"}
-                      </button>
-                      {/* Share opens a private song up to unlisted on its own; the
-                          picker here is for dialing visibility back down or up to public. */}
-                      <span onClick={(e) => e.stopPropagation()}>
-                        <VisibilityPicker
-                          value={sheet.visibility ?? "private"}
-                          onChange={(next) => void setVisibility(sheet, next)}
-                        />
-                      </span>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleShare(sheet); }}
-                        className='flex items-center gap-1.5 rounded border border-line-strong px-2 py-1 md:px-3 md:py-1.5 text-xs font-medium text-ink-primary/80 hover:border-line-strong transition-colors'
-                      >
-                        {sharedId === sheet.id ? <Check className='w-3.5 h-3.5' /> : <Link2 className='w-3.5 h-3.5' />}
-                        {sharedId === sheet.id ? "Copied!" : "Share"}
-                      </button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); router.push(`/lead-sheet-editor/${sheet.id}/edit`); }}
-                        className='flex items-center gap-1.5 rounded border border-line-strong px-2 py-1 md:px-3 md:py-1.5 text-xs font-medium text-ink-primary/80 hover:border-line-strong transition-colors'
-                      >
-                        <Pencil className='w-3.5 h-3.5' />
-                        Edit
-                      </button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); router.push(`/lead-sheet-editor/${sheet.id}/preview`); }}
-                        className='flex items-center gap-1.5 rounded bg-primary-solid px-2 py-1 md:px-3 md:py-1.5 text-xs font-medium text-ink-on-primary hover:bg-primary-hover transition-colors'
-                      >
-                        <Eye className='w-3.5 h-3.5' />
-                        Preview
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (confirm(`Delete "${sheet.title}"?`)) deleteSheet(sheet.id);
-                        }}
-                        className='opacity-100 md:opacity-0 md:group-hover:opacity-100 p-1.5 text-ink-muted hover:text-danger transition-all ml-1'
-                      >
-                        <Trash2 className='w-4 h-4' />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      </main>
+    <BentoPageLayout
+      title='Lead Sheet Editor'
+      titleAdornment={offline && <OfflineBadge />}
+      headerActions={
+        <>
+          <Link
+            href='/lead-sheet-editor/setlists'
+            className='flex items-center gap-2 rounded border border-line-strong px-4 py-2 text-sm font-medium text-ink-primary hover:border-line-strong transition-colors'
+          >
+            <ListMusic className='w-4 h-4' />
+            Setlists
+          </Link>
+          <button
+            onClick={createSheet}
+            className='flex items-center gap-2 rounded bg-primary-solid px-4 py-2 text-sm font-medium text-ink-on-primary hover:bg-primary-hover transition-colors'
+          >
+            <Plus className='w-4 h-4' />
+            New Sheet
+          </button>
+        </>
+      }
+    >
+      {favoriteError && (
+      <p className='mb-3 text-sm font-medium text-danger'>{favoriteError}</p>
+    )}
+    <div className='mb-3 flex items-center gap-2'>
+      <Input
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder='Search by title or artist'
+        aria-label='Search by title or artist'
+        data-testid='library-search'
+        className='max-w-xs'
+      />
+      <Button
+        variant='ghost'
+        size='sm'
+        onClick={() => setDensity(density === "compact" ? "comfortable" : "compact")}
+        aria-label={`Switch to ${density === "compact" ? "comfortable" : "compact"} density`}
+        data-testid='library-density'
+      >
+        {density === "compact" ? "Compact" : "Comfortable"}
+      </Button>
+      <select
+        value={sortOrder}
+        onChange={(e) => setSortOrder(e.target.value as SortOrder)}
+        aria-label='Sort songs'
+        title='Favorites stay at the top either way'
+        data-testid='library-sort'
+        className='h-8 rounded border border-line-strong bg-surface-base px-2 text-sm text-ink-primary outline-none focus:border-line-strong'
+      >
+        <option value='alphabetical'>A–Z</option>
+        <option value='recent'>Recently updated</option>
+      </select>
     </div>
+
+    {sheets.length === 0 ? (
+      <div className='flex-1 flex flex-col items-center justify-center text-ink-muted'>
+        <Music className='w-12 h-12 mb-3 opacity-40' />
+        <p>No lead sheets yet. Create your first one!</p>
+      </div>
+    ) : (
+      <div className={density === "compact" ? "space-y-1" : "space-y-2"}>
+        {visibleSheets.map((sheet) => (
+          <div
+            key={sheet.id}
+            className={`flex flex-col md:flex-row md:items-center md:justify-between gap-2 ${density === "compact" ? "px-3 py-1.5" : "p-4"} border border-line-subtle rounded-lg hover:border-line-strong transition-colors group cursor-pointer`}
+            onClick={() => router.push(`/lead-sheet-editor/${sheet.id}/preview`)}
+          >
+            <div className='flex flex-1 min-w-0 items-start gap-2'>
+              <button
+                onClick={(e) => { e.stopPropagation(); toggleFavorite(sheet); }}
+                title={sheet.metadata?.favorite ? "Remove from favorites" : "Keep this song at the top"}
+                aria-label={sheet.metadata?.favorite ? "Remove from favorites" : "Add to favorites"}
+                aria-pressed={!!sheet.metadata?.favorite}
+                className={`-ml-1 shrink-0 rounded p-1 transition-colors ${
+                  sheet.metadata?.favorite
+                    ? "text-primary-text hover:text-primary-hover"
+                    : "text-ink-muted hover:text-primary-text"
+                }`}
+              >
+                <Star className='w-5 h-5' fill={sheet.metadata?.favorite ? "currentColor" : "none"} />
+              </button>
+              <div className='min-w-0'>
+              <div className='font-semibold text-ink-primary'>
+                {sheet.title || "Untitled"}
+              </div>
+              <SongAttribution song={sheet} />
+              <div className='text-sm text-ink-muted flex flex-wrap gap-3 mt-0.5'>
+                {sheet.key && <span>Key: {sheet.key}</span>}
+                {sheet.artist && <span>{sheet.artist}</span>}
+                {sheet.tempo && <span>{sheet.tempo} BPM</span>}
+                <span>{sheet.sections?.length ?? 0} sections</span>
+                <span>{new Date(sheet.updated_at).toLocaleDateString()}</span>
+              </div>
+              </div>
+            </div>
+            <div className='flex flex-wrap items-center gap-1.5 md:ml-3 shrink-0'>
+              <button
+                onClick={(e) => { e.stopPropagation(); handleCopyText(sheet); }}
+                className='flex items-center gap-1.5 rounded border border-line-strong px-2 py-1 md:px-3 md:py-1.5 text-xs font-medium text-ink-primary/80 hover:border-line-strong transition-colors'
+              >
+                {copiedId === sheet.id ? <Check className='w-3.5 h-3.5' /> : <Copy className='w-3.5 h-3.5' />}
+                {copiedId === sheet.id ? "Copied!" : "Copy Text"}
+              </button>
+              {/* Share opens a private song up to unlisted on its own; the
+                  picker here is for dialing visibility back down or up to public. */}
+              <span onClick={(e) => e.stopPropagation()}>
+                <VisibilityPicker
+                  value={sheet.visibility ?? "private"}
+                  onChange={(next) => void setVisibility(sheet, next)}
+                />
+              </span>
+              <button
+                onClick={(e) => { e.stopPropagation(); handleShare(sheet); }}
+                className='flex items-center gap-1.5 rounded border border-line-strong px-2 py-1 md:px-3 md:py-1.5 text-xs font-medium text-ink-primary/80 hover:border-line-strong transition-colors'
+              >
+                {sharedId === sheet.id ? <Check className='w-3.5 h-3.5' /> : <Link2 className='w-3.5 h-3.5' />}
+                {sharedId === sheet.id ? "Copied!" : "Share"}
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); router.push(`/lead-sheet-editor/${sheet.id}/edit`); }}
+                className='flex items-center gap-1.5 rounded border border-line-strong px-2 py-1 md:px-3 md:py-1.5 text-xs font-medium text-ink-primary/80 hover:border-line-strong transition-colors'
+              >
+                <Pencil className='w-3.5 h-3.5' />
+                Edit
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); router.push(`/lead-sheet-editor/${sheet.id}/preview`); }}
+                className='flex items-center gap-1.5 rounded bg-primary-solid px-2 py-1 md:px-3 md:py-1.5 text-xs font-medium text-ink-on-primary hover:bg-primary-hover transition-colors'
+              >
+                <Eye className='w-3.5 h-3.5' />
+                Preview
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (confirm(`Delete "${sheet.title}"?`)) deleteSheet(sheet.id);
+                }}
+                className='opacity-100 md:opacity-0 md:group-hover:opacity-100 p-1.5 text-ink-muted hover:text-danger transition-all ml-1'
+              >
+                <Trash2 className='w-4 h-4' />
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    )}
+    </BentoPageLayout>
   );
 }
