@@ -161,6 +161,8 @@ export default function AlgoBacktestPage() {
 
   // Copy report state
   const [copied, setCopied] = useState(false);
+  // Copy Lambda deployment prompt state
+  const [lambdaPromptCopied, setLambdaPromptCopied] = useState(false);
 
   // Risk management state (stop loss / take profit)
   // Initialized to 0/false; the strategy change effect restores saved values
@@ -537,6 +539,192 @@ export default function AlgoBacktestPage() {
       alert('Unable to copy to clipboard. Please check your browser permissions.');
     }
   }, [generateMarkdownReport]);
+
+  // Generate a copy-pasteable spec for an AWS Lambda that paper-trades the
+  // active result's strategy through Tradier's sandbox API. Every value below
+  // is read from the same state the strategy editor and risk-settings panel
+  // already hold — switching strategies, tweaking a parameter, or re-running
+  // against a different symbol/timeframe changes this output the next time
+  // it's generated, same as generateMarkdownReport above.
+  const generateLambdaPrompt = useCallback(() => {
+    const result = results[activeResultTab];
+    if (!result) return '';
+    const resultStrategyId = result.strategyId ?? selectedStrategyId;
+    const strat = AVAILABLE_STRATEGIES[resultStrategyId];
+    if (!strat) return '';
+
+    const isActiveEditorStrategy = resultStrategyId === selectedStrategyId;
+    const savedForResult = isActiveEditorStrategy ? null : loadStrategySettings(resultStrategyId);
+    const sl = isActiveEditorStrategy ? stopLossPercent : (savedForResult?.stopLossPercent ?? 1);
+    const tp = isActiveEditorStrategy ? takeProfitPercent : (savedForResult?.takeProfitPercent ?? 0);
+    const shorts = isActiveEditorStrategy ? enableShorts : (savedForResult?.enableShorts ?? false);
+    const posSize = isActiveEditorStrategy ? positionSizePercent : (savedForResult?.positionSizePercent ?? 100);
+    const commission = isActiveEditorStrategy ? commissionBps : (savedForResult?.commissionBps ?? 0);
+    const slippage = isActiveEditorStrategy ? slippageBps : (savedForResult?.slippageBps ?? 0);
+
+    const resolvedParams = (strat.parameters ?? []).map((param) => ({
+      param,
+      value: result.params[param.key] ?? currentParams[param.key] ?? param.default,
+    }));
+    // Read generically off whatever value ended up in the resolved params —
+    // only the "breakout" strategy defines this key today, but the engine
+    // (backtest-engine.ts) applies it to any strategy that carries it, so
+    // this stays correct if another strategy picks it up later.
+    const trailingStopEmaPeriod =
+      Number(resolvedParams.find((p) => p.param.key === 'trailingStopEmaPeriod')?.value ?? 0) || 0;
+
+    const dataset = availableDatasets.find((d) => d.file === result.dataset);
+    const symbol = dataset?.symbol ?? result.datasetLabel ?? 'UNKNOWN — pick the symbol this was backtested against';
+    const timeframe = dataset?.timeframe ?? 'unknown';
+
+    const exitClauses: string[] = [];
+    exitClauses.push(
+      shorts
+        ? "a 'sell' signal closes an open long, and a 'buy' signal closes an open short (the same handler that generates entries generates exits — see Entry rule)"
+        : "a 'sell' signal closes an open long (short selling is off, so there's no short to close)"
+    );
+    if (sl > 0) exitClauses.push(`stop loss — ${sl}% adverse move from entry price`);
+    if (tp > 0) exitClauses.push(`take profit — ${tp}% favorable move from entry price`);
+    if (trailingStopEmaPeriod > 0) {
+      exitClauses.push(
+        `trailing stop — position closes when the bar's CLOSE crosses EMA${trailingStopEmaPeriod} against it (not an intrabar stop)`
+      );
+    }
+
+    const lines: string[] = [
+      '# AWS Lambda Spec: Paper-Trade This Strategy via Tradier Sandbox',
+      '',
+      'Build and deploy an AWS Lambda function that paper-trades the strategy',
+      'below against **Tradier\'s SANDBOX API only**. This is a paper-trading',
+      'exercise — sandbox base URL, sandbox access token, sandbox account',
+      'number. Nothing in this Lambda should be able to place a live order or',
+      'touch a production Tradier account. If anything below is ambiguous,',
+      'default to the safer/more conservative reading.',
+      '',
+      '## Strategy',
+      '',
+      `- **Name:** ${strat.name}`,
+      `- **Logic:** ${strat.description}`,
+      `- **Direction:** ${shorts ? 'Long and short' : 'Long only (short selling is disabled for this config)'}`,
+      `- **Symbol:** ${symbol}`,
+      `- **Bar interval:** ${timeframe}`,
+    ];
+
+    if (resolvedParams.length > 0) {
+      lines.push('', '### Parameters (as configured in the backtester — use these exact values)', '');
+      lines.push('| Parameter | Key | Value | What it controls |');
+      lines.push('|---|---|---|---|');
+      for (const { param, value } of resolvedParams) {
+        lines.push(`| ${param.name} | \`${param.key}\` | **${value}** | ${param.description} |`);
+      }
+    }
+
+    lines.push(
+      '',
+      '### Entry rule',
+      '',
+      "On every new completed bar, recompute this strategy's indicators from",
+      'the parameters above and evaluate its buy/sell/hold logic exactly as',
+      `described (${strat.description}). Open a long when the signal is 'buy'`,
+      'and there is no open position.',
+      shorts
+        ? "Open a short when the signal is 'sell' and there is no open position."
+        : "Short entries are disabled — a 'sell' signal while flat is a no-op.",
+      '',
+      '### Exit rule',
+      '',
+      'Close the open position on the FIRST of these that triggers, checked in',
+      'this order every bar (matches how the backtest engine resolves a bar',
+      'that would hit more than one at once — whichever level price is closer',
+      'to at the open wins):',
+      '',
+      ...exitClauses.map((c, i) => `${i + 1}. ${c}`),
+    );
+
+    lines.push(
+      '',
+      '## Risk Management',
+      '',
+      `- **Position sizing:** allocate ${posSize}% of current account equity to each new position. Use Tradier's paper account equity/buying power as "equity," not a hardcoded number. Share count is fixed at entry — don't resize an open position.`,
+      "- **Max concurrent positions:** 1. This strategy trades a single symbol with one position open at a time — reject or ignore any entry signal while a position is already open.",
+      '- **Max daily loss:** NOT part of the backtested config above — the backtester doesn\'t model a daily loss circuit breaker, so pick a number that matches your own risk tolerance rather than treating this as backtested. Make it an env var (e.g. `MAX_DAILY_LOSS_PCT`) instead of hardcoding it, track realized P&L for the current trading day in the state store below, and stop opening new positions once it\'s breached (existing positions can still exit normally via the rules above).',
+      `- **Modeled trading costs (informational):** this backtest assumed ${commission}bps commission and ${slippage}bps slippage per fill. Not a Tradier API input, but useful for deciding whether to use market or limit orders and what slippage tolerance to size into a limit price.`,
+    );
+
+    lines.push(
+      '',
+      '## Tradier Integration (sandbox only)',
+      '',
+      '- **Base URL:** `https://sandbox.tradier.com/v1` — never point this at `api.tradier.com`.',
+      '- **Auth:** Bearer token from a Tradier SANDBOX access token. Read it from AWS Secrets Manager at cold start, never hardcode it or commit it.',
+      '- **Account:** your Tradier PAPER account number, also from Secrets Manager.',
+      `- **Market data:** pull enough trailing history for ${symbol} at the ${timeframe} interval each invocation to cover the longest lookback period among the parameters above, plus a buffer — \`GET /v1/markets/history\` for daily-or-longer bars, \`GET /v1/markets/timesales\` for intraday.`,
+      '- **Orders:** place equity orders via `POST /v1/accounts/{account_id}/orders`, `class=equity`. Confirm the fill via `GET /v1/accounts/{account_id}/orders/{id}` before writing the new position to state — don\'t assume an order filled just because the placement call returned 200.',
+      '- **Hard guardrail:** refuse to start (fail the invocation loudly) if the configured base URL doesn\'t contain `sandbox.tradier.com`. This check should not be removable by an env var typo.',
+    );
+
+    lines.push(
+      '',
+      '## AWS Architecture',
+      '',
+      '- **Lambda:** one function; each invocation is a single "fetch data, evaluate, maybe trade" cycle.',
+      `- **Trigger:** EventBridge scheduled rule matching the ${timeframe} bar interval (e.g. once daily shortly after close for daily bars, or every few minutes during 9:30am–4:00pm ET on weekdays for intraday). Don't fire outside market hours.`,
+      "- **State persistence:** a DynamoDB table keyed by symbol (or symbol+strategy), storing the open position (side, entry price/time, stop and target levels), today's realized P&L and the trading date it applies to (reset at the start of each new day), and today's opened-trade count if you want that as an extra circuit breaker. The Lambda is stateless between invocations — this table is the only thing carrying \"today\" and \"open position\" forward.",
+      '- **Secrets:** Tradier sandbox token and paper account number in AWS Secrets Manager, not plaintext Lambda environment variables.',
+      "- **IAM:** least privilege — this function needs `secretsmanager:GetSecretValue` on its own secret, read/write on its own DynamoDB table, and CloudWatch Logs write. Nothing broader.",
+    );
+
+    lines.push(
+      '',
+      '## Logging & Error Handling',
+      '',
+      '- Structured (JSON) log line per invocation: timestamp, symbol, bars fetched, indicator values computed, signal evaluated, action taken (or "no action" + why), resulting position state.',
+      '- Wrap Tradier API calls in retry-with-backoff on network/5xx errors only, and give up after a small fixed number of attempts rather than looping.',
+      '- If market data is missing, stale, or fails to fetch: take no action and log it — never trade on incomplete data.',
+      "- If an order placement fails or its fill can't be confirmed: don't update position state, log it clearly, and prefer alerting (e.g. an SNS topic) over silently retrying next invocation against stale state.",
+      '- Wrap the handler body in a top-level try/catch so one bad invocation can\'t leave state half-written.',
+    );
+
+    lines.push(
+      '',
+      '## Explicit non-goals',
+      '',
+      '- No live/production Tradier trading, ever — sandbox only.',
+      `- No instruments beyond ${symbol} as a single equity position — no options, no multi-leg orders.`,
+      '- No web UI or manual trigger needed — this is a scheduled background job.',
+      '',
+      '---',
+      '',
+      `*Backtested performance for context only (informational — the Lambda doesn't enforce these, they're what this config produced historically): ${result.totalPnlPercent >= 0 ? '+' : ''}${result.totalPnlPercent.toFixed(2)}% P&L over ${result.totalTrades} trades, ${result.winRate.toFixed(1)}% win rate, ${result.maxDrawdownPercent.toFixed(2)}% max drawdown, ${result.sharpeRatio.toFixed(2)} Sharpe. Dataset: ${result.datasetLabel ?? dataset?.label ?? 'n/a'}. Backtest initial capital: $${INITIAL_CAPITAL.toLocaleString()} (not necessarily your paper account's balance).*`,
+    );
+
+    return lines.join('\n');
+  }, [
+    results,
+    activeResultTab,
+    selectedStrategyId,
+    currentParams,
+    stopLossPercent,
+    takeProfitPercent,
+    enableShorts,
+    positionSizePercent,
+    commissionBps,
+    slippageBps,
+    availableDatasets,
+  ]);
+
+  // Copy the Lambda deployment prompt to clipboard
+  const copyLambdaPrompt = useCallback(async () => {
+    const prompt = generateLambdaPrompt();
+    if (!prompt) return;
+    try {
+      await navigator.clipboard.writeText(prompt);
+      setLambdaPromptCopied(true);
+      setTimeout(() => setLambdaPromptCopied(false), 2000);
+    } catch {
+      alert('Unable to copy to clipboard. Please check your browser permissions.');
+    }
+  }, [generateLambdaPrompt]);
 
   // Backtest only runs on explicit button click ("Run N Variations") — no auto-run on file or param change.
 
@@ -1169,6 +1357,27 @@ export default function AlgoBacktestPage() {
                                   <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3' />
                                 </svg>
                                 Copy Report
+                              </>
+                            )}
+                          </button>
+                          <button
+                            onClick={copyLambdaPrompt}
+                            className='flex items-center gap-1.5 px-3 py-1.5 bg-purple-100 hover:bg-purple-200 text-purple-700 text-xs font-medium rounded transition-colors'
+                            title='Copy a spec prompt for an AWS Lambda that paper-trades this strategy via Tradier sandbox'
+                          >
+                            {lambdaPromptCopied ? (
+                              <>
+                                <svg className='w-3.5 h-3.5 text-green-600' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                                  <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M5 13l4 4L19 7' />
+                                </svg>
+                                <span className='text-green-600'>Copied!</span>
+                              </>
+                            ) : (
+                              <>
+                                <svg className='w-3.5 h-3.5' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                                  <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M13 10V3L4 14h7v7l9-11h-7z' />
+                                </svg>
+                                Copy Lambda Prompt
                               </>
                             )}
                           </button>
