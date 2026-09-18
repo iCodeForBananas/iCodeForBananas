@@ -3,33 +3,33 @@
     "$description": "Layer 1 primitives. Raw values only, no meaning attached. Component code never names these; it goes through the Layer 2 semantic aliases in tokens/semantic. Layer 1 is identical in every theme.",
 
     "neutral": {
-      "$description": "Warm neutral ramp at hue ~80. Chroma stays at or below 0.015 so it reads as neutral rather than tinted, but never as the dead grey of a chroma-zero scale. Step 1 is the darkest, step 12 the lightest, in both themes; it is the semantic layer that decides which end means 'background'.",
-      "1":  { "$type": "color", "$value": "oklch(0.16 0.008 80)" },
-      "2":  { "$type": "color", "$value": "oklch(0.19 0.009 80)" },
-      "3":  { "$type": "color", "$value": "oklch(0.23 0.010 80)" },
-      "4":  { "$type": "color", "$value": "oklch(0.27 0.011 81)" },
-      "5":  { "$type": "color", "$value": "oklch(0.32 0.012 81)" },
-      "6":  { "$type": "color", "$value": "oklch(0.38 0.012 82)" },
-      "7":  { "$type": "color", "$value": "oklch(0.46 0.012 82)" },
-      "8":  { "$type": "color", "$value": "oklch(0.55 0.011 83)" },
-      "9":  { "$type": "color", "$value": "oklch(0.65 0.010 83)" },
-      "10": { "$type": "color", "$value": "oklch(0.76 0.008 84)" },
-      "11": { "$type": "color", "$value": "oklch(0.87 0.006 84)" },
-      "12": { "$type": "color", "$value": "oklch(0.97 0.004 85)" }
+      "$description": "Ink-and-navy ramp at hue ~250. Steps 2-4 are not tuned freely: they are the brand's own Ink Black, Prussian Blue and Oxford Navy, converted to OKLCH losslessly (round-trips back to the exact same sRGB hex). Chroma is real here, not a whisper — 0.03 to 0.10 through the dark end — because these are meant to read as blue, not as a tinted grey. It tapers back toward neutral above step 8 so text.primary stays a crisp near-white rather than a visibly blue one. Step 1 is the darkest, step 12 the lightest, in both themes; it is the semantic layer that decides which end means 'background'.",
+      "1":  { "$type": "color", "$value": "oklch(0.095 0.026 248)", "$description": "Sunken — darker than Ink Black itself, for what sits behind the base plane. Not one of the five named brand colors; derived by continuing the same ramp one step further down." },
+      "2":  { "$type": "color", "$value": "oklch(0.1305 0.0340 246.56)", "$description": "Ink Black (#000814) — the base background." },
+      "3":  { "$type": "color", "$value": "oklch(0.2308 0.0710 252.90)", "$description": "Prussian Blue (#001d3d) — raised surfaces (cards, panels)." },
+      "4":  { "$type": "color", "$value": "oklch(0.3284 0.0999 252.57)", "$description": "Oxford Navy (#003566) — overlay surfaces (menus, popovers, dialogs)." },
+      "5":  { "$type": "color", "$value": "oklch(0.394 0.110 250)" },
+      "6":  { "$type": "color", "$value": "oklch(0.473 0.095 250)" },
+      "7":  { "$type": "color", "$value": "oklch(0.563 0.075 250)" },
+      "8":  { "$type": "color", "$value": "oklch(0.659 0.055 250)" },
+      "9":  { "$type": "color", "$value": "oklch(0.758 0.038 250)" },
+      "10": { "$type": "color", "$value": "oklch(0.849 0.024 250)" },
+      "11": { "$type": "color", "$value": "oklch(0.925 0.014 250)" },
+      "12": { "$type": "color", "$value": "oklch(0.971 0.006 250)" }
     },
 
     "amber": {
-      "$description": "The one accent that carries the brand. Steps 1 to 6 are a monotonic ramp for tints, borders and text on light surfaces. The four named variants below are not ramp positions: they are the specific values the brand is defined by, and three of them sit at almost the same lightness rather than in sequence.",
-      "1": { "$type": "color", "$value": "oklch(0.24 0.035 80)" },
-      "2": { "$type": "color", "$value": "oklch(0.33 0.060 81)" },
-      "3": { "$type": "color", "$value": "oklch(0.45 0.090 83)" },
-      "4": { "$type": "color", "$value": "oklch(0.62 0.125 84)" },
-      "5": { "$type": "color", "$value": "oklch(0.75 0.150 85)" },
-      "6": { "$type": "color", "$value": "oklch(0.93 0.078 87)" },
-      "solid":    { "$type": "color", "$value": "oklch(0.851 0.161 85)", "$description": "Amber at full strength: a filled button, the active state of a control. Whatever sits on top of this is palette.amber.contrast, never white. See that token." },
-      "hover":    { "$type": "color", "$value": "oklch(0.884 0.184 92)", "$description": "Hover for a solid amber fill. Brighter than solid, not darker. On a dark UI, lifting toward the light is what reads as 'closer to the pointer'. Chroma here is past the sRGB boundary (max is ~0.161 at this lightness): it renders as written on a P3 display and clips to the gamut edge on an sRGB one. That is deliberate, and npm run tokens:check measures the clipped result, so the contrast numbers hold either way." },
-      "text":     { "$type": "color", "$value": "oklch(0.856 0.176 88)", "$description": "Amber as a text or icon color on a dark surface. Not for light surfaces; step 3 is the light-surface equivalent. Sits a hair outside sRGB (max is ~0.174 at this lightness), which is below the threshold of visible clipping." },
-      "contrast": { "$type": "color", "$value": "oklch(0.20 0.020 80)", "$description": "The near-black label that goes on top of amber.solid. THIS IS NOT A BUG AND MUST NOT BE 'FIXED' TO WHITE. Amber at L 0.851 is a light color: white on it lands near 1.4:1, failing every contrast target there is, while this near-black lands near 9:1. Every design system with a light-yellow primary has to make this call, and the label is the side that gives." }
+      "$description": "The one accent that carries the brand — School Bus Yellow and Gold, used sparingly for signature moments and highlights against the ink-and-navy ramp above. Steps 1 to 6 are a monotonic ramp at the same hue family for tints, borders and text on light surfaces. The four named variants below are not ramp positions: solid and hover/text are the two brand yellows themselves (School Bus Yellow, Gold), converted losslessly from their hex values, not freely tuned.",
+      "1": { "$type": "color", "$value": "oklch(0.24 0.035 90)" },
+      "2": { "$type": "color", "$value": "oklch(0.33 0.060 90)" },
+      "3": { "$type": "color", "$value": "oklch(0.45 0.090 90)" },
+      "4": { "$type": "color", "$value": "oklch(0.62 0.125 90)" },
+      "5": { "$type": "color", "$value": "oklch(0.75 0.150 90)" },
+      "6": { "$type": "color", "$value": "oklch(0.93 0.078 90)" },
+      "solid":    { "$type": "color", "$value": "oklch(0.8479 0.1736 86.06)", "$description": "School Bus Yellow (#ffc300) at full strength: a filled button, the active state of a control, the signature brand moment. Whatever sits on top of this is palette.amber.contrast, never white. See that token." },
+      "hover":    { "$type": "color", "$value": "oklch(0.8849 0.1805 94.78)", "$description": "Gold (#ffd60a) — hover for a solid School-Bus-Yellow fill, and every other 'highlight' job (focus ring, active text, an icon that needs to pop). Brighter than solid, not darker: on a dark UI, lifting toward the light is what reads as 'closer to the pointer'." },
+      "text":     { "$type": "color", "$value": "oklch(0.8849 0.1805 94.78)", "$description": "Gold again — amber as text or an icon color on a dark surface. Not for light surfaces; step 3 is the light-surface equivalent." },
+      "contrast": { "$type": "color", "$value": "oklch(0.19 0.024 250)", "$description": "The near-black-navy label that goes on top of amber.solid. THIS IS NOT A BUG AND MUST NOT BE 'FIXED' TO WHITE. School Bus Yellow at L 0.848 is a light color: white on it fails every contrast target there is, while this near-black lands well clear of 4.5:1. Every design system with a light-yellow primary has to make this call, and the label is the side that gives. Hued into the ink ramp (~250) rather than left neutral, so it reads as part of the same family instead of a flat grey stamped on top." }
     },
 
     "teal": {

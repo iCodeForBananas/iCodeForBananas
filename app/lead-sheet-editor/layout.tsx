@@ -1,5 +1,4 @@
 import { CommandPaletteProvider } from "@/app/components/ui/command-palette";
-import styles from "@/app/components/guitar-tool-theme.module.css";
 
 /**
  * The songwriting routes.
@@ -11,12 +10,12 @@ import styles from "@/app/components/guitar-tool-theme.module.css";
  * that is sometimes mounted on its own — the share route renders without the
  * shell around it.
  *
- * `styles.theme` re-points those same Layer 2 custom properties to the
- * guitar tools' shared near-black-and-amber identity — see
- * app/components/guitar-tool-theme.module.css, which every other guitar
- * tool's own layout.tsx applies the same way — so every component here keeps
- * using the ordinary surface, ink and line classes and simply resolves them
- * differently, regardless of the site's light/dark toggle.
+ * This subtree used to carry its own scoped theme override (a deeper,
+ * always-dark near-black-and-amber palette independent of the site's
+ * light/dark toggle) because it was the odd one out. It no longer needs one:
+ * the global dark palette (ink black / Prussian blue / Oxford navy, School
+ * Bus Yellow / gold — see tokens/README.md) is now exactly that identity,
+ * app-wide, and honors the toggle like everywhere else.
  *
  * The command palette is scoped the same way: it only ever knows about songs,
  * and keeping it here keeps its client boundary off every other page.
@@ -24,7 +23,7 @@ import styles from "@/app/components/guitar-tool-theme.module.css";
 export default function LeadSheetLayout({ children }: { children: React.ReactNode }) {
   return (
     <CommandPaletteProvider>
-      <div className={`flex min-h-full flex-1 flex-col bg-surface-base font-sans text-ink-primary ${styles.theme}`}>
+      <div className='flex min-h-full flex-1 flex-col bg-surface-base font-sans text-ink-primary'>
         {children}
       </div>
     </CommandPaletteProvider>

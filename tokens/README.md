@@ -15,6 +15,28 @@ npm run tokens:check   # WCAG contrast, both themes, against the generated CSS
 **Layer 1, primitives** (`primitives/`). Raw values, no meaning. Colors in
 OKLCH. Identical in every theme. Component code never names these.
 
+## The palette
+
+Five named brand colors, converted to OKLCH losslessly (each round-trips back
+to the exact same sRGB hex — see the primitives themselves for the numbers):
+
+| | Hex | Job |
+|---|---|---|
+| Ink Black | `#000814` | `palette.neutral.2` — the base background |
+| Prussian Blue | `#001d3d` | `palette.neutral.3` — raised surfaces |
+| Oxford Navy | `#003566` | `palette.neutral.4` — overlay surfaces |
+| School Bus Yellow | `#ffc300` | `palette.amber.solid` — the signature fill |
+| Gold | `#ffd60a` | `palette.amber.hover` / `.text` — highlights |
+
+Dark background, bright accent used sparingly — the three blues carry real
+chroma (0.03 to 0.10, not a whisper of tint) because they are meant to read as
+blue, and the neutral ramp tapers that back toward true neutral above step 8
+so body text stays a crisp near-white rather than visibly blue. The two
+yellows only ever fill a small area at a time: a button, an active state, a
+line of emphasized text. `palette.neutral.1` (sunken) and steps 5-12 are
+derived by continuing the same ramp past the three named colors, not named
+brand values themselves.
+
 **Layer 2, semantics** (`semantic/`, `themes/`). Purpose-named aliases that
 reference Layer 1 by path. This is the only layer component code is allowed to
 name. Names describe the job a value does, never what it looks like, so
@@ -56,10 +78,11 @@ why `color.text.on-primary` and `color.primary.solid` appear only once.
 
 ## The amber rule
 
-`color.primary.solid` is a light color (L 0.851). White on it lands near
-1.4:1; the near-black `color.text.on-primary` lands near 11:1. **The label on a
-filled amber control is never white.** `npm run tokens:check` enforces this,
-and `palette.amber.contrast` carries the long-form explanation.
+`color.primary.solid` (School Bus Yellow) is a light color (L 0.848). White on
+it fails every contrast target there is; the near-black `color.text.on-primary`
+lands near 11.5:1. **The label on a filled amber control is never white.**
+`npm run tokens:check` enforces this, and `palette.amber.contrast` carries the
+long-form explanation.
 
 The same physics forces `color.primary.text`, `color.danger`, `color.success`
 and `color.accent.solid` to differ between themes: no single lightness is
