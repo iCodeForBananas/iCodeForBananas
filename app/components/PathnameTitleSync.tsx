@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 
 const TITLES: Record<string, string> = {
   "/":                                   "iCodeForBananas",
+  "/algo-backtest":                       "Algo Backtest | iCodeForBananas",
   "/ascii-player":                        "ASCII Player | iCodeForBananas",
   "/brainy-bloom":                        "Brainy Bloom | iCodeForBananas",
   "/chord-diagrams":                      "Chord Diagrams | iCodeForBananas",

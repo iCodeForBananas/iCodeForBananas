@@ -13,9 +13,9 @@ const MOBILE_BREAKPOINT = 1024;
 const isMobileDevice = () => window.innerWidth < MOBILE_BREAKPOINT;
 const SIDEBAR_OPEN_KEY = "sidebar-open";
 
-export type Category = "Music" | "Tools" | "Education" | "Experiments";
+export type Category = "Music" | "Trading" | "Tools" | "Education" | "Experiments";
 
-const CATEGORIES: Category[] = ["Music", "Tools", "Education", "Experiments"];
+const CATEGORIES: Category[] = ["Music", "Trading", "Tools", "Education", "Experiments"];
 
 export const LINKS: { href: string; text: string; category: Category; auth?: boolean; abbr?: string }[] = [
   // Music
@@ -23,6 +23,8 @@ export const LINKS: { href: string; text: string; category: Category; auth?: boo
   { href: "/chord-explorer", text: "Chord Explorer", category: "Music", abbr: "CE" },
   { href: "/fretboard-quiz", text: "Fretboard Quiz", category: "Music" },
   { href: "/lead-sheet-editor", text: "Lead Sheet Editor", category: "Music", abbr: "LS" },
+  // Trading
+  { href: "/algo-backtest", text: "Algo Backtest", category: "Trading", abbr: "AB" },
   // Tools
   { href: "/workout-tracker", text: "Workout Tracker", category: "Tools" },
   // Education

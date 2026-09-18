@@ -9,6 +9,8 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
+    "download-data": "node scripts/download-data.mjs",
+    "download-all-missing": "node scripts/download-all-missing.mjs",
     "tokens:build": "node scripts/build-tokens.mjs",
     "tokens:check": "node scripts/contrast-check.mjs",
     "type:check": "node scripts/typography-check.mjs",
@@ -30,6 +32,7 @@
     "clsx": "^2.1.1",
     "geist": "^1.7.0",
     "idb": "^8.0.3",
+    "lightweight-charts": "^5.2.1",
     "lucide-react": "^0.564.0",
     "motion": "^12.34.3",
     "next": "16.1.1",
@@ -51,6 +54,7 @@
     "tailwindcss": "^4",
     "tsx": "^4.23.13",
     "typescript": "5.9.3",
-    "vitest": "^5.0.0"
+    "vitest": "^5.0.0",
+    "yahoo-finance2": "^3.15.4"
   }
 }
