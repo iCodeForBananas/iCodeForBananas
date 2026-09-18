@@ -107,13 +107,19 @@
   --shadow-raised: var(--ds-shadow-raised);
   --shadow-overlay: var(--ds-shadow-overlay);
 
-  /* Three families. The stacks themselves are on :root below as --ds-font-*,
-     and these map them onto Tailwind's names so the font-sans / font-mono /
-     font-display utilities exist and so var(--font-mono) resolves anywhere.
-     The indirection is load-bearing: naming the source variable --font-mono
-     too would emit `--font-mono: var(--font-mono)`, a self-reference that
-     leaves the property invalid at computed-value time and silently drops any
-     rule using it back to the inherited family. */
+  /* Two families now, not three: --ds-font-sans and --ds-font-display both
+     resolve to Roboto (see app/layout.tsx), and --ds-font-mono is the one
+     face that stayed apart — the lyric and chord pane needs its fixed glyph
+     width, which Roboto cannot give it. font-display survives as a class
+     name so callers keep saying "this is a title" even though it no longer
+     names a different family; see tokens/README.md. The stacks themselves
+     are on :root below as --ds-font-*, and these map them onto Tailwind's
+     names so the font-sans / font-mono / font-display utilities exist and so
+     var(--font-mono) resolves anywhere. The indirection is load-bearing:
+     naming the source variable --font-mono too would emit
+     `--font-mono: var(--font-mono)`, a self-reference that leaves the
+     property invalid at computed-value time and silently drops any rule
+     using it back to the inherited family. */
   --font-sans: var(--ds-font-sans);
   --font-mono: var(--ds-font-mono);
   --font-display: var(--ds-font-display);
@@ -153,21 +159,15 @@
   --text-48--letter-spacing: var(--ds-font-tracking-48);
 }
 
-/* Sans is UI chrome, mono is the lyric and chord document pane, display is song
-   titles and library headers and nothing else. next/font generates the three
-   --font-*-* variables on <body>; these add the fallback stack that gets used
-   while a face is still loading, or if one fails to. */
+/* Sans and display are both Roboto — UI chrome, song titles and library
+   headers all read the same face now. Mono is still its own thing: the
+   lyric and chord document pane. next/font generates the --font-*-*
+   variables on <html>; these add the fallback stack that gets used while a
+   face is still loading, or if one fails to. */
 :root {
-  --ds-font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --ds-font-sans: var(--font-roboto), ui-sans-serif, system-ui, sans-serif;
   --ds-font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
-  --ds-font-display: var(--font-fraunces), ui-serif, Georgia, "Times New Roman", serif;
-}
-
-/* auto is already the initial value, so this changes nothing today. It is
-   written down so that a later reset setting `font-optical-sizing: none`
-   cannot silently flatten Fraunces back to a single scaled drawing. */
-:root {
-  font-optical-sizing: auto;
+  --ds-font-display: var(--ds-font-sans);
 }
 
 /* The lyric and chord document pane. Every glyph advances by the same width,

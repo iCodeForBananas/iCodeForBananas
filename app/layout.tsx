@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next";
-import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
-import { Fraunces } from "next/font/google";
+import { Roboto } from "next/font/google";
 import Script from "next/script";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
@@ -16,19 +15,25 @@ import CopyPageHandler from "./components/CopyPageHandler";
 import InstallPrompt from "./components/InstallPrompt";
 
 /**
- * Song titles and library headers only. Fraunces carries an optical size axis,
- * so the letterforms are redrawn rather than just scaled as the size changes;
- * `font-optical-sizing: auto` in globals.css is what makes the browser use it.
+ * Every face on the site — UI chrome, song titles, library headers, all of
+ * it — used to split across Geist Sans and Fraunces; both are gone in favor
+ * of one family. Loaded as a variable font (no `weight` means the full wght
+ * axis, 100-900, ships in one file) so every weight and both styles the app
+ * asks for — regular, the 500/600 the design system actually uses, bold if
+ * something reaches for it, italic — resolve without a second font load.
+ * `--ds-font-sans` and `--ds-font-display` both point at it in globals.css;
+ * see tokens/README.md for why that distinction still exists as a class name
+ * even though it no longer names a different family.
  *
- * Loaded as a variable font, which next/font requires in order to request the
- * opsz axis at all. That means the weight axis ships continuous rather than as
- * the three named weights the system uses; the rule against 700 is enforced by
- * not writing it, not by the font file. See font.weight in tokens/.
+ * Geist Mono is not part of this: `.leadsheet-doc` (the lyric and chord
+ * pane) depends on every glyph advancing the same width to keep a chord over
+ * its syllable, `npm run type:check` proves that alignment holds, and a
+ * proportional face would silently break it.
  */
-const fraunces = Fraunces({
+const roboto = Roboto({
   subsets: ["latin"],
-  axes: ["opsz"],
-  variable: "--font-fraunces",
+  style: ["normal", "italic"],
+  variable: "--font-roboto",
   display: "swap",
 });
 
@@ -78,7 +83,7 @@ export default function RootLayout({
       // Dark is what :root carries in app/tokens.css, so it is also what the
       // server renders. The inline script below corrects it before first paint.
       data-theme='dark'
-      className={`${GeistSans.variable} ${GeistMono.variable} ${fraunces.variable}`}
+      className={`${roboto.variable} ${GeistMono.variable}`}
       suppressHydrationWarning
     >
       <head>

@@ -67,13 +67,18 @@ legible as text on both a near-black and a near-white surface.
 
 ## Typography
 
-Three families, loaded by `next/font` and self-hosted at build time:
+Two families, loaded by `next/font` and self-hosted at build time:
 
 | | | |
 |---|---|---|
-| `--font-sans` | Geist Sans | UI chrome |
+| `--font-sans` | Roboto | UI chrome, song titles, library headers — everything but the document pane |
 | `--font-mono` | Geist Mono | the lyric and chord document pane |
-| `--font-display` | Fraunces, optical sizing on | song titles and library headers, nothing else |
+
+`--font-display` still exists as a class name — `font-display` reads as "this
+is a title" at the call site — but it is now an alias for `--ds-font-sans`
+rather than a second family. It used to be Fraunces, loaded as a variable font
+for its optical-size axis; that axis, and the family, are gone, and nothing
+else in the type scale asked for a serif.
 
 The stacks live on `:root` in `app/globals.css` as `--ds-font-*`, not in this
 directory, because only that file knows the variable names `next/font`
