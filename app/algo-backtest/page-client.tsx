@@ -613,7 +613,7 @@ export default function AlgoBacktestPage() {
                 </div>
               </div>
             ) : (
-              <div className='flex flex-col'>
+              <div className='flex flex-col min-w-0'>
 
                 {/* ── Configuration (top) ─────────────────────────────── */}
                 <div className='shrink-0 border-b border-gray-200 px-4 py-3'>
@@ -1007,7 +1007,7 @@ export default function AlgoBacktestPage() {
                     <p className='text-sm text-gray-600'>Run a backtest to see results</p>
                   </div>
                 )}
-                {results.length > 0 && <div className='flex flex-col'>
+                {results.length > 0 && <div className='flex flex-col min-w-0'>
 
                   {/* Tabs for Multiple Results */}
                   {results.length > 1 && (
@@ -1066,8 +1066,8 @@ export default function AlgoBacktestPage() {
                   {/* Stats Panel */}
                   {activeResult && (
                     <div className='p-4 border-b border-gray-200 bg-gray-50 shrink-0'>
-                      <div className='grid grid-cols-6 gap-4 text-sm'>
-                        <div className='bg-white border border-gray-200 rounded p-3'>
+                      <div className='grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2 sm:gap-4 text-sm'>
+                        <div className='bg-white border border-gray-200 rounded p-2 sm:p-3 min-w-0'>
                           <div className='text-gray-600 text-xs mb-1'>Strategy P&L</div>
                           <div
                             className={`text-lg font-bold ${activeResult.totalPnlPercent >= 0 ? "text-green-600" : "text-red-500"}`}
@@ -1075,7 +1075,7 @@ export default function AlgoBacktestPage() {
                             {activeResult.totalPnlPercent >= 0 ? "+" : ""}{activeResult.totalPnlPercent.toFixed(2)}%
                           </div>
                         </div>
-                        <div className='bg-white border border-gray-200 rounded p-3'>
+                        <div className='bg-white border border-gray-200 rounded p-2 sm:p-3 min-w-0'>
                           <div className='text-gray-600 text-xs mb-1'>Buy & Hold</div>
                           <div
                             className={`text-lg font-bold ${activeResult.buyAndHoldPnlPercent >= 0 ? "text-green-600" : "text-red-500"}`}
@@ -1083,7 +1083,7 @@ export default function AlgoBacktestPage() {
                             {activeResult.buyAndHoldPnlPercent >= 0 ? "+" : ""}{activeResult.buyAndHoldPnlPercent.toFixed(2)}%
                           </div>
                         </div>
-                        <div className='bg-white border border-gray-200 rounded p-3'>
+                        <div className='bg-white border border-gray-200 rounded p-2 sm:p-3 min-w-0'>
                           <div className='text-gray-600 text-xs mb-1'>Win Rate</div>
                           <div className='text-lg font-bold text-gray-900'>
                             {activeResult.winRate.toFixed(1)}%
@@ -1092,7 +1092,7 @@ export default function AlgoBacktestPage() {
                             </span>
                           </div>
                         </div>
-                        <div className='bg-white border border-gray-200 rounded p-3'>
+                        <div className='bg-white border border-gray-200 rounded p-2 sm:p-3 min-w-0'>
                           <div className='text-gray-600 text-xs mb-1'>Profit Factor</div>
                           <div
                             className={`text-lg font-bold ${(activeResult.profitFactor ?? 0) >= 1 ? "text-green-600" : "text-red-500"}`}
@@ -1100,13 +1100,13 @@ export default function AlgoBacktestPage() {
                             {activeResult.profitFactor == null ? "N/A" : activeResult.profitFactor === Infinity ? "∞" : activeResult.profitFactor.toFixed(2)}
                           </div>
                         </div>
-                        <div className='bg-white border border-gray-200 rounded p-3'>
+                        <div className='bg-white border border-gray-200 rounded p-2 sm:p-3 min-w-0'>
                           <div className='text-gray-600 text-xs mb-1'>Max Drawdown</div>
                           <div className='text-lg font-bold text-red-500'>
                             -{activeResult.maxDrawdownPercent.toFixed(2)}%
                           </div>
                         </div>
-                        <div className='bg-white border border-gray-200 rounded p-3'>
+                        <div className='bg-white border border-gray-200 rounded p-2 sm:p-3 min-w-0'>
                           <div className='text-gray-600 text-xs mb-1'>Sharpe Ratio</div>
                           <div
                             className={`text-lg font-bold ${activeResult.sharpeRatio >= 1 ? "text-green-600" : activeResult.sharpeRatio >= 0 ? "text-gray-700" : "text-red-500"}`}
@@ -1117,21 +1117,21 @@ export default function AlgoBacktestPage() {
                       </div>
 
                       {/* Secondary stats */}
-                      <div className='flex items-center justify-between text-sm mt-2'>
-                        <div className='flex items-center gap-4'>
-                          <div className='text-center'>
+                      <div className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between text-sm mt-2'>
+                        <div className='flex flex-wrap items-center gap-x-4 gap-y-1'>
+                          <div className='whitespace-nowrap'>
                             <span className='text-gray-600 text-xs'>Trades:</span>
                             <span className='ml-1 text-gray-900'>{activeResult.totalTrades}</span>
                           </div>
-                          <div className='text-center'>
+                          <div className='whitespace-nowrap'>
                             <span className='text-gray-600 text-xs'>Avg Win:</span>
                             <span className='ml-1 text-green-600'>${activeResult.averageWin.toFixed(2)}</span>
                           </div>
-                          <div className='text-center'>
+                          <div className='whitespace-nowrap'>
                             <span className='text-gray-600 text-xs'>Avg Loss:</span>
                             <span className='ml-1 text-red-500'>-${activeResult.averageLoss.toFixed(2)}</span>
                           </div>
-                          <div className='text-center'>
+                          <div className='whitespace-nowrap'>
                             <span className='text-gray-600 text-xs'>Alpha vs B&H:</span>
                             <span
                               className={`ml-1 font-bold ${activeResult.totalPnlPercent - activeResult.buyAndHoldPnlPercent >= 0 ? "text-green-600" : "text-red-500"}`}
@@ -1180,7 +1180,7 @@ export default function AlgoBacktestPage() {
                   {/* Charts Container */}
                   <div className='flex flex-col shrink-0'>
                     {/* Price Chart */}
-                    <div className='h-[640px]'>
+                    <div className='h-[420px] sm:h-[640px]'>
                       <BacktestChart
                         data={indicatorData}
                         trades={chartTrades}
@@ -1209,8 +1209,8 @@ export default function AlgoBacktestPage() {
                       <div className='px-4 py-2 bg-gray-50 text-sm font-semibold text-gray-900 border-b border-gray-200'>
                         Trade Log ({activeResult.trades.length} trades)
                       </div>
-                      <div className='flex-1 overflow-y-auto'>
-                        <table className='w-full text-xs'>
+                      <div className='flex-1 overflow-auto'>
+                        <table className='w-full min-w-[760px] text-xs'>
                           <thead className='bg-gray-50 sticky top-0'>
                             <tr className='text-gray-600'>
                               <th className='px-3 py-2 text-left'>Side</th>
