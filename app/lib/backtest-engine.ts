@@ -306,6 +306,7 @@ export function runBacktestWithParams(
     shares: number;
     entryTime: number;
     entryIdx: number;
+    entryCommission: number;
     stopLoss?: number;
     takeProfit?: number;
   };
@@ -330,25 +331,25 @@ export function runBacktestWithParams(
   const slipBuy = (price: number) => price * (1 + slippageMult);
   const slipSell = (price: number) => price * (1 - slippageMult);
 
-  // Open a position. Returns shares so callers can attach it. Caller decides
-  // long vs short and which slippage direction to use on the fill.
-  const openPosition = (
-    side: PositionSide,
-    rawPrice: number,
-    time: number,
-    idx: number,
-    stopLoss: number | undefined,
-    takeProfit: number | undefined,
-  ) => {
+  const stopLossPct = Math.max(0, riskSettings?.stopLossPercent ?? 0);
+  const takeProfitPct = Math.max(0, riskSettings?.takeProfitPercent ?? 0);
+
+  // Open a position at a raw (pre-slippage) price. Stop and target are set
+  // off the actual fill, the way a live bracket order would be.
+  const openPosition = (side: PositionSide, rawPrice: number, time: number, idx: number) => {
     const fillPrice = side === PositionSide.LONG ? slipBuy(rawPrice) : slipSell(rawPrice);
     if (fillPrice <= 0) return;
     const allocation = equity * (positionSizePct / 100);
     const shares = allocation / fillPrice;
     if (shares <= 0) return;
+    const dir = side === PositionSide.LONG ? 1 : -1;
+    const stopLoss = stopLossPct > 0 ? fillPrice * (1 - dir * stopLossPct / 100) : undefined;
+    const takeProfit = takeProfitPct > 0 ? fillPrice * (1 + dir * takeProfitPct / 100) : undefined;
     // Entry commission is taken out of equity immediately so it shows up in
-    // the equity curve at the right time.
-    equity -= allocation * commissionRate;
-    position = { side, entryPrice: fillPrice, shares, entryTime: time, entryIdx: idx, stopLoss, takeProfit };
+    // the equity curve at the right time, and charged to the trade's PnL at close.
+    const entryCommission = allocation * commissionRate;
+    equity -= entryCommission;
+    position = { side, entryPrice: fillPrice, shares, entryTime: time, entryIdx: idx, entryCommission, stopLoss, takeProfit };
   };
 
   // Close at a raw (pre-slippage) price. Applies slippage + commission and
@@ -363,12 +364,14 @@ export function runBacktestWithParams(
         : (position.entryPrice - fillPrice) * position.shares;
     const exitNotional = fillPrice * position.shares;
     const exitCommission = exitNotional * commissionRate;
-    const pnl = grossPnl - exitCommission;
+    // Trade PnL is net of both fills' commission. Equity already paid the
+    // entry commission at open, so it only takes the exit side here.
+    const pnl = grossPnl - exitCommission - position.entryCommission;
     const pnlPercent =
       ((fillPrice - position.entryPrice) / position.entryPrice) *
       100 *
       (position.side === PositionSide.LONG ? 1 : -1);
-    equity += pnl;
+    equity += grossPnl - exitCommission;
     trades.push({
       id: `trade-${tradeId++}`,
       side: position.side,
@@ -430,56 +433,39 @@ export function runBacktestWithParams(
       }
     }
 
+    // Intrabar stop loss / take profit, modeled as resting stop and limit
+    // orders. A bar that opens beyond a level fills at the open (a gap), not
+    // at the level. If both levels sit inside the bar's range, the one closer
+    // to the open is assumed to have been touched first.
     {
       const pos = position as OpenPosition | null;
-      if (pos && riskSettings) {
-        let exitPrice: number | null = null;
-        let exitReason: string | null = null;
+      if (pos && (pos.stopLoss !== undefined || pos.takeProfit !== undefined)) {
+        const isLong = pos.side === PositionSide.LONG;
+        // "Beyond" = past the level in the direction that triggers it.
+        const slBeyond = (p: number) => pos.stopLoss !== undefined && (isLong ? p <= pos.stopLoss : p >= pos.stopLoss);
+        const tpBeyond = (p: number) => pos.takeProfit !== undefined && (isLong ? p >= pos.takeProfit : p <= pos.takeProfit);
+        const adverse = isLong ? current.low : current.high;
+        const favorable = isLong ? current.high : current.low;
 
-        if (pos.side === PositionSide.LONG) {
-          const slHit = pos.stopLoss !== undefined && current.low <= pos.stopLoss;
-          const tpHit = pos.takeProfit !== undefined && current.high >= pos.takeProfit;
-          if (slHit && tpHit) {
-            const slDistance = Math.abs(current.open - pos.stopLoss!);
-            const tpDistance = Math.abs(current.open - pos.takeProfit!);
-            if (slDistance <= tpDistance) {
-              exitPrice = pos.stopLoss!;
-              exitReason = `Stop loss hit at ${pos.stopLoss!.toFixed(2)}`;
-            } else {
-              exitPrice = pos.takeProfit!;
-              exitReason = `Take profit hit at ${pos.takeProfit!.toFixed(2)}`;
-            }
-          } else if (slHit) {
-            exitPrice = pos.stopLoss!;
-            exitReason = `Stop loss hit at ${pos.stopLoss!.toFixed(2)}`;
+        let exit: { price: number; reason: string } | null = null;
+        if (slBeyond(current.open)) {
+          exit = { price: current.open, reason: `Stop loss ${pos.stopLoss!.toFixed(2)} gapped through, filled at open ${current.open.toFixed(2)}` };
+        } else if (tpBeyond(current.open)) {
+          exit = { price: current.open, reason: `Take profit ${pos.takeProfit!.toFixed(2)} gapped through, filled at open ${current.open.toFixed(2)}` };
+        } else {
+          const slHit = slBeyond(adverse);
+          const tpHit = tpBeyond(favorable);
+          const stopFirst =
+            slHit && (!tpHit || Math.abs(current.open - pos.stopLoss!) <= Math.abs(current.open - pos.takeProfit!));
+          if (stopFirst) {
+            exit = { price: pos.stopLoss!, reason: `Stop loss hit at ${pos.stopLoss!.toFixed(2)}` };
           } else if (tpHit) {
-            exitPrice = pos.takeProfit!;
-            exitReason = `Take profit hit at ${pos.takeProfit!.toFixed(2)}`;
-          }
-        } else if (pos.side === PositionSide.SHORT) {
-          const slHit = pos.stopLoss !== undefined && current.high >= pos.stopLoss;
-          const tpHit = pos.takeProfit !== undefined && current.low <= pos.takeProfit;
-          if (slHit && tpHit) {
-            const slDistance = Math.abs(current.open - pos.stopLoss!);
-            const tpDistance = Math.abs(current.open - pos.takeProfit!);
-            if (slDistance <= tpDistance) {
-              exitPrice = pos.stopLoss!;
-              exitReason = `Stop loss hit at ${pos.stopLoss!.toFixed(2)}`;
-            } else {
-              exitPrice = pos.takeProfit!;
-              exitReason = `Take profit hit at ${pos.takeProfit!.toFixed(2)}`;
-            }
-          } else if (slHit) {
-            exitPrice = pos.stopLoss!;
-            exitReason = `Stop loss hit at ${pos.stopLoss!.toFixed(2)}`;
-          } else if (tpHit) {
-            exitPrice = pos.takeProfit!;
-            exitReason = `Take profit hit at ${pos.takeProfit!.toFixed(2)}`;
+            exit = { price: pos.takeProfit!, reason: `Take profit hit at ${pos.takeProfit!.toFixed(2)}` };
           }
         }
 
-        if (exitPrice !== null && exitReason !== null) {
-          closeAtPrice(exitPrice, current.time, exitReason);
+        if (exit) {
+          closeAtPrice(exit.price, current.time, exit.reason);
           exitedViaRiskThisBar = true;
         }
       }
@@ -494,34 +480,22 @@ export function runBacktestWithParams(
     });
 
     if (signal.action === "buy" && !position && !exitedViaRiskThisBar) {
-      const entryPrice = current.close;
-      let stopLoss: number | undefined;
-      let takeProfit: number | undefined;
-      if (riskSettings && riskSettings.stopLossPercent > 0) {
-        stopLoss = entryPrice * (1 - riskSettings.stopLossPercent / 100);
-      }
-      if (riskSettings && riskSettings.takeProfitPercent > 0) {
-        takeProfit = entryPrice * (1 + riskSettings.takeProfitPercent / 100);
-      }
-      openPosition(PositionSide.LONG, entryPrice, current.time, i, stopLoss, takeProfit);
+      openPosition(PositionSide.LONG, current.close, current.time, i);
     } else if (signal.action === "buy" && (position as OpenPosition | null)?.side === PositionSide.SHORT) {
       closeAtPrice(current.close, current.time, signal.reason);
     } else if (signal.action === "sell" && (position as OpenPosition | null)?.side === PositionSide.LONG) {
       closeAtPrice(current.close, current.time, signal.reason);
     } else if (signal.action === "sell" && !position && enableShorts && !exitedViaRiskThisBar) {
-      const entryPrice = current.close;
-      let stopLoss: number | undefined;
-      let takeProfit: number | undefined;
-      if (riskSettings && riskSettings.stopLossPercent > 0) {
-        stopLoss = entryPrice * (1 + riskSettings.stopLossPercent / 100);
-      }
-      if (riskSettings && riskSettings.takeProfitPercent > 0) {
-        takeProfit = entryPrice * (1 - riskSettings.takeProfitPercent / 100);
-      }
-      openPosition(PositionSide.SHORT, entryPrice, current.time, i, stopLoss, takeProfit);
+      openPosition(PositionSide.SHORT, current.close, current.time, i);
     }
 
-    equityCurve.push({ time: current.time, equity });
+    // Mark to market at the close so drawdown and Sharpe see open-trade
+    // losses, not just realized ones.
+    const open = position as OpenPosition | null;
+    const unrealized = open
+      ? (open.side === PositionSide.LONG ? current.close - open.entryPrice : open.entryPrice - current.close) * open.shares
+      : 0;
+    equityCurve.push({ time: current.time, equity: equity + unrealized });
   }
 
   // Close any open position at end of data
@@ -562,7 +536,11 @@ export function runBacktestWithParams(
     returns.length > 0
       ? Math.sqrt(returns.reduce((sum, r) => sum + Math.pow(r - avgReturn, 2), 0) / returns.length)
       : 0;
-  const sharpeRatio = stdDev === 0 ? 0 : (avgReturn / stdDev) * Math.sqrt(252);
+  // Annualize by how many bars this dataset actually has per year, so a 5m
+  // run isn't scaled like daily bars. Daily data lands at ~252.
+  const spanYears = data.length > 1 ? (data[data.length - 1].time - data[0].time) / (365.25 * 24 * 60 * 60 * 1000) : 0;
+  const periodsPerYear = spanYears > 0 ? (data.length - 1) / spanYears : 252;
+  const sharpeRatio = stdDev === 0 ? 0 : (avgReturn / stdDev) * Math.sqrt(periodsPerYear);
 
   const firstPrice = data[0]?.close || 0;
   const lastPrice = data[data.length - 1]?.close || 0;

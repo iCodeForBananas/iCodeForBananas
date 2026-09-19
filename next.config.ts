@@ -5,6 +5,7 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/api/csv": ["./data/**"],
     "/api/data-files": ["./data/**"],
+    "/api/strategy-source": ["./app/strategies/**"],
   },
   async rewrites() {
     return [
