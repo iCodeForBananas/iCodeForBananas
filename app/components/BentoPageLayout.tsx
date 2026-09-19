@@ -35,7 +35,8 @@ export default function BentoPageLayout({
                   : "px-4 pt-2 pb-1.5 sm:px-6 sm:pt-3 sm:pb-2.5"
               }
             >
-              <div className='flex items-center gap-3'>
+              {/* Below lg the sidebar collapses to a fixed hamburger button in the top-left corner; clear it. */}
+              <div className='flex items-center gap-3 pl-8 lg:pl-0'>
                 <h1
                   className={`font-display text-20 sm:text-24 font-semibold ${titleClassName ?? "text-ink-primary"}`}
                 >
