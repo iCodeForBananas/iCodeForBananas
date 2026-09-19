@@ -25,9 +25,17 @@ export interface BacktestJobResult {
 }
 
 export interface BacktestProgress {
+  /** Variations finished so far, across every dataset and strategy. */
   completed: number;
+  /** Variations in the whole run. 0 until the worker has counted them. */
   total: number;
+  datasetIndex: number;
+  datasetCount: number;
   currentDataset?: string;
+  currentStrategy?: string;
+  phase: "starting" | "loading" | "running";
+  /** Date.now() when the run was started, for elapsed time and ETA. */
+  startedAt: number;
 }
 
 export function useBacktestWorker() {
@@ -58,7 +66,16 @@ export function useBacktestWorker() {
       const pending = pendingRef.current;
       if (!pending || msg.jobId !== pending.jobId) return;
       if (msg.type === "progress") {
-        setProgress({ completed: msg.completed, total: msg.total, currentDataset: msg.currentDataset });
+        setProgress((prev) => ({
+          completed: msg.completed,
+          total: msg.total,
+          datasetIndex: msg.datasetIndex,
+          datasetCount: msg.datasetCount,
+          currentDataset: msg.currentDataset,
+          currentStrategy: msg.currentStrategy,
+          phase: msg.phase,
+          startedAt: prev?.startedAt ?? Date.now(),
+        }));
         return;
       }
       if (msg.type === "done") {
@@ -101,7 +118,14 @@ export function useBacktestWorker() {
       const worker = ensureWorker();
       const jobId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       const job: BacktestJob = { type: "run", jobId, selectedFiles, runs };
-      setProgress({ completed: 0, total: selectedFiles.length });
+      setProgress({
+        completed: 0,
+        total: 0,
+        datasetIndex: 0,
+        datasetCount: selectedFiles.length,
+        phase: "starting",
+        startedAt: Date.now(),
+      });
       return new Promise<BacktestJobResult>((resolve, reject) => {
         pendingRef.current = { jobId, resolve, reject };
         worker.postMessage(job);

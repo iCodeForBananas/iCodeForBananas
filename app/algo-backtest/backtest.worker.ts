@@ -39,7 +39,20 @@ export interface BacktestJob {
 }
 
 export type BacktestWorkerMessage =
-  | { type: "progress"; jobId: string; completed: number; total: number; currentDataset?: string }
+  | {
+      type: "progress";
+      jobId: string;
+      /** Variations finished, across every dataset and strategy. */
+      completed: number;
+      /** Variations in the whole job: combinations × strategies × datasets. */
+      total: number;
+      datasetIndex: number;
+      datasetCount: number;
+      currentDataset?: string;
+      currentStrategy?: string;
+      /** "loading" while fetching the CSV and computing indicators. */
+      phase: "loading" | "running";
+    }
   | {
       type: "done";
       jobId: string;
@@ -172,24 +185,44 @@ async function runJob(job: BacktestJob): Promise<void> {
   const failedDatasets: string[] = [];
   const chartSliceCache = new Map<string, ReturnType<typeof calculateIndicatorsWithParams>>();
 
+  const variationsPerDataset = runConfigs.reduce((sum, c) => sum + c.combinations.length, 0);
+  const total = variationsPerDataset * selectedFiles.length;
+  const datasetCount = selectedFiles.length;
   let completed = 0;
-  const total = selectedFiles.length;
 
-  for (const datasetFile of selectedFiles) {
-    post({ type: "progress", jobId, completed, total, currentDataset: datasetFile });
+  // Posting on every variation would flood the main thread on fast runs, so
+  // progress goes out at most every PROGRESS_INTERVAL_MS, plus whenever the
+  // dataset or strategy changes.
+  const PROGRESS_INTERVAL_MS = 80;
+  let lastPost = 0;
+  const report = (
+    datasetIndex: number,
+    currentDataset: string,
+    phase: "loading" | "running",
+    currentStrategy?: string,
+    force = false,
+  ) => {
+    const now = Date.now();
+    if (!force && now - lastPost < PROGRESS_INTERVAL_MS) return;
+    lastPost = now;
+    post({ type: "progress", jobId, completed, total, datasetIndex, datasetCount, currentDataset, currentStrategy, phase });
+  };
+
+  for (const [datasetIndex, datasetFile] of selectedFiles.entries()) {
+    report(datasetIndex, datasetFile, "loading", undefined, true);
 
     let rawData: PricePoint[];
     try {
       rawData = await fetchCsv(datasetFile);
     } catch (err) {
       failedDatasets.push(`${datasetFile}: ${err instanceof Error ? err.message : "fetch error"}`);
-      completed++;
+      completed += variationsPerDataset;
       continue;
     }
 
     if (rawData.length === 0) {
       failedDatasets.push(`${datasetFile}: no data`);
-      completed++;
+      completed += variationsPerDataset;
       continue;
     }
 
@@ -203,6 +236,7 @@ async function runJob(job: BacktestJob): Promise<void> {
 
     for (const { run, combinations, riskSettings } of runConfigs) {
       const strategy = AVAILABLE_STRATEGIES[run.strategyId];
+      report(datasetIndex, datasetFile, "running", strategy.name, true);
       for (const params of combinations) {
         const result = runBacktestWithParams(
           dataWithIndicators,
@@ -219,6 +253,8 @@ async function runJob(job: BacktestJob): Promise<void> {
           strategyId: run.strategyId,
           strategyName: strategy.name,
         });
+        completed++;
+        report(datasetIndex, datasetFile, "running", strategy.name);
       }
     }
 
@@ -228,8 +264,6 @@ async function runJob(job: BacktestJob): Promise<void> {
         ? dataWithIndicators.slice(-MAX_CHART_BARS)
         : dataWithIndicators,
     );
-
-    completed++;
   }
 
   batchResults.sort((a, b) => b.totalPnlPercent - a.totalPnlPercent);
