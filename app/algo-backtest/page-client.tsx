@@ -23,7 +23,7 @@ import {
   Text,
   TextField,
 } from "@radix-ui/themes";
-import { Check, ChevronDown, ClipboardCopy, Play, Zap } from "lucide-react";
+import { Check, ChevronDown, ClipboardCopy, Play, X, Zap } from "lucide-react";
 import { cn } from "@/app/lib/utils";
 import { IndicatorData, PositionSide } from "@/app/types";
 import {
@@ -219,10 +219,18 @@ export default function AlgoBacktestPage() {
 
   const combinationCount = useMemo(() => generateCombinations(paramVariations).length, [paramVariations]);
 
-  // Toggle selection of all datasets with a given timeframe
+  // The datasets the ticker search currently shows. The timeframe chips and
+  // "All" act on these only: typing NQ and pressing 1D must pick NQ 1D, not
+  // every symbol's 1D file.
+  const filteredDatasets = useMemo(
+    () => availableDatasets.filter((ds) => ds.symbol.toLowerCase().includes(datasetSearch.toLowerCase())),
+    [availableDatasets, datasetSearch]
+  );
+
+  // Toggle selection of the visible datasets with a given timeframe
   const toggleTimeframe = useCallback(
     (timeframe: string) => {
-      const filesForTimeframe = availableDatasets
+      const filesForTimeframe = filteredDatasets
         .filter((ds) => ds.timeframe === timeframe)
         .map((ds) => ds.file);
       const allSelected = filesForTimeframe.every((f) => selectedFiles.includes(f));
@@ -232,7 +240,7 @@ export default function AlgoBacktestPage() {
         setSelectedFiles((prev) => [...new Set([...prev, ...filesForTimeframe])]);
       }
     },
-    [availableDatasets, selectedFiles]
+    [filteredDatasets, selectedFiles]
   );
 
   // Initialize params when strategy changes - load from localStorage or use defaults
@@ -808,9 +816,6 @@ export default function AlgoBacktestPage() {
   );
 
   const allStrategyIds = Object.keys(AVAILABLE_STRATEGIES);
-  const filteredDatasets = availableDatasets.filter((ds) =>
-    ds.symbol.toLowerCase().includes(datasetSearch.toLowerCase())
-  );
   const runLabel = isRunningBatch
     ? backtestProgress
       ? `Running ${backtestProgress.completed.toLocaleString()}/${backtestProgress.total ? backtestProgress.total.toLocaleString() : "…"}…`
@@ -858,7 +863,12 @@ export default function AlgoBacktestPage() {
               title='Data'
               actions={
                 <>
-                  <Button size='1' variant='ghost' onClick={() => setSelectedFiles(availableDatasets.map((ds) => ds.file))}>
+                  <Button
+                    size='1'
+                    variant='ghost'
+                    onClick={() => setSelectedFiles((prev) => [...new Set([...prev, ...filteredDatasets.map((ds) => ds.file)])])}
+                    title={datasetSearch ? "Select every dataset matching the search" : "Select every dataset"}
+                  >
                     All
                   </Button>
                   <Button
@@ -885,7 +895,8 @@ export default function AlgoBacktestPage() {
                 {uniqueTimeframes.length > 1 && (
                   <Flex wrap='wrap' gap='1'>
                     {uniqueTimeframes.map((tf) => {
-                      const filesForTf = availableDatasets.filter((ds) => ds.timeframe === tf).map((ds) => ds.file);
+                      const filesForTf = filteredDatasets.filter((ds) => ds.timeframe === tf).map((ds) => ds.file);
+                      if (filesForTf.length === 0) return null;
                       const allSelected = filesForTf.every((f) => selectedFiles.includes(f));
                       return (
                         <Button
@@ -911,10 +922,30 @@ export default function AlgoBacktestPage() {
                     ))}
                   </CheckboxGroup.Root>
                 </ScrollArea>
-                {selectedFiles.length === 0 && (
+                {selectedFiles.length === 0 ? (
                   <Text size='1' color='gray'>
                     Pick at least one dataset.
                   </Text>
+                ) : (
+                  // Everything that will run, including anything the search is
+                  // hiding, so a selection can never be invisible.
+                  <Flex wrap='wrap' gap='1' aria-label='Selected datasets'>
+                    {selectedFiles.map((file) => (
+                      <Badge key={file} variant='soft' className='gap-1 pr-0.5'>
+                        {availableDatasets.find((ds) => ds.file === file)?.label ?? file}
+                        <IconButton
+                          size='1'
+                          variant='ghost'
+                          radius='full'
+                          aria-label={`Remove ${availableDatasets.find((ds) => ds.file === file)?.label ?? file}`}
+                          onClick={() => setSelectedFiles((prev) => prev.filter((f) => f !== file))}
+                          className='m-0 h-4 w-4 min-w-0'
+                        >
+                          <X className='h-3 w-3' />
+                        </IconButton>
+                      </Badge>
+                    ))}
+                  </Flex>
                 )}
               </Flex>
             </Bento>
