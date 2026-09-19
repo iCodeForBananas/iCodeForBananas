@@ -41,6 +41,12 @@ export interface StrategyContext {
   index: number;
   series: (OHLCBar & IndicatorValues)[]; // Full historical series for lookback
   params: Record<string, number | boolean | string>; // Strategy parameters
+  /**
+   * The position open going into this bar's signal, null when flat. For a
+   * strategy whose exit isn't simply its opposite entry: it can return 'sell'
+   * to close a long on a weaker condition than it would open a short on.
+   */
+  position?: 'long' | 'short' | null;
 }
 
 export interface StrategySignal {

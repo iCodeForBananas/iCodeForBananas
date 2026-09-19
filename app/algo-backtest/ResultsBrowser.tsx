@@ -62,6 +62,7 @@ type MetricKey = keyof typeof METRICS;
 const ALL = "__all__";
 /** A wide sweep can return thousands of results; past this the list stops earning its render cost. */
 const MAX_ROWS = 500;
+const BEATS_BUY_HOLD_KEY = "algo-backtest-beats-buy-hold";
 
 /** Every result from a run, filterable and sortable by any metric it collected. */
 export default function ResultsBrowser({
@@ -80,7 +81,25 @@ export default function ResultsBrowser({
   const [direction, setDirection] = useState<Direction>("desc");
   const [strategy, setStrategy] = useState(ALL);
   const [dataset, setDataset] = useState(ALL);
-  const [beatsBuyHold, setBeatsBuyHold] = useState(false);
+  // Remembered across visits. This list only renders once a run has results,
+  // so it never renders on the server and can read storage up front. Storage
+  // can still be unavailable (private window, blocked), so it's best-effort.
+  const [beatsBuyHold, setBeatsBuyHold] = useState(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      return localStorage.getItem(BEATS_BUY_HOLD_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
+  const changeBeatsBuyHold = (next: boolean) => {
+    setBeatsBuyHold(next);
+    try {
+      localStorage.setItem(BEATS_BUY_HOLD_KEY, next ? "1" : "0");
+    } catch {
+      // Not remembered this time; the switch still works.
+    }
+  };
 
   const strategies = useMemo(() => {
     const seen = new Map<string, string>();
@@ -184,7 +203,7 @@ export default function ResultsBrowser({
         )}
         <Text as='label' size='1' color='gray'>
           <Flex gap='2' align='center'>
-            <Switch size='1' checked={beatsBuyHold} onCheckedChange={setBeatsBuyHold} />
+            <Switch size='1' checked={beatsBuyHold} onCheckedChange={changeBeatsBuyHold} />
             Only results that beat buy &amp; hold
           </Flex>
         </Text>

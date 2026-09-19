@@ -507,12 +507,14 @@ export function runBacktestWithParams(
       }
     }
 
+    const held = position as OpenPosition | null;
     const signal = strategy.handler({
       current,
       previous,
       index: i,
       series: data, // full array — strategies use absolute `index`, not series.length
       params,
+      position: held ? (held.side === PositionSide.LONG ? "long" : "short") : null,
     });
 
     if (signal.action === "buy" && !position && !exitedViaRiskThisBar) {

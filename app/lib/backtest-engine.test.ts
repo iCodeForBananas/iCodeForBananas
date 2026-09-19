@@ -85,6 +85,36 @@ describe("costs and sizing", () => {
   });
 });
 
+describe("position passed to the strategy", () => {
+  it("tells the handler what is open going into each bar", () => {
+    const seen: (string | null | undefined)[] = [];
+    const strategy: StrategyDefinition = {
+      id: "watcher",
+      name: "Watcher",
+      description: "test",
+      handler: ({ index, position }) => {
+        seen[index] = position;
+        return { action: index === 1 ? "buy" : index === 3 ? "sell" : "hold", reason: "" };
+      },
+    };
+    runBacktestWithParams(bars(Array(5).fill([100, 100, 100, 100])), strategy, {}, 10_000, { stopLossPercent: 0, takeProfitPercent: 0 });
+    expect(seen.slice(1)).toEqual([null, "long", "long", null]);
+  });
+
+  it("lets a long-only exit close a long without opening a short when flat", () => {
+    // Sells only while long, the way Alligator's mouth-closing exit does.
+    const strategy: StrategyDefinition = {
+      id: "exit-only",
+      name: "Exit only",
+      description: "test",
+      handler: ({ index, position }) =>
+        index === 1 ? { action: "buy", reason: "" } : position === "long" ? { action: "sell", reason: "exit" } : { action: "hold", reason: "" },
+    };
+    const r = runBacktestWithParams(bars(Array(5).fill([100, 100, 100, 100])), strategy, {}, 10_000, { stopLossPercent: 0, takeProfitPercent: 0 }, true);
+    expect(r.trades.map((t) => [t.side, t.reason])).toEqual([["LONG", "exit"]]);
+  });
+});
+
 describe("equity curve and metrics", () => {
   it("marks open positions to market, so drawdown sees open-trade losses", () => {
     const r = run(bars([[100, 100, 100, 100], [100, 100, 100, 100], [80, 80, 80, 80], [100, 100, 100, 100]]), { 1: "buy", 3: "sell" });

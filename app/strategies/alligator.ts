@@ -83,7 +83,7 @@ const parameters: StrategyParameter[] = [
   },
 ];
 
-const handler: StrategyHandler = ({ index, series, params }) => {
+const handler: StrategyHandler = ({ index, series, params, position }) => {
   const jawPeriod = (params.jawPeriod as number) || 13;
   const jawShift = (params.jawShift as number) || 8;
   const teethPeriod = (params.teethPeriod as number) || 8;
@@ -133,6 +133,24 @@ const handler: StrategyHandler = ({ index, series, params }) => {
     return { action: 'hold', reason: 'Waiting for Alligator indicators' };
   }
 
+  // Exits come first: the mouth closing — Lips crossing back through Teeth —
+  // ends the trend the trade was riding. Waiting for the opposite entry instead
+  // (the mouth fully opening the other way) held longs for years, since after a
+  // rally the Lips usually dip under the Teeth while the Teeth are still above
+  // the Jaw, and the full bearish setup may never come.
+  if (position === 'long' && prevLips >= prevTeeth && lips < teeth) {
+    return {
+      action: 'sell',
+      reason: `Alligator mouth closing — Lips(${lips.toFixed(2)}) crossed below Teeth(${teeth.toFixed(2)})`,
+    };
+  }
+  if (position === 'short' && prevLips <= prevTeeth && lips > teeth) {
+    return {
+      action: 'buy',
+      reason: `Alligator mouth closing — Lips(${lips.toFixed(2)}) crossed above Teeth(${teeth.toFixed(2)})`,
+    };
+  }
+
   // Bullish: Lips crosses above Teeth while Teeth is already above Jaw (mouth opens upward)
   if (prevLips <= prevTeeth && lips > teeth && teeth > jaw) {
     return {
@@ -156,7 +174,7 @@ const strategy: StrategyDefinition = {
   id: 'alligator',
   name: 'Alligator',
   description:
-    "Bill Williams' Alligator: three SMAs (Jaw 13/8, Teeth 8/5, Lips 5/3) with time offsets. Buys when the mouth opens upward (Lips > Teeth > Jaw crossover), sells when it opens downward.",
+    "Bill Williams' Alligator: three SMAs (Jaw 13/8, Teeth 8/5, Lips 5/3) with time offsets. Buys when the mouth opens upward (Lips > Teeth > Jaw crossover), sells when it opens downward, and exits when the mouth closes (Lips cross back through Teeth).",
   handler,
   parameters,
 };
