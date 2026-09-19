@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { runBacktestWithParams } from "./backtest-engine";
+import { generateCombinations, MAX_BATCH_RUNS, runBacktestWithParams } from "./backtest-engine";
 import type { IndicatorData } from "@/app/types";
 import type { StrategyDefinition } from "@/app/strategies";
 
@@ -102,5 +102,42 @@ describe("equity curve and metrics", () => {
     const hourlyData = bars(rows).map((b, i) => ({ ...b, time: i * (DAY / 24) }));
     const hourly = run(hourlyData, { 1: "buy" });
     expect(hourly.sharpeRatio / daily.sharpeRatio).toBeCloseTo(Math.sqrt(24), 1);
+  });
+});
+
+describe("parameter sweep", () => {
+  const values = (combos: Record<string, unknown>[], key: string) => [...new Set(combos.map((c) => c[key]))];
+
+  it("runs the full grid when it fits", () => {
+    const combos = generateCombinations([
+      { key: "a", min: 1, max: 5, step: 1 },
+      { key: "b", min: 10, max: 30, step: 10 },
+    ]);
+    expect(combos).toHaveLength(15);
+  });
+
+  it("spreads an oversized grid across every parameter's range instead of pinning the first ones", () => {
+    // Momentum (ROC)'s default ranges: 24 × 41 × 31 × 21 combinations.
+    const combos = generateCombinations([
+      { key: "rocPeriod", min: 5, max: 120, step: 5 },
+      { key: "entryThreshold", min: 0, max: 20, step: 0.5 },
+      { key: "exitThreshold", min: -10, max: 5, step: 0.5 },
+      { key: "smoothing", min: 0, max: 20, step: 1 },
+    ]);
+    expect(combos.length).toBeLessThanOrEqual(MAX_BATCH_RUNS);
+    for (const key of ["rocPeriod", "entryThreshold", "exitThreshold", "smoothing"]) {
+      expect(values(combos, key).length).toBeGreaterThan(1);
+    }
+    expect(values(combos, "rocPeriod")).toContain(5);
+    expect(values(combos, "rocPeriod")).toContain(120);
+  });
+
+  it("keeps a fixed parameter fixed", () => {
+    const combos = generateCombinations([
+      { key: "fixed", min: 7, max: 7, step: 1 },
+      { key: "wide", min: 1, max: 200, step: 1 },
+    ]);
+    expect(values(combos, "fixed")).toEqual([7]);
+    expect(combos).toHaveLength(MAX_BATCH_RUNS);
   });
 });

@@ -29,37 +29,73 @@ export interface ParameterVariationConfig {
   step: number;
 }
 
+// Hard ceiling on values generated for one parameter, so a tiny step over a
+// wide range can't allocate millions of numbers before sampling.
+const MAX_RANGE_VALUES = 10_000;
+
 export function generateRangeValues(min: number, max: number, step: number): number[] {
   if (step <= 0) return [min];
   const values: number[] = [];
   for (let v = min; v <= max + step * 1e-9; v += step) {
     values.push(Math.round(v / step) * step);
-    if (values.length >= MAX_BATCH_RUNS) break;
+    if (values.length >= MAX_RANGE_VALUES) break;
   }
   return values;
 }
 
+/** `k` evenly spaced picks from `values`, always including both ends. */
+function sampleEvenly<T>(values: T[], k: number): T[] {
+  if (k >= values.length) return values;
+  if (k <= 1) return [values[Math.floor((values.length - 1) / 2)]];
+  const picks: T[] = [];
+  for (let i = 0; i < k; i++) picks.push(values[Math.round((i * (values.length - 1)) / (k - 1))]);
+  return picks;
+}
+
+/**
+ * The cartesian product of every parameter's range, capped at MAX_BATCH_RUNS.
+ *
+ * When the full grid is bigger than the cap, each parameter is thinned to
+ * evenly spaced values across its whole range, with the budget spread so the
+ * product fits. Truncating the product in order instead (what this used to
+ * do) pinned every parameter but the last one or two to its minimum: a
+ * default Momentum (ROC) sweep ran fifty variants of rocPeriod=5,
+ * entryThreshold=0, exitThreshold=-10.
+ */
 export function generateCombinations(
   variations: ParameterVariationConfig[]
 ): Record<string, number | boolean | string>[] {
-  if (variations.length === 0) return [{}];
+  const ranges = variations
+    .map((v) => ({ key: v.key, values: generateRangeValues(v.min, v.max, v.step) }))
+    .filter((r) => r.values.length > 0);
+  if (ranges.length === 0) return [{}];
 
-  let combinations: Record<string, number | boolean | string>[] = [{}];
-
-  for (const variation of variations) {
-    const values = generateRangeValues(variation.min, variation.max, variation.step);
-    if (values.length === 0) continue;
-
-    const newCombinations: Record<string, number | boolean | string>[] = [];
-    outer: for (const combo of combinations) {
-      for (const value of values) {
-        newCombinations.push({ ...combo, [variation.key]: value });
-        if (newCombinations.length >= MAX_BATCH_RUNS) break outer;
+  // Grow each parameter's sample count one step at a time, always giving the
+  // next step to the parameter that is currently sampled most sparsely
+  // relative to its range, until the next step would break the cap.
+  const counts = ranges.map(() => 1);
+  const product = () => counts.reduce((a, b) => a * b, 1);
+  for (;;) {
+    let best = -1;
+    let bestSparsity = 0;
+    for (let i = 0; i < ranges.length; i++) {
+      if (counts[i] >= ranges[i].values.length) continue;
+      if ((product() / counts[i]) * (counts[i] + 1) > MAX_BATCH_RUNS) continue;
+      const sparsity = ranges[i].values.length / counts[i];
+      if (sparsity > bestSparsity) {
+        best = i;
+        bestSparsity = sparsity;
       }
     }
-    combinations = newCombinations;
+    if (best === -1) break;
+    counts[best]++;
   }
 
+  let combinations: Record<string, number | boolean | string>[] = [{}];
+  ranges.forEach((range, i) => {
+    const values = sampleEvenly(range.values, counts[i]);
+    combinations = combinations.flatMap((combo) => values.map((value) => ({ ...combo, [range.key]: value })));
+  });
   return combinations;
 }
 
