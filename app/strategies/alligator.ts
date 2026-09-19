@@ -1,7 +1,7 @@
 import { StrategyDefinition, StrategyHandler, StrategyParameter } from './types';
 
 // Smoothed Moving Average (SMMA / RMA) — first value is SMA, subsequent values are smoothed
-function calculateSMMA(closes: number[], period: number): number[] {
+export function calculateSMMA(closes: number[], period: number): number[] {
   const result: number[] = new Array(closes.length).fill(NaN);
   if (closes.length < period) return result;
 

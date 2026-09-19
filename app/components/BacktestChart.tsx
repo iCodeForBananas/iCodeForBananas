@@ -18,11 +18,14 @@ import {
   type CandlestickData,
   type LineData,
   type HistogramData,
+  type WhitespaceData,
 } from "lightweight-charts";
 import { IconButton, Text } from "@radix-ui/themes";
 import { Minus, Plus } from "lucide-react";
 import { IndicatorData, BacktestTrade, PositionSide } from "@/app/types";
 import { useChartTheme, type ChartTheme } from "./chartTheme";
+import { calculateSMMA } from "@/app/strategies/alligator";
+import { getSmoothedRocArray } from "@/app/strategies/momentum-roc";
 
 interface BacktestChartProps {
   data: IndicatorData[];
@@ -131,10 +134,30 @@ function computeIndicators(
       break;
     }
     case "donchian-channel": {
+      // The strategy tests each close against the previous bar's channel (the
+      // current bar's own high/low is inside its band), so draw it one bar late
+      // — a breakout is then a close through the drawn line.
       const period = num("period", 20);
-      priceLines.push({ values: data.map((d) => d[`donchian_${period}_upperBand` as keyof IndicatorData] as number | undefined), color: "#06b6d4", label: `DC ${period}`, dashed: true });
-      priceLines.push({ values: data.map((d) => d[`donchian_${period}_lowerBand` as keyof IndicatorData] as number | undefined), color: "#06b6d4", label: "", dashed: true });
-      priceLines.push({ values: data.map((d) => d[`donchian_${period}_midLine` as keyof IndicatorData] as number | undefined), color: "#22d3ee", label: "", lineWidth: 1, dashed: true });
+      const center = num("centerLinePeriod", 10);
+      const prevBar = (key: string) =>
+        data.map((_, i) => (i === 0 ? undefined : (data[i - 1][key as keyof IndicatorData] as number | undefined)));
+      priceLines.push({ values: prevBar(`donchian_${period}_upperBand`), color: "#06b6d4", label: `DC ${period}`, dashed: true });
+      priceLines.push({ values: prevBar(`donchian_${period}_lowerBand`), color: "#06b6d4", label: "", dashed: true });
+      priceLines.push({ values: prevBar(`donchian_${center}_midLine`), color: "#22d3ee", label: `Mid ${center}`, lineWidth: 1, dashed: true });
+      break;
+    }
+    case "alligator": {
+      // Each SMMA is read `shift` bars back, as the strategy reads it.
+      const line = (period: number, shift: number) => {
+        const smma = calculateSMMA(closes, period);
+        return data.map((_, i) => {
+          const v = smma[i - shift];
+          return v === undefined || Number.isNaN(v) ? undefined : v;
+        });
+      };
+      priceLines.push({ values: line(num("jawPeriod", 13), num("jawShift", 8)), color: "#3b82f6", label: "Jaw" });
+      priceLines.push({ values: line(num("teethPeriod", 8), num("teethShift", 5)), color: "#ef4444", label: "Teeth" });
+      priceLines.push({ values: line(num("lipsPeriod", 5), num("lipsShift", 3)), color: "#22c55e", label: "Lips" });
       break;
     }
     case "breakout": {
@@ -224,13 +247,17 @@ function computeIndicators(
       break;
     }
     case "macd-crossover": {
+      // The strategy reads the MACD built from this result's own periods, not
+      // the default 12/26/9 — plot that same one or the crosses won't match.
+      const k = `${num("fastPeriod", 12)}_${num("slowPeriod", 26)}_${num("signalPeriod", 9)}`;
+      const field = (name: string) => data.map((d) => d[`${name}_${k}` as keyof IndicatorData] as number | undefined);
       oscillator = {
         type: "macd",
         series: [
-          { values: data.map((d) => d.macd), color: "#3b82f6", label: "MACD" },
-          { values: data.map((d) => d.macdSignal), color: "#f97316", label: "Signal" },
+          { values: field("macd"), color: "#3b82f6", label: `MACD ${k.replace(/_/g, "/")}` },
+          { values: field("macdSignal"), color: "#f97316", label: "Signal" },
         ],
-        histogram: { values: data.map((d) => d.macdHistogram), positiveColor: "#22c55e", negativeColor: "#ef4444" },
+        histogram: { values: field("macdHistogram"), positiveColor: "#22c55e", negativeColor: "#ef4444" },
         hLines: [{ value: 0, color: "#475569", dashed: true }],
       };
       break;
@@ -303,20 +330,23 @@ function computeIndicators(
       break;
     }
     case "momentum-roc": {
+      // The series the strategy trades on: EMA-smoothed ROC once there's
+      // enough history for it, raw ROC before that.
       const rocPeriod = num("rocPeriod", 20);
       const smoothing = num("smoothing", 5);
-      const raw: (number | undefined)[] = closes.map((c, i) =>
-        i < rocPeriod ? undefined : ((c - closes[i - rocPeriod]) / closes[i - rocPeriod]) * 100,
-      );
-      const smoothed: (number | undefined)[] = raw.map((_, i) => {
-        if (raw[i] === undefined) return undefined;
-        const sl = raw.slice(Math.max(0, i - smoothing + 1), i + 1).filter((v): v is number => v !== undefined);
-        return sl.length < smoothing ? undefined : sl.reduce((a, b) => a + b, 0) / sl.length;
+      const ema = smoothing > 1 && data.length > rocPeriod ? getSmoothedRocArray(data, rocPeriod, smoothing) : [];
+      const smoothed: (number | undefined)[] = closes.map((c, i) => {
+        if (i < rocPeriod) return undefined;
+        if (smoothing > 1 && i >= rocPeriod + smoothing && !Number.isNaN(ema[i])) return ema[i];
+        return ((c - closes[i - rocPeriod]) / closes[i - rocPeriod]) * 100;
       });
       oscillator = {
         type: "roc",
         series: [{ values: smoothed, color: "#a855f7", label: `ROC(${rocPeriod})` }],
-        hLines: [{ value: 0, color: "#475569", dashed: true }],
+        hLines: [
+          { value: num("entryThreshold", 2), color: "#22c55e", dashed: true },
+          { value: num("exitThreshold", 0), color: "#ef4444", dashed: true },
+        ],
       };
       break;
     }
@@ -325,15 +355,16 @@ function computeIndicators(
   return { priceLines, oscillator };
 }
 
-// Map (number | undefined)[] → LineData[] aligned with chart bars by time.
-function toLineData(times: number[], values: (number | undefined)[]): LineData<Time>[] {
-  const out: LineData<Time>[] = [];
-  for (let i = 0; i < times.length; i++) {
+// Map (number | undefined)[] → one point per chart bar. Bars with no value
+// become whitespace instead of being dropped: the price and oscillator panes
+// are synced by logical (bar) index, so the oscillator has to hold every bar
+// the candles do, or its warm-up gap shifts every line left of the trades.
+function toLineData(times: number[], values: (number | undefined)[]): (LineData<Time> | WhitespaceData<Time>)[] {
+  return times.map((t, i) => {
     const v = values[i];
-    if (v === undefined || !Number.isFinite(v)) continue;
-    out.push({ time: (times[i] / 1000) as Time, value: v });
-  }
-  return out;
+    const time = (t / 1000) as Time;
+    return v === undefined || !Number.isFinite(v) ? { time } : { time, value: v };
+  });
 }
 
 /** Surface, text, grid and scale colors for a chart, from the design tokens. */
@@ -585,10 +616,13 @@ const BacktestChart: React.FC<BacktestChartProps> = ({
 
     if (oscillator.histogram) {
       const histo = chart.addSeries(HistogramSeries, { priceLineVisible: false, lastValueVisible: false });
-      const histoData: HistogramData<Time>[] = [];
+      const histoData: (HistogramData<Time> | WhitespaceData<Time>)[] = [];
       for (let i = 0; i < times.length; i++) {
         const v = oscillator.histogram.values[i];
-        if (v === undefined || !Number.isFinite(v)) continue;
+        if (v === undefined || !Number.isFinite(v)) {
+          histoData.push({ time: (times[i] / 1000) as Time });
+          continue;
+        }
         histoData.push({
           time: (times[i] / 1000) as Time,
           value: v,

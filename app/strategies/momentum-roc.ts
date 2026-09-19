@@ -12,7 +12,7 @@ type Series = (OHLCBar & IndicatorValues)[];
 // automatically GC'd when the backtest run releases the series.
 const rocEmaCache = new WeakMap<Series, Map<string, number[]>>();
 
-function getSmoothedRocArray(series: Series, rocPeriod: number, smoothing: number): number[] {
+export function getSmoothedRocArray(series: Series, rocPeriod: number, smoothing: number): number[] {
   let seriesMap = rocEmaCache.get(series);
   if (!seriesMap) {
     seriesMap = new Map();

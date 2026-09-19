@@ -19,7 +19,6 @@ import {
   ScrollArea,
   Switch,
   Table,
-  Tabs,
   Text,
   TextField,
 } from "@radix-ui/themes";
@@ -36,10 +35,16 @@ import {
   ParameterVariationConfig,
   INITIAL_CAPITAL,
 } from "@/app/lib/backtest-engine";
-import { useBacktestWorker } from "./useBacktestWorker";
+import { useBacktestWorker, type StrategyRun } from "./useBacktestWorker";
 import BacktestProgressPanel from "./BacktestProgressPanel";
+import ResultsBrowser from "./ResultsBrowser";
 
 const DEFAULT_VISIBLE_CANDLES = 300;
+// Chart rows fetched for results outside the batch's top ten. Each is a whole
+// dataset (up to ~18k bars), so only the last few are kept.
+const MAX_DETAIL_CHARTS = 6;
+
+const resultKey = (r: ParameterizedResult) => `${r.strategyId ?? ""}|${r.dataset ?? ""}|${r.label}`;
 
 // localStorage keys
 const STORAGE_KEY_GLOBAL = "algo-backtest-global";
@@ -177,6 +182,11 @@ export default function AlgoBacktestPage() {
   // Per-dataset indicator data cache for batch mode (maps dataset file -> IndicatorData[])
   // useRef instead of useState to avoid React holding old+new copies simultaneously
   const datasetIndicatorCache = useRef<Record<string, IndicatorData[]>>({});
+  // Chart rows for results the batch didn't keep data for, keyed by resultKey.
+  const detailChartCache = useRef(new Map<string, IndicatorData[]>());
+  // The per-strategy settings the last run used, to re-run any one result.
+  const lastRunsRef = useRef<StrategyRun[]>([]);
+  const [detailLoading, setDetailLoading] = useState(false);
 
   // Selected trade for chart highlighting
   const [selectedTradeId, setSelectedTradeId] = useState<string | null>(null);
@@ -200,7 +210,12 @@ export default function AlgoBacktestPage() {
 
   // Web Worker — owns all backtest compute. Replaces /api/backtest, which was
   // OOMing on Vercel (1.8 GB lambda heap) under multi-strategy / wide sweeps.
-  const { run: runBacktestWorker, cancel: cancelBacktest, progress: backtestProgress } = useBacktestWorker();
+  const {
+    run: runBacktestWorker,
+    detail: runBacktestDetail,
+    cancel: cancelBacktest,
+    progress: backtestProgress,
+  } = useBacktestWorker();
 
   // Unique timeframes derived from available datasets
   const uniqueTimeframes = useMemo(() => {
@@ -405,7 +420,9 @@ export default function AlgoBacktestPage() {
     setIsRunningBatch(true);
     setError(null);
     setResults([]);
+    setSelectedTradeId(null);
     datasetIndicatorCache.current = {};
+    detailChartCache.current.clear();
 
     // Build per-strategy run configs. Active strategy uses live editor state.
     const perStrategyRuns = selectedStrategyIds
@@ -426,6 +443,7 @@ export default function AlgoBacktestPage() {
         return buildSavedRun(sid);
       })
       .filter((r): r is NonNullable<typeof r> => r !== null);
+    lastRunsRef.current = perStrategyRuns;
 
     try {
       const { results: workerResults, indicatorDataByDataset, failedDatasets } =
@@ -796,15 +814,47 @@ export default function AlgoBacktestPage() {
 
   // Backtest only runs on explicit button click ("Run N Variations") — no auto-run on file or param change.
 
-  // Update chart data when switching between result tabs with different datasets
-  useEffect(() => {
-    const activeResult = results[activeResultTab];
-    if (activeResult?.dataset && datasetIndicatorCache.current[activeResult.dataset]) {
-      setIndicatorData(datasetIndicatorCache.current[activeResult.dataset]);
-    }
-  }, [activeResultTab, results]);
-
   const activeResult = results[activeResultTab];
+
+  // Point the chart at the selected result. The batch only keeps trades and
+  // chart rows for its top ten, so anything else is re-run on its own first.
+  useEffect(() => {
+    if (!activeResult) return;
+    const key = resultKey(activeResult);
+    const chartRows =
+      detailChartCache.current.get(key) ??
+      (activeResult.dataset ? datasetIndicatorCache.current[activeResult.dataset] : undefined);
+    const missingTrades = activeResult.totalTrades > 0 && activeResult.trades.length === 0;
+    if (chartRows && !missingTrades) {
+      setIndicatorData(chartRows);
+      setDetailLoading(false);
+      return;
+    }
+    const run = lastRunsRef.current.find((r) => r.strategyId === activeResult.strategyId);
+    if (!run || !activeResult.dataset) return;
+
+    let stale = false;
+    setDetailLoading(true);
+    runBacktestDetail(activeResult.dataset, run, activeResult.params)
+      .then(({ result, indicatorData: rows }) => {
+        if (stale) return;
+        const cache = detailChartCache.current;
+        cache.set(key, rows);
+        while (cache.size > MAX_DETAIL_CHARTS) cache.delete(cache.keys().next().value!);
+        // Patch trades in by identity rather than index, in case the list moved.
+        setResults((prev) =>
+          prev.map((r) => (resultKey(r) === key ? { ...r, trades: result.trades, equityCurve: result.equityCurve } : r)),
+        );
+      })
+      .catch((err: unknown) => {
+        if (stale) return;
+        setDetailLoading(false);
+        console.error("Failed to load result detail:", err);
+      });
+    return () => {
+      stale = true;
+    };
+  }, [activeResult, runBacktestDetail]);
 
   const chartTrades = useMemo(
     () =>
@@ -1211,38 +1261,7 @@ export default function AlgoBacktestPage() {
             </Flex>
           ) : (
             <Flex direction='column' gap='3' className='min-w-0'>
-              {results.length > 1 && (
-                <Tabs.Root value={String(activeResultTab)} onValueChange={(v) => setActiveResultTab(Number(v))}>
-                  <Tabs.List size='1' className='overflow-x-auto'>
-                    {results.slice(0, 10).map((result, idx) => {
-                      const showStrategy =
-                        new Set(results.map((r) => r.strategyId).filter(Boolean)).size > 1 && result.strategyName;
-                      return (
-                        <Tabs.Trigger
-                          key={idx}
-                          value={String(idx)}
-                          title={`${result.strategyName ?? ""} ${result.datasetLabel ?? ""} ${result.label}`.trim()}
-                        >
-                          <Flex gap='1' className='whitespace-nowrap'>
-                            #{idx + 1}
-                            {showStrategy && <span>{result.strategyName}</span>}
-                            <Text color={result.totalPnlPercent >= 0 ? "green" : "red"}>
-                              {formatSigned(result.totalPnlPercent, 1)}%
-                            </Text>
-                          </Flex>
-                        </Tabs.Trigger>
-                      );
-                    })}
-                    {results.length > 10 && (
-                      <Text size='1' color='gray' className='self-center whitespace-nowrap px-3'>
-                        +{results.length - 10} more
-                      </Text>
-                    )}
-                  </Tabs.List>
-                </Tabs.Root>
-              )}
-
-              {activeResult && results.length > 1 && (
+              {activeResult && (
                 <Flex wrap='wrap' gap='4' className='gap-y-1'>
                   {activeResult.strategyName && (
                     <Text size='1' color='gray'>
@@ -1343,24 +1362,71 @@ export default function AlgoBacktestPage() {
                 </>
               )}
 
-              <Bento className='overflow-hidden p-0'>
-                <div className='h-[420px] sm:h-[640px]'>
-                  <BacktestChart
-                    data={indicatorData}
-                    trades={chartTrades}
-                    visibleCandles={visibleCandles}
-                    onVisibleCandlesChange={setVisibleCandles}
-                    selectedStrategyId={activeResult?.strategyId ?? selectedStrategyId}
-                    currentParams={activeResult?.params ?? currentParams}
-                    selectedTradeId={selectedTradeId}
+              <div className='grid grid-cols-[minmax(0,1fr)] gap-3 lg:h-[calc(100dvh-2rem)] lg:min-h-[560px] lg:grid-cols-[minmax(300px,380px)_minmax(0,1fr)]'>
+                <div className='h-[50dvh] min-h-0 lg:h-auto'>
+                  <ResultsBrowser
+                    results={results}
+                    activeIndex={activeResultTab}
+                    onSelect={(index) => {
+                      setActiveResultTab(index);
+                      setSelectedTradeId(null);
+                    }}
+                    datasetLabel={(file) => availableDatasets.find((d) => d.file === file)?.label ?? file}
                   />
                 </div>
-                {showEquityCurve && activeResult && (
-                  <div className='h-48 border-t border-line-subtle'>
-                    <EquityCurveChart equityCurve={activeResult.equityCurve} initialCapital={INITIAL_CAPITAL} />
-                  </div>
-                )}
-              </Bento>
+                <div className='h-[80dvh] min-h-0 lg:h-auto'>
+                  <Bento
+                    fill
+                    title={
+                      activeResult
+                        ? [
+                            activeResult.strategyName,
+                            activeResult.dataset &&
+                              (availableDatasets.find((d) => d.file === activeResult.dataset)?.label ?? activeResult.dataset),
+                          ]
+                            .filter(Boolean)
+                            .join(" · ") || "Chart"
+                        : "Chart"
+                    }
+                    actions={
+                      activeResult && (
+                        <Text size='1' color='gray'>
+                          {activeResult.totalTrades} trades
+                        </Text>
+                      )
+                    }
+                    bodyClassName='flex flex-col p-0 overflow-hidden'
+                  >
+                    <div className='relative min-h-[240px] flex-1'>
+                      <BacktestChart
+                        data={indicatorData}
+                        trades={chartTrades}
+                        visibleCandles={visibleCandles}
+                        onVisibleCandlesChange={setVisibleCandles}
+                        selectedStrategyId={activeResult?.strategyId ?? selectedStrategyId}
+                        currentParams={activeResult?.params ?? currentParams}
+                        selectedTradeId={selectedTradeId}
+                      />
+                      {detailLoading && (
+                        <Flex
+                          align='center'
+                          justify='center'
+                          className='absolute inset-0 z-20 bg-[var(--color-panel-translucent)] backdrop-blur-sm'
+                        >
+                          <Text size='2' color='gray'>
+                            Loading trades…
+                          </Text>
+                        </Flex>
+                      )}
+                    </div>
+                    {showEquityCurve && activeResult && activeResult.equityCurve.length > 0 && (
+                      <div className='h-40 shrink-0 border-t border-line-subtle'>
+                        <EquityCurveChart equityCurve={activeResult.equityCurve} initialCapital={INITIAL_CAPITAL} />
+                      </div>
+                    )}
+                  </Bento>
+                </div>
+              </div>
 
               {activeResult && activeResult.trades.length > 0 && (
                 <Bento title={`Trade log · ${activeResult.trades.length} trades`}>

@@ -3,25 +3,19 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { IndicatorData } from "@/app/types";
 import { ParameterizedResult } from "@/app/strategies";
-import { ParameterVariationConfig } from "@/app/lib/backtest-engine";
-import type { BacktestJob, BacktestWorkerMessage } from "./backtest.worker";
+import type { BacktestDetailJob, BacktestJob, BacktestWorkerMessage, StrategyRun } from "./backtest.worker";
 
-interface StrategyRun {
-  strategyId: string;
-  paramVariations: ParameterVariationConfig[];
-  currentParams: Record<string, number | boolean | string>;
-  stopLossPercent: number;
-  takeProfitPercent: number;
-  enableShorts: boolean;
-  positionSizePercent: number;
-  commissionBps: number;
-  slippageBps: number;
-}
+export type { StrategyRun };
 
 export interface BacktestJobResult {
   results: ParameterizedResult[];
   indicatorDataByDataset: Record<string, IndicatorData[]>;
   failedDatasets: string[];
+}
+
+export interface BacktestDetail {
+  result: ParameterizedResult;
+  indicatorData: IndicatorData[];
 }
 
 export interface BacktestProgress {
@@ -45,7 +39,16 @@ export function useBacktestWorker() {
     resolve: (value: BacktestJobResult) => void;
     reject: (err: Error) => void;
   } | null>(null);
+  const detailsRef = useRef(
+    new Map<string, { resolve: (value: BacktestDetail) => void; reject: (err: Error) => void }>(),
+  );
   const [progress, setProgress] = useState<BacktestProgress | null>(null);
+
+  // Terminating the worker drops whatever it was doing, detail runs included.
+  const rejectDetails = useCallback((reason: string) => {
+    for (const d of detailsRef.current.values()) d.reject(new Error(reason));
+    detailsRef.current.clear();
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -53,8 +56,9 @@ export function useBacktestWorker() {
       workerRef.current = null;
       pendingRef.current?.reject(new Error("Worker terminated"));
       pendingRef.current = null;
+      rejectDetails("Worker terminated");
     };
-  }, []);
+  }, [rejectDetails]);
 
   const ensureWorker = useCallback((): Worker => {
     if (workerRef.current) return workerRef.current;
@@ -63,6 +67,13 @@ export function useBacktestWorker() {
     });
     worker.addEventListener("message", (event: MessageEvent<BacktestWorkerMessage>) => {
       const msg = event.data;
+      const detail = detailsRef.current.get(msg.jobId);
+      if (detail) {
+        detailsRef.current.delete(msg.jobId);
+        if (msg.type === "detail") detail.resolve({ result: msg.result, indicatorData: msg.indicatorData });
+        else if (msg.type === "error") detail.reject(new Error(msg.error));
+        return;
+      }
       const pending = pendingRef.current;
       if (!pending || msg.jobId !== pending.jobId) return;
       if (msg.type === "progress") {
@@ -95,6 +106,7 @@ export function useBacktestWorker() {
       }
     });
     worker.addEventListener("error", (event) => {
+      rejectDetails(event.message || "Worker error");
       const pending = pendingRef.current;
       if (!pending) return;
       pendingRef.current = null;
@@ -103,7 +115,7 @@ export function useBacktestWorker() {
     });
     workerRef.current = worker;
     return worker;
-  }, []);
+  }, [rejectDetails]);
 
   const run = useCallback(
     (selectedFiles: string[], runs: StrategyRun[]): Promise<BacktestJobResult> => {
@@ -114,6 +126,7 @@ export function useBacktestWorker() {
         workerRef.current = null;
         pendingRef.current.reject(new Error("Superseded by new job"));
         pendingRef.current = null;
+        rejectDetails("Superseded by new job");
       }
       const worker = ensureWorker();
       const jobId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -131,6 +144,20 @@ export function useBacktestWorker() {
         worker.postMessage(job);
       });
     },
+    [ensureWorker, rejectDetails],
+  );
+
+  /** Re-run one variation to get its trades and chart rows. */
+  const detail = useCallback(
+    (dataset: string, run: StrategyRun, params: Record<string, number | boolean | string>): Promise<BacktestDetail> => {
+      const worker = ensureWorker();
+      const jobId = `detail-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const job: BacktestDetailJob = { type: "detail", jobId, dataset, run, params };
+      return new Promise<BacktestDetail>((resolve, reject) => {
+        detailsRef.current.set(jobId, { resolve, reject });
+        worker.postMessage(job);
+      });
+    },
     [ensureWorker],
   );
 
@@ -140,8 +167,9 @@ export function useBacktestWorker() {
     workerRef.current = null;
     pendingRef.current.reject(new Error("Cancelled"));
     pendingRef.current = null;
+    rejectDetails("Cancelled");
     setProgress(null);
-  }, []);
+  }, [rejectDetails]);
 
-  return { run, cancel, progress };
+  return { run, detail, cancel, progress };
 }

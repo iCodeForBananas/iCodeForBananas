@@ -16,10 +16,9 @@ import {
   INITIAL_CAPITAL,
 } from "@/app/lib/backtest-engine";
 
-const MAX_CHART_BARS = 2000;
 const TOP_RESULTS_WITH_FULL_DATA = 10;
 
-interface StrategyRun {
+export interface StrategyRun {
   strategyId: string;
   paramVariations: ParameterVariationConfig[];
   currentParams: Record<string, number | boolean | string>;
@@ -36,6 +35,19 @@ export interface BacktestJob {
   jobId: string;
   selectedFiles: string[];
   runs: StrategyRun[];
+}
+
+/**
+ * Re-run one result on its own to get what a batch drops: its trades, equity
+ * curve and chart rows. A batch keeps those for its top results only, since
+ * holding them for thousands of variations would run the tab out of memory.
+ */
+export interface BacktestDetailJob {
+  type: "detail";
+  jobId: string;
+  dataset: string;
+  run: StrategyRun;
+  params: Record<string, number | boolean | string>;
 }
 
 export type BacktestWorkerMessage =
@@ -59,6 +71,12 @@ export type BacktestWorkerMessage =
       results: ParameterizedResult[];
       indicatorDataByDataset: Record<string, IndicatorData[]>;
       failedDatasets: string[];
+    }
+  | {
+      type: "detail";
+      jobId: string;
+      result: ParameterizedResult;
+      indicatorData: IndicatorData[];
     }
   | { type: "error"; jobId: string; error: string };
 
@@ -149,13 +167,7 @@ async function runJob(job: BacktestJob): Promise<void> {
       : [run.currentParams];
     // Always pass riskSettings now — it carries position sizing + costs even
     // when SL/TP are off, which is what bounds PnL to a sensible range.
-    const riskSettings: RiskSettings = {
-      stopLossPercent: run.stopLossPercent,
-      takeProfitPercent: run.takeProfitPercent,
-      positionSizePercent: run.positionSizePercent,
-      commissionBps: run.commissionBps,
-      slippageBps: run.slippageBps,
-    };
+    const riskSettings = riskSettingsOf(run);
     return { run, combinations, riskSettings };
   });
 
@@ -258,12 +270,11 @@ async function runJob(job: BacktestJob): Promise<void> {
       }
     }
 
-    chartSliceCache.set(
-      datasetFile,
-      dataWithIndicators.length > MAX_CHART_BARS
-        ? dataWithIndicators.slice(-MAX_CHART_BARS)
-        : dataWithIndicators,
-    );
+    // The whole series goes to the chart, not a recent slice: trades from
+    // anywhere in the run need a bar to sit on, and the chart's replayed
+    // indicators (ATR, Supertrend, RSI-2) only match the strategy's when both
+    // start from the same first bar.
+    chartSliceCache.set(datasetFile, dataWithIndicators);
   }
 
   batchResults.sort((a, b) => b.totalPnlPercent - a.totalPnlPercent);
@@ -324,9 +335,54 @@ async function runJob(job: BacktestJob): Promise<void> {
   });
 }
 
-self.addEventListener("message", (event: MessageEvent<BacktestJob>) => {
+function riskSettingsOf(run: StrategyRun): RiskSettings {
+  return {
+    stopLossPercent: run.stopLossPercent,
+    takeProfitPercent: run.takeProfitPercent,
+    positionSizePercent: run.positionSizePercent,
+    commissionBps: run.commissionBps,
+    slippageBps: run.slippageBps,
+  };
+}
+
+async function runDetail(job: BacktestDetailJob): Promise<void> {
+  const strategy = AVAILABLE_STRATEGIES[job.run.strategyId];
+  if (!strategy) throw new Error(`Unknown strategy: ${job.run.strategyId}`);
+  const rawData = await fetchCsv(job.dataset);
+  const reqs = deriveRequiredIndicators(job.run.strategyId, [job.params]);
+  const data = calculateIndicatorsWithParams(
+    rawData,
+    reqs.requiredEMAs,
+    reqs.requiredSMAs,
+    reqs.requiredMACDs,
+    reqs.requiredDonchianPeriods,
+  );
+  const result = runBacktestWithParams(
+    data,
+    strategy,
+    job.params,
+    INITIAL_CAPITAL,
+    riskSettingsOf(job.run),
+    job.run.enableShorts,
+  );
+  post({
+    type: "detail",
+    jobId: job.jobId,
+    result: { ...result, dataset: job.dataset, datasetLabel: job.dataset, strategyId: strategy.id, strategyName: strategy.name },
+    indicatorData: projectChartRows(data, buildChartKeySet(reqs)),
+  });
+}
+
+self.addEventListener("message", (event: MessageEvent<BacktestJob | BacktestDetailJob>) => {
   const job = event.data;
-  if (!job || job.type !== "run") return;
+  if (!job) return;
+  if (job.type === "detail") {
+    runDetail(job).catch((err: unknown) => {
+      post({ type: "error", jobId: job.jobId, error: err instanceof Error ? err.message : "Backtest failed" });
+    });
+    return;
+  }
+  if (job.type !== "run") return;
   runJob(job).catch((err: unknown) => {
     post({
       type: "error",
