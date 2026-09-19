@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { ToggleButton } from "@/app/components/ui/toggle-button";
 
 type MovieKey = "rick_roll" | "sw1";
 
@@ -80,17 +81,9 @@ export default function AsciiPlayerPage() {
     <div className="flex h-screen flex-col items-center bg-surface-sunken p-4 text-ink-primary">
       <div className="flex gap-2 mb-4">
         {MOVIES.map((m) => (
-          <button
-            key={m.key}
-            onClick={() => loadMovie(m.key)}
-            className={`rounded px-4 py-2 font-mono text-13 transition-colors duration-120 ease-ui ${
-              currentMovie === m.key
-                ? "bg-primary-solid text-ink-on-primary"
-                : "bg-surface-raised text-ink-muted hover:bg-surface-overlay hover:text-ink-primary"
-            }`}
-          >
+          <ToggleButton key={m.key} pressed={currentMovie === m.key} onClick={() => loadMovie(m.key)} className="font-mono">
             {m.label}
-          </button>
+          </ToggleButton>
         ))}
       </div>
       <div className="flex-1 flex items-center justify-center">

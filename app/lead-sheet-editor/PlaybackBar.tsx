@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Pause, Play, RotateCcw, Rewind, FastForward, X, Crosshair } from "lucide-react";
+import { Button, IconButton } from "@radix-ui/themes";
 import { formatTime, nextCueAfter, type Cue, type Timeline } from "./timing";
 
 const NUDGE_SECONDS = 5;
@@ -171,40 +172,25 @@ export function PlaybackBar({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={playback.restart}
-            aria-label="Back to start"
-            className="flex h-10 w-10 items-center justify-center rounded-lg bg-surface-raised text-ink-primary transition-colors duration-150 hover:bg-surface-overlay bg-surface-raised text-ink-primary hover:bg-surface-overlay"
-          >
+          <IconButton type="button" size="3" variant="soft" color="gray" onClick={playback.restart} aria-label="Back to start">
             <RotateCcw className="h-4 w-4" />
-          </button>
-          <button
-            type="button"
-            onClick={() => playback.nudge(-NUDGE_SECONDS)}
-            aria-label="Back 5 seconds"
-            className="flex h-10 w-10 items-center justify-center rounded-lg bg-surface-raised text-ink-primary transition-colors duration-150 hover:bg-surface-overlay bg-surface-raised text-ink-primary hover:bg-surface-overlay"
-          >
+          </IconButton>
+          <IconButton type="button" size="3" variant="soft" color="gray" onClick={() => playback.nudge(-NUDGE_SECONDS)} aria-label="Back 5 seconds">
             <Rewind className="h-4 w-4" />
-          </button>
-          <button
+          </IconButton>
+          <Button
             type="button"
+            size="3"
             onClick={playback.toggle}
             disabled={!playback.ready}
             aria-label={playing ? "Pause" : "Play"}
-            className="flex h-10 items-center gap-2 rounded-lg bg-surface-base px-5 text-sm font-medium text-primary-text transition-colors duration-150 hover:bg-surface-sunken/80 disabled:cursor-not-allowed disabled:opacity-40"
           >
             {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
             {!playback.ready ? "Loading" : playing ? "Pause" : "Play"}
-          </button>
-          <button
-            type="button"
-            onClick={() => playback.nudge(NUDGE_SECONDS)}
-            aria-label="Forward 5 seconds"
-            className="flex h-10 w-10 items-center justify-center rounded-lg bg-surface-raised text-ink-primary transition-colors duration-150 hover:bg-surface-overlay bg-surface-raised text-ink-primary hover:bg-surface-overlay"
-          >
+          </Button>
+          <IconButton type="button" size="3" variant="soft" color="gray" onClick={() => playback.nudge(NUDGE_SECONDS)} aria-label="Forward 5 seconds">
             <FastForward className="h-4 w-4" />
-          </button>
+          </IconButton>
 
           {/* What you should be playing right now */}
           <div className="min-w-0 flex-1 px-2">
@@ -229,27 +215,21 @@ export function PlaybackBar({
             )}
           </div>
 
-          <button
+          <Button
             type="button"
+            size="3"
+            variant={follow ? "solid" : "soft"}
+            color={follow ? undefined : "gray"}
+            aria-pressed={follow}
             onClick={() => onFollowChange(!follow)}
             title="Keep the current line scrolled into view"
-            className={`flex h-10 items-center gap-1.5 rounded-lg px-3 text-sm font-medium transition-colors duration-150 ${
-              follow
-                ? "bg-primary-solid text-ink-on-primary hover:bg-primary-hover"
-                : "bg-surface-raised text-ink-primary hover:bg-surface-overlay bg-surface-raised text-ink-primary hover:bg-surface-overlay"
-            }`}
           >
             <Crosshair className="h-4 w-4" />
             Follow
-          </button>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close playback"
-            className="flex h-10 w-10 items-center justify-center rounded-lg bg-surface-raised text-ink-primary transition-colors duration-150 hover:bg-surface-overlay bg-surface-raised text-ink-primary hover:bg-surface-overlay"
-          >
+          </Button>
+          <IconButton type="button" size="3" variant="soft" color="gray" onClick={onClose} aria-label="Close playback">
             <X className="h-4 w-4" />
-          </button>
+          </IconButton>
         </div>
       </div>
     </div>

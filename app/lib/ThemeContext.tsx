@@ -24,15 +24,21 @@ export const useTheme = () => {
  *
  * `data-theme` is what app/tokens.css reads: dark is the default and lives on
  * `:root` there, so it is `[data-theme="light"]` that carries the light half of
- * Layer 2. globals.css points Tailwind's `dark:` variant at the same attribute,
- * so there is no second thing to keep in step — which is why the `.dark` class
- * this used to toggle is gone.
+ * Layer 2. globals.css points Tailwind's `dark:` variant at the same attribute.
  *
- * The same attribute is written by the inline script in app/layout.tsx, which
- * runs before first paint.
+ * The `dark` / `light` class rides along only because Radix Themes reads
+ * appearance from a class, not an attribute. It is derived from the same
+ * value in the same place, so the two can't disagree.
+ *
+ * Both are written by the inline script in app/layout.tsx, which runs before
+ * first paint.
  */
 function applyTheme(t: Theme) {
-  document.documentElement.setAttribute("data-theme", t);
+  const html = document.documentElement;
+  html.setAttribute("data-theme", t);
+  // Radix Themes (appearance='inherit' in app/layout.tsx) reads these classes.
+  html.classList.toggle("dark", t === "dark");
+  html.classList.toggle("light", t === "light");
 }
 
 export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {

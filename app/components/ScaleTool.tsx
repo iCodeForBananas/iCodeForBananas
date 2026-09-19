@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { Button, Select, Slider } from "@radix-ui/themes";
+import { Bento } from "@/app/components/ui/bento";
 import { allNotes, getNoteAt } from "@/app/lib/music";
 import {
   CAGED_ORDER,
@@ -180,16 +182,6 @@ export default function ScaleTool({ rootKey }: { rootKey: string }) {
 
   const nutX = LW + FW;
 
-  const selStyle: React.CSSProperties = {
-    background: "var(--ds-color-surface-sunken)",
-    color: "var(--ds-color-text-primary)",
-    border: "1px solid var(--ds-color-border-subtle)",
-    borderRadius: 8,
-    padding: "6px 10px",
-    fontSize: "var(--ds-font-size-13)",
-    cursor: "pointer",
-  };
-
   const chooseShape = (value: string) => {
     setShapeKey(value);
     localStorage.setItem("st-caged", value);
@@ -203,46 +195,41 @@ export default function ScaleTool({ rootKey }: { rootKey: string }) {
           <span className="text-10 font-semibold uppercase tracking-wider text-ink-muted">
             Scale
           </span>
-          <select
-            value={scaleType}
-            onChange={e => { setScaleType(e.target.value); localStorage.setItem("st-scale", e.target.value); }}
-            title="Choose a scale type — Major sounds bright and happy, Minor sounds darker, Pentatonic is great for beginners and soloing"
-            style={selStyle}
-          >
-            {Object.keys(SCALE_TYPES).map(s => <option key={s} value={s}>{s}</option>)}
-          </select>
+          <Select.Root value={scaleType} onValueChange={v => { setScaleType(v); localStorage.setItem("st-scale", v); }}>
+            <Select.Trigger title="Choose a scale type — Major sounds bright and happy, Minor sounds darker, Pentatonic is great for beginners and soloing" />
+            <Select.Content position="popper">
+              {Object.keys(SCALE_TYPES).map(s => <Select.Item key={s} value={s}>{s}</Select.Item>)}
+            </Select.Content>
+          </Select.Root>
         </label>
 
         <label className="flex flex-col gap-1" title="How your guitar strings are tuned from low E to high e — Standard EADGBE is the most common tuning for beginners">
           <span className="text-10 font-semibold uppercase tracking-wider text-ink-muted">
             Tuning
           </span>
-          <select
-            value={tuningName}
-            onChange={e => { setTuningName(e.target.value); localStorage.setItem("st-tuning", e.target.value); }}
-            title="Choose your guitar's tuning — this changes which notes appear on each string and fret"
-            style={selStyle}
-          >
-            {Object.keys(TUNINGS).map(t => <option key={t} value={t}>{t}</option>)}
-          </select>
+          <Select.Root value={tuningName} onValueChange={v => { setTuningName(v); localStorage.setItem("st-tuning", v); }}>
+            <Select.Trigger title="Choose your guitar's tuning — this changes which notes appear on each string and fret" />
+            <Select.Content position="popper">
+              {Object.keys(TUNINGS).map(t => <Select.Item key={t} value={t}>{t}</Select.Item>)}
+            </Select.Content>
+          </Select.Root>
         </label>
 
         <label className="flex flex-col gap-1.5" title="How many frets to display on the neck — drag to see more or fewer positions">
           <span className="text-10 font-semibold uppercase tracking-wider text-ink-muted">
             Frets: {numFrets}
           </span>
-          <input
-            type="range"
+          <Slider
             min={12}
             max={24}
-            value={numFrets}
-            onChange={e => {
-              const v = parseInt(e.target.value);
+            value={[numFrets]}
+            onValueChange={([v]) => {
               setNumFrets(v);
               localStorage.setItem("st-frets", String(v));
             }}
+            aria-label="Frets shown"
             title="Drag to show more or fewer frets on the neck — higher frets = higher pitch"
-            className="w-36 accent-primary-solid"
+            className="w-36"
           />
         </label>
 
@@ -254,21 +241,16 @@ export default function ScaleTool({ rootKey }: { rootKey: string }) {
             CAGED shape
           </span>
           <div className="flex gap-1.5">
-            <button
+            <Button
               type="button"
+              variant={selectedShape === null ? "solid" : "surface"}
+              color={selectedShape === null ? undefined : "gray"}
+              aria-pressed={selectedShape === null}
               onClick={() => chooseShape("all")}
               title="Show every note of the scale on the whole neck, with the root note marked"
-              className="rounded-lg px-2.5 py-1 text-sm font-semibold cursor-pointer"
-              style={{
-                background: selectedShape === null ? ALL_FILL : "var(--ds-color-surface-sunken)",
-                color: selectedShape === null
-                  ? "var(--ds-color-text-on-primary)"
-                  : "var(--ds-color-text-muted)",
-                border: `1px solid ${selectedShape === null ? ALL_FILL : "var(--ds-color-border-subtle)"}`,
-              }}
             >
               All
-            </button>
+            </Button>
             {CAGED_ORDER.map(key => {
               const active = selectedShape === key;
               const colour = SHAPE_COLOURS[key];
@@ -460,7 +442,7 @@ export default function ScaleTool({ rootKey }: { rootKey: string }) {
       {/* Scale info */}
       <div className="flex flex-col sm:flex-row gap-4">
         {/* Notes & degrees */}
-        <div className="flex-1 rounded-xl border border-line-subtle bg-surface-raised p-4">
+        <Bento className="flex-1">
           <div className="mb-3 text-10 font-semibold uppercase tracking-wider text-ink-muted">
             {rootKey} {scaleType}
             {selectedShape !== null && ` — ${selectedShape} shape`}
@@ -530,10 +512,10 @@ export default function ScaleTool({ rootKey }: { rootKey: string }) {
               )}
             </div>
           )}
-        </div>
+        </Bento>
 
         {/* Legend */}
-        <div className="flex shrink-0 flex-col justify-center gap-2 rounded-xl border border-line-subtle bg-surface-raised p-4">
+        <Bento className="flex shrink-0 flex-col justify-center gap-2">
           <div className="mb-1 text-10 font-semibold uppercase tracking-wider text-ink-muted">
             CAGED shapes
           </div>
@@ -572,7 +554,7 @@ export default function ScaleTool({ rootKey }: { rootKey: string }) {
               <span className="text-13 text-ink-primary">In the chord shape</span>
             </div>
           </div>
-        </div>
+        </Bento>
       </div>
     </div>
   );

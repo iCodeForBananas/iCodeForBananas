@@ -7,6 +7,9 @@ import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/app/hooks/useAuth";
 import BentoPageLayout from "@/app/components/BentoPageLayout";
 import BentoBoard, { type BentoPanel } from "@/app/components/BentoBoard";
+import { Bento } from "@/app/components/ui/bento";
+import { Button, Flex, IconButton, Select, Text, TextField } from "@radix-ui/themes";
+import { X } from "lucide-react";
 
 interface LogEntry {
   id: string;
@@ -444,37 +447,25 @@ export default function WorkoutTrackerContent() {
                 )}
               </div>
               {user?.id === l.user_id && (
-                <button
-                  onClick={() => remove(l.id)}
-                  className='shrink-0 w-11 h-11 flex items-center justify-center text-xl text-ink-muted hover:text-danger -mr-2'
-                  aria-label='Delete'
-                >
-                  ×
-                </button>
+                <IconButton size='3' variant='ghost' color='red' onClick={() => remove(l.id)} aria-label='Delete' className='shrink-0'>
+                  <X className='h-4 w-4' />
+                </IconButton>
               )}
             </div>
           ))}
         </div>
         {totalPages > 1 && (
-          <div className='flex items-center justify-center gap-3 mt-4'>
-            <button
-              onClick={() => setPage((p) => p - 1)}
-              disabled={page === 0}
-              className='text-sm px-4 py-2.5 rounded border border-line-strong disabled:opacity-30 min-h-[44px]'
-            >
+          <Flex align='center' justify='center' gap='3' mt='4'>
+            <Button size='3' variant='surface' color='gray' onClick={() => setPage((p) => p - 1)} disabled={page === 0}>
               ← Prev
-            </button>
-            <span className='text-sm text-ink-muted'>
+            </Button>
+            <Text size='2' color='gray'>
               {page + 1} / {totalPages}
-            </span>
-            <button
-              onClick={() => setPage((p) => p + 1)}
-              disabled={page >= totalPages - 1}
-              className='text-sm px-4 py-2.5 rounded border border-line-strong disabled:opacity-30 min-h-[44px]'
-            >
+            </Text>
+            <Button size='3' variant='surface' color='gray' onClick={() => setPage((p) => p + 1)} disabled={page >= totalPages - 1}>
               Next →
-            </button>
-          </div>
+            </Button>
+          </Flex>
         )}
       </>
     );
@@ -513,50 +504,47 @@ export default function WorkoutTrackerContent() {
     <BentoPageLayout title="Workout Tracker">
       {/* Log form */}
       {user && (
-        <div className='rounded-2xl bg-surface-raised p-4 sm:p-5 mb-4' style={{ border: "1px solid var(--border-color)" }}>
+        <Bento className='mb-4'>
           <div className='flex flex-col sm:flex-row sm:flex-wrap gap-3 sm:items-end max-w-3xl mx-auto'>
-            <input
+            <TextField.Root
               type='date'
+              size='3'
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className='border border-line-strong rounded px-3 py-2.5 text-base bg-surface-raised min-h-[44px] w-full sm:w-auto'
+              aria-label='Date'
+              className='w-full sm:w-auto'
             />
-            <select
-              value={selected}
-              onChange={(e) => setSelected(e.target.value)}
-              className='border border-line-strong rounded px-3 py-2.5 text-base min-h-[44px] w-full sm:flex-1 sm:min-w-[140px]'
-            >
-              {sortedExercises.map((c) => (
-                <option key={c.name} value={c.name}>{c.name}</option>
-              ))}
-            </select>
-            <input
+            <Select.Root size='3' value={selected} onValueChange={setSelected}>
+              <Select.Trigger aria-label='Exercise' className='w-full sm:flex-1 sm:min-w-[140px]' />
+              <Select.Content position='popper'>
+                {sortedExercises.map((c) => (
+                  <Select.Item key={c.name} value={c.name}>{c.name}</Select.Item>
+                ))}
+              </Select.Content>
+            </Select.Root>
+            <TextField.Root
               type='number'
+              size='3'
               min={0}
               step={5}
               value={weight}
               placeholder='lbs'
+              aria-label='Weight in pounds'
               onChange={(e) => setWeight(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && submit()}
-              className='w-full sm:w-24 border border-line-strong rounded px-3 py-2.5 text-base min-h-[44px]'
+              className='w-full sm:w-24'
             />
-            <button
-              onClick={submit}
-              className='w-full sm:flex-none rounded bg-surface-base px-5 py-2.5 text-base font-medium text-primary-text hover:bg-surface-sunken/70 min-h-[44px]'
-            >
+            <Button size='3' onClick={submit} className='w-full sm:w-auto'>
               Submit
-            </button>
+            </Button>
           </div>
-        </div>
+        </Bento>
       )}
 
       {/* Weight progress chart */}
       {exercisesWithLogs.length > 0 && chartData.length > 0 && (
-        <div className='rounded-2xl bg-surface-raised mb-4' style={{ border: "1px solid var(--border-color)" }}>
-          <div className='flex items-center gap-2 border-b px-3 py-2' style={{ borderColor: "var(--border-color)" }}>
-            <h2 className='text-xs font-bold uppercase tracking-wide text-ink-muted'>Weight Progress</h2>
-          </div>
-          <div className='p-4 h-[360px] sm:h-[480px]'>
+        <Bento fill title='Weight Progress' className='mb-4 h-auto'>
+          <div className='h-[360px] sm:h-[480px]'>
             <ClientOnly>
               <ResponsiveContainer width='100%' height='100%'>
                 <LineChart data={chartData}>
@@ -618,7 +606,7 @@ export default function WorkoutTrackerContent() {
               </ResponsiveContainer>
             </ClientOnly>
           </div>
-        </div>
+        </Bento>
       )}
 
       {/* Activity, Body Part Coverage, All Entries — bento grid */}

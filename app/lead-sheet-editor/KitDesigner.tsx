@@ -2,6 +2,18 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Check, Play, RotateCcw, Square, Volume2, X } from "lucide-react";
+import {
+  Card,
+  Dialog,
+  Flex,
+  SegmentedControl,
+  Select,
+  Slider,
+  Tabs,
+  Text,
+  TextField,
+  Button as RadixButton,
+} from "@radix-ui/themes";
 import { Button } from "@/app/components/ui/button";
 import { cn } from "@/app/lib/utils";
 import { ACCENT_GROUPS, auditionAccent } from "./accents";
@@ -74,34 +86,18 @@ export default function KitDesigner({
 }) {
   const [tab, setTab] = useState<TabId>("presets");
 
-  // Escape closes, the way every other sheet in the editor does.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
   const preset = kit.preset;
   const clean = matchesPreset(kit);
 
+  // Escape, the overlay and the focus trap are Radix Dialog's.
   return (
-    <div
-      className='fixed inset-0 z-50 flex items-end justify-center bg-surface-sunken/70 p-0 sm:items-center sm:p-4 print:hidden'
-      onClick={onClose}
-      role='presentation'
-    >
-      <div
-        role='dialog'
-        aria-modal='true'
-        aria-label='Kit designer'
-        onClick={(e) => e.stopPropagation()}
-        className={cn(
-          "flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden",
-          "rounded-t-2xl border border-line-subtle bg-surface-overlay shadow-overlay sm:rounded-2xl",
-        )}
+    <Dialog.Root open onOpenChange={(open) => !open && onClose()}>
+      <Dialog.Content
+        maxWidth='48rem'
+        aria-describedby={undefined}
+        className='flex max-h-[92vh] flex-col overflow-hidden p-0 print:hidden'
       >
+        <Dialog.Title className='sr-only'>Kit designer</Dialog.Title>
         {/* ── Header: what this kit is, and whether you can hear it ─────────── */}
         <div className='flex shrink-0 items-center gap-3 border-b border-line-subtle px-4 py-3'>
           <Button
@@ -133,22 +129,17 @@ export default function KitDesigner({
         {/* ── Layers: the row of on/off switches everything else hangs off ──── */}
         <div className='flex shrink-0 flex-wrap gap-1.5 border-b border-line-subtle px-4 py-2.5'>
           {KIT_LAYERS.map((layer) => (
-            <button
+            <RadixButton
               key={layer}
               type='button'
+              radius='full'
+              variant={hasLayer(kit, layer) ? "solid" : "soft"}
+              color={hasLayer(kit, layer) ? undefined : "gray"}
               onClick={() => onChange(toggleLayer(kit, layer))}
               aria-pressed={hasLayer(kit, layer)}
-              className={cn(
-                "h-8 rounded-full px-3 text-12 font-medium",
-                "transition-colors duration-120 ease-ui motion-reduce:transition-none",
-                "focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
-                hasLayer(kit, layer)
-                  ? "bg-primary-solid text-ink-on-primary hover:bg-primary-hover"
-                  : "bg-surface-raised text-ink-muted hover:bg-surface-sunken hover:text-ink-primary",
-              )}
             >
               {LAYER_LABELS[layer]}
-            </button>
+            </RadixButton>
           ))}
         </div>
 
@@ -162,8 +153,8 @@ export default function KitDesigner({
           )}
           {tab === "mix" && <MixTab kit={kit} onChange={onChange} bpm={bpm} />}
         </div>
-      </div>
-    </div>
+      </Dialog.Content>
+    </Dialog.Root>
   );
 }
 
@@ -180,63 +171,56 @@ const TABS: { id: TabId; label: string }[] = [
 
 function TabBar({ tab, onChange }: { tab: string; onChange: (tab: TabId) => void }) {
   return (
-    <div role='tablist' className='flex shrink-0 gap-1 border-b border-line-subtle px-2'>
-      {TABS.map((t) => (
-        <button
-          key={t.id}
-          role='tab'
-          aria-selected={tab === t.id}
-          type='button'
-          onClick={() => onChange(t.id)}
-          className={cn(
-            "-mb-px h-10 border-b-2 px-3 text-13 font-medium",
-            "transition-colors duration-120 ease-ui motion-reduce:transition-none",
-            "focus-visible:outline-solid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus",
-            tab === t.id
-              ? "border-primary-solid text-ink-primary"
-              : "border-transparent text-ink-muted hover:text-ink-primary",
-          )}
-        >
-          {t.label}
-        </button>
-      ))}
-    </div>
+    <Tabs.Root value={tab} onValueChange={(v) => onChange(v as TabId)} className='shrink-0'>
+      <Tabs.List className='px-2'>
+        {TABS.map((t) => (
+          <Tabs.Trigger key={t.id} value={t.id}>
+            {t.label}
+          </Tabs.Trigger>
+        ))}
+      </Tabs.List>
+    </Tabs.Root>
   );
 }
 
 function TempoField({ bpm, onChange }: { bpm: number; onChange: (bpm: number) => void }) {
   return (
-    <label className='flex shrink-0 items-center gap-1.5 text-12 text-ink-muted'>
-      <input
-        type='number'
-        min={40}
-        max={240}
-        value={bpm}
-        onChange={(e) => {
-          const next = parseInt(e.target.value, 10);
-          if (isFinite(next)) onChange(Math.min(240, Math.max(40, next)));
-        }}
-        aria-label='Tempo in beats per minute'
-        className={cn(
-          "h-8 w-16 rounded-md border border-line-subtle bg-surface-sunken px-2 text-13 text-ink-primary tabular-nums",
-          "focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
-        )}
-      />
-      bpm
-    </label>
+    <Text as='label' size='1' color='gray' className='shrink-0'>
+      <Flex align='center' gap='2'>
+        <TextField.Root
+          type='number'
+          min={40}
+          max={240}
+          value={bpm}
+          onChange={(e) => {
+            const next = parseInt(e.target.value, 10);
+            if (isFinite(next)) onChange(Math.min(240, Math.max(40, next)));
+          }}
+          aria-label='Tempo in beats per minute'
+          className='w-16 tabular-nums'
+        />
+        bpm
+      </Flex>
+    </Text>
   );
 }
 
 /** A label above a control, used the same way in every tab. */
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
-    <div className='flex flex-col gap-1.5'>
-      <div className='flex items-baseline gap-2'>
-        <span className='text-10 font-semibold uppercase tracking-wider text-ink-muted'>{label}</span>
-        {hint && <span className='text-10 text-ink-muted'>{hint}</span>}
-      </div>
+    <Flex direction='column' gap='2'>
+      <Flex align='baseline' gap='2'>
+        <Text size='1' weight='bold' color='gray' className='uppercase tracking-wider'>
+          {label}
+        </Text>
+        {hint && (
+          <Text size='1' color='gray'>
+            {hint}
+          </Text>
+        )}
+      </Flex>
       {children}
-    </div>
+    </Flex>
   );
 }
 
@@ -253,27 +237,18 @@ function Choices<T extends string>({
   ariaLabel: string;
 }) {
   return (
-    <div role='radiogroup' aria-label={ariaLabel} className='flex flex-wrap gap-1.5'>
+    <SegmentedControl.Root
+      value={value}
+      onValueChange={(v) => onChange(v as T)}
+      aria-label={ariaLabel}
+      className='self-start'
+    >
       {options.map((option) => (
-        <button
-          key={option.value}
-          type='button'
-          role='radio'
-          aria-checked={value === option.value}
-          onClick={() => onChange(option.value)}
-          className={cn(
-            "h-8 rounded-md border px-3 text-12 font-medium",
-            "transition-colors duration-120 ease-ui motion-reduce:transition-none",
-            "focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
-            value === option.value
-              ? "border-primary-solid bg-primary-solid/15 text-ink-primary"
-              : "border-line-subtle bg-surface-raised text-ink-muted hover:bg-surface-overlay hover:text-ink-primary",
-          )}
-        >
+        <SegmentedControl.Item key={option.value} value={option.value}>
           {option.label}
-        </button>
+        </SegmentedControl.Item>
       ))}
-    </div>
+    </SegmentedControl.Root>
   );
 }
 
@@ -287,21 +262,22 @@ function LevelSlider({
   onChange: (next: number) => void;
 }) {
   return (
-    <label className='flex items-center gap-3'>
-      <span className='w-20 shrink-0 text-13 text-ink-primary'>{label}</span>
-      <input
-        type='range'
+    <Flex align='center' gap='3'>
+      <Text size='2' className='w-20 shrink-0'>
+        {label}
+      </Text>
+      <Slider
         min={0}
         max={100}
-        value={Math.round(value * 100)}
-        onChange={(e) => onChange(parseInt(e.target.value, 10) / 100)}
+        value={[Math.round(value * 100)]}
+        onValueChange={([v]) => onChange(v / 100)}
         aria-label={`${label} level`}
-        className='h-1.5 flex-1 accent-primary-solid'
+        className='flex-1'
       />
-      <span className='w-10 shrink-0 text-right text-12 tabular-nums text-ink-muted'>
+      <Text size='1' color='gray' align='right' className='w-10 shrink-0 tabular-nums'>
         {Math.round(value * 100)}%
-      </span>
-    </label>
+      </Text>
+    </Flex>
   );
 }
 
@@ -330,29 +306,32 @@ function PresetsTab({
             {group.items.map((preset) => {
               const active = kit.preset === preset.name;
               return (
-                <button
+                <Card
                   key={preset.name}
-                  type='button'
-                  onClick={() => {
-                    onChange(applyPreset(preset, kit));
-                    onBpmChange(preset.bpm);
-                  }}
-                  className={cn(
-                    "flex flex-col gap-0.5 rounded-lg border p-3 text-left",
-                    "transition-colors duration-120 ease-ui motion-reduce:transition-none",
-                    "focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
-                    active
-                      ? "border-primary-solid bg-primary-solid/10"
-                      : "border-line-subtle bg-surface-raised hover:bg-surface-overlay",
-                  )}
+                  asChild
+                  className={cn(active && "shadow-[inset_0_0_0_1px_var(--accent-9)] bg-[var(--accent-a3)]")}
                 >
-                  <span className='flex items-center gap-1.5 text-13 font-medium text-ink-primary'>
-                    {preset.name}
-                    {active && <Check className='h-3.5 w-3.5 text-primary-text' />}
-                  </span>
-                  <span className='text-12 text-ink-muted'>{preset.blurb}</span>
-                  <span className='text-10 tabular-nums text-ink-muted'>{preset.bpm} bpm</span>
-                </button>
+                  <button
+                    type='button'
+                    aria-pressed={active}
+                    onClick={() => {
+                      onChange(applyPreset(preset, kit));
+                      onBpmChange(preset.bpm);
+                    }}
+                    className='flex flex-col items-start gap-0.5 text-left'
+                  >
+                    <Text size='2' weight='medium' className='flex items-center gap-1.5'>
+                      {preset.name}
+                      {active && <Check className='h-3.5 w-3.5 text-primary-text' />}
+                    </Text>
+                    <Text size='1' color='gray'>
+                      {preset.blurb}
+                    </Text>
+                    <Text size='1' color='gray' className='tabular-nums'>
+                      {preset.bpm} bpm
+                    </Text>
+                  </button>
+                </Card>
               );
             })}
           </div>
@@ -487,30 +466,27 @@ function BeatTab({ kit, onChange }: { kit: KitSettings; onChange: (next: KitSett
     <div className='flex flex-col gap-5'>
       <Field label='Pattern' hint={edited ? "edited" : undefined}>
         <div className='flex items-center gap-2'>
-          <select
+          <Select.Root
             value={kit.drums.pattern}
-            onChange={(e) =>
-              onChange({ ...kit, drums: { ...kit.drums, pattern: e.target.value, steps: null } })
-            }
-            aria-label='Drum pattern'
-            className={cn(
-              "h-9 min-w-0 flex-1 rounded-md border border-line-subtle bg-surface-sunken px-2 text-13 text-ink-primary",
-              "focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
-            )}
+            onValueChange={(pattern) => onChange({ ...kit, drums: { ...kit.drums, pattern, steps: null } })}
           >
-            {kit.drums.pattern === CUSTOM_PATTERN && (
-              <option value={CUSTOM_PATTERN}>{CUSTOM_PATTERN}</option>
-            )}
-            {PATTERN_GROUPS.map((group) => (
-              <optgroup key={group.label} label={group.label}>
-                {group.items.map((item) => (
-                  <option key={item.name} value={item.name}>
-                    {item.name}
-                  </option>
-                ))}
-              </optgroup>
-            ))}
-          </select>
+            <Select.Trigger aria-label='Drum pattern' className='min-w-0 flex-1' />
+            <Select.Content position='popper'>
+              {kit.drums.pattern === CUSTOM_PATTERN && (
+                <Select.Item value={CUSTOM_PATTERN}>{CUSTOM_PATTERN}</Select.Item>
+              )}
+              {PATTERN_GROUPS.map((group) => (
+                <Select.Group key={group.label}>
+                  <Select.Label>{group.label}</Select.Label>
+                  {group.items.map((item) => (
+                    <Select.Item key={item.name} value={item.name}>
+                      {item.name}
+                    </Select.Item>
+                  ))}
+                </Select.Group>
+              ))}
+            </Select.Content>
+          </Select.Root>
           <Button
             variant='ghost'
             size='icon'
@@ -552,30 +528,29 @@ function BeatTab({ kit, onChange }: { kit: KitSettings; onChange: (next: KitSett
       </div>
 
       <Field label='Percussion' hint='the part the Percussion layer plays'>
-        <select
+        <Select.Root
           value={kit.drums.shimmer}
-          onChange={(e) => {
-            onChange({ ...kit, drums: { ...kit.drums, shimmer: e.target.value } });
+          onValueChange={(shimmer) => {
+            onChange({ ...kit, drums: { ...kit.drums, shimmer } });
             // Picking a part plays a bar of it. Twenty-two of these are only
             // names until you hear one.
-            auditionAccent(e.target.value, 120);
+            auditionAccent(shimmer, 120);
           }}
-          aria-label='Percussion part'
-          className={cn(
-            "h-9 w-full rounded-md border border-line-subtle bg-surface-sunken px-2 text-13 text-ink-primary",
-            "focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
-          )}
         >
-          {ACCENT_GROUPS.map((group) => (
-            <optgroup key={group.label} label={group.label}>
-              {group.items.map((item) => (
-                <option key={item.name} value={item.name}>
-                  {item.name}
-                </option>
-              ))}
-            </optgroup>
-          ))}
-        </select>
+          <Select.Trigger aria-label='Percussion part' className='w-full' />
+          <Select.Content position='popper'>
+            {ACCENT_GROUPS.map((group) => (
+              <Select.Group key={group.label}>
+                <Select.Label>{group.label}</Select.Label>
+                {group.items.map((item) => (
+                  <Select.Item key={item.name} value={item.name}>
+                    {item.name}
+                  </Select.Item>
+                ))}
+              </Select.Group>
+            ))}
+          </Select.Content>
+        </Select.Root>
       </Field>
     </div>
   );
@@ -615,26 +590,22 @@ function DroneTab({
       </p>
 
       <Field label='Key' hint='what the drone holds'>
-        <select
-          value={kit.drone.key}
-          onChange={(e) => onChange({ ...kit, drone: { ...kit.drone, key: e.target.value } })}
-          aria-label='Drone key'
-          className={cn(
-            "h-9 w-full rounded-md border border-line-subtle bg-surface-sunken px-2 text-13 text-ink-primary",
-            "focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
-          )}
-        >
-          <option value={SONG_KEY}>Song key ({sounding})</option>
-          {DRONE_KEY_GROUPS.map((group) => (
-            <optgroup key={group.label} label={group.label}>
-              {group.items.map((item) => (
-                <option key={item.value} value={item.value}>
-                  {item.label}
-                </option>
-              ))}
-            </optgroup>
-          ))}
-        </select>
+        <Select.Root value={kit.drone.key} onValueChange={(key) => onChange({ ...kit, drone: { ...kit.drone, key } })}>
+          <Select.Trigger aria-label='Drone key' className='w-full' />
+          <Select.Content position='popper'>
+            <Select.Item value={SONG_KEY}>Song key ({sounding})</Select.Item>
+            {DRONE_KEY_GROUPS.map((group) => (
+              <Select.Group key={group.label}>
+                <Select.Label>{group.label}</Select.Label>
+                {group.items.map((item) => (
+                  <Select.Item key={item.value} value={item.value}>
+                    {item.label}
+                  </Select.Item>
+                ))}
+              </Select.Group>
+            ))}
+          </Select.Content>
+        </Select.Root>
       </Field>
       <p className='-mt-3 text-10 text-ink-muted'>
         Song key follows the header and the transpose control. A key picked by name is held
@@ -692,17 +663,9 @@ function MixTab({
         </div>
       </Field>
 
-      <button
-        type='button'
-        onClick={() => auditionAccent(kit.drums.shimmer, bpm)}
-        className={cn(
-          "flex h-9 items-center gap-2 self-start rounded-md border border-line-subtle bg-surface-raised px-3 text-13 text-ink-primary",
-          "transition-colors duration-120 ease-ui hover:bg-surface-overlay",
-          "focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
-        )}
-      >
+      <RadixButton type='button' variant='soft' color='gray' className='self-start' onClick={() => auditionAccent(kit.drums.shimmer, bpm)}>
         <Volume2 className='h-4 w-4' /> Hear {kit.drums.shimmer}
-      </button>
+      </RadixButton>
     </div>
   );
 }

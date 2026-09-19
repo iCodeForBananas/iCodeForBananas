@@ -3,6 +3,9 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import BentoPageLayout from "../components/BentoPageLayout";
+import { Bento } from "../components/ui/bento";
+import { Badge, Button, Callout, Flex, Table, Tabs, Text } from "@radix-ui/themes";
+import { cn } from "../lib/utils";
 
 interface CategoryLevel {
   id: string;
@@ -144,15 +147,15 @@ function OverallGauge({ level }: { level: number }) {
 
 function CategoryRow({ cat }: { cat: CategoryLevel }) {
   return (
-    <tr className="border-b border-line-subtle hover:bg-surface-sunken transition-colors">
+    <Table.Row className="hover:bg-[var(--gray-a3)]">
       {/* Category */}
-      <td className="px-4 py-3">
+      <Table.Cell>
         <div className="font-semibold text-ink-primary text-sm">{cat.label}</div>
         <div className="text-xs text-ink-muted mt-0.5">{cat.description}</div>
-      </td>
+      </Table.Cell>
 
       {/* Level bar */}
-      <td className="px-4 py-3 w-52">
+      <Table.Cell className="w-52">
         <div className="flex items-center gap-2">
           <div className="flex-1 h-3 bg-surface-sunken rounded-full overflow-hidden">
             <div
@@ -164,24 +167,20 @@ function CategoryRow({ cat }: { cat: CategoryLevel }) {
             {cat.level}
           </span>
         </div>
-      </td>
+      </Table.Cell>
 
       {/* Status badge */}
-      <td className="px-4 py-3">
-        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-          cat.level >= 85 ? "bg-success/15 text-success" :
-          cat.level >= 70 ? "bg-success/15 text-success" :
-          cat.level >= 50 ? "bg-primary-solid/15 text-primary-text" :
-          cat.level >= 30 ? "bg-primary-solid/15 text-primary-text" :
-          cat.total === 0 ? "bg-surface-sunken text-ink-muted" :
-          "bg-danger/15 text-danger"
-        }`}>
+      <Table.Cell>
+        <Badge
+          radius="full"
+          color={cat.level >= 70 ? "green" : cat.level >= 30 ? "amber" : cat.total === 0 ? "gray" : "red"}
+        >
           {levelLabel(cat.level)}
-        </span>
-      </td>
+        </Badge>
+      </Table.Cell>
 
       {/* Stages mastered */}
-      <td className="px-4 py-3 text-center">
+      <Table.Cell justify="center">
         <div className="flex items-center justify-center gap-0.5">
           {Array.from({ length: cat.totalStages }).map((_, i) => (
             <div
@@ -191,26 +190,26 @@ function CategoryRow({ cat }: { cat: CategoryLevel }) {
           ))}
         </div>
         <div className="text-xs text-ink-muted mt-0.5">{cat.masteredStages}/{cat.totalStages} stages</div>
-      </td>
+      </Table.Cell>
 
       {/* Accuracy */}
-      <td className="px-4 py-3 text-center">
+      <Table.Cell justify="center">
         <div className="text-sm font-bold text-ink-primary">
           {cat.total > 0 ? `${Math.round((cat.correct / cat.total) * 100)}%` : "—"}
         </div>
         <div className="text-xs text-ink-muted">{cat.correct}/{cat.total} correct</div>
-      </td>
+      </Table.Cell>
 
       {/* Trend */}
-      <td className="px-4 py-3 text-center">
+      <Table.Cell justify="center">
         <span className={`text-lg font-bold ${trendColor(cat.trend)}`}>{trendIcon(cat.trend)}</span>
-      </td>
+      </Table.Cell>
 
       {/* Last played */}
-      <td className="px-4 py-3 text-xs text-ink-muted text-right">
+      <Table.Cell justify="end" className="text-xs text-ink-muted">
         {fmtDate(cat.lastPlayed)}
-      </td>
-    </tr>
+      </Table.Cell>
+    </Table.Row>
   );
 }
 
@@ -218,7 +217,7 @@ function SkillLadder({ data }: { data: ProgressData }) {
   const { ladder, upcoming, skillsMastered, totalSkills, ladderAccuracy, ladderCorrect, ladderAttempts } = data;
   const pct = totalSkills > 0 ? Math.round((skillsMastered / totalSkills) * 100) : 0;
   return (
-    <div className="bg-surface-raised rounded-2xl border border-line-subtle shadow-sm overflow-hidden">
+    <Bento className="overflow-hidden p-0">
       <div className="px-6 py-4 border-b border-line-subtle flex items-center justify-between flex-wrap gap-3">
         <div>
           <h3 className="font-bold text-ink-primary">Skill Ladder · Common Core Standards</h3>
@@ -278,13 +277,13 @@ function SkillLadder({ data }: { data: ProgressData }) {
               <div className="text-right text-xs text-ink-muted w-24 hidden md:block">
                 {s.total > 0 ? `${s.correct}/${s.total} correct` : ""}
               </div>
-              <div className={`text-[10px] font-bold uppercase tracking-wide px-2 py-1 rounded-full shrink-0 ${
-                status === "mastered" ? "bg-success/15 text-success" :
-                status === "learning" ? "bg-primary-solid/15 text-primary-text" :
-                "bg-surface-sunken text-ink-muted"
-              }`}>
+              <Badge
+                radius="full"
+                className="shrink-0 uppercase"
+                color={status === "mastered" ? "green" : status === "learning" ? "amber" : "gray"}
+              >
                 {status === "mastered" ? "In review" : status === "learning" ? "Learning" : "Not started"}
-              </div>
+              </Badge>
             </div>
           );
         })}
@@ -299,7 +298,7 @@ function SkillLadder({ data }: { data: ProgressData }) {
           </div>
         </div>
       )}
-    </div>
+    </Bento>
   );
 }
 
@@ -315,10 +314,14 @@ function MathTab({ data, loading, error, onRefresh }: {
 
   if (error) {
     return (
-      <div className="bg-danger/10 border border-danger/40 rounded-xl p-4 text-danger text-13">
-        {error}{" "}
-        <button onClick={onRefresh} className="underline ml-1">Retry</button>
-      </div>
+      <Callout.Root color="red" role="alert">
+        <Callout.Text>
+          {error}{" "}
+          <Button size="1" variant="soft" color="red" onClick={onRefresh} className="ml-1">
+            Retry
+          </Button>
+        </Callout.Text>
+      </Callout.Root>
     );
   }
 
@@ -330,11 +333,7 @@ function MathTab({ data, loading, error, onRefresh }: {
   return (
     <div className="space-y-6">
       {/* Where the learner is on the ladder — no grade placement */}
-      <div className={`rounded-2xl border p-5 shadow-sm flex items-start gap-5 flex-wrap ${
-        syllabusComplete
-          ? "bg-success/10 border-success/40"
-          : "bg-surface-raised border-line-subtle"
-      }`}>
+      <Bento size="3" className={cn("flex items-start gap-5 flex-wrap", syllabusComplete && "bg-[var(--green-a3)]")}>
         <div className={`w-20 h-20 rounded-2xl flex flex-col items-center justify-center shadow-sm shrink-0 ${
           syllabusComplete ? "bg-success/25 text-success" : "bg-primary-solid text-ink-on-primary"
         }`}>
@@ -361,10 +360,7 @@ function MathTab({ data, loading, error, onRefresh }: {
           </div>
         </div>
         <div className="flex flex-col gap-2 min-w-[200px]">
-          <div className="bg-surface-raised rounded-lg p-3 border border-line-subtle">
-            <div className="text-10 font-semibold uppercase tracking-wide text-ink-muted mb-1">
-              Working on now
-            </div>
+          <Bento size="1" title="Working on now">
             {focusSkills.length > 0 ? (
               focusSkills.map((s) => (
                 <div key={s.stageId} className="text-xs text-ink-primary truncate" title={s.label}>
@@ -374,25 +370,22 @@ function MathTab({ data, loading, error, onRefresh }: {
             ) : (
               <div className="text-xs text-ink-muted">Nothing left to learn 🎉</div>
             )}
-          </div>
-          <div className="bg-surface-raised rounded-lg p-3 border border-line-subtle">
-            <div className="text-[10px] font-bold uppercase tracking-wide text-success mb-1">
-              In review rotation
-            </div>
+          </Bento>
+          <Bento size="1" title={<Text color="green">In review rotation</Text>}>
             <div className="text-xs text-ink-muted">
               {reviewSkills.length > 0
                 ? `${reviewSkills.length} mastered skills still mixed in`
                 : "Nothing mastered yet"}
             </div>
-          </div>
+          </Bento>
         </div>
-      </div>
+      </Bento>
 
       {/* Full ladder checklist */}
       <SkillLadder data={data} />
 
       {/* Hero summary */}
-      <div className="bg-surface-raised rounded-2xl border border-line-subtle shadow-sm p-6">
+      <Bento size="3">
         <div className="flex items-center gap-8 flex-wrap">
           <OverallGauge level={overallLevel} />
           <div className="flex-1 min-w-[200px]">
@@ -427,71 +420,72 @@ function MathTab({ data, loading, error, onRefresh }: {
           {/* Strengths + Weaknesses quick summary */}
           <div className="flex flex-col gap-2 min-w-[180px]">
             {strengths.length > 0 && (
-              <div className="bg-success/10 rounded-lg p-3 border border-success/40">
-                <div className="text-xs font-bold text-success mb-1">💪 Strengths</div>
-                {strengths.map((s) => (
-                  <div key={s} className="text-xs text-success">{s}</div>
-                ))}
-              </div>
+              <Callout.Root size="1" color="green" variant="surface">
+                <Callout.Text size="1">
+                  <strong className="mb-1 block">💪 Strengths</strong>
+                  {strengths.map((s) => (
+                    <span key={s} className="block">{s}</span>
+                  ))}
+                </Callout.Text>
+              </Callout.Root>
             )}
             {weaknesses.length > 0 && (
-              <div className="bg-danger/10 rounded-lg p-3 border border-danger/40">
-                <div className="text-xs font-bold text-danger mb-1">🎯 Focus areas</div>
-                {weaknesses.map((w) => (
-                  <div key={w} className="text-xs text-danger">{w}</div>
-                ))}
-              </div>
+              <Callout.Root size="1" color="red" variant="surface">
+                <Callout.Text size="1">
+                  <strong className="mb-1 block">🎯 Focus areas</strong>
+                  {weaknesses.map((w) => (
+                    <span key={w} className="block">{w}</span>
+                  ))}
+                </Callout.Text>
+              </Callout.Root>
             )}
             {notStarted.length > 0 && (
-              <div className="bg-surface-sunken rounded-lg p-3 border border-line-subtle">
-                <div className="text-xs font-bold text-ink-muted mb-1">⏳ Not yet started</div>
-                {notStarted.map((n) => (
-                  <div key={n} className="text-xs text-ink-muted">{n}</div>
-                ))}
-              </div>
+              <Callout.Root size="1" color="gray" variant="surface">
+                <Callout.Text size="1">
+                  <strong className="mb-1 block">⏳ Not yet started</strong>
+                  {notStarted.map((n) => (
+                    <span key={n} className="block">{n}</span>
+                  ))}
+                </Callout.Text>
+              </Callout.Root>
             )}
           </div>
         </div>
-      </div>
+      </Bento>
 
       {/* Syllabus table */}
-      <div className="bg-surface-raised rounded-2xl border border-line-subtle shadow-sm overflow-hidden">
+      <Bento className="overflow-hidden p-0">
         <div className="px-6 py-4 border-b border-line-subtle flex items-center justify-between">
           <div>
             <h3 className="font-bold text-ink-primary">Lifetime Skills Heat Map</h3>
             <p className="text-xs text-ink-muted mt-0.5">Aggregated across the whole ladder · Level 0–100 · 80+ = Mastered</p>
           </div>
-          <Link
-            href="/space-math"
-            className="text-10 px-3 py-1.5 bg-primary-solid hover:bg-primary-hover text-ink-on-primary font-medium rounded-lg transition-colors duration-120 ease-ui"
-          >
-            🚀 Play Space Math
-          </Link>
+          <Button asChild size="1">
+            <Link href="/space-math">🚀 Play Space Math</Link>
+          </Button>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-surface-sunken text-xs text-ink-muted font-semibold uppercase tracking-wide">
-                <th className="px-4 py-3 text-left">Topic</th>
-                <th className="px-4 py-3 text-left">Level</th>
-                <th className="px-4 py-3 text-left">Status</th>
-                <th className="px-4 py-3 text-center">Stages</th>
-                <th className="px-4 py-3 text-center">Accuracy</th>
-                <th className="px-4 py-3 text-center">Trend</th>
-                <th className="px-4 py-3 text-right">Last Played</th>
-              </tr>
-            </thead>
-            <tbody>
-              {categoryLevels.map((cat) => (
-                <CategoryRow key={cat.id} cat={cat} />
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+        <Table.Root variant="ghost">
+          <Table.Header>
+            <Table.Row className="text-xs uppercase tracking-wide">
+              <Table.ColumnHeaderCell>Topic</Table.ColumnHeaderCell>
+              <Table.ColumnHeaderCell>Level</Table.ColumnHeaderCell>
+              <Table.ColumnHeaderCell>Status</Table.ColumnHeaderCell>
+              <Table.ColumnHeaderCell justify="center">Stages</Table.ColumnHeaderCell>
+              <Table.ColumnHeaderCell justify="center">Accuracy</Table.ColumnHeaderCell>
+              <Table.ColumnHeaderCell justify="center">Trend</Table.ColumnHeaderCell>
+              <Table.ColumnHeaderCell justify="end">Last Played</Table.ColumnHeaderCell>
+            </Table.Row>
+          </Table.Header>
+          <Table.Body>
+            {categoryLevels.map((cat) => (
+              <CategoryRow key={cat.id} cat={cat} />
+            ))}
+          </Table.Body>
+        </Table.Root>
+      </Bento>
 
       {/* Heat map visual */}
-      <div className="bg-surface-raised rounded-2xl border border-line-subtle shadow-sm p-6">
+      <Bento size="3">
         <h3 className="font-bold text-ink-primary mb-4">Skill Heat Map</h3>
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3">
           {categoryLevels.map((cat) => (
@@ -514,16 +508,16 @@ function MathTab({ data, loading, error, onRefresh }: {
           <span>100</span>
           <span className="ml-2">← Needs work · Developing · Progressing · Proficient · Mastered →</span>
         </div>
-      </div>
+      </Bento>
 
       {data.totalQuestions === 0 && (
-        <div className="bg-surface-raised border border-line-subtle rounded-xl p-5 text-center">
+        <Bento size="3" className="text-center">
           <div className="text-3xl mb-2">🚀</div>
           <div className="font-medium text-ink-primary">No play sessions yet</div>
           <p className="text-ink-muted text-13 mt-1">
             Head to <Link href="/space-math" className="underline font-semibold">Space Math</Link> and play a few stages — Student&apos; progress will appear here automatically.
           </p>
-        </div>
+        </Bento>
       )}
     </div>
   );
@@ -569,53 +563,42 @@ export default function LearningProgressPage() {
             {lastUpdated && (
               <span className="text-xs text-ink-muted">Updated {lastUpdated.toLocaleTimeString()}</span>
             )}
-            <button
-              onClick={load}
-              disabled={loading}
-              className="text-sm px-3 py-1.5 rounded-lg border border-line-subtle hover:bg-surface-raised text-ink-primary disabled:opacity-50 bg-surface-raised shadow-sm"
-            >
+            <Button variant="surface" color="gray" onClick={load} disabled={loading}>
               {loading ? "Loading…" : "↻ Refresh"}
-            </button>
+            </Button>
           </div>
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 mb-6 bg-surface-raised rounded-xl border border-line-subtle p-1 shadow-sm w-fit">
-          {TABS.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => tab.available && setActiveTab(tab.id as "math" | "language")}
-              disabled={!tab.available}
-              className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                activeTab === tab.id
-                  ? "bg-primary-solid text-ink-on-primary shadow-raised"
-                  : tab.available
-                  ? "text-ink-primary hover:bg-surface-sunken"
-                  : "text-ink-muted cursor-not-allowed"
-              }`}
-            >
-              {tab.label}
-              {!tab.available && (
-                <span className="ml-1.5 text-[10px] bg-surface-sunken text-ink-muted px-1.5 py-0.5 rounded-full font-medium">
-                  Soon
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
+        <Tabs.Root value={activeTab} onValueChange={(v) => setActiveTab(v as "math" | "language")} className="mb-6">
+          <Tabs.List>
+            {TABS.map((tab) => (
+              <Tabs.Trigger key={tab.id} value={tab.id} disabled={!tab.available}>
+                <Flex align="center" gap="2">
+                  {tab.label}
+                  {!tab.available && (
+                    <Badge size="1" radius="full" color="gray">
+                      Soon
+                    </Badge>
+                  )}
+                </Flex>
+              </Tabs.Trigger>
+            ))}
+          </Tabs.List>
+        </Tabs.Root>
 
         {/* Tab content */}
         {activeTab === "math" && (
           <MathTab data={data} loading={loading} error={error} onRefresh={load} />
         )}
         {activeTab === "language" && (
-          <div className="bg-surface-raised rounded-2xl border border-dashed border-line-subtle p-12 text-center">
+          <Bento size="5" className="text-center">
             <div className="text-4xl mb-3">📖</div>
             <h3 className="text-lg font-semibold text-ink-primary mb-2">Language Arts coming soon</h3>
             <p className="text-ink-muted text-sm max-w-sm mx-auto">
               Reading comprehension, spelling, and phonics progress will appear here once those games are built.
             </p>
-          </div>
+          </Bento>
         )}
     </BentoPageLayout>
   );

@@ -3,6 +3,8 @@
 import React, { useState, useMemo } from "react";
 import "./fretboard.css";
 import { Button } from "@/app/components/ui/button";
+import { Badge, Card, Text } from "@radix-ui/themes";
+import { Bento } from "@/app/components/ui/bento";
 import { allNotes, getNoteAt, generateChordsAndScales, defaultTuning } from "../lib/music";
 
 interface ChordMatch {
@@ -116,17 +118,35 @@ export default function ChordFinder({ rootNote }: { rootNote?: string } = {}) {
 
   const rootUpper = rootNote ? rootNote.toUpperCase() : null;
 
-  const matchTypeBadgeClass = (m: ChordMatch) => {
-    if (m.matchType === "exact") return "border border-success/40 bg-success/10 text-success";
-    if (m.matchType === "subset") return "border border-line-subtle bg-surface-sunken text-ink-muted";
-    return "border border-primary-solid/30 bg-primary-solid/10 text-primary-text";
-  };
+  const matchTypeBadgeColor = (m: ChordMatch) =>
+    m.matchType === "exact" ? "green" : m.matchType === "subset" ? "gray" : "amber";
+
+  /** A match to pin: a Radix Card that is also the button. */
+  const matchCard = (m: ChordMatch, big: boolean) => (
+    <Card
+      key={m.name}
+      asChild
+      className={`min-w-[120px] ${pinnedChord?.name === m.name ? "bg-[var(--accent-a3)] shadow-[inset_0_0_0_1px_var(--accent-9)]" : ""}`}
+    >
+      <button onClick={() => handleChordPin(m)} aria-pressed={pinnedChord?.name === m.name} className='flex flex-col items-start gap-1 text-left'>
+        <Text size={big ? "5" : "3"} weight={big ? "bold" : "medium"}>
+          {m.name}
+        </Text>
+        <Text size='1' color='gray'>
+          {m.notes.join(" – ")}
+        </Text>
+        <Badge size='1' radius='full' variant='soft' color={matchTypeBadgeColor(m)}>
+          {matchTypeLabel(m)}
+        </Badge>
+      </button>
+    </Card>
+  );
 
   return (
     <div className='space-y-6'>
       {/* Pinned chord banner */}
       {pinnedChord && (
-        <div className='flex items-center justify-between gap-3 px-4 py-3 rounded-xl border border-line-subtle bg-surface-raised shadow-raised'>
+        <Bento className='flex items-center justify-between gap-3'>
           <div>
             <span className='text-10 font-semibold text-ink-muted uppercase tracking-wider'>Previewing</span>
             <div className='flex items-baseline gap-2 mt-0.5'>
@@ -137,7 +157,7 @@ export default function ChordFinder({ rootNote }: { rootNote?: string } = {}) {
           <Button variant='ghost' size='sm' onClick={() => setPinnedChord(null)} className='rounded-full'>
             Back to selection
           </Button>
-        </div>
+        </Bento>
       )}
 
       {/* Clear button + selected note pills */}
@@ -237,23 +257,7 @@ export default function ChordFinder({ rootNote }: { rootNote?: string } = {}) {
           <div>
             <h3 className='mb-3 text-12 font-semibold uppercase tracking-wider text-ink-muted'>Exact Matches</h3>
             <div className='flex flex-wrap gap-3'>
-              {exactMatches.map((m) => (
-                <button
-                  key={m.name}
-                  onClick={() => handleChordPin(m)}
-                  className={`flex min-w-[120px] flex-col gap-1 rounded-xl border px-4 py-3 text-left shadow-raised transition-colors duration-120 ease-ui ${
-                    pinnedChord?.name === m.name
-                      ? "border-primary-solid bg-primary-solid/10"
-                      : "border-line-subtle bg-surface-raised hover:border-line-strong hover:bg-surface-overlay"
-                  }`}
-                >
-                  <span className='text-20 font-semibold text-ink-primary'>{m.name}</span>
-                  <span className='text-10 text-ink-muted'>{m.notes.join(" – ")}</span>
-                  <span className={`w-fit rounded-full px-2 py-0.5 text-10 font-medium ${matchTypeBadgeClass(m)}`}>
-                    {matchTypeLabel(m)}
-                  </span>
-                </button>
-              ))}
+              {exactMatches.map((m) => matchCard(m, true))}
             </div>
           </div>
         )}
@@ -262,23 +266,7 @@ export default function ChordFinder({ rootNote }: { rootNote?: string } = {}) {
           <div>
             <h3 className='mb-3 text-12 font-semibold uppercase tracking-wider text-ink-muted'>Possible Chords</h3>
             <div className='flex flex-wrap gap-3'>
-              {partialMatches.map((m) => (
-                <button
-                  key={m.name}
-                  onClick={() => handleChordPin(m)}
-                  className={`flex min-w-[120px] flex-col gap-1 rounded-xl border px-4 py-3 text-left shadow-raised transition-colors duration-120 ease-ui ${
-                    pinnedChord?.name === m.name
-                      ? "border-primary-solid bg-primary-solid/10"
-                      : "border-line-subtle bg-surface-raised hover:border-line-strong hover:bg-surface-overlay"
-                  }`}
-                >
-                  <span className='text-15 font-medium text-ink-primary'>{m.name}</span>
-                  <span className='text-10 text-ink-muted'>{m.notes.join(" – ")}</span>
-                  <span className={`w-fit rounded-full px-2 py-0.5 text-10 font-medium ${matchTypeBadgeClass(m)}`}>
-                    {matchTypeLabel(m)}
-                  </span>
-                </button>
-              ))}
+              {partialMatches.map((m) => matchCard(m, false))}
             </div>
           </div>
         )}

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
+import { Button, Checkbox, Flex, Select, Slider, Text } from "@radix-ui/themes";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -362,26 +363,23 @@ export default function FretboardArchitect() {
           <Section title="KEY">
             <div style={{ display:"flex", flexWrap:"wrap", gap:4 }}>
               {ALL_ROOTS.map(r => (
-                <button key={r} onClick={() => setRoot(r)}
-                  style={{
-                    padding:"2px 6px", fontSize:10, borderRadius:3, cursor:"pointer",
-                    background: root === r ? "var(--ds-color-primary-solid)" : "var(--ds-color-surface-raised)",
-                    color: root === r ? "var(--ds-color-text-on-primary)" : "var(--ds-color-text-muted)",
-                    border: "1px solid " + (root === r ? "var(--ds-color-primary-solid)" : "var(--ds-color-border-strong)"),
-                  }}>
+                <Button key={r} size="1" onClick={() => setRoot(r)} aria-pressed={root === r}
+                  variant={root === r ? "solid" : "soft"} color={root === r ? undefined : "gray"}>
                   {r}{ENHARMONIC[r] ? `/${ENHARMONIC[r]}` : ""}
-                </button>
+                </Button>
               ))}
             </div>
           </Section>
 
           <Section title="SCALE">
-            <select value={scaleName} onChange={e => setScaleName(e.target.value)}
-              style={{ width:"100%", background:"var(--ds-color-surface-raised)", color:"var(--ds-color-text-primary)", border:"1px solid var(--ds-color-border-strong)", borderRadius:3, padding:4, fontSize:11 }}>
-              {Object.keys(SCALE_DEFS).map(s => (
-                <option key={s} value={s}>{s}</option>
-              ))}
-            </select>
+            <Select.Root size="1" value={scaleName} onValueChange={setScaleName}>
+              <Select.Trigger aria-label="Scale" className="w-full" />
+              <Select.Content position="popper">
+                {Object.keys(SCALE_DEFS).map(s => (
+                  <Select.Item key={s} value={s}>{s}</Select.Item>
+                ))}
+              </Select.Content>
+            </Select.Root>
             <div style={{ fontSize:10, color:"var(--ds-color-text-muted)", marginTop:4 }}>
               Intervals: [{scaleIntervals.join(",")}]
             </div>
@@ -416,10 +414,7 @@ export default function FretboardArchitect() {
 
           {/* Range Focus */}
           <Section title="RANGE FOCUS">
-            <label style={{ display:"flex", alignItems:"center", gap:6, fontSize:11, cursor:"pointer" }}>
-              <input type="checkbox" checked={rangeFocus} onChange={e => setRangeFocus(e.target.checked)} />
-              Enable fret masking
-            </label>
+            <CheckRow checked={rangeFocus} onCheckedChange={setRangeFocus}>Enable fret masking</CheckRow>
             {rangeFocus && (
               <>
                 <div style={{ fontSize:10, color:"var(--ds-color-text-muted)", marginTop:6 }}>
@@ -427,14 +422,14 @@ export default function FretboardArchitect() {
                 </div>
                 <div style={{ display:"flex", alignItems:"center", gap:4, marginTop:4 }}>
                   <span style={{ fontSize:9, color:"var(--ds-color-text-muted)", width:20 }}>Lo</span>
-                  <input type="range" min={0} max={TOTAL_FRETS-1} value={rangeStart}
-                    onChange={e => { const v = +e.target.value; setRangeStart(v); if(rangeEnd < v+2) setRangeEnd(v+2); }}
+                  <Slider size="1" min={0} max={TOTAL_FRETS-1} value={[rangeStart]} aria-label="Lowest fret"
+                    onValueChange={([v]) => { setRangeStart(v); if(rangeEnd < v+2) setRangeEnd(v+2); }}
                     style={{ flex:1 }} />
                 </div>
                 <div style={{ display:"flex", alignItems:"center", gap:4 }}>
                   <span style={{ fontSize:9, color:"var(--ds-color-text-muted)", width:20 }}>Hi</span>
-                  <input type="range" min={rangeStart+2} max={TOTAL_FRETS} value={rangeEnd}
-                    onChange={e => setRangeEnd(+e.target.value)}
+                  <Slider size="1" min={rangeStart+2} max={TOTAL_FRETS} value={[rangeEnd]} aria-label="Highest fret"
+                    onValueChange={([v]) => setRangeEnd(v)}
                     style={{ flex:1 }} />
                 </div>
               </>
@@ -443,22 +438,16 @@ export default function FretboardArchitect() {
 
           {/* Voicing Panel Toggle */}
           <Section title="VOICING PANEL">
-            <label style={{ display:"flex", alignItems:"center", gap:6, fontSize:11, cursor:"pointer" }}>
-              <input type="checkbox" checked={showVoicingPanel} onChange={e => setShowVoicingPanel(e.target.checked)} />
-              Show voicings
-            </label>
+            <CheckRow checked={showVoicingPanel} onCheckedChange={setShowVoicingPanel}>Show voicings</CheckRow>
             {showVoicingPanel && (
               <div style={{ marginTop:8, display:"flex", flexDirection:"column", gap:6 }}>
                 <div style={{ fontSize:10, color:"var(--ds-color-text-muted)" }}>Root</div>
                 <div style={{ display:"flex", flexWrap:"wrap", gap:3 }}>
                   {ALL_ROOTS.map(r => (
-                    <button key={r} onClick={() => setVoicingRoot(r)}
-                      style={{ padding:"1px 5px", fontSize:9, borderRadius:2, cursor:"pointer",
-                        background: voicingRoot === r ? "var(--ds-color-accent-solid)" : "var(--ds-color-surface-raised)",
-                        color: voicingRoot === r ? "var(--ds-color-text-on-primary)" : "var(--ds-color-text-muted)",
-                        border:"1px solid " + (voicingRoot === r ? "var(--ds-color-accent-solid)" : "var(--ds-color-border-strong)") }}>
+                    <Button key={r} size="1" onClick={() => setVoicingRoot(r)} aria-pressed={voicingRoot === r}
+                      variant={voicingRoot === r ? "solid" : "soft"} color={voicingRoot === r ? "teal" : "gray"}>
                       {r}
-                    </button>
+                    </Button>
                   ))}
                 </div>
                 <div style={{ fontSize:10, color:"var(--ds-color-text-muted)" }}>Quality</div>
@@ -470,10 +459,7 @@ export default function FretboardArchitect() {
                 <div style={{ fontSize:10, color:"var(--ds-color-text-muted)", marginTop:4 }}>
                   Notes: {Array.from(voicingNotes).join(" – ")}
                 </div>
-                <label style={{ display:"flex", alignItems:"center", gap:6, fontSize:11, cursor:"pointer" }}>
-                  <input type="checkbox" checked={compareMode} onChange={e => setCompareMode(e.target.checked)} />
-                  Compare mode
-                </label>
+                <CheckRow checked={compareMode} onCheckedChange={setCompareMode}>Compare mode</CheckRow>
                 {compareMode && (
                   <>
                     <div style={{ fontSize:10, color:"var(--ds-color-text-muted)" }}>Compare to</div>
@@ -495,10 +481,7 @@ export default function FretboardArchitect() {
 
           {/* NNS */}
           <Section title="NASHVILLE #">
-            <label style={{ display:"flex", alignItems:"center", gap:6, fontSize:11, cursor:"pointer" }}>
-              <input type="checkbox" checked={showNNS} onChange={e => setShowNNS(e.target.checked)} />
-              Tension spectrum
-            </label>
+            <CheckRow checked={showNNS} onCheckedChange={setShowNNS}>Tension spectrum</CheckRow>
           </Section>
 
         </div>
@@ -673,27 +656,33 @@ export default function FretboardArchitect() {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
-      <div style={{ fontSize:9, color:"var(--ds-color-text-muted)", textTransform:"uppercase", letterSpacing:1.5, marginBottom:6, borderBottom:"1px solid var(--ds-color-border-subtle)", paddingBottom:3 }}>
+      <Text as="div" size="1" weight="bold" color="gray" className="mb-1.5 border-b border-line-subtle pb-1 uppercase tracking-widest">
         {title}
-      </div>
-      <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
+      </Text>
+      <Flex direction="column" gap="1">
         {children}
-      </div>
+      </Flex>
     </div>
   );
 }
 
 function RadioBtn({ selected, onClick, children }: { selected: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
-    <button onClick={onClick} style={{
-      textAlign:"left", padding:"3px 8px", fontSize:11, borderRadius:3, cursor:"pointer",
-      background: selected ? "var(--ds-color-primary-solid)" : "var(--ds-color-surface-raised)",
-      color: selected ? "var(--ds-color-text-on-primary)" : "var(--ds-color-text-muted)",
-      border: "1px solid " + (selected ? "var(--ds-color-primary-solid)" : "var(--ds-color-border-strong)"),
-      fontFamily:"monospace",
-    }}>
+    <Button size="1" onClick={onClick} aria-pressed={selected} variant={selected ? "solid" : "soft"}
+      color={selected ? undefined : "gray"} className="justify-start font-mono">
       {children}
-    </button>
+    </Button>
+  );
+}
+
+function CheckRow({ checked, onCheckedChange, children }: { checked: boolean; onCheckedChange: (checked: boolean) => void; children: React.ReactNode }) {
+  return (
+    <Text as="label" size="1">
+      <Flex gap="2" align="center">
+        <Checkbox size="1" checked={checked} onCheckedChange={(c) => onCheckedChange(c === true)} />
+        {children}
+      </Flex>
+    </Text>
   );
 }
 

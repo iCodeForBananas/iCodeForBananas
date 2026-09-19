@@ -4,7 +4,8 @@ import { useState, useEffect, useMemo, useRef, use } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/app/hooks/useAuth";
-import { Save, ArrowLeft, Eye, Replace, X, Sparkles, Play, Timer, TimerOff, Clock, HelpCircle, SlidersHorizontal } from "lucide-react";
+import { Save, ArrowLeft, Eye, Replace, X, Sparkles, Play, Timer, TimerOff, Clock, HelpCircle, SlidersHorizontal, ChevronDown } from "lucide-react";
+import { Button, DropdownMenu, Flex, IconButton, Select, Separator, Text, TextField } from "@radix-ui/themes";
 import { RevisionHistory } from "../../RevisionHistory";
 import {
   type LeadSheet,
@@ -374,9 +375,7 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
     replaceInputRef.current?.focus();
   }
 
-  function handleAiFeedback(e: React.ChangeEvent<HTMLSelectElement>) {
-    const label = e.target.value;
-    e.target.value = "";
+  function handleAiFeedback(label: string) {
     const option = FEEDBACK_OPTIONS.find((o) => o.label === label);
     if (!option) return;
 
@@ -444,57 +443,57 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
           {/* Toolbar */}
           <div className="shrink-0">
             <div className="flex items-center justify-between px-4 py-3 sm:px-6 sm:py-4">
-              <button
-                onClick={handleBack}
-                className="flex items-center gap-2 text-ink-muted hover:text-ink-primary transition-colors text-sm font-medium"
-              >
+              <Button variant="ghost" color="gray" onClick={handleBack}>
                 <ArrowLeft className="w-4 h-4" />
                 All Sheets
-              </button>
-              <div className="flex items-center gap-2 flex-wrap justify-end">
+              </Button>
+              <Flex align="center" gap="2" wrap="wrap" justify="end">
                 {offline && <OfflineBadge />}
                 {saveError && (
-                  <span className="flex items-center gap-1 text-xs font-medium text-primary-text">
+                  <Text size="1" weight="medium" color="red">
                     Save failed
-                  </span>
+                  </Text>
                 )}
 
-                <button
+                <Button
+                  variant="surface"
+                  color="gray"
                   onClick={() => setHelpOpen(true)}
                   title="What can I type into a song? Time stamps, drum triggers, chords…"
-                  className="flex items-center gap-1.5 rounded border border-line-strong px-3 py-2 text-sm font-medium text-ink-primary/80 hover:border-line-strong hover:bg-surface-base hover:text-primary-text transition-colors"
                 >
                   <HelpCircle className="w-4 h-4" />
                   Help
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant={replaceOpen ? "soft" : "surface"}
+                  color={replaceOpen ? undefined : "gray"}
+                  aria-pressed={replaceOpen}
                   onClick={replaceOpen ? closeReplace : openReplace}
-                  className={`flex items-center gap-1.5 rounded border px-3 py-2 text-sm font-medium transition-colors ${
-                    replaceOpen
-                      ? "border-line-strong border-line-strong bg-surface-base text-primary-text"
-                      : "border-line-strong text-ink-primary/80 hover:border-line-strong hover:bg-surface-base hover:text-primary-text"
-                  }`}
                 >
                   <Replace className="w-4 h-4" />
                   Replace Chord
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="surface"
+                  color="gray"
                   onClick={() => setArrangeOpen(true)}
                   title="Lay the song out on tracks — drag each line and each sound to where it belongs"
-                  className="flex items-center gap-1.5 rounded border border-line-strong px-3 py-2 text-sm font-medium text-ink-primary/80 hover:border-line-strong hover:bg-surface-base hover:text-primary-text transition-colors"
                 >
                   <SlidersHorizontal className="w-4 h-4" />
                   Arrange
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="surface"
+                  color="gray"
                   onClick={() => setTapOpen(true)}
                   title="Tap along with the song to time each line"
-                  className="flex items-center gap-1.5 rounded border border-line-strong px-3 py-2 text-sm font-medium text-ink-primary/80 hover:border-line-strong hover:bg-surface-base hover:text-primary-text transition-colors"
                 >
                   <Timer className="w-4 h-4" />
                   Tap Timing
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="surface"
+                  color="gray"
                   onClick={handleClearTimings}
                   disabled={!hasTiming}
                   title={
@@ -502,12 +501,13 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
                       ? `Remove all ${timingCount} time stamp${timingCount === 1 ? "" : "s"} so you can re-time the song`
                       : "This song has no time stamps"
                   }
-                  className="flex items-center gap-1.5 rounded border border-line-strong px-3 py-2 text-sm font-medium text-ink-primary/80 hover:border-line-strong hover:bg-surface-base hover:text-primary-text disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                 >
                   <TimerOff className="w-4 h-4" />
                   Clear Times
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="surface"
+                  color="gray"
                   onClick={handlePlay}
                   disabled={!hasTiming}
                   title={
@@ -515,85 +515,77 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
                       ? "Play through the sheet, highlighting each line in time"
                       : "Time some lines first — use Tap Timing, or type @0:12 at the start of a line"
                   }
-                  className="flex items-center gap-1.5 rounded border border-line-strong px-3 py-2 text-sm font-medium text-ink-primary/80 hover:border-line-strong hover:bg-surface-base hover:text-primary-text disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                 >
                   <Play className="w-4 h-4" />
                   Play
-                </button>
-                <button
-                  onClick={handlePreview}
-                  className="flex items-center gap-1.5 rounded border border-line-strong px-3 py-2 text-sm font-medium text-ink-primary/80 hover:border-line-strong hover:bg-surface-base hover:text-primary-text transition-colors"
-                >
+                </Button>
+                <Button variant="surface" color="gray" onClick={handlePreview}>
                   <Eye className="w-4 h-4" />
                   Preview
-                </button>
-                <button
-                  onClick={() => setHistoryOpen(true)}
-                  className="flex items-center gap-1.5 rounded border border-line-strong px-3 py-2 text-sm font-medium text-ink-primary/80 hover:border-line-strong hover:bg-surface-base hover:text-primary-text transition-colors"
-                  title="View revision history"
-                >
+                </Button>
+                <Button variant="surface" color="gray" onClick={() => setHistoryOpen(true)} title="View revision history">
                   <Clock className="w-4 h-4" />
                   History
-                </button>
+                </Button>
 
-                <div className="w-px self-stretch bg-line-strong" />
+                <Separator orientation="vertical" size="2" />
 
-                <button
-                  onClick={() => saveSheet(true)}
-                  disabled={!dirty || saving}
-                  className="flex items-center gap-2 rounded bg-primary-solid px-4 py-2 text-sm font-medium text-ink-on-primary hover:bg-primary-hover disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                >
+                <Button onClick={() => saveSheet(true)} disabled={!dirty || saving}>
                   <Save className="w-4 h-4" />
                   {saving ? "Saving..." : dirty ? "Save" : "Saved"}
-                </button>
+                </Button>
 
-                <div className="w-px self-stretch bg-line-strong" />
+                <Separator orientation="vertical" size="2" />
 
-                <div className="relative flex items-center gap-1.5 rounded border border-line-strong px-3 py-2 text-sm font-medium text-ink-primary/80 hover:border-line-strong hover:bg-surface-base hover:text-primary-text transition-colors">
-                  <Sparkles className="w-4 h-4" />
-                  Get Feedback
-                  <select
-                    value=""
-                    onChange={handleAiFeedback}
-                    aria-label="Get AI Feedback"
-                    className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-                  >
-                    <option value="" disabled>
-                      Get AI Feedback
-                    </option>
+                <DropdownMenu.Root>
+                  <DropdownMenu.Trigger>
+                    <Button variant="surface" color="gray">
+                      <Sparkles className="w-4 h-4" />
+                      Get Feedback
+                      <ChevronDown className="w-3.5 h-3.5" />
+                    </Button>
+                  </DropdownMenu.Trigger>
+                  <DropdownMenu.Content align="end">
+                    <DropdownMenu.Label>Get AI feedback</DropdownMenu.Label>
                     {FEEDBACK_OPTIONS.map((o) => (
-                      <option key={o.label} value={o.label}>
+                      <DropdownMenu.Item key={o.label} onSelect={() => handleAiFeedback(o.label)}>
                         {o.label}
-                      </option>
+                      </DropdownMenu.Item>
                     ))}
-                  </select>
-                </div>
-              </div>
+                  </DropdownMenu.Content>
+                </DropdownMenu.Root>
+              </Flex>
             </div>
 
             {replaceOpen && (
               <div className="border-t border-line-subtle px-4 py-3 sm:px-6">
                 <div className="max-w-3xl mx-auto flex flex-wrap items-center gap-2">
                   {chordsInSheet.length === 0 ? (
-                    <span className="text-sm text-ink-muted">No chords in this sheet yet.</span>
+                    <Text size="2" color="gray">
+                      No chords in this sheet yet.
+                    </Text>
                   ) : (
                     <>
-                      <select
-                        value={findChord}
-                        onChange={(e) => {
-                          setFindChord(e.target.value);
+                      <Select.Root
+                        value={findChord || undefined}
+                        onValueChange={(v) => {
+                          setFindChord(v);
                           setReplaceResult("");
                         }}
-                        className="rounded border border-line-strong bg-surface-base px-2 py-2 text-sm font-mono text-ink-primary outline-none focus:border-line-strong"
                       >
-                        {chordsInSheet.map(({ chord, count }) => (
-                          <option key={chord} value={chord}>
-                            [{chord}] — {count}
-                          </option>
-                        ))}
-                      </select>
-                      <span className="text-ink-muted text-sm">→</span>
-                      <input
+                        <Select.Trigger aria-label="Chord to replace" className="font-mono" />
+                        <Select.Content>
+                          {chordsInSheet.map(({ chord, count }) => (
+                            <Select.Item key={chord} value={chord} className="font-mono">
+                              [{chord}] — {count}
+                            </Select.Item>
+                          ))}
+                        </Select.Content>
+                      </Select.Root>
+                      <Text size="2" color="gray">
+                        →
+                      </Text>
+                      <TextField.Root
                         ref={replaceInputRef}
                         value={replaceWith}
                         onChange={(e) => {
@@ -610,28 +602,23 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
                           }
                         }}
                         placeholder="New chord"
+                        aria-label="Replace with"
                         spellCheck={false}
-                        className="w-32 rounded border border-line-strong bg-surface-base px-2 py-2 text-sm font-mono text-ink-primary placeholder:text-ink-muted outline-none focus:border-line-strong"
+                        className="w-32 font-mono"
                       />
-                      <button
-                        onClick={applyReplace}
-                        disabled={!canReplace}
-                        className="rounded bg-surface-base border border-line-strong px-3 py-2 text-sm font-medium text-primary-text hover:border-line-strong disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                      >
+                      <Button variant="soft" onClick={applyReplace} disabled={!canReplace}>
                         Replace All
-                      </button>
+                      </Button>
                       {replaceResult && (
-                        <span className="text-xs text-ink-muted">{replaceResult}</span>
+                        <Text size="1" color="gray">
+                          {replaceResult}
+                        </Text>
                       )}
                     </>
                   )}
-                  <button
-                    onClick={closeReplace}
-                    className="ml-auto text-ink-muted hover:text-ink-primary transition-colors"
-                    aria-label="Close replace"
-                  >
+                  <IconButton variant="ghost" color="gray" onClick={closeReplace} aria-label="Close replace" className="ml-auto">
                     <X className="w-4 h-4" />
-                  </button>
+                  </IconButton>
                 </div>
               </div>
             )}

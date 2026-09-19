@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Rocket, Star, Trophy, ChevronRight, Sparkles, Check, X } from "lucide-react";
+import { Button } from "@radix-ui/themes";
 import styles from "./space-math.module.css";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -965,12 +966,9 @@ const playSound = (type: "correct" | "incorrect" | "badge") => {
 
 const StarBank = ({ score, onClear }: { score: number; onClear: () => void }) => (
   <div className='w-full p-3 pl-14 flex items-start sm:items-center gap-4 z-50 relative min-h-[60px]'>
-    <button
-      onClick={onClear}
-      className='shrink-0 rounded bg-danger/10 px-2 py-1 text-10 font-semibold uppercase text-danger transition-colors duration-120 ease-ui hover:bg-danger/20'
-    >
+    <Button size='1' variant='soft' color='red' onClick={onClear} className='shrink-0 uppercase'>
       Clear
-    </button>
+    </Button>
     <div className='flex flex-wrap gap-1.5 flex-1 content-start'>
       <AnimatePresence>
         {Array.from({ length: Math.floor(score / 10) }).map((_, i) => (
@@ -1350,12 +1348,9 @@ export default function SpaceMathPage() {
               <h1 className='text-lg sm:text-xl font-bold tracking-tight'>Space Math</h1>
             </div>
           </div>
-          <button
-            onClick={resetGame}
-            className='text-[10px] font-bold text-ink-muted hover:text-ink-primary hover:bg-surface-raised/10 uppercase bg-surface-raised/5 px-2.5 py-1 rounded-md transition-colors border border-line-strong'
-          >
+          <Button size='1' variant='surface' color='gray' onClick={resetGame} className='uppercase'>
             Reset
-          </button>
+          </Button>
         </div>
 
         <AnimatePresence mode='wait'>

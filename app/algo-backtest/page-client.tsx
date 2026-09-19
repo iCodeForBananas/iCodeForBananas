@@ -4,6 +4,27 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import BacktestChart from "../components/BacktestChart";
 import EquityCurveChart from "../components/EquityCurveChart";
 import BentoPageLayout from "../components/BentoPageLayout";
+import { Bento } from "../components/ui/bento";
+import {
+  Badge,
+  Box,
+  Button,
+  Callout,
+  Checkbox,
+  CheckboxGroup,
+  Code,
+  Flex,
+  Grid,
+  IconButton,
+  ScrollArea,
+  Switch,
+  Table,
+  Tabs,
+  Text,
+  TextField,
+} from "@radix-ui/themes";
+import { Check, ChevronDown, ClipboardCopy, Play, Zap } from "lucide-react";
+import { cn } from "@/app/lib/utils";
 import { IndicatorData, PositionSide } from "@/app/types";
 import {
   AVAILABLE_STRATEGIES,
@@ -24,10 +45,10 @@ const DEFAULT_VISIBLE_CANDLES = 300;
 const STORAGE_KEY_GLOBAL = "algo-backtest-global";
 const STORAGE_KEY_STRATEGY_PREFIX = "algo-backtest-strategy-";
 
+// Which datasets and strategies are ticked is deliberately not in here: the page
+// always opens with nothing selected, so a run is always something you chose.
 interface GlobalSettings {
   selectedStrategyId: string;
-  selectedStrategyIds: string[];
-  selectedFiles: string[];
   showEquityCurve: boolean;
   visibleCandles: number;
 }
@@ -139,9 +160,9 @@ export default function AlgoBacktestPage() {
   // Multi-select: which strategies to run. The "active" one (selectedStrategyId)
   // drives the parameter editor; other selected strategies use their saved
   // per-strategy settings at run time.
-  const [selectedStrategyIds, setSelectedStrategyIds] = useState<string[]>(["ema-crossover"]);
+  const [selectedStrategyIds, setSelectedStrategyIds] = useState<string[]>([]);
   // Accordion expand/collapse state for the strategy list — purely UI, not persisted.
-  const [expandedStrategyIds, setExpandedStrategyIds] = useState<string[]>(["ema-crossover"]);
+  const [expandedStrategyIds, setExpandedStrategyIds] = useState<string[]>([]);
   // Mounted flag — gates render branches that read localStorage to avoid
   // SSR/CSR hydration mismatches (React #418).
   const [mounted, setMounted] = useState(false);
@@ -283,12 +304,6 @@ export default function AlgoBacktestPage() {
     if (saved?.selectedStrategyId && AVAILABLE_STRATEGIES[saved.selectedStrategyId]) {
       setSelectedStrategyId(saved.selectedStrategyId);
     }
-    if (saved?.selectedStrategyIds && saved.selectedStrategyIds.length > 0) {
-      const valid = saved.selectedStrategyIds.filter((id) => AVAILABLE_STRATEGIES[id]);
-      if (valid.length > 0) setSelectedStrategyIds(valid);
-    } else if (saved?.selectedStrategyId && AVAILABLE_STRATEGIES[saved.selectedStrategyId]) {
-      setSelectedStrategyIds([saved.selectedStrategyId]);
-    }
     if (saved?.showEquityCurve !== undefined) setShowEquityCurve(saved.showEquityCurve);
     if (saved?.visibleCandles !== undefined) setVisibleCandles(saved.visibleCandles);
   }, []);
@@ -300,18 +315,6 @@ export default function AlgoBacktestPage() {
         const result = await response.json();
         if (result.success && result.files.length > 0) {
           setAvailableDatasets(result.files);
-          const savedGlobal = loadGlobalSettings();
-          const availableFileNames = result.files.map((f: DatasetInfo) => f.file);
-          // Restore saved file selection if valid, otherwise use default
-          if (savedGlobal?.selectedFiles && savedGlobal.selectedFiles.length > 0) {
-            const validFiles = savedGlobal.selectedFiles.filter((f: string) => availableFileNames.includes(f));
-            if (validFiles.length > 0) {
-              setSelectedFiles(validFiles);
-              return;
-            }
-          }
-          const dailyFile = result.files.find((f: DatasetInfo) => f.timeframe === "1d");
-          setSelectedFiles([dailyFile?.file || result.files[0].file]);
         }
       } catch (err) {
         console.error("Error fetching datasets:", err);
@@ -322,8 +325,8 @@ export default function AlgoBacktestPage() {
 
   // Save global settings when any global preference changes
   useEffect(() => {
-    saveGlobalSettings({ selectedStrategyId, selectedStrategyIds, selectedFiles, showEquityCurve, visibleCandles });
-  }, [selectedStrategyId, selectedStrategyIds, selectedFiles, showEquityCurve, visibleCandles]);
+    saveGlobalSettings({ selectedStrategyId, showEquityCurve, visibleCandles });
+  }, [selectedStrategyId, showEquityCurve, visibleCandles]);
 
   // Save per-strategy settings when any strategy-specific setting changes
   useEffect(() => {
@@ -804,697 +807,660 @@ export default function AlgoBacktestPage() {
     [activeResult]
   );
 
+  const allStrategyIds = Object.keys(AVAILABLE_STRATEGIES);
+  const filteredDatasets = availableDatasets.filter((ds) =>
+    ds.symbol.toLowerCase().includes(datasetSearch.toLowerCase())
+  );
+  const runLabel = isRunningBatch
+    ? backtestProgress
+      ? `Running ${backtestProgress.completed.toLocaleString()}/${backtestProgress.total ? backtestProgress.total.toLocaleString() : "…"}…`
+      : "Running…"
+    : !mounted
+    ? "Run"
+    : (() => {
+        // The editor's strategy counts only if it's ticked.
+        let totalRuns = 0;
+        for (const sid of selectedStrategyIds) {
+          if (sid === selectedStrategyId) {
+            totalRuns += combinationCount;
+            continue;
+          }
+          const saved = buildSavedRun(sid);
+          if (!saved) continue;
+          totalRuns += generateCombinations(saved.paramVariations).length;
+        }
+        const strategies = selectedStrategyIds.length > 1 ? ` across ${selectedStrategyIds.length} strategies` : "";
+        return `Run ${(totalRuns * selectedFiles.length).toLocaleString()} variations${strategies}`;
+      })();
+
   return (
     <BentoPageLayout title='Algo Backtest'>
-            {error ? (
-              <div className='flex-1 flex items-center justify-center text-red-500 p-8'>
-                <div className='text-center'>
-                  <div className='text-xl mb-2 font-semibold'>Error</div>
-                  <div className='text-gray-600'>{error}</div>
-                </div>
-              </div>
-            ) : isRunningBatch ? (
-              <BacktestProgressPanel
-                progress={backtestProgress}
-                datasetLabel={(file) => availableDatasets.find((d) => d.file === file)?.label ?? file}
-                onCancel={() => {
-                  cancelBacktest();
-                  setIsRunningBatch(false);
-                }}
-              />
-            ) : (
-              <div className='flex flex-col min-w-0'>
+      {error ? (
+        <Callout.Root color='red' role='alert' className='m-auto max-w-lg'>
+          <Callout.Text>
+            <strong>Backtest failed.</strong> {error}
+          </Callout.Text>
+        </Callout.Root>
+      ) : isRunningBatch ? (
+        <BacktestProgressPanel
+          progress={backtestProgress}
+          datasetLabel={(file) => availableDatasets.find((d) => d.file === file)?.label ?? file}
+          onCancel={() => {
+            cancelBacktest();
+            setIsRunningBatch(false);
+          }}
+        />
+      ) : (
+        <Flex direction='column' gap='4' className='min-w-0'>
+          {/* ── Configuration ─────────────────────────────────────── */}
+          <Grid columns={{ initial: "1", sm: "2", lg: "4" }} gap='3' align='start'>
+            <Bento
+              title='Data'
+              actions={
+                <>
+                  <Button size='1' variant='ghost' onClick={() => setSelectedFiles(availableDatasets.map((ds) => ds.file))}>
+                    All
+                  </Button>
+                  <Button
+                    size='1'
+                    variant='ghost'
+                    color='gray'
+                    onClick={() => setSelectedFiles([])}
+                    disabled={selectedFiles.length === 0}
+                  >
+                    None
+                  </Button>
+                  <Badge color='gray' variant='soft'>{selectedFiles.length} selected</Badge>
+                </>
+              }
+            >
+              <Flex direction='column' gap='2'>
+                <TextField.Root
+                  size='1'
+                  value={datasetSearch}
+                  onChange={(e) => setDatasetSearch(e.target.value)}
+                  placeholder='Search ticker…'
+                  aria-label='Search datasets by ticker'
+                />
+                {uniqueTimeframes.length > 1 && (
+                  <Flex wrap='wrap' gap='1'>
+                    {uniqueTimeframes.map((tf) => {
+                      const filesForTf = availableDatasets.filter((ds) => ds.timeframe === tf).map((ds) => ds.file);
+                      const allSelected = filesForTf.every((f) => selectedFiles.includes(f));
+                      return (
+                        <Button
+                          key={tf}
+                          size='1'
+                          variant={allSelected ? "solid" : "soft"}
+                          color={allSelected ? undefined : "gray"}
+                          onClick={() => toggleTimeframe(tf)}
+                          aria-pressed={allSelected}
+                        >
+                          {tf.toUpperCase()}
+                        </Button>
+                      );
+                    })}
+                  </Flex>
+                )}
+                <ScrollArea type='auto' scrollbars='vertical' style={{ maxHeight: 176 }}>
+                  <CheckboxGroup.Root size='1' value={selectedFiles} onValueChange={setSelectedFiles} className='gap-1 pr-3'>
+                    {filteredDatasets.map((ds) => (
+                      <CheckboxGroup.Item key={ds.file} value={ds.file}>
+                        {ds.label}
+                      </CheckboxGroup.Item>
+                    ))}
+                  </CheckboxGroup.Root>
+                </ScrollArea>
+                {selectedFiles.length === 0 && (
+                  <Text size='1' color='gray'>
+                    Pick at least one dataset.
+                  </Text>
+                )}
+              </Flex>
+            </Bento>
 
-                {/* ── Configuration (top) ─────────────────────────────── */}
-                <div className='shrink-0 border-b border-gray-200 px-4 py-3'>
-                  <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3'>
+            <Bento
+              title='Strategy'
+              actions={
+                <>
+                  <Button
+                    size='1'
+                    variant='ghost'
+                    onClick={() =>
+                      setSelectedStrategyIds(selectedStrategyIds.length === allStrategyIds.length ? [] : allStrategyIds)
+                    }
+                  >
+                    {selectedStrategyIds.length === allStrategyIds.length ? "Clear" : "All"}
+                  </Button>
+                  <Badge color='gray' variant='soft'>{selectedStrategyIds.length} selected</Badge>
+                </>
+              }
+            >
+              <ScrollArea type='auto' scrollbars='vertical' style={{ maxHeight: 280 }}>
+                <Flex direction='column' gap='1' className='pr-3'>
+                  {Object.values(AVAILABLE_STRATEGIES).map((s) => {
+                    const isChecked = selectedStrategyIds.includes(s.id);
+                    const isActive = s.id === selectedStrategyId;
+                    // The editor always has a strategy, but it only reads as picked
+                    // once it is ticked or opened, so a fresh page shows nothing chosen.
+                    const emphasized = isActive && (isChecked || expandedStrategyIds.includes(s.id));
+                    const isExpanded = expandedStrategyIds.includes(s.id);
+                    const numericParams = s.parameters?.filter((p) => p.type === "number") ?? [];
+                    const hasParams = numericParams.length > 0;
+                    const savedRun = mounted && !isActive ? buildSavedRun(s.id) : null;
 
-                    {/* Data */}
-                    <div className='flex flex-col gap-2 rounded-lg border border-gray-200 bg-gray-50/60 p-3'>
-                      <div className='flex items-center justify-between'>
-                        <span className='text-[10px] font-semibold uppercase tracking-wide text-gray-600'>Data</span>
-                        <div className='flex items-center gap-1.5'>
-                          <button
-                            onClick={() => setSelectedFiles(availableDatasets.map((ds) => ds.file))}
-                            className='text-xs text-blue-600 hover:text-blue-700 transition-colors'
-                          >
-                            All
-                          </button>
-                          <button
-                            onClick={() => setSelectedFiles([])}
-                            disabled={selectedFiles.length === 0}
-                            className='text-xs text-gray-600 disabled:text-gray-300 disabled:cursor-not-allowed transition-colors'
-                          >
-                            None
-                          </button>
-                          <span className='text-xs text-gray-600'>{selectedFiles.length} sel</span>
-                        </div>
-                      </div>
-                      <input
-                        type='text'
-                        value={datasetSearch}
-                        onChange={(e) => setDatasetSearch(e.target.value)}
-                        placeholder='Search ticker…'
-                        className='w-full bg-white border border-gray-300 rounded px-2 py-1 text-xs text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500'
-                      />
-                      {uniqueTimeframes.length > 1 && (
-                        <div className='flex flex-wrap gap-1'>
-                          {uniqueTimeframes.map((tf) => {
-                            const filesForTf = availableDatasets
-                              .filter((ds) => ds.timeframe === tf)
-                              .map((ds) => ds.file);
-                            const allSelected = filesForTf.every((f) => selectedFiles.includes(f));
-                            return (
-                              <button
-                                key={tf}
-                                onClick={() => toggleTimeframe(tf)}
-                                className={`px-1.5 py-0.5 text-[10px] rounded border transition-colors ${
-                                  allSelected
-                                    ? 'bg-blue-600 border-blue-500 text-white'
-                                    : 'bg-white border-gray-300 text-gray-600 hover:border-blue-400 hover:text-blue-600'
-                                }`}
-                              >
-                                {tf.toUpperCase()}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      )}
-                      <div className='max-h-40 overflow-y-auto bg-white border border-gray-200 rounded p-1 space-y-0.5'>
-                        {availableDatasets
-                          .filter((ds) =>
-                            ds.symbol.toLowerCase().includes(datasetSearch.toLowerCase())
-                          )
-                          .map((ds) => (
-                            <label
-                              key={ds.file}
-                              className='flex items-center gap-1.5 px-1.5 py-0.5 hover:bg-gray-50 rounded cursor-pointer'
-                            >
-                              <input
-                                type='checkbox'
-                                checked={selectedFiles.includes(ds.file)}
-                                onChange={(e) => {
-                                  if (e.target.checked) {
-                                    setSelectedFiles((prev) => [...prev, ds.file]);
-                                  } else {
-                                    setSelectedFiles((prev) => prev.filter((f) => f !== ds.file));
-                                  }
-                                }}
-                                className='rounded border-gray-300 text-blue-500'
-                              />
-                              <span className='text-xs text-gray-900'>{ds.label}</span>
-                            </label>
-                          ))}
-                      </div>
-                      {selectedFiles.length === 0 && (
-                        <p className='text-xs text-amber-600'>Select at least one</p>
-                      )}
-                    </div>
+                    const toggleExpand = () => {
+                      setExpandedStrategyIds((prev) =>
+                        prev.includes(s.id) ? prev.filter((id) => id !== s.id) : [...prev, s.id]
+                      );
+                      setSelectedStrategyId(s.id);
+                    };
 
-                    {/* Strategy */}
-                    <div className='flex flex-col gap-2 rounded-lg border border-gray-200 bg-gray-50/60 p-3'>
-                      <div className='flex items-center justify-between'>
-                        <span className='text-[10px] font-semibold uppercase tracking-wide text-gray-600'>Strategy</span>
-                        <div className='flex items-center gap-1.5'>
-                          <button
-                            onClick={() => {
-                              const allIds = Object.keys(AVAILABLE_STRATEGIES);
-                              if (selectedStrategyIds.length === allIds.length) {
-                                setSelectedStrategyIds([selectedStrategyId]);
+                    return (
+                      <Box key={s.id}>
+                        <Flex
+                          align='center'
+                          gap='2'
+                          px='2'
+                          py='1'
+                          className={cn("rounded-md", isChecked && "bg-[var(--accent-a3)]")}
+                        >
+                          <Checkbox
+                            size='1'
+                            checked={isChecked}
+                            aria-label={`Include ${s.name}`}
+                            onCheckedChange={(checked) => {
+                              if (checked === true) {
+                                if (!isChecked) setSelectedStrategyIds([...selectedStrategyIds, s.id]);
+                                // Ticking one while the editor shows an unticked strategy
+                                // moves the editor to what was just picked.
+                                if (!selectedStrategyIds.includes(selectedStrategyId)) setSelectedStrategyId(s.id);
                               } else {
-                                setSelectedStrategyIds(allIds);
+                                const next = selectedStrategyIds.filter((id) => id !== s.id);
+                                setSelectedStrategyIds(next);
+                                if (s.id === selectedStrategyId && next.length > 0) setSelectedStrategyId(next[0]);
                               }
                             }}
-                            className='text-xs text-blue-600 hover:text-blue-700 transition-colors'
+                          />
+                          <Text
+                            size='2'
+                            weight={emphasized ? "medium" : "regular"}
+                            color={emphasized ? undefined : "gray"}
+                            highContrast={!emphasized}
+                            className={cn("flex-1", hasParams && "cursor-pointer")}
+                            onClick={() => {
+                              if (hasParams) toggleExpand();
+                            }}
                           >
-                            {selectedStrategyIds.length === Object.keys(AVAILABLE_STRATEGIES).length ? 'Clear' : 'All'}
-                          </button>
-                          <span className='text-xs text-gray-600'>{selectedStrategyIds.length} sel</span>
-                        </div>
-                      </div>
-                      <div className='flex flex-col gap-0.5 max-h-56 overflow-y-auto bg-white border border-gray-200 rounded p-1'>
-                        {Object.values(AVAILABLE_STRATEGIES).map((s) => {
-                          const isChecked = selectedStrategyIds.includes(s.id);
-                          const isActive = s.id === selectedStrategyId;
-                          const isExpanded = expandedStrategyIds.includes(s.id);
-                          const numericParams = s.parameters?.filter((p) => p.type === 'number') ?? [];
-                          const hasParams = numericParams.length > 0;
-                          const savedRun = mounted && !isActive ? buildSavedRun(s.id) : null;
+                            {s.name}
+                          </Text>
+                          {hasParams && (
+                            <IconButton
+                              size='1'
+                              variant='ghost'
+                              color='gray'
+                              onClick={toggleExpand}
+                              aria-label={isExpanded ? `Collapse ${s.name} settings` : `Expand ${s.name} settings`}
+                              aria-expanded={isExpanded}
+                            >
+                              <ChevronDown className={cn("size-4 transition-transform", isExpanded && "rotate-180")} />
+                            </IconButton>
+                          )}
+                        </Flex>
 
-                          const toggleExpand = () => {
-                            setExpandedStrategyIds((prev) =>
-                              prev.includes(s.id) ? prev.filter((id) => id !== s.id) : [...prev, s.id]
-                            );
-                            setSelectedStrategyId(s.id);
-                          };
+                        {isExpanded && hasParams && (
+                          <Box ml='4' pl='3' py='2' className='border-l-2 border-line-strong'>
+                            {isActive ? (
+                              <Flex wrap='wrap' gap='3'>
+                                {numericParams.map((param) => {
+                                  const variation = paramVariations.find((v) => v.key === param.key);
+                                  const setBound = (bound: "min" | "max", raw: string) => {
+                                    const parsed = parseFloat(raw);
+                                    const fallback = Number(param[bound] ?? param.default);
+                                    const value = isNaN(parsed) ? fallback : parsed;
+                                    setParamVariations((prev) =>
+                                      prev.map((v) => (v.key === param.key ? { ...v, [bound]: value } : v))
+                                    );
+                                  };
+                                  return (
+                                    <Flex key={param.key} direction='column' gap='1'>
+                                      <Text size='1' weight='medium'>
+                                        {param.name}
+                                      </Text>
+                                      <Flex gap='1' align='end'>
+                                        <NumberField
+                                          label='Min'
+                                          value={variation?.min ?? param.min ?? Number(param.default)}
+                                          min={param.min}
+                                          max={param.max}
+                                          step={param.step}
+                                          onChange={(raw) => setBound("min", raw)}
+                                          className='w-20'
+                                        />
+                                        <Text size='1' color='gray' className='pb-1.5'>
+                                          →
+                                        </Text>
+                                        <NumberField
+                                          label='Max'
+                                          value={variation?.max ?? param.max ?? Number(param.default)}
+                                          min={param.min}
+                                          max={param.max}
+                                          step={param.step}
+                                          onChange={(raw) => setBound("max", raw)}
+                                          className='w-20'
+                                        />
+                                      </Flex>
+                                    </Flex>
+                                  );
+                                })}
+                              </Flex>
+                            ) : (
+                              <Flex wrap='wrap' align='end' gap='3'>
+                                {numericParams.map((param) => {
+                                  const variation = savedRun?.paramVariations.find((v) => v.key === param.key);
+                                  const min = variation?.min ?? param.min ?? Number(param.default);
+                                  const max = variation?.max ?? param.max ?? Number(param.default);
+                                  return (
+                                    <Flex key={param.key} direction='column' gap='1'>
+                                      <Text size='1' weight='medium'>
+                                        {param.name}
+                                      </Text>
+                                      <Code size='1' variant='ghost' color='gray'>
+                                        {min !== max ? `${min} → ${max}` : String(min)}
+                                      </Code>
+                                    </Flex>
+                                  );
+                                })}
+                                <Button size='1' variant='ghost' onClick={() => setSelectedStrategyId(s.id)}>
+                                  Edit →
+                                </Button>
+                              </Flex>
+                            )}
+                          </Box>
+                        )}
+                      </Box>
+                    );
+                  })}
+                </Flex>
+              </ScrollArea>
+            </Bento>
 
-                          return (
-                            <div key={s.id} className='rounded'>
-                              <div
-                                className={`flex items-center gap-1.5 py-1.5 px-2 text-sm rounded ${
-                                  isChecked ? 'bg-blue-50' : 'hover:bg-gray-50'
-                                }`}
-                              >
-                                <input
-                                  type='checkbox'
-                                  checked={isChecked}
-                                  onChange={(e) => {
-                                    setSelectedStrategyIds((prev) => {
-                                      if (e.target.checked)
-                                        return prev.includes(s.id) ? prev : [...prev, s.id];
-                                      const next = prev.filter((id) => id !== s.id);
-                                      if (s.id === selectedStrategyId && next.length > 0) {
-                                        setSelectedStrategyId(next[0]);
-                                      }
-                                      return next.length > 0 ? next : prev;
-                                    });
-                                  }}
-                                  className='rounded border-gray-300 text-blue-500'
-                                />
-                                <span
-                                  className={`flex-1 ${hasParams ? 'cursor-pointer' : ''} ${isActive ? 'text-blue-700 font-medium' : 'text-gray-900'}`}
-                                  onClick={() => {
-                                    if (hasParams) toggleExpand();
-                                  }}
-                                >
-                                  {s.name}
-                                </span>
-                                {hasParams && (
-                                  <button
-                                    onClick={toggleExpand}
-                                    className='text-gray-600 px-1'
-                                    title={isExpanded ? 'Collapse settings' : 'Expand settings'}
-                                  >
-                                    <span className={`inline-block transition-transform ${isExpanded ? 'rotate-180' : ''}`}>▾</span>
-                                  </button>
-                                )}
-                              </div>
+            <Bento title='Risk'>
+              <Flex wrap='wrap' gap='3'>
+                <NumberField
+                  label='Stop loss %'
+                  value={stopLossPercent}
+                  min={0}
+                  step={0.5}
+                  placeholder='0 = off'
+                  onChange={(raw) => {
+                    const v = parseFloat(raw);
+                    setStopLossPercent(isNaN(v) ? 0 : Math.max(0, v));
+                  }}
+                />
+                <NumberField
+                  label='Take profit %'
+                  value={takeProfitPercent}
+                  min={0}
+                  step={0.5}
+                  placeholder='0 = off'
+                  onChange={(raw) => {
+                    const v = parseFloat(raw);
+                    setTakeProfitPercent(isNaN(v) ? 0 : Math.max(0, v));
+                  }}
+                />
+                <NumberField
+                  label='Position size %'
+                  value={positionSizePercent}
+                  min={0}
+                  max={100}
+                  step={1}
+                  onChange={(raw) => {
+                    const v = parseFloat(raw);
+                    setPositionSizePercent(isNaN(v) ? 100 : Math.max(0, Math.min(100, v)));
+                  }}
+                />
+              </Flex>
+            </Bento>
 
-                              {isExpanded && hasParams && (
-                                <div className='bg-gray-50 border-l-2 border-gray-200 ml-4 pl-3 py-2'>
-                                  {isActive ? (
-                                    <div className='flex flex-wrap gap-3'>
-                                      {numericParams.map((param) => {
-                                        const variation = paramVariations.find((v) => v.key === param.key);
-                                        return (
-                                          <div key={param.key} className='flex flex-col gap-1'>
-                                            <span className='text-xs text-gray-700 font-medium'>{param.name}</span>
-                                            <div className='flex gap-1 items-center'>
-                                              <div>
-                                                <label className='block text-[10px] text-gray-600 mb-0.5'>Min</label>
-                                                <input
-                                                  type='number'
-                                                  value={variation?.min ?? param.min ?? Number(param.default)}
-                                                  min={param.min}
-                                                  max={param.max}
-                                                  step={param.step}
-                                                  onChange={(e) => {
-                                                    const parsed = parseFloat(e.target.value);
-                                                    const newMin = isNaN(parsed) ? Number(param.min ?? param.default) : parsed;
-                                                    setParamVariations((prev) =>
-                                                      prev.map((v) => (v.key === param.key ? { ...v, min: newMin } : v))
-                                                    );
-                                                  }}
-                                                  className='w-20 bg-white border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-900'
-                                                />
-                                              </div>
-                                              <span className='text-gray-600 text-xs self-end pb-2'>→</span>
-                                              <div>
-                                                <label className='block text-[10px] text-gray-600 mb-0.5'>Max</label>
-                                                <input
-                                                  type='number'
-                                                  value={variation?.max ?? param.max ?? Number(param.default)}
-                                                  min={param.min}
-                                                  max={param.max}
-                                                  step={param.step}
-                                                  onChange={(e) => {
-                                                    const parsed = parseFloat(e.target.value);
-                                                    const newMax = isNaN(parsed) ? Number(param.max ?? param.default) : parsed;
-                                                    setParamVariations((prev) =>
-                                                      prev.map((v) => (v.key === param.key ? { ...v, max: newMax } : v))
-                                                    );
-                                                  }}
-                                                  className='w-20 bg-white border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-900'
-                                                />
-                                              </div>
-                                            </div>
-                                          </div>
-                                        );
-                                      })}
-                                    </div>
-                                  ) : (
-                                    <div className='flex flex-wrap items-end gap-3'>
-                                      {numericParams.map((param) => {
-                                        const variation = savedRun?.paramVariations.find((v) => v.key === param.key);
-                                        const min = variation?.min ?? param.min ?? Number(param.default);
-                                        const max = variation?.max ?? param.max ?? Number(param.default);
-                                        const isRange = min !== max;
-                                        return (
-                                          <div key={param.key} className='flex flex-col gap-1'>
-                                            <span className='text-xs text-gray-700 font-medium'>{param.name}</span>
-                                            <span className='text-xs font-mono text-gray-600'>
-                                              {isRange ? `${min} → ${max}` : String(min)}
-                                            </span>
-                                          </div>
-                                        );
-                                      })}
-                                      <button
-                                        onClick={() => setSelectedStrategyId(s.id)}
-                                        className='text-[10px] text-blue-600 hover:text-blue-700'
-                                      >
-                                        Edit →
-                                      </button>
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
+            <Bento title='Execution'>
+              <Flex direction='column' gap='3'>
+                <Flex wrap='wrap' gap='3'>
+                  <NumberField
+                    label='Commission (bps)'
+                    value={commissionBps}
+                    min={0}
+                    step={0.5}
+                    placeholder='per fill'
+                    onChange={(raw) => {
+                      const v = parseFloat(raw);
+                      setCommissionBps(isNaN(v) ? 0 : Math.max(0, v));
+                    }}
+                  />
+                  <NumberField
+                    label='Slippage (bps)'
+                    value={slippageBps}
+                    min={0}
+                    step={0.5}
+                    placeholder='per fill'
+                    onChange={(raw) => {
+                      const v = parseFloat(raw);
+                      setSlippageBps(isNaN(v) ? 0 : Math.max(0, v));
+                    }}
+                  />
+                </Flex>
+                <Text as='label' size='2'>
+                  <Flex gap='2' align='center'>
+                    <Switch size='1' checked={enableShorts} onCheckedChange={setEnableShorts} />
+                    Enable shorts
+                  </Flex>
+                </Text>
+              </Flex>
+            </Bento>
+          </Grid>
 
-                    {/* Risk */}
-                    <div className='flex flex-col gap-2 rounded-lg border border-gray-200 bg-gray-50/60 p-3'>
-                      <span className='text-[10px] font-semibold uppercase tracking-wide text-gray-600'>Risk</span>
-                      <div className='flex flex-wrap gap-2'>
-                        <div className='flex flex-col gap-1 flex-1 min-w-[90px]'>
-                          <label className='text-xs text-gray-600'>Stop Loss %</label>
-                          <input
-                            type='number'
-                            value={stopLossPercent}
-                            min={0}
-                            step={0.5}
-                            onChange={(e) => {
-                              const v = parseFloat(e.target.value);
-                              setStopLossPercent(isNaN(v) ? 0 : Math.max(0, v));
-                            }}
-                            placeholder='0 = off'
-                            className='w-full bg-white border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-900'
-                          />
-                        </div>
+          <Flex justify='end'>
+            <Button
+              size='3'
+              onClick={runBatchBacktest}
+              disabled={isRunningBatch || selectedFiles.length === 0 || selectedStrategyIds.length === 0}
+              className='w-full sm:w-auto'
+            >
+              <Play className='size-4' />
+              {runLabel}
+            </Button>
+          </Flex>
 
-                        <div className='flex flex-col gap-1 flex-1 min-w-[90px]'>
-                          <label className='text-xs text-gray-600'>Take Profit %</label>
-                          <input
-                            type='number'
-                            value={takeProfitPercent}
-                            min={0}
-                            step={0.5}
-                            onChange={(e) => {
-                              const v = parseFloat(e.target.value);
-                              setTakeProfitPercent(isNaN(v) ? 0 : Math.max(0, v));
-                            }}
-                            placeholder='0 = off'
-                            className='w-full bg-white border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-900'
-                          />
-                        </div>
+          {/* ── Results ───────────────────────────────────────────── */}
+          {results.length === 0 ? (
+            <Flex align='center' justify='center' py='9'>
+              <Text size='2' color='gray'>
+                Run a backtest to see results.
+              </Text>
+            </Flex>
+          ) : (
+            <Flex direction='column' gap='3' className='min-w-0'>
+              {results.length > 1 && (
+                <Tabs.Root value={String(activeResultTab)} onValueChange={(v) => setActiveResultTab(Number(v))}>
+                  <Tabs.List size='1' className='overflow-x-auto'>
+                    {results.slice(0, 10).map((result, idx) => {
+                      const showStrategy =
+                        new Set(results.map((r) => r.strategyId).filter(Boolean)).size > 1 && result.strategyName;
+                      return (
+                        <Tabs.Trigger
+                          key={idx}
+                          value={String(idx)}
+                          title={`${result.strategyName ?? ""} ${result.datasetLabel ?? ""} ${result.label}`.trim()}
+                        >
+                          <Flex gap='1' className='whitespace-nowrap'>
+                            #{idx + 1}
+                            {showStrategy && <span>{result.strategyName}</span>}
+                            <Text color={result.totalPnlPercent >= 0 ? "green" : "red"}>
+                              {formatSigned(result.totalPnlPercent, 1)}%
+                            </Text>
+                          </Flex>
+                        </Tabs.Trigger>
+                      );
+                    })}
+                    {results.length > 10 && (
+                      <Text size='1' color='gray' className='self-center whitespace-nowrap px-3'>
+                        +{results.length - 10} more
+                      </Text>
+                    )}
+                  </Tabs.List>
+                </Tabs.Root>
+              )}
 
-                        <div className='flex flex-col gap-1 flex-1 min-w-[90px]'>
-                          <label className='text-xs text-gray-600'>Position Size %</label>
-                          <input
-                            type='number'
-                            value={positionSizePercent}
-                            min={0}
-                            max={100}
-                            step={1}
-                            onChange={(e) => {
-                              const v = parseFloat(e.target.value);
-                              setPositionSizePercent(isNaN(v) ? 100 : Math.max(0, Math.min(100, v)));
-                            }}
-                            className='w-full bg-white border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-900'
-                          />
-                        </div>
-                      </div>
-                    </div>
+              {activeResult && results.length > 1 && (
+                <Flex wrap='wrap' gap='4' className='gap-y-1'>
+                  {activeResult.strategyName && (
+                    <Text size='1' color='gray'>
+                      Strategy <Text highContrast weight='medium'>{activeResult.strategyName}</Text>
+                    </Text>
+                  )}
+                  {activeResult.datasetLabel && (
+                    <Text size='1' color='gray'>
+                      Dataset <Text highContrast>{activeResult.datasetLabel}</Text>
+                    </Text>
+                  )}
+                  <Text size='1' color='gray'>
+                    Parameters <Code size='1' variant='ghost'>{activeResult.label}</Code>
+                  </Text>
+                </Flex>
+              )}
 
-                    {/* Execution */}
-                    <div className='flex flex-col gap-2 rounded-lg border border-gray-200 bg-gray-50/60 p-3'>
-                      <span className='text-[10px] font-semibold uppercase tracking-wide text-gray-600'>Execution</span>
-                      <div className='flex flex-wrap gap-2 items-end'>
-                        <div className='flex flex-col gap-1 flex-1 min-w-[90px]'>
-                          <label className='text-xs text-gray-600'>Commission (bps)</label>
-                          <input
-                            type='number'
-                            value={commissionBps}
-                            min={0}
-                            step={0.5}
-                            onChange={(e) => {
-                              const v = parseFloat(e.target.value);
-                              setCommissionBps(isNaN(v) ? 0 : Math.max(0, v));
-                            }}
-                            placeholder='per fill'
-                            className='w-full bg-white border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-900'
-                          />
-                        </div>
-
-                        <div className='flex flex-col gap-1 flex-1 min-w-[90px]'>
-                          <label className='text-xs text-gray-600'>Slippage (bps)</label>
-                          <input
-                            type='number'
-                            value={slippageBps}
-                            min={0}
-                            step={0.5}
-                            onChange={(e) => {
-                              const v = parseFloat(e.target.value);
-                              setSlippageBps(isNaN(v) ? 0 : Math.max(0, v));
-                            }}
-                            placeholder='per fill'
-                            className='w-full bg-white border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-900'
-                          />
-                        </div>
-
-                        <div className='flex flex-col justify-end pb-1.5'>
-                          <label className='flex items-center gap-2 cursor-pointer'>
-                            <input
-                              type='checkbox'
-                              checked={enableShorts}
-                              onChange={(e) => setEnableShorts(e.target.checked)}
-                              className='w-4 h-4 rounded border-gray-300 text-blue-500 focus:ring-blue-500 focus:ring-offset-0'
-                            />
-                            <span className='text-xs text-gray-600'>Enable Shorts</span>
-                          </label>
-                        </div>
-                      </div>
-                    </div>
-
-                  </div>
-
-                  {/* Run Button */}
-                  <div className='mt-3 flex justify-end'>
-                    <button
-                      onClick={runBatchBacktest}
-                      disabled={isRunningBatch || selectedFiles.length === 0 || selectedStrategyIds.length === 0}
-                      className='w-full sm:w-auto bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed text-white font-semibold py-2.5 px-8 rounded-lg transition-colors whitespace-nowrap text-sm shadow-sm'
+              {activeResult && (
+                <>
+                  <Grid columns={{ initial: "2", sm: "3", xl: "6" }} gap='3'>
+                    <Stat label='Strategy P&L' tone={toneOf(activeResult.totalPnlPercent)}>
+                      {formatSigned(activeResult.totalPnlPercent, 2)}%
+                    </Stat>
+                    <Stat label='Buy & hold' tone={toneOf(activeResult.buyAndHoldPnlPercent)}>
+                      {formatSigned(activeResult.buyAndHoldPnlPercent, 2)}%
+                    </Stat>
+                    <Stat
+                      label='Win rate'
+                      detail={`${activeResult.winningTrades}W / ${activeResult.losingTrades}L`}
                     >
-                      {isRunningBatch
-                        ? backtestProgress
-                          ? `Running ${backtestProgress.completed.toLocaleString()}/${backtestProgress.total ? backtestProgress.total.toLocaleString() : "…"}…`
-                          : "Running..."
-                        : !mounted
-                        ? `Run ${combinationCount * selectedFiles.length} Variations`
-                        : (() => {
-                            let totalRuns = combinationCount;
-                            for (const sid of selectedStrategyIds) {
-                              if (sid === selectedStrategyId) continue;
-                              const saved = buildSavedRun(sid);
-                              if (!saved) continue;
-                              totalRuns += generateCombinations(saved.paramVariations).length;
-                            }
-                            const totalRunsAcrossDatasets = totalRuns * selectedFiles.length;
-                            const stratLabel = selectedStrategyIds.length > 1
-                              ? ` across ${selectedStrategyIds.length} strategies`
-                              : '';
-                            return `Run ${totalRunsAcrossDatasets} Variations${stratLabel}`;
-                          })()}
-                    </button>
-                  </div>
-                </div>
+                      {activeResult.winRate.toFixed(1)}%
+                    </Stat>
+                    <Stat label='Profit factor' tone={(activeResult.profitFactor ?? 0) >= 1 ? "green" : "red"}>
+                      {activeResult.profitFactor == null
+                        ? "N/A"
+                        : activeResult.profitFactor === Infinity
+                        ? "∞"
+                        : activeResult.profitFactor.toFixed(2)}
+                    </Stat>
+                    <Stat label='Max drawdown' tone='red'>
+                      -{activeResult.maxDrawdownPercent.toFixed(2)}%
+                    </Stat>
+                    <Stat
+                      label='Sharpe ratio'
+                      tone={activeResult.sharpeRatio >= 1 ? "green" : activeResult.sharpeRatio < 0 ? "red" : undefined}
+                    >
+                      {activeResult.sharpeRatio.toFixed(2)}
+                    </Stat>
+                  </Grid>
 
-                {/* ── Results (bottom) ────────────────────────────────── */}
-                {results.length === 0 && (
-                  <div className='flex items-center justify-center py-16'>
-                    <p className='text-sm text-gray-600'>Run a backtest to see results</p>
+                  <Flex direction={{ initial: "column", sm: "row" }} gap='2' justify='between' align={{ sm: "center" }}>
+                    <Flex wrap='wrap' gap='4' className='gap-y-1'>
+                      <Text size='2' color='gray'>
+                        Trades <Text highContrast>{activeResult.totalTrades}</Text>
+                      </Text>
+                      <Text size='2' color='gray'>
+                        Avg win <Text color='green'>${activeResult.averageWin.toFixed(2)}</Text>
+                      </Text>
+                      <Text size='2' color='gray'>
+                        Avg loss <Text color='red'>-${activeResult.averageLoss.toFixed(2)}</Text>
+                      </Text>
+                      <Text size='2' color='gray'>
+                        Alpha vs B&amp;H{" "}
+                        <Text weight='bold' color={toneOf(activeResult.totalPnlPercent - activeResult.buyAndHoldPnlPercent)}>
+                          {formatSigned(activeResult.totalPnlPercent - activeResult.buyAndHoldPnlPercent, 2)}%
+                        </Text>
+                      </Text>
+                    </Flex>
+                    <Flex wrap='wrap' align='center' gap='3'>
+                      <Text as='label' size='2'>
+                        <Flex gap='2' align='center'>
+                          <Switch size='1' checked={showEquityCurve} onCheckedChange={setShowEquityCurve} />
+                          Equity curve
+                        </Flex>
+                      </Text>
+                      <Button
+                        size='1'
+                        variant='soft'
+                        color={copied ? "green" : "gray"}
+                        onClick={copyReport}
+                        title='Copy backtest report as markdown for LLM review'
+                      >
+                        {copied ? <Check className='size-3.5' /> : <ClipboardCopy className='size-3.5' />}
+                        {copied ? "Copied!" : "Copy report"}
+                      </Button>
+                      <Button
+                        size='1'
+                        variant='soft'
+                        color={lambdaPromptCopied ? "green" : undefined}
+                        onClick={copyLambdaPrompt}
+                        title='Copy a prompt that has Claude write an AWS Lambda that paper-trades this strategy through the Tradier sandbox'
+                      >
+                        {lambdaPromptCopied ? <Check className='size-3.5' /> : <Zap className='size-3.5' />}
+                        {lambdaPromptCopied ? "Copied!" : "Copy Lambda prompt"}
+                      </Button>
+                    </Flex>
+                  </Flex>
+                </>
+              )}
+
+              <Bento className='overflow-hidden p-0'>
+                <div className='h-[420px] sm:h-[640px]'>
+                  <BacktestChart
+                    data={indicatorData}
+                    trades={chartTrades}
+                    visibleCandles={visibleCandles}
+                    onVisibleCandlesChange={setVisibleCandles}
+                    selectedStrategyId={activeResult?.strategyId ?? selectedStrategyId}
+                    currentParams={activeResult?.params ?? currentParams}
+                    selectedTradeId={selectedTradeId}
+                  />
+                </div>
+                {showEquityCurve && activeResult && (
+                  <div className='h-48 border-t border-line-subtle'>
+                    <EquityCurveChart equityCurve={activeResult.equityCurve} initialCapital={INITIAL_CAPITAL} />
                   </div>
                 )}
-                {results.length > 0 && <div className='flex flex-col min-w-0'>
+              </Bento>
 
-                  {/* Tabs for Multiple Results */}
-                  {results.length > 1 && (
-                    <div className='flex border-b border-gray-200 bg-gray-50 overflow-x-auto shrink-0'>
-                      {results.slice(0, 10).map((result, idx) => {
-                        const uniqueStrategies = new Set(results.map((r) => r.strategyId).filter(Boolean));
-                        const showStrategy = uniqueStrategies.size > 1 && result.strategyName;
+              {activeResult && activeResult.trades.length > 0 && (
+                <Bento title={`Trade log · ${activeResult.trades.length} trades`}>
+                  <Table.Root size='1' variant='ghost' className='h-96'>
+                    <Table.Header className='sticky top-0 z-[1] bg-[var(--color-panel-solid)]'>
+                      <Table.Row>
+                        <Table.ColumnHeaderCell>Side</Table.ColumnHeaderCell>
+                        <Table.ColumnHeaderCell>Entry time</Table.ColumnHeaderCell>
+                        <Table.ColumnHeaderCell justify='end'>Entry price</Table.ColumnHeaderCell>
+                        <Table.ColumnHeaderCell>Exit time</Table.ColumnHeaderCell>
+                        <Table.ColumnHeaderCell justify='end'>Exit price</Table.ColumnHeaderCell>
+                        <Table.ColumnHeaderCell justify='end'>P&amp;L</Table.ColumnHeaderCell>
+                        <Table.ColumnHeaderCell justify='end'>P&amp;L %</Table.ColumnHeaderCell>
+                        <Table.ColumnHeaderCell>Reason</Table.ColumnHeaderCell>
+                      </Table.Row>
+                    </Table.Header>
+                    <Table.Body>
+                      {activeResult.trades.map((trade) => {
+                        const selected = selectedTradeId === trade.id;
                         return (
-                          <button
-                            key={idx}
-                            onClick={() => setActiveResultTab(idx)}
-                            title={`${result.strategyName ?? ''} ${result.datasetLabel ?? ''} ${result.label}`.trim()}
-                            className={`px-4 py-2 text-xs font-medium whitespace-nowrap border-b-2 transition-colors ${
-                              activeResultTab === idx
-                                ? "border-blue-500 text-blue-600 bg-white"
-                                : "border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-100"
-                            }`}
-                          >
-                            #{idx + 1}{" "}
-                            {showStrategy && (
-                              <span className='text-purple-600 mr-1'>{result.strategyName}</span>
+                          <Table.Row
+                            key={trade.id}
+                            aria-selected={selected}
+                            className={cn(
+                              "cursor-pointer hover:bg-[var(--gray-a3)]",
+                              selected && "bg-[var(--accent-a4)] hover:bg-[var(--accent-a4)]"
                             )}
-                            <span className={result.totalPnlPercent >= 0 ? "text-green-600" : "text-red-500"}>
-                              {result.totalPnlPercent >= 0 ? "+" : ""}
-                              {result.totalPnlPercent.toFixed(1)}%
-                            </span>
-                          </button>
+                            onClick={() => setSelectedTradeId(selected ? null : trade.id)}
+                          >
+                            <Table.Cell>
+                              <Badge size='1' color={trade.side === "LONG" ? "green" : "red"} variant='soft'>
+                                {trade.side}
+                              </Badge>
+                            </Table.Cell>
+                            <Table.Cell className='whitespace-nowrap'>{new Date(trade.entryTime).toLocaleString()}</Table.Cell>
+                            <Table.Cell justify='end'>${trade.entryPrice.toFixed(2)}</Table.Cell>
+                            <Table.Cell className='whitespace-nowrap'>{new Date(trade.exitTime).toLocaleString()}</Table.Cell>
+                            <Table.Cell justify='end'>${trade.exitPrice.toFixed(2)}</Table.Cell>
+                            <Table.Cell justify='end'>
+                              <Text color={toneOf(trade.pnl)} className='tabular-nums'>
+                                {trade.pnl >= 0 ? "+" : ""}${trade.pnl.toFixed(2)}
+                              </Text>
+                            </Table.Cell>
+                            <Table.Cell justify='end'>
+                              <Text color={toneOf(trade.pnlPercent)} className='tabular-nums'>
+                                {formatSigned(trade.pnlPercent, 2)}%
+                              </Text>
+                            </Table.Cell>
+                            <Table.Cell className='max-w-[240px] truncate' title={trade.reason}>
+                              <Text color='gray'>{trade.reason}</Text>
+                            </Table.Cell>
+                          </Table.Row>
                         );
                       })}
-                      {results.length > 10 && (
-                        <span className='px-4 py-2 text-xs text-gray-600'>+{results.length - 10} more</span>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Active Result Label */}
-                  {activeResult && results.length > 1 && (
-                    <div className='px-4 py-2 bg-gray-50 border-b border-gray-200 text-xs shrink-0'>
-                      {activeResult.strategyName && (
-                        <>
-                          <span className='text-gray-600'>Strategy: </span>
-                          <span className='text-purple-600 mr-3 font-medium'>{activeResult.strategyName}</span>
-                        </>
-                      )}
-                      {activeResult.datasetLabel && (
-                        <>
-                          <span className='text-gray-600'>Dataset: </span>
-                          <span className='text-blue-600 mr-3'>{activeResult.datasetLabel}</span>
-                        </>
-                      )}
-                      <span className='text-gray-600'>Parameters: </span>
-                      <span className='font-mono text-blue-600'>{activeResult.label}</span>
-                    </div>
-                  )}
-
-                  {/* Stats Panel */}
-                  {activeResult && (
-                    <div className='p-4 border-b border-gray-200 bg-gray-50 shrink-0'>
-                      <div className='grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2 sm:gap-4 text-sm'>
-                        <div className='bg-white border border-gray-200 rounded p-2 sm:p-3 min-w-0'>
-                          <div className='text-gray-600 text-xs mb-1'>Strategy P&L</div>
-                          <div
-                            className={`text-lg font-bold ${activeResult.totalPnlPercent >= 0 ? "text-green-600" : "text-red-500"}`}
-                          >
-                            {activeResult.totalPnlPercent >= 0 ? "+" : ""}{activeResult.totalPnlPercent.toFixed(2)}%
-                          </div>
-                        </div>
-                        <div className='bg-white border border-gray-200 rounded p-2 sm:p-3 min-w-0'>
-                          <div className='text-gray-600 text-xs mb-1'>Buy & Hold</div>
-                          <div
-                            className={`text-lg font-bold ${activeResult.buyAndHoldPnlPercent >= 0 ? "text-green-600" : "text-red-500"}`}
-                          >
-                            {activeResult.buyAndHoldPnlPercent >= 0 ? "+" : ""}{activeResult.buyAndHoldPnlPercent.toFixed(2)}%
-                          </div>
-                        </div>
-                        <div className='bg-white border border-gray-200 rounded p-2 sm:p-3 min-w-0'>
-                          <div className='text-gray-600 text-xs mb-1'>Win Rate</div>
-                          <div className='text-lg font-bold text-gray-900'>
-                            {activeResult.winRate.toFixed(1)}%
-                            <span className='text-sm text-gray-600 ml-1'>
-                              ({activeResult.winningTrades}W / {activeResult.losingTrades}L)
-                            </span>
-                          </div>
-                        </div>
-                        <div className='bg-white border border-gray-200 rounded p-2 sm:p-3 min-w-0'>
-                          <div className='text-gray-600 text-xs mb-1'>Profit Factor</div>
-                          <div
-                            className={`text-lg font-bold ${(activeResult.profitFactor ?? 0) >= 1 ? "text-green-600" : "text-red-500"}`}
-                          >
-                            {activeResult.profitFactor == null ? "N/A" : activeResult.profitFactor === Infinity ? "∞" : activeResult.profitFactor.toFixed(2)}
-                          </div>
-                        </div>
-                        <div className='bg-white border border-gray-200 rounded p-2 sm:p-3 min-w-0'>
-                          <div className='text-gray-600 text-xs mb-1'>Max Drawdown</div>
-                          <div className='text-lg font-bold text-red-500'>
-                            -{activeResult.maxDrawdownPercent.toFixed(2)}%
-                          </div>
-                        </div>
-                        <div className='bg-white border border-gray-200 rounded p-2 sm:p-3 min-w-0'>
-                          <div className='text-gray-600 text-xs mb-1'>Sharpe Ratio</div>
-                          <div
-                            className={`text-lg font-bold ${activeResult.sharpeRatio >= 1 ? "text-green-600" : activeResult.sharpeRatio >= 0 ? "text-gray-700" : "text-red-500"}`}
-                          >
-                            {activeResult.sharpeRatio.toFixed(2)}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Secondary stats */}
-                      <div className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between text-sm mt-2'>
-                        <div className='flex flex-wrap items-center gap-x-4 gap-y-1'>
-                          <div className='whitespace-nowrap'>
-                            <span className='text-gray-600 text-xs'>Trades:</span>
-                            <span className='ml-1 text-gray-900'>{activeResult.totalTrades}</span>
-                          </div>
-                          <div className='whitespace-nowrap'>
-                            <span className='text-gray-600 text-xs'>Avg Win:</span>
-                            <span className='ml-1 text-green-600'>${activeResult.averageWin.toFixed(2)}</span>
-                          </div>
-                          <div className='whitespace-nowrap'>
-                            <span className='text-gray-600 text-xs'>Avg Loss:</span>
-                            <span className='ml-1 text-red-500'>-${activeResult.averageLoss.toFixed(2)}</span>
-                          </div>
-                          <div className='whitespace-nowrap'>
-                            <span className='text-gray-600 text-xs'>Alpha vs B&H:</span>
-                            <span
-                              className={`ml-1 font-bold ${activeResult.totalPnlPercent - activeResult.buyAndHoldPnlPercent >= 0 ? "text-green-600" : "text-red-500"}`}
-                            >
-                              {activeResult.totalPnlPercent - activeResult.buyAndHoldPnlPercent >= 0 ? "+" : ""}
-                              {(activeResult.totalPnlPercent - activeResult.buyAndHoldPnlPercent).toFixed(2)}%
-                            </span>
-                          </div>
-                        </div>
-                        <div className='flex items-center gap-3'>
-                          <label className='text-gray-600 text-xs cursor-pointer'>
-                            <input
-                              type='checkbox'
-                              checked={showEquityCurve}
-                              onChange={(e) => setShowEquityCurve(e.target.checked)}
-                              className='mr-1'
-                            />
-                            Equity Curve
-                          </label>
-                          <button
-                            onClick={copyReport}
-                            className='flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-medium rounded transition-colors'
-                            title='Copy backtest report as markdown for LLM review'
-                          >
-                            {copied ? (
-                              <>
-                                <svg className='w-3.5 h-3.5 text-green-600' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                                  <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M5 13l4 4L19 7' />
-                                </svg>
-                                <span className='text-green-600'>Copied!</span>
-                              </>
-                            ) : (
-                              <>
-                                <svg className='w-3.5 h-3.5' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                                  <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3' />
-                                </svg>
-                                Copy Report
-                              </>
-                            )}
-                          </button>
-                          <button
-                            onClick={copyLambdaPrompt}
-                            className='flex items-center gap-1.5 px-3 py-1.5 bg-purple-100 hover:bg-purple-200 text-purple-700 text-xs font-medium rounded transition-colors'
-                            title='Copy a spec prompt for an AWS Lambda that paper-trades this strategy via Tradier sandbox'
-                          >
-                            {lambdaPromptCopied ? (
-                              <>
-                                <svg className='w-3.5 h-3.5 text-green-600' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                                  <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M5 13l4 4L19 7' />
-                                </svg>
-                                <span className='text-green-600'>Copied!</span>
-                              </>
-                            ) : (
-                              <>
-                                <svg className='w-3.5 h-3.5' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                                  <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M13 10V3L4 14h7v7l9-11h-7z' />
-                                </svg>
-                                Copy Lambda Prompt
-                              </>
-                            )}
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Charts Container */}
-                  <div className='flex flex-col shrink-0'>
-                    {/* Price Chart */}
-                    <div className='h-[420px] sm:h-[640px]'>
-                      <BacktestChart
-                        data={indicatorData}
-                        trades={chartTrades}
-                        visibleCandles={visibleCandles}
-                        onVisibleCandlesChange={setVisibleCandles}
-                        selectedStrategyId={activeResult?.strategyId ?? selectedStrategyId}
-                        currentParams={activeResult?.params ?? currentParams}
-                        selectedTradeId={selectedTradeId}
-                      />
-                    </div>
-
-                    {/* Equity Curve Chart */}
-                    {showEquityCurve && activeResult && (
-                      <div className='h-48 border-t border-gray-200'>
-                        <EquityCurveChart
-                          equityCurve={activeResult.equityCurve}
-                          initialCapital={INITIAL_CAPITAL}
-                        />
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Trade Log */}
-                  {activeResult && activeResult.trades.length > 0 && (
-                    <div className='h-96 border-t border-gray-200 overflow-hidden flex flex-col shrink-0'>
-                      <div className='px-4 py-2 bg-gray-50 text-sm font-semibold text-gray-900 border-b border-gray-200'>
-                        Trade Log ({activeResult.trades.length} trades)
-                      </div>
-                      <div className='flex-1 overflow-auto'>
-                        <table className='w-full min-w-[760px] text-xs'>
-                          <thead className='bg-gray-50 sticky top-0'>
-                            <tr className='text-gray-600'>
-                              <th className='px-3 py-2 text-left'>Side</th>
-                              <th className='px-3 py-2 text-left'>Entry Time</th>
-                              <th className='px-3 py-2 text-right'>Entry Price</th>
-                              <th className='px-3 py-2 text-left'>Exit Time</th>
-                              <th className='px-3 py-2 text-right'>Exit Price</th>
-                              <th className='px-3 py-2 text-right'>P&amp;L</th>
-                              <th className='px-3 py-2 text-right'>P&amp;L %</th>
-                              <th className='px-3 py-2 text-left'>Reason</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {activeResult.trades.map((trade) => (
-                              <tr
-                                key={trade.id}
-                                className={`border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors ${selectedTradeId === trade.id ? 'bg-blue-50 ring-1 ring-blue-400' : ''}`}
-                                onClick={() => setSelectedTradeId(selectedTradeId === trade.id ? null : trade.id)}
-                              >
-                                <td
-                                  className={`px-3 py-2 font-semibold ${trade.side === "LONG" ? "text-green-600" : "text-red-500"}`}
-                                >
-                                  {trade.side}
-                                </td>
-                                <td className='px-3 py-2 text-gray-700'>{new Date(trade.entryTime).toLocaleString()}</td>
-                                <td className='px-3 py-2 text-right text-gray-700'>${trade.entryPrice.toFixed(2)}</td>
-                                <td className='px-3 py-2 text-gray-700'>{new Date(trade.exitTime).toLocaleString()}</td>
-                                <td className='px-3 py-2 text-right text-gray-700'>${trade.exitPrice.toFixed(2)}</td>
-                                <td
-                                  className={`px-3 py-2 text-right font-mono ${trade.pnl >= 0 ? "text-green-600" : "text-red-500"}`}
-                                >
-                                  {trade.pnl >= 0 ? "+" : ""}${trade.pnl.toFixed(2)}
-                                </td>
-                                <td
-                                  className={`px-3 py-2 text-right font-mono ${trade.pnlPercent >= 0 ? "text-green-600" : "text-red-500"}`}
-                                >
-                                  {trade.pnlPercent >= 0 ? "+" : ""}
-                                  {trade.pnlPercent.toFixed(2)}%
-                                </td>
-                                <td className='px-3 py-2 text-gray-600 truncate max-w-[200px]' title={trade.reason}>
-                                  {trade.reason}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  )}
-                </div>}
-              </div>
-            )}
-
+                    </Table.Body>
+                  </Table.Root>
+                </Bento>
+              )}
+            </Flex>
+          )}
+        </Flex>
+      )}
     </BentoPageLayout>
+  );
+}
+
+const formatSigned = (n: number, digits: number) => `${n >= 0 ? "+" : ""}${n.toFixed(digits)}`;
+const toneOf = (n: number): "green" | "red" => (n >= 0 ? "green" : "red");
+
+/** One headline number in the results row. */
+function Stat({
+  label,
+  tone,
+  detail,
+  children,
+}: {
+  label: string;
+  tone?: "green" | "red";
+  detail?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Bento size='1' title={label} className='min-w-0'>
+      <Text as='div' size='5' weight='bold' color={tone} highContrast={!tone} className='tabular-nums'>
+        {children}
+        {detail && (
+          <Text size='2' weight='regular' color='gray' className='ml-1'>
+            ({detail})
+          </Text>
+        )}
+      </Text>
+    </Bento>
+  );
+}
+
+/** A labelled number input. `onChange` gets the raw string so callers decide how to parse and clamp. */
+function NumberField({
+  label,
+  value,
+  onChange,
+  min,
+  max,
+  step,
+  placeholder,
+  className,
+}: {
+  label: string;
+  value: number;
+  onChange: (raw: string) => void;
+  min?: number;
+  max?: number;
+  step?: number;
+  placeholder?: string;
+  className?: string;
+}) {
+  return (
+    <Flex direction='column' gap='1' className={className ?? "min-w-[96px] flex-1"}>
+      <Text as='label' size='1' color='gray'>
+        {label}
+        <TextField.Root
+          type='number'
+          size='1'
+          mt='1'
+          value={value}
+          min={min}
+          max={max}
+          step={step}
+          placeholder={placeholder}
+          onChange={(e) => onChange(e.target.value)}
+        />
+      </Text>
+    </Flex>
   );
 }

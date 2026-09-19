@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Button, Flex, Heading, Progress, Text } from "@radix-ui/themes";
 import type { BacktestProgress } from "./useBacktestWorker";
 
 const formatDuration = (ms: number) => {
@@ -44,53 +45,46 @@ export default function BacktestProgressPanel({
       : `Testing ${progress.currentStrategy ?? "strategy"} on ${datasetLabel(progress.currentDataset ?? "")}`;
 
   return (
-    <div className='flex-1 flex items-center justify-center p-8'>
-      <div className='w-full max-w-md mx-auto' role='status' aria-live='polite'>
-        <h2 className='text-17 font-semibold text-ink-primary'>Running backtest</h2>
-        <p className='mt-1 text-13 text-ink-muted truncate' title={status}>{status}</p>
+    <Flex flexGrow='1' align='center' justify='center' p='6'>
+      <Flex direction='column' className='w-full max-w-md' role='status' aria-live='polite'>
+        <Heading as='h2' size='4'>
+          Running backtest
+        </Heading>
+        <Text size='2' color='gray' mt='1' truncate title={status}>
+          {status}
+        </Text>
 
-        <div className='mt-5 flex items-baseline justify-between gap-4'>
-          <span className='text-24 font-semibold tabular-nums text-ink-primary'>
+        <Flex mt='5' align='baseline' justify='between' gap='4'>
+          <Text size='6' weight='bold' className='tabular-nums'>
             {completed.toLocaleString()}
-            <span className='text-15 font-normal text-ink-muted'>
+            <Text size='3' weight='regular' color='gray'>
               {" "}/ {total > 0 ? total.toLocaleString() : "…"} variations
-            </span>
-          </span>
-          <span className='text-15 font-semibold tabular-nums text-primary-text'>{percent}%</span>
-        </div>
+            </Text>
+          </Text>
+          <Text size='3' weight='bold' color='amber' className='tabular-nums'>
+            {percent}%
+          </Text>
+        </Flex>
 
-        <div
-          className='mt-2 h-2 w-full overflow-hidden rounded-full bg-surface-sunken'
-          role='progressbar'
-          aria-valuemin={0}
-          aria-valuemax={total}
-          aria-valuenow={completed}
-          aria-label='Variations completed'
-        >
-          <div
-            className='h-full rounded-full bg-primary-solid transition-[width] duration-180 ease-ui motion-reduce:transition-none'
-            style={{ width: `${fraction * 100}%` }}
-          />
-        </div>
+        <Progress mt='2' size='2' value={fraction * 100} aria-label='Variations completed' />
 
-        <div className='mt-2 flex justify-between text-12 text-ink-muted tabular-nums'>
-          <span>
+        <Flex mt='2' justify='between' className='tabular-nums'>
+          <Text size='1' color='gray'>
             {progress && progress.datasetCount > 1
               ? `Dataset ${Math.min(progress.datasetIndex + 1, progress.datasetCount)} of ${progress.datasetCount}`
               : "1 dataset"}
-          </span>
-          <span>
+          </Text>
+          <Text size='1' color='gray'>
             {formatDuration(elapsed)} elapsed{eta !== null ? ` · ~${formatDuration(eta)} left` : ""}
-          </span>
-        </div>
+          </Text>
+        </Flex>
 
-        <button
-          onClick={onCancel}
-          className='mt-6 h-8 rounded-md border border-line-subtle bg-surface-raised px-3 text-13 text-ink-primary hover:bg-surface-overlay'
-        >
-          Cancel
-        </button>
-      </div>
-    </div>
+        <Flex mt='6'>
+          <Button variant='soft' color='gray' onClick={onCancel}>
+            Cancel
+          </Button>
+        </Flex>
+      </Flex>
+    </Flex>
   );
 }

@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { X, GitCompare, Clock } from "lucide-react";
+import { Button } from "@radix-ui/themes";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -196,13 +197,10 @@ export function RevisionHistory({
             <span className="text-sm text-ink-muted">{revisions.length} revision{revisions.length !== 1 ? "s" : ""}</span>
           )}
         </div>
-        <button
-          onClick={onClose}
-          className="flex items-center gap-1.5 text-ink-muted hover:text-ink-primary transition-colors text-sm"
-        >
+        <Button variant="ghost" color="gray" onClick={onClose}>
           <X className="w-4 h-4" />
           Close
-        </button>
+        </Button>
       </div>
 
       {/* Body */}
@@ -256,13 +254,29 @@ export function RevisionHistory({
                       <div className="flex items-center gap-1">
                         {isA && <span className="text-[10px] font-bold bg-track-1 text-ink-primary rounded px-1">A</span>}
                         {isB && <span className="text-[10px] font-bold bg-primary-solid text-ink-on-primary rounded px-1">B</span>}
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleRestore(rev); }}
-                          className="text-[10px] text-ink-muted hover:text-primary-text px-1 rounded transition-colors"
+                        <Button
+                          asChild
+                          size="1"
+                          variant="soft"
+                          color="gray"
                           title="Restore this version"
                         >
-                          Restore
-                        </button>
+                          {/* A span, not a nested <button>: this sits inside the row's own button. */}
+                          <span
+                            role="button"
+                            tabIndex={0}
+                            onClick={(e) => { e.stopPropagation(); handleRestore(rev); }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                handleRestore(rev);
+                              }
+                            }}
+                          >
+                            Restore
+                          </span>
+                        </Button>
                       </div>
                     </div>
                     <div className="text-xs text-ink-muted mt-0.5" title={formatDate(rev.created_at)}>

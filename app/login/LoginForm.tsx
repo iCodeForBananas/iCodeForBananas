@@ -5,6 +5,8 @@ import { createClient } from "@/utils/supabase/client";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
+import { Bento } from "@/app/components/ui/bento";
+import { Heading } from "@radix-ui/themes";
 
 export default function LoginForm() {
   const [email, setEmail] = useState("");
@@ -46,8 +48,10 @@ export default function LoginForm() {
 
   return (
     <div className='flex items-center justify-center min-h-screen p-4'>
-      <div className='w-full max-w-sm rounded-xl border border-line-subtle bg-surface-raised p-8 shadow-raised sm:p-10'>
-        <h1 className='mb-6 font-display text-24 font-semibold text-ink-primary'>Sign In</h1>
+      <Bento size='4' className='w-full max-w-sm'>
+        <Heading as='h1' size='6' mb='5'>
+          Sign In
+        </Heading>
         <form onSubmit={handleLogin} className='space-y-4'>
           {error && (
             <p role='alert' className='text-center text-13 text-danger'>
@@ -60,7 +64,7 @@ export default function LoginForm() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className='h-10'
+            size='3'
           />
           <Input
             type='password'
@@ -68,13 +72,13 @@ export default function LoginForm() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            className='h-10'
+            size='3'
           />
           <Button type='submit' variant='primary' size='lg' disabled={loading} className='w-full'>
             {loading ? "Signing in…" : "Sign In"}
           </Button>
         </form>
-      </div>
+      </Bento>
     </div>
   );
 }

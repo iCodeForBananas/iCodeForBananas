@@ -1,5 +1,62 @@
+/* Radix Themes sits in its own cascade layer, between Tailwind's base
+   (preflight) and its utilities: Radix beats the reset, and a Tailwind class
+   on a Radix component still wins, so a one-off tweak never needs !important.
+   This statement has to come first; the first @layer declaration fixes order. */
+@layer theme, base, radix, components, utilities;
 @import "tailwindcss";
+@import "@radix-ui/themes/styles.css" layer(radix);
 @import "./tokens.css";
+
+/* ── Radix Themes, bound to the brand ────────────────────────────────────
+   Every Radix component reads these, so pointing them at Layer 2 tokens is
+   what keeps one palette: the surfaces are the navy ramp, the accent is School
+   Bus Yellow with its near-black label, text is the same two inks Tailwind's
+   text-ink-* use, and all of it flips with data-theme like everything else.
+   Radix still supplies its own gray alpha steps for hairlines and soft fills;
+   those are tints of whatever sits underneath, so they follow along.
+
+   Unlayered on purpose, so it outranks the radix layer it overrides. A
+   component given its own color (color="red") re-declares --accent-* on
+   itself, which is closer than .radix-themes, so that keeps working. */
+.radix-themes {
+  --default-font-family: var(--ds-font-sans);
+  --heading-font-family: var(--ds-font-display);
+  --code-font-family: var(--ds-font-mono);
+
+  --color-background: var(--ds-color-surface-base);
+  --color-panel-solid: var(--ds-color-surface-raised);
+  --color-panel-translucent: color-mix(in oklch, var(--ds-color-surface-raised) 85%, transparent);
+  --color-surface: var(--ds-color-surface-sunken);
+  --color-overlay: color-mix(in oklch, var(--ds-color-surface-sunken) 70%, transparent);
+
+  --gray-12: var(--ds-color-text-primary);
+  --gray-11: var(--ds-color-text-muted);
+
+  --accent-9: var(--ds-color-primary-solid);
+  --accent-10: var(--ds-color-primary-hover);
+  --accent-11: var(--ds-color-primary-text);
+  --accent-contrast: var(--ds-color-text-on-primary);
+  --focus-8: var(--ds-color-focus-ring);
+
+  --cursor-button: pointer;
+  --cursor-checkbox: pointer;
+  --cursor-radio: pointer;
+  --cursor-switch: pointer;
+  --cursor-menu-item: pointer;
+  --cursor-slider-thumb: grab;
+  --cursor-slider-thumb-active: grabbing;
+}
+
+/* Radix portals its menus, selects, popovers, tooltips and dialogs to the end
+   of <body> with no z-index, so anything opened from inside one of the app's
+   own fixed overlays (the arranger is z-[70], the drag ghost z-[90]) would
+   open behind it. Radix copies the content's z-index onto the positioning
+   wrapper it creates, so setting it on the content is enough. Above every
+   z-index the app uses. */
+.rt-PopperContent,
+.rt-BaseDialogOverlay {
+  z-index: 100;
+}
 
 #main-content {
   -webkit-overflow-scrolling: touch;

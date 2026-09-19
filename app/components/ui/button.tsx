@@ -1,64 +1,45 @@
-import { cva, type VariantProps } from "class-variance-authority";
-import { cn } from "@/app/lib/utils";
+import { Button as RadixButton, IconButton } from "@radix-ui/themes";
 
 /**
- * Every colour here is a Layer 2 semantic token. Nothing in this file names a
- * hue, a hex value or a Tailwind palette step; swapping the amber for something
- * else is a change to tokens/, not to this component.
+ * The app's button, drawn by Radix Themes. The variant names describe intent
+ * rather than Radix's visual vocabulary, so call sites say what a button is
+ * for and the mapping to a look lives here, once:
+ *
+ *   primary    the one action in a view that matters most (solid amber)
+ *   secondary  every other action (soft gray)
+ *   ghost      a quiet action in a toolbar or beside content (no fill)
+ *   danger     destructive (soft red)
+ *
+ * Colors come from the Radix theme, which globals.css binds to the brand
+ * tokens; nothing here names a hue.
  */
-const button = cva(
-  [
-    "inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap",
-    "rounded-md border font-medium select-none",
-    // Focus is never removed, only restyled. The ring sits outside the control
-    // so it stays legible against whatever surface the button is sitting on.
-    //
-    // No `outline-none` here, deliberately. In Tailwind v4 it sets the outline
-    // style to none through a variable that focus-visible:outline-2 then reads,
-    // so the pair silently produces a 2px outline that does not draw. The
-    // browser shows nothing until :focus-visible anyway, so there is nothing to
-    // suppress; the style is stated outright so it cannot be inherited away.
-    "focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
-    "transition-colors duration-120 ease-ui motion-reduce:transition-none",
-    "disabled:pointer-events-none disabled:opacity-50",
-    "[&_svg]:pointer-events-none [&_svg]:shrink-0",
-  ],
-  {
-    variants: {
-      variant: {
-        /**
-         * The one action in a view that matters most. The border is not
-         * decorative: amber at full strength cannot reach 3:1 against a
-         * near-white surface, so in light theme this hairline is the only thing
-         * giving the control a discernible boundary. See the mitigation in
-         * scripts/contrast-check.mjs.
-         */
-        primary:
-          "border-line-strong bg-primary-solid text-ink-on-primary hover:bg-primary-hover",
-        secondary:
-          "border-line-subtle bg-surface-raised text-ink-primary hover:bg-surface-overlay",
-        ghost:
-          "border-transparent bg-transparent text-ink-muted hover:bg-surface-raised hover:text-ink-primary",
-        danger:
-          "border-line-subtle bg-transparent text-danger hover:bg-danger/10 hover:border-danger/40",
-      },
-      size: {
-        sm: "h-7 px-2 text-12",
-        md: "h-8 px-3 text-13",
-        lg: "h-10 px-4 text-15",
-        /** Square, for a lone icon. Same heights so it lines up in a toolbar. */
-        "icon-sm": "size-7",
-        icon: "size-8",
-      },
-    },
-    defaultVariants: { variant: "secondary", size: "md" },
-  }
-);
+const VARIANTS = {
+  primary: { variant: "solid", color: undefined },
+  secondary: { variant: "soft", color: "gray" },
+  ghost: { variant: "ghost", color: "gray" },
+  danger: { variant: "soft", color: "red" },
+} as const;
 
-export type ButtonProps = React.ComponentProps<"button"> & VariantProps<typeof button>;
+const SIZES = {
+  sm: "1",
+  md: "2",
+  lg: "3",
+  /** Square, for a lone icon. Same heights as sm / md so it lines up in a toolbar. */
+  "icon-sm": "1",
+  icon: "2",
+} as const;
 
-export function Button({ className, variant, size, ...props }: ButtonProps) {
-  return <button className={cn(button({ variant, size }), className)} {...props} />;
+export type ButtonVariant = keyof typeof VARIANTS;
+export type ButtonSize = keyof typeof SIZES;
+
+export type ButtonProps = Omit<React.ComponentProps<"button">, "color"> & {
+  variant?: ButtonVariant | null;
+  size?: ButtonSize | null;
+};
+
+export function Button({ variant, size, ...props }: ButtonProps) {
+  const v = VARIANTS[variant ?? "secondary"];
+  const s = size ?? "md";
+  const Component = s === "icon" || s === "icon-sm" ? IconButton : RadixButton;
+  return <Component variant={v.variant} color={v.color} size={SIZES[s]} {...props} />;
 }
-
-export { button as buttonVariants };

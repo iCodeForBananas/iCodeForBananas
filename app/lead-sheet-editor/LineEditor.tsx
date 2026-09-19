@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Check, CornerDownLeft, Plus, Trash2, X } from "lucide-react";
+import { Button, IconButton } from "@radix-ui/themes";
 import { ChordLyricLine } from "./shared";
 import { asSectionHeader } from "./songText";
 
@@ -127,14 +128,9 @@ export default function LineEditor({
               {target.insert ? "New line" : `Line ${target.lineIndex + 1}`}
             </span>
           </div>
-          <button
-            type='button'
-            onClick={onCancel}
-            aria-label='Close without saving'
-            className='h-9 w-9 flex items-center justify-center rounded-lg text-ink-muted hover:bg-surface-raised transition-colors duration-150'
-          >
+          <IconButton type='button' size='3' variant='ghost' color='gray' onClick={onCancel} aria-label='Close without saving'>
             <X className='w-5 h-5' />
-          </button>
+          </IconButton>
         </div>
 
         <div className='px-4 pb-4'>
@@ -188,41 +184,46 @@ export default function LineEditor({
 
           <div className='mt-4 flex gap-2'>
             {onDelete && !target.insert && (
-              <button
+              <IconButton
                 type='button'
+                size='4'
+                variant='soft'
+                color='red'
                 onClick={onDelete}
                 disabled={saving}
                 title='Delete this line'
                 aria-label='Delete this line'
-                className='h-12 w-12 shrink-0 flex items-center justify-center rounded-xl bg-danger/10 text-danger hover:bg-danger/15 bg-danger/10 text-danger hover:bg-danger/20 transition-colors duration-150 disabled:opacity-60'
+                className='shrink-0'
               >
                 <Trash2 className='w-5 h-5' />
-              </button>
+              </IconButton>
             )}
-            <button
-              type='button'
-              onClick={onCancel}
-              className='h-12 flex-1 rounded-xl text-sm font-medium bg-surface-raised hover:bg-surface-overlay text-ink-primary transition-colors duration-150'
-            >
+            <Button type='button' size='4' variant='soft' color='gray' onClick={onCancel} className='flex-1'>
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
               type='button'
+              size='4'
+              color={deletes ? "red" : undefined}
               onClick={() => save()}
               disabled={saving}
-              className='h-12 flex-[2] flex items-center justify-center gap-1.5 rounded-xl text-sm font-semibold bg-primary-solid text-ink-on-primary hover:bg-primary-hover transition-colors duration-150 disabled:opacity-60'
+              className='flex-[2]'
             >
               {deletes ? <Trash2 className='w-4 h-4' /> : <Check className='w-4 h-4' />}
               {saving ? "Saving..." : deletes ? "Delete line" : target.insert ? "Add line" : "Save"}
-            </button>
+            </Button>
           </div>
 
-          <button
+          <Button
             type='button'
+            size='3'
+            variant='surface'
+            color='gray'
+            highContrast
             onClick={() => save(true)}
             disabled={saving}
             title='Shift + Enter'
-            className='mt-2 h-11 w-full flex items-center justify-center gap-1.5 rounded-xl border border-dashed border-line-subtle text-sm font-medium text-ink-primary hover:border-primary-solid hover:bg-primary-solid/10 hover:bg-primary-solid/10 transition-colors duration-150 disabled:opacity-60'
+            className='mt-2 w-full'
           >
             <Plus className='w-4 h-4' />
             {deletes
@@ -231,7 +232,7 @@ export default function LineEditor({
                 ? "Add and keep going"
                 : "Save and add a line below"}
             <CornerDownLeft className='w-3.5 h-3.5 opacity-40' />
-          </button>
+          </Button>
         </div>
 
         {/* Home-indicator gap on phones, nothing on anything else. */}

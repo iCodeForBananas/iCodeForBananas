@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/app/hooks/useAuth";
 import { Pencil, Plus } from "lucide-react";
+import { Button } from "@radix-ui/themes";
 import {
   type LeadSheet,
   type Section,
@@ -134,13 +135,9 @@ function EditModeBanner({
       >
         {error ?? "Tap a line to edit it, or drag its grip to move it."}
       </span>
-      <button
-        type='button'
-        onClick={onDone}
-        className='h-7 shrink-0 rounded-lg bg-primary-solid px-2.5 text-xs font-semibold text-ink-on-primary hover:bg-primary-hover transition-colors duration-150'
-      >
+      <Button type='button' size='1' onClick={onDone} className='shrink-0'>
         Done
-      </button>
+      </Button>
     </div>
   );
 }
@@ -356,25 +353,28 @@ const SheetContent = memo(function SheetContent({
                 {(onInsertLine || onAddSection) && (
                   <div className='flex gap-2'>
                     {onInsertLine && (
-                      <button
+                      <Button
                         type='button'
+                        variant='surface'
+                        color='gray'
                         onClick={() => onInsertLine(sectionIndex, lines.length)}
-                        className='flex flex-1 items-center justify-center gap-1.5 rounded border border-dashed border-line-subtle py-2 text-[0.8em] font-medium text-ink-muted transition-colors duration-150 hover:border-primary-solid hover:bg-primary-solid/10 hover:text-ink-primary'
+                        className='flex-1'
                       >
                         <Plus className='w-3.5 h-3.5' />
                         Add line
-                      </button>
+                      </Button>
                     )}
                     {onAddSection && (
-                      <button
+                      <Button
                         type='button'
+                        variant='surface'
+                        color='gray'
                         onClick={() => onAddSection(sectionIndex)}
                         title='Start a new verse, chorus or bridge after this one'
-                        className='flex items-center justify-center gap-1.5 rounded border border-dashed border-line-subtle px-3 py-2 text-[0.8em] font-medium text-ink-muted transition-colors duration-150 hover:border-primary-solid hover:bg-primary-solid/10 hover:text-ink-primary'
                       >
                         <Plus className='w-3.5 h-3.5' />
                         Section
-                      </button>
+                      </Button>
                     )}
                   </div>
                 )}
@@ -388,14 +388,10 @@ const SheetContent = memo(function SheetContent({
           );
         })}
         {onAddSection && sheet.sections.length === 0 && (
-          <button
-            type='button'
-            onClick={() => onAddSection(-1)}
-            className='flex w-full items-center justify-center gap-1.5 rounded border border-dashed border-line-subtle py-3 text-[0.8em] font-medium text-ink-muted transition-colors duration-150 hover:border-primary-solid hover:bg-primary-solid/10 hover:text-ink-primary'
-          >
+          <Button type='button' size='3' variant='surface' color='gray' onClick={() => onAddSection(-1)} className='w-full'>
             <Plus className='w-3.5 h-3.5' />
             Add section
-          </button>
+          </Button>
         )}
       </div>
     </div>

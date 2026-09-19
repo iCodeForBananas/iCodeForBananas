@@ -6,6 +6,8 @@ import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/app/hooks/useAuth";
 import Link from "next/link";
 import { Plus, Trash2, ListMusic, ArrowLeft, Check, X } from "lucide-react";
+import { Button, IconButton, TextField } from "@radix-ui/themes";
+import { Bento } from "@/app/components/ui/bento";
 
 interface Setlist {
   id: string;
@@ -119,8 +121,7 @@ export default function SetlistList() {
               </div>
               {creating ? (
                 <div className='flex items-center gap-1.5'>
-                  <input
-                    type='text'
+                  <TextField.Root
                     autoFocus
                     value={newName}
                     onChange={(e) => setNewName(e.target.value)}
@@ -132,32 +133,28 @@ export default function SetlistList() {
                       }
                     }}
                     placeholder='Setlist name'
-                    className='rounded border border-line-subtle bg-surface-sunken px-3 py-2 text-13 text-ink-primary focus-visible:border-line-strong focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus'
+                    aria-label='Setlist name'
                   />
-                  <button
-                    onClick={createSetlist}
-                    className='flex items-center gap-1.5 rounded bg-surface-base px-3 py-2 text-sm font-medium text-primary-text hover:bg-surface-base/80 transition-colors'
-                  >
+                  <IconButton onClick={createSetlist} aria-label='Create setlist'>
                     <Check className='w-4 h-4' />
-                  </button>
-                  <button
+                  </IconButton>
+                  <IconButton
+                    variant='surface'
+                    color='gray'
+                    aria-label='Cancel'
                     onClick={() => {
                       setCreating(false);
                       setNewName("");
                     }}
-                    className='flex items-center gap-1.5 rounded border border-line-strong px-3 py-2 text-sm font-medium text-ink-primary/80 hover:border-line-strong transition-colors'
                   >
                     <X className='w-4 h-4' />
-                  </button>
+                  </IconButton>
                 </div>
               ) : (
-                <button
-                  onClick={() => setCreating(true)}
-                  className='flex items-center gap-2 rounded bg-primary-solid px-4 py-2 text-sm font-medium text-ink-on-primary hover:bg-primary-hover transition-colors'
-                >
+                <Button onClick={() => setCreating(true)}>
                   <Plus className='w-4 h-4' />
                   New Setlist
-                </button>
+                </Button>
               )}
             </div>
           </div>
@@ -171,9 +168,9 @@ export default function SetlistList() {
             ) : (
               <div className='space-y-2'>
                 {setlists.map((setlist) => (
-                  <div
+                  <Bento
                     key={setlist.id}
-                    className='flex items-center justify-between p-4 border border-line-subtle rounded-lg hover:border-line-strong transition-colors group cursor-pointer'
+                    className='group flex cursor-pointer items-center justify-between'
                     onClick={() => router.push(`/lead-sheet-editor/setlists/${setlist.id}`)}
                   >
                     <div className='flex-1 min-w-0'>
@@ -186,17 +183,20 @@ export default function SetlistList() {
                       </div>
                     </div>
                     <div className='flex items-center gap-1.5 ml-3 shrink-0'>
-                      <button
+                      <IconButton
+                        variant='ghost'
+                        color='red'
+                        aria-label={`Delete ${setlist.name}`}
                         onClick={(e) => {
                           e.stopPropagation();
                           if (confirm(`Delete "${setlist.name}"?`)) deleteSetlist(setlist.id);
                         }}
-                        className='opacity-0 group-hover:opacity-100 p-1.5 text-ink-muted hover:text-danger transition-all ml-1'
+                        className='ml-1 opacity-0 group-hover:opacity-100 focus-visible:opacity-100'
                       >
                         <Trash2 className='w-4 h-4' />
-                      </button>
+                      </IconButton>
                     </div>
-                  </div>
+                  </Bento>
                 ))}
               </div>
             )}

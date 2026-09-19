@@ -1,15 +1,17 @@
 "use client";
 
-import React from "react";
+import { Text } from "@radix-ui/themes";
+import BentoPageLayout from "../components/BentoPageLayout";
+import { Bento } from "../components/ui/bento";
+
 export default function SettingsPage() {
   return (
-    <div className='flex flex-col flex-1'>
-      <main className='pr-4 py-4 flex-1 '>
-        <div className='rounded-none border-none bg-surface-base p-6'>
-          <h2 className='mb-3 font-display text-20 font-semibold text-ink-primary'>Settings</h2>
-          <p className='text-13 text-ink-muted'>Application settings will appear here.</p>
-        </div>
-      </main>
-    </div>
+    <BentoPageLayout title='Settings'>
+      <Bento>
+        <Text size='2' color='gray'>
+          Application settings will appear here.
+        </Text>
+      </Bento>
+    </BentoPageLayout>
   );
 }

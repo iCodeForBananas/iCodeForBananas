@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { WifiOff } from "lucide-react";
+import { Badge } from "@radix-ui/themes";
 import ChordHoverPopover from "../components/ChordHoverPopover";
 import { DEFAULT_BPM, formatTime, parseTimeMarker, stripTimeMarker } from "./timing";
 
@@ -110,10 +111,10 @@ export const KEYS = [
 
 export function OfflineBadge() {
   return (
-    <span className="flex items-center gap-1.5 text-xs font-medium text-primary-text text-primary-text">
+    <Badge color="amber" variant="soft">
       <WifiOff className="w-3.5 h-3.5" />
       Offline — showing cached version
-    </span>
+    </Badge>
   );
 }
 

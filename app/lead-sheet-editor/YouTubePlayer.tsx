@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronDown, ChevronUp, Youtube } from "lucide-react";
+import { IconButton } from "@radix-ui/themes";
 import type { Playback } from "./PlaybackBar";
 import type { YouTubeLink } from "./youtube";
 
@@ -326,14 +327,17 @@ export function YouTubePanel({
               ? "Playing with video"
               : "Loading video…"}
         </span>
-        <button
+        <IconButton
           type="button"
+          size="1"
+          variant="ghost"
+          color="gray"
           onClick={() => setOpen((o) => !o)}
           aria-label={open ? "Hide video" : "Show video"}
-          className="flex h-6 w-6 items-center justify-center rounded text-ink-muted transition-colors duration-150 hover:bg-surface-raised text-ink-muted hover:bg-surface-raised"
+          aria-expanded={open}
         >
           {open ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
-        </button>
+        </IconButton>
       </div>
 
       {/* Clipped rather than hidden: `display: none` would stop the audio. */}

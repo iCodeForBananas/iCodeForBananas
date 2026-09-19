@@ -19,7 +19,10 @@ import {
   type LineData,
   type HistogramData,
 } from "lightweight-charts";
+import { IconButton, Text } from "@radix-ui/themes";
+import { Minus, Plus } from "lucide-react";
 import { IndicatorData, BacktestTrade, PositionSide } from "@/app/types";
+import { useChartTheme, type ChartTheme } from "./chartTheme";
 
 interface BacktestChartProps {
   data: IndicatorData[];
@@ -333,6 +336,16 @@ function toLineData(times: number[], values: (number | undefined)[]): LineData<T
   return out;
 }
 
+/** Surface, text, grid and scale colors for a chart, from the design tokens. */
+function chartChrome(c: ChartTheme) {
+  return {
+    layout: { background: { color: c.background }, textColor: c.text },
+    grid: { vertLines: { color: c.grid }, horzLines: { color: c.grid } },
+    rightPriceScale: { borderColor: c.border },
+    timeScale: { borderColor: c.border },
+  };
+}
+
 const BacktestChart: React.FC<BacktestChartProps> = ({
   data,
   trades,
@@ -352,6 +365,7 @@ const BacktestChart: React.FC<BacktestChartProps> = ({
   const trailSeriesRef = useRef<ISeriesApi<"Line">[]>([]);
   const markerPluginRef = useRef<ISeriesMarkersPluginApi<Time> | null>(null);
   const syncingRangeRef = useRef(false);
+  const colors = useChartTheme();
 
   const { priceLines, oscillator } = useMemo(() => {
     if (!data || data.length === 0 || !selectedStrategyId) return { priceLines: [] as PriceLine[], oscillator: undefined };
@@ -366,10 +380,8 @@ const BacktestChart: React.FC<BacktestChartProps> = ({
     const el = priceContainerRef.current;
     if (!el) return;
     const chart = createChart(el, {
-      layout: { background: { color: "#0f172a" }, textColor: "#cbd5e1", attributionLogo: false },
-      grid: { vertLines: { color: "#1e293b" }, horzLines: { color: "#1e293b" } },
-      rightPriceScale: { borderColor: "#334155" },
-      timeScale: { borderColor: "#334155", timeVisible: true, secondsVisible: false },
+      layout: { attributionLogo: false },
+      timeScale: { timeVisible: true, secondsVisible: false },
       crosshair: { mode: CrosshairMode.Normal },
       autoSize: true,
     });
@@ -389,10 +401,8 @@ const BacktestChart: React.FC<BacktestChartProps> = ({
     const el = oscContainerRef.current;
     if (!el || !hasOscillator) return;
     const chart = createChart(el, {
-      layout: { background: { color: "#0f172a" }, textColor: "#cbd5e1", attributionLogo: false },
-      grid: { vertLines: { color: "#1e293b" }, horzLines: { color: "#1e293b" } },
-      rightPriceScale: { borderColor: "#334155" },
-      timeScale: { borderColor: "#334155", timeVisible: true, secondsVisible: false, visible: false },
+      layout: { attributionLogo: false },
+      timeScale: { timeVisible: true, secondsVisible: false, visible: false },
       crosshair: { mode: CrosshairMode.Normal },
       autoSize: true,
     });
@@ -403,6 +413,22 @@ const BacktestChart: React.FC<BacktestChartProps> = ({
       oscSeriesRef.current = [];
     };
   }, [hasOscillator]);
+
+  // Chart chrome and candle colors follow the theme. Runs after the create
+  // effects above (same render), and again whenever light/dark flips.
+  useEffect(() => {
+    if (!colors) return;
+    priceChartRef.current?.applyOptions(chartChrome(colors));
+    oscChartRef.current?.applyOptions(chartChrome(colors));
+    candleSeriesRef.current?.applyOptions({
+      upColor: colors.up,
+      downColor: colors.down,
+      borderUpColor: colors.up,
+      borderDownColor: colors.down,
+      wickUpColor: colors.up,
+      wickDownColor: colors.down,
+    });
+  }, [colors, hasOscillator, data]);
 
   // Sync time scales between price + oscillator charts.
   useEffect(() => {
@@ -439,13 +465,15 @@ const BacktestChart: React.FC<BacktestChartProps> = ({
       chart.removeSeries(candleSeriesRef.current);
       candleSeriesRef.current = null;
     }
+    const up = colors?.up ?? "#22c55e";
+    const down = colors?.down ?? "#ef4444";
     const candles = chart.addSeries(CandlestickSeries, {
-      upColor: "#22c55e",
-      downColor: "#ef4444",
-      borderUpColor: "#22c55e",
-      borderDownColor: "#ef4444",
-      wickUpColor: "#22c55e",
-      wickDownColor: "#ef4444",
+      upColor: up,
+      downColor: down,
+      borderUpColor: up,
+      borderDownColor: down,
+      wickUpColor: up,
+      wickDownColor: down,
     });
     const candleData: CandlestickData<Time>[] = data.map((d) => ({
       time: (d.time / 1000) as Time,
@@ -543,7 +571,7 @@ const BacktestChart: React.FC<BacktestChartProps> = ({
       trailLine.setData(dedup);
       trailSeriesRef.current.push(trailLine);
     }
-  }, [data, priceLines, trades, selectedTradeId]);
+  }, [data, priceLines, trades, selectedTradeId, colors]);
 
   // Push oscillator panel data.
   useEffect(() => {
@@ -652,30 +680,24 @@ const BacktestChart: React.FC<BacktestChartProps> = ({
   }, [visibleCandles, onVisibleCandlesChange]);
 
   return (
-    <div className='w-full h-full flex flex-col bg-slate-900 relative'>
+    <div className='w-full h-full flex flex-col bg-surface-raised relative'>
       {/* Zoom controls */}
-      <div className='absolute top-2 right-20 z-10 flex items-center gap-1 bg-slate-800/80 backdrop-blur rounded px-2 py-1'>
-        <button
-          onClick={zoomOut}
-          className='px-2 py-0.5 text-xs text-slate-300 hover:text-white hover:bg-slate-700 rounded'
-          aria-label='Zoom out'
-        >
-          −
-        </button>
-        <span className='text-xs text-slate-400 w-16 text-center'>{visibleCandles} bars</span>
-        <button
-          onClick={zoomIn}
-          className='px-2 py-0.5 text-xs text-slate-300 hover:text-white hover:bg-slate-700 rounded'
-          aria-label='Zoom in'
-        >
-          +
-        </button>
+      <div className='absolute top-2 right-20 z-10 flex items-center gap-1 rounded-md border border-line-subtle bg-surface-overlay/90 px-1 py-0.5 backdrop-blur'>
+        <IconButton size='1' variant='ghost' color='gray' onClick={zoomOut} aria-label='Zoom out'>
+          <Minus className='size-3.5' />
+        </IconButton>
+        <Text size='1' color='gray' className='w-16 text-center tabular-nums'>
+          {visibleCandles} bars
+        </Text>
+        <IconButton size='1' variant='ghost' color='gray' onClick={zoomIn} aria-label='Zoom in'>
+          <Plus className='size-3.5' />
+        </IconButton>
       </div>
 
       <div ref={priceContainerRef} className={hasOscillator ? "flex-[3] min-h-0" : "flex-1 min-h-0"} />
       {hasOscillator && (
         <>
-          <div className='h-px bg-slate-700' />
+          <div className='h-px bg-line-subtle' />
           <div ref={oscContainerRef} className='flex-1 min-h-0' />
         </>
       )}

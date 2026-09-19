@@ -20,6 +20,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical } from "lucide-react";
+import { IconButton } from "@radix-ui/themes";
 import { ChordLyricLine } from "./shared";
 
 // ─── Dragging lines around ────────────────────────────────────────────────────
@@ -63,18 +64,21 @@ export function SortableLine({ id, children }: { id: string; children: ReactNode
         isOver && !isDragging ? "ring-2 ring-focus" : ""
       }`}
     >
-      <button
+      <IconButton
         ref={setActivatorNodeRef}
         {...attributes}
         {...listeners}
+        variant='ghost'
+        color='gray'
+        size='2'
         // Without this a drag off the grip scrolls the page instead.
         style={{ touchAction: "none" }}
         aria-label='Drag to move this line'
         title='Drag to move this line'
-        className='mt-0.5 flex h-9 w-7 shrink-0 cursor-grab items-center justify-center rounded text-ink-muted transition-colors duration-150 hover:bg-surface-raised hover:text-ink-primary active:cursor-grabbing text-ink-muted hover:bg-surface-raised hover:text-ink-muted'
+        className='m-0 mt-0.5 shrink-0 cursor-grab active:cursor-grabbing'
       >
         <GripVertical className='h-4 w-4' />
-      </button>
+      </IconButton>
       <div className='min-w-0 flex-1'>{children}</div>
     </div>
   );

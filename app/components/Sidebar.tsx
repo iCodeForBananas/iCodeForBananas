@@ -3,10 +3,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
-import { LogIn, LogOut, Moon, Sun } from "lucide-react";
+import { LogIn, LogOut, Menu, Moon, Sun } from "lucide-react";
+import { IconButton } from "@radix-ui/themes";
 import { useAuth } from "@/app/hooks/useAuth";
 import { useTheme } from "@/app/lib/ThemeContext";
-import { Button, buttonVariants } from "@/app/components/ui/button";
 import { cn } from "@/app/lib/utils";
 
 const MOBILE_BREAKPOINT = 1024;
@@ -135,26 +135,16 @@ export default function Sidebar() {
   return (
     <>
       {!isOpen && isMobile && (
-        <button
+        <IconButton
           onClick={toggle}
-          className={cn(
-            "fixed top-0 left-0 z-[60] h-[42px] px-3 flex items-center print:hidden",
-            "border-b border-r border-line-subtle bg-surface-raised text-ink-primary",
-            "hover:bg-surface-overlay transition-colors duration-120 ease-ui",
-            "focus-visible:outline-solid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus"
-          )}
+          variant='surface'
+          color='gray'
+          size='3'
+          className='fixed top-1 left-1 z-[60] print:hidden'
           aria-label='Open sidebar'
         >
-          <svg
-            xmlns='http://www.w3.org/2000/svg'
-            className='h-5 w-5'
-            fill='none'
-            viewBox='0 0 24 24'
-            stroke='currentColor'
-          >
-            <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M4 6h16M4 12h16M4 18h16' />
-          </svg>
-        </button>
+          <Menu className='h-5 w-5' />
+        </IconButton>
       )}
 
       {isOpen && isMobile && (
@@ -175,27 +165,17 @@ export default function Sidebar() {
           widthClass
         )}
       >
-        <button
-          onClick={toggle}
-          className={cn(
-            "h-[42px] w-full flex items-center justify-center shrink-0",
-            "border-b border-line-subtle text-ink-muted",
-            "hover:bg-surface-overlay hover:text-ink-primary",
-            "transition-colors duration-120 ease-ui motion-reduce:transition-none",
-            "focus-visible:outline-solid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus"
-          )}
-          aria-label={isOpen ? "Close sidebar" : "Open sidebar"}
-        >
-          <svg
-            xmlns='http://www.w3.org/2000/svg'
-            className='h-5 w-5'
-            fill='none'
-            viewBox='0 0 24 24'
-            stroke='currentColor'
+        <div className='h-[42px] w-full flex items-center justify-center shrink-0 border-b border-line-subtle'>
+          <IconButton
+            onClick={toggle}
+            variant='ghost'
+            color='gray'
+            size='2'
+            aria-label={isOpen ? "Close sidebar" : "Open sidebar"}
           >
-            <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M4 6h16M4 12h16M4 18h16' />
-          </svg>
-        </button>
+            <Menu className='h-5 w-5' />
+          </IconButton>
+        </div>
 
         {!isOpen && !isMobile && (
           <nav className='flex-1 overflow-y-auto flex flex-col'>
@@ -227,27 +207,25 @@ export default function Sidebar() {
 
           <div className='flex gap-2 mt-1 mb-1'>
             {mounted && (
-              <Button
-                variant='secondary'
-                size='icon'
+              <IconButton
+                variant='soft'
+                color='gray'
                 onClick={toggleTheme}
                 aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
               >
                 {theme === "dark" ? <Sun className='h-4 w-4' /> : <Moon className='h-4 w-4' />}
-              </Button>
+              </IconButton>
             )}
             {user ? (
-              <Button variant='secondary' size='icon' onClick={signOut} aria-label='Sign out'>
+              <IconButton variant='soft' color='gray' onClick={signOut} aria-label='Sign out'>
                 <LogOut className='h-4 w-4' />
-              </Button>
+              </IconButton>
             ) : (
-              <Link
-                href='/login'
-                className={cn(buttonVariants({ variant: "secondary", size: "icon" }))}
-                aria-label='Sign in'
-              >
-                <LogIn className='h-4 w-4' />
-              </Link>
+              <IconButton asChild variant='soft' color='gray'>
+                <Link href='/login' aria-label='Sign in'>
+                  <LogIn className='h-4 w-4' />
+                </Link>
+              </IconButton>
             )}
           </div>
 

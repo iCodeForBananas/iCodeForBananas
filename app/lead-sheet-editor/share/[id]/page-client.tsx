@@ -2,6 +2,7 @@
 
 import { useState, useEffect, use } from "react";
 import { Minus, Plus, Printer } from "lucide-react";
+import { Button, IconButton, Text } from "@radix-ui/themes";
 import { createClient } from "@/utils/supabase/client";
 import {
   type LeadSheet,
@@ -160,34 +161,33 @@ export default function ShareLeadSheet({ params }: { params: Promise<{ id: strin
             </span>
             <div className='flex items-center gap-2'>
               <div className='flex items-center gap-1 rounded border border-line-subtle'>
-                <button
+                <IconButton
                   type='button'
+                  variant='ghost'
+                  color='gray'
                   onClick={() => updateFontScale(fontScale - SCALE_STEP)}
                   disabled={fontScale <= MIN_SCALE}
-                  className='p-2 text-ink-muted hover:text-ink-primary disabled:opacity-30 disabled:cursor-not-allowed transition-colors'
                   aria-label='Decrease text size'
                 >
                   <Minus className='w-3.5 h-3.5' />
-                </button>
-                <span className='text-xs font-medium w-10 text-center text-ink-muted select-none'>
+                </IconButton>
+                <Text size='1' weight='medium' color='gray' align='center' className='w-10 select-none'>
                   {fontScale}%
-                </span>
-                <button
+                </Text>
+                <IconButton
                   type='button'
+                  variant='ghost'
+                  color='gray'
                   onClick={() => updateFontScale(fontScale + SCALE_STEP)}
                   disabled={fontScale >= MAX_SCALE}
-                  className='p-2 text-ink-muted hover:text-ink-primary disabled:opacity-30 disabled:cursor-not-allowed transition-colors'
                   aria-label='Increase text size'
                 >
                   <Plus className='w-3.5 h-3.5' />
-                </button>
+                </IconButton>
               </div>
-              <button
-                onClick={() => printSong(sheet.title)}
-                className='flex items-center gap-1.5 rounded border border-line-subtle px-3 py-2 text-sm font-medium text-ink-muted hover:border-line-strong hover:bg-surface-base hover:text-primary-text transition-colors'
-              >
+              <Button variant='surface' color='gray' onClick={() => printSong(sheet.title)}>
                 <Printer className='w-4 h-4' /> Print
-              </button>
+              </Button>
             </div>
           </div>
         </div>

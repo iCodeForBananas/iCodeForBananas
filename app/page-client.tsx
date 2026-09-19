@@ -5,6 +5,7 @@ import { Fragment, useCallback, useState } from "react";
 import { useAuth } from "@/app/hooks/useAuth";
 import { LINKS } from "./components/Sidebar";
 import BentoPageLayout from "./components/BentoPageLayout";
+import { Button } from "@radix-ui/themes";
 
 // Tablet+ breakpoint (sm and up) uses this many columns. Keeping it odd,
 // and padding the tile count to an odd multiple of it, guarantees a single
@@ -48,15 +49,18 @@ export default function Home() {
                   🍌
                 </div>
               )}
-              <Link
-                href={href}
-                onClick={() => handleTap(href)}
-                className={`w-full h-full flex items-center justify-center text-center rounded-none bg-primary-solid text-ink-on-primary font-medium text-13 px-2 select-none transition-colors duration-120 ease-ui hover:bg-primary-hover ${
+              <Button
+                asChild
+                size='3'
+                radius='none'
+                className={`h-full w-full whitespace-normal px-2 text-center select-none ${
                   tappedHref === href ? "btn-tap-active" : ""
                 }`}
               >
-                {text}
-              </Link>
+                <Link href={href} onClick={() => handleTap(href)}>
+                  {text}
+                </Link>
+              </Button>
             </Fragment>
           ))}
           {Array.from({ length: spacerCount }).map((_, index) => (

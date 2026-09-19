@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { CircleDot, Minus, Plus, Square } from "lucide-react";
+import { Button, IconButton, Select, TextField } from "@radix-ui/themes";
 
 export const MIN_BPM = 30;
 export const MAX_BPM = 240;
@@ -68,16 +69,18 @@ export function MetronomeControl({
   return (
     <div className='flex flex-wrap items-center gap-1 px-3 py-2 print:hidden'>
       <span className='text-sm font-medium text-ink-primary select-none'>BPM</span>
-      <button
+      <IconButton
         type='button'
+        size='3'
+        variant='soft'
+        color='gray'
         onClick={() => onBpmChange(bpm - 1)}
         disabled={bpm <= MIN_BPM}
-        className='h-10 w-10 flex items-center justify-center rounded-lg bg-surface-raised hover:bg-surface-overlay text-ink-primary font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed'
         aria-label='Decrease tempo'
       >
         <Minus className='w-4 h-4' />
-      </button>
-      <input
+      </IconButton>
+      <TextField.Root
         type='number'
         inputMode='numeric'
         min={MIN_BPM}
@@ -90,43 +93,42 @@ export function MetronomeControl({
         }}
         onBlur={() => setDraft(null)}
         aria-label='Beats per minute'
-        className='h-10 w-14 rounded-lg bg-surface-raised text-center text-sm font-medium text-ink-primary outline-none focus:ring-1 focus:ring-focus'
+        size='3'
+        className='w-14 text-center'
       />
-      <button
+      <IconButton
         type='button'
+        size='3'
+        variant='soft'
+        color='gray'
         onClick={() => onBpmChange(bpm + 1)}
         disabled={bpm >= MAX_BPM}
-        className='h-10 w-10 flex items-center justify-center rounded-lg bg-surface-raised hover:bg-surface-overlay text-ink-primary font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed'
         aria-label='Increase tempo'
       >
         <Plus className='w-4 h-4' />
-      </button>
-      <select
-        value={beatsPerBar}
-        onChange={(e) => onBeatsPerBarChange(parseInt(e.target.value, 10))}
-        aria-label='Beats per bar'
-        title='Beats per bar — the first beat flashes brightest'
-        className='h-10 rounded-lg bg-surface-raised px-1 text-sm font-medium text-ink-primary outline-none'
-      >
-        {BEATS_PER_BAR_OPTIONS.map((n) => (
-          <option key={n} value={n}>
-            /{n}
-          </option>
-        ))}
-      </select>
-      <button
+      </IconButton>
+      <Select.Root size='3' value={String(beatsPerBar)} onValueChange={(v) => onBeatsPerBarChange(parseInt(v, 10))}>
+        <Select.Trigger variant='soft' color='gray' aria-label='Beats per bar' title='Beats per bar — the first beat flashes brightest' />
+        <Select.Content>
+          {BEATS_PER_BAR_OPTIONS.map((n) => (
+            <Select.Item key={n} value={String(n)}>
+              /{n}
+            </Select.Item>
+          ))}
+        </Select.Content>
+      </Select.Root>
+      <Button
         type='button'
+        size='3'
+        variant={running ? "solid" : "soft"}
+        color={running ? undefined : "gray"}
+        aria-pressed={running}
         onClick={onToggle}
         title={running ? "Stop the metronome" : "Blink a silent beat over the sheet"}
-        className={`h-10 flex items-center gap-1.5 px-3 rounded-lg text-sm font-medium transition-colors duration-150 ${
-          running
-            ? "bg-primary-solid text-ink-on-primary hover:bg-primary-hover"
-            : "bg-surface-raised hover:bg-surface-overlay text-ink-primary"
-        }`}
       >
         {running ? <Square className='w-4 h-4' /> : <CircleDot className='w-4 h-4' />}
         {running ? "Stop" : "Start"}
-      </button>
+      </Button>
     </div>
   );
 }

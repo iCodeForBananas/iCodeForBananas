@@ -11,6 +11,8 @@ import {
   XCircle,
   Star,
 } from "lucide-react";
+import { Button, Callout, Dialog, Flex, IconButton, Table } from "@radix-ui/themes";
+import { Bento } from "@/app/components/ui/bento";
 
 interface Question {
   id: string;
@@ -204,42 +206,45 @@ const generateQuestions = (level: number): Question[] => {
 };
 
 const ParentDashboard = ({ history, onClose }: { history: UserHistory[]; onClose: () => void }) => (
-  <div className="fixed inset-0 bg-surface-sunken/70 backdrop-blur-md z-50 flex items-center justify-center p-6">
-    <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-      className="bg-surface-sunken rounded-3xl w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col border border-line-subtle shadow-2xl">
-      <div className="p-6 border-b border-line-subtle flex justify-between items-center bg-surface-raised">
-        <h2 className="text-2xl font-bold flex items-center gap-2 text-ink-primary"><Settings className="w-6 h-6" /> Parent Dashboard</h2>
-        <button onClick={onClose} className="p-2 hover:bg-surface-raised rounded-full text-ink-muted"><XCircle className="w-8 h-8" /></button>
-      </div>
+  <Dialog.Root open onOpenChange={(open) => !open && onClose()}>
+    <Dialog.Content maxWidth="42rem" aria-describedby={undefined} className="flex max-h-[80vh] flex-col overflow-hidden p-0">
+      <Flex justify="between" align="center" className="border-b border-line-subtle p-6">
+        <Dialog.Title size="6" mb="0" className="flex items-center gap-2"><Settings className="w-6 h-6" /> Parent Dashboard</Dialog.Title>
+        <IconButton size="3" variant="ghost" color="gray" radius="full" onClick={onClose} aria-label="Close dashboard"><XCircle className="w-8 h-8" /></IconButton>
+      </Flex>
       <div className="p-6 overflow-y-auto flex-1">
         <h3 className="text-lg font-semibold mb-4 text-ink-primary">Performance Metrics</h3>
-        <table className="w-full text-left border-collapse">
-          <thead><tr className="bg-surface-raised">
-            <th className="p-3 border border-line-subtle text-ink-muted">Date</th>
-            <th className="p-3 border border-line-subtle text-ink-muted">Level</th>
-            <th className="p-3 border border-line-subtle text-ink-muted">Score</th>
-            <th className="p-3 border border-line-subtle text-ink-muted">Avg Time (s)</th>
-          </tr></thead>
-          <tbody>
+        <Table.Root variant="surface">
+          <Table.Header>
+            <Table.Row>
+              <Table.ColumnHeaderCell>Date</Table.ColumnHeaderCell>
+              <Table.ColumnHeaderCell>Level</Table.ColumnHeaderCell>
+              <Table.ColumnHeaderCell>Score</Table.ColumnHeaderCell>
+              <Table.ColumnHeaderCell>Avg Time (s)</Table.ColumnHeaderCell>
+            </Table.Row>
+          </Table.Header>
+          <Table.Body>
             {history.length === 0 ? (
-              <tr><td colSpan={4} className="p-8 text-center text-ink-muted italic">No history recorded yet.</td></tr>
+              <Table.Row><Table.Cell colSpan={4} justify="center" className="p-8 italic text-ink-muted">No history recorded yet.</Table.Cell></Table.Row>
             ) : history.map((s, i) => (
-              <tr key={i} className="hover:bg-surface-raised">
-                <td className="p-3 border border-line-subtle text-sm text-ink-primary">{s.date}</td>
-                <td className="p-3 border border-line-subtle font-medium text-ink-primary">{s.level}</td>
-                <td className="p-3 border border-line-subtle text-success font-bold">{s.score}/5</td>
-                <td className="p-3 border border-line-subtle text-ink-primary">{(s.timePerQuestion.reduce((a, b) => a + b, 0) / s.timePerQuestion.length).toFixed(1)}s</td>
-              </tr>
+              <Table.Row key={i}>
+                <Table.Cell>{s.date}</Table.Cell>
+                <Table.Cell className="font-medium">{s.level}</Table.Cell>
+                <Table.Cell className="font-bold text-success">{s.score}/5</Table.Cell>
+                <Table.Cell>{(s.timePerQuestion.reduce((a, b) => a + b, 0) / s.timePerQuestion.length).toFixed(1)}s</Table.Cell>
+              </Table.Row>
             ))}
-          </tbody>
-        </table>
-        <div className="mt-8 p-4 bg-surface-raised rounded-xl border border-primary-solid/40">
-          <h4 className="font-bold mb-2 text-primary-text">Developmental Insights</h4>
-          <p className="text-sm text-ink-muted leading-relaxed">Your child is showing consistent progress in <strong>Spatial Reasoning</strong>. Focusing on Level 4 Matrix reasoning will help develop their analytical thinking skills.</p>
-        </div>
+          </Table.Body>
+        </Table.Root>
+        <Callout.Root mt="6" variant="surface">
+          <Callout.Text>
+            <strong className="mb-2 block">Developmental Insights</strong>
+            Your child is showing consistent progress in <strong>Spatial Reasoning</strong>. Focusing on Level 4 Matrix reasoning will help develop their analytical thinking skills.
+          </Callout.Text>
+        </Callout.Root>
       </div>
-    </motion.div>
-  </div>
+    </Dialog.Content>
+  </Dialog.Root>
 );
 
 export default function BrainyBloomPage() {
@@ -349,7 +354,7 @@ export default function BrainyBloomPage() {
             <div className="min-h-screen flex flex-col bg-surface-base">
               <div className="p-6 flex justify-between items-center bg-surface-sunken border-b-4 border-line-subtle">
                 <div className="flex items-center gap-4">
-                  <button onClick={resetAndGoHome} className="p-4 bg-surface-raised rounded-2xl shadow-md text-ink-primary border border-line-strong"><Home className="w-8 h-8" /></button>
+                  <IconButton size="4" variant="surface" color="gray" onClick={resetAndGoHome} aria-label="Home" className="h-16 w-16 rounded-2xl"><Home className="w-8 h-8" /></IconButton>
                   <div className="text-primary-text font-bold text-lg">Level {currentLevel}/5 <span className="text-ink-muted font-normal text-sm">— {LEVELS[currentLevel - 1]?.description}</span></div>
                 </div>
                 <div className="flex-1 px-8">
@@ -368,9 +373,10 @@ export default function BrainyBloomPage() {
               <div className="flex-1 flex flex-col items-center justify-center p-8">
                 <motion.div key={q.id} initial={{ x: 50, opacity: 0 }} animate={{ x: 0, opacity: 1 }} className="w-full max-w-3xl text-center">
                   <div className="mb-8 flex flex-col items-center">
-                    <button onClick={() => speak(q.prompt)} className="mb-6 p-6 bg-surface-sunken rounded-full shadow-2xl hover:scale-105 transition-transform border border-line-subtle">
-                      <Volume2 className="w-12 h-12 text-primary-text" />
-                    </button>
+                    <IconButton size="4" variant="surface" radius="full" onClick={() => speak(q.prompt)} aria-label="Read the question aloud"
+                      className="mb-6 h-24 w-24 shadow-2xl transition-transform hover:scale-105">
+                      <Volume2 className="w-12 h-12" />
+                    </IconButton>
                     <h2 className="text-4xl font-bold text-ink-primary leading-tight">{q.prompt}</h2>
                   </div>
                   {q.visualData && (
@@ -404,10 +410,11 @@ export default function BrainyBloomPage() {
                     ))}
                   </div>
                   {feedback === "incorrect" && (
-                    <motion.button initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} onClick={handleContinue}
-                      className="mt-8 w-full py-6 bg-primary-solid text-ink-on-primary font-bold text-2xl rounded-3xl shadow-lg flex items-center justify-center gap-3 hover:scale-105 transition-transform">
-                      Continue to Next Question <ChevronRight className="w-8 h-8" />
-                    </motion.button>
+                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mt-8">
+                      <Button onClick={handleContinue} size="4" className="h-auto w-full rounded-3xl py-6 text-2xl font-bold transition-transform hover:scale-105">
+                        Continue to Next Question <ChevronRight className="w-8 h-8" />
+                      </Button>
+                    </motion.div>
                   )}
                 </motion.div>
               </div>
@@ -450,20 +457,17 @@ export default function BrainyBloomPage() {
                     }`}>{l.id}</div>
                   ))}
                 </div>
-                <div className="bg-surface-raised p-6 rounded-3xl mb-8 border border-primary-solid/40">
-                  <div className="text-sm font-bold uppercase tracking-widest text-ink-muted mb-2">Level Score</div>
+                <Bento size="4" title="Level Score" className="mb-8 rounded-3xl">
                   <div className="text-6xl font-black text-ink-primary">{sessionScore}/5</div>
-                </div>
+                </Bento>
                 {currentLevel < 5 ? (
-                  <button onClick={() => startLevel(currentLevel + 1)}
-                    className="w-full py-6 bg-primary-solid text-ink-on-primary font-bold text-2xl rounded-3xl shadow-lg flex items-center justify-center gap-3 hover:scale-105 transition-transform">
+                  <Button onClick={() => startLevel(currentLevel + 1)} size="4" className="h-auto w-full rounded-3xl py-6 text-2xl font-bold transition-transform hover:scale-105">
                     Level {currentLevel + 1} <ChevronRight className="w-8 h-8" />
-                  </button>
+                  </Button>
                 ) : (
-                  <button onClick={() => { playSound("success"); setGameState("game_complete"); }}
-                    className="w-full py-6 bg-primary-solid text-ink-on-primary font-bold text-2xl rounded-3xl shadow-lg flex items-center justify-center gap-3 hover:scale-105 transition-transform">
+                  <Button onClick={() => { playSound("success"); setGameState("game_complete"); }} size="4" className="h-auto w-full rounded-3xl py-6 text-2xl font-bold transition-transform hover:scale-105">
                     See Results <ChevronRight className="w-8 h-8" />
-                  </button>
+                  </Button>
                 )}
               </motion.div>
             </div>
@@ -478,14 +482,12 @@ export default function BrainyBloomPage() {
                 <div className="text-8xl mb-6">🏆</div>
                 <h2 className="text-5xl font-black mb-4 text-ink-primary">All Done!</h2>
                 <p className="text-xl text-ink-muted mb-8">You completed all 5 levels!</p>
-                <div className="bg-surface-raised p-6 rounded-3xl mb-8 border border-primary-solid/40">
-                  <div className="text-sm font-bold uppercase tracking-widest text-ink-muted mb-2">Total Score</div>
+                <Bento size="4" title="Total Score" className="mb-8 rounded-3xl">
                   <div className="text-6xl font-black text-ink-primary">{userState.totalScore}/25</div>
-                </div>
-                <button onClick={resetAndGoHome}
-                  className="w-full py-6 bg-primary-solid text-ink-on-primary font-bold text-2xl rounded-3xl shadow-lg flex items-center justify-center gap-3 hover:scale-105 transition-transform">
+                </Bento>
+                <Button onClick={resetAndGoHome} size="4" className="h-auto w-full rounded-3xl py-6 text-2xl font-bold transition-transform hover:scale-105">
                   <Home className="w-8 h-8" /> Play Again
-                </button>
+                </Button>
               </motion.div>
             </div>
           </motion.div>

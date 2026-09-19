@@ -6,6 +6,7 @@ import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 import "./components/fretboard.css";
+import { Theme } from "@radix-ui/themes";
 import { ThemeProvider } from "./lib/ThemeContext";
 import { FavoriteChordsProvider } from "./lib/FavoriteChordsContext";
 import Sidebar from "./components/Sidebar";
@@ -83,7 +84,7 @@ export default function RootLayout({
       // Dark is what :root carries in app/tokens.css, so it is also what the
       // server renders. The inline script below corrects it before first paint.
       data-theme='dark'
-      className={`${roboto.variable} ${GeistMono.variable}`}
+      className={`dark ${roboto.variable} ${GeistMono.variable}`}
       suppressHydrationWarning
     >
       <head>
@@ -95,7 +96,7 @@ export default function RootLayout({
             the first paint when that is what the visitor wants. */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('theme');var d=window.matchMedia('(prefers-color-scheme:dark)').matches;var dark=t==='dark'||(t===null&&d);document.documentElement.setAttribute('data-theme',dark?'dark':'light')}catch(e){}})()`,
+            __html: `(function(){try{var t=localStorage.getItem('theme');var d=window.matchMedia('(prefers-color-scheme:dark)').matches;var dark=t==='dark'||(t===null&&d);var h=document.documentElement;h.setAttribute('data-theme',dark?'dark':'light');h.classList.toggle('dark',dark);h.classList.toggle('light',!dark)}catch(e){}})()`,
           }}
         />
         {/* Chrome offers the install prompt once, early — often before React
@@ -118,15 +119,22 @@ export default function RootLayout({
       </head>
       <body className='antialiased'>
         <ThemeProvider>
-          <FavoriteChordsProvider>
-            <div id='app-shell' className='flex h-dvh overflow-hidden bg-surface-base font-sans text-ink-primary'>
-              <Sidebar />
-              <div id='main-content' className='flex-1 min-w-0 overflow-y-auto flex flex-col bg-surface-base'>
-                <MusicFavoritesBar />
-                {children}
+          {/* Radix Themes for every component in the app. appearance='inherit'
+              reads the dark/light class on <html>, which the script above sets
+              before paint and ThemeContext keeps in step with data-theme, so
+              Radix never renders a theme of its own first. Colors, fonts and
+              cursors are bound to the brand tokens in globals.css. */}
+          <Theme appearance='inherit' accentColor='amber' grayColor='slate' radius='medium' panelBackground='solid' hasBackground={false}>
+            <FavoriteChordsProvider>
+              <div id='app-shell' className='flex h-dvh overflow-hidden bg-surface-base font-sans text-ink-primary'>
+                <Sidebar />
+                <div id='main-content' className='flex-1 min-w-0 overflow-y-auto flex flex-col bg-surface-base'>
+                  <MusicFavoritesBar />
+                  {children}
+                </div>
               </div>
-            </div>
-          </FavoriteChordsProvider>
+            </FavoriteChordsProvider>
+          </Theme>
         </ThemeProvider>
         <Analytics />
         <SpeedInsights />

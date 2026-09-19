@@ -3,6 +3,7 @@
 import { useState } from "react";
 import ChordDiagram from "@/app/components/ChordDiagram";
 import BentoPageLayout from "@/app/components/BentoPageLayout";
+import { ToggleButton } from "@/app/components/ui/toggle-button";
 import {
   sharpNotes,
   chordTypes,
@@ -157,21 +158,9 @@ export default function InversionPickerPage() {
           <div className="text-xs font-semibold uppercase tracking-widest text-ink-muted mb-2">Note</div>
           <div className="flex flex-wrap gap-1">
             {sharpNotes.map((n) => (
-              <button
-                key={n}
-                onClick={() => setNote(n)}
-                className="text-xs px-2 py-1 rounded font-semibold transition-colors"
-                style={{
-                  background: note === n
-                    ? "var(--ds-color-primary-solid)"
-                    : "var(--ds-color-surface-sunken)",
-                  color: note === n
-                    ? "var(--ds-color-text-on-primary)"
-                    : "var(--ds-color-text-muted)",
-                }}
-              >
+              <ToggleButton key={n} size="1" pressed={note === n} onClick={() => setNote(n)}>
                 {n}
-              </button>
+              </ToggleButton>
             ))}
           </div>
         </div>
@@ -180,21 +169,9 @@ export default function InversionPickerPage() {
           <div className="text-xs font-semibold uppercase tracking-widest text-ink-muted mb-2">Type</div>
           <div className="flex flex-wrap gap-1">
             {chordTypes.map((t) => (
-              <button
-                key={t}
-                onClick={() => setType(t)}
-                className="text-xs px-2 py-1 rounded font-semibold transition-colors"
-                style={{
-                  background: type === t
-                    ? "var(--ds-color-primary-solid)"
-                    : "var(--ds-color-surface-sunken)",
-                  color: type === t
-                    ? "var(--ds-color-text-on-primary)"
-                    : "var(--ds-color-text-muted)",
-                }}
-              >
+              <ToggleButton key={t} size="1" pressed={type === t} onClick={() => setType(t)}>
                 {t}
-              </button>
+              </ToggleButton>
             ))}
           </div>
         </div>

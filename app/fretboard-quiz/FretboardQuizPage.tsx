@@ -4,6 +4,9 @@ import { useState, useMemo } from "react";
 import "../components/fretboard.css";
 import { allNotes, getNoteAt, generateChordsAndScales, defaultTuning } from "../lib/music";
 import BentoBoard, { type BentoPanel } from "../components/BentoBoard";
+import { Bento } from "@/app/components/ui/bento";
+import { Button } from "@radix-ui/themes";
+import { ToggleButton } from "@/app/components/ui/toggle-button";
 
 const SCALE_TYPES = [
   "Major",
@@ -30,8 +33,8 @@ const SCALE_TOOLTIPS: Record<string, string> = {
 };
 
 // Uniform, touch-friendly control button (≥44px tap target for iPad use)
-const TOUCH_BUTTON =
-  "min-h-[44px] min-w-[44px] px-4 rounded-lg border text-sm font-medium inline-flex items-center justify-center transition-colors";
+/** 44px, so a note is easy to hit on a phone. */
+const TOUCH_BUTTON = "min-h-[44px] min-w-[44px]";
 
 const TOTAL_FRETS = 12;
 
@@ -176,7 +179,7 @@ export default function FretboardQuizPage() {
   const scoreContent = (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap gap-3">
-        <div className="flex flex-1 min-w-[110px] flex-col gap-0.5 rounded-xl border border-line-subtle bg-surface-raised p-3">
+        <Bento size="1" className="flex flex-1 min-w-[110px] flex-col gap-0.5">
           <span
             className="text-xs font-semibold uppercase tracking-wider text-ink-muted"
             title="How many of the scale's fretboard positions you have found so far"
@@ -189,9 +192,9 @@ export default function FretboardQuizPage() {
               /{totalNotesToFind}
             </span>
           </span>
-        </div>
+        </Bento>
 
-        <div className="flex flex-1 min-w-[110px] flex-col gap-0.5 rounded-xl border border-line-subtle bg-surface-raised p-3">
+        <Bento size="1" className="flex flex-1 min-w-[110px] flex-col gap-0.5">
           <span
             className="text-xs font-semibold uppercase tracking-wider text-ink-muted"
             title="Correct guesses as a share of every guess you have made this round"
@@ -201,9 +204,9 @@ export default function FretboardQuizPage() {
           <span className="text-2xl font-bold tabular-nums text-ink-primary">
             {totalAttempts > 0 ? `${scorePercent}%` : "—"}
           </span>
-        </div>
+        </Bento>
 
-        <div className="flex flex-1 min-w-[110px] flex-col gap-0.5 rounded-xl border border-line-subtle bg-surface-raised p-3">
+        <Bento size="1" className="flex flex-1 min-w-[110px] flex-col gap-0.5">
           <span
             className="text-xs font-semibold uppercase tracking-wider text-ink-muted"
             title="Guesses on notes that are not in this scale"
@@ -213,7 +216,7 @@ export default function FretboardQuizPage() {
           <span className="text-2xl font-bold tabular-nums text-ink-primary">
             {incorrectCount}
           </span>
-        </div>
+        </Bento>
       </div>
 
       <div
@@ -301,18 +304,16 @@ export default function FretboardQuizPage() {
           </p>
           <div className="flex flex-wrap gap-2">
             {allNotes.map((note) => (
-              <button
+              <ToggleButton
                 key={note}
+                size='3'
+                pressed={selectedKey === note}
                 onClick={() => handleKeyChange(note)}
                 title={`Quiz the ${note} ${selectedScaleType} scale — starts a fresh round`}
-                className={`${TOUCH_BUTTON} ${
-                  selectedKey === note
-                    ? "bg-primary-solid/20 border-primary-solid"
-                    : "border-line-subtle hover:bg-surface-overlay"
-                }`}
+                className={TOUCH_BUTTON}
               >
                 {note}
-              </button>
+              </ToggleButton>
             ))}
           </div>
         </div>
@@ -327,27 +328,28 @@ export default function FretboardQuizPage() {
           </p>
           <div className="flex flex-wrap gap-2">
             {SCALE_TYPES.map((type) => (
-              <button
+              <ToggleButton
                 key={type}
+                size='3'
+                pressed={selectedScaleType === type}
                 onClick={() => handleScaleTypeChange(type)}
                 title={SCALE_TOOLTIPS[type] ?? type}
-                className={`${TOUCH_BUTTON} ${
-                  selectedScaleType === type
-                    ? "bg-primary-solid/20 border-primary-solid"
-                    : "border-line-subtle hover:bg-surface-overlay"
-                }`}
+                className={TOUCH_BUTTON}
               >
                 {type}
-              </button>
+              </ToggleButton>
             ))}
           </div>
-          <button
+          <Button
+            size='3'
+            variant='soft'
+            color='gray'
             onClick={resetRound}
             title="Clear every guess and start this scale again"
-            className={`${TOUCH_BUTTON} ml-auto border-line-subtle hover:bg-surface-overlay`}
+            className={`${TOUCH_BUTTON} ml-auto`}
           >
             Restart
-          </button>
+          </Button>
         </div>
       </div>
 

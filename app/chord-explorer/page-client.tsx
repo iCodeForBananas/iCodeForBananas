@@ -33,6 +33,9 @@ import {
   GROUP_TOOLTIPS,
   formatChordLabel,
 } from "../lib/chordVoicings";
+import { Button, Select, TextField } from "@radix-ui/themes";
+import { ToggleButton } from "@/app/components/ui/toggle-button";
+import { Bento } from "@/app/components/ui/bento";
 import ChordDiagram from "../components/ChordDiagram";
 import ChordTypeCard from "../components/ChordTypeCard";
 import BentoBoard, { type BentoPanel } from "../components/BentoBoard";
@@ -41,8 +44,10 @@ import CircleOfFifths from "../components/CircleOfFifths";
 import ChordFinder from "../components/ChordFinder";
 
 // Uniform, touch-friendly control button (≥44px tap target for iPad use)
-const TOUCH_BUTTON =
-  "min-h-[44px] min-w-[44px] px-4 rounded-lg border text-sm font-medium inline-flex items-center justify-center transition-colors";
+/** A 44px touch target for the note and chord-type pickers; `on` is the picked one. */
+function PickButton({ on, ...props }: Omit<React.ComponentProps<typeof ToggleButton>, "pressed"> & { on: boolean }) {
+  return <ToggleButton size='3' className='min-h-[44px] min-w-[44px]' {...props} pressed={on} />;
+}
 
 /** Highest fret the Around-fret dropdown will aim a progression at. */
 const MAX_TARGET_FRET = 12;
@@ -359,9 +364,7 @@ function ProgressionChordCard({
   const label = formatChordLabel(note, quality);
 
   return (
-    <div
-      className="flex flex-col items-center gap-2 rounded-xl border border-line-subtle bg-surface-raised p-4 shadow-sm"
-    >
+    <Bento className="flex flex-col items-center gap-2">
       <span
         className="text-xs font-semibold tracking-wider text-ink-muted"
         title="Scale degree of this chord within the key — case shows major/minor (e.g. vi vs VI), ° shows diminished"
@@ -377,21 +380,23 @@ function ProgressionChordCard({
         </div>
       )}
       {voicings.length > 0 && (
-        <select
-          value={selected?.id ?? ""}
-          onChange={(e) => onPick(e.target.value)}
-          title="Pin this one chord to a shape, wherever the rest of the progression sits"
-          className="w-full max-w-[150px] rounded-lg border border-line-subtle bg-transparent px-2 py-1.5 text-xs"
-        >
-          {voicings.map((v) => (
-            <option key={v.id} value={v.id}>
-              {v.label}
-              {v.position ? ` (${v.position})` : ""}
-            </option>
-          ))}
-        </select>
+        <Select.Root size="1" value={selected?.id} onValueChange={onPick}>
+          <Select.Trigger
+            aria-label="Voicing"
+            title="Pin this one chord to a shape, wherever the rest of the progression sits"
+            className="w-full max-w-[150px]"
+          />
+          <Select.Content position="popper">
+            {voicings.map((v) => (
+              <Select.Item key={v.id} value={v.id}>
+                {v.label}
+                {v.position ? ` (${v.position})` : ""}
+              </Select.Item>
+            ))}
+          </Select.Content>
+        </Select.Root>
       )}
-    </div>
+    </Bento>
   );
 }
 
@@ -618,25 +623,27 @@ export default function ChordExplorerPage() {
           >
             Progression
           </span>
-          <input
-            type="text"
+          <TextField.Root
             value={progressionText}
             onChange={(e) => updateProgression(e.target.value)}
             placeholder="G C D — leave empty for the chord picked above"
             spellCheck={false}
             aria-label="Chord progression for triad shapes"
             title="Chords separated by spaces, commas, dashes or pipes — G C D, G, C, D and G | C | D all work. Names like Am, F#m7, Csus4 and Bb are understood."
-            className="w-full sm:max-w-sm rounded-lg border border-line-subtle bg-surface-sunken px-2.5 py-1.5 text-sm font-medium text-ink-primary focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+            className="w-full sm:max-w-sm"
           />
           {progressionText.trim() !== "" && (
-            <button
+            <Button
               type="button"
+              size="1"
+              variant="soft"
+              color="gray"
               onClick={() => updateProgression("")}
               title="Clear the progression and go back to the chord picked at the top of the page"
-              className="self-start rounded-lg border border-line-subtle px-2 py-1 text-xs font-medium text-ink-muted hover:bg-surface-sunken shrink-0"
+              className="shrink-0 self-start sm:self-center"
             >
               Clear
-            </button>
+            </Button>
           )}
         </label>
 
@@ -783,21 +790,25 @@ export default function ChordExplorerPage() {
               >
                 Fretboard Position
               </label>
-              <select
-                id="progression-fret-position"
-                value={progressionFret ?? ""}
-                onChange={(e) =>
-                  anchorProgression(e.target.value === "" ? null : Number(e.target.value))
-                }
-                title="Anchor the progression at a spot on the fretboard"
-                className="min-h-[44px] w-full min-w-[200px] rounded-lg border border-line-subtle bg-transparent px-2 py-1.5 text-sm"
+              {/* Radix Select can't use "" as a value, so "open position" is "open". */}
+              <Select.Root
+                size="3"
+                value={progressionFret === null ? "open" : String(progressionFret)}
+                onValueChange={(v) => anchorProgression(v === "open" ? null : Number(v))}
               >
-                {POSITION_OPTIONS.map((option) => (
-                  <option key={option.label} value={option.value ?? ""}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
+                <Select.Trigger
+                  id="progression-fret-position"
+                  title="Anchor the progression at a spot on the fretboard"
+                  className="w-full min-w-[200px]"
+                />
+                <Select.Content position="popper">
+                  {POSITION_OPTIONS.map((option) => (
+                    <Select.Item key={option.label} value={option.value === null ? "open" : String(option.value)}>
+                      {option.label}
+                    </Select.Item>
+                  ))}
+                </Select.Content>
+              </Select.Root>
             </div>
 
             <p className="max-w-[240px] text-xs text-ink-muted">
@@ -897,9 +908,7 @@ export default function ChordExplorerPage() {
     <div className="flex flex-1 min-h-0 flex-col p-4 sm:p-6">
 
       {/* ── Controls — two rows in a bento card, pinned at top ───────────────── */}
-      <div
-        className="mb-4 flex flex-col gap-4 rounded-2xl border border-line-subtle bg-surface-raised p-4 sm:p-5"
-      >
+      <Bento className="mb-4 flex flex-col gap-4">
 
         {/* Row 1: Root note */}
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
@@ -915,28 +924,24 @@ export default function ChordExplorerPage() {
                 selectedNote === note ||
                 (flatToSharp[selectedNote] ?? selectedNote) === (flatToSharp[note] ?? note);
               return (
-                <button
+                <PickButton
                   key={note}
+                  on={active}
                   onClick={() => handleNoteClick(note)}
                   title={`Select ${note} as your root note — builds a ${formatChordLabel(note, selectedType)} chord`}
-                  className={`${TOUCH_BUTTON} ${
-                    active ? "bg-primary-solid/20 border-primary-solid" : "border-line-subtle hover:bg-surface-overlay"
-                  }`}
                 >
                   {note}
-                </button>
+                </PickButton>
               );
             })}
             <span className="mx-1 text-ink-muted self-center">|</span>
-            <button
+            <PickButton
+              on={useFlats}
               onClick={handleFlatsToggle}
               title="Toggle between sharp (♯) and flat (♭) note names — these are the same pitches written two different ways (e.g. F♯ and G♭ are the exact same note)"
-              className={`${TOUCH_BUTTON} ${
-                useFlats ? "bg-primary-solid/20 border-primary-solid" : "border-line-subtle hover:bg-surface-overlay"
-              }`}
             >
               ♭ Flats
-            </button>
+            </PickButton>
           </div>
         </div>
 
@@ -956,25 +961,21 @@ export default function ChordExplorerPage() {
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {group.types.map((type) => (
-                    <button
+                    <PickButton
                       key={type}
+                      on={selectedType === type}
                       onClick={() => setSelectedType(type)}
                       title={CHORD_TYPE_TOOLTIPS[type] ?? type}
-                      className={`${TOUCH_BUTTON} ${
-                        selectedType === type
-                          ? "bg-primary-solid/20 border-primary-solid"
-                          : "border-line-subtle hover:bg-surface-overlay"
-                      }`}
                     >
                       {type}
-                    </button>
+                    </PickButton>
                   ))}
                 </div>
               </div>
             ))}
           </div>
         </div>
-      </div>
+      </Bento>
 
       {/* ── Bento board — drag to rearrange, drag a corner to resize ──────────── */}
       <BentoBoard storageKey="chord-explorer-bento-v1" panels={panels} />

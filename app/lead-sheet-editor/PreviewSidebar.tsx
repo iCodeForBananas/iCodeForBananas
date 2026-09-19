@@ -23,6 +23,8 @@ import {
   Square,
   Youtube,
 } from "lucide-react";
+import { Button, Flex, IconButton, Text } from "@radix-ui/themes";
+import { cn } from "@/app/lib/utils";
 import { OfflineBadge } from "./shared";
 import type { YouTubeLink } from "./youtube";
 import { MetronomeControl } from "./Metronome";
@@ -48,132 +50,159 @@ const RAIL_WIDTH = "w-14";
 /**
  * One row of the sidebar. Every tool is a full-width line separated from its
  * neighbours by a hairline rather than boxed in a border of its own — a column
- * of nested boxes reads as clutter at the size these controls run to.
+ * of nested boxes reads as clutter at the size these controls run to. `active`
+ * fills it with the accent, for a mode that is on.
  */
-const ROW = "h-11 w-full flex items-center gap-2.5 px-3 text-sm font-medium transition-colors duration-150";
-const ROW_BTN = `${ROW} text-ink-primary hover:bg-surface-raised`;
+function RowButton({
+  active = false,
+  className,
+  ...props
+}: React.ComponentProps<typeof Button> & { active?: boolean }) {
+  return (
+    <Button
+      type='button'
+      size='3'
+      variant={active ? "solid" : "ghost"}
+      color={active ? undefined : "gray"}
+      highContrast={!active}
+      className={cn("m-0 h-11 w-full justify-start gap-2.5 rounded-none px-3 print:hidden", className)}
+      {...props}
+    />
+  );
+}
+
+/** A square −/+ step button beside a value. */
+function StepButton(props: React.ComponentProps<typeof IconButton>) {
+  return <IconButton type='button' size='3' variant='soft' color='gray' {...props} />;
+}
+
+/** A value with a step button on each side: text size, columns, transpose. */
+function Stepper({
+  label,
+  value,
+  valueClassName,
+  decrease,
+  increase,
+}: {
+  label?: string;
+  value: React.ReactNode;
+  valueClassName?: string;
+  decrease: React.ComponentProps<typeof IconButton>;
+  increase: React.ComponentProps<typeof IconButton>;
+}) {
+  return (
+    <Flex wrap='wrap' align='center' gap='1' px='3' py='2' className='print:hidden'>
+      {label && (
+        <Text size='2' weight='medium' className='select-none'>
+          {label}
+        </Text>
+      )}
+      <StepButton {...decrease} />
+      <Text size='2' weight='medium' align='center' className={cn("select-none whitespace-nowrap", valueClassName)}>
+        {value}
+      </Text>
+      <StepButton {...increase} />
+    </Flex>
+  );
+}
 
 /** One labelled block of the sidebar — the unit the whole column scrolls through. */
 function SidebarSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section>
-      <h2 className='px-3 pt-4 pb-1.5 text-[11px] font-semibold uppercase tracking-widest text-ink-muted select-none'>
+      <Text as='div' size='1' weight='bold' color='gray' className='px-3 pt-4 pb-1.5 uppercase tracking-widest select-none'>
         {title}
-      </h2>
-      <div className='divide-y divide-line-subtle border-y border-line-subtle divide-line-subtle border-line-subtle'>
-        {children}
-      </div>
+      </Text>
+      <div className='divide-y divide-line-subtle border-y border-line-subtle'>{children}</div>
     </section>
   );
 }
 
 function ColumnCountControl({ count, onChange }: { count: number; onChange: (next: number) => void }) {
   return (
-    <div className='flex flex-wrap items-center gap-1 px-3 py-2 print:hidden'>
-      <span className='text-sm font-medium text-ink-primary select-none'>Cols</span>
-      <button
-        type='button'
-        onClick={() => onChange(count - 1)}
-        disabled={count <= MIN_COLUMN_COUNT}
-        className='h-10 w-10 flex items-center justify-center rounded-lg bg-surface-raised hover:bg-surface-overlay text-ink-primary font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-surface-raised'
-        aria-label='Decrease column count'
-      >
-        <Minus className='w-4 h-4' />
-      </button>
-      <span className='text-sm font-medium w-6 text-center text-ink-primary select-none'>{count}</span>
-      <button
-        type='button'
-        onClick={() => onChange(count + 1)}
-        disabled={count >= MAX_COLUMN_COUNT}
-        className='h-10 w-10 flex items-center justify-center rounded-lg bg-surface-raised hover:bg-surface-overlay text-ink-primary font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-surface-raised'
-        aria-label='Increase column count'
-      >
-        <Plus className='w-4 h-4' />
-      </button>
-    </div>
+    <Stepper
+      label='Cols'
+      value={count}
+      valueClassName='w-6'
+      decrease={{
+        onClick: () => onChange(count - 1),
+        disabled: count <= MIN_COLUMN_COUNT,
+        "aria-label": "Decrease column count",
+        children: <Minus className='w-4 h-4' />,
+      }}
+      increase={{
+        onClick: () => onChange(count + 1),
+        disabled: count >= MAX_COLUMN_COUNT,
+        "aria-label": "Increase column count",
+        children: <Plus className='w-4 h-4' />,
+      }}
+    />
   );
 }
 
 function ColumnWidthControl({ width, onChange }: { width: number; onChange: (next: number) => void }) {
   return (
-    <div className='flex flex-wrap items-center gap-1 px-3 py-2 print:hidden'>
-      <span className='text-sm font-medium text-ink-primary select-none'>Width</span>
-      <button
-        type='button'
-        onClick={() => onChange(width - COLUMN_WIDTH_VW_STEP)}
-        disabled={width <= MIN_COLUMN_WIDTH_VW}
-        className='h-10 w-10 flex items-center justify-center rounded-lg bg-surface-raised hover:bg-surface-overlay text-ink-primary font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-surface-raised'
-        aria-label='Decrease column width'
-      >
-        <Minus className='w-4 h-4' />
-      </button>
-      <span className='text-sm font-medium w-14 text-center text-ink-primary select-none'>{width}vw</span>
-      <button
-        type='button'
-        onClick={() => onChange(width + COLUMN_WIDTH_VW_STEP)}
-        disabled={width >= MAX_COLUMN_WIDTH_VW}
-        className='h-10 w-10 flex items-center justify-center rounded-lg bg-surface-raised hover:bg-surface-overlay text-ink-primary font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-surface-raised'
-        aria-label='Increase column width'
-      >
-        <Plus className='w-4 h-4' />
-      </button>
-    </div>
+    <Stepper
+      label='Width'
+      value={`${width}vw`}
+      valueClassName='w-14'
+      decrease={{
+        onClick: () => onChange(width - COLUMN_WIDTH_VW_STEP),
+        disabled: width <= MIN_COLUMN_WIDTH_VW,
+        "aria-label": "Decrease column width",
+        children: <Minus className='w-4 h-4' />,
+      }}
+      increase={{
+        onClick: () => onChange(width + COLUMN_WIDTH_VW_STEP),
+        disabled: width >= MAX_COLUMN_WIDTH_VW,
+        "aria-label": "Increase column width",
+        children: <Plus className='w-4 h-4' />,
+      }}
+    />
   );
 }
 
 function FontScaleControl({ scale, onChange }: { scale: number; onChange: (next: number) => void }) {
   return (
-    <div className='flex flex-wrap items-center gap-1 px-3 py-2 print:hidden'>
-      <span className='text-sm font-medium text-ink-primary select-none'>Size</span>
-      <button
-        type='button'
-        onClick={() => onChange(scale - SCALE_STEP)}
-        disabled={scale <= MIN_SCALE}
-        className='h-10 w-10 flex items-center justify-center rounded-lg bg-surface-raised hover:bg-surface-overlay text-ink-primary font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-surface-raised'
-        aria-label='Decrease text size'
-      >
-        <Minus className='w-4 h-4' />
-      </button>
-      <span className='text-sm font-medium w-12 text-center text-ink-primary select-none'>{scale}%</span>
-      <button
-        type='button'
-        onClick={() => onChange(scale + SCALE_STEP)}
-        disabled={scale >= MAX_SCALE}
-        className='h-10 w-10 flex items-center justify-center rounded-lg bg-surface-raised hover:bg-surface-overlay text-ink-primary font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-surface-raised'
-        aria-label='Increase text size'
-      >
-        <Plus className='w-4 h-4' />
-      </button>
-    </div>
+    <Stepper
+      label='Size'
+      value={`${scale}%`}
+      valueClassName='w-12'
+      decrease={{
+        onClick: () => onChange(scale - SCALE_STEP),
+        disabled: scale <= MIN_SCALE,
+        "aria-label": "Decrease text size",
+        children: <Minus className='w-4 h-4' />,
+      }}
+      increase={{
+        onClick: () => onChange(scale + SCALE_STEP),
+        disabled: scale >= MAX_SCALE,
+        "aria-label": "Increase text size",
+        children: <Plus className='w-4 h-4' />,
+      }}
+    />
   );
 }
 
 function TransposeControl({ steps, onChange }: { steps: number; onChange: (next: number) => void }) {
   const offsetLabel = steps > 0 ? `+${steps}` : steps < 0 ? `${steps}` : "±0";
   return (
-    <div className='flex flex-wrap items-center gap-1 px-3 py-2 print:hidden'>
-      <button
-        type='button'
-        onClick={() => onChange(steps - 1)}
-        title='Transpose down one semitone'
-        aria-label='Transpose down one semitone'
-        className='h-10 w-10 flex items-center justify-center rounded-lg bg-surface-raised hover:bg-surface-overlay text-ink-primary font-medium transition-colors duration-150'
-      >
-        <ArrowDown className='w-4 h-4' />
-      </button>
-      <span className='text-sm font-medium px-1 text-center text-ink-primary select-none whitespace-nowrap'>
-        Transpose {offsetLabel}
-      </span>
-      <button
-        type='button'
-        onClick={() => onChange(steps + 1)}
-        title='Transpose up one semitone'
-        aria-label='Transpose up one semitone'
-        className='h-10 w-10 flex items-center justify-center rounded-lg bg-surface-raised hover:bg-surface-overlay text-ink-primary font-medium transition-colors duration-150'
-      >
-        <ArrowUp className='w-4 h-4' />
-      </button>
-    </div>
+    <Stepper
+      value={`Transpose ${offsetLabel}`}
+      valueClassName='px-1'
+      decrease={{
+        onClick: () => onChange(steps - 1),
+        title: "Transpose down one semitone",
+        "aria-label": "Transpose down one semitone",
+        children: <ArrowDown className='w-4 h-4' />,
+      }}
+      increase={{
+        onClick: () => onChange(steps + 1),
+        title: "Transpose up one semitone",
+        "aria-label": "Transpose up one semitone",
+        children: <ArrowUp className='w-4 h-4' />,
+      }}
+    />
   );
 }
 
@@ -196,16 +225,10 @@ function PlayControl({
   onOpen: () => void;
   onClose: () => void;
 }) {
-  const playBtnClass = `h-11 flex-1 flex items-center gap-2.5 px-3 text-sm font-medium transition-colors duration-150 disabled:opacity-30 disabled:cursor-not-allowed ${
-    open
-      ? "bg-primary-solid text-ink-on-primary hover:bg-primary-hover"
-      : "text-ink-primary hover:bg-surface-raised"
-  }`;
-
   return (
-    <div className='flex w-full items-stretch print:hidden'>
-      <button
-        type='button'
+    <Flex className='w-full items-stretch print:hidden'>
+      <RowButton
+        active={open}
         onClick={open ? onClose : onOpen}
         disabled={!hasTiming}
         title={
@@ -213,30 +236,27 @@ function PlayControl({
             ? "Add @0:12 style timings to lines in the editor to enable playback"
             : "Follow along in time with the song"
         }
-        className={playBtnClass}
+        className='flex-1'
       >
         <Play className='w-4 h-4' />
         {open ? "Playing" : "Play"}
-      </button>
+      </RowButton>
       {videoLink && (
-        <button
+        <IconButton
           type='button'
+          size='3'
+          variant={withVideo ? "soft" : "ghost"}
+          color={withVideo ? "red" : "gray"}
           onClick={onWithVideoToggle}
+          aria-pressed={withVideo}
+          aria-label={withVideo ? "Play without the YouTube video" : "Play with the linked YouTube video"}
           title={withVideo ? "YouTube video enabled — click to play without it" : "Click to play with the linked YouTube video"}
-          className={`h-11 flex items-center px-3 border-l border-line-subtle text-sm transition-colors duration-150 ${
-            open
-              ? withVideo
-                ? "bg-primary-hover text-ink-on-primary border-primary-solid/40 hover:bg-primary-hover"
-                : "bg-primary-solid text-ink-on-primary/40 border-primary-solid/30 hover:bg-primary-hover"
-              : withVideo
-                ? "text-accent-solid text-accent-solid hover:bg-accent-solid/20"
-                : "text-ink-muted hover:bg-surface-raised"
-          }`}
+          className='m-0 h-11 w-12 rounded-none border-l border-line-subtle'
         >
           <Youtube className='w-4 h-4' />
-        </button>
+        </IconButton>
       )}
-    </div>
+    </Flex>
   );
 }
 
@@ -246,20 +266,15 @@ function PlayControl({
  */
 function LineEditControl({ active, onToggle }: { active: boolean; onToggle: () => void }) {
   return (
-    <button
-      type='button'
+    <RowButton
+      active={active}
       onClick={onToggle}
       aria-pressed={active}
       title={active ? "Stop editing lines" : "Tap a line to edit just that line"}
-      className={`${ROW} print:hidden ${
-        active
-          ? "bg-primary-solid text-ink-on-primary hover:bg-primary-hover"
-          : "text-ink-primary hover:bg-surface-raised"
-      }`}
     >
       <PencilLine className='w-4 h-4' />
       {active ? "Editing" : "Edit Lines"}
-    </button>
+    </RowButton>
   );
 }
 
@@ -274,15 +289,14 @@ function NextSongControl({
 }) {
   const isLast = pos >= setIds.length - 1;
   return (
-    <button
-      type='button'
+    <RowButton
       onClick={() => !isLast && onNext(setIds[pos + 1], pos + 1)}
       disabled={isLast}
-      className={`${ROW_BTN} justify-between disabled:opacity-40 disabled:hover:bg-transparent print:hidden`}
+      className='justify-between'
     >
       {isLast ? "End of Set" : `Next Song (${pos + 2} of ${setIds.length})`}
       {!isLast && <ArrowRight className='w-4 h-4' />}
-    </button>
+    </RowButton>
   );
 }
 
@@ -317,32 +331,38 @@ function KitControl({
     : "Custom kit";
 
   return (
-    <div className='flex items-center gap-2 px-3 py-2 print:hidden'>
-      <button
+    <Flex align='center' gap='2' px='3' py='2' className='print:hidden'>
+      <IconButton
         type='button'
+        size='3'
+        variant={playing ? "solid" : "soft"}
+        color={playing ? undefined : "gray"}
         onClick={() => onPlayingChange(!playing)}
         disabled={on.length === 0}
         aria-label={playing ? "Stop the kit" : "Play the kit"}
         title={on.length === 0 ? "Open the kit and switch something on" : playing ? "Stop the kit" : "Play the kit"}
-        className={`h-10 w-10 shrink-0 flex items-center justify-center rounded-lg transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed ${
-          playing
-            ? "bg-primary-solid text-ink-on-primary hover:bg-primary-hover"
-            : "bg-surface-raised text-ink-primary hover:bg-surface-overlay"
-        }`}
+        className='shrink-0'
       >
         {playing ? <Square className='w-4 h-4' /> : <Play className='w-4 h-4' />}
-      </button>
-      <button
+      </IconButton>
+      <Button
         type='button'
+        variant='ghost'
+        color='gray'
+        highContrast
         onClick={onOpen}
         title='Design the beat, the bass and the voices'
-        className='flex min-w-0 flex-1 flex-col items-start rounded-lg px-2 py-1 text-left transition-colors duration-150 hover:bg-surface-raised'
+        className='m-0 h-auto min-w-0 flex-1 flex-col items-start gap-0 px-2 py-1 text-left'
       >
-        <span className='w-full truncate text-sm font-medium text-ink-primary'>{name}</span>
-        <span className='w-full truncate text-[11px] text-ink-muted'>{summary}</span>
-      </button>
+        <Text size='2' weight='medium' truncate className='w-full'>
+          {name}
+        </Text>
+        <Text size='1' color='gray' truncate className='w-full'>
+          {summary}
+        </Text>
+      </Button>
       <Sliders className='w-4 h-4 shrink-0 text-ink-muted' aria-hidden='true' />
-    </div>
+    </Flex>
   );
 }
 
@@ -435,35 +455,35 @@ export default function PreviewSidebar(props: PreviewSidebarProps) {
             The app's own menu button floats over the top-left corner on a phone,
             so the toggle starts below the band it occupies. */}
         <div className='flex items-center gap-2 border-b border-line-subtle px-2.5 py-2 pt-[46px] sm:pt-2'>
-          <button
+          <IconButton
             type='button'
+            variant='soft'
+            color='gray'
             onClick={() => onOpenChange(!open)}
             aria-expanded={open}
             title={open ? "Hide tools" : "Show tools"}
             aria-label={open ? "Hide tools" : "Show tools"}
-            className='h-9 w-9 shrink-0 flex items-center justify-center rounded-lg bg-surface-raised hover:bg-surface-overlay text-ink-muted transition-colors duration-150'
+            className='shrink-0'
           >
             {open ? <PanelLeftClose className='w-4 h-4' /> : <PanelLeftOpen className='w-4 h-4' />}
-          </button>
+          </IconButton>
           {open && (
-            <div className='flex min-w-0 items-center gap-2'>
+            <Flex align='center' gap='2' minWidth='0'>
               {props.offline && <OfflineBadge />}
-              <span className='truncate text-sm font-semibold text-ink-primary'>{props.title}</span>
-            </div>
+              <Text size='2' weight='bold' truncate>
+                {props.title}
+              </Text>
+            </Flex>
           )}
         </div>
 
         {open && (
           <div className='flex-1 overflow-y-auto overscroll-contain'>
             <SidebarSection title='Song'>
-              <button type='button' onClick={props.onAllSheets} className={ROW_BTN}>
+              <RowButton onClick={props.onAllSheets}>
                 <ArrowLeft className='w-4 h-4' /> All Sheets
-              </button>
-              <button
-                type='button'
-                onClick={() => props.onFullscreenChange(!props.fullscreen)}
-                className={ROW_BTN}
-              >
+              </RowButton>
+              <RowButton onClick={() => props.onFullscreenChange(!props.fullscreen)}>
                 {props.fullscreen ? (
                   <>
                     <Minimize2 className='w-4 h-4' /> Exit Fullscreen
@@ -473,7 +493,7 @@ export default function PreviewSidebar(props: PreviewSidebarProps) {
                     <Maximize2 className='w-4 h-4' /> Fullscreen
                   </>
                 )}
-              </button>
+              </RowButton>
             </SidebarSection>
 
             <SidebarSection title='Playback'>
@@ -513,51 +533,40 @@ export default function PreviewSidebar(props: PreviewSidebarProps) {
                 onPlayingChange={props.onKitPlayingChange}
                 onOpen={props.onOpenKit}
               />
-              <button
-                type='button'
-                onClick={props.onArrange}
-                title='Lay the song out on tracks and record takes onto them'
-                className={ROW_BTN}
-              >
+              <RowButton onClick={props.onArrange} title='Lay the song out on tracks and record takes onto them'>
                 <Mic className='w-4 h-4' /> Arrange
-              </button>
+              </RowButton>
             </SidebarSection>
 
             <SidebarSection title='Edit'>
               <LineEditControl active={props.editMode} onToggle={props.onEditModeToggle} />
-              <button type='button' onClick={props.onOpenEditor} className={ROW_BTN}>
+              <RowButton onClick={props.onOpenEditor}>
                 <Pencil className='w-4 h-4' /> Open Editor
-              </button>
+              </RowButton>
             </SidebarSection>
 
             <SidebarSection title='Share'>
-              <button
-                type='button'
+              <RowButton
                 onClick={props.onCopy}
-                className={`${ROW} ${
-                  props.copied
-                    ? "bg-accent-solid/10 text-accent-solid bg-accent-solid/10 text-accent-solid"
-                    : "text-ink-primary hover:bg-surface-raised"
-                }`}
+                variant={props.copied ? "soft" : "ghost"}
+                color={props.copied ? "teal" : "gray"}
+                highContrast={!props.copied}
               >
                 {props.copied ? <Check className='w-4 h-4' /> : <Copy className='w-4 h-4' />}
                 {props.copied ? "Copied!" : "Copy Text"}
-              </button>
-              <button
-                type='button'
+              </RowButton>
+              <RowButton
                 onClick={props.onShare}
-                className={`${ROW} ${
-                  props.shared
-                    ? "bg-accent-solid/10 text-accent-solid bg-accent-solid/10 text-accent-solid"
-                    : "text-ink-primary hover:bg-surface-raised"
-                }`}
+                variant={props.shared ? "soft" : "ghost"}
+                color={props.shared ? "teal" : "gray"}
+                highContrast={!props.shared}
               >
                 {props.shared ? <Check className='w-4 h-4' /> : <Link2 className='w-4 h-4' />}
                 {props.shared ? "Link Copied!" : "Share"}
-              </button>
-              <button type='button' onClick={props.onPrint} className={ROW_BTN}>
+              </RowButton>
+              <RowButton onClick={props.onPrint}>
                 <Printer className='w-4 h-4' /> Print
-              </button>
+              </RowButton>
             </SidebarSection>
           </div>
         )}

@@ -18,6 +18,8 @@ import {
 } from "../lib/chordShapes";
 import ChordDiagram from "../components/ChordDiagram";
 import BentoPageLayout from "../components/BentoPageLayout";
+import { Select } from "@radix-ui/themes";
+import { ToggleButton } from "@/app/components/ui/toggle-button";
 
 interface LabeledShape {
   shape: ChordShape;
@@ -150,26 +152,23 @@ export default function NoteShapesPage() {
                         selectedNote === note ||
                         (flatToSharp[selectedNote] ?? selectedNote) === (flatToSharp[note] ?? note);
                       return (
-                        <button
+                        <ToggleButton
                           key={note}
-                          type='button'
-                          aria-pressed={active}
+                          size='1'
+                          pressed={active}
                           onClick={() => {
                             setSelectedNote(note);
                             localStorage.setItem("note-shapes-selectedNote", note);
                           }}
-                          className={`px-3 py-1 rounded border text-sm transition-colors ${
-                            active ? "bg-primary-solid/20 border-primary-solid font-medium" : "border-line-subtle hover:bg-surface-overlay"
-                          }`}
                         >
                           {note}
-                        </button>
+                        </ToggleButton>
                       );
                     })}
                     <span className='mx-1 text-ink-muted'>|</span>
-                    <button
-                      type='button'
-                      aria-pressed={useFlats}
+                    <ToggleButton
+                      size='1'
+                      pressed={useFlats}
                       onClick={() => {
                         const newVal = !useFlats;
                         setUseFlats(newVal);
@@ -189,30 +188,25 @@ export default function NoteShapesPage() {
                           }
                         }
                       }}
-                      className={`px-3 py-1 rounded border text-sm transition-colors ${
-                        useFlats ? "bg-primary-solid/20 border-primary-solid font-medium" : "border-line-subtle hover:bg-surface-overlay"
-                      }`}
                     >
                       ♭ Flats
-                    </button>
+                    </ToggleButton>
                   </div>
                 </div>
 
                 {/* Global fret position selector */}
                 <div className='flex flex-col items-end gap-1'>
                   <p className='text-xs font-semibold text-ink-muted uppercase tracking-wider'>Fret Position</p>
-                  <select
-                    value={position}
-                    onChange={(e) => setPosition(e.target.value as PositionType)}
-                    className='text-sm border border-line-subtle rounded px-2 py-1 bg-surface-raised text-ink-primary'
-                    aria-label='Fret position for all shapes'
-                  >
-                    {POSITION_TYPES.map((p) => (
-                      <option key={p} value={p}>
-                        {p}
-                      </option>
-                    ))}
-                  </select>
+                  <Select.Root size='1' value={position} onValueChange={(v) => setPosition(v as PositionType)}>
+                    <Select.Trigger aria-label='Fret position for all shapes' />
+                    <Select.Content>
+                      {POSITION_TYPES.map((p) => (
+                        <Select.Item key={p} value={p}>
+                          {p}
+                        </Select.Item>
+                      ))}
+                    </Select.Content>
+                  </Select.Root>
                 </div>
               </div>
 

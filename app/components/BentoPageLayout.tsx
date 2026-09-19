@@ -1,5 +1,7 @@
 "use client";
 
+import { Heading } from "@radix-ui/themes";
+
 interface BentoPageLayoutProps {
   title: string;
   maxWidth?: string;
@@ -37,11 +39,9 @@ export default function BentoPageLayout({
             >
               {/* Below lg the sidebar collapses to a fixed hamburger button in the top-left corner; clear it. */}
               <div className='flex items-center gap-3 pl-8 lg:pl-0'>
-                <h1
-                  className={`font-display text-20 sm:text-24 font-semibold ${titleClassName ?? "text-ink-primary"}`}
-                >
+                <Heading as='h1' size={{ initial: "5", sm: "6" }} weight='bold' className={titleClassName}>
                   {title}
-                </h1>
+                </Heading>
                 {titleAdornment}
               </div>
               {headerActions && <div className='flex items-center gap-2'>{headerActions}</div>}

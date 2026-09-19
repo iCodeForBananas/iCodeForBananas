@@ -9,7 +9,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { Dialog as BaseDialog } from "@base-ui-components/react/dialog";
+import { Dialog, VisuallyHidden } from "@radix-ui/themes";
 import { cn } from "@/app/lib/utils";
 import { Kbd } from "./kbd";
 
@@ -179,28 +179,13 @@ function CommandPalette({
   }
 
   return (
-    <BaseDialog.Root open={open} onOpenChange={handleOpenChange}>
-      <BaseDialog.Portal>
-        <BaseDialog.Backdrop
-          className={cn(
-            "fixed inset-0 z-50 bg-surface-sunken/70 backdrop-blur-[2px]",
-            "transition-opacity duration-180 ease-ui motion-reduce:transition-none",
-            "data-starting-style:opacity-0 data-ending-style:opacity-0"
-          )}
-        />
-        <BaseDialog.Popup
-          // A palette sits high rather than centred: it is a thing you summon
-          // over your work, not a decision that interrupts it.
-          className={cn(
-            "fixed left-1/2 top-[12vh] z-50 w-[min(36rem,calc(100vw-2rem))] -translate-x-1/2",
-            "overflow-hidden rounded-xl border border-line-subtle bg-surface-overlay",
-            "text-ink-primary shadow-overlay outline-none",
-            "transition-[opacity,transform] duration-240 ease-ui motion-reduce:transition-none",
-            "data-starting-style:scale-[0.98] data-starting-style:opacity-0",
-            "data-ending-style:scale-[0.98] data-ending-style:opacity-0"
-          )}
-        >
-          <BaseDialog.Title className='sr-only'>Command palette</BaseDialog.Title>
+    <Dialog.Root open={open} onOpenChange={handleOpenChange}>
+      {/* A palette sits high rather than centred: it is a thing you summon
+          over your work, not a decision that interrupts it. */}
+      <Dialog.Content align='start' maxWidth='36rem' aria-describedby={undefined} className='overflow-hidden p-0'>
+        <VisuallyHidden>
+          <Dialog.Title>Command palette</Dialog.Title>
+        </VisuallyHidden>
 
           <div className='flex items-center gap-3 border-b border-line-subtle px-4'>
             <input
@@ -272,8 +257,7 @@ function CommandPalette({
               </div>
             ))}
           </div>
-        </BaseDialog.Popup>
-      </BaseDialog.Portal>
-    </BaseDialog.Root>
+      </Dialog.Content>
+    </Dialog.Root>
   );
 }

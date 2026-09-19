@@ -3,6 +3,8 @@
 import { useMemo, useState } from "react";
 import { type LabeledShape, getVoicings, CHORD_TYPE_TOOLTIPS, formatChordLabel } from "../lib/chordVoicings";
 import ChordDiagram from "./ChordDiagram";
+import { Select } from "@radix-ui/themes";
+import { Bento } from "@/app/components/ui/bento";
 
 const VOICING_OPTION_ORDER = ["Open / Standard", "E-Shape Barre", "A-Shape Barre"];
 
@@ -35,7 +37,7 @@ export default function ChordTypeCard({
   const chordLabel = formatChordLabel(note, type);
 
   return (
-    <div className="flex flex-col items-center gap-2 rounded-xl border border-line-subtle bg-surface-raised p-4 shadow-sm">
+    <Bento className="flex flex-col items-center gap-2">
       <span
         className="text-xs font-semibold uppercase tracking-wider text-ink-muted"
         title={CHORD_TYPE_TOOLTIPS[type] ?? type}
@@ -48,20 +50,22 @@ export default function ChordTypeCard({
         <p className="text-xs text-ink-muted">No voicing available.</p>
       )}
       {options.length > 0 && (
-        <select
-          value={clampedIndex}
-          onChange={(e) => setVoicingIndex(Number(e.target.value))}
-          title="Swap the voicing or chord shape used for this chord"
-          className="w-full max-w-[150px] rounded-lg border border-line-subtle bg-transparent px-2 py-1.5 text-xs"
-        >
-          {options.map((v, i) => (
-            <option key={i} value={i}>
-              {v.label}
-              {v.position ? ` (${v.position})` : ""}
-            </option>
-          ))}
-        </select>
+        <Select.Root size="1" value={String(clampedIndex)} onValueChange={(v) => setVoicingIndex(Number(v))}>
+          <Select.Trigger
+            aria-label="Voicing"
+            title="Swap the voicing or chord shape used for this chord"
+            className="w-full max-w-[150px]"
+          />
+          <Select.Content position="popper">
+            {options.map((v, i) => (
+              <Select.Item key={i} value={String(i)}>
+                {v.label}
+                {v.position ? ` (${v.position})` : ""}
+              </Select.Item>
+            ))}
+          </Select.Content>
+        </Select.Root>
       )}
-    </div>
+    </Bento>
   );
 }

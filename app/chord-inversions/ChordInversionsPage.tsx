@@ -17,6 +17,7 @@ import {
 } from "../lib/chordShapes";
 import ChordDiagram from "../components/ChordDiagram";
 import BentoPageLayout from "../components/BentoPageLayout";
+import { ToggleButton } from "@/app/components/ui/toggle-button";
 
 const VOICINGS = ["Major", "Minor"] as const;
 type Voicing = (typeof VOICINGS)[number];
@@ -183,17 +184,15 @@ export default function ChordInversionsPage() {
                         selectedNote === note ||
                         (flatToSharp[selectedNote] ?? selectedNote) === (flatToSharp[note] ?? note);
                       return (
-                        <button
-                          key={note}
-                          onClick={() => setSelectedNote(note)}
-                          className={`px-3 py-1 rounded border text-sm transition-colors ${active ? "bg-primary-solid/20 border-primary-solid font-medium" : "border-line-subtle hover:bg-surface-overlay"}`}
-                        >
+                        <ToggleButton key={note} size='1' pressed={active} onClick={() => setSelectedNote(note)}>
                           {note}
-                        </button>
+                        </ToggleButton>
                       );
                     })}
                     <span className='mx-1 text-ink-muted'>|</span>
-                    <button
+                    <ToggleButton
+                      size='1'
+                      pressed={useFlats}
                       onClick={() => {
                         const newVal = !useFlats;
                         setUseFlats(newVal);
@@ -205,23 +204,18 @@ export default function ChordInversionsPage() {
                           if (s) setSelectedNote(s);
                         }
                       }}
-                      className={`px-3 py-1 rounded border text-sm transition-colors ${useFlats ? "bg-primary-solid/20 border-primary-solid font-medium" : "border-line-subtle hover:bg-surface-overlay"}`}
                     >
                       ♭ Flats
-                    </button>
+                    </ToggleButton>
                   </div>
                 </div>
                 <div>
                   <p className='text-xs font-semibold text-ink-muted uppercase tracking-wider mb-2'>Voicing</p>
                   <div className='flex gap-2'>
                     {VOICINGS.map((v) => (
-                      <button
-                        key={v}
-                        onClick={() => setVoicing(v)}
-                        className={`px-4 py-1 rounded border text-sm transition-colors ${voicing === v ? "bg-primary-solid/20 border-primary-solid font-medium" : "border-line-subtle hover:bg-surface-overlay"}`}
-                      >
+                      <ToggleButton key={v} size='1' pressed={voicing === v} onClick={() => setVoicing(v)}>
                         {v}
-                      </button>
+                      </ToggleButton>
                     ))}
                   </div>
                 </div>

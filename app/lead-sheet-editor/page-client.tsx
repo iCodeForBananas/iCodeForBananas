@@ -13,6 +13,8 @@ import { cacheSheet, cacheSheetList, getCachedSheetList } from "./offlineCache";
 import { useCommands } from "@/app/components/ui/command-palette";
 import { Input } from "@/app/components/ui/input";
 import { Button } from "@/app/components/ui/button";
+import { Bento } from "@/app/components/ui/bento";
+import { Button as RadixButton, IconButton, Select } from "@radix-ui/themes";
 import {
   loadDensity,
   loadSortOrder,
@@ -229,13 +231,10 @@ export default function LeadSheetList() {
             <ListMusic className='w-4 h-4' />
             Setlists
           </Link>
-          <button
-            onClick={createSheet}
-            className='flex items-center gap-2 rounded bg-primary-solid px-4 py-2 text-sm font-medium text-ink-on-primary hover:bg-primary-hover transition-colors'
-          >
+          <RadixButton onClick={createSheet}>
             <Plus className='w-4 h-4' />
             New Sheet
-          </button>
+          </RadixButton>
         </>
       }
     >
@@ -260,17 +259,13 @@ export default function LeadSheetList() {
       >
         {density === "compact" ? "Compact" : "Comfortable"}
       </Button>
-      <select
-        value={sortOrder}
-        onChange={(e) => setSortOrder(e.target.value as SortOrder)}
-        aria-label='Sort songs'
-        title='Favorites stay at the top either way'
-        data-testid='library-sort'
-        className='h-8 rounded border border-line-strong bg-surface-base px-2 text-sm text-ink-primary outline-none focus:border-line-strong'
-      >
-        <option value='alphabetical'>A–Z</option>
-        <option value='recent'>Recently updated</option>
-      </select>
+      <Select.Root value={sortOrder} onValueChange={(v) => setSortOrder(v as SortOrder)}>
+        <Select.Trigger aria-label='Sort songs' title='Favorites stay at the top either way' data-testid='library-sort' />
+        <Select.Content>
+          <Select.Item value='alphabetical'>A–Z</Select.Item>
+          <Select.Item value='recent'>Recently updated</Select.Item>
+        </Select.Content>
+      </Select.Root>
     </div>
 
     {sheets.length === 0 ? (
@@ -281,25 +276,24 @@ export default function LeadSheetList() {
     ) : (
       <div className={density === "compact" ? "space-y-1" : "space-y-2"}>
         {visibleSheets.map((sheet) => (
-          <div
+          <Bento
             key={sheet.id}
-            className={`flex flex-col md:flex-row md:items-center md:justify-between gap-2 ${density === "compact" ? "px-3 py-1.5" : "p-4"} border border-line-subtle rounded-lg hover:border-line-strong transition-colors group cursor-pointer`}
+            size={density === "compact" ? "1" : "2"}
+            className={`group cursor-pointer flex flex-col md:flex-row md:items-center md:justify-between gap-2 ${density === "compact" ? "py-1.5" : ""}`}
             onClick={() => router.push(`/lead-sheet-editor/${sheet.id}/preview`)}
           >
             <div className='flex flex-1 min-w-0 items-start gap-2'>
-              <button
+              <IconButton
+                variant='ghost'
+                color={sheet.metadata?.favorite ? undefined : "gray"}
                 onClick={(e) => { e.stopPropagation(); toggleFavorite(sheet); }}
                 title={sheet.metadata?.favorite ? "Remove from favorites" : "Keep this song at the top"}
                 aria-label={sheet.metadata?.favorite ? "Remove from favorites" : "Add to favorites"}
                 aria-pressed={!!sheet.metadata?.favorite}
-                className={`-ml-1 shrink-0 rounded p-1 transition-colors ${
-                  sheet.metadata?.favorite
-                    ? "text-primary-text hover:text-primary-hover"
-                    : "text-ink-muted hover:text-primary-text"
-                }`}
+                className='shrink-0'
               >
                 <Star className='w-5 h-5' fill={sheet.metadata?.favorite ? "currentColor" : "none"} />
-              </button>
+              </IconButton>
               <div className='min-w-0'>
               <div className='font-semibold text-ink-primary'>
                 {sheet.title || "Untitled"}
@@ -315,13 +309,10 @@ export default function LeadSheetList() {
               </div>
             </div>
             <div className='flex flex-wrap items-center gap-1.5 md:ml-3 shrink-0'>
-              <button
-                onClick={(e) => { e.stopPropagation(); handleCopyText(sheet); }}
-                className='flex items-center gap-1.5 rounded border border-line-strong px-2 py-1 md:px-3 md:py-1.5 text-xs font-medium text-ink-primary/80 hover:border-line-strong transition-colors'
-              >
+              <RadixButton size='1' variant='surface' color='gray' onClick={(e) => { e.stopPropagation(); handleCopyText(sheet); }}>
                 {copiedId === sheet.id ? <Check className='w-3.5 h-3.5' /> : <Copy className='w-3.5 h-3.5' />}
                 {copiedId === sheet.id ? "Copied!" : "Copy Text"}
-              </button>
+              </RadixButton>
               {/* Share opens a private song up to unlisted on its own; the
                   picker here is for dialing visibility back down or up to public. */}
               <span onClick={(e) => e.stopPropagation()}>
@@ -330,38 +321,38 @@ export default function LeadSheetList() {
                   onChange={(next) => void setVisibility(sheet, next)}
                 />
               </span>
-              <button
-                onClick={(e) => { e.stopPropagation(); handleShare(sheet); }}
-                className='flex items-center gap-1.5 rounded border border-line-strong px-2 py-1 md:px-3 md:py-1.5 text-xs font-medium text-ink-primary/80 hover:border-line-strong transition-colors'
-              >
+              <RadixButton size='1' variant='surface' color='gray' onClick={(e) => { e.stopPropagation(); handleShare(sheet); }}>
                 {sharedId === sheet.id ? <Check className='w-3.5 h-3.5' /> : <Link2 className='w-3.5 h-3.5' />}
                 {sharedId === sheet.id ? "Copied!" : "Share"}
-              </button>
-              <button
+              </RadixButton>
+              <RadixButton
+                size='1'
+                variant='surface'
+                color='gray'
                 onClick={(e) => { e.stopPropagation(); router.push(`/lead-sheet-editor/${sheet.id}/edit`); }}
-                className='flex items-center gap-1.5 rounded border border-line-strong px-2 py-1 md:px-3 md:py-1.5 text-xs font-medium text-ink-primary/80 hover:border-line-strong transition-colors'
               >
                 <Pencil className='w-3.5 h-3.5' />
                 Edit
-              </button>
-              <button
-                onClick={(e) => { e.stopPropagation(); router.push(`/lead-sheet-editor/${sheet.id}/preview`); }}
-                className='flex items-center gap-1.5 rounded bg-primary-solid px-2 py-1 md:px-3 md:py-1.5 text-xs font-medium text-ink-on-primary hover:bg-primary-hover transition-colors'
-              >
+              </RadixButton>
+              <RadixButton size='1' onClick={(e) => { e.stopPropagation(); router.push(`/lead-sheet-editor/${sheet.id}/preview`); }}>
                 <Eye className='w-3.5 h-3.5' />
                 Preview
-              </button>
-              <button
+              </RadixButton>
+              <IconButton
+                size='1'
+                variant='ghost'
+                color='red'
+                aria-label={`Delete ${sheet.title || "this song"}`}
                 onClick={(e) => {
                   e.stopPropagation();
                   if (confirm(`Delete "${sheet.title}"?`)) deleteSheet(sheet.id);
                 }}
-                className='opacity-100 md:opacity-0 md:group-hover:opacity-100 p-1.5 text-ink-muted hover:text-danger transition-all ml-1'
+                className='ml-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 focus-visible:opacity-100'
               >
                 <Trash2 className='w-4 h-4' />
-              </button>
+              </IconButton>
             </div>
-          </div>
+          </Bento>
         ))}
       </div>
     )}

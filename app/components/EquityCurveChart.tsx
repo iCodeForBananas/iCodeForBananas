@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useRef, useEffect, useState } from "react";
+import { Flex, Text } from "@radix-ui/themes";
+import { useChartTheme } from "./chartTheme";
 
 interface EquityCurveChartProps {
   equityCurve: { time: number; equity: number }[];
@@ -14,6 +16,7 @@ const EquityCurveChart: React.FC<EquityCurveChartProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
+  const colors = useChartTheme();
 
   useEffect(() => {
     const container = containerRef.current;
@@ -33,7 +36,7 @@ const EquityCurveChart: React.FC<EquityCurveChartProps> = ({
   useEffect(() => {
     const canvas = canvasRef.current;
     const container = containerRef.current;
-    if (!canvas || !container || equityCurve.length === 0) return;
+    if (!canvas || !container || !colors || equityCurve.length === 0) return;
 
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
@@ -53,7 +56,7 @@ const EquityCurveChart: React.FC<EquityCurveChartProps> = ({
     const chartHeight = height - padding.top - padding.bottom;
 
     // Background
-    ctx.fillStyle = "#0f172a";
+    ctx.fillStyle = colors.background;
     ctx.fillRect(0, 0, width, height);
 
     // Calculate equity range
@@ -71,7 +74,7 @@ const EquityCurveChart: React.FC<EquityCurveChartProps> = ({
       padding.top + chartHeight - ((equity - domainMin) / (domainMax - domainMin)) * chartHeight;
 
     // Draw grid lines
-    ctx.strokeStyle = "#1e293b";
+    ctx.strokeStyle = colors.grid;
     ctx.lineWidth = 1;
     const gridLines = 4;
     for (let i = 0; i <= gridLines; i++) {
@@ -82,7 +85,7 @@ const EquityCurveChart: React.FC<EquityCurveChartProps> = ({
       ctx.stroke();
 
       const equity = domainMax - (i / gridLines) * (domainMax - domainMin);
-      ctx.fillStyle = "#64748b";
+      ctx.fillStyle = colors.text;
       ctx.font = "10px monospace";
       ctx.textAlign = "left";
       ctx.fillText(`$${equity.toFixed(0)}`, width - padding.right + 5, y + 4);
@@ -90,7 +93,7 @@ const EquityCurveChart: React.FC<EquityCurveChartProps> = ({
 
     // Draw initial capital reference line
     const initialY = yScale(initialCapital);
-    ctx.strokeStyle = "#475569";
+    ctx.strokeStyle = colors.border;
     ctx.lineWidth = 1;
     ctx.setLineDash([4, 4]);
     ctx.beginPath();
@@ -100,7 +103,7 @@ const EquityCurveChart: React.FC<EquityCurveChartProps> = ({
     ctx.setLineDash([]);
 
     // Draw equity curve
-    ctx.strokeStyle = "#60a5fa";
+    ctx.strokeStyle = colors.accent;
     ctx.lineWidth = 2;
     ctx.beginPath();
     equityCurve.forEach((point, i) => {
@@ -113,8 +116,8 @@ const EquityCurveChart: React.FC<EquityCurveChartProps> = ({
 
     // Fill under the curve with gradient
     const gradient = ctx.createLinearGradient(0, padding.top, 0, padding.top + chartHeight);
-    gradient.addColorStop(0, "rgba(96, 165, 250, 0.3)");
-    gradient.addColorStop(1, "rgba(96, 165, 250, 0.05)");
+    gradient.addColorStop(0, colors.accentFill);
+    gradient.addColorStop(1, "rgba(0, 0, 0, 0)");
 
     ctx.beginPath();
     equityCurve.forEach((point, i) => {
@@ -130,7 +133,7 @@ const EquityCurveChart: React.FC<EquityCurveChartProps> = ({
     ctx.fill();
 
     // Draw time labels
-    ctx.fillStyle = "#64748b";
+    ctx.fillStyle = colors.text;
     ctx.font = "9px monospace";
     ctx.textAlign = "center";
     const timeLabels = 5;
@@ -144,7 +147,7 @@ const EquityCurveChart: React.FC<EquityCurveChartProps> = ({
     }
 
     // Title
-    ctx.fillStyle = "#60a5fa";
+    ctx.fillStyle = colors.text;
     ctx.font = "bold 11px sans-serif";
     ctx.textAlign = "left";
     ctx.fillText("EQUITY CURVE", padding.left + 5, 18);
@@ -153,7 +156,7 @@ const EquityCurveChart: React.FC<EquityCurveChartProps> = ({
     const lastEquity = equityCurve[equityCurve.length - 1]?.equity || initialCapital;
     const pnl = lastEquity - initialCapital;
     const pnlPercent = (pnl / initialCapital) * 100;
-    const pnlColor = pnl >= 0 ? "#22c55e" : "#ef4444";
+    const pnlColor = pnl >= 0 ? colors.up : colors.down;
 
     ctx.fillStyle = pnlColor;
     ctx.font = "bold 11px sans-serif";
@@ -163,13 +166,15 @@ const EquityCurveChart: React.FC<EquityCurveChartProps> = ({
       width - padding.right,
       18
     );
-  }, [equityCurve, initialCapital, containerSize]);
+  }, [equityCurve, initialCapital, containerSize, colors]);
 
   if (equityCurve.length === 0) {
     return (
-      <div className="w-full h-full flex items-center justify-center bg-slate-900 text-slate-400 text-sm">
-        No equity data
-      </div>
+      <Flex align="center" justify="center" className="h-full w-full bg-surface-raised">
+        <Text size="2" color="gray">
+          No equity data
+        </Text>
+      </Flex>
     );
   }
 

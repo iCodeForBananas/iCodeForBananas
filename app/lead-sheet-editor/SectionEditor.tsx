@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Check, X } from "lucide-react";
+import { Button, IconButton, TextField } from "@radix-ui/themes";
 import { SECTION_TYPES, nextSectionLabel, type Section, type SectionType } from "./shared";
 
 /**
@@ -70,39 +71,35 @@ export default function SectionEditor({
           <span className='text-sm font-semibold text-ink-primary'>
             {editing ? "Section name" : `New section${afterLabel ? ` after ${afterLabel}` : ""}`}
           </span>
-          <button
-            type='button'
-            onClick={onCancel}
-            aria-label='Close without saving'
-            className='h-9 w-9 flex items-center justify-center rounded-lg text-ink-muted hover:bg-surface-raised transition-colors duration-150'
-          >
+          <IconButton type='button' size='3' variant='ghost' color='gray' onClick={onCancel} aria-label='Close without saving'>
             <X className='w-5 h-5' />
-          </button>
+          </IconButton>
         </div>
 
         <div className='px-4 pb-4'>
           <div className='flex flex-wrap gap-1.5'>
             {SECTION_TYPES.map((t) => (
-              <button
+              <Button
                 key={t}
                 type='button'
+                size='3'
+                variant={type === t ? "solid" : "soft"}
+                color={type === t ? undefined : "gray"}
+                highContrast={type !== t}
                 onClick={() => pickType(t)}
                 aria-pressed={type === t}
-                className={`h-10 rounded-lg px-3 text-sm font-medium capitalize transition-colors duration-150 ${
-                  type === t
-                    ? "bg-primary-solid text-ink-on-primary"
-                    : "bg-surface-raised text-ink-primary hover:bg-surface-overlay bg-surface-raised text-ink-primary hover:bg-surface-overlay"
-                }`}
+                className='capitalize'
               >
                 {t}
-              </button>
+              </Button>
             ))}
           </div>
 
           <label className='mt-3 block text-[0.65rem] font-medium uppercase tracking-wide text-ink-muted'>
             Name
           </label>
-          <input
+          <TextField.Root
+            size='3'
             value={label}
             onChange={(e) => {
               setNamed(true);
@@ -115,7 +112,7 @@ export default function SectionEditor({
               }
             }}
             placeholder={suggested}
-            className='mt-1 w-full rounded-xl border border-line-subtle bg-surface-base bg-surface-sunken px-3 py-2.5 text-[16px] text-ink-primary outline-none focus:border-primary-solid focus:ring-2 focus:ring-focus/40'
+            className='mt-1 w-full text-[16px]'
           />
 
           <div className='mt-3 rounded-xl bg-surface-raised bg-surface-raised px-3 py-2'>
@@ -131,21 +128,13 @@ export default function SectionEditor({
           </div>
 
           <div className='mt-4 flex gap-2'>
-            <button
-              type='button'
-              onClick={onCancel}
-              className='h-12 flex-1 rounded-xl text-sm font-medium bg-surface-raised hover:bg-surface-overlay text-ink-primary transition-colors duration-150'
-            >
+            <Button type='button' size='4' variant='soft' color='gray' onClick={onCancel} className='flex-1'>
               Cancel
-            </button>
-            <button
-              type='button'
-              onClick={add}
-              className='h-12 flex-[2] flex items-center justify-center gap-1.5 rounded-xl text-sm font-semibold bg-primary-solid text-ink-on-primary hover:bg-primary-hover transition-colors duration-150'
-            >
+            </Button>
+            <Button type='button' size='4' onClick={add} className='flex-[2]'>
               <Check className='w-4 h-4' />
               {editing ? "Save name" : "Add section"}
-            </button>
+            </Button>
           </div>
         </div>
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useFavoriteChords } from "../lib/FavoriteChordsContext";
+import { Card } from "@radix-ui/themes";
 import ChordDiagram from "./ChordDiagram";
 
 export default function FavoriteChordsBar() {
@@ -12,15 +13,13 @@ export default function FavoriteChordsBar() {
       <p className="text-10 font-semibold text-primary-text uppercase tracking-wider mb-2">♥ Favorites</p>
       <div className="flex gap-4 overflow-x-auto pb-2">
         {favorites.map((fav) => (
-          <div
-            key={fav.id}
-            className="shrink-0 bg-surface-raised rounded-lg p-2 cursor-pointer hover:opacity-60 transition-opacity duration-120 ease-ui"
-            onClick={() => toggle(fav)}
-          >
-            <div className="pointer-events-none">
-              <ChordDiagram shape={fav.shape} label={fav.label} />
-            </div>
-          </div>
+          <Card key={fav.id} asChild size="1" className="shrink-0 transition-opacity duration-120 ease-ui hover:opacity-60">
+            <button type="button" onClick={() => toggle(fav)} aria-label={`Remove ${fav.label} from favorites`}>
+              <div className="pointer-events-none">
+                <ChordDiagram shape={fav.shape} label={fav.label} />
+              </div>
+            </button>
+          </Card>
         ))}
       </div>
     </div>

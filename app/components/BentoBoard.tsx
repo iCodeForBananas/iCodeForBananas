@@ -27,6 +27,8 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical } from "lucide-react";
+import { IconButton } from "@radix-ui/themes";
+import { Bento } from "@/app/components/ui/bento";
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
@@ -118,19 +120,10 @@ function PanelShell({
   resizeHandle?: ReactNode;
 }) {
   return (
-    <div className="relative flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-line-subtle bg-surface-raised shadow-raised">
-      <div className="flex shrink-0 items-center gap-2 border-b border-line-subtle px-3 py-2">
-        {dragHandle}
-        <h3
-          className={`text-10 font-semibold uppercase tracking-wide text-ink-muted ${tooltip ? "cursor-help" : ""}`}
-          title={tooltip}
-        >
-          {title}
-        </h3>
-      </div>
-      <div className="min-h-0 flex-1 overflow-auto p-4">{children}</div>
+    <Bento fill title={title} tooltip={tooltip} leading={dragHandle}>
+      {children}
       {resizeHandle}
-    </div>
+    </Bento>
   );
 }
 
@@ -199,16 +192,18 @@ function GridPanel({
         title={panel.title}
         tooltip={panel.tooltip}
         dragHandle={
-          <button
-            type="button"
-            className="-ml-1 cursor-grab touch-none rounded p-1 text-ink-muted hover:text-ink-primary active:cursor-grabbing"
+          <IconButton
+            variant="ghost"
+            color="gray"
+            size="1"
+            className="cursor-grab touch-none active:cursor-grabbing"
             title="Drag to rearrange this panel"
             aria-label={`Drag to move ${panel.title}`}
             {...attributes}
             {...listeners}
           >
             <GripVertical size={16} />
-          </button>
+          </IconButton>
         }
         resizeHandle={
           <div
@@ -324,7 +319,10 @@ export default function BentoBoard({
           ))}
         </div>
       ) : (
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        // A fixed id keeps dnd-kit's generated aria ids the same on the server
+        // and the client; its default is a global counter, which hydration
+        // then flags as a mismatch.
+        <DndContext id={storageKey} sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext items={layout.map((l) => l.id)} strategy={rectSortingStrategy}>
             <div
               className="grid"

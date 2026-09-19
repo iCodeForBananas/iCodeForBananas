@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Check, Copy, X } from "lucide-react";
+import { Button, Dialog, Flex, IconButton } from "@radix-ui/themes";
 import { DRUM_PATTERNS } from "./DrumMachine";
 import { ACCENT_GROUPS } from "./accents";
 
@@ -120,8 +121,11 @@ const TAG_REFERENCE: { tag: string; does: string }[] = [
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
   return (
-    <button
+    <Button
       type="button"
+      size="1"
+      variant="surface"
+      color={copied ? "green" : "gray"}
       onClick={async () => {
         try {
           await navigator.clipboard.writeText(text);
@@ -131,48 +135,33 @@ function CopyButton({ text }: { text: string }) {
       }}
       aria-label="Copy example"
       title="Copy example"
-      className="flex h-7 shrink-0 items-center gap-1.5 rounded px-2 text-xs font-medium text-ink-muted ring-1 ring-line-subtle transition-colors hover:text-primary-text hover:ring-focus"
+      className="shrink-0"
     >
       {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
       {copied ? "Copied" : "Copy"}
-    </button>
+    </Button>
   );
 }
 
 export default function SyntaxHelp({ onClose }: { onClose: () => void }) {
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
+  // Escape, the overlay and focus are Radix Dialog's.
   return (
-    <div
-      className="fixed inset-0 z-[70] flex items-center justify-center bg-surface-sunken/70 p-2 sm:p-6"
-      onClick={onClose}
-    >
-      <div
-        className="flex max-h-full w-full max-w-2xl flex-col overflow-hidden rounded-lg border border-line-subtle bg-surface-base"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <Dialog.Root open onOpenChange={(open) => !open && onClose()}>
+      <Dialog.Content maxWidth="42rem" className="flex max-h-[90vh] flex-col overflow-hidden p-0">
         {/* Header */}
-        <div className="flex items-center justify-between gap-3 border-b border-line-subtle px-4 py-3">
+        <Flex align="center" justify="between" gap="3" className="border-b border-line-subtle px-4 py-3">
           <div>
-            <h2 className="text-sm font-medium text-ink-primary">Song syntax</h2>
-            <p className="text-xs text-ink-muted">
+            <Dialog.Title size="3" mb="0">
+              Song syntax
+            </Dialog.Title>
+            <Dialog.Description size="1" color="gray">
               Everything you can type into a sheet, and what it does when you hit Play.
-            </p>
+            </Dialog.Description>
           </div>
-          <button
-            onClick={onClose}
-            aria-label="Close syntax help"
-            className="text-ink-muted transition-colors hover:text-ink-primary"
-          >
+          <IconButton variant="ghost" color="gray" onClick={onClose} aria-label="Close syntax help">
             <X className="h-4 w-4" />
-          </button>
-        </div>
+          </IconButton>
+        </Flex>
 
         {/* Entries */}
         <div className="flex-1 space-y-5 overflow-auto px-4 py-4">
@@ -261,15 +250,12 @@ export default function SyntaxHelp({ onClose }: { onClose: () => void }) {
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end border-t border-line-subtle px-4 py-3">
-          <button
-            onClick={onClose}
-            className="h-10 rounded bg-primary-solid px-4 text-sm font-medium text-ink-on-primary transition-colors hover:bg-primary-hover"
-          >
+        <Flex align="center" justify="end" className="border-t border-line-subtle px-4 py-3">
+          <Button size="3" onClick={onClose}>
             Got it
-          </button>
-        </div>
-      </div>
-    </div>
+          </Button>
+        </Flex>
+      </Dialog.Content>
+    </Dialog.Root>
   );
 }

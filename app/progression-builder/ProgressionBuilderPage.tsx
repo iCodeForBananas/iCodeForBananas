@@ -2,6 +2,9 @@
 
 import { useMemo, useRef, useState } from "react";
 import BentoPageLayout from "../components/BentoPageLayout";
+import { Button, IconButton } from "@radix-ui/themes";
+import { Bento } from "@/app/components/ui/bento";
+import { X } from "lucide-react";
 import CircleOfFifths from "../components/CircleOfFifths";
 import ChordDiagram from "../components/ChordDiagram";
 import ChordTypeCard from "../components/ChordTypeCard";
@@ -88,18 +91,21 @@ function ProgressionColumn({
   }, [note, basicType]);
 
   return (
-    <div className="flex w-[340px] shrink-0 flex-col gap-4 rounded-2xl border border-line-subtle bg-surface-raised p-4 shadow-sm">
+    <Bento className="flex w-[340px] shrink-0 flex-col gap-4">
       <div className="flex items-center justify-between">
         <span className="text-10 font-semibold uppercase tracking-wider text-ink-muted">
           Chord {index + 1}
         </span>
-        <button
+        <IconButton
+          variant="ghost"
+          color="red"
+          radius="full"
           onClick={onRemove}
           title={`Remove ${label} from the progression`}
-          className="min-h-[32px] min-w-[32px] rounded-full text-sm text-ink-muted transition-colors hover:bg-danger/10 hover:text-danger"
+          aria-label={`Remove ${label} from the progression`}
         >
-          ✕
-        </button>
+          <X className="h-4 w-4" />
+        </IconButton>
       </div>
 
       <div className="flex flex-col items-center gap-1 rounded-xl border border-primary-solid/30 bg-primary-solid/5 p-3">
@@ -141,16 +147,13 @@ function ProgressionColumn({
           ) : (
             <div className="grid grid-cols-2 gap-2">
               {neckPositions.map((v) => (
-                <div
-                  key={v.id}
-                  className="flex flex-col items-center gap-1 rounded-xl border border-line-subtle bg-surface-raised p-3 shadow-sm"
-                >
+                <Bento key={v.id} size="1" className="flex flex-col items-center gap-1">
                   <ChordDiagram shape={v.shape} label={label} useFlats={useFlats} />
                   <span className="text-10 text-ink-muted">
                     {v.label}
                     {v.position ? ` (${v.position})` : ""}
                   </span>
-                </div>
+                </Bento>
               ))}
             </div>
           )}
@@ -168,21 +171,18 @@ function ProgressionColumn({
           ) : (
             <div className="grid grid-cols-2 gap-2">
               {neckTriads.map((v) => (
-                <div
-                  key={v.id}
-                  className="flex flex-col items-center gap-1 rounded-xl border border-line-subtle bg-surface-raised p-3 shadow-sm"
-                >
+                <Bento key={v.id} size="1" className="flex flex-col items-center gap-1">
                   <ChordDiagram shape={v.shape} label={label} useFlats={useFlats} />
                   <span className="text-10 text-ink-muted">
                     {INVERSION_LABEL[v.inversion]} · {STRING_SET_LABEL[v.stringSet]} ({v.startFret}fr)
                   </span>
-                </div>
+                </Bento>
               ))}
             </div>
           )}
         </div>
       </div>
-    </div>
+    </Bento>
   );
 }
 
@@ -232,12 +232,9 @@ export default function ProgressionBuilderPage() {
                   </span>
                 ))}
               </div>
-              <button
-                onClick={clearProgression}
-                className="min-h-[44px] rounded-lg border border-line-subtle px-4 text-sm font-medium text-ink-muted transition-colors hover:bg-surface-overlay hover:text-ink-primary"
-              >
+              <Button size="3" variant="soft" color="gray" onClick={clearProgression}>
                 Clear progression
-              </button>
+              </Button>
             </div>
 
             <div className="flex gap-4 overflow-x-auto pb-4">

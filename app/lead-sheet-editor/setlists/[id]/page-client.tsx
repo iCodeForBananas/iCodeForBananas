@@ -6,6 +6,8 @@ import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/app/hooks/useAuth";
 import Link from "next/link";
 import { ArrowLeft, ArrowUp, ArrowDown, Trash2, Plus, Play, X, Music } from "lucide-react";
+import { Button, Dialog, Flex, IconButton, ScrollArea, Text } from "@radix-ui/themes";
+import { Bento } from "@/app/components/ui/bento";
 
 interface SetlistSong {
   id: string;
@@ -160,21 +162,14 @@ export default function SetlistDetail({ params }: { params: Promise<{ id: string
                 </h1>
               </div>
               <div className='flex items-center gap-2 shrink-0'>
-                <button
-                  onClick={openPicker}
-                  className='flex items-center gap-2 rounded border border-line-strong px-4 py-2 text-sm font-medium text-ink-primary/80 hover:border-line-strong transition-colors'
-                >
+                <Button variant='surface' color='gray' onClick={openPicker}>
                   <Plus className='w-4 h-4' />
                   Add Song
-                </button>
-                <button
-                  onClick={startSet}
-                  disabled={songs.length === 0}
-                  className='flex items-center gap-2 rounded bg-primary-solid px-4 py-2 text-sm font-medium text-ink-on-primary hover:bg-primary-hover transition-colors disabled:opacity-30 disabled:cursor-not-allowed'
-                >
+                </Button>
+                <Button onClick={startSet} disabled={songs.length === 0}>
                   <Play className='w-4 h-4' />
                   Start Set
-                </button>
+                </Button>
               </div>
             </div>
           </div>
@@ -188,10 +183,7 @@ export default function SetlistDetail({ params }: { params: Promise<{ id: string
             ) : (
               <div className='space-y-2'>
                 {songs.map((song, index) => (
-                  <div
-                    key={song.id}
-                    className='flex items-center justify-between p-4 border border-line-subtle rounded-lg'
-                  >
+                  <Bento key={song.id} className='flex items-center justify-between'>
                     <div className='flex items-center gap-3 min-w-0'>
                       <span className='text-sm font-mono text-ink-muted w-6 text-right shrink-0'>{index + 1}</span>
                       <div className='min-w-0'>
@@ -205,31 +197,23 @@ export default function SetlistDetail({ params }: { params: Promise<{ id: string
                       </div>
                     </div>
                     <div className='flex items-center gap-1.5 ml-3 shrink-0'>
-                      <button
-                        onClick={() => moveSong(index, -1)}
-                        disabled={index === 0}
-                        className='p-1.5 text-ink-muted hover:text-ink-primary disabled:opacity-20 disabled:cursor-not-allowed transition-colors'
-                        aria-label='Move up'
-                      >
+                      <IconButton variant='ghost' color='gray' onClick={() => moveSong(index, -1)} disabled={index === 0} aria-label='Move up'>
                         <ArrowUp className='w-4 h-4' />
-                      </button>
-                      <button
+                      </IconButton>
+                      <IconButton
+                        variant='ghost'
+                        color='gray'
                         onClick={() => moveSong(index, 1)}
                         disabled={index === songs.length - 1}
-                        className='p-1.5 text-ink-muted hover:text-ink-primary disabled:opacity-20 disabled:cursor-not-allowed transition-colors'
                         aria-label='Move down'
                       >
                         <ArrowDown className='w-4 h-4' />
-                      </button>
-                      <button
-                        onClick={() => removeSong(song.id)}
-                        className='p-1.5 text-ink-muted hover:text-danger transition-colors ml-1'
-                        aria-label='Remove song'
-                      >
+                      </IconButton>
+                      <IconButton variant='ghost' color='red' onClick={() => removeSong(song.id)} aria-label='Remove song' className='ml-1'>
                         <Trash2 className='w-4 h-4' />
-                      </button>
+                      </IconButton>
                     </div>
-                  </div>
+                  </Bento>
                 ))}
               </div>
             )}
@@ -237,31 +221,24 @@ export default function SetlistDetail({ params }: { params: Promise<{ id: string
         </div>
       </main>
 
-      {showPicker && (
-        <div
-          className='fixed inset-0 bg-surface-base/50 z-50 flex items-center justify-center p-4'
-          onClick={() => setShowPicker(false)}
-        >
-          <div
-            className='rounded-2xl shadow-2xl w-full max-w-md max-h-[80vh] flex flex-col overflow-hidden bg-surface-base'
-            style={{ border: "1px solid var(--border-color)" }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className='flex items-center justify-between border-b px-4 py-3' style={{ borderColor: "var(--border-color)" }}>
-              <h2 className='font-bold text-ink-primary'>
-                Add Song
-              </h2>
-              <button
-                onClick={() => setShowPicker(false)}
-                className='p-1 text-ink-muted hover:text-ink-primary transition-colors'
-                aria-label='Close'
-              >
+      <Dialog.Root open={showPicker} onOpenChange={setShowPicker}>
+        <Dialog.Content maxWidth='28rem' aria-describedby={undefined} className='flex max-h-[80vh] flex-col overflow-hidden p-0'>
+          <Flex align='center' justify='between' className='border-b border-line-subtle px-4 py-3'>
+            <Dialog.Title size='4' mb='0'>
+              Add Song
+            </Dialog.Title>
+            <Dialog.Close>
+              <IconButton variant='ghost' color='gray' aria-label='Close'>
                 <X className='w-4 h-4' />
-              </button>
-            </div>
-            <div className='flex-1 overflow-auto p-2'>
+              </IconButton>
+            </Dialog.Close>
+          </Flex>
+          <ScrollArea type='auto' scrollbars='vertical' className='flex-1'>
+            <div className='p-2'>
               {available.length === 0 ? (
-                <div className='p-6 text-center text-ink-muted'>All your lead sheets are already in this set.</div>
+                <Text as='p' align='center' color='gray' className='p-6'>
+                  All your lead sheets are already in this set.
+                </Text>
               ) : (
                 available.map((sheet) => (
                   <button
@@ -283,9 +260,9 @@ export default function SetlistDetail({ params }: { params: Promise<{ id: string
                 ))
               )}
             </div>
-          </div>
-        </div>
-      )}
+          </ScrollArea>
+        </Dialog.Content>
+      </Dialog.Root>
     </div>
   );
 }

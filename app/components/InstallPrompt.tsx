@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Download, X } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
+import { Bento } from "@/app/components/ui/bento";
 
 /**
  * What Chrome fires once a site meets its install criteria — a manifest with
@@ -126,7 +127,7 @@ export default function InstallPrompt() {
       {/* An overlay, so it takes the overlay surface and the overlay shadow —
           the one place a shadow is allowed to be noticeable, because this has
           to read as detached from whatever page is behind it. */}
-      <div className='rounded-2xl border border-line-subtle bg-surface-overlay shadow-overlay'>
+      <Bento className='p-0 shadow-overlay'>
         <div className='flex items-start gap-3 p-4'>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src='/icons/icon-192.png' alt='' className='h-10 w-10 shrink-0' />
@@ -147,20 +148,15 @@ export default function InstallPrompt() {
           </Button>
         </div>
         <div className='flex gap-2 px-4 pb-4'>
-          <Button variant='secondary' size='lg' onClick={dismiss} className='h-11 flex-1 rounded-xl'>
+          <Button variant='secondary' size='lg' onClick={dismiss} className='flex-1'>
             Not now
           </Button>
-          <Button
-            variant='primary'
-            size='lg'
-            onClick={install}
-            className='h-11 flex-[2] gap-1.5 rounded-xl'
-          >
+          <Button variant='primary' size='lg' onClick={install} className='flex-[2]'>
             <Download className='h-4 w-4' />
             Install
           </Button>
         </div>
-      </div>
+      </Bento>
     </div>
   );
 }
