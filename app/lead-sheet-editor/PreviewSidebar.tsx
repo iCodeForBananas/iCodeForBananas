@@ -24,11 +24,11 @@ import {
   Youtube,
 } from "lucide-react";
 import { Button, Flex, IconButton, Text } from "@radix-ui/themes";
-import { cn } from "@/app/lib/utils";
 import { OfflineBadge } from "./shared";
 import type { YouTubeLink } from "./youtube";
 import { MetronomeControl } from "./Metronome";
 import { KIT_LAYERS, LAYER_LABELS, hasLayer, matchesPreset, type KitSettings } from "./kit";
+import { ControlRow, RowButton } from "./SidebarRows";
 
 export const MIN_SCALE = 70;
 export const MAX_SCALE = 160;
@@ -47,30 +47,6 @@ export const DEFAULT_COLUMN_WIDTH_VW = 30;
 const OPEN_WIDTH = "w-[19rem]";
 const RAIL_WIDTH = "w-14";
 
-/**
- * One row of the sidebar. Every tool is a full-width line separated from its
- * neighbours by a hairline rather than boxed in a border of its own — a column
- * of nested boxes reads as clutter at the size these controls run to. `active`
- * fills it with the accent, for a mode that is on.
- */
-function RowButton({
-  active = false,
-  className,
-  ...props
-}: React.ComponentProps<typeof Button> & { active?: boolean }) {
-  return (
-    <Button
-      type='button'
-      size='3'
-      variant={active ? "solid" : "ghost"}
-      color={active ? undefined : "gray"}
-      highContrast={!active}
-      className={cn("m-0 h-11 w-full justify-start gap-2.5 rounded-none px-3 print:hidden", className)}
-      {...props}
-    />
-  );
-}
-
 /** A square −/+ step button beside a value. */
 function StepButton(props: React.ComponentProps<typeof IconButton>) {
   return <IconButton type='button' size='3' variant='soft' color='gray' {...props} />;
@@ -80,29 +56,22 @@ function StepButton(props: React.ComponentProps<typeof IconButton>) {
 function Stepper({
   label,
   value,
-  valueClassName,
   decrease,
   increase,
 }: {
-  label?: string;
+  label: string;
   value: React.ReactNode;
-  valueClassName?: string;
   decrease: React.ComponentProps<typeof IconButton>;
   increase: React.ComponentProps<typeof IconButton>;
 }) {
   return (
-    <Flex wrap='wrap' align='center' gap='1' px='3' py='2' className='print:hidden'>
-      {label && (
-        <Text size='2' weight='medium' className='select-none'>
-          {label}
-        </Text>
-      )}
+    <ControlRow label={label}>
       <StepButton {...decrease} />
-      <Text size='2' weight='medium' align='center' className={cn("select-none whitespace-nowrap", valueClassName)}>
+      <Text size='2' weight='medium' align='center' className='select-none whitespace-nowrap tabular-nums'>
         {value}
       </Text>
       <StepButton {...increase} />
-    </Flex>
+    </ControlRow>
   );
 }
 
@@ -121,9 +90,8 @@ function SidebarSection({ title, children }: { title: string; children: React.Re
 function ColumnCountControl({ count, onChange }: { count: number; onChange: (next: number) => void }) {
   return (
     <Stepper
-      label='Cols'
+      label='Columns'
       value={count}
-      valueClassName='w-6'
       decrease={{
         onClick: () => onChange(count - 1),
         disabled: count <= MIN_COLUMN_COUNT,
@@ -145,7 +113,6 @@ function ColumnWidthControl({ width, onChange }: { width: number; onChange: (nex
     <Stepper
       label='Width'
       value={`${width}vw`}
-      valueClassName='w-14'
       decrease={{
         onClick: () => onChange(width - COLUMN_WIDTH_VW_STEP),
         disabled: width <= MIN_COLUMN_WIDTH_VW,
@@ -167,7 +134,6 @@ function FontScaleControl({ scale, onChange }: { scale: number; onChange: (next:
     <Stepper
       label='Size'
       value={`${scale}%`}
-      valueClassName='w-12'
       decrease={{
         onClick: () => onChange(scale - SCALE_STEP),
         disabled: scale <= MIN_SCALE,
@@ -188,8 +154,8 @@ function TransposeControl({ steps, onChange }: { steps: number; onChange: (next:
   const offsetLabel = steps > 0 ? `+${steps}` : steps < 0 ? `${steps}` : "±0";
   return (
     <Stepper
-      value={`Transpose ${offsetLabel}`}
-      valueClassName='px-1'
+      label='Transpose'
+      value={offsetLabel}
       decrease={{
         onClick: () => onChange(steps - 1),
         title: "Transpose down one semitone",
@@ -331,7 +297,7 @@ function KitControl({
     : "Custom kit";
 
   return (
-    <Flex align='center' gap='2' px='3' py='2' className='print:hidden'>
+    <ControlRow label='Kit'>
       <IconButton
         type='button'
         size='3'
@@ -341,7 +307,6 @@ function KitControl({
         disabled={on.length === 0}
         aria-label={playing ? "Stop the kit" : "Play the kit"}
         title={on.length === 0 ? "Open the kit and switch something on" : playing ? "Stop the kit" : "Play the kit"}
-        className='shrink-0'
       >
         {playing ? <Square className='w-4 h-4' /> : <Play className='w-4 h-4' />}
       </IconButton>
@@ -352,17 +317,19 @@ function KitControl({
         highContrast
         onClick={onOpen}
         title='Design the beat, the bass and the voices'
-        className='m-0 h-auto min-w-0 flex-1 flex-col items-start gap-0 px-2 py-1 text-left'
+        className='col-span-2 m-0 h-auto min-w-0 justify-between gap-2 px-2 py-1 text-left'
       >
-        <Text size='2' weight='medium' truncate className='w-full'>
-          {name}
-        </Text>
-        <Text size='1' color='gray' truncate className='w-full'>
-          {summary}
-        </Text>
+        <span className='flex min-w-0 flex-col'>
+          <Text size='2' weight='medium' truncate>
+            {name}
+          </Text>
+          <Text size='1' color='gray' truncate>
+            {summary}
+          </Text>
+        </span>
+        <Sliders className='w-4 h-4 shrink-0 text-ink-muted' aria-hidden='true' />
       </Button>
-      <Sliders className='w-4 h-4 shrink-0 text-ink-muted' aria-hidden='true' />
-    </Flex>
+    </ControlRow>
   );
 }
 

@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { CircleDot, Minus, Plus, Square } from "lucide-react";
-import { Button, IconButton, Select, TextField } from "@radix-ui/themes";
+import { IconButton, Select, TextField } from "@radix-ui/themes";
+import { ControlRow, RowButton } from "./SidebarRows";
 
 export const MIN_BPM = 30;
 export const MAX_BPM = 240;
@@ -66,70 +67,78 @@ export function MetronomeControl({
   // Held locally so the field can be empty mid-edit without snapping back.
   const [draft, setDraft] = useState<string | null>(null);
 
+  // Three rows on the sidebar's shared grid, so tempo lines up with the
+  // steppers above it instead of wrapping into a row of its own shape.
   return (
-    <div className='flex flex-wrap items-center gap-1 px-3 py-2 print:hidden'>
-      <span className='text-sm font-medium text-ink-primary select-none'>BPM</span>
-      <IconButton
-        type='button'
-        size='3'
-        variant='soft'
-        color='gray'
-        onClick={() => onBpmChange(bpm - 1)}
-        disabled={bpm <= MIN_BPM}
-        aria-label='Decrease tempo'
-      >
-        <Minus className='w-4 h-4' />
-      </IconButton>
-      <TextField.Root
-        type='number'
-        inputMode='numeric'
-        min={MIN_BPM}
-        max={MAX_BPM}
-        value={draft ?? bpm}
-        onChange={(e) => {
-          setDraft(e.target.value);
-          const parsed = parseInt(e.target.value, 10);
-          if (!isNaN(parsed) && parsed >= MIN_BPM && parsed <= MAX_BPM) onBpmChange(parsed);
-        }}
-        onBlur={() => setDraft(null)}
-        aria-label='Beats per minute'
-        size='3'
-        className='w-14 text-center'
-      />
-      <IconButton
-        type='button'
-        size='3'
-        variant='soft'
-        color='gray'
-        onClick={() => onBpmChange(bpm + 1)}
-        disabled={bpm >= MAX_BPM}
-        aria-label='Increase tempo'
-      >
-        <Plus className='w-4 h-4' />
-      </IconButton>
-      <Select.Root size='3' value={String(beatsPerBar)} onValueChange={(v) => onBeatsPerBarChange(parseInt(v, 10))}>
-        <Select.Trigger variant='soft' color='gray' aria-label='Beats per bar' title='Beats per bar — the first beat flashes brightest' />
-        <Select.Content>
-          {BEATS_PER_BAR_OPTIONS.map((n) => (
-            <Select.Item key={n} value={String(n)}>
-              /{n}
-            </Select.Item>
-          ))}
-        </Select.Content>
-      </Select.Root>
-      <Button
-        type='button'
-        size='3'
-        variant={running ? "solid" : "soft"}
-        color={running ? undefined : "gray"}
+    <>
+      <ControlRow label='Tempo'>
+        <IconButton
+          type='button'
+          size='3'
+          variant='soft'
+          color='gray'
+          onClick={() => onBpmChange(bpm - 1)}
+          disabled={bpm <= MIN_BPM}
+          aria-label='Decrease tempo'
+        >
+          <Minus className='w-4 h-4' />
+        </IconButton>
+        <TextField.Root
+          type='number'
+          inputMode='numeric'
+          min={MIN_BPM}
+          max={MAX_BPM}
+          value={draft ?? bpm}
+          onChange={(e) => {
+            setDraft(e.target.value);
+            const parsed = parseInt(e.target.value, 10);
+            if (!isNaN(parsed) && parsed >= MIN_BPM && parsed <= MAX_BPM) onBpmChange(parsed);
+          }}
+          onBlur={() => setDraft(null)}
+          aria-label='Beats per minute'
+          size='3'
+          className='w-full [&_input]:text-center [&_input]:tabular-nums'
+        />
+        <IconButton
+          type='button'
+          size='3'
+          variant='soft'
+          color='gray'
+          onClick={() => onBpmChange(bpm + 1)}
+          disabled={bpm >= MAX_BPM}
+          aria-label='Increase tempo'
+        >
+          <Plus className='w-4 h-4' />
+        </IconButton>
+      </ControlRow>
+      <ControlRow label='Meter'>
+        <Select.Root size='3' value={String(beatsPerBar)} onValueChange={(v) => onBeatsPerBarChange(parseInt(v, 10))}>
+          <Select.Trigger
+            variant='soft'
+            color='gray'
+            aria-label='Beats per bar'
+            title='Beats per bar — the first beat flashes brightest'
+            className='col-span-3 w-full'
+          />
+          <Select.Content>
+            {BEATS_PER_BAR_OPTIONS.map((n) => (
+              <Select.Item key={n} value={String(n)}>
+                {n}/4
+              </Select.Item>
+            ))}
+          </Select.Content>
+        </Select.Root>
+      </ControlRow>
+      <RowButton
+        active={running}
         aria-pressed={running}
         onClick={onToggle}
         title={running ? "Stop the metronome" : "Blink a silent beat over the sheet"}
       >
         {running ? <Square className='w-4 h-4' /> : <CircleDot className='w-4 h-4' />}
-        {running ? "Stop" : "Start"}
-      </Button>
-    </div>
+        {running ? "Stop Metronome" : "Start Metronome"}
+      </RowButton>
+    </>
   );
 }
 
