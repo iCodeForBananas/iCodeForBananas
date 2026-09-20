@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Check, Play, RotateCcw, Square, Volume2, X } from "lucide-react";
+import { Check, Download, Play, RotateCcw, Square, Volume2, X } from "lucide-react";
 import {
   Card,
   Dialog,
@@ -43,10 +43,12 @@ import {
   PRESET_GROUPS,
   applyPreset,
   hasLayer,
+  kitIsSilent,
   matchesPreset,
   toggleLayer,
   type KitSettings,
 } from "./kit";
+import { KIT_RENDER_SECONDS, kitWavFileName, renderKitToWav } from "./kitRender";
 
 /**
  * The whole backing track in one sheet.
@@ -72,6 +74,7 @@ export default function KitDesigner({
   onClose,
   songKey,
   transpose = 0,
+  songTitle,
 }: {
   kit: KitSettings;
   onChange: (next: KitSettings) => void;
@@ -83,6 +86,8 @@ export default function KitDesigner({
   /** What the drone holds when it is set to follow the song. */
   songKey?: string | null;
   transpose?: number;
+  /** Only ever used to name a download. */
+  songTitle?: string | null;
 }) {
   const [tab, setTab] = useState<TabId>("presets");
 
@@ -151,7 +156,16 @@ export default function KitDesigner({
           {tab === "drone" && (
             <DroneTab kit={kit} onChange={onChange} songKey={songKey} transpose={transpose} />
           )}
-          {tab === "mix" && <MixTab kit={kit} onChange={onChange} bpm={bpm} />}
+          {tab === "mix" && (
+            <MixTab
+              kit={kit}
+              onChange={onChange}
+              bpm={bpm}
+              songTitle={songTitle}
+              songKey={songKey}
+              transpose={transpose}
+            />
+          )}
         </div>
       </Dialog.Content>
     </Dialog.Root>
@@ -641,10 +655,16 @@ function MixTab({
   kit,
   onChange,
   bpm,
+  songTitle,
+  songKey,
+  transpose,
 }: {
   kit: KitSettings;
   onChange: (next: KitSettings) => void;
   bpm: number;
+  songTitle?: string | null;
+  songKey?: string | null;
+  transpose: number;
 }) {
   return (
     <div className='flex flex-col gap-5'>
@@ -666,6 +686,92 @@ function MixTab({
       <RadixButton type='button' variant='soft' color='gray' className='self-start' onClick={() => auditionAccent(kit.drums.shimmer, bpm)}>
         <Volume2 className='h-4 w-4' /> Hear {kit.drums.shimmer}
       </RadixButton>
+
+      <KitDownload
+        kit={kit}
+        bpm={bpm}
+        songTitle={songTitle}
+        songKey={songKey}
+        transpose={transpose}
+      />
     </div>
+  );
+}
+
+/**
+ * The kit as a file, from the tab where the levels are set — because the levels
+ * are in the render, and this is the last thing you do before taking it away.
+ *
+ * Rendering happens faster than real time but a full kit is still a moment's
+ * work, so the button says what it is doing rather than looking like it did
+ * nothing. A failure is said out loud underneath it, for the same reason: the
+ * alternative is a click that quietly produces no file.
+ */
+function KitDownload({
+  kit,
+  bpm,
+  songTitle,
+  songKey,
+  transpose,
+}: {
+  kit: KitSettings;
+  bpm: number;
+  songTitle?: string | null;
+  songKey?: string | null;
+  transpose: number;
+}) {
+  const [rendering, setRendering] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const silent = kitIsSilent(kit);
+
+  const download = async () => {
+    setRendering(true);
+    setError(null);
+    try {
+      const wav = await renderKitToWav({ kit, bpm, songKey, transpose });
+      const url = URL.createObjectURL(wav);
+      const link = Object.assign(document.createElement("a"), {
+        href: url,
+        download: kitWavFileName(songTitle, kit, bpm),
+      });
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setRendering(false);
+    }
+  };
+
+  return (
+    <Field label='Download' hint='to practise over, or to build on somewhere else'>
+      <Flex direction='column' align='start' gap='2'>
+        <RadixButton
+          type='button'
+          variant='soft'
+          color='gray'
+          disabled={silent || rendering}
+          onClick={download}
+          title={
+            silent
+              ? "Switch a layer on first"
+              : `Render ${KIT_RENDER_SECONDS} seconds of this kit as a WAV`
+          }
+        >
+          <Download className='h-4 w-4' />
+          {rendering ? "Rendering…" : `Download ${KIT_RENDER_SECONDS} seconds`}
+        </RadixButton>
+        <Text size='1' color='gray'>
+          {silent
+            ? "Nothing is switched on, so there would be nothing in the file."
+            : `${kit.preset ?? "Custom kit"} at ${bpm} bpm — the layers you have on, looped.`}
+        </Text>
+        {error && (
+          <Text size='1' color='red'>
+            Couldn’t render the kit: {error}
+          </Text>
+        )}
+      </Flex>
+    </Field>
   );
 }

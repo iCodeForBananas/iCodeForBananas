@@ -1280,6 +1280,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
             onClose={() => setKitOpen(false)}
             songKey={sheet?.key ?? null}
             transpose={transposeSteps}
+            songTitle={sheet?.title ?? null}
           />
         )}
 

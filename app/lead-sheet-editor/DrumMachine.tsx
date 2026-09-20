@@ -714,7 +714,12 @@ function playKick808(ctx: BaseAudioContext, dst: AudioNode, when: number) {
   const ws = ctx.createWaveShaper();
   const curve = new Float32Array(256);
   for (let i = 0; i < 256; i++) {
-    const x = (i * 2) / 256 - 1;
+    // Spread over 255 gaps rather than 256, so the curve is symmetric about
+    // zero and silence in is silence out. Half a step low, as dividing by 256
+    // leaves it, a silent input reads back as a small negative number instead
+    // — and since nothing ever disconnects the shaper, every kick would leave a
+    // little more DC sitting in the mix for as long as the page was open.
+    const x = (i * 2) / 255 - 1;
     curve[i] = Math.tanh(2 * x) / Math.tanh(2);
   }
   ws.curve = curve;
@@ -953,13 +958,18 @@ function playClap(ctx: BaseAudioContext, dst: AudioNode, when: number) {
   }
 }
 
-// ── WAV export ────────────────────────────────────────────────────────────────
+// ── Rendering ─────────────────────────────────────────────────────────────────
 
-/** Encode an AudioBuffer as a 16-bit PCM WAV Blob. */
-function encodeWav(buffer: AudioBuffer): Blob {
-  const numCh  = buffer.numberOfChannels;
-  const sr     = buffer.sampleRate;
-  const len    = buffer.length;
+/**
+ * One array per channel, as a 16-bit PCM WAV Blob.
+ *
+ * Channels rather than an AudioBuffer because a render is mixed down in pieces
+ * and the pieces are added up here rather than in the audio graph; see
+ * ./kitRender.
+ */
+export function encodeWav(channels: Float32Array[], sr: number): Blob {
+  const numCh  = channels.length;
+  const len    = channels[0].length;
   const bitsPS = 16;
   const bytesPS = bitsPS / 8;
   const dataLen = len * numCh * bytesPS;
@@ -984,7 +994,7 @@ function encodeWav(buffer: AudioBuffer): Blob {
   let offset = 44;
   for (let i = 0; i < len; i++) {
     for (let ch = 0; ch < numCh; ch++) {
-      const s = Math.max(-1, Math.min(1, buffer.getChannelData(ch)[i]));
+      const s = Math.max(-1, Math.min(1, channels[ch][i]));
       view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7fff, true);
       offset += 2;
     }
@@ -992,50 +1002,86 @@ function encodeWav(buffer: AudioBuffer): Blob {
   return new Blob([ab], { type: "audio/wav" });
 }
 
-/** Render the current drum settings to a WAV Blob using OfflineAudioContext. */
-export async function renderDrumToWav(
+/**
+ * How long a hit can still be sounding after the step it landed on.
+ *
+ * The kit is quick about it: the 808 kick is the slowest at 0.7s, and a brushed
+ * snare or a bell tree is done inside 1.5. The percussion layer is not, because
+ * some of its parts are built on the bar rather than on the step — the riser
+ * sweeps across a whole one — so how long a step can ring for depends on the
+ * tempo it was played at.
+ */
+export function drumTail(bpm: number): number {
+  return Math.max(1.5, STEPS_PER_BAR * (15 / bpm));
+}
+
+/**
+ * A stretch of the loop, and where it sits on the graph being written.
+ *
+ * Hits from `from` up to but not including `to` are written, each one at its own
+ * place in the loop less `origin` — so a span rendered on its own can be
+ * dropped back into the right part of a longer timeline afterwards.
+ */
+export interface DrumSpan {
+  origin: number;
+  from: number;
+  to: number;
+}
+
+/**
+ * Every drum voice the kit plays over a stretch of the loop, written onto a
+ * graph that isn't running yet.
+ *
+ * The live scheduler can't do this job. It works a bar ahead of a clock that is
+ * already moving and has no notion of a length, which is exactly right for
+ * playing along to and no use at all for rendering a file. This is the same
+ * beat with the length known up front.
+ *
+ * It is a span rather than a whole render because a hit leaves its nodes in the
+ * graph once it has sounded, and a graph carrying every hit of a minute-long
+ * beat spends the rest of the render mixing silence — which is why a render
+ * asks for a few seconds at a time; see ./kitRender.
+ *
+ * `dst` is the kit's own bus, so the caller sets the level; what arrives here is
+ * only which voices play and when.
+ */
+export function scheduleDrums(
+  ctx: BaseAudioContext,
+  dst: AudioNode,
+  settings: DrumSettings,
+  layers: { drums: boolean; claps: boolean; shimmer: boolean },
   bpm: number,
-  grid: DrumGrid,
-  kickStyle: KickStyle,
-  snareStyle: SnareStyle,
-  clapsEnabled: boolean,
-  shimmerEnabled: boolean,
-  shimmerVariation: string,
-  volume: number,
-  durationSec: number,
-): Promise<Blob> {
-  const SR = 44100;
-  const totalFrames = Math.ceil(SR * durationSec);
-  const ctx = new OfflineAudioContext(2, totalFrames, SR);
-
-  const master = ctx.createGain();
-  master.gain.value = volume;
-  master.connect(ctx.destination);
-
+  span: DrumSpan,
+): void {
+  const grid = effectiveGrid(settings);
+  const accent = accentByName(settings.shimmer);
   const stepDur = 15 / bpm; // seconds per 16th note
-  const accent = accentByName(shimmerVariation);
-  let when = 0;
-  let step = 0;
+  // Which sixteenths of the loop fall in the span. Counted from the top of the
+  // loop rather than from the span, so every span agrees about where the beat
+  // is and one of them can't drift off the others.
+  const first = Math.max(0, Math.ceil(span.from / stepDur));
+  const last = Math.ceil(span.to / stepDur);
 
-  while (when < durationSec) {
-    if (grid.kick[step]) {
-      if (kickStyle === "808") playKick808(ctx, master, when);
-      else playKick(ctx, master, when);
-    }
-    if (grid.snare[step]) {
-      if (snareStyle === "brush") playSnareBrush(ctx, master, when);
-      else playSnare(ctx, master, when);
-    }
-    if (grid.hihat[step]) playHihat(ctx, master, when);
-    if (clapsEnabled && grid.clap[step]) playClap(ctx, master, when);
-    if (shimmerEnabled) playAccentStep(ctx, master, when, accent, step, stepDur);
+  for (let i = first; i < last; i++) {
+    const when = i * stepDur - span.origin;
+    const step = i % STEPS_PER_BAR;
 
-    when += stepDur;
-    step = (step + 1) % 16;
+    if (layers.drums) {
+      if (grid.kick[step]) {
+        if (settings.kick === "808") playKick808(ctx, dst, when);
+        else playKick(ctx, dst, when);
+      }
+      if (grid.snare[step]) {
+        if (settings.snare === "brush") playSnareBrush(ctx, dst, when);
+        else playSnare(ctx, dst, when);
+      }
+      if (grid.hihat[step]) playHihat(ctx, dst, when);
+    }
+    // Claps and percussion are layers of their own, and either can carry a
+    // render with the kit switched off — the same as during playback.
+    if (layers.claps && grid.clap[step]) playClap(ctx, dst, when);
+    if (layers.shimmer) playAccentStep(ctx, dst, when, accent, step, stepDur);
   }
-
-  const rendered = await ctx.startRendering();
-  return encodeWav(rendered);
 }
 
 // ── Scheduler hook ────────────────────────────────────────────────────────────

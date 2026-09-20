@@ -179,10 +179,11 @@ const STYLE_SHAPES: Record<DroneStyle, StyleShape> = {
 
 /** Every node that has to be stopped again, in one list. */
 function buildDrone(
-  ctx: AudioContext,
+  ctx: BaseAudioContext,
   master: GainNode,
   freqs: number[],
   style: DroneStyle,
+  start: number,
 ): OscillatorNode[] {
   const shape = STYLE_SHAPES[style];
 
@@ -220,7 +221,7 @@ function buildDrone(
         lfoGain.gain.value = shape.vibrato;
         lfo.connect(lfoGain);
         lfoGain.connect(osc.detune);
-        lfo.start(ctx.currentTime);
+        lfo.start(start);
         oscs.push(lfo);
       }
 
@@ -229,12 +230,51 @@ function buildDrone(
       osc.connect(oscGain);
       oscGain.connect(filter);
       oscGain.connect(delay);
-      osc.start(ctx.currentTime);
+      osc.start(start);
       oscs.push(osc);
     }
   }
 
   return oscs;
+}
+
+/** How long the drone takes to ring out after it is let go. */
+export const droneRelease = (style: DroneStyle): number => STYLE_SHAPES[style].release;
+
+/**
+ * The drone, rendered rather than played.
+ *
+ * The same voices and the same swell as `useDrone`, but scheduled onto a graph
+ * that isn't running yet: it holds the chord for `duration` seconds from
+ * `start` and is then let go, so the tail is part of the file instead of being
+ * chopped off at the end of it. Leave `droneRelease(style)` of room after
+ * `start + duration` for that tail.
+ */
+export function scheduleDrone(
+  ctx: BaseAudioContext,
+  dst: AudioNode,
+  key: DroneKey,
+  style: DroneStyle,
+  volume: number,
+  start: number,
+  duration: number,
+): void {
+  const { release } = STYLE_SHAPES[style];
+  // A render shorter than the swell would otherwise jump to full level partway
+  // through it; halving the swell keeps the shape at any length.
+  const attack = Math.min(STYLE_SHAPES[style].attack, duration / 2);
+  const end = start + duration;
+
+  const master = ctx.createGain();
+  master.gain.setValueAtTime(0, start);
+  master.gain.linearRampToValueAtTime(volume, start + attack);
+  master.gain.setValueAtTime(volume, end);
+  master.gain.linearRampToValueAtTime(0, end + release);
+  master.connect(dst);
+
+  for (const osc of buildDrone(ctx, master, droneFrequencies(key), style, start)) {
+    osc.stop(end + release + 0.05);
+  }
 }
 
 interface DroneState {
@@ -277,7 +317,7 @@ export function useDrone(
     master.gain.linearRampToValueAtTime(volumeRef.current, ctx.currentTime + attack);
     master.connect(ctx.destination);
 
-    const oscs = buildDrone(ctx, master, droneFrequencies({ semitone, minor }), style);
+    const oscs = buildDrone(ctx, master, droneFrequencies({ semitone, minor }), style, ctx.currentTime);
     stateRef.current = { ctx, master };
 
     return () => {
