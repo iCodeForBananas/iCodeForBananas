@@ -23,6 +23,7 @@
 import fs from "fs";
 import path from "path";
 import { fetchQuotes, isPlaceholderRow, isSubHourInterval } from "./lib/market-data.mjs";
+import { DATA_DIR, writeManifest } from "./lib/data-manifest.mjs";
 
 const DELAY_MS = 1500;
 
@@ -36,7 +37,7 @@ if (!interval) {
   process.exit(1);
 }
 
-const dataDir = path.join(process.cwd(), "data");
+const dataDir = DATA_DIR;
 
 /** Existing files for this interval, as { symbol, file }. */
 function existingFor(interval, symbols) {
@@ -131,6 +132,7 @@ async function main() {
     }
     await sleep(DELAY_MS);
   }
+  writeManifest();
   console.log(`\nDone. ${ok} refreshed, ${failed} failed.`);
 }
 

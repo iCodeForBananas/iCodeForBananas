@@ -1,0 +1,1229 @@
+{
+ "files": [
+  {
+   "file": "AAPL-15m-2026-09-21.csv",
+   "symbol": "AAPL",
+   "timeframe": "15m",
+   "date": "2026-09-21",
+   "label": "AAPL 15M"
+  },
+  {
+   "file": "AAPL-1d-2026-09-21.csv",
+   "symbol": "AAPL",
+   "timeframe": "1d",
+   "date": "2026-09-21",
+   "label": "AAPL 1D"
+  },
+  {
+   "file": "AAPL-1h-2026-09-21.csv",
+   "symbol": "AAPL",
+   "timeframe": "1h",
+   "date": "2026-09-21",
+   "label": "AAPL 1H"
+  },
+  {
+   "file": "AAPL-1m-2026-09-21.csv",
+   "symbol": "AAPL",
+   "timeframe": "1m",
+   "date": "2026-09-21",
+   "label": "AAPL 1M"
+  },
+  {
+   "file": "AAPL-1wk-2026-09-21.csv",
+   "symbol": "AAPL",
+   "timeframe": "1wk",
+   "date": "2026-09-21",
+   "label": "AAPL 1WK"
+  },
+  {
+   "file": "AAPL-2m-2026-09-21.csv",
+   "symbol": "AAPL",
+   "timeframe": "2m",
+   "date": "2026-09-21",
+   "label": "AAPL 2M"
+  },
+  {
+   "file": "AAPL-30m-2026-09-21.csv",
+   "symbol": "AAPL",
+   "timeframe": "30m",
+   "date": "2026-09-21",
+   "label": "AAPL 30M"
+  },
+  {
+   "file": "AAPL-5m-2026-09-21.csv",
+   "symbol": "AAPL",
+   "timeframe": "5m",
+   "date": "2026-09-21",
+   "label": "AAPL 5M"
+  },
+  {
+   "file": "AMZN-15m-2026-09-21.csv",
+   "symbol": "AMZN",
+   "timeframe": "15m",
+   "date": "2026-09-21",
+   "label": "AMZN 15M"
+  },
+  {
+   "file": "AMZN-1d-2026-09-21.csv",
+   "symbol": "AMZN",
+   "timeframe": "1d",
+   "date": "2026-09-21",
+   "label": "AMZN 1D"
+  },
+  {
+   "file": "AMZN-1h-2026-09-21.csv",
+   "symbol": "AMZN",
+   "timeframe": "1h",
+   "date": "2026-09-21",
+   "label": "AMZN 1H"
+  },
+  {
+   "file": "AMZN-1m-2026-09-21.csv",
+   "symbol": "AMZN",
+   "timeframe": "1m",
+   "date": "2026-09-21",
+   "label": "AMZN 1M"
+  },
+  {
+   "file": "AMZN-1wk-2026-09-21.csv",
+   "symbol": "AMZN",
+   "timeframe": "1wk",
+   "date": "2026-09-21",
+   "label": "AMZN 1WK"
+  },
+  {
+   "file": "AMZN-2m-2026-09-21.csv",
+   "symbol": "AMZN",
+   "timeframe": "2m",
+   "date": "2026-09-21",
+   "label": "AMZN 2M"
+  },
+  {
+   "file": "AMZN-30m-2026-09-21.csv",
+   "symbol": "AMZN",
+   "timeframe": "30m",
+   "date": "2026-09-21",
+   "label": "AMZN 30M"
+  },
+  {
+   "file": "AMZN-5m-2026-09-21.csv",
+   "symbol": "AMZN",
+   "timeframe": "5m",
+   "date": "2026-09-21",
+   "label": "AMZN 5M"
+  },
+  {
+   "file": "AVGO-15m-2026-09-21.csv",
+   "symbol": "AVGO",
+   "timeframe": "15m",
+   "date": "2026-09-21",
+   "label": "AVGO 15M"
+  },
+  {
+   "file": "AVGO-1d-2026-09-21.csv",
+   "symbol": "AVGO",
+   "timeframe": "1d",
+   "date": "2026-09-21",
+   "label": "AVGO 1D"
+  },
+  {
+   "file": "AVGO-1h-2026-09-21.csv",
+   "symbol": "AVGO",
+   "timeframe": "1h",
+   "date": "2026-09-21",
+   "label": "AVGO 1H"
+  },
+  {
+   "file": "AVGO-1m-2026-09-21.csv",
+   "symbol": "AVGO",
+   "timeframe": "1m",
+   "date": "2026-09-21",
+   "label": "AVGO 1M"
+  },
+  {
+   "file": "AVGO-1wk-2026-09-21.csv",
+   "symbol": "AVGO",
+   "timeframe": "1wk",
+   "date": "2026-09-21",
+   "label": "AVGO 1WK"
+  },
+  {
+   "file": "AVGO-2m-2026-09-21.csv",
+   "symbol": "AVGO",
+   "timeframe": "2m",
+   "date": "2026-09-21",
+   "label": "AVGO 2M"
+  },
+  {
+   "file": "AVGO-30m-2026-09-21.csv",
+   "symbol": "AVGO",
+   "timeframe": "30m",
+   "date": "2026-09-21",
+   "label": "AVGO 30M"
+  },
+  {
+   "file": "AVGO-5m-2026-09-21.csv",
+   "symbol": "AVGO",
+   "timeframe": "5m",
+   "date": "2026-09-21",
+   "label": "AVGO 5M"
+  },
+  {
+   "file": "COST-15m-2026-09-21.csv",
+   "symbol": "COST",
+   "timeframe": "15m",
+   "date": "2026-09-21",
+   "label": "COST 15M"
+  },
+  {
+   "file": "COST-1d-2026-09-21.csv",
+   "symbol": "COST",
+   "timeframe": "1d",
+   "date": "2026-09-21",
+   "label": "COST 1D"
+  },
+  {
+   "file": "COST-1h-2026-09-21.csv",
+   "symbol": "COST",
+   "timeframe": "1h",
+   "date": "2026-09-21",
+   "label": "COST 1H"
+  },
+  {
+   "file": "COST-1m-2026-09-21.csv",
+   "symbol": "COST",
+   "timeframe": "1m",
+   "date": "2026-09-21",
+   "label": "COST 1M"
+  },
+  {
+   "file": "COST-1wk-2026-09-21.csv",
+   "symbol": "COST",
+   "timeframe": "1wk",
+   "date": "2026-09-21",
+   "label": "COST 1WK"
+  },
+  {
+   "file": "COST-2m-2026-09-21.csv",
+   "symbol": "COST",
+   "timeframe": "2m",
+   "date": "2026-09-21",
+   "label": "COST 2M"
+  },
+  {
+   "file": "COST-30m-2026-09-21.csv",
+   "symbol": "COST",
+   "timeframe": "30m",
+   "date": "2026-09-21",
+   "label": "COST 30M"
+  },
+  {
+   "file": "COST-5m-2026-09-21.csv",
+   "symbol": "COST",
+   "timeframe": "5m",
+   "date": "2026-09-21",
+   "label": "COST 5M"
+  },
+  {
+   "file": "CSCO-15m-2026-09-21.csv",
+   "symbol": "CSCO",
+   "timeframe": "15m",
+   "date": "2026-09-21",
+   "label": "CSCO 15M"
+  },
+  {
+   "file": "CSCO-1d-2026-09-21.csv",
+   "symbol": "CSCO",
+   "timeframe": "1d",
+   "date": "2026-09-21",
+   "label": "CSCO 1D"
+  },
+  {
+   "file": "CSCO-1h-2026-09-21.csv",
+   "symbol": "CSCO",
+   "timeframe": "1h",
+   "date": "2026-09-21",
+   "label": "CSCO 1H"
+  },
+  {
+   "file": "CSCO-1m-2026-09-21.csv",
+   "symbol": "CSCO",
+   "timeframe": "1m",
+   "date": "2026-09-21",
+   "label": "CSCO 1M"
+  },
+  {
+   "file": "CSCO-1wk-2026-09-21.csv",
+   "symbol": "CSCO",
+   "timeframe": "1wk",
+   "date": "2026-09-21",
+   "label": "CSCO 1WK"
+  },
+  {
+   "file": "CSCO-2m-2026-09-21.csv",
+   "symbol": "CSCO",
+   "timeframe": "2m",
+   "date": "2026-09-21",
+   "label": "CSCO 2M"
+  },
+  {
+   "file": "CSCO-30m-2026-09-21.csv",
+   "symbol": "CSCO",
+   "timeframe": "30m",
+   "date": "2026-09-21",
+   "label": "CSCO 30M"
+  },
+  {
+   "file": "CSCO-5m-2026-09-21.csv",
+   "symbol": "CSCO",
+   "timeframe": "5m",
+   "date": "2026-09-21",
+   "label": "CSCO 5M"
+  },
+  {
+   "file": "ES=F-15m-2026-09-21.csv",
+   "symbol": "ES=F",
+   "timeframe": "15m",
+   "date": "2026-09-21",
+   "label": "ES=F 15M"
+  },
+  {
+   "file": "ES=F-1d-2026-09-21.csv",
+   "symbol": "ES=F",
+   "timeframe": "1d",
+   "date": "2026-09-21",
+   "label": "ES=F 1D"
+  },
+  {
+   "file": "ES=F-1h-2026-09-21.csv",
+   "symbol": "ES=F",
+   "timeframe": "1h",
+   "date": "2026-09-21",
+   "label": "ES=F 1H"
+  },
+  {
+   "file": "ES=F-1m-2026-09-21.csv",
+   "symbol": "ES=F",
+   "timeframe": "1m",
+   "date": "2026-09-21",
+   "label": "ES=F 1M"
+  },
+  {
+   "file": "ES=F-1wk-2026-09-21.csv",
+   "symbol": "ES=F",
+   "timeframe": "1wk",
+   "date": "2026-09-21",
+   "label": "ES=F 1WK"
+  },
+  {
+   "file": "ES=F-2m-2026-09-21.csv",
+   "symbol": "ES=F",
+   "timeframe": "2m",
+   "date": "2026-09-21",
+   "label": "ES=F 2M"
+  },
+  {
+   "file": "ES=F-30m-2026-09-21.csv",
+   "symbol": "ES=F",
+   "timeframe": "30m",
+   "date": "2026-09-21",
+   "label": "ES=F 30M"
+  },
+  {
+   "file": "ES=F-5m-2026-09-21.csv",
+   "symbol": "ES=F",
+   "timeframe": "5m",
+   "date": "2026-09-21",
+   "label": "ES=F 5M"
+  },
+  {
+   "file": "GOOGL-15m-2026-09-21.csv",
+   "symbol": "GOOGL",
+   "timeframe": "15m",
+   "date": "2026-09-21",
+   "label": "GOOGL 15M"
+  },
+  {
+   "file": "GOOGL-1d-2026-09-21.csv",
+   "symbol": "GOOGL",
+   "timeframe": "1d",
+   "date": "2026-09-21",
+   "label": "GOOGL 1D"
+  },
+  {
+   "file": "GOOGL-1h-2026-09-21.csv",
+   "symbol": "GOOGL",
+   "timeframe": "1h",
+   "date": "2026-09-21",
+   "label": "GOOGL 1H"
+  },
+  {
+   "file": "GOOGL-1m-2026-09-21.csv",
+   "symbol": "GOOGL",
+   "timeframe": "1m",
+   "date": "2026-09-21",
+   "label": "GOOGL 1M"
+  },
+  {
+   "file": "GOOGL-1wk-2026-09-21.csv",
+   "symbol": "GOOGL",
+   "timeframe": "1wk",
+   "date": "2026-09-21",
+   "label": "GOOGL 1WK"
+  },
+  {
+   "file": "GOOGL-2m-2026-09-21.csv",
+   "symbol": "GOOGL",
+   "timeframe": "2m",
+   "date": "2026-09-21",
+   "label": "GOOGL 2M"
+  },
+  {
+   "file": "GOOGL-30m-2026-09-21.csv",
+   "symbol": "GOOGL",
+   "timeframe": "30m",
+   "date": "2026-09-21",
+   "label": "GOOGL 30M"
+  },
+  {
+   "file": "GOOGL-5m-2026-09-21.csv",
+   "symbol": "GOOGL",
+   "timeframe": "5m",
+   "date": "2026-09-21",
+   "label": "GOOGL 5M"
+  },
+  {
+   "file": "LIN-15m-2026-09-21.csv",
+   "symbol": "LIN",
+   "timeframe": "15m",
+   "date": "2026-09-21",
+   "label": "LIN 15M"
+  },
+  {
+   "file": "LIN-1d-2026-09-21.csv",
+   "symbol": "LIN",
+   "timeframe": "1d",
+   "date": "2026-09-21",
+   "label": "LIN 1D"
+  },
+  {
+   "file": "LIN-1h-2026-09-21.csv",
+   "symbol": "LIN",
+   "timeframe": "1h",
+   "date": "2026-09-21",
+   "label": "LIN 1H"
+  },
+  {
+   "file": "LIN-1m-2026-09-21.csv",
+   "symbol": "LIN",
+   "timeframe": "1m",
+   "date": "2026-09-21",
+   "label": "LIN 1M"
+  },
+  {
+   "file": "LIN-1wk-2026-09-21.csv",
+   "symbol": "LIN",
+   "timeframe": "1wk",
+   "date": "2026-09-21",
+   "label": "LIN 1WK"
+  },
+  {
+   "file": "LIN-2m-2026-09-21.csv",
+   "symbol": "LIN",
+   "timeframe": "2m",
+   "date": "2026-09-21",
+   "label": "LIN 2M"
+  },
+  {
+   "file": "LIN-30m-2026-09-21.csv",
+   "symbol": "LIN",
+   "timeframe": "30m",
+   "date": "2026-09-21",
+   "label": "LIN 30M"
+  },
+  {
+   "file": "LIN-5m-2026-09-21.csv",
+   "symbol": "LIN",
+   "timeframe": "5m",
+   "date": "2026-09-21",
+   "label": "LIN 5M"
+  },
+  {
+   "file": "META-15m-2026-09-21.csv",
+   "symbol": "META",
+   "timeframe": "15m",
+   "date": "2026-09-21",
+   "label": "META 15M"
+  },
+  {
+   "file": "META-1d-2026-09-21.csv",
+   "symbol": "META",
+   "timeframe": "1d",
+   "date": "2026-09-21",
+   "label": "META 1D"
+  },
+  {
+   "file": "META-1h-2026-09-21.csv",
+   "symbol": "META",
+   "timeframe": "1h",
+   "date": "2026-09-21",
+   "label": "META 1H"
+  },
+  {
+   "file": "META-1m-2026-09-21.csv",
+   "symbol": "META",
+   "timeframe": "1m",
+   "date": "2026-09-21",
+   "label": "META 1M"
+  },
+  {
+   "file": "META-1wk-2026-09-21.csv",
+   "symbol": "META",
+   "timeframe": "1wk",
+   "date": "2026-09-21",
+   "label": "META 1WK"
+  },
+  {
+   "file": "META-2m-2026-09-21.csv",
+   "symbol": "META",
+   "timeframe": "2m",
+   "date": "2026-09-21",
+   "label": "META 2M"
+  },
+  {
+   "file": "META-30m-2026-09-21.csv",
+   "symbol": "META",
+   "timeframe": "30m",
+   "date": "2026-09-21",
+   "label": "META 30M"
+  },
+  {
+   "file": "META-5m-2026-09-21.csv",
+   "symbol": "META",
+   "timeframe": "5m",
+   "date": "2026-09-21",
+   "label": "META 5M"
+  },
+  {
+   "file": "MSFT-15m-2026-09-21.csv",
+   "symbol": "MSFT",
+   "timeframe": "15m",
+   "date": "2026-09-21",
+   "label": "MSFT 15M"
+  },
+  {
+   "file": "MSFT-1d-2026-09-21.csv",
+   "symbol": "MSFT",
+   "timeframe": "1d",
+   "date": "2026-09-21",
+   "label": "MSFT 1D"
+  },
+  {
+   "file": "MSFT-1h-2026-09-21.csv",
+   "symbol": "MSFT",
+   "timeframe": "1h",
+   "date": "2026-09-21",
+   "label": "MSFT 1H"
+  },
+  {
+   "file": "MSFT-1m-2026-09-21.csv",
+   "symbol": "MSFT",
+   "timeframe": "1m",
+   "date": "2026-09-21",
+   "label": "MSFT 1M"
+  },
+  {
+   "file": "MSFT-1wk-2026-09-21.csv",
+   "symbol": "MSFT",
+   "timeframe": "1wk",
+   "date": "2026-09-21",
+   "label": "MSFT 1WK"
+  },
+  {
+   "file": "MSFT-2m-2026-09-21.csv",
+   "symbol": "MSFT",
+   "timeframe": "2m",
+   "date": "2026-09-21",
+   "label": "MSFT 2M"
+  },
+  {
+   "file": "MSFT-30m-2026-09-21.csv",
+   "symbol": "MSFT",
+   "timeframe": "30m",
+   "date": "2026-09-21",
+   "label": "MSFT 30M"
+  },
+  {
+   "file": "MSFT-5m-2026-09-21.csv",
+   "symbol": "MSFT",
+   "timeframe": "5m",
+   "date": "2026-09-21",
+   "label": "MSFT 5M"
+  },
+  {
+   "file": "MU-15m-2026-09-21.csv",
+   "symbol": "MU",
+   "timeframe": "15m",
+   "date": "2026-09-21",
+   "label": "MU 15M"
+  },
+  {
+   "file": "MU-1d-2026-09-21.csv",
+   "symbol": "MU",
+   "timeframe": "1d",
+   "date": "2026-09-21",
+   "label": "MU 1D"
+  },
+  {
+   "file": "MU-1m-2026-09-21.csv",
+   "symbol": "MU",
+   "timeframe": "1m",
+   "date": "2026-09-21",
+   "label": "MU 1M"
+  },
+  {
+   "file": "MU-1wk-2026-09-21.csv",
+   "symbol": "MU",
+   "timeframe": "1wk",
+   "date": "2026-09-21",
+   "label": "MU 1WK"
+  },
+  {
+   "file": "MU-2m-2026-09-21.csv",
+   "symbol": "MU",
+   "timeframe": "2m",
+   "date": "2026-09-21",
+   "label": "MU 2M"
+  },
+  {
+   "file": "MU-30m-2026-09-21.csv",
+   "symbol": "MU",
+   "timeframe": "30m",
+   "date": "2026-09-21",
+   "label": "MU 30M"
+  },
+  {
+   "file": "MU-5m-2026-09-21.csv",
+   "symbol": "MU",
+   "timeframe": "5m",
+   "date": "2026-09-21",
+   "label": "MU 5M"
+  },
+  {
+   "file": "NQ=F-15m-2026-09-21.csv",
+   "symbol": "NQ=F",
+   "timeframe": "15m",
+   "date": "2026-09-21",
+   "label": "NQ=F 15M"
+  },
+  {
+   "file": "NQ=F-1d-2026-09-21.csv",
+   "symbol": "NQ=F",
+   "timeframe": "1d",
+   "date": "2026-09-21",
+   "label": "NQ=F 1D"
+  },
+  {
+   "file": "NQ=F-1h-2026-09-21.csv",
+   "symbol": "NQ=F",
+   "timeframe": "1h",
+   "date": "2026-09-21",
+   "label": "NQ=F 1H"
+  },
+  {
+   "file": "NQ=F-1m-2026-09-21.csv",
+   "symbol": "NQ=F",
+   "timeframe": "1m",
+   "date": "2026-09-21",
+   "label": "NQ=F 1M"
+  },
+  {
+   "file": "NQ=F-1wk-2026-09-21.csv",
+   "symbol": "NQ=F",
+   "timeframe": "1wk",
+   "date": "2026-09-21",
+   "label": "NQ=F 1WK"
+  },
+  {
+   "file": "NQ=F-2m-2026-09-21.csv",
+   "symbol": "NQ=F",
+   "timeframe": "2m",
+   "date": "2026-09-21",
+   "label": "NQ=F 2M"
+  },
+  {
+   "file": "NQ=F-30m-2026-09-21.csv",
+   "symbol": "NQ=F",
+   "timeframe": "30m",
+   "date": "2026-09-21",
+   "label": "NQ=F 30M"
+  },
+  {
+   "file": "NQ=F-5m-2026-09-21.csv",
+   "symbol": "NQ=F",
+   "timeframe": "5m",
+   "date": "2026-09-21",
+   "label": "NQ=F 5M"
+  },
+  {
+   "file": "NVDA-15m-2026-09-21.csv",
+   "symbol": "NVDA",
+   "timeframe": "15m",
+   "date": "2026-09-21",
+   "label": "NVDA 15M"
+  },
+  {
+   "file": "NVDA-1d-2026-09-21.csv",
+   "symbol": "NVDA",
+   "timeframe": "1d",
+   "date": "2026-09-21",
+   "label": "NVDA 1D"
+  },
+  {
+   "file": "NVDA-1h-2026-09-21.csv",
+   "symbol": "NVDA",
+   "timeframe": "1h",
+   "date": "2026-09-21",
+   "label": "NVDA 1H"
+  },
+  {
+   "file": "NVDA-1m-2026-09-21.csv",
+   "symbol": "NVDA",
+   "timeframe": "1m",
+   "date": "2026-09-21",
+   "label": "NVDA 1M"
+  },
+  {
+   "file": "NVDA-1wk-2026-09-21.csv",
+   "symbol": "NVDA",
+   "timeframe": "1wk",
+   "date": "2026-09-21",
+   "label": "NVDA 1WK"
+  },
+  {
+   "file": "NVDA-2m-2026-09-21.csv",
+   "symbol": "NVDA",
+   "timeframe": "2m",
+   "date": "2026-09-21",
+   "label": "NVDA 2M"
+  },
+  {
+   "file": "NVDA-30m-2026-09-21.csv",
+   "symbol": "NVDA",
+   "timeframe": "30m",
+   "date": "2026-09-21",
+   "label": "NVDA 30M"
+  },
+  {
+   "file": "NVDA-5m-2026-09-21.csv",
+   "symbol": "NVDA",
+   "timeframe": "5m",
+   "date": "2026-09-21",
+   "label": "NVDA 5M"
+  },
+  {
+   "file": "PEP-15m-2026-09-21.csv",
+   "symbol": "PEP",
+   "timeframe": "15m",
+   "date": "2026-09-21",
+   "label": "PEP 15M"
+  },
+  {
+   "file": "PEP-1d-2026-09-21.csv",
+   "symbol": "PEP",
+   "timeframe": "1d",
+   "date": "2026-09-21",
+   "label": "PEP 1D"
+  },
+  {
+   "file": "PEP-1h-2026-09-21.csv",
+   "symbol": "PEP",
+   "timeframe": "1h",
+   "date": "2026-09-21",
+   "label": "PEP 1H"
+  },
+  {
+   "file": "PEP-1m-2026-09-21.csv",
+   "symbol": "PEP",
+   "timeframe": "1m",
+   "date": "2026-09-21",
+   "label": "PEP 1M"
+  },
+  {
+   "file": "PEP-1wk-2026-09-21.csv",
+   "symbol": "PEP",
+   "timeframe": "1wk",
+   "date": "2026-09-21",
+   "label": "PEP 1WK"
+  },
+  {
+   "file": "PEP-2m-2026-09-21.csv",
+   "symbol": "PEP",
+   "timeframe": "2m",
+   "date": "2026-09-21",
+   "label": "PEP 2M"
+  },
+  {
+   "file": "PEP-30m-2026-09-21.csv",
+   "symbol": "PEP",
+   "timeframe": "30m",
+   "date": "2026-09-21",
+   "label": "PEP 30M"
+  },
+  {
+   "file": "PEP-5m-2026-09-21.csv",
+   "symbol": "PEP",
+   "timeframe": "5m",
+   "date": "2026-09-21",
+   "label": "PEP 5M"
+  },
+  {
+   "file": "PLTR-15m-2026-09-21.csv",
+   "symbol": "PLTR",
+   "timeframe": "15m",
+   "date": "2026-09-21",
+   "label": "PLTR 15M"
+  },
+  {
+   "file": "PLTR-1d-2026-09-21.csv",
+   "symbol": "PLTR",
+   "timeframe": "1d",
+   "date": "2026-09-21",
+   "label": "PLTR 1D"
+  },
+  {
+   "file": "PLTR-1h-2026-09-21.csv",
+   "symbol": "PLTR",
+   "timeframe": "1h",
+   "date": "2026-09-21",
+   "label": "PLTR 1H"
+  },
+  {
+   "file": "PLTR-1m-2026-09-21.csv",
+   "symbol": "PLTR",
+   "timeframe": "1m",
+   "date": "2026-09-21",
+   "label": "PLTR 1M"
+  },
+  {
+   "file": "PLTR-1wk-2026-09-21.csv",
+   "symbol": "PLTR",
+   "timeframe": "1wk",
+   "date": "2026-09-21",
+   "label": "PLTR 1WK"
+  },
+  {
+   "file": "PLTR-2m-2026-09-21.csv",
+   "symbol": "PLTR",
+   "timeframe": "2m",
+   "date": "2026-09-21",
+   "label": "PLTR 2M"
+  },
+  {
+   "file": "PLTR-30m-2026-09-21.csv",
+   "symbol": "PLTR",
+   "timeframe": "30m",
+   "date": "2026-09-21",
+   "label": "PLTR 30M"
+  },
+  {
+   "file": "PLTR-5m-2026-09-21.csv",
+   "symbol": "PLTR",
+   "timeframe": "5m",
+   "date": "2026-09-21",
+   "label": "PLTR 5M"
+  },
+  {
+   "file": "QQQ-15m-2026-09-21.csv",
+   "symbol": "QQQ",
+   "timeframe": "15m",
+   "date": "2026-09-21",
+   "label": "QQQ 15M"
+  },
+  {
+   "file": "QQQ-1d-2026-09-21.csv",
+   "symbol": "QQQ",
+   "timeframe": "1d",
+   "date": "2026-09-21",
+   "label": "QQQ 1D"
+  },
+  {
+   "file": "QQQ-1h-2026-09-21.csv",
+   "symbol": "QQQ",
+   "timeframe": "1h",
+   "date": "2026-09-21",
+   "label": "QQQ 1H"
+  },
+  {
+   "file": "QQQ-1m-2026-09-21.csv",
+   "symbol": "QQQ",
+   "timeframe": "1m",
+   "date": "2026-09-21",
+   "label": "QQQ 1M"
+  },
+  {
+   "file": "QQQ-1wk-2026-09-21.csv",
+   "symbol": "QQQ",
+   "timeframe": "1wk",
+   "date": "2026-09-21",
+   "label": "QQQ 1WK"
+  },
+  {
+   "file": "QQQ-2m-2026-09-21.csv",
+   "symbol": "QQQ",
+   "timeframe": "2m",
+   "date": "2026-09-21",
+   "label": "QQQ 2M"
+  },
+  {
+   "file": "QQQ-30m-2026-09-21.csv",
+   "symbol": "QQQ",
+   "timeframe": "30m",
+   "date": "2026-09-21",
+   "label": "QQQ 30M"
+  },
+  {
+   "file": "QQQ-5m-2026-09-21.csv",
+   "symbol": "QQQ",
+   "timeframe": "5m",
+   "date": "2026-09-21",
+   "label": "QQQ 5M"
+  },
+  {
+   "file": "SPY-15m-2026-09-21.csv",
+   "symbol": "SPY",
+   "timeframe": "15m",
+   "date": "2026-09-21",
+   "label": "SPY 15M"
+  },
+  {
+   "file": "SPY-1d-2026-09-21.csv",
+   "symbol": "SPY",
+   "timeframe": "1d",
+   "date": "2026-09-21",
+   "label": "SPY 1D"
+  },
+  {
+   "file": "SPY-1h-2026-09-21.csv",
+   "symbol": "SPY",
+   "timeframe": "1h",
+   "date": "2026-09-21",
+   "label": "SPY 1H"
+  },
+  {
+   "file": "SPY-1m-2026-09-21.csv",
+   "symbol": "SPY",
+   "timeframe": "1m",
+   "date": "2026-09-21",
+   "label": "SPY 1M"
+  },
+  {
+   "file": "SPY-1wk-2026-09-21.csv",
+   "symbol": "SPY",
+   "timeframe": "1wk",
+   "date": "2026-09-21",
+   "label": "SPY 1WK"
+  },
+  {
+   "file": "SPY-2m-2026-09-21.csv",
+   "symbol": "SPY",
+   "timeframe": "2m",
+   "date": "2026-09-21",
+   "label": "SPY 2M"
+  },
+  {
+   "file": "SPY-30m-2026-09-21.csv",
+   "symbol": "SPY",
+   "timeframe": "30m",
+   "date": "2026-09-21",
+   "label": "SPY 30M"
+  },
+  {
+   "file": "SPY-5m-2026-09-21.csv",
+   "symbol": "SPY",
+   "timeframe": "5m",
+   "date": "2026-09-21",
+   "label": "SPY 5M"
+  },
+  {
+   "file": "TMUS-15m-2026-09-21.csv",
+   "symbol": "TMUS",
+   "timeframe": "15m",
+   "date": "2026-09-21",
+   "label": "TMUS 15M"
+  },
+  {
+   "file": "TMUS-1d-2026-09-21.csv",
+   "symbol": "TMUS",
+   "timeframe": "1d",
+   "date": "2026-09-21",
+   "label": "TMUS 1D"
+  },
+  {
+   "file": "TMUS-1h-2026-09-21.csv",
+   "symbol": "TMUS",
+   "timeframe": "1h",
+   "date": "2026-09-21",
+   "label": "TMUS 1H"
+  },
+  {
+   "file": "TMUS-1m-2026-09-21.csv",
+   "symbol": "TMUS",
+   "timeframe": "1m",
+   "date": "2026-09-21",
+   "label": "TMUS 1M"
+  },
+  {
+   "file": "TMUS-1wk-2026-09-21.csv",
+   "symbol": "TMUS",
+   "timeframe": "1wk",
+   "date": "2026-09-21",
+   "label": "TMUS 1WK"
+  },
+  {
+   "file": "TMUS-2m-2026-09-21.csv",
+   "symbol": "TMUS",
+   "timeframe": "2m",
+   "date": "2026-09-21",
+   "label": "TMUS 2M"
+  },
+  {
+   "file": "TMUS-30m-2026-09-21.csv",
+   "symbol": "TMUS",
+   "timeframe": "30m",
+   "date": "2026-09-21",
+   "label": "TMUS 30M"
+  },
+  {
+   "file": "TMUS-5m-2026-09-21.csv",
+   "symbol": "TMUS",
+   "timeframe": "5m",
+   "date": "2026-09-21",
+   "label": "TMUS 5M"
+  },
+  {
+   "file": "TQQQ-15m-2026-09-21.csv",
+   "symbol": "TQQQ",
+   "timeframe": "15m",
+   "date": "2026-09-21",
+   "label": "TQQQ 15M"
+  },
+  {
+   "file": "TQQQ-1d-2026-09-21.csv",
+   "symbol": "TQQQ",
+   "timeframe": "1d",
+   "date": "2026-09-21",
+   "label": "TQQQ 1D"
+  },
+  {
+   "file": "TQQQ-1h-2026-09-21.csv",
+   "symbol": "TQQQ",
+   "timeframe": "1h",
+   "date": "2026-09-21",
+   "label": "TQQQ 1H"
+  },
+  {
+   "file": "TQQQ-1m-2026-09-21.csv",
+   "symbol": "TQQQ",
+   "timeframe": "1m",
+   "date": "2026-09-21",
+   "label": "TQQQ 1M"
+  },
+  {
+   "file": "TQQQ-1wk-2026-09-21.csv",
+   "symbol": "TQQQ",
+   "timeframe": "1wk",
+   "date": "2026-09-21",
+   "label": "TQQQ 1WK"
+  },
+  {
+   "file": "TQQQ-2m-2026-09-21.csv",
+   "symbol": "TQQQ",
+   "timeframe": "2m",
+   "date": "2026-09-21",
+   "label": "TQQQ 2M"
+  },
+  {
+   "file": "TQQQ-30m-2026-09-21.csv",
+   "symbol": "TQQQ",
+   "timeframe": "30m",
+   "date": "2026-09-21",
+   "label": "TQQQ 30M"
+  },
+  {
+   "file": "TQQQ-5m-2026-09-21.csv",
+   "symbol": "TQQQ",
+   "timeframe": "5m",
+   "date": "2026-09-21",
+   "label": "TQQQ 5M"
+  },
+  {
+   "file": "TSLA-15m-2026-09-21.csv",
+   "symbol": "TSLA",
+   "timeframe": "15m",
+   "date": "2026-09-21",
+   "label": "TSLA 15M"
+  },
+  {
+   "file": "TSLA-1d-2026-09-21.csv",
+   "symbol": "TSLA",
+   "timeframe": "1d",
+   "date": "2026-09-21",
+   "label": "TSLA 1D"
+  },
+  {
+   "file": "TSLA-1h-2026-09-21.csv",
+   "symbol": "TSLA",
+   "timeframe": "1h",
+   "date": "2026-09-21",
+   "label": "TSLA 1H"
+  },
+  {
+   "file": "TSLA-1m-2026-09-21.csv",
+   "symbol": "TSLA",
+   "timeframe": "1m",
+   "date": "2026-09-21",
+   "label": "TSLA 1M"
+  },
+  {
+   "file": "TSLA-1wk-2026-09-21.csv",
+   "symbol": "TSLA",
+   "timeframe": "1wk",
+   "date": "2026-09-21",
+   "label": "TSLA 1WK"
+  },
+  {
+   "file": "TSLA-2m-2026-09-21.csv",
+   "symbol": "TSLA",
+   "timeframe": "2m",
+   "date": "2026-09-21",
+   "label": "TSLA 2M"
+  },
+  {
+   "file": "TSLA-30m-2026-09-21.csv",
+   "symbol": "TSLA",
+   "timeframe": "30m",
+   "date": "2026-09-21",
+   "label": "TSLA 30M"
+  },
+  {
+   "file": "TSLA-5m-2026-09-21.csv",
+   "symbol": "TSLA",
+   "timeframe": "5m",
+   "date": "2026-09-21",
+   "label": "TSLA 5M"
+  },
+  {
+   "file": "TXN-15m-2026-09-21.csv",
+   "symbol": "TXN",
+   "timeframe": "15m",
+   "date": "2026-09-21",
+   "label": "TXN 15M"
+  },
+  {
+   "file": "TXN-1d-2026-09-21.csv",
+   "symbol": "TXN",
+   "timeframe": "1d",
+   "date": "2026-09-21",
+   "label": "TXN 1D"
+  },
+  {
+   "file": "TXN-1h-2026-09-21.csv",
+   "symbol": "TXN",
+   "timeframe": "1h",
+   "date": "2026-09-21",
+   "label": "TXN 1H"
+  },
+  {
+   "file": "TXN-1m-2026-09-21.csv",
+   "symbol": "TXN",
+   "timeframe": "1m",
+   "date": "2026-09-21",
+   "label": "TXN 1M"
+  },
+  {
+   "file": "TXN-1wk-2026-09-21.csv",
+   "symbol": "TXN",
+   "timeframe": "1wk",
+   "date": "2026-09-21",
+   "label": "TXN 1WK"
+  },
+  {
+   "file": "TXN-2m-2026-09-21.csv",
+   "symbol": "TXN",
+   "timeframe": "2m",
+   "date": "2026-09-21",
+   "label": "TXN 2M"
+  },
+  {
+   "file": "TXN-30m-2026-09-21.csv",
+   "symbol": "TXN",
+   "timeframe": "30m",
+   "date": "2026-09-21",
+   "label": "TXN 30M"
+  },
+  {
+   "file": "TXN-5m-2026-09-21.csv",
+   "symbol": "TXN",
+   "timeframe": "5m",
+   "date": "2026-09-21",
+   "label": "TXN 5M"
+  },
+  {
+   "file": "WMT-15m-2026-09-21.csv",
+   "symbol": "WMT",
+   "timeframe": "15m",
+   "date": "2026-09-21",
+   "label": "WMT 15M"
+  },
+  {
+   "file": "WMT-1d-2026-09-21.csv",
+   "symbol": "WMT",
+   "timeframe": "1d",
+   "date": "2026-09-21",
+   "label": "WMT 1D"
+  },
+  {
+   "file": "WMT-1h-2026-09-21.csv",
+   "symbol": "WMT",
+   "timeframe": "1h",
+   "date": "2026-09-21",
+   "label": "WMT 1H"
+  },
+  {
+   "file": "WMT-1m-2026-09-21.csv",
+   "symbol": "WMT",
+   "timeframe": "1m",
+   "date": "2026-09-21",
+   "label": "WMT 1M"
+  },
+  {
+   "file": "WMT-1wk-2026-09-21.csv",
+   "symbol": "WMT",
+   "timeframe": "1wk",
+   "date": "2026-09-21",
+   "label": "WMT 1WK"
+  },
+  {
+   "file": "WMT-2m-2026-09-21.csv",
+   "symbol": "WMT",
+   "timeframe": "2m",
+   "date": "2026-09-21",
+   "label": "WMT 2M"
+  },
+  {
+   "file": "WMT-30m-2026-09-21.csv",
+   "symbol": "WMT",
+   "timeframe": "30m",
+   "date": "2026-09-21",
+   "label": "WMT 30M"
+  },
+  {
+   "file": "WMT-5m-2026-09-21.csv",
+   "symbol": "WMT",
+   "timeframe": "5m",
+   "date": "2026-09-21",
+   "label": "WMT 5M"
+  }
+ ]
+}

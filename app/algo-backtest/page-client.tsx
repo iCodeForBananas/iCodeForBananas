@@ -334,9 +334,10 @@ export default function AlgoBacktestPage() {
   useEffect(() => {
     async function fetchDatasets() {
       try {
-        const response = await fetch("/api/data-files");
+        // A static listing, written next to the CSVs by scripts/lib/data-manifest.mjs.
+        const response = await fetch("/data/manifest.json");
         const result = await response.json();
-        if (result.success && result.files.length > 0) {
+        if (result.files?.length > 0) {
           setAvailableDatasets(result.files);
         }
       } catch (err) {
@@ -412,7 +413,7 @@ export default function AlgoBacktestPage() {
   // Run batch backtest with parameter variations against all selected datasets.
   //
   // Compute happens in a Web Worker on the user's machine (see backtest.worker.ts).
-  // The worker fetches CSVs via /api/csv and runs the entire indicator + backtest
+  // The worker fetches CSVs from /data (static files) and runs the entire indicator + backtest
   // pipeline off the main thread, so the UI stays responsive and we don't hit
   // Vercel's lambda memory/time limits.
   const runBatchBacktest = useCallback(async () => {

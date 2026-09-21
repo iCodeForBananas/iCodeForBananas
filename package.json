@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "cross-env NODE_OPTIONS=--max-old-space-size=4096 next dev",
+    "prebuild": "node scripts/build-data-manifest.mjs",
     "build": "cross-env NODE_OPTIONS=--max-old-space-size=4096 next build",
     "start": "next start",
     "lint": "eslint",
@@ -11,6 +12,7 @@
     "test:watch": "vitest",
     "download-data": "node scripts/download-data.mjs",
     "download-all-missing": "node scripts/download-all-missing.mjs",
+    "data:manifest": "node scripts/build-data-manifest.mjs",
     "tokens:build": "node scripts/build-tokens.mjs",
     "tokens:check": "node scripts/contrast-check.mjs",
     "type:check": "node scripts/typography-check.mjs",

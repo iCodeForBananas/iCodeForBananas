@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { fetchQuotes } from "./lib/market-data.mjs";
+import { DATA_DIR, writeManifest } from "./lib/data-manifest.mjs";
 
 // Get command line arguments
 const args = process.argv.slice(2);
@@ -40,16 +41,15 @@ async function downloadData() {
     const fullCsv = header + csvContent;
 
     // Ensure data directory exists
-    const dataDir = path.join(process.cwd(), "data");
-    if (!fs.existsSync(dataDir)) {
-      fs.mkdirSync(dataDir);
-    }
+    const dataDir = DATA_DIR;
+    fs.mkdirSync(dataDir, { recursive: true });
 
     // Generate filename
     const filename = `${symbol}-${interval}-${new Date().toISOString().split("T")[0]}.csv`;
     const filePath = path.join(dataDir, filename);
 
     fs.writeFileSync(filePath, fullCsv);
+    writeManifest();
 
     console.log(`Success! Data saved to: ${filePath}`);
   } catch (error) {

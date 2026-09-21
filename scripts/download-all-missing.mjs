@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { fetchQuotes } from "./lib/market-data.mjs";
+import { DATA_DIR, writeManifest } from "./lib/data-manifest.mjs";
 
 const TICKERS = [
   "AAPL", "AMZN", "AVGO", "COST", "CSCO", "GOOGL", "LIN", "META",
@@ -41,8 +42,8 @@ function sleep(ms) {
 }
 
 async function main() {
-  const dataDir = path.join(process.cwd(), "data");
-  if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir);
+  const dataDir = DATA_DIR;
+  fs.mkdirSync(dataDir, { recursive: true });
 
   const tasks = [];
   for (const symbol of TICKERS) {
@@ -76,6 +77,7 @@ async function main() {
     if (done + failed < tasks.length) await sleep(DELAY_MS);
   }
 
+  writeManifest();
   console.log(`\nDone. ${done} downloaded, ${failed} failed.`);
 }
 
