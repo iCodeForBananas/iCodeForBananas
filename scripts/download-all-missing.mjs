@@ -1,8 +1,6 @@
-import YahooFinance from "yahoo-finance2";
 import fs from "fs";
 import path from "path";
-
-const yahooFinance = new YahooFinance();
+import { fetchQuotes } from "./lib/market-data.mjs";
 
 const TICKERS = [
   "AAPL", "AMZN", "AVGO", "COST", "CSCO", "GOOGL", "LIN", "META",
@@ -14,20 +12,6 @@ const INTERVALS = ["1m", "2m", "5m", "15m", "30m", "1h", "1d", "1wk"];
 
 const DELAY_MS = 1500;
 
-function getStartDate(interval) {
-  const now = new Date();
-  if (interval === "1m") {
-    now.setDate(now.getDate() - 7);
-  } else if (["2m", "5m", "15m", "30m"].includes(interval)) {
-    now.setDate(now.getDate() - 59);
-  } else if (["1h", "60m", "90m"].includes(interval)) {
-    now.setDate(now.getDate() - 730);
-  } else {
-    now.setFullYear(now.getFullYear() - 10);
-  }
-  return now;
-}
-
 function hasExistingFile(dataDir, symbol, interval) {
   const files = fs.readdirSync(dataDir);
   const prefix = `${symbol}-${interval}-`;
@@ -35,19 +19,11 @@ function hasExistingFile(dataDir, symbol, interval) {
 }
 
 async function downloadOne(symbol, interval, dataDir) {
-  const startDate = getStartDate(interval);
-  const endDate = new Date();
-
-  const result = await yahooFinance.chart(symbol, {
-    period1: startDate,
-    period2: endDate,
-    interval,
-  });
-
-  if (!result?.quotes?.length) throw new Error("No data returned");
+  const { quotes, note } = await fetchQuotes(symbol, interval);
+  if (note) console.warn(`(${note}) `);
 
   const header = "Date,Open,High,Low,Close,Volume\n";
-  const csvContent = result.quotes
+  const csvContent = quotes
     .map((q) => {
       if (q.open === null || q.close === null) return "";
       return `${q.date.toISOString()},${q.open},${q.high},${q.low},${q.close},${q.volume}`;
@@ -57,7 +33,7 @@ async function downloadOne(symbol, interval, dataDir) {
 
   const filename = `${symbol}-${interval}-${new Date().toISOString().split("T")[0]}.csv`;
   fs.writeFileSync(path.join(dataDir, filename), header + csvContent);
-  return result.quotes.length;
+  return quotes.length;
 }
 
 function sleep(ms) {

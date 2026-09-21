@@ -10,31 +10,21 @@
  * regularly and a 30m series grows past the 60-day window one refresh at a
  * time; skip a few months and the series has a hole where nothing was kept.
  *
+ * With POLYGON_API_KEY set (in the environment or .env.local), sub-hour
+ * intervals fetch a full year from Polygon instead of Yahoo's 7/59 days, so a
+ * first refresh backfills the year and later ones just top it up. See
+ * scripts/lib/market-data.mjs.
+ *
  *   node scripts/refresh-data.mjs 30m              # every ticker, 30m
  *   node scripts/refresh-data.mjs 30m TQQQ SPY     # just these
  *   node scripts/refresh-data.mjs 30m --all        # every ticker/interval pair on disk
  */
 
-import YahooFinance from "yahoo-finance2";
 import fs from "fs";
 import path from "path";
-
-const yahooFinance = new YahooFinance({ suppressNotices: ["yahooSurvey"] });
+import { fetchQuotes, isPlaceholderRow, isSubHourInterval } from "./lib/market-data.mjs";
 
 const DELAY_MS = 1500;
-
-/** How far back the source will serve each interval, in days. */
-const LOOKBACK_DAYS = {
-  "1m": 7,
-  "2m": 59,
-  "5m": 59,
-  "15m": 59,
-  "30m": 59,
-  "60m": 730,
-  "90m": 730,
-  "1h": 730,
-};
-const DEFAULT_LOOKBACK_DAYS = 3650;
 
 const args = process.argv.slice(2);
 const interval = args.find((a) => !a.startsWith("--"));
@@ -62,16 +52,27 @@ function existingFor(interval, symbols) {
   return found;
 }
 
-/** CSV rows as a Map of ISO timestamp → full line, so a merge dedupes by bar. */
+/**
+ * CSV rows as a Map of ISO timestamp → full line, so a merge dedupes by bar.
+ * For sub-hour intervals, off-session zero-volume placeholders are left behind
+ * rather than carried forward; `dropped` says how many.
+ */
 function readRows(file) {
   const rows = new Map();
-  if (!file) return rows;
+  let dropped = 0;
+  if (!file) return { rows, dropped };
   const text = fs.readFileSync(path.join(dataDir, file), "utf8").trim();
-  for (const line of text.split("\n").slice(1)) {
+  for (const raw of text.split("\n").slice(1)) {
+    const line = raw.trim();
     const date = line.split(",")[0];
-    if (date) rows.set(date, line.trim());
+    if (!date) continue;
+    if (isSubHourInterval(interval) && isPlaceholderRow(line)) {
+      dropped++;
+      continue;
+    }
+    rows.set(date, line);
   }
-  return rows;
+  return { rows, dropped };
 }
 
 function sleep(ms) {
@@ -79,15 +80,9 @@ function sleep(ms) {
 }
 
 async function refreshOne(symbol, existingFile) {
-  const lookback = LOOKBACK_DAYS[interval] ?? DEFAULT_LOOKBACK_DAYS;
-  const period2 = new Date();
-  const period1 = new Date(period2.getTime() - lookback * 24 * 60 * 60 * 1000);
+  const { quotes, source, note } = await fetchQuotes(symbol, interval);
 
-  const result = await yahooFinance.chart(symbol, { period1, period2, interval });
-  const quotes = result?.quotes ?? [];
-  if (quotes.length === 0) throw new Error("No data returned");
-
-  const rows = readRows(existingFile);
+  const { rows, dropped } = readRows(existingFile);
   const before = rows.size;
   for (const q of quotes) {
     if (q.open === null || q.close === null) continue;
@@ -105,6 +100,9 @@ async function refreshOne(symbol, existingFile) {
     from: sorted[0].split(",")[0].slice(0, 10),
     to: sorted[sorted.length - 1].split(",")[0].slice(0, 10),
     filename,
+    source,
+    note,
+    dropped,
   };
 }
 
@@ -125,7 +123,7 @@ async function main() {
     process.stdout.write(`${symbol} ${interval} ... `);
     try {
       const r = await refreshOne(symbol, file);
-      console.log(`+${r.added} bars, ${r.total} total, ${r.from} → ${r.to}`);
+      console.log(`+${r.added} bars, ${r.total} total, ${r.from} → ${r.to} (${r.source}${r.note ? `; ${r.note}` : ""}${r.dropped ? `; dropped ${r.dropped} off-session placeholder bars` : ""})`);
       ok++;
     } catch (err) {
       console.log(`FAILED: ${err.message.slice(0, 120)}`);

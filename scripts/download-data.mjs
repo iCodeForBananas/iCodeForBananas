@@ -1,8 +1,6 @@
-import YahooFinance from "yahoo-finance2";
 import fs from "fs";
 import path from "path";
-
-const yahooFinance = new YahooFinance();
+import { fetchQuotes } from "./lib/market-data.mjs";
 
 // Get command line arguments
 const args = process.argv.slice(2);
@@ -21,44 +19,11 @@ async function downloadData() {
   try {
     console.log(`Downloading data for ${symbol} with interval ${interval}...`);
 
-    let startDate = new Date();
-    const endDate = new Date();
-
-    // Determine start date based on interval
-    // Yahoo Finance limits vary by interval type
-    const veryShortIntervals = ["1m"]; // 8 days max
-    const shortIntradayIntervals = ["2m", "5m", "15m", "30m"]; // 59 days max
-    const longIntradayIntervals = ["60m", "90m", "1h"]; // 730 days max
-
-    if (veryShortIntervals.includes(interval)) {
-      console.log("1m interval detected. Limiting fetch to last 7 days (Yahoo Finance limit).");
-      startDate.setDate(startDate.getDate() - 7);
-    } else if (shortIntradayIntervals.includes(interval)) {
-      console.log("Short intraday interval detected. Limiting fetch to last 59 days (Yahoo Finance limit).");
-      startDate.setDate(startDate.getDate() - 59);
-    } else if (longIntradayIntervals.includes(interval)) {
-      console.log("Hourly interval detected. Limiting fetch to last 730 days (Yahoo Finance limit).");
-      startDate.setDate(startDate.getDate() - 730);
-    } else {
-      // For daily or longer, fetch 10 years
-      console.log("Daily/Weekly/Monthly interval detected. Fetching last 10 years.");
-      startDate.setFullYear(startDate.getFullYear() - 10);
-    }
-
-    const queryOptions = {
-      period1: startDate,
-      period2: endDate,
-      interval: interval,
-    };
-
-    const result = await yahooFinance.chart(symbol, queryOptions);
-
-    if (!result || !result.quotes || result.quotes.length === 0) {
-      throw new Error("No data found for the given parameters.");
-    }
-
-    const quotes = result.quotes;
-    console.log(`Retrieved ${quotes.length} records.`);
+    // Sub-hour intervals come from Polygon (a year); everything else keeps its
+    // existing Yahoo window. See scripts/lib/market-data.mjs.
+    const { quotes, source, days, requests, note } = await fetchQuotes(symbol, interval);
+    if (note) console.warn(`Note: ${note}.`);
+    console.log(`Retrieved ${quotes.length} records from ${source} (last ${days} days, ${requests} request${requests === 1 ? "" : "s"}).`);
 
     // Convert to CSV
     const header = "Date,Open,High,Low,Close,Volume\n";
