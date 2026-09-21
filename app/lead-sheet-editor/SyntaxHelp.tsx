@@ -23,7 +23,7 @@ const ENTRIES: Entry[] = [
   {
     title: "Title, key and tempo",
     blurb:
-      "The first line is the song title. Key and Tempo go on the line under it — they feed the transpose tool and the metronome.",
+      "The first line is the song title. Key and Tempo go on the line under it — they feed the transpose tool and the beat timing.",
     example: "Song Title\nKey: G  Tempo: 120",
   },
   {

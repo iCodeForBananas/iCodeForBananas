@@ -39,11 +39,9 @@ import { PlaybackBar, usePlayback, usePlaybackKeys } from "../../PlaybackBar";
 import { findYouTubeLink } from "../../youtube";
 import { YouTubePanel, useYouTubePlayback } from "../../YouTubePlayer";
 import {
-  MetronomeOverlay,
   clampBpm,
-  DEFAULT_BEATS_PER_BAR,
   DEFAULT_BPM,
-} from "../../Metronome";
+} from "../../Tempo";
 import {
   getCueTagInfo,
   parseCueEvents,
@@ -67,8 +65,8 @@ import PreviewSidebar, {
 const NO_LAYERS: ReadonlySet<string> = new Set<string>();
 
 // Per-song localStorage keys: leadSheet:${id}:fontScale, leadSheet:${id}:columnCount,
-// leadSheet:${id}:columnWidthVw, leadSheet:${id}:beatsPerBar
-// The metronome's BPM is not local — it lives on the song's tempo column.
+// leadSheet:${id}:columnWidthVw
+// The tempo is not local — it lives on the song's tempo column.
 
 function loadFontScale(id: string): number {
   if (typeof window === "undefined") return 100;
@@ -98,16 +96,6 @@ function loadColumnWidthVw(id: string): number {
     if (!isNaN(parsed)) return Math.min(MAX_COLUMN_WIDTH_VW, Math.max(MIN_COLUMN_WIDTH_VW, parsed));
   } catch {}
   return DEFAULT_COLUMN_WIDTH_VW;
-}
-
-function loadBeatsPerBar(id: string): number {
-  if (typeof window === "undefined") return DEFAULT_BEATS_PER_BAR;
-  try {
-    const saved = localStorage.getItem(`leadSheet:${id}:beatsPerBar`);
-    const parsed = saved ? parseInt(saved) : NaN;
-    if (!isNaN(parsed) && parsed > 0) return parsed;
-  } catch {}
-  return DEFAULT_BEATS_PER_BAR;
 }
 
 function EditModeBanner({
@@ -476,8 +464,6 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
   const [follow, setFollow] = useState(true);
   const [autoPlay, setAutoPlay] = useState(false);
   const [bpm, setBpm] = useState(DEFAULT_BPM);
-  const [beatsPerBar, setBeatsPerBar] = useState(() => loadBeatsPerBar(id));
-  const [metronomeOn, setMetronomeOn] = useState(false);
   // Open-ended layer state: any cue tag layer name lives here, and the cue
   // events during a timed playback are what write it. Every name the kit knows
   // is wired — drum, claps, shimmer, drone. A cue naming something else is
@@ -1004,7 +990,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
     } catch {}
   };
 
-  // The metronome tempo is the song's tempo, so changing it here writes back to
+  // The tempo here is the song's tempo, so changing it here writes back to
   // the sheet — debounced, since it moves a beat at a time on the +/- buttons.
   const updateBpm = (next: number) => {
     const clamped = clampBpm(next);
@@ -1019,7 +1005,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
           .eq("id", id);
         if (sheet) await cacheSheet({ ...sheet, tempo: clamped });
       } catch {
-        // Offline or not the owner — the metronome still runs at the new tempo.
+        // Offline or not the owner — playback still runs at the new tempo.
       }
     }, 800);
   };
@@ -1056,13 +1042,6 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
   };
 
   useEffect(() => () => { if (kitSaveTimer.current) clearTimeout(kitSaveTimer.current); }, []);
-
-  const updateBeatsPerBar = (next: number) => {
-    setBeatsPerBar(next);
-    try {
-      localStorage.setItem(`leadSheet:${id}:beatsPerBar`, String(next));
-    } catch {}
-  };
 
   const updateColumnWidthVw = (next: number) => {
     const clamped = Math.min(MAX_COLUMN_WIDTH_VW, Math.max(MIN_COLUMN_WIDTH_VW, next));
@@ -1153,10 +1132,6 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
       onTransposeStepsChange={setTransposeSteps}
       bpm={bpm}
       onBpmChange={updateBpm}
-      beatsPerBar={beatsPerBar}
-      onBeatsPerBarChange={updateBeatsPerBar}
-      metronomeOn={metronomeOn}
-      onMetronomeToggle={() => setMetronomeOn((on) => !on)}
       kit={kit}
       kitPlaying={kitPlaying}
       onKitPlayingChange={setKitPlaying}
@@ -1281,15 +1256,6 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
             songKey={sheet?.key ?? null}
             transpose={transposeSteps}
             songTitle={sheet?.title ?? null}
-          />
-        )}
-
-        {metronomeOn && (
-          <MetronomeOverlay
-            bpm={bpm}
-            beatsPerBar={beatsPerBar}
-            running={metronomeOn}
-            lifted={playbackOpen}
           />
         )}
 

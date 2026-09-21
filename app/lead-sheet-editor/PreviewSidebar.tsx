@@ -26,7 +26,7 @@ import {
 import { Button, Flex, IconButton, Text } from "@radix-ui/themes";
 import { OfflineBadge } from "./shared";
 import type { YouTubeLink } from "./youtube";
-import { MetronomeControl } from "./Metronome";
+import { TempoControl } from "./Tempo";
 import { KIT_LAYERS, LAYER_LABELS, hasLayer, matchesPreset, type KitSettings } from "./kit";
 import { ControlRow, RowButton } from "./SidebarRows";
 
@@ -373,10 +373,6 @@ export interface PreviewSidebarProps {
   // Audio
   bpm: number;
   onBpmChange: (next: number) => void;
-  beatsPerBar: number;
-  onBeatsPerBarChange: (next: number) => void;
-  metronomeOn: boolean;
-  onMetronomeToggle: () => void;
   /** The whole backing track, for the summary line under the Kit row. */
   kit: KitSettings;
   kitPlaying: boolean;
@@ -486,14 +482,7 @@ export default function PreviewSidebar(props: PreviewSidebarProps) {
             </SidebarSection>
 
             <SidebarSection title='Audio'>
-              <MetronomeControl
-                bpm={props.bpm}
-                onBpmChange={props.onBpmChange}
-                beatsPerBar={props.beatsPerBar}
-                onBeatsPerBarChange={props.onBeatsPerBarChange}
-                running={props.metronomeOn}
-                onToggle={props.onMetronomeToggle}
-              />
+              <TempoControl bpm={props.bpm} onBpmChange={props.onBpmChange} />
               <KitControl
                 kit={props.kit}
                 playing={props.kitPlaying}
