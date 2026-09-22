@@ -4,8 +4,9 @@ import { useState, useEffect, useMemo, useRef, use } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/app/hooks/useAuth";
-import { Save, ArrowLeft, Eye, Replace, X, Sparkles, Play, Timer, TimerOff, Clock, HelpCircle, SlidersHorizontal, ChevronDown } from "lucide-react";
+import { Save, Eye, Replace, X, Sparkles, Play, Timer, TimerOff, Clock, HelpCircle, SlidersHorizontal, ChevronDown } from "lucide-react";
 import { Button, DropdownMenu, Flex, IconButton, Select, Separator, Text, TextField } from "@radix-ui/themes";
+import { Breadcrumbs } from "@/app/components/Breadcrumbs";
 import { RevisionHistory } from "../../RevisionHistory";
 import {
   type LeadSheet,
@@ -243,6 +244,10 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
     [rawText]
   );
   const hasTiming = timingCount > 0;
+  // Read straight from the text being edited, so the breadcrumb tracks a
+  // title change on the very keystroke that makes it — same source `saveSheet`
+  // reads from, just not waiting for the debounce.
+  const songTitle = useMemo(() => parseText(rawText).title || "Untitled", [rawText]);
   const findCount = chordsInSheet.find((c) => c.chord === findChord)?.count ?? 0;
   const newChord = replaceWith.trim().replace(/^\[|\]$/g, "").trim();
   const canReplace =
@@ -401,11 +406,6 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
     router.push(`/lead-sheet-editor/${id}/preview?play=1`);
   }
 
-  function handleBack() {
-    if (dirty && !confirm("Discard unsaved changes?")) return;
-    router.push("/lead-sheet-editor");
-  }
-
   if (authLoading || loading) {
     return (
       <div className="flex flex-col flex-1 min-h-0">
@@ -443,10 +443,20 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
           {/* Toolbar */}
           <div className="shrink-0">
             <div className="flex items-center justify-between px-4 py-3 sm:px-6 sm:py-4">
-              <Button variant="ghost" color="gray" onClick={handleBack}>
-                <ArrowLeft className="w-4 h-4" />
-                All Sheets
-              </Button>
+              <Breadcrumbs
+                items={[
+                  {
+                    label: "Lead Sheets",
+                    href: "/lead-sheet-editor",
+                    onNavigate: (e) => {
+                      // Same guard as the old "All Sheets" button — a crumb
+                      // is still a real navigation away from unsaved text.
+                      if (dirty && !confirm("Discard unsaved changes?")) e.preventDefault();
+                    },
+                  },
+                  { label: songTitle },
+                ]}
+              />
               <Flex align="center" gap="2" wrap="wrap" justify="end">
                 {offline && <OfflineBadge />}
                 {saveError && (

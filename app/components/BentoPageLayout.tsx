@@ -1,12 +1,15 @@
 "use client";
 
 import { Heading } from "@radix-ui/themes";
+import { Breadcrumbs, type BreadcrumbItem } from "./Breadcrumbs";
 
 interface BentoPageLayoutProps {
   title: string;
   maxWidth?: string;
   boxClassName?: string;
   titleClassName?: string;
+  /** The path back up to this page, e.g. Lead Sheets > Setlists. Omit for a top-level page. */
+  breadcrumbs?: BreadcrumbItem[];
   /** Sits inline right after the title — a status badge, not an action. */
   titleAdornment?: React.ReactNode;
   /** Page-level actions (buttons, links), pinned to the header row's far side. */
@@ -19,6 +22,7 @@ export default function BentoPageLayout({
   maxWidth,
   boxClassName,
   titleClassName,
+  breadcrumbs,
   titleAdornment,
   headerActions,
   children,
@@ -38,11 +42,14 @@ export default function BentoPageLayout({
               }
             >
               {/* Below lg the sidebar collapses to a fixed hamburger button in the top-left corner; clear it. */}
-              <div className='flex items-center gap-3 pl-8 lg:pl-0'>
-                <Heading as='h1' size={{ initial: "5", sm: "6" }} weight='bold' className={titleClassName}>
-                  {title}
-                </Heading>
-                {titleAdornment}
+              <div className='flex flex-col gap-0.5 min-w-0 pl-8 lg:pl-0'>
+                {breadcrumbs && breadcrumbs.length > 0 && <Breadcrumbs items={breadcrumbs} className='-ml-1.5' />}
+                <div className='flex items-center gap-3'>
+                  <Heading as='h1' size={{ initial: "5", sm: "6" }} weight='bold' className={titleClassName}>
+                    {title}
+                  </Heading>
+                  {titleAdornment}
+                </div>
               </div>
               {headerActions && <div className='flex items-center gap-2'>{headerActions}</div>}
             </div>

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/app/hooks/useAuth";
 import { Pencil, Plus } from "lucide-react";
+import { Breadcrumbs } from "@/app/components/Breadcrumbs";
 import { Button } from "@radix-ui/themes";
 import {
   type LeadSheet,
@@ -1146,6 +1147,17 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
     />
   );
 
+  // Reachable without opening the sidebar — the whole point of a breadcrumb
+  // on a phone or tablet, where the sidebar defaults to closed. Left out of
+  // fullscreen on purpose: that mode's job is to clear every bit of chrome
+  // but the sheet, and the sidebar (still one tap away there too) already
+  // carries an All Sheets entry.
+  const breadcrumbBar = (
+    <div className='shrink-0 border-b border-line-subtle px-6 py-1 sm:px-8'>
+      <Breadcrumbs items={[{ label: "Lead Sheets", href: "/lead-sheet-editor" }, { label: sheet.title || "Untitled" }]} />
+    </div>
+  );
+
   return (
     <>
       {/* Print-only view: chrome-free layout that only renders when printing.
@@ -1202,6 +1214,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
             <div className='relative flex flex-1 min-h-0 rounded-none border-none bg-surface-base overflow-hidden'>
               {toolSidebar}
               <div className='flex flex-col flex-1 min-w-0'>
+                {breadcrumbBar}
                 {editMode && <EditModeBanner error={moveError} onDone={() => setEditMode(false)} className='px-6 sm:px-8' />}
                 {/* Scrollable content */}
                 <div className='flex-1 overflow-y-auto overflow-x-hidden'>

@@ -4,10 +4,15 @@ import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/app/hooks/useAuth";
-import Link from "next/link";
-import { ArrowLeft, ArrowUp, ArrowDown, Trash2, Plus, Play, X, Music } from "lucide-react";
+import { ArrowUp, ArrowDown, Trash2, Plus, Play, X, Music } from "lucide-react";
 import { Button, Dialog, Flex, IconButton, ScrollArea, Text } from "@radix-ui/themes";
 import { Bento } from "@/app/components/ui/bento";
+import BentoPageLayout from "@/app/components/BentoPageLayout";
+
+const BREADCRUMBS = [
+  { label: "Lead Sheets", href: "/lead-sheet-editor" },
+  { label: "Setlists", href: "/lead-sheet-editor/setlists" },
+];
 
 interface SetlistSong {
   id: string;
@@ -115,111 +120,81 @@ export default function SetlistDetail({ params }: { params: Promise<{ id: string
 
   if (authLoading || loading) {
     return (
-      <div className='flex flex-col flex-1 min-h-0'>
-        <main className='flex flex-col flex-1 min-h-0 p-2 sm:p-4'>
-          <div
-            className='flex flex-col flex-1 min-h-0 rounded-none border-none bg-surface-base overflow-hidden'
-          >
-            <div className='flex-1 flex items-center justify-center text-ink-muted'>Loading...</div>
-          </div>
-        </main>
-      </div>
+      <BentoPageLayout title='Setlist' breadcrumbs={BREADCRUMBS}>
+        <div className='flex-1 flex items-center justify-center text-ink-muted'>Loading...</div>
+      </BentoPageLayout>
     );
   }
 
   if (!user || name === null) {
     return (
-      <div className='flex flex-col flex-1 min-h-0'>
-        <main className='flex flex-col flex-1 min-h-0 p-2 sm:p-4'>
-          <div
-            className='flex flex-col flex-1 min-h-0 rounded-none border-none bg-surface-base overflow-hidden'
-          >
-            <div className='flex-1 flex items-center justify-center text-ink-muted'>Setlist not found.</div>
-          </div>
-        </main>
-      </div>
+      <BentoPageLayout title='Setlist' breadcrumbs={BREADCRUMBS}>
+        <div className='flex-1 flex items-center justify-center text-ink-muted'>Setlist not found.</div>
+      </BentoPageLayout>
     );
   }
 
   return (
-    <div className='flex flex-col flex-1 min-h-0'>
-      <main className='flex flex-col flex-1 min-h-0 p-2 sm:p-4'>
-        <div
-          className='flex flex-col flex-1 min-h-0 rounded-none border-none bg-surface-base overflow-hidden'
-        >
-          <div className='shrink-0'>
-            <div className='flex flex-wrap items-center justify-between gap-3 px-4 pt-4 pb-3 sm:px-6 sm:pt-6 sm:pb-5'>
-              <div className='flex items-center gap-3 min-w-0'>
-                <Link
-                  href='/lead-sheet-editor/setlists'
-                  className='flex items-center gap-2 text-ink-muted hover:text-ink-primary transition-colors text-sm font-medium shrink-0'
-                >
-                  <ArrowLeft className='w-4 h-4' />
-                  Setlists
-                </Link>
-                <h1 className='text-lg sm:text-xl font-bold leading-tight truncate text-primary-text'>
-                  {name}
-                </h1>
-              </div>
-              <div className='flex items-center gap-2 shrink-0'>
-                <Button variant='surface' color='gray' onClick={openPicker}>
-                  <Plus className='w-4 h-4' />
-                  Add Song
-                </Button>
-                <Button onClick={startSet} disabled={songs.length === 0}>
-                  <Play className='w-4 h-4' />
-                  Start Set
-                </Button>
-              </div>
-            </div>
+    <>
+      <BentoPageLayout
+        title={name}
+        breadcrumbs={BREADCRUMBS}
+        headerActions={
+          <>
+            <Button variant='surface' color='gray' onClick={openPicker}>
+              <Plus className='w-4 h-4' />
+              Add Song
+            </Button>
+            <Button onClick={startSet} disabled={songs.length === 0}>
+              <Play className='w-4 h-4' />
+              Start Set
+            </Button>
+          </>
+        }
+      >
+        {songs.length === 0 ? (
+          <div className='flex-1 flex flex-col items-center justify-center text-ink-muted'>
+            <Music className='w-12 h-12 mb-3 opacity-40' />
+            <p>No songs yet. Add one to get started!</p>
           </div>
-
-          <div className='flex-1 overflow-auto p-4 sm:p-6 flex flex-col'>
-            {songs.length === 0 ? (
-              <div className='flex-1 flex flex-col items-center justify-center text-ink-muted'>
-                <Music className='w-12 h-12 mb-3 opacity-40' />
-                <p>No songs yet. Add one to get started!</p>
-              </div>
-            ) : (
-              <div className='space-y-2'>
-                {songs.map((song, index) => (
-                  <Bento key={song.id} className='flex items-center justify-between'>
-                    <div className='flex items-center gap-3 min-w-0'>
-                      <span className='text-sm font-mono text-ink-muted w-6 text-right shrink-0'>{index + 1}</span>
-                      <div className='min-w-0'>
-                        <div className='font-semibold truncate text-ink-primary'>
-                          {song.lead_sheets?.title || "Untitled"}
-                        </div>
-                        <div className='text-sm text-ink-muted flex flex-wrap gap-3 mt-0.5'>
-                          {song.lead_sheets?.key && <span>Key: {song.lead_sheets.key}</span>}
-                          {song.lead_sheets?.tempo && <span>{song.lead_sheets.tempo} BPM</span>}
-                        </div>
-                      </div>
+        ) : (
+          <div className='space-y-2'>
+            {songs.map((song, index) => (
+              <Bento key={song.id} className='flex items-center justify-between'>
+                <div className='flex items-center gap-3 min-w-0'>
+                  <span className='text-sm font-mono text-ink-muted w-6 text-right shrink-0'>{index + 1}</span>
+                  <div className='min-w-0'>
+                    <div className='font-semibold truncate text-ink-primary'>
+                      {song.lead_sheets?.title || "Untitled"}
                     </div>
-                    <div className='flex items-center gap-1.5 ml-3 shrink-0'>
-                      <IconButton variant='ghost' color='gray' onClick={() => moveSong(index, -1)} disabled={index === 0} aria-label='Move up'>
-                        <ArrowUp className='w-4 h-4' />
-                      </IconButton>
-                      <IconButton
-                        variant='ghost'
-                        color='gray'
-                        onClick={() => moveSong(index, 1)}
-                        disabled={index === songs.length - 1}
-                        aria-label='Move down'
-                      >
-                        <ArrowDown className='w-4 h-4' />
-                      </IconButton>
-                      <IconButton variant='ghost' color='red' onClick={() => removeSong(song.id)} aria-label='Remove song' className='ml-1'>
-                        <Trash2 className='w-4 h-4' />
-                      </IconButton>
+                    <div className='text-sm text-ink-muted flex flex-wrap gap-3 mt-0.5'>
+                      {song.lead_sheets?.key && <span>Key: {song.lead_sheets.key}</span>}
+                      {song.lead_sheets?.tempo && <span>{song.lead_sheets.tempo} BPM</span>}
                     </div>
-                  </Bento>
-                ))}
-              </div>
-            )}
+                  </div>
+                </div>
+                <div className='flex items-center gap-1.5 ml-3 shrink-0'>
+                  <IconButton variant='ghost' color='gray' onClick={() => moveSong(index, -1)} disabled={index === 0} aria-label='Move up'>
+                    <ArrowUp className='w-4 h-4' />
+                  </IconButton>
+                  <IconButton
+                    variant='ghost'
+                    color='gray'
+                    onClick={() => moveSong(index, 1)}
+                    disabled={index === songs.length - 1}
+                    aria-label='Move down'
+                  >
+                    <ArrowDown className='w-4 h-4' />
+                  </IconButton>
+                  <IconButton variant='ghost' color='red' onClick={() => removeSong(song.id)} aria-label='Remove song' className='ml-1'>
+                    <Trash2 className='w-4 h-4' />
+                  </IconButton>
+                </div>
+              </Bento>
+            ))}
           </div>
-        </div>
-      </main>
+        )}
+      </BentoPageLayout>
 
       <Dialog.Root open={showPicker} onOpenChange={setShowPicker}>
         <Dialog.Content maxWidth='28rem' aria-describedby={undefined} className='flex max-h-[80vh] flex-col overflow-hidden p-0'>
@@ -263,6 +238,6 @@ export default function SetlistDetail({ params }: { params: Promise<{ id: string
           </ScrollArea>
         </Dialog.Content>
       </Dialog.Root>
-    </div>
+    </>
   );
 }
