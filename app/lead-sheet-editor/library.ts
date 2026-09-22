@@ -1,7 +1,5 @@
 // ─── The library ────────────────────────────────────────────────────────────
 
-import type { View } from "@/app/lib/harmony";
-
 export type Density = "comfortable" | "compact";
 
 /**
@@ -117,40 +115,3 @@ export function saveSortOrder(order: SortOrder): void {
     // Private browsing. A forgotten preference is not worth an error.
   }
 }
-
-// ─── Setlists ────────────────────────────────────────────────────────────────
-
-/**
- * A song's place in a setlist, which may ask for it in a different key or with
- * a capo for that set only.
- */
-export interface SetlistEntry {
-  transpose_override?: number | null;
-  capo_override?: number | null;
-  tempo_override?: number | null;
-}
-
-/**
- * How a set wants a song read.
- *
- * The overrides are a reading, exactly like the controls in the preview: they
- * produce a View and never touch the song. A set that plays something down a
- * tone is a fact about that set, and writing it back would change every other
- * set that uses the same song.
- */
-export function setlistView(entry: SetlistEntry | null | undefined): View {
-  return {
-    transpose: entry?.transpose_override ?? 0,
-    capo: entry?.capo_override ?? 0,
-  };
-}
-
-/** The tempo to count in at: the set's, if it asked for one, else the song's. */
-export const setlistTempo = (
-  entry: SetlistEntry | null | undefined,
-  songTempo: number | null | undefined
-): number | null => entry?.tempo_override ?? songTempo ?? null;
-
-/** Does this set change anything about the song? Worth showing when it does. */
-export const hasOverrides = (entry: SetlistEntry | null | undefined): boolean =>
-  Boolean(entry?.transpose_override || entry?.capo_override || entry?.tempo_override);

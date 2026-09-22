@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/app/hooks/useAuth";
 import Link from "next/link";
-import { Plus, Trash2, Music, Eye, Pencil, Copy, Check, Link2, ListMusic, Star } from "lucide-react";
+import { Plus, Trash2, Music, Eye, Pencil, Copy, Check, Link2, Star } from "lucide-react";
 import type { LeadSheet } from "./shared";
 import { makeSection, getPlainText, OfflineBadge } from "./shared";
 import BentoPageLayout from "@/app/components/BentoPageLayout";
@@ -114,21 +114,14 @@ export default function LeadSheetList() {
         label: "Create song",
         group: "Library",
         keywords: "new add write",
-        run: () => void createSheet(),
-      },
-      {
-        id: "setlists",
-        label: "Go to setlists",
-        group: "Library",
-        keywords: "set list gig show",
-        run: () => router.push("/lead-sheet-editor/setlists"),
+        run: (): void => void createSheet(),
       },
       ...sortedSheets.map((sheet) => ({
         id: `song:${sheet.id}`,
         label: sheet.title || "Untitled",
         group: "Songs",
         hint: [sheet.key, sheet.tempo ? `${sheet.tempo} bpm` : null].filter(Boolean).join("  "),
-        run: () => router.push(`/lead-sheet-editor/${sheet.id}/preview`),
+        run: (): void => void router.push(`/lead-sheet-editor/${sheet.id}/preview`),
       })),
     ],
     // createSheet closes over `user` and `router`, both of which are listed.
@@ -223,19 +216,10 @@ export default function LeadSheetList() {
       title='Lead Sheet Editor'
       titleAdornment={offline && <OfflineBadge />}
       headerActions={
-        <>
-          <Link
-            href='/lead-sheet-editor/setlists'
-            className='flex items-center gap-2 rounded border border-line-strong px-4 py-2 text-sm font-medium text-ink-primary hover:border-line-strong transition-colors'
-          >
-            <ListMusic className='w-4 h-4' />
-            Setlists
-          </Link>
-          <RadixButton onClick={createSheet}>
-            <Plus className='w-4 h-4' />
-            New Sheet
-          </RadixButton>
-        </>
+        <RadixButton onClick={createSheet}>
+          <Plus className='w-4 h-4' />
+          New Sheet
+        </RadixButton>
       }
     >
       {favoriteError && (

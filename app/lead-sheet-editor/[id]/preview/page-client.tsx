@@ -456,8 +456,6 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
     if (moveErrorTimer.current) clearTimeout(moveErrorTimer.current);
     moveErrorTimer.current = setTimeout(() => setMoveError(null), 5000);
   };
-  const [setIds, setSetIds] = useState<string[] | null>(null);
-  const [setPos, setSetPos] = useState(0);
   const [playbackOpen, setPlaybackOpen] = useState(false);
   // The tools are open beside the sheet on a laptop, and folded to their rail
   // on a phone, where the sidebar covers the very song it controls.
@@ -939,17 +937,8 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const set = params.get("set");
-    const pos = params.get("pos");
-    setSetIds(set ? set.split(",").filter(Boolean) : null);
-    setSetPos(pos ? parseInt(pos) || 0 : 0);
     setAutoPlay(params.get("play") === "1");
   }, [id]);
-
-  const goToNextSong = (nextId: string, nextPos: number) => {
-    if (!setIds) return;
-    router.push(`/lead-sheet-editor/${nextId}/preview?set=${setIds.join(",")}&pos=${nextPos}`);
-  };
 
   const handleCopy = async () => {
     if (!sheet) return;
@@ -1120,9 +1109,6 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
       playbackOpen={playbackOpen}
       onOpenPlayback={openPlayback}
       onClosePlayback={closePlayback}
-      setIds={setIds}
-      setPos={setPos}
-      onNextSong={goToNextSong}
       fontScale={fontScale}
       onFontScaleChange={updateFontScale}
       columnCount={columnCount}

@@ -3,7 +3,6 @@
 import {
   ArrowDown,
   ArrowLeft,
-  ArrowRight,
   ArrowUp,
   Check,
   Copy,
@@ -244,28 +243,6 @@ function LineEditControl({ active, onToggle }: { active: boolean; onToggle: () =
   );
 }
 
-function NextSongControl({
-  setIds,
-  pos,
-  onNext,
-}: {
-  setIds: string[];
-  pos: number;
-  onNext: (nextId: string, nextPos: number) => void;
-}) {
-  const isLast = pos >= setIds.length - 1;
-  return (
-    <RowButton
-      onClick={() => !isLast && onNext(setIds[pos + 1], pos + 1)}
-      disabled={isLast}
-      className='justify-between'
-    >
-      {isLast ? "End of Set" : `Next Song (${pos + 2} of ${setIds.length})`}
-      {!isLast && <ArrowRight className='w-4 h-4' />}
-    </RowButton>
-  );
-}
-
 /**
  * The kit, as one row.
  *
@@ -355,10 +332,6 @@ export interface PreviewSidebarProps {
   playbackOpen: boolean;
   onOpenPlayback: () => void;
   onClosePlayback: () => void;
-  /** The setlist this song is being read from, when it came from one. */
-  setIds: string[] | null;
-  setPos: number;
-  onNextSong: (nextId: string, nextPos: number) => void;
 
   // Display
   fontScale: number;
@@ -469,9 +442,6 @@ export default function PreviewSidebar(props: PreviewSidebarProps) {
                 onOpen={props.onOpenPlayback}
                 onClose={props.onClosePlayback}
               />
-              {props.setIds && (
-                <NextSongControl setIds={props.setIds} pos={props.setPos} onNext={props.onNextSong} />
-              )}
             </SidebarSection>
 
             <SidebarSection title='Display'>

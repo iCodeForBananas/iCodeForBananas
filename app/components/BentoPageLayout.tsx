@@ -8,7 +8,7 @@ interface BentoPageLayoutProps {
   maxWidth?: string;
   boxClassName?: string;
   titleClassName?: string;
-  /** The path back up to this page, e.g. Lead Sheets > Setlists. Omit for a top-level page. */
+  /** The path back up to this page, e.g. Lead Sheets > My Song. Omit for a top-level page. */
   breadcrumbs?: BreadcrumbItem[];
   /** Sits inline right after the title — a status badge, not an action. */
   titleAdornment?: React.ReactNode;

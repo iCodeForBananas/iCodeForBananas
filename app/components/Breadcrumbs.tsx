@@ -17,7 +17,7 @@ export interface BreadcrumbItem {
 }
 
 /**
- * "Lead Sheets / Setlists / <name>" — every crumb with an href is a link back
+ * "Lead Sheets / <name>" — every crumb with an href is a link back
  * up the hierarchy; a trailing crumb with none is the current page and isn't
  * one. 44px touch targets throughout: this exists so a tap on a phone or
  * tablet lands.
