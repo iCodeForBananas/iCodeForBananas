@@ -5,13 +5,21 @@
 // give a page loaded with no connection something better than the browser's
 // dinosaur.
 //
-// It deliberately caches nothing but the offline page. Next.js serves hashed
-// JS and CSS that a stale cache would happily hand back forever, so every
-// request other than a page navigation goes straight to the network.
-
-// Bump this whenever offline.html changes: the browser only re-runs install
-// when sw.js itself differs, and the old cache would otherwise stick around.
-const CACHE = "icfb-offline-v1";
+// Two things get cached, both scoped so the rest of the site keeps the
+// original "network only" behavior:
+//   - /_next/static/* — Next names these by content hash, so a cached copy
+//     can never go stale; a new build gets new filenames instead of new
+//     content at an old one.
+//   - anything under /lead-sheet-editor — network-first, falling back to
+//     whatever was last fetched successfully. This is what lets a song
+//     you've opened before stay reachable with no connection: the page shell
+//     comes from here, and IndexedDB (see offlineCache.ts) supplies the song
+//     data once the shell boots.
+//
+// Bump CACHE whenever this strategy changes, or after a deploy you want
+// offline users to pick up right away — activate() drops every other cache,
+// same as the plain offline-page version this replaced.
+const CACHE = "icfb-shell-v1";
 const OFFLINE_URL = "/offline.html";
 
 self.addEventListener("install", (event) => {
@@ -32,20 +40,64 @@ self.addEventListener("activate", (event) => {
   );
 });
 
-self.addEventListener("fetch", (event) => {
-  if (event.request.method !== "GET") return;
-  if (event.request.mode !== "navigate") return;
+/** Hashed and immutable: whatever's cached is correct forever, so check first. */
+async function cacheFirst(request) {
+  const cache = await caches.open(CACHE);
+  const cached = await cache.match(request);
+  if (cached) return cached;
+  const response = await fetch(request);
+  if (response.ok) cache.put(request, response.clone());
+  return response;
+}
 
-  event.respondWith(
-    fetch(event.request).catch(async () => {
-      const cached = await caches.match(OFFLINE_URL);
-      return (
-        cached ??
-        new Response("You're offline.", {
-          status: 503,
-          headers: { "Content-Type": "text/plain; charset=utf-8" },
-        })
-      );
+/**
+ * The freshest copy whenever there's a connection; whatever was cached last
+ * when there isn't. A page that was never opened before still falls through
+ * to the generic offline page rather than a bare network error.
+ */
+async function networkFirst(request) {
+  const cache = await caches.open(CACHE);
+  try {
+    const response = await fetch(request);
+    if (response.ok) cache.put(request, response.clone());
+    return response;
+  } catch (err) {
+    const cached = await cache.match(request);
+    if (cached) return cached;
+    if (request.mode === "navigate") return offlinePage();
+    throw err;
+  }
+}
+
+async function offlinePage() {
+  const cached = await caches.match(OFFLINE_URL);
+  return (
+    cached ??
+    new Response("You're offline.", {
+      status: 503,
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
     })
   );
+}
+
+self.addEventListener("fetch", (event) => {
+  const { request } = event;
+  if (request.method !== "GET") return;
+
+  const url = new URL(request.url);
+  if (url.origin !== self.location.origin) return;
+
+  if (url.pathname.startsWith("/_next/static/")) {
+    event.respondWith(cacheFirst(request));
+    return;
+  }
+
+  if (url.pathname === "/lead-sheet-editor" || url.pathname.startsWith("/lead-sheet-editor/")) {
+    event.respondWith(networkFirst(request));
+    return;
+  }
+
+  if (request.mode !== "navigate") return;
+
+  event.respondWith(fetch(request).catch(offlinePage));
 });

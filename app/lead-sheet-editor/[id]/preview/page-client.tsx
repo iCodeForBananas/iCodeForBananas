@@ -19,6 +19,7 @@ import {
   useSongDocumentTitle,
 } from "../../shared";
 import { cacheSheet, getCachedSheet } from "../../offlineCache";
+import { goTo } from "../../offlineNav";
 import { useCommands } from "@/app/components/ui/command-palette";
 import { PerformanceView } from "../../PerformanceView";
 import { sheetToSong } from "../../song";
@@ -507,8 +508,9 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
   // won't embed.
   const videoLink = useMemo(() => findYouTubeLink(sheet), [sheet]);
   const stopwatch = usePlayback(timeline.duration);
-  const video = useYouTubePlayback(playbackOpen && withVideo ? videoLink : null, timeline.duration);
-  const videoDrivesPlayback = !!videoLink && withVideo && video.status !== "error";
+  // YouTube itself is never available offline, however the sheet got here.
+  const video = useYouTubePlayback(playbackOpen && withVideo && !offline ? videoLink : null, timeline.duration);
+  const videoDrivesPlayback = !!videoLink && withVideo && !offline && video.status !== "error";
   const playback = videoDrivesPlayback ? video.playback : stopwatch;
   const { seek, toggle, stop, time } = playback;
   const activeCue = playbackOpen ? cueAt(timeline, time) : null;
@@ -1097,9 +1099,9 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
       onOpenChange={setSidebarOpen}
       title={sheet.title}
       offline={offline}
-      onAllSheets={() => router.push("/lead-sheet-editor")}
-      onOpenEditor={() => router.push(`/lead-sheet-editor/${id}/edit`)}
-      onArrange={() => router.push(`/lead-sheet-editor/${id}/edit?arrange=1`)}
+      onAllSheets={() => goTo(router, "/lead-sheet-editor")}
+      onOpenEditor={() => goTo(router, `/lead-sheet-editor/${id}/edit`)}
+      onArrange={() => goTo(router, `/lead-sheet-editor/${id}/edit?arrange=1`)}
       fullscreen={fullscreen}
       onFullscreenChange={setFullscreen}
       hasTiming={hasTiming}
@@ -1140,7 +1142,19 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
   // carries an All Sheets entry.
   const breadcrumbBar = (
     <div className='shrink-0 border-b border-line-subtle px-6 py-1 sm:px-8'>
-      <Breadcrumbs items={[{ label: "Lead Sheets", href: "/lead-sheet-editor" }, { label: sheet.title || "Untitled" }]} />
+      <Breadcrumbs
+        items={[
+          {
+            label: "Lead Sheets",
+            href: "/lead-sheet-editor",
+            onNavigate: (e) => {
+              e.preventDefault();
+              goTo(router, "/lead-sheet-editor");
+            },
+          },
+          { label: sheet.title || "Untitled" },
+        ]}
+      />
     </div>
   );
 
@@ -1258,7 +1272,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
           />
         )}
 
-        {playbackOpen && videoLink && withVideo && (
+        {playbackOpen && videoLink && withVideo && !offline && (
           <YouTubePanel link={videoLink} status={video.status} mount={video.mount} />
         )}
 

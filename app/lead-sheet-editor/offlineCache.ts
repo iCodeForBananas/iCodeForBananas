@@ -63,3 +63,17 @@ export async function getCachedSheetList(): Promise<LeadSheet[] | null> {
     .filter((s): s is LeadSheet => !!s)
     .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
 }
+
+/**
+ * Which songs have an offline copy right now, so the library can say so
+ * before you lose signal rather than after. Folds in sheets cached one at a
+ * time (opened directly, e.g. from a share link) as well as the last
+ * successful library sync, so a sheet doesn't have to have gone through both
+ * paths to count.
+ */
+export async function getCachedSheetIds(): Promise<Set<string>> {
+  const db = await getDb();
+  if (!db) return new Set();
+  const [meta, keys] = await Promise.all([db.get("meta", "list"), db.getAllKeys("sheets")]);
+  return new Set([...(meta?.sheetIds ?? []), ...keys]);
+}

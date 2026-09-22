@@ -5,11 +5,12 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/app/hooks/useAuth";
 import Link from "next/link";
-import { Plus, Trash2, Music, Eye, Pencil, Copy, Check, Link2, Star } from "lucide-react";
+import { Plus, Trash2, Music, Eye, Pencil, Copy, Check, Link2, Star, Download } from "lucide-react";
 import type { LeadSheet } from "./shared";
 import { makeSection, getPlainText, OfflineBadge } from "./shared";
 import BentoPageLayout from "@/app/components/BentoPageLayout";
-import { cacheSheet, cacheSheetList, getCachedSheetList } from "./offlineCache";
+import { cacheSheet, cacheSheetList, getCachedSheetList, getCachedSheetIds } from "./offlineCache";
+import { goTo } from "./offlineNav";
 import { useCommands } from "@/app/components/ui/command-palette";
 import { Input } from "@/app/components/ui/input";
 import { Button } from "@/app/components/ui/button";
@@ -35,6 +36,9 @@ export default function LeadSheetList() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [sharedId, setSharedId] = useState<string | null>(null);
   const [offline, setOffline] = useState(false);
+  // Which songs already have an offline copy — shown per row so it's known
+  // before signal is lost, not discovered by trying and failing.
+  const [cachedIds, setCachedIds] = useState<Set<string>>(new Set());
   const [favoriteError, setFavoriteError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   // Read once on mount rather than during render, so the server and the first
@@ -78,10 +82,12 @@ export default function LeadSheetList() {
       setSheets(data ?? []);
       setOffline(false);
       await cacheSheetList(data ?? []);
+      setCachedIds(await getCachedSheetIds());
     } catch {
       const cached = await getCachedSheetList();
       setSheets(cached ?? []);
       setOffline(true);
+      setCachedIds(await getCachedSheetIds());
     }
   }
 
@@ -121,7 +127,7 @@ export default function LeadSheetList() {
         label: sheet.title || "Untitled",
         group: "Songs",
         hint: [sheet.key, sheet.tempo ? `${sheet.tempo} bpm` : null].filter(Boolean).join("  "),
-        run: (): void => void router.push(`/lead-sheet-editor/${sheet.id}/preview`),
+        run: (): void => goTo(router, `/lead-sheet-editor/${sheet.id}/preview`),
       })),
     ],
     // createSheet closes over `user` and `router`, both of which are listed.
@@ -264,7 +270,7 @@ export default function LeadSheetList() {
             key={sheet.id}
             size={density === "compact" ? "1" : "2"}
             className={`group cursor-pointer flex flex-col md:flex-row md:items-center md:justify-between gap-2 ${density === "compact" ? "py-1.5" : ""}`}
-            onClick={() => router.push(`/lead-sheet-editor/${sheet.id}/preview`)}
+            onClick={() => goTo(router, `/lead-sheet-editor/${sheet.id}/preview`)}
           >
             <div className='flex flex-1 min-w-0 items-start gap-2'>
               <IconButton
@@ -289,6 +295,14 @@ export default function LeadSheetList() {
                 {sheet.tempo && <span>{sheet.tempo} BPM</span>}
                 <span>{sheet.sections?.length ?? 0} sections</span>
                 <span>{new Date(sheet.updated_at).toLocaleDateString()}</span>
+                {/* Redundant once the whole page is already showing the cached
+                    list — every row visible then is, by definition, cached. */}
+                {!offline && cachedIds.has(sheet.id) && (
+                  <span className='inline-flex items-center gap-1 text-ink-muted'>
+                    <Download className='w-3.5 h-3.5' />
+                    Offline ready
+                  </span>
+                )}
               </div>
               </div>
             </div>
@@ -313,12 +327,12 @@ export default function LeadSheetList() {
                 size='1'
                 variant='surface'
                 color='gray'
-                onClick={(e) => { e.stopPropagation(); router.push(`/lead-sheet-editor/${sheet.id}/edit`); }}
+                onClick={(e) => { e.stopPropagation(); goTo(router, `/lead-sheet-editor/${sheet.id}/edit`); }}
               >
                 <Pencil className='w-3.5 h-3.5' />
                 Edit
               </RadixButton>
-              <RadixButton size='1' onClick={(e) => { e.stopPropagation(); router.push(`/lead-sheet-editor/${sheet.id}/preview`); }}>
+              <RadixButton size='1' onClick={(e) => { e.stopPropagation(); goTo(router, `/lead-sheet-editor/${sheet.id}/preview`); }}>
                 <Eye className='w-3.5 h-3.5' />
                 Preview
               </RadixButton>

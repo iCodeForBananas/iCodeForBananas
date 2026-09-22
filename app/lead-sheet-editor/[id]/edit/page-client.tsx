@@ -25,6 +25,7 @@ import {
 import { serializeSheet } from "../../serialize";
 import { snapshotRevision } from "../../revisions";
 import { cacheSheet, getCachedSheet } from "../../offlineCache";
+import { goTo } from "../../offlineNav";
 import { clearAllMarkers, parseTimeMarker } from "../../timing";
 import {
   type DrumSettings,
@@ -397,13 +398,13 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
 
   async function handlePreview() {
     if (dirty) await saveSheet();
-    router.push(`/lead-sheet-editor/${id}/preview`);
+    goTo(router, `/lead-sheet-editor/${id}/preview`);
   }
 
   // Play always runs against the saved sheet, so timings typed a second ago count.
   async function handlePlay() {
     if (dirty) await saveSheet();
-    router.push(`/lead-sheet-editor/${id}/preview?play=1`);
+    goTo(router, `/lead-sheet-editor/${id}/preview?play=1`);
   }
 
   if (authLoading || loading) {
@@ -451,7 +452,9 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
                     onNavigate: (e) => {
                       // Same guard as the old "All Sheets" button — a crumb
                       // is still a real navigation away from unsaved text.
-                      if (dirty && !confirm("Discard unsaved changes?")) e.preventDefault();
+                      if (dirty && !confirm("Discard unsaved changes?")) return e.preventDefault();
+                      e.preventDefault();
+                      goTo(router, "/lead-sheet-editor");
                     },
                   },
                   { label: songTitle },

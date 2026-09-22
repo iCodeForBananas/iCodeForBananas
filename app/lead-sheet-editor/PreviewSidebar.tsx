@@ -176,6 +176,7 @@ function PlayControl({
   videoLink,
   withVideo,
   onWithVideoToggle,
+  offline,
   open,
   onOpen,
   onClose,
@@ -186,6 +187,8 @@ function PlayControl({
   /** Whether the YouTube video is included in playback (only relevant when videoLink != null). */
   withVideo: boolean;
   onWithVideoToggle: () => void;
+  /** YouTube itself needs a live connection, whatever the sheet's own source. */
+  offline: boolean;
   open: boolean;
   onOpen: () => void;
   onClose: () => void;
@@ -210,12 +213,25 @@ function PlayControl({
         <IconButton
           type='button'
           size='3'
-          variant={withVideo ? "soft" : "ghost"}
-          color={withVideo ? "red" : "gray"}
+          variant={withVideo && !offline ? "soft" : "ghost"}
+          color={withVideo && !offline ? "red" : "gray"}
           onClick={onWithVideoToggle}
-          aria-pressed={withVideo}
-          aria-label={withVideo ? "Play without the YouTube video" : "Play with the linked YouTube video"}
-          title={withVideo ? "YouTube video enabled — click to play without it" : "Click to play with the linked YouTube video"}
+          disabled={offline}
+          aria-pressed={withVideo && !offline}
+          aria-label={
+            offline
+              ? "Video needs a connection"
+              : withVideo
+                ? "Play without the YouTube video"
+                : "Play with the linked YouTube video"
+          }
+          title={
+            offline
+              ? "Video needs a connection — this song still plays without it"
+              : withVideo
+                ? "YouTube video enabled — click to play without it"
+                : "Click to play with the linked YouTube video"
+          }
           className='m-0 h-11 w-12 rounded-none border-l border-line-subtle'
         >
           <Youtube className='w-4 h-4' />
@@ -438,6 +454,7 @@ export default function PreviewSidebar(props: PreviewSidebarProps) {
                 videoLink={props.videoLink}
                 withVideo={props.withVideo}
                 onWithVideoToggle={props.onWithVideoToggle}
+                offline={props.offline}
                 open={props.playbackOpen}
                 onOpen={props.onOpenPlayback}
                 onClose={props.onClosePlayback}
