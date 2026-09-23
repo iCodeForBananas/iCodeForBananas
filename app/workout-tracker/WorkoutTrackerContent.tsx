@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend, ReferenceLine, ReferenceArea } from "recharts";
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend, ReferenceLine } from "recharts";
 import ClientOnly from "@/app/lib/ClientOnly";
 import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/app/hooks/useAuth";
@@ -34,6 +34,7 @@ const COMPOUND: { name: string; type: "weighted" | "bodyweight" }[] = [
   { name: "Push-ups", type: "bodyweight" },
   { name: "Sit-ups", type: "bodyweight" },
   { name: "Squat", type: "weighted" },
+  { name: "Weighted Pull-Up", type: "weighted" },
 ];
 
 const BODY_PART_MAP: Partial<Record<string, string[]>> = {
@@ -51,6 +52,7 @@ const BODY_PART_MAP: Partial<Record<string, string[]>> = {
   "Push-ups": ["chest"],
   "Sit-ups": ["core"],
   Squat: ["legs"],
+  "Weighted Pull-Up": ["back"],
 };
 
 // "core" added alongside the existing five rather than folded into "back" —
@@ -104,35 +106,64 @@ const COLORS = [
   "var(--ds-color-track-6)",
 ];
 
-/** A single ratio draws one target line; a [low, high] tuple draws a target band. */
-type TargetRatio = number | [low: number, high: number];
+const TIER_ORDER = ["novice", "intermediate", "advanced"] as const;
+type TierName = (typeof TIER_ORDER)[number];
+const TIER_LABELS: Record<TierName, string> = { novice: "Novice", intermediate: "Intermediate", advanced: "Advanced" };
 
 /**
- * Target working weights for a 5x5 program (deadlift is usually worked
- * 1x5), computed as bodyweight x ratio rather than hardcoded, so the lines
- * move with whatever's typed into the bodyweight field instead of going
- * stale. `defaultBodyweightLbs` only seeds that field the first time it's
- * ever opened — see loadBodyweight/saveBodyweight below for the value that
- * actually drives the chart. Ratios are grouped by tier — only
- * "intermediate" is populated today, but a "novice" or "advanced" tier
- * slots in the same way without touching how targets are computed or drawn.
- *
- * General 5x5 intermediate strength standards: Squat 1.0-1.5x bodyweight,
- * Bench Press 1.0x, Deadlift 1.5-2.0x, Overhead Press 0.65-0.75x, Barbell
- * Row 0.7-0.85x.
+ * A weighted pull-up's target is how much is hung off the belt, not the
+ * lift's total (bodyweight + that) — the same ratio-times-bodyweight math
+ * as every other lift here produces a number that means something
+ * different once it comes out, so it needs its own label everywhere it's
+ * shown ("+40 added" rather than "225").
  */
-const TARGET_CONFIG: { defaultBodyweightLbs: number; tiers: Record<string, Record<string, TargetRatio>> } = {
+const ADDED_WEIGHT_EXERCISES = new Set(["Weighted Pull-Up"]);
+
+/**
+ * Target working weights per tier, computed as bodyweight x ratio rather
+ * than hardcoded, so they move with whatever's typed into the bodyweight
+ * field instead of going stale. `defaultBodyweightLbs` only seeds that
+ * field the first time it's ever opened — see loadBodyweight/saveBodyweight
+ * below for the value that actually drives the numbers.
+ *
+ * Standard novice/intermediate/advanced bodyweight-ratio strength
+ * benchmarks (checked against stronglifts.com/stronglifts-5x5/intermediate/
+ * per request — that page and stronglifts.com more broadly don't publish a
+ * tiered standards table, so there was nothing there to reconcile against;
+ * these ratios are the widely-cited generic figures instead).
+ */
+const TARGET_CONFIG: { defaultBodyweightLbs: number; tiers: Record<TierName, Record<string, number>> } = {
   defaultBodyweightLbs: 185,
   tiers: {
+    novice: {
+      Squat: 1.0,
+      Deadlift: 1.25,
+      "Bench Press": 0.75,
+      "Overhead Press": 0.55,
+      "Barbell Row": 0.65,
+      "Weighted Pull-Up": 0.15,
+    },
     intermediate: {
-      Squat: [1.0, 1.5],
-      "Bench Press": 1.0,
-      Deadlift: [1.5, 2.0],
-      "Overhead Press": [0.65, 0.75],
-      "Barbell Row": [0.7, 0.85],
+      Squat: 1.5,
+      Deadlift: 2.0,
+      "Bench Press": 1.25,
+      "Overhead Press": 0.9,
+      "Barbell Row": 1.05,
+      "Weighted Pull-Up": 0.4,
+    },
+    advanced: {
+      Squat: 2.0,
+      Deadlift: 2.5,
+      "Bench Press": 1.75,
+      "Overhead Press": 1.25,
+      "Barbell Row": 1.45,
+      "Weighted Pull-Up": 0.75,
     },
   },
 };
+
+/** The lifts this program tracks, in the order they're configured above. */
+const PROGRESS_EXERCISES = Object.keys(TARGET_CONFIG.tiers.novice);
 
 const BODYWEIGHT_KEY = "workout-tracker:bodyweight-lbs";
 
@@ -288,43 +319,60 @@ export default function WorkoutTrackerContent() {
   const [focusedExercise, setFocusedExercise] = useState<string | null>(null);
   const [hoveredBodyPart, setHoveredBodyPart] = useState<BodyPart | null>(null);
 
-  // One target per exercise per tier, in the same color as that exercise's
-  // data line — a single ratio becomes one line (low === high), a [low,
-  // high] tuple becomes a band. Isolating the chart to one exercise (via
-  // the legend) isolates its target the same way.
-  const activeTargets = useMemo(() => {
-    const lines: { exercise: string; tier: string; color: string; low: number; high: number; isRange: boolean }[] =
-      [];
-    for (const [tier, ratios] of Object.entries(TARGET_CONFIG.tiers)) {
-      exercisesWithLogs.forEach((ex, i) => {
-        if (focusedExercise && focusedExercise !== ex.name) return;
-        const ratio = ratios[ex.name];
-        if (ratio == null) return;
-        const isRange = Array.isArray(ratio);
-        const [loRatio, hiRatio] = isRange ? ratio : [ratio, ratio];
-        lines.push({
-          exercise: ex.name,
-          tier,
-          color: COLORS[i % COLORS.length],
-          low: Math.round(bodyweight * loRatio),
-          high: Math.round(bodyweight * hiRatio),
-          isRange,
-        });
-      });
+  // The heaviest weight ever logged per exercise — a PR stays true evidence
+  // of what's been lifted even if it hasn't been repeated recently, which is
+  // what "how close to this tier" should measure rather than only the last
+  // few weeks' working sets. Drives both the progress bars and which tier
+  // line (if any) shows on the chart.
+  const bestEver = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const l of logs) {
+      const w = l.weight ?? 0;
+      if (w > (map.get(l.exercise) ?? 0)) map.set(l.exercise, w);
     }
-    return lines;
-  }, [exercisesWithLogs, focusedExercise, bodyweight]);
+    return map;
+  }, [logs]);
 
-  // Reference lines/areas don't factor into Recharts' own auto-domain
-  // calculation, so a target above the highest logged weight would
-  // otherwise sit outside the visible axis. Padded and rounded to a clean
-  // 5lb step to read the way Recharts' own "auto" max would have.
+  // One line per exercise: the lowest tier not yet reached, in the same
+  // color as that exercise's data line. Not one line per tier — six lifts
+  // times three tiers would be eighteen lines, and the progress panel above
+  // already shows all three; the chart only needs to mark the next one.
+  // Nothing renders once Advanced is beaten. Isolating the chart to one
+  // exercise (via the legend) isolates its target the same way.
+  const activeTargets = useMemo(() => {
+    const lines: { exercise: string; tier: TierName; color: string; value: number; isAdded: boolean }[] = [];
+    exercisesWithLogs.forEach((ex, i) => {
+      if (focusedExercise && focusedExercise !== ex.name) return;
+      const current = bestEver.get(ex.name) ?? 0;
+      for (const tier of TIER_ORDER) {
+        const ratio = TARGET_CONFIG.tiers[tier][ex.name];
+        if (ratio == null) break; // not one of the program's tracked lifts
+        const value = Math.round(bodyweight * ratio);
+        if (current < value) {
+          lines.push({
+            exercise: ex.name,
+            tier,
+            color: COLORS[i % COLORS.length],
+            value,
+            isAdded: ADDED_WEIGHT_EXERCISES.has(ex.name),
+          });
+          break;
+        }
+      }
+    });
+    return lines;
+  }, [exercisesWithLogs, focusedExercise, bodyweight, bestEver]);
+
+  // Reference lines don't factor into Recharts' own auto-domain calculation,
+  // so a target above the highest logged weight would otherwise sit outside
+  // the visible axis. Padded and rounded to a clean 5lb step to read the way
+  // Recharts' own "auto" max would have.
   const yDomain = useMemo((): [number, number] => {
     const loggedMax = Math.max(
       0,
       ...chartData.flatMap((row) => exercisesWithLogs.map((ex) => Number(row[ex.name]) || 0)),
     );
-    const targetMax = Math.max(0, ...activeTargets.map((t) => t.high));
+    const targetMax = Math.max(0, ...activeTargets.map((t) => t.value));
     const max = Math.max(loggedMax, targetMax);
     return [0, Math.ceil((max * 1.08) / 5) * 5];
   }, [chartData, exercisesWithLogs, activeTargets]);
@@ -417,6 +465,56 @@ export default function WorkoutTrackerContent() {
   }, [logs]);
 
   // ── Bento panel contents ──────────────────────────────────────────────────
+
+  const progressContent = (
+    <div className='space-y-5'>
+      {PROGRESS_EXERCISES.map((name, i) => {
+        const current = bestEver.get(name) ?? 0;
+        const isAdded = ADDED_WEIGHT_EXERCISES.has(name);
+        const color = COLORS[i % COLORS.length];
+        const marks = TIER_ORDER.map((tier) => Math.round(bodyweight * TARGET_CONFIG.tiers[tier][name]));
+        const [noviceLbs, intermediateLbs, advancedLbs] = marks;
+        const pct = advancedLbs > 0 ? Math.min(100, (current / advancedLbs) * 100) : 0;
+        const fmt = (n: number) => `${isAdded ? "+" : ""}${n}`;
+        return (
+          <div key={name}>
+            <div className='flex items-baseline justify-between gap-2 mb-1.5'>
+              <span className='text-sm font-medium'>{name}</span>
+              <span className='text-xs text-ink-muted'>
+                {current > 0 ? `${fmt(current)} lbs${isAdded ? " added" : ""}` : "Not logged yet"}
+              </span>
+            </div>
+            <div className='relative h-2.5 rounded-full bg-surface-overlay'>
+              <div
+                className='absolute inset-y-0 left-0 rounded-full'
+                style={{ width: `${pct}%`, backgroundColor: color }}
+              />
+              {/* Novice and Intermediate thresholds as notches on the track;
+                  Advanced is the track's own right edge. */}
+              {[noviceLbs, intermediateLbs].map((mark) => (
+                <div
+                  key={mark}
+                  className='absolute inset-y-0 w-0.5 bg-surface-base'
+                  style={{ left: `${(mark / advancedLbs) * 100}%` }}
+                />
+              ))}
+            </div>
+            <div className='flex justify-between text-10 text-ink-muted mt-1'>
+              <span className={current >= noviceLbs ? "text-ink-primary font-medium" : undefined}>
+                Novice {fmt(noviceLbs)}
+              </span>
+              <span className={current >= intermediateLbs ? "text-ink-primary font-medium" : undefined}>
+                Intermediate {fmt(intermediateLbs)}
+              </span>
+              <span className={current >= advancedLbs ? "text-ink-primary font-medium" : undefined}>
+                Advanced {fmt(advancedLbs)}
+              </span>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
 
   const activityContent = (
     <div ref={graphRef} className='relative flex gap-[2px] w-full'>
@@ -720,36 +818,23 @@ export default function WorkoutTrackerContent() {
                     onClick={(e) => setFocusedExercise((prev) => (prev === e.value ? null : (e.value as string)))}
                   />
                   {activeTargets.map((t) => {
-                    // A range renders as a shaded band rather than a second
-                    // dashed line — five exercises' worth of paired reference
-                    // lines was more clutter than a chart this size can read,
-                    // especially on a phone, and a band reads as "land in
-                    // here" more directly than two lines does anyway.
-                    const amount = t.isRange ? `${t.low}-${t.high}` : `${t.low}`;
+                    const amount = t.isAdded ? `+${t.value} added` : `${t.value}`;
                     const value = narrowChart
                       ? `${tierAbbrev(t.tier)} (${amount})`
-                      : `${t.exercise} ${t.tier} (${amount})`;
-                    const label = { value, position: "insideTopLeft" as const, fill: t.color, fontSize: narrowChart ? 9 : 10 };
-                    return t.isRange ? (
-                      <ReferenceArea
-                        key={`${t.tier}-${t.exercise}`}
-                        y1={t.low}
-                        y2={t.high}
-                        fill={t.color}
-                        fillOpacity={0.12}
-                        stroke={t.color}
-                        strokeOpacity={0.5}
-                        strokeDasharray='4 4'
-                        label={label}
-                      />
-                    ) : (
+                      : `${t.exercise} ${TIER_LABELS[t.tier]} (${amount})`;
+                    return (
                       <ReferenceLine
                         key={`${t.tier}-${t.exercise}`}
-                        y={t.low}
+                        y={t.value}
                         stroke={t.color}
                         strokeOpacity={0.6}
                         strokeDasharray='6 4'
-                        label={label}
+                        label={{
+                          value,
+                          position: "insideTopLeft",
+                          fill: t.color,
+                          fontSize: narrowChart ? 9 : 10,
+                        }}
                       />
                     );
                   })}
@@ -771,6 +856,14 @@ export default function WorkoutTrackerContent() {
           </div>
         </Bento>
       )}
+
+      {/* Strength progress — how close the best weight ever logged for each
+          program lift is to Novice/Intermediate/Advanced. Its own panel
+          right after the chart rather than folded into the draggable board
+          below, so it stays put next to the numbers it explains. */}
+      <Bento title='Strength Progress' className='mb-4'>
+        {progressContent}
+      </Bento>
 
       {/* Activity, Body Part Coverage, All Entries — bento grid */}
       <BentoBoard panels={bentoPanels} storageKey="workout-tracker-bento-layout" />
