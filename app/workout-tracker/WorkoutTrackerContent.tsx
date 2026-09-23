@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend, ReferenceLine } from "recharts";
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend, ReferenceLine, ReferenceArea } from "recharts";
 import ClientOnly from "@/app/lib/ClientOnly";
 import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/app/hooks/useAuth";
@@ -20,6 +20,7 @@ interface LogEntry {
 }
 
 const COMPOUND: { name: string; type: "weighted" | "bodyweight" }[] = [
+  { name: "Barbell Row", type: "weighted" },
   { name: "Bench Press", type: "weighted" },
   { name: "Bent Over Rows", type: "weighted" },
   { name: "Bicep Curls", type: "weighted" },
@@ -36,6 +37,7 @@ const COMPOUND: { name: string; type: "weighted" | "bodyweight" }[] = [
 ];
 
 const BODY_PART_MAP: Partial<Record<string, string[]>> = {
+  "Barbell Row": ["back"],
   "Bench Press": ["chest"],
   "Bent Over Rows": ["back"],
   "Bicep Curls": ["arms"],
@@ -102,24 +104,54 @@ const COLORS = [
   "var(--ds-color-track-6)",
 ];
 
+/** A single ratio draws one target line; a [low, high] tuple draws a target band. */
+type TargetRatio = number | [low: number, high: number];
+
 /**
- * Target working weights for a 5x5 program (deadlift is worked 1x5),
- * computed as bodyweight x ratio rather than hardcoded, so the lines move
- * with `bodyweightLbs` instead of going stale. Ratios are grouped by tier —
- * only "intermediate" is populated today, but a "novice" or "advanced" tier
+ * Target working weights for a 5x5 program (deadlift is usually worked
+ * 1x5), computed as bodyweight x ratio rather than hardcoded, so the lines
+ * move with whatever's typed into the bodyweight field instead of going
+ * stale. `defaultBodyweightLbs` only seeds that field the first time it's
+ * ever opened — see loadBodyweight/saveBodyweight below for the value that
+ * actually drives the chart. Ratios are grouped by tier — only
+ * "intermediate" is populated today, but a "novice" or "advanced" tier
  * slots in the same way without touching how targets are computed or drawn.
+ *
+ * General 5x5 intermediate strength standards: Squat 1.0-1.5x bodyweight,
+ * Bench Press 1.0x, Deadlift 1.5-2.0x, Overhead Press 0.65-0.75x, Barbell
+ * Row 0.7-0.85x.
  */
-const TARGET_CONFIG: { bodyweightLbs: number; tiers: Record<string, Record<string, number>> } = {
-  bodyweightLbs: 185,
+const TARGET_CONFIG: { defaultBodyweightLbs: number; tiers: Record<string, Record<string, TargetRatio>> } = {
+  defaultBodyweightLbs: 185,
   tiers: {
     intermediate: {
-      Squat: 1.25,
-      "Bench Press": 0.8,
-      Deadlift: 1.45,
-      "Overhead Press": 0.6,
+      Squat: [1.0, 1.5],
+      "Bench Press": 1.0,
+      Deadlift: [1.5, 2.0],
+      "Overhead Press": [0.65, 0.75],
+      "Barbell Row": [0.7, 0.85],
     },
   },
 };
+
+const BODYWEIGHT_KEY = "workout-tracker:bodyweight-lbs";
+
+function loadBodyweight(): number {
+  try {
+    const n = Number(window.localStorage.getItem(BODYWEIGHT_KEY));
+    return Number.isFinite(n) && n > 0 ? n : TARGET_CONFIG.defaultBodyweightLbs;
+  } catch {
+    return TARGET_CONFIG.defaultBodyweightLbs;
+  }
+}
+
+function saveBodyweight(lbs: number): void {
+  try {
+    window.localStorage.setItem(BODYWEIGHT_KEY, String(lbs));
+  } catch {
+    // Private browsing. A forgotten bodyweight is not worth an error.
+  }
+}
 
 export default function WorkoutTrackerContent() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
@@ -130,9 +162,23 @@ export default function WorkoutTrackerContent() {
     return supabaseRef.current;
   };
   const [date, setDate] = useState(today);
-  const [selected, setSelected] = useState(COMPOUND[0].name);
+  // Explicit rather than COMPOUND[0].name — that coupled the log form's
+  // default to whatever happened to sort first in the array, and silently
+  // changed to "Barbell Row" the moment it was added at the top of the list.
+  const [selected, setSelected] = useState("Bench Press");
   const [weight, setWeight] = useState("");
   const [page, setPage] = useState(0);
+  // Read once on mount rather than during render, so the server and the
+  // first client render agree and hydration does not complain.
+  const [bodyweight, setBodyweightState] = useState(TARGET_CONFIG.defaultBodyweightLbs);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time sync from localStorage, not derivable during render
+    setBodyweightState(loadBodyweight());
+  }, []);
+  const setBodyweight = (lbs: number) => {
+    setBodyweightState(lbs);
+    saveBodyweight(lbs);
+  };
   const PAGE_SIZE = 10;
   // Reads are public: anyone can see the log. Writes stay behind auth, both
   // here and in the workout_logs RLS policies.
@@ -242,37 +288,43 @@ export default function WorkoutTrackerContent() {
   const [focusedExercise, setFocusedExercise] = useState<string | null>(null);
   const [hoveredBodyPart, setHoveredBodyPart] = useState<BodyPart | null>(null);
 
-  // One target line per exercise per tier, in the same color as that
-  // exercise's data line. Isolating the chart to one exercise (via the
-  // legend) isolates its target lines the same way.
+  // One target per exercise per tier, in the same color as that exercise's
+  // data line — a single ratio becomes one line (low === high), a [low,
+  // high] tuple becomes a band. Isolating the chart to one exercise (via
+  // the legend) isolates its target the same way.
   const activeTargets = useMemo(() => {
-    const lines: { exercise: string; tier: string; weight: number; color: string }[] = [];
+    const lines: { exercise: string; tier: string; color: string; low: number; high: number; isRange: boolean }[] =
+      [];
     for (const [tier, ratios] of Object.entries(TARGET_CONFIG.tiers)) {
       exercisesWithLogs.forEach((ex, i) => {
         if (focusedExercise && focusedExercise !== ex.name) return;
         const ratio = ratios[ex.name];
         if (ratio == null) return;
+        const isRange = Array.isArray(ratio);
+        const [loRatio, hiRatio] = isRange ? ratio : [ratio, ratio];
         lines.push({
           exercise: ex.name,
           tier,
-          weight: Math.round(TARGET_CONFIG.bodyweightLbs * ratio),
           color: COLORS[i % COLORS.length],
+          low: Math.round(bodyweight * loRatio),
+          high: Math.round(bodyweight * hiRatio),
+          isRange,
         });
       });
     }
     return lines;
-  }, [exercisesWithLogs, focusedExercise]);
+  }, [exercisesWithLogs, focusedExercise, bodyweight]);
 
-  // Reference lines don't factor into Recharts' own auto-domain calculation,
-  // so a target above the highest logged weight would otherwise sit outside
-  // the visible axis. Padded and rounded to a clean 5lb step to read the way
-  // Recharts' own "auto" max would have.
+  // Reference lines/areas don't factor into Recharts' own auto-domain
+  // calculation, so a target above the highest logged weight would
+  // otherwise sit outside the visible axis. Padded and rounded to a clean
+  // 5lb step to read the way Recharts' own "auto" max would have.
   const yDomain = useMemo((): [number, number] => {
     const loggedMax = Math.max(
       0,
       ...chartData.flatMap((row) => exercisesWithLogs.map((ex) => Number(row[ex.name]) || 0)),
     );
-    const targetMax = Math.max(0, ...activeTargets.map((t) => t.weight));
+    const targetMax = Math.max(0, ...activeTargets.map((t) => t.high));
     const max = Math.max(loggedMax, targetMax);
     return [0, Math.ceil((max * 1.08) / 5) * 5];
   }, [chartData, exercisesWithLogs, activeTargets]);
@@ -614,7 +666,28 @@ export default function WorkoutTrackerContent() {
 
       {/* Weight progress chart */}
       {exercisesWithLogs.length > 0 && chartData.length > 0 && (
-        <Bento title='Weight Progress' className='mb-4'>
+        <Bento
+          title='Weight Progress'
+          className='mb-4'
+          actions={
+            <>
+              <Text size='1' color='gray' className='whitespace-nowrap'>Bodyweight</Text>
+              <TextField.Root
+                type='number'
+                size='1'
+                min={1}
+                value={bodyweight}
+                onChange={(e) => {
+                  const n = Number(e.target.value);
+                  if (Number.isFinite(n) && n > 0) setBodyweight(n);
+                }}
+                aria-label='Bodyweight in pounds, used to compute the target lines below'
+                className='w-14'
+              />
+              <Text size='1' color='gray'>lbs</Text>
+            </>
+          }
+        >
           <div ref={chartRef} className='h-[360px] sm:h-[480px]'>
             <ClientOnly>
               <ResponsiveContainer width='100%' height='100%'>
@@ -646,27 +719,40 @@ export default function WorkoutTrackerContent() {
                     wrapperStyle={{ fontSize: "12px", cursor: "pointer" }}
                     onClick={(e) => setFocusedExercise((prev) => (prev === e.value ? null : (e.value as string)))}
                   />
-                  {activeTargets.map((t) => (
-                    <ReferenceLine
-                      key={`${t.tier}-${t.exercise}`}
-                      y={t.weight}
-                      stroke={t.color}
-                      strokeOpacity={0.6}
-                      strokeDasharray='6 4'
-                      label={{
-                        // Full "Exercise tier (weight)" on desktop; on a narrow
-                        // chart the exercise name is dropped (color still ties
-                        // it to the legend below) and the tier abbreviated, so
-                        // the label fits instead of overrunning the plot.
-                        value: narrowChart
-                          ? `${tierAbbrev(t.tier)} (${t.weight})`
-                          : `${t.exercise} ${t.tier} (${t.weight})`,
-                        position: "insideTopLeft",
-                        fill: t.color,
-                        fontSize: narrowChart ? 9 : 10,
-                      }}
-                    />
-                  ))}
+                  {activeTargets.map((t) => {
+                    // A range renders as a shaded band rather than a second
+                    // dashed line — five exercises' worth of paired reference
+                    // lines was more clutter than a chart this size can read,
+                    // especially on a phone, and a band reads as "land in
+                    // here" more directly than two lines does anyway.
+                    const amount = t.isRange ? `${t.low}-${t.high}` : `${t.low}`;
+                    const value = narrowChart
+                      ? `${tierAbbrev(t.tier)} (${amount})`
+                      : `${t.exercise} ${t.tier} (${amount})`;
+                    const label = { value, position: "insideTopLeft" as const, fill: t.color, fontSize: narrowChart ? 9 : 10 };
+                    return t.isRange ? (
+                      <ReferenceArea
+                        key={`${t.tier}-${t.exercise}`}
+                        y1={t.low}
+                        y2={t.high}
+                        fill={t.color}
+                        fillOpacity={0.12}
+                        stroke={t.color}
+                        strokeOpacity={0.5}
+                        strokeDasharray='4 4'
+                        label={label}
+                      />
+                    ) : (
+                      <ReferenceLine
+                        key={`${t.tier}-${t.exercise}`}
+                        y={t.low}
+                        stroke={t.color}
+                        strokeOpacity={0.6}
+                        strokeDasharray='6 4'
+                        label={label}
+                      />
+                    );
+                  })}
                   {exercisesWithLogs.map((ex, i) => (
                     <Line
                       key={ex.name}
