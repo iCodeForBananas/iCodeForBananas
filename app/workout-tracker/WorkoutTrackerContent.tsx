@@ -257,6 +257,31 @@ export default function WorkoutTrackerContent() {
     return [0, Math.ceil((max * 1.08) / 5) * 5];
   }, [chartData, exercisesWithLogs, activeTargets]);
 
+  // The target-line labels were sized for the desktop chart's width; on a
+  // narrow one the full "Exercise tier (weight)" text overruns the plot area.
+  // Measuring the chart's own rendered width (rather than the viewport) means
+  // this tracks a resized sidebar or split view too, not just a phone.
+  //
+  // A callback ref rather than useRef+useEffect: the chart's div only exists
+  // once logs have loaded and exercisesWithLogs is non-empty, so an effect
+  // with an empty dependency array would run before that div is ever mounted
+  // and never find it. A callback ref fires exactly when the node attaches.
+  const [chartWidth, setChartWidth] = useState(0);
+  const chartObserverRef = useRef<ResizeObserver | null>(null);
+  const chartRef = useCallback((el: HTMLDivElement | null) => {
+    chartObserverRef.current?.disconnect();
+    if (!el) return;
+    // Measured directly rather than waiting on the observer's own first
+    // callback, so the very first paint already has a real width instead of
+    // one render at the 0-width (non-narrow) default.
+    setChartWidth(el.getBoundingClientRect().width);
+    const ro = new ResizeObserver(([entry]) => setChartWidth(entry.contentRect.width));
+    ro.observe(el);
+    chartObserverRef.current = ro;
+  }, []);
+  const narrowChart = chartWidth > 0 && chartWidth < 480;
+  const tierAbbrev = (tier: string) => tier.slice(0, 3).replace(/^./, (c) => c.toUpperCase());
+
   // Responsive activity graph: measure the container and compute how many weeks
   // fit at ~18px per cell so the grid is always 100% wide with no scrollbar.
   const graphRef = useRef<HTMLDivElement>(null);
@@ -543,8 +568,8 @@ export default function WorkoutTrackerContent() {
 
       {/* Weight progress chart */}
       {exercisesWithLogs.length > 0 && chartData.length > 0 && (
-        <Bento fill title='Weight Progress' className='mb-4 h-auto'>
-          <div className='h-[360px] sm:h-[480px]'>
+        <Bento title='Weight Progress' className='mb-4'>
+          <div ref={chartRef} className='h-[360px] sm:h-[480px]'>
             <ClientOnly>
               <ResponsiveContainer width='100%' height='100%'>
                 <LineChart data={chartData}>
@@ -555,13 +580,13 @@ export default function WorkoutTrackerContent() {
                     scale='time'
                     domain={["dataMin", "dataMax"]}
                     ticks={chartTicks}
-                    fontSize={11}
+                    fontSize={narrowChart ? 10 : 11}
                     tickFormatter={(t) => {
                       const dt = new Date(t);
                       return `${dt.getMonth() + 1}/${dt.getDate()}`;
                     }}
                   />
-                  <YAxis fontSize={11} unit=' lbs' domain={yDomain} />
+                  <YAxis fontSize={narrowChart ? 10 : 11} unit=' lbs' domain={yDomain} />
                   <Tooltip
                     labelFormatter={(t) =>
                       new Date(t).toLocaleDateString("en-US", {
@@ -583,10 +608,16 @@ export default function WorkoutTrackerContent() {
                       strokeOpacity={0.6}
                       strokeDasharray='6 4'
                       label={{
-                        value: `${t.exercise} ${t.tier} (${t.weight})`,
+                        // Full "Exercise tier (weight)" on desktop; on a narrow
+                        // chart the exercise name is dropped (color still ties
+                        // it to the legend below) and the tier abbreviated, so
+                        // the label fits instead of overrunning the plot.
+                        value: narrowChart
+                          ? `${tierAbbrev(t.tier)} (${t.weight})`
+                          : `${t.exercise} ${t.tier} (${t.weight})`,
                         position: "insideTopLeft",
                         fill: t.color,
-                        fontSize: 10,
+                        fontSize: narrowChart ? 9 : 10,
                       }}
                     />
                   ))}
