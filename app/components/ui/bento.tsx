@@ -78,7 +78,15 @@ export function Bento({
   }
 
   return (
-    <Card size='2' className={className} {...props}>
+    // shrink-0: Radix's Card sets `overflow: hidden`, and per the flexbox
+    // spec that makes a flex item's *automatic* min-height resolve to 0
+    // instead of its content size. Stood next to enough other content in a
+    // flex-col page (a chart, a multi-panel board) to exceed the viewport,
+    // a Bento with no size of its own becomes a shrink target and gets
+    // squeezed toward nothing instead of scrolling into view. `fill` panels
+    // don't need this — a CSS Grid track or an explicit min-height already
+    // sizes them (see BentoBoard).
+    <Card size='2' className={cn("shrink-0", className)} {...props}>
       {header}
       {bodyClassName ? <div className={bodyClassName}>{children}</div> : children}
     </Card>
