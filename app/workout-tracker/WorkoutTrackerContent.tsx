@@ -31,6 +31,7 @@ const COMPOUND: { name: string; type: "weighted" | "bodyweight" }[] = [
   { name: "Pike Push-ups", type: "bodyweight" },
   { name: "Pull-ups", type: "bodyweight" },
   { name: "Push-ups", type: "bodyweight" },
+  { name: "Sit-ups", type: "bodyweight" },
   { name: "Squat", type: "weighted" },
 ];
 
@@ -46,10 +47,14 @@ const BODY_PART_MAP: Partial<Record<string, string[]>> = {
   "Pike Push-ups": ["shoulders"],
   "Pull-ups": ["back"],
   "Push-ups": ["chest"],
+  "Sit-ups": ["core"],
   Squat: ["legs"],
 };
 
-const BODY_PARTS = ["chest", "back", "shoulders", "arms", "legs"] as const;
+// "core" added alongside the existing five rather than folded into "back" —
+// sit-ups work the abs specifically, the same way bicep curls got their own
+// "arms" rather than being folded into "chest" or "shoulders".
+const BODY_PARTS = ["chest", "back", "shoulders", "arms", "legs", "core"] as const;
 type BodyPart = (typeof BODY_PARTS)[number];
 
 /**
@@ -63,6 +68,7 @@ const BODY_PART_COLORS: Record<BodyPart, string> = {
   shoulders: "var(--ds-color-track-3)",
   arms: "var(--ds-color-track-5)",
   legs: "var(--ds-color-track-4)",
+  core: "var(--ds-color-track-6)",
 };
 
 const BODY_PART_EXERCISES = (Object.entries(BODY_PART_MAP) as [string, string[]][]).reduce(
@@ -72,7 +78,7 @@ const BODY_PART_EXERCISES = (Object.entries(BODY_PART_MAP) as [string, string[]]
     });
     return acc;
   },
-  { chest: [], back: [], shoulders: [], arms: [], legs: [] } as Record<BodyPart, string[]>,
+  { chest: [], back: [], shoulders: [], arms: [], legs: [], core: [] } as Record<BodyPart, string[]>,
 );
 
 const localDateStr = (d: Date) =>
@@ -140,13 +146,27 @@ export default function WorkoutTrackerContent() {
     reload();
   }, [reload]);
 
-  const sortedExercises = useMemo(() => {
-    const latest = new Map<string, string>();
-    for (const l of logs) {
-      const prev = latest.get(l.exercise);
-      if (!prev || l.date > prev) latest.set(l.exercise, l.date);
+  const sortedExercises = useMemo(
+    () => [...COMPOUND].sort((a, b) => a.name.localeCompare(b.name)),
+    [],
+  );
+
+  // The last 8 distinct exercises actually logged, most recent first — same
+  // recency ordering as the entries list below (date desc, exercise name as
+  // the tiebreak for same-day entries) so the two agree with each other.
+  const recentlyUsed = useMemo(() => {
+    const sorted = [...logs].sort(
+      (a, b) => b.date.localeCompare(a.date) || a.exercise.localeCompare(b.exercise),
+    );
+    const seen = new Set<string>();
+    const names: string[] = [];
+    for (const l of sorted) {
+      if (seen.has(l.exercise)) continue;
+      seen.add(l.exercise);
+      names.push(l.exercise);
+      if (names.length === 8) break;
     }
-    return [...COMPOUND].sort((a, b) => a.name.localeCompare(b.name));
+    return names;
   }, [logs]);
 
   const submit = async () => {
@@ -540,11 +560,37 @@ export default function WorkoutTrackerContent() {
               className='w-full sm:w-auto'
             />
             <Select.Root size='3' value={selected} onValueChange={setSelected}>
-              <Select.Trigger aria-label='Exercise' className='w-full sm:flex-1 sm:min-w-[140px]' />
+              {/* Explicit children rather than Radix's own value->label lookup:
+                  the same exercise now appears in two Select.Items (Recently
+                  Used and the full list), and Radix renders every item that
+                  matches the current value, which without this doubles the
+                  trigger's own text. */}
+              <Select.Trigger aria-label='Exercise' className='w-full sm:flex-1 sm:min-w-[140px]'>
+                {selected}
+              </Select.Trigger>
               <Select.Content position='popper'>
-                {sortedExercises.map((c) => (
-                  <Select.Item key={c.name} value={c.name}>{c.name}</Select.Item>
-                ))}
+                {recentlyUsed.length > 0 && (
+                  <>
+                    <Select.Group>
+                      <Select.Label>Recently Used</Select.Label>
+                      {/* Same exercise, same value — a pick here sets `selected`
+                          exactly like picking it from the full list below. It's
+                          listed twice on purpose, which is what the label plus
+                          separator are for: without them a repeat looks like a
+                          rendering bug instead of a shortcut. */}
+                      {recentlyUsed.map((name) => (
+                        <Select.Item key={`recent-${name}`} value={name}>{name}</Select.Item>
+                      ))}
+                    </Select.Group>
+                    <Select.Separator />
+                  </>
+                )}
+                <Select.Group>
+                  <Select.Label>All Exercises</Select.Label>
+                  {sortedExercises.map((c) => (
+                    <Select.Item key={c.name} value={c.name}>{c.name}</Select.Item>
+                  ))}
+                </Select.Group>
               </Select.Content>
             </Select.Root>
             <TextField.Root
