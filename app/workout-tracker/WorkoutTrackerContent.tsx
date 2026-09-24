@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend, ReferenceLine } from "recharts";
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from "recharts";
 import ClientOnly from "@/app/lib/ClientOnly";
 import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/app/hooks/useAuth";
@@ -10,6 +10,7 @@ import BentoBoard, { type BentoPanel } from "@/app/components/BentoBoard";
 import { Bento } from "@/app/components/ui/bento";
 import { Button, Flex, IconButton, Select, Text, TextField } from "@radix-ui/themes";
 import { X } from "lucide-react";
+import { LIFT_GROUPS, formatPercentile, latestWeights, populationPercentile } from "./percentile";
 
 interface LogEntry {
   id: string;
@@ -106,73 +107,17 @@ const COLORS = [
   "var(--ds-color-track-6)",
 ];
 
-const TIER_ORDER = ["novice", "intermediate", "advanced"] as const;
-type TierName = (typeof TIER_ORDER)[number];
-const TIER_LABELS: Record<TierName, string> = { novice: "Novice", intermediate: "Intermediate", advanced: "Advanced" };
-
-/**
- * A weighted pull-up's target is how much is hung off the belt, not the
- * lift's total (bodyweight + that) — the same ratio-times-bodyweight math
- * as every other lift here produces a number that means something
- * different once it comes out, so it needs its own label everywhere it's
- * shown ("+40 added" rather than "225").
- */
-const ADDED_WEIGHT_EXERCISES = new Set(["Weighted Pull-Up"]);
-
-/**
- * Target working weights per tier, computed as bodyweight x ratio rather
- * than hardcoded, so they move with whatever's typed into the bodyweight
- * field instead of going stale. `defaultBodyweightLbs` only seeds that
- * field the first time it's ever opened — see loadBodyweight/saveBodyweight
- * below for the value that actually drives the numbers.
- *
- * Standard novice/intermediate/advanced bodyweight-ratio strength
- * benchmarks (checked against stronglifts.com/stronglifts-5x5/intermediate/
- * per request — that page and stronglifts.com more broadly don't publish a
- * tiered standards table, so there was nothing there to reconcile against;
- * these ratios are the widely-cited generic figures instead).
- */
-const TARGET_CONFIG: { defaultBodyweightLbs: number; tiers: Record<TierName, Record<string, number>> } = {
-  defaultBodyweightLbs: 185,
-  tiers: {
-    novice: {
-      Squat: 1.0,
-      Deadlift: 1.25,
-      "Bench Press": 0.75,
-      "Overhead Press": 0.55,
-      "Barbell Row": 0.65,
-      "Weighted Pull-Up": 0.15,
-    },
-    intermediate: {
-      Squat: 1.5,
-      Deadlift: 2.0,
-      "Bench Press": 1.25,
-      "Overhead Press": 0.9,
-      "Barbell Row": 1.05,
-      "Weighted Pull-Up": 0.4,
-    },
-    advanced: {
-      Squat: 2.0,
-      Deadlift: 2.5,
-      "Bench Press": 1.75,
-      "Overhead Press": 1.25,
-      "Barbell Row": 1.45,
-      "Weighted Pull-Up": 0.75,
-    },
-  },
-};
-
-/** The lifts this program tracks, in the order they're configured above. */
-const PROGRESS_EXERCISES = Object.keys(TARGET_CONFIG.tiers.novice);
+/** Seeds the bodyweight field the first time it's opened; see loadBodyweight. */
+const DEFAULT_BODYWEIGHT_LBS = 185;
 
 const BODYWEIGHT_KEY = "workout-tracker:bodyweight-lbs";
 
 function loadBodyweight(): number {
   try {
     const n = Number(window.localStorage.getItem(BODYWEIGHT_KEY));
-    return Number.isFinite(n) && n > 0 ? n : TARGET_CONFIG.defaultBodyweightLbs;
+    return Number.isFinite(n) && n > 0 ? n : DEFAULT_BODYWEIGHT_LBS;
   } catch {
-    return TARGET_CONFIG.defaultBodyweightLbs;
+    return DEFAULT_BODYWEIGHT_LBS;
   }
 }
 
@@ -201,7 +146,7 @@ export default function WorkoutTrackerContent() {
   const [page, setPage] = useState(0);
   // Read once on mount rather than during render, so the server and the
   // first client render agree and hydration does not complain.
-  const [bodyweight, setBodyweightState] = useState(TARGET_CONFIG.defaultBodyweightLbs);
+  const [bodyweight, setBodyweightState] = useState(DEFAULT_BODYWEIGHT_LBS);
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time sync from localStorage, not derivable during render
     setBodyweightState(loadBodyweight());
@@ -319,67 +264,11 @@ export default function WorkoutTrackerContent() {
   const [focusedExercise, setFocusedExercise] = useState<string | null>(null);
   const [hoveredBodyPart, setHoveredBodyPart] = useState<BodyPart | null>(null);
 
-  // The heaviest weight ever logged per exercise — a PR stays true evidence
-  // of what's been lifted even if it hasn't been repeated recently, which is
-  // what "how close to this tier" should measure rather than only the last
-  // few weeks' working sets. Drives both the progress bars and which tier
-  // line (if any) shows on the chart.
-  const bestEver = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const l of logs) {
-      const w = l.weight ?? 0;
-      if (w > (map.get(l.exercise) ?? 0)) map.set(l.exercise, w);
-    }
-    return map;
-  }, [logs]);
+  // The most recent entry per exercise, which is what the population
+  // percentiles below are measured on.
+  const latest = useMemo(() => latestWeights(logs), [logs]);
 
-  // One line per exercise: the lowest tier not yet reached, in the same
-  // color as that exercise's data line. Not one line per tier — six lifts
-  // times three tiers would be eighteen lines, and the progress panel above
-  // already shows all three; the chart only needs to mark the next one.
-  // Nothing renders once Advanced is beaten. Isolating the chart to one
-  // exercise (via the legend) isolates its target the same way.
-  const activeTargets = useMemo(() => {
-    const lines: { exercise: string; tier: TierName; color: string; value: number; isAdded: boolean }[] = [];
-    exercisesWithLogs.forEach((ex, i) => {
-      if (focusedExercise && focusedExercise !== ex.name) return;
-      const current = bestEver.get(ex.name) ?? 0;
-      for (const tier of TIER_ORDER) {
-        const ratio = TARGET_CONFIG.tiers[tier][ex.name];
-        if (ratio == null) break; // not one of the program's tracked lifts
-        const value = Math.round(bodyweight * ratio);
-        if (current < value) {
-          lines.push({
-            exercise: ex.name,
-            tier,
-            color: COLORS[i % COLORS.length],
-            value,
-            isAdded: ADDED_WEIGHT_EXERCISES.has(ex.name),
-          });
-          break;
-        }
-      }
-    });
-    return lines;
-  }, [exercisesWithLogs, focusedExercise, bodyweight, bestEver]);
-
-  // Reference lines don't factor into Recharts' own auto-domain calculation,
-  // so a target above the highest logged weight would otherwise sit outside
-  // the visible axis. Padded and rounded to a clean 5lb step to read the way
-  // Recharts' own "auto" max would have.
-  const yDomain = useMemo((): [number, number] => {
-    const loggedMax = Math.max(
-      0,
-      ...chartData.flatMap((row) => exercisesWithLogs.map((ex) => Number(row[ex.name]) || 0)),
-    );
-    const targetMax = Math.max(0, ...activeTargets.map((t) => t.value));
-    const max = Math.max(loggedMax, targetMax);
-    return [0, Math.ceil((max * 1.08) / 5) * 5];
-  }, [chartData, exercisesWithLogs, activeTargets]);
-
-  // The target-line labels were sized for the desktop chart's width; on a
-  // narrow one the full "Exercise tier (weight)" text overruns the plot area.
-  // Measuring the chart's own rendered width (rather than the viewport) means
+  // Axis text is sized down on a narrow chart. Measuring the chart's own rendered width (rather than the viewport) means
   // this tracks a resized sidebar or split view too, not just a phone.
   //
   // A callback ref rather than useRef+useEffect: the chart's div only exists
@@ -400,7 +289,6 @@ export default function WorkoutTrackerContent() {
     chartObserverRef.current = ro;
   }, []);
   const narrowChart = chartWidth > 0 && chartWidth < 480;
-  const tierAbbrev = (tier: string) => tier.slice(0, 3).replace(/^./, (c) => c.toUpperCase());
 
   // Responsive activity graph: measure the container and compute how many weeks
   // fit at ~18px per cell so the grid is always 100% wide with no scrollbar.
@@ -466,53 +354,90 @@ export default function WorkoutTrackerContent() {
 
   // ── Bento panel contents ──────────────────────────────────────────────────
 
+  // Lift names get the same color they have on the chart, and a fixed color
+  // for the ones that haven't been logged in the chart's window.
+  const liftColor = (name: string) => {
+    const i = exercisesWithLogs.findIndex((ex) => ex.name === name);
+    return i >= 0 ? COLORS[i % COLORS.length] : "var(--ds-color-primary-solid)";
+  };
+
   const progressContent = (
-    <div className='space-y-5'>
-      {PROGRESS_EXERCISES.map((name, i) => {
-        const current = bestEver.get(name) ?? 0;
-        const isAdded = ADDED_WEIGHT_EXERCISES.has(name);
-        const color = COLORS[i % COLORS.length];
-        const marks = TIER_ORDER.map((tier) => Math.round(bodyweight * TARGET_CONFIG.tiers[tier][name]));
-        const [noviceLbs, intermediateLbs, advancedLbs] = marks;
-        const pct = advancedLbs > 0 ? Math.min(100, (current / advancedLbs) * 100) : 0;
-        const fmt = (n: number) => `${isAdded ? "+" : ""}${n}`;
-        return (
-          <div key={name}>
-            <div className='flex items-baseline justify-between gap-2 mb-1.5'>
-              <span className='text-sm font-medium'>{name}</span>
-              <span className='text-xs text-ink-muted'>
-                {current > 0 ? `${fmt(current)} lbs${isAdded ? " added" : ""}` : "Not logged yet"}
-              </span>
-            </div>
-            <div className='relative h-2.5 rounded-full bg-surface-overlay'>
-              <div
-                className='absolute inset-y-0 left-0 rounded-full'
-                style={{ width: `${pct}%`, backgroundColor: color }}
-              />
-              {/* Novice and Intermediate thresholds as notches on the track;
-                  Advanced is the track's own right edge. */}
-              {[noviceLbs, intermediateLbs].map((mark) => (
-                <div
-                  key={mark}
-                  className='absolute inset-y-0 w-0.5 bg-surface-base'
-                  style={{ left: `${(mark / advancedLbs) * 100}%` }}
-                />
-              ))}
-            </div>
-            <div className='flex justify-between text-10 text-ink-muted mt-1'>
-              <span className={current >= noviceLbs ? "text-ink-primary font-medium" : undefined}>
-                Novice {fmt(noviceLbs)}
-              </span>
-              <span className={current >= intermediateLbs ? "text-ink-primary font-medium" : undefined}>
-                Intermediate {fmt(intermediateLbs)}
-              </span>
-              <span className={current >= advancedLbs ? "text-ink-primary font-medium" : undefined}>
-                Advanced {fmt(advancedLbs)}
-              </span>
-            </div>
+    <div className='space-y-6'>
+      <div className='flex items-center gap-2'>
+        <Text size='1' color='gray' className='whitespace-nowrap'>Bodyweight</Text>
+        <TextField.Root
+          type='number'
+          size='1'
+          min={1}
+          value={bodyweight}
+          onChange={(e) => {
+            const n = Number(e.target.value);
+            if (Number.isFinite(n) && n > 0) setBodyweight(n);
+          }}
+          aria-label='Bodyweight in pounds, used to compare each lift against the general population'
+          className='w-16'
+        />
+        <Text size='1' color='gray'>lbs</Text>
+      </div>
+      {LIFT_GROUPS.map((group) => (
+        <section key={group.group}>
+          <h3 className='text-sm font-semibold'>{group.title}</h3>
+          <p className='text-xs text-ink-muted mb-3'>{group.blurb}</p>
+          <div className='space-y-4'>
+            {group.lifts.map((name) => {
+              const entry = latest.get(name);
+              const pct = entry ? populationPercentile(name, entry.weight, bodyweight) : null;
+              return (
+                <div key={name}>
+                  <div className='flex items-baseline justify-between gap-2 mb-1.5'>
+                    <span className='text-sm font-medium'>
+                      {name}
+                      {entry && entry.weight > 0 && (
+                        <span className='ml-2 text-xs font-normal text-ink-muted'>{entry.weight} lbs</span>
+                      )}
+                    </span>
+                    <span className='text-xs text-ink-muted'>
+                      {pct != null ? (
+                        <>
+                          <span className='text-ink-primary font-medium'>{formatPercentile(pct)}</span> percentile
+                        </>
+                      ) : (
+                        "Not logged yet"
+                      )}
+                    </span>
+                  </div>
+                  <div
+                    className='relative h-2.5 rounded-full bg-surface-overlay'
+                    role='meter'
+                    aria-label={`${name} percentile against the general population`}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-valuenow={pct != null ? Math.round(pct) : 0}
+                  >
+                    <div
+                      className='absolute inset-y-0 left-0 rounded-full'
+                      style={{ width: `${pct ?? 0}%`, backgroundColor: liftColor(name) }}
+                    />
+                    {/* Quartile notches; the median is the middle one. */}
+                    {[25, 50, 75].map((q) => (
+                      <div key={q} className='absolute inset-y-0 w-0.5 bg-surface-base' style={{ left: `${q}%` }} />
+                    ))}
+                  </div>
+                  <div className='relative h-4 text-10 text-ink-muted mt-1'>
+                    <span className='absolute left-0'>0</span>
+                    <span className='absolute left-1/2 -translate-x-1/2'>Median</span>
+                    <span className='absolute right-0'>100</span>
+                  </div>
+                </div>
+              );
+            })}
           </div>
-        );
-      })}
+        </section>
+      ))}
+      <p className='text-10 text-ink-muted'>
+        Measured on your most recent entry for each lift, against estimated strength for adults in general, not
+        just people who train.
+      </p>
     </div>
   );
 
@@ -767,24 +692,6 @@ export default function WorkoutTrackerContent() {
         <Bento
           title='Weight Progress'
           className='mb-4'
-          actions={
-            <>
-              <Text size='1' color='gray' className='whitespace-nowrap'>Bodyweight</Text>
-              <TextField.Root
-                type='number'
-                size='1'
-                min={1}
-                value={bodyweight}
-                onChange={(e) => {
-                  const n = Number(e.target.value);
-                  if (Number.isFinite(n) && n > 0) setBodyweight(n);
-                }}
-                aria-label='Bodyweight in pounds, used to compute the target lines below'
-                className='w-14'
-              />
-              <Text size='1' color='gray'>lbs</Text>
-            </>
-          }
         >
           <div ref={chartRef} className='h-[360px] sm:h-[480px]'>
             <ClientOnly>
@@ -803,7 +710,7 @@ export default function WorkoutTrackerContent() {
                       return `${dt.getMonth() + 1}/${dt.getDate()}`;
                     }}
                   />
-                  <YAxis fontSize={narrowChart ? 10 : 11} unit=' lbs' domain={yDomain} />
+                  <YAxis fontSize={narrowChart ? 10 : 11} unit=' lbs' />
                   <Tooltip
                     labelFormatter={(t) =>
                       new Date(t).toLocaleDateString("en-US", {
@@ -817,27 +724,6 @@ export default function WorkoutTrackerContent() {
                     wrapperStyle={{ fontSize: "12px", cursor: "pointer" }}
                     onClick={(e) => setFocusedExercise((prev) => (prev === e.value ? null : (e.value as string)))}
                   />
-                  {activeTargets.map((t) => {
-                    const amount = t.isAdded ? `+${t.value} added` : `${t.value}`;
-                    const value = narrowChart
-                      ? `${tierAbbrev(t.tier)} (${amount})`
-                      : `${t.exercise} ${TIER_LABELS[t.tier]} (${amount})`;
-                    return (
-                      <ReferenceLine
-                        key={`${t.tier}-${t.exercise}`}
-                        y={t.value}
-                        stroke={t.color}
-                        strokeOpacity={0.6}
-                        strokeDasharray='6 4'
-                        label={{
-                          value,
-                          position: "insideTopLeft",
-                          fill: t.color,
-                          fontSize: narrowChart ? 9 : 10,
-                        }}
-                      />
-                    );
-                  })}
                   {exercisesWithLogs.map((ex, i) => (
                     <Line
                       key={ex.name}
@@ -857,11 +743,11 @@ export default function WorkoutTrackerContent() {
         </Bento>
       )}
 
-      {/* Strength progress — how close the best weight ever logged for each
-          program lift is to Novice/Intermediate/Advanced. Its own panel
-          right after the chart rather than folded into the draggable board
-          below, so it stays put next to the numbers it explains. */}
-      <Bento title='Strength Progress' className='mb-4'>
+      {/* Strength vs the general population, per push/pull/legs lift. Its
+          own panel right after the chart rather than folded into the
+          draggable board below, so it stays put next to the numbers it
+          explains. */}
+      <Bento title='Strength vs General Population' className='mb-4'>
         {progressContent}
       </Bento>
 
