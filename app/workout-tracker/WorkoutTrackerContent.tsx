@@ -268,6 +268,17 @@ export default function WorkoutTrackerContent() {
   // percentiles below are measured on.
   const latest = useMemo(() => latestWeights(logs), [logs]);
 
+  // Picking an exercise prefills the weight it was last logged at, so a
+  // lift that's always the same number doesn't need retyping every time.
+  // Bodyweight exercises are typically logged with no weight at all, so a
+  // last value of 0 clears the field rather than filling in a literal "0"
+  // that would read as a real number instead of "bodyweight only".
+  const selectExercise = (name: string) => {
+    setSelected(name);
+    const last = latest.get(name)?.weight;
+    setWeight(last ? String(last) : "");
+  };
+
   // Axis text is sized down on a narrow chart. Measuring the chart's own rendered width (rather than the viewport) means
   // this tracks a resized sidebar or split view too, not just a phone.
   //
@@ -634,7 +645,7 @@ export default function WorkoutTrackerContent() {
               aria-label='Date'
               className='w-full sm:w-auto'
             />
-            <Select.Root size='3' value={selected} onValueChange={setSelected}>
+            <Select.Root size='3' value={selected} onValueChange={selectExercise}>
               {/* Explicit children rather than Radix's own value->label lookup:
                   the same exercise now appears in two Select.Items (Recently
                   Used and the full list), and Radix renders every item that
