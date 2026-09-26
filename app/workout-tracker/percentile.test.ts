@@ -1,44 +1,51 @@
 import { describe, expect, it } from "vitest";
-import { formatPercentile, latestWeights, normalCdf, populationPercentile } from "./percentile";
-
-describe("normalCdf", () => {
-  it("matches known values", () => {
-    expect(normalCdf(0)).toBeCloseTo(0.5, 6);
-    expect(normalCdf(1.96)).toBeCloseTo(0.975, 3);
-    expect(normalCdf(-1)).toBeCloseTo(0.1587, 3);
-  });
-});
+import { latestWeights, percentileBand, populationPercentile } from "./percentile";
 
 describe("populationPercentile", () => {
-  it("puts the population median at the 50th", () => {
-    expect(populationPercentile("Bench Press", 0.65 * 200, 200)).toBeCloseTo(50, 3);
+  it("interpolates linearly within a band", () => {
+    // Bench Press: 25th at 105, 50th at 125 — halfway between is 115.
+    expect(populationPercentile("Bench Press", 115)).toBeCloseTo(37.5, 6);
   });
 
-  it("rises with weight and falls with bodyweight", () => {
-    const a = populationPercentile("Squat", 185, 185)!;
-    expect(populationPercentile("Squat", 225, 185)!).toBeGreaterThan(a);
-    expect(populationPercentile("Squat", 185, 220)!).toBeLessThan(a);
+  it("matches the table exactly at a band boundary", () => {
+    expect(populationPercentile("Bench Press", 105)).toBeCloseTo(25, 6);
+  });
+
+  it("scales down to 0 below the table's lowest band", () => {
+    expect(populationPercentile("Bench Press", 0)).toBeNull();
+    // Half of the 5th-percentile weight (65) scales to half of 5.
+    expect(populationPercentile("Bench Press", 32.5)).toBeCloseTo(2.5, 6);
+  });
+
+  it("holds at the table's top band rather than extrapolating past it", () => {
+    expect(populationPercentile("Bench Press", 245)).toBeCloseTo(99, 6);
+    expect(populationPercentile("Bench Press", 400)).toBeCloseTo(99, 6);
   });
 
   it("returns null for unmodelled lifts or nothing logged", () => {
-    expect(populationPercentile("Bicep Curls", 50, 185)).toBeNull();
-    expect(populationPercentile("Deadlift", 0, 185)).toBeNull();
+    expect(populationPercentile("Bicep Curls", 50)).toBeNull();
+    expect(populationPercentile("Deadlift", 0)).toBeNull();
   });
 });
 
-describe("formatPercentile", () => {
-  it("adds ordinal suffixes", () => {
-    expect(formatPercentile(1.2)).toBe("1st");
-    expect(formatPercentile(22)).toBe("22nd");
-    expect(formatPercentile(63)).toBe("63rd");
-    expect(formatPercentile(12)).toBe("12th");
-    expect(formatPercentile(50.4)).toBe("50th");
+describe("percentileBand", () => {
+  it("names the band a weight falls in, not a single ordinal", () => {
+    expect(percentileBand("Bench Press", 115)).toBe("25th–50th");
   });
 
-  it("keeps a decimal in the top 1% and never claims 100th", () => {
-    expect(formatPercentile(99.46)).toBe("99.4th");
-    expect(formatPercentile(99.999)).toBe("99.9th");
-    expect(formatPercentile(0.01)).toBe("1st");
+  it("assigns an exact boundary weight to the band it starts", () => {
+    expect(percentileBand("Bench Press", 125)).toBe("50th–75th");
+  });
+
+  it("labels below the lowest band and at/above the highest", () => {
+    expect(percentileBand("Bench Press", 30)).toBe("Below 5th");
+    expect(percentileBand("Bench Press", 245)).toBe("99th+");
+    expect(percentileBand("Bench Press", 400)).toBe("99th+");
+  });
+
+  it("returns null for unmodelled lifts or nothing logged", () => {
+    expect(percentileBand("Bicep Curls", 50)).toBeNull();
+    expect(percentileBand("Squat", 0)).toBeNull();
   });
 });
 

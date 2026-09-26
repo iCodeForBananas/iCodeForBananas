@@ -10,7 +10,7 @@ import BentoBoard, { type BentoPanel } from "@/app/components/BentoBoard";
 import { Bento } from "@/app/components/ui/bento";
 import { Button, Flex, IconButton, Select, Text, TextField } from "@radix-ui/themes";
 import { X } from "lucide-react";
-import { LIFT_GROUPS, formatPercentile, latestWeights, populationPercentile } from "./percentile";
+import { LIFT_GROUPS, latestWeights, percentileBand, populationPercentile } from "./percentile";
 
 interface LogEntry {
   id: string;
@@ -107,28 +107,6 @@ const COLORS = [
   "var(--ds-color-track-6)",
 ];
 
-/** Seeds the bodyweight field the first time it's opened; see loadBodyweight. */
-const DEFAULT_BODYWEIGHT_LBS = 185;
-
-const BODYWEIGHT_KEY = "workout-tracker:bodyweight-lbs";
-
-function loadBodyweight(): number {
-  try {
-    const n = Number(window.localStorage.getItem(BODYWEIGHT_KEY));
-    return Number.isFinite(n) && n > 0 ? n : DEFAULT_BODYWEIGHT_LBS;
-  } catch {
-    return DEFAULT_BODYWEIGHT_LBS;
-  }
-}
-
-function saveBodyweight(lbs: number): void {
-  try {
-    window.localStorage.setItem(BODYWEIGHT_KEY, String(lbs));
-  } catch {
-    // Private browsing. A forgotten bodyweight is not worth an error.
-  }
-}
-
 export default function WorkoutTrackerContent() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const { user } = useAuth();
@@ -144,17 +122,6 @@ export default function WorkoutTrackerContent() {
   const [selected, setSelected] = useState("Bench Press");
   const [weight, setWeight] = useState("");
   const [page, setPage] = useState(0);
-  // Read once on mount rather than during render, so the server and the
-  // first client render agree and hydration does not complain.
-  const [bodyweight, setBodyweightState] = useState(DEFAULT_BODYWEIGHT_LBS);
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time sync from localStorage, not derivable during render
-    setBodyweightState(loadBodyweight());
-  }, []);
-  const setBodyweight = (lbs: number) => {
-    setBodyweightState(lbs);
-    saveBodyweight(lbs);
-  };
   const PAGE_SIZE = 10;
   // Reads are public: anyone can see the log. Writes stay behind auth, both
   // here and in the workout_logs RLS policies.
@@ -374,22 +341,6 @@ export default function WorkoutTrackerContent() {
 
   const progressContent = (
     <div className='space-y-6'>
-      <div className='flex items-center gap-2'>
-        <Text size='1' color='gray' className='whitespace-nowrap'>Bodyweight</Text>
-        <TextField.Root
-          type='number'
-          size='1'
-          min={1}
-          value={bodyweight}
-          onChange={(e) => {
-            const n = Number(e.target.value);
-            if (Number.isFinite(n) && n > 0) setBodyweight(n);
-          }}
-          aria-label='Bodyweight in pounds, used to compare each lift against the general population'
-          className='w-16'
-        />
-        <Text size='1' color='gray'>lbs</Text>
-      </div>
       {LIFT_GROUPS.map((group) => (
         <section key={group.group}>
           <h3 className='text-sm font-semibold'>{group.title}</h3>
@@ -397,7 +348,8 @@ export default function WorkoutTrackerContent() {
           <div className='space-y-4'>
             {group.lifts.map((name) => {
               const entry = latest.get(name);
-              const pct = entry ? populationPercentile(name, entry.weight, bodyweight) : null;
+              const pct = entry ? populationPercentile(name, entry.weight) : null;
+              const band = entry ? percentileBand(name, entry.weight) : null;
               return (
                 <div key={name}>
                   <div className='flex items-baseline justify-between gap-2 mb-1.5'>
@@ -408,9 +360,9 @@ export default function WorkoutTrackerContent() {
                       )}
                     </span>
                     <span className='text-xs text-ink-muted'>
-                      {pct != null ? (
+                      {band != null ? (
                         <>
-                          <span className='text-ink-primary font-medium'>{formatPercentile(pct)}</span> percentile
+                          <span className='text-ink-primary font-medium'>{band}</span> percentile
                         </>
                       ) : (
                         "Not logged yet"
@@ -420,7 +372,7 @@ export default function WorkoutTrackerContent() {
                   <div
                     className='relative h-2.5 rounded-full bg-surface-overlay'
                     role='meter'
-                    aria-label={`${name} percentile against the general population`}
+                    aria-label={`${name}: percentile against the general adult male population, estimated`}
                     aria-valuemin={0}
                     aria-valuemax={100}
                     aria-valuenow={pct != null ? Math.round(pct) : 0}
@@ -446,8 +398,10 @@ export default function WorkoutTrackerContent() {
         </section>
       ))}
       <p className='text-10 text-ink-muted'>
-        Measured on your most recent entry for each lift, against estimated strength for adults in general, not
-        just people who train.
+        Measured on your most recent entry for each lift. The bands are a table you provided for the general adult
+        male population, not a cited or peer-reviewed dataset — nothing here is adjusted for age, and it assumes
+        male. The bar&apos;s fill is interpolated within a band for a smoother read; the percentile shown is the
+        band itself, since the table doesn&apos;t have the resolution for a single number.
       </p>
     </div>
   );
@@ -754,11 +708,13 @@ export default function WorkoutTrackerContent() {
         </Bento>
       )}
 
-      {/* Strength vs the general population, per push/pull/legs lift. Its
-          own panel right after the chart rather than folded into the
-          draggable board below, so it stays put next to the numbers it
-          explains. */}
-      <Bento title='Strength vs General Population' className='mb-4'>
+      {/* Strength vs the general adult male population, per push/pull/legs
+          lift. "Male, Est." in the title rather than leaving that assumption
+          silent — the source table is user-supplied, not a cited dataset,
+          and doesn't cover women or account for age. Its own panel right
+          after the chart rather than folded into the draggable board below,
+          so it stays put next to the numbers it explains. */}
+      <Bento title='Strength Percentile (Male, Est.)' className='mb-4'>
         {progressContent}
       </Bento>
 

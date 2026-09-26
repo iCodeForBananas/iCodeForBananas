@@ -1,30 +1,40 @@
 /**
- * Where a lift sits against the general adult population, as a percentile.
+ * Where a lift sits against the general adult male population.
  *
- * Strength relative to bodyweight is roughly log-normal across the population
- * (a long right tail of people who train), so each lift is modelled as a
- * log-normal over the weight / bodyweight ratio. The medians are for adults at
- * large, most of whom don't train, not for gym-goers; they are estimates, not
- * a published table, and put the old Novice/Intermediate/Advanced ratios at
- * roughly the 65th/95th/99.5th percentile.
+ * The table below is a banded strength-standards table supplied directly by
+ * the user, not a cited or peer-reviewed dataset — and male-only, since
+ * that's all it covers. Both of those need to stay visible wherever this is
+ * shown, not just live here as a comment (see the caveat text in
+ * WorkoutTrackerContent.tsx). Each row gives the 5x5 working weight, in lbs,
+ * at the boundary of a percentile band — nine bands (below 5th, 5th-10th,
+ * ..., 95th-99th, 99th+), eight boundaries. populationPercentile()
+ * interpolates within a band so a progress bar can fill smoothly;
+ * percentileBand() reports the band itself, because the table only has
+ * nine bands of resolution and a single invented ordinal ("82nd
+ * percentile") would claim precision it doesn't have.
  */
 
 export type LiftGroup = "push" | "pull" | "legs";
 
-export interface PopulationLift {
-  name: string;
-  /** Median weight / bodyweight across the general population. */
-  median: number;
-  /** Spread of ln(weight / bodyweight). */
-  sigma: number;
-}
+/** [percentile, weightLbs] boundaries between one band and the next, ascending. */
+type PercentileTable = [percentile: number, weightLbs: number][];
 
-export const POPULATION_LIFTS: Record<string, PopulationLift> = {
-  "Bench Press": { name: "Bench Press", median: 0.65, sigma: 0.35 },
-  "Overhead Press": { name: "Overhead Press", median: 0.45, sigma: 0.35 },
-  Deadlift: { name: "Deadlift", median: 1.1, sigma: 0.35 },
-  "Barbell Row": { name: "Barbell Row", median: 0.6, sigma: 0.35 },
-  Squat: { name: "Squat", median: 0.9, sigma: 0.35 },
+const MALE_5X5_PERCENTILES: Record<string, PercentileTable> = {
+  "Bench Press": [
+    [5, 65], [10, 80], [25, 105], [50, 125], [75, 155], [90, 190], [95, 210], [99, 245],
+  ],
+  "Overhead Press": [
+    [5, 40], [10, 50], [25, 65], [50, 80], [75, 95], [90, 115], [95, 130], [99, 155],
+  ],
+  Squat: [
+    [5, 60], [10, 80], [25, 115], [50, 145], [75, 190], [90, 230], [95, 265], [99, 325],
+  ],
+  Deadlift: [
+    [5, 90], [10, 115], [25, 140], [50, 175], [75, 220], [90, 265], [95, 300], [99, 370],
+  ],
+  "Barbell Row": [
+    [5, 60], [10, 70], [25, 90], [50, 110], [75, 135], [90, 165], [95, 185], [99, 215],
+  ],
 };
 
 /** Deadlift is in both pull and legs: it's a pull off the floor that the legs drive. */
@@ -49,36 +59,61 @@ export const LIFT_GROUPS: { group: LiftGroup; title: string; blurb: string; lift
   },
 ];
 
-/** Standard normal CDF (Abramowitz and Stegun 7.1.26, error below 1.5e-7). */
-export function normalCdf(z: number): number {
-  const x = Math.abs(z) / Math.SQRT2;
-  const t = 1 / (1 + 0.3275911 * x);
-  const poly = t * (0.254829592 + t * (-0.284496736 + t * (1.421413741 + t * (-1.453152027 + t * 1.061405429))));
-  const erf = 1 - poly * Math.exp(-x * x);
-  return z >= 0 ? (1 + erf) / 2 : (1 - erf) / 2;
+type BandLookup =
+  | { kind: "below"; pct: number; weight: number }
+  | { kind: "above"; pct: number }
+  | { kind: "between"; p0: number; w0: number; p1: number; w1: number };
+
+/** Where `weightLbs` falls in `lift`'s table, or null if the lift isn't in it. */
+function findBand(lift: string, weightLbs: number): BandLookup | null {
+  const table = MALE_5X5_PERCENTILES[lift];
+  if (!table || !(weightLbs > 0)) return null;
+  const [firstPct, firstLbs] = table[0];
+  if (weightLbs < firstLbs) return { kind: "below", pct: firstPct, weight: firstLbs };
+  const [lastPct, lastLbs] = table[table.length - 1];
+  if (weightLbs >= lastLbs) return { kind: "above", pct: lastPct };
+  for (let i = 0; i < table.length - 1; i++) {
+    const [p0, w0] = table[i];
+    const [p1, w1] = table[i + 1];
+    if (weightLbs >= w0 && weightLbs < w1) return { kind: "between", p0, w0, p1, w1 };
+  }
+  return null; // unreachable — the table is exhaustive between its first and last points
 }
 
 /**
- * Percentile (0 to 100) of `weightLbs` for `lift` at `bodyweightLbs`, or null
- * when the lift isn't modelled or there's nothing to compare.
+ * A continuous 0-100 estimate for `weightLbs` on `lift`, linearly
+ * interpolated within its band — this drives a progress bar's fill width,
+ * not something to print as a precise ordinal (see percentileBand() for
+ * what to show a person). Below the table's lowest band this scales down
+ * to 0 at 0 lbs; at or above its highest band it holds at that band's own
+ * floor rather than extrapolating past data the table doesn't have. Null
+ * when the lift isn't in the table or nothing's logged.
  */
-export function populationPercentile(lift: string, weightLbs: number, bodyweightLbs: number): number | null {
-  const model = POPULATION_LIFTS[lift];
-  if (!model || !(weightLbs > 0) || !(bodyweightLbs > 0)) return null;
-  const z = Math.log(weightLbs / bodyweightLbs / model.median) / model.sigma;
-  return normalCdf(z) * 100;
+export function populationPercentile(lift: string, weightLbs: number): number | null {
+  const band = findBand(lift, weightLbs);
+  if (!band) return null;
+  if (band.kind === "below") return (weightLbs / band.weight) * band.pct;
+  if (band.kind === "above") return band.pct;
+  return band.p0 + ((weightLbs - band.w0) / (band.w1 - band.w0)) * (band.p1 - band.p0);
 }
 
-/** "63rd", "99.4th": whole numbers until the top 1%, where a decimal still separates people. */
-export function formatPercentile(p: number): string {
-  if (p >= 99 && p < 100) {
-    const d = Math.min(99.9, Math.floor(p * 10) / 10);
-    return `${d}th`;
-  }
-  const n = Math.max(1, Math.min(99, Math.round(p)));
+const ordinal = (n: number): string => {
   const mod100 = n % 100;
-  const suffix = mod100 >= 11 && mod100 <= 13 ? "th" : ({ 1: "st", 2: "nd", 3: "rd" } as Record<number, string>)[n % 10] ?? "th";
-  return `${n}${suffix}`;
+  if (mod100 >= 11 && mod100 <= 13) return `${n}th`;
+  return `${n}${({ 1: "st", 2: "nd", 3: "rd" } as Record<number, string>)[n % 10] ?? "th"}`;
+};
+
+/**
+ * The table's own band for `weightLbs` on `lift` — "75th–90th", "Below
+ * 5th", "99th+" — rather than a single invented ordinal. Null when the
+ * lift isn't in the table or nothing's logged.
+ */
+export function percentileBand(lift: string, weightLbs: number): string | null {
+  const band = findBand(lift, weightLbs);
+  if (!band) return null;
+  if (band.kind === "below") return `Below ${ordinal(band.pct)}`;
+  if (band.kind === "above") return `${ordinal(band.pct)}+`;
+  return `${ordinal(band.p0)}–${ordinal(band.p1)}`;
 }
 
 /** Most recent entry per exercise by date; ties go to the heavier entry. */
