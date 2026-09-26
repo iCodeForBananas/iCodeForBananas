@@ -38,23 +38,20 @@ const MALE_5X5_PERCENTILES: Record<string, PercentileTable> = {
 };
 
 /** Deadlift is in both pull and legs: it's a pull off the floor that the legs drive. */
-export const LIFT_GROUPS: { group: LiftGroup; title: string; blurb: string; lifts: string[] }[] = [
+export const LIFT_GROUPS: { group: LiftGroup; title: string; lifts: string[] }[] = [
   {
     group: "push",
     title: "Push",
-    blurb: "Push the weight away from your body until your arms lock: pushing something away or lifting it overhead.",
     lifts: ["Bench Press", "Overhead Press"],
   },
   {
     group: "pull",
     title: "Pull",
-    blurb: "Pull the weight from the floor towards your body: pulling something heavy towards you or lifting it off the floor.",
     lifts: ["Deadlift", "Barbell Row"],
   },
   {
     group: "legs",
     title: "Legs",
-    blurb: "Lift the weight with your legs until you stand with it: sitting down and coming back up without using your hands.",
     lifts: ["Squat", "Deadlift"],
   },
 ];

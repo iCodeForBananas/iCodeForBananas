@@ -343,8 +343,7 @@ export default function WorkoutTrackerContent() {
     <div className='space-y-6'>
       {LIFT_GROUPS.map((group) => (
         <section key={group.group}>
-          <h3 className='text-sm font-semibold'>{group.title}</h3>
-          <p className='text-xs text-ink-muted mb-3'>{group.blurb}</p>
+          <h3 className='text-sm font-semibold mb-3'>{group.title}</h3>
           <div className='space-y-4'>
             {group.lifts.map((name) => {
               const entry = latest.get(name);
@@ -397,12 +396,6 @@ export default function WorkoutTrackerContent() {
           </div>
         </section>
       ))}
-      <p className='text-10 text-ink-muted'>
-        Measured on your most recent entry for each lift. The bands are a table you provided for the general adult
-        male population, not a cited or peer-reviewed dataset — nothing here is adjusted for age, and it assumes
-        male. The bar&apos;s fill is interpolated within a band for a smoother read; the percentile shown is the
-        band itself, since the table doesn&apos;t have the resolution for a single number.
-      </p>
     </div>
   );
 
