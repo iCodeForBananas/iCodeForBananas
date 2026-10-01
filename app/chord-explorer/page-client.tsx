@@ -744,7 +744,7 @@ export default function ChordExplorerPage() {
                   aria-selected={active}
                   onClick={() => setSelectedProgressionName(p.name)}
                   title={p.description}
-                  className={`flex w-full items-baseline gap-2 border-l-2 px-3 py-2 text-left transition-colors ${
+                  className={`flex w-full items-start gap-2 border-l-2 px-3 py-2 text-left transition-colors ${
                     active
                       ? "border-primary-solid bg-primary-solid/20"
                       : "border-transparent hover:bg-surface-overlay"
@@ -754,11 +754,19 @@ export default function ChordExplorerPage() {
                       scanned for, so it gets the fixed column and the left
                       edge. Long ones wrap inside it rather than truncating —
                       half a progression is worse than a taller row. */}
-                  <span className="w-24 shrink-0 font-mono text-[11px] leading-snug text-ink-muted">
+                  <span className="w-24 shrink-0 pt-px font-mono text-[11px] leading-snug text-ink-muted">
                     {p.pattern}
                   </span>
-                  <span className="min-w-0 flex-1 text-sm font-medium text-ink-primary">
-                    {p.name}
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-medium text-ink-primary">{p.name}</span>
+                    {/* Short-form songwriting themes this progression suits —
+                        craft judgment, not research; see THEME_TAGS. Only the
+                        "Most Popular" shortlist carries these. */}
+                    {p.themes && p.themes.length > 0 && (
+                      <span className="block text-[10px] leading-snug text-ink-muted">
+                        {p.themes.join(" · ")}
+                      </span>
+                    )}
                   </span>
                 </button>
               );
@@ -772,6 +780,16 @@ export default function ChordExplorerPage() {
           <div className="flex flex-col gap-1">
             <p className="text-sm font-semibold text-ink-primary">{selectedProgressionDef.name}</p>
             <p className="text-sm text-ink-muted">{selectedProgressionDef.description}</p>
+            {/* Genre + song examples — only the "Most Popular" shortlist
+                carries these; see the sourcing note above PROGRESSION_GROUPS. */}
+            {selectedProgressionDef.genre && (
+              <p className="text-xs text-ink-muted">
+                {selectedProgressionDef.genre}
+                {selectedProgressionDef.songs && selectedProgressionDef.songs.length > 0 && (
+                  <> — {selectedProgressionDef.songs.map((s) => `"${s}"`).join(", ")}</>
+                )}
+              </p>
+            )}
             <p
               className="text-xs font-mono text-ink-muted"
               title="The Roman numeral pattern — each numeral represents a scale degree relative to the selected root note"

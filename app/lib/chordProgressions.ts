@@ -16,10 +16,42 @@ export interface ProgressionChord {
   quality: ChordQuality;
 }
 
+/**
+ * Short-form songwriting themes Michael writes toward — a fixed set of clip
+ * content angles, not a music-theory concept. Used below to tag which of the
+ * "Most Popular" progressions suits which theme; see the note there for how
+ * that mapping was made. "Seasonal mood songs" is deliberately not a tag: no
+ * progression here reads as seasonal on its own, since that's about lyrical
+ * timing rather than harmony — forcing one would be noise, not signal.
+ */
+export const THEME_TAGS = [
+  "Situationship",
+  "Anxiety",
+  "Self-Worth",
+  "Coming of Age",
+  "Nostalgia",
+  "Friday Night",
+  "Yearning",
+  "Hometown",
+  "Family",
+] as const;
+export type ThemeTag = (typeof THEME_TAGS)[number];
+
 export interface ProgressionDef {
   name: string;
   pattern: string;
   description: string;
+  /** Only set on the "Most Popular" shortlist. */
+  genre?: string;
+  /** Well-known songs that use this exact progression (or a rotation of it). Only set on the "Most Popular" shortlist. */
+  songs?: string[];
+  /**
+   * Which short-form themes this progression's feel suits — craft judgment
+   * made while writing the shortlist below, not corpus data or research
+   * findings. A progression can carry more than one theme; not every
+   * progression carries one at all. Only set on the "Most Popular" shortlist.
+   */
+  themes?: ThemeTag[];
 }
 
 export interface ProgressionGroup {
@@ -100,19 +132,106 @@ export const PROGRESSION_GROUPS: ProgressionGroup[] = [
   // know in its bones", where the rest of the list answers "what mood am I
   // after". Names are unique across the whole file because a progression is
   // selected by name, so the duplicates here are deliberately renamed.
+  //
+  // genre/songs: sourced from Hooktheory's TheoryTab database (actual corpus
+  // analysis of ~40k songs, not a listicle) where the exact pattern or a close
+  // rotation of it appears there with a tab count; a few (12-bar blues, ii-V-I,
+  // the Andalusian cadence) are long-standing genre-pedagogy consensus rather
+  // than individually corpus-ranked, since Hooktheory's own database skews
+  // contemporary pop/rock and doesn't meaningfully cover blues or jazz
+  // standards. Minor Axis has no song example for the same reason this entry
+  // exists at all: a real one couldn't be confirmed, so none is given rather
+  // than guessing.
+  //
+  // themes: which of Michael's ten short-form songwriting themes (see
+  // THEME_TAGS) each progression's feel suits. This is craft judgment made
+  // reading each progression's own description against each theme's mood —
+  // not research, not corpus data, and not a claim that any other progression
+  // couldn't also work. Several progressions carry no theme tag at all
+  // (Jazz Cadence, Fifties Changes) because nothing in these ten themes calls
+  // for what they do — ii-V-I is a turnaround more than a mood, and the
+  // doo-wop sound reads as general nostalgia rather than any one theme here.
   {
     label: "Most Popular",
     items: [
-      { name: "Four Chords", pattern: "I–V–vi–IV", description: "Behind more hits than any other progression. Bright and fully resolved, with the vi keeping it off the sugar — an audience feels it land before it can name it." },
-      { name: "Sensitive Loop", pattern: "vi–IV–I–V", description: "The same four chords started on the minor. Opens wounded and only reaches the tonic halfway through, which is why it reads as confession." },
-      { name: "Fifties Changes", pattern: "I–vi–IV–V", description: "Doo-wop, and every slow dance since. Sweet and unguarded, and the V pulls hard back to the top of the loop." },
-      { name: "Three Chords", pattern: "I–IV–V", description: "Rock, blues, country, folk, punk and most campfires. Nothing withheld and nothing surprising — everyone already knows where it goes, and that is the appeal." },
-      { name: "Jazz Cadence", pattern: "ii–V–I", description: "The strongest resolution in tonal music. Two chords of leaning and one of arrival — sophisticated, but what it delivers is plain relief." },
-      { name: "Canon Sequence", pattern: "I–V–vi–iii–IV–I–IV–V", description: "Pachelbel by way of a thousand pop songs. A bassline walking down under eight bars that never stop moving forward." },
-      { name: "Twelve-Bar Blues", pattern: "I–I–I–I–IV–IV–I–I–V–IV–I–V", description: "The oldest form still on the radio. Its hold is repetition — by the third pass the room is a bar ahead of the band." },
-      { name: "Mixolydian Rock", pattern: "I–bVII–IV", description: "A flat-seven borrowed from the parallel minor. Swaggering and faintly ancient — the home key of riff rock." },
-      { name: "Minor Axis", pattern: "i–VI–III–VII", description: "The four-chord loop moved into minor. Dark without being sad: it builds rather than mourns, which is why anthems live here." },
-      { name: "Andalusian Descent", pattern: "i–VII–VI–V", description: "A four-step walk down onto a V that never resolves. Flamenco by birth and instantly dramatic in any genre." },
+      {
+        name: "Four Chords",
+        pattern: "I–V–vi–IV",
+        description: "Behind more hits than any other progression. Bright and fully resolved, with the vi keeping it off the sugar — an audience feels it land before it can name it.",
+        genre: "Pop",
+        songs: ["Let It Be", "Don't Stop Believin'"],
+        themes: ["Self-Worth"],
+      },
+      {
+        name: "Sensitive Loop",
+        pattern: "vi–IV–I–V",
+        description: "The same four chords started on the minor. Opens wounded and only reaches the tonic halfway through, which is why it reads as confession.",
+        genre: "Pop",
+        songs: ["Apologize"],
+        themes: ["Situationship"],
+      },
+      {
+        name: "Fifties Changes",
+        pattern: "I–vi–IV–V",
+        description: "Doo-wop, and every slow dance since. Sweet and unguarded, and the V pulls hard back to the top of the loop.",
+        genre: "Doo-Wop / Pop",
+        songs: ["Stand By Me", "Baby"],
+        themes: ["Nostalgia"],
+      },
+      {
+        name: "Three Chords",
+        pattern: "I–IV–V",
+        description: "Rock, blues, country, folk, punk and most campfires. Nothing withheld and nothing surprising — everyone already knows where it goes, and that is the appeal.",
+        genre: "Rock / Country / Folk",
+        songs: ["Twist and Shout", "Johnny B. Goode"],
+        themes: ["Friday Night", "Hometown"],
+      },
+      {
+        name: "Jazz Cadence",
+        pattern: "ii–V–I",
+        description: "The strongest resolution in tonal music. Two chords of leaning and one of arrival — sophisticated, but what it delivers is plain relief.",
+        genre: "Jazz",
+        songs: ["Autumn Leaves", "All The Things You Are"],
+      },
+      {
+        name: "Canon Sequence",
+        pattern: "I–V–vi–iii–IV–I–IV–V",
+        description: "Pachelbel by way of a thousand pop songs. A bassline walking down under eight bars that never stop moving forward.",
+        genre: "Pop",
+        songs: ["Don't Look Back in Anger", "Basket Case"],
+        themes: ["Coming of Age"],
+      },
+      {
+        name: "Twelve-Bar Blues",
+        pattern: "I–I–I–I–IV–IV–I–I–V–IV–I–V",
+        description: "The oldest form still on the radio. Its hold is repetition — by the third pass the room is a bar ahead of the band.",
+        genre: "Blues",
+        songs: ["Sweet Home Chicago"],
+        themes: ["Friday Night", "Family"],
+      },
+      {
+        name: "Mixolydian Rock",
+        pattern: "I–bVII–IV",
+        description: "A flat-seven borrowed from the parallel minor. Swaggering and faintly ancient — the home key of riff rock.",
+        genre: "Rock",
+        songs: ["Sweet Home Alabama"],
+        themes: ["Self-Worth"],
+      },
+      {
+        name: "Minor Axis",
+        pattern: "i–VI–III–VII",
+        description: "The four-chord loop moved into minor. Dark without being sad: it builds rather than mourns, which is why anthems live here.",
+        genre: "Rock (minor-key anthem)",
+        themes: ["Anxiety"],
+      },
+      {
+        name: "Andalusian Descent",
+        pattern: "i–VII–VI–V",
+        description: "A four-step walk down onto a V that never resolves. Flamenco by birth and instantly dramatic in any genre.",
+        genre: "Flamenco / Latin",
+        songs: ["Hit the Road Jack"],
+        themes: ["Yearning"],
+      },
     ],
   },
   {
