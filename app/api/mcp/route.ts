@@ -12,13 +12,38 @@ const CORS_HEADERS = {
 };
 
 // Public, read-only MCP server over the lead_sheets and workout_logs tables.
-// Uses the anon key — relies on the "Public read" RLS policy on each table to
-// permit selects.
+//
+// Uses the service role key, server-side only — never sent to a client,
+// never committed (SUPABASE_SERVICE_ROLE_KEY is in .gitignore'd .env* files
+// locally and set directly in Vercel). This used to run on the anon key,
+// which relied on each table's RLS letting an anonymous reader in. That
+// happened to work for workout_logs (its "Public read" policy is
+// `USING (true)`) and silently failed for lead_sheets (every row is
+// `visibility = 'private'`, and the anon-readable policy only covers
+// 'unlisted'/'public') — RLS filtered every row out and get_songs returned
+// `[]` instead of an error, which is exactly the failure mode that made
+// this hard to spot. The service role bypasses RLS entirely, so an empty
+// result from here now means what it says — zero rows — rather than zero
+// permitted rows; a real auth/config problem (missing or invalid key)
+// throws instead (see the `if (error) throw error` below each query, and
+// the config check below), so the two cases don't collapse into the same
+// silent `[]` again.
+//
+// A remote MCP client has no login of its own to carry a user's session, so
+// "authenticate as the user" isn't available here the way it would be for
+// a request from the browser app — service role is the only way for this
+// server-side endpoint to read the data at all. Single-user app, so
+// OWNER_USER_ID below is hardcoded rather than derived from a request;
+// lead_sheets queries filter by it explicitly even though the service role
+// doesn't require it, so the tool keeps returning only its owner's songs if
+// this ever stops being a single-user app.
+const OWNER_USER_ID = "9d9c360a-9c84-4afb-9fc8-fbbe3cd766ae"; // icodeforbananas@gmail.com — the only user this project has
+
 function getSupabase() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-  if (!url || !anonKey) throw new Error("Supabase not configured");
-  return createClient(url, anonKey);
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !serviceKey) throw new Error("Supabase not configured");
+  return createClient(url, serviceKey);
 }
 
 const WORKOUT_DEFAULT_LIMIT = 50;
@@ -77,6 +102,7 @@ async function callTool(name: string, args: Record<string, unknown>): Promise<un
     const { data, error } = await supabase
       .from("lead_sheets")
       .select("id, title, key, tempo")
+      .eq("user_id", OWNER_USER_ID)
       .order("title", { ascending: true });
     if (error) throw error;
     return data ?? [];
@@ -89,12 +115,19 @@ async function callTool(name: string, args: Record<string, unknown>): Promise<un
       .from("lead_sheets")
       .select("id, title, key, tempo, general_notes, sections, created_at, updated_at")
       .eq("id", id)
+      .eq("user_id", OWNER_USER_ID)
       .single();
     if (error) throw error;
     return data;
   }
 
   if (name === "get_workouts") {
+    // Unlike lead_sheets above, this is deliberately not filtered to
+    // OWNER_USER_ID: workout_logs' own "Public read" RLS policy is
+    // `USING (true)` (flagged separately — anyone with the anon key can
+    // already read all of it, not just this server), and 28 of its rows
+    // have a null user_id, which an owner filter would silently start
+    // excluding. Not changing what this tool returns as part of the RLS fix.
     const rawLimit = args.limit;
     const limit =
       rawLimit === undefined
