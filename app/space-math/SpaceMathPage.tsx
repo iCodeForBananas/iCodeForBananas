@@ -32,7 +32,10 @@ type ProblemType =
   | "add-100-regroup"
   | "sub-100-regroup"
   | "place-value-3"
-  | "skip-count"
+  | "skip-small"
+  | "skip-10-flex"
+  | "skip-big"
+  | "skip-backward"
   | "compare-3digit"
   | "mental-hundred"
   | "odd-even"
@@ -116,7 +119,10 @@ const TOPIC_PROGRESSION: TopicDef[] = [
   { key: "add-100",          type: "add-100",         min: 10,  max: 90  },
   { key: "g1-sub-mult-10",   type: "sub-mult-10",     min: 10,  max: 90  },
   { key: "g2-odd-even",      type: "odd-even",        min: 1,   max: 20  },
-  { key: "g2-skip-count",    type: "skip-count",      min: 5,   max: 100 },
+  { key: "g2-skip-small",    type: "skip-small",      min: 2,   max: 9   },
+  { key: "g2-skip-10-flex",  type: "skip-10-flex",    min: 1,   max: 80  },
+  { key: "g2-skip-big",      type: "skip-big",        min: 20,  max: 100 },
+  { key: "g2-skip-backward", type: "skip-backward",   min: 2,   max: 10  },
   { key: "g2-place-3",       type: "place-value-3",   min: 1,   max: 9   },
   { key: "g2-compare-999",   type: "compare-3digit",  min: 100, max: 999 },
   { key: "g2-add-regroup",   type: "add-100-regroup", min: 10,  max: 99  },
@@ -164,7 +170,10 @@ const TOPIC_STAGE: Record<string, { id: number; label: string }> = {
   "g2-add-regroup":  { id: 20, label: "Add within 100" },
   "g2-sub-regroup":  { id: 21, label: "Subtract within 100" },
   "g2-place-3":      { id: 22, label: "3-Digit Place Value" },
-  "g2-skip-count":   { id: 23, label: "Skip Count" },
+  "g2-skip-small":   { id: 23, label: "Skip Count" },
+  "g2-skip-10-flex": { id: 23, label: "Skip Count" },
+  "g2-skip-big":     { id: 23, label: "Skip Count" },
+  "g2-skip-backward": { id: 23, label: "Skip Count" },
   "g2-compare-999":  { id: 24, label: "Compare 3-Digit" },
   "g2-mental-100":   { id: 25, label: "Mental ±100" },
   "g2-odd-even":     { id: 26, label: "Odd or Even" },
@@ -636,22 +645,79 @@ function buildProblem(type: ProblemType, min: number, max: number): Problem {
     };
   }
 
-  if (type === "skip-count") {
-    const steps: Array<{ n: number; max: number }> = [
-      { n: 5, max: 100 },
-      { n: 10, max: 100 },
-      { n: 100, max: 1000 },
-    ];
-    const s = steps[Math.floor(Math.random() * steps.length)];
-    const start = (Math.floor(Math.random() * (s.max / s.n - 3)) + 1) * s.n;
-    const answer = start + s.n;
+  if (type === "skip-small") {
+    const steps = [2, 3, 4, 5, 6, 7, 8, 9];
+    const step = steps[Math.floor(Math.random() * steps.length)];
+    // Step 2 splits into even-start and odd-start, which are separate skills
+    // for a learner; steps 3-9 always start at a multiple of the step, as
+    // in the requested examples (3, 6, 9 / 4, 8, 12 / ...).
+    const start =
+      step === 2 && Math.random() < 0.5
+        ? (Math.floor(Math.random() * 9) + 1) * 2 + 1 // odd: 3..19
+        : (Math.floor(Math.random() * 8) + 1) * step; // aligned: step..8*step
+    const answer = start + 2 * step;
     return {
       id,
       type,
-      question: `${start - s.n}, ${start}, ?`,
+      question: `${start}, ${start + step}, ?`,
       answer,
       options: numOpts(answer),
-      signature: `skip:${s.n}-${start}`,
+      signature: `skip-small:${step}-${start}`,
+    };
+  }
+
+  if (type === "skip-10-flex") {
+    // Non-aligned start (not a multiple of 10) — "3, 13, 23" rather than
+    // "10, 20, 30", which k-count-by-10 already covers.
+    const raw = Math.floor(Math.random() * 79) + 1; // 1..79
+    const start = raw % 10 === 0 ? raw + 1 : raw;
+    const answer = start + 20;
+    return {
+      id,
+      type,
+      question: `${start}, ${start + 10}, ?`,
+      answer,
+      options: numOpts(answer),
+      signature: `skip-10-flex:${start}`,
+    };
+  }
+
+  if (type === "skip-big") {
+    const steps: Array<{ n: number; maxK: number }> = [
+      { n: 20, maxK: 10 },
+      { n: 25, maxK: 8 },
+      { n: 50, maxK: 6 },
+      { n: 100, maxK: 8 },
+    ];
+    const s = steps[Math.floor(Math.random() * steps.length)];
+    const start = (Math.floor(Math.random() * s.maxK) + 1) * s.n;
+    const answer = start + 2 * s.n;
+    return {
+      id,
+      type,
+      question: `${start}, ${start + s.n}, ?`,
+      answer,
+      options: numOpts(answer),
+      signature: `skip-big:${s.n}-${start}`,
+    };
+  }
+
+  if (type === "skip-backward") {
+    const steps: Array<{ n: number; maxK: number }> = [
+      { n: 2, maxK: 20 },
+      { n: 5, maxK: 19 },
+      { n: 10, maxK: 10 },
+    ];
+    const s = steps[Math.floor(Math.random() * steps.length)];
+    const start = (Math.floor(Math.random() * s.maxK) + 3) * s.n; // +3 leaves room for two steps down
+    const answer = start - 2 * s.n;
+    return {
+      id,
+      type,
+      question: `${start}, ${start - s.n}, ?`,
+      answer,
+      options: numOpts(answer),
+      signature: `skip-backward:${s.n}-${start}`,
     };
   }
 
