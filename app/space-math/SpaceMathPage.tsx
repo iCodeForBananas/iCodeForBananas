@@ -31,6 +31,8 @@ type ProblemType =
   | "add-regroup-mental"
   | "add-whole-tens"
   | "word-problem-add"
+  | "add-sub-chain"
+  | "word-problem-sub"
   // G2
   | "add-100-regroup"
   | "sub-100-regroup"
@@ -40,6 +42,11 @@ type ProblemType =
   | "add-whole-hundreds"
   | "add-harder-mixed"
   | "word-problem-mixed"
+  | "sub-single-digit"
+  | "sub-no-regroup"
+  | "sub-borrow-hard"
+  | "sub-whole-tens"
+  | "sub-whole-hundreds"
   | "skip-small"
   | "skip-10-flex"
   | "skip-big"
@@ -48,10 +55,15 @@ type ProblemType =
   | "mental-hundred"
   | "odd-even"
   | "array"
+  | "mult-tables-single"
+  | "mult-tables-mixed"
+  | "mult-missing-factor"
   // G3
   | "multiply"
   | "divide"
   | "multiply-tens"
+  | "mult-by-2-extended"
+  | "word-problem-mult"
   | "round"
   | "round-ten-small"
   | "round-ten-large"
@@ -125,12 +137,14 @@ const TOPIC_PROGRESSION: TopicDef[] = [
   { key: "three-addend",     type: "three-addend",    min: 1,   max: 6   },
   { key: "fact-family",      type: "fact-family",     min: 1,   max: 10  },
   { key: "g1-add-regroup",   type: "add-regroup-mental", min: 1, max: 9   },
+  { key: "g1-add-sub-chain", type: "add-sub-chain",   min: 1,   max: 9   },
   { key: "place-value",      type: "place-value",     min: 1,   max: 9   },
   { key: "count-120",        type: "count-120",       min: 1,   max: 120 },
   { key: "mental-ten",       type: "mental-ten",      min: 10,  max: 90  },
   { key: "g1-add-whole-tens", type: "add-whole-tens", min: 10,  max: 150 },
   { key: "add-100",          type: "add-100",         min: 10,  max: 90  },
   { key: "g1-word-problems", type: "word-problem-add", min: 1,  max: 400 },
+  { key: "g1-word-problems-sub", type: "word-problem-sub", min: 1, max: 400 },
   { key: "g1-sub-mult-10",   type: "sub-mult-10",     min: 10,  max: 90  },
   { key: "g2-odd-even",      type: "odd-even",        min: 1,   max: 20  },
   { key: "g2-skip-small",    type: "skip-small",      min: 2,   max: 9   },
@@ -142,15 +156,25 @@ const TOPIC_PROGRESSION: TopicDef[] = [
   { key: "g2-order",         type: "order-numbers",   min: 1,   max: 99  },
   { key: "g2-add-no-regroup", type: "add-no-regroup", min: 10,  max: 89  },
   { key: "g2-add-regroup",   type: "add-100-regroup", min: 10,  max: 99  },
+  { key: "g2-sub-no-regroup", type: "sub-no-regroup", min: 10,  max: 899 },
   { key: "g2-sub-regroup",   type: "sub-100-regroup", min: 10,  max: 99  },
+  { key: "g2-sub-single",    type: "sub-single-digit", min: 1,  max: 999 },
+  { key: "g2-sub-whole-tens", type: "sub-whole-tens", min: 10,  max: 1000 },
   { key: "g2-mental-100",    type: "mental-hundred",  min: 100, max: 800 },
   { key: "g2-add-whole-hundreds", type: "add-whole-hundreds", min: 100, max: 900 },
+  { key: "g2-sub-whole-hundreds", type: "sub-whole-hundreds", min: 100, max: 900 },
+  { key: "g2-sub-borrow-hard", type: "sub-borrow-hard", min: 10, max: 999 },
   { key: "g2-add-harder",    type: "add-harder-mixed", min: 10, max: 899 },
   { key: "g2-word-problems", type: "word-problem-mixed", min: 1, max: 90 },
   { key: "g2-array",         type: "array",           min: 2,   max: 5   },
+  { key: "g2-mult-tables-single", type: "mult-tables-single", min: 1, max: 10 },
+  { key: "g2-mult-tables-mixed", type: "mult-tables-mixed", min: 1, max: 10 },
+  { key: "g2-mult-missing-factor", type: "mult-missing-factor", min: 1, max: 10 },
   { key: "g3-mult",          type: "multiply",        min: 0,   max: 10  },
   { key: "g3-divide",        type: "divide",          min: 1,   max: 10  },
   { key: "g3-mult-tens",     type: "multiply-tens",   min: 10,  max: 90  },
+  { key: "g3-mult-by-2",     type: "mult-by-2-extended", min: 2, max: 95 },
+  { key: "g3-word-problems-mult", type: "word-problem-mult", min: 2, max: 25 },
   { key: "g3-round-ten-small", type: "round-ten-small", min: 1, max: 99  },
   { key: "g3-round-ten-large", type: "round-ten-large", min: 10, max: 999 },
   { key: "g3-round-hundred", type: "round-hundred",   min: 10,  max: 990 },
@@ -181,6 +205,7 @@ const TOPIC_STAGE: Record<string, { id: number; label: string }> = {
   "three-addend":    { id: 61, label: "Three-addend addition" },
   "fact-family":     { id: 62, label: "Fact families" },
   "g1-add-regroup":  { id: 5,  label: "Add within 20" },
+  "g1-add-sub-chain": { id: 61, label: "Three-addend addition" },
   "g1-equal-sign":   { id: 16, label: "Equal sign true/false" },
   "g1-unknown":      { id: 63, label: "Unknown addend" },
   "compare-20":      { id: 6,  label: "Compare 2-digit numbers" },
@@ -190,11 +215,16 @@ const TOPIC_STAGE: Record<string, { id: number; label: string }> = {
   "g1-sub-mult-10":  { id: 65, label: "Subtract multiples of 10" },
   "add-100":         { id: 8,  label: "Add within 100" },
   "g1-word-problems": { id: 67, label: "Word problems within 20" },
+  "g1-word-problems-sub": { id: 67, label: "Word problems within 20" },
   "count-120":       { id: 68, label: "Count to 120" },
   // G2
   "g2-add-no-regroup": { id: 20, label: "Add within 100" },
   "g2-add-regroup":  { id: 20, label: "Add within 100" },
+  "g2-sub-no-regroup": { id: 21, label: "Subtract within 100" },
   "g2-sub-regroup":  { id: 21, label: "Subtract within 100" },
+  "g2-sub-single":   { id: 21, label: "Subtract within 100" },
+  "g2-sub-borrow-hard": { id: 21, label: "Subtract within 100" },
+  "g2-sub-whole-tens": { id: 65, label: "Subtract multiples of 10" },
   "g2-place-3":      { id: 22, label: "3-Digit Place Value" },
   "g2-order":        { id: 24, label: "Compare 3-Digit" },
   "g2-skip-small":   { id: 23, label: "Skip Count" },
@@ -204,13 +234,19 @@ const TOPIC_STAGE: Record<string, { id: number; label: string }> = {
   "g2-compare-999":  { id: 24, label: "Compare 3-Digit" },
   "g2-mental-100":   { id: 25, label: "Mental ±100" },
   "g2-add-whole-hundreds": { id: 25, label: "Mental ±100" },
+  "g2-sub-whole-hundreds": { id: 25, label: "Mental ±100" },
   "g2-add-harder":   { id: 20, label: "Add within 100" },
   "g2-word-problems": { id: 20, label: "Add within 100" },
   "g2-odd-even":     { id: 26, label: "Odd or Even" },
   "g2-array":        { id: 27, label: "Arrays" },
+  "g2-mult-tables-single": { id: 27, label: "Arrays" },
+  "g2-mult-tables-mixed": { id: 27, label: "Arrays" },
+  "g2-mult-missing-factor": { id: 27, label: "Arrays" },
   // G3
   "g3-mult":         { id: 40, label: "Multiplication" },
   "g3-mult-tens":    { id: 41, label: "×Multiples of 10" },
+  "g3-mult-by-2":    { id: 41, label: "×Multiples of 10" },
+  "g3-word-problems-mult": { id: 40, label: "Multiplication" },
   "g3-divide":       { id: 42, label: "Division" },
   "g3-round-ten-small": { id: 43, label: "Rounding" },
   "g3-round-ten-large": { id: 43, label: "Rounding" },
@@ -348,6 +384,15 @@ const WP_NAMES = ["Mia", "Leo", "Zoe", "Sam", "Ava", "Max", "Ivy", "Eli"];
 const WP_ITEMS = ["apples", "stickers", "marbles", "cookies", "toy cars", "crayons", "shells", "coins"];
 const pickOne = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 
+// Renders a - b, either asking for the difference or, with blank, hiding
+// the minuend or the subtrahend and showing the difference instead.
+function chainSub(a: number, b: number, blank: "minuend" | "subtrahend" | null): { question: string; answer: number } {
+  const diff = a - b;
+  if (blank === null) return { question: `${a} - ${b} = ?`, answer: diff };
+  if (blank === "minuend") return { question: `__ - ${b} = ${diff}`, answer: a };
+  return { question: `${a} - __ = ${diff}`, answer: b };
+}
+
 function buildProblem(type: ProblemType, min: number, max: number): Problem {
   const id = Math.random().toString(36).substr(2, 9);
 
@@ -380,16 +425,20 @@ function buildProblem(type: ProblemType, min: number, max: number): Problem {
   }
 
   if (type === "subtraction") {
-    const answer = Math.floor(Math.random() * (max - min + 1)) + min;
+    const diff = Math.floor(Math.random() * (max - min + 1)) + min;
     const right = Math.floor(Math.random() * (max - min + 1)) + 1;
-    const left = answer + right;
+    const left = diff + right;
+    // Occasionally ask for the missing minuend or subtrahend instead of the
+    // difference, so this rung also covers "__ - 5 = 2"-style problems.
+    const blank = Math.random() < 0.3 ? (Math.random() < 0.5 ? "minuend" : "subtrahend") : null;
+    const { question, answer } = chainSub(left, right, blank);
     return {
       id,
       type,
-      question: `${left} - ${right} = ?`,
+      question,
       answer,
       options: numOpts(answer),
-      signature: `sub:${left},${right}`,
+      signature: `sub${blank ?? ""}:${left},${right}`,
     };
   }
 
@@ -512,6 +561,23 @@ function buildProblem(type: ProblemType, min: number, max: number): Problem {
     };
   }
 
+  if (type === "word-problem-sub") {
+    const big = Math.random() < 0.4;
+    const a = big ? Math.floor(Math.random() * 400) + 100 : Math.floor(Math.random() * 50) + 5;
+    const b = big ? Math.floor(Math.random() * 90) + 1 : Math.floor(Math.random() * Math.min(a - 1, 20)) + 1;
+    const name = pickOne(WP_NAMES);
+    const item = pickOne(WP_ITEMS);
+    const answer = a - b;
+    return {
+      id,
+      type,
+      question: `${name} has ${a} ${item}. ${name} gives away ${b}. How many ${item} does ${name} have left?`,
+      answer,
+      options: numOpts(answer),
+      signature: `wps:${a},${b}`,
+    };
+  }
+
   if (type === "comparison") {
     const a = Math.floor(Math.random() * (max - min + 1)) + min;
     const b = Math.floor(Math.random() * (max - min + 1)) + min;
@@ -584,6 +650,30 @@ function buildProblem(type: ProblemType, min: number, max: number): Problem {
       answer,
       options: numOpts(answer),
       signature: `addrm:${terms.join(",")}-${blankIndex}`,
+    };
+  }
+
+  if (type === "add-sub-chain") {
+    const count = Math.random() < 0.5 ? 3 : 4;
+    let total = Math.floor(Math.random() * 9) + 1; // 1..9
+    let question = String(total);
+    const sig: number[] = [total];
+    for (let i = 1; i < count; i++) {
+      const isAdd = Math.random() < 0.5;
+      let term = Math.floor(Math.random() * 9) + 1;
+      if (!isAdd) term = Math.min(term, total); // never go negative
+      total = isAdd ? total + term : total - term;
+      question += isAdd ? ` + ${term}` : ` - ${term}`;
+      sig.push(isAdd ? term : -term);
+    }
+    const answer = total;
+    return {
+      id,
+      type,
+      question: `${question} = ?`,
+      answer,
+      options: numOpts(answer),
+      signature: `asc:${sig.join(",")}`,
     };
   }
 
@@ -696,6 +786,59 @@ function buildProblem(type: ProblemType, min: number, max: number): Problem {
       options: numOpts(answer),
       signature: `subm10:${a},${b}`,
     };
+  }
+
+  if (type === "sub-whole-tens") {
+    const tensMul = (loK: number, hiK: number) => (Math.floor(Math.random() * (hiK - loK + 1)) + loK) * 10;
+    const variant = Math.floor(Math.random() * 5);
+    if (variant <= 1) {
+      // Tens from tens, within 0-1,000: 900 - 50 = ? / __ - 70 = 230
+      const a = tensMul(2, 90);
+      const b = tensMul(1, a / 10 - 1);
+      const blank = variant === 1 ? (Math.random() < 0.5 ? "minuend" : "subtrahend") : null;
+      const { question, answer } = chainSub(a, b, blank);
+      return { id, type, question, answer, options: numOpts(answer), signature: `swt0:${a},${b}` };
+    }
+    if (variant === 2) {
+      // Whole tens from a 2-digit number: 36 - 30 = ?
+      const tensDigit = Math.floor(Math.random() * 9) + 1;
+      const onesDigit = Math.floor(Math.random() * 10);
+      const bTensUnits = Math.floor(Math.random() * tensDigit) + 1;
+      const { question, answer } = chainSub(tensDigit * 10 + onesDigit, bTensUnits * 10, null);
+      return { id, type, question, answer, options: numOpts(answer), signature: `swt2:${tensDigit},${onesDigit},${bTensUnits}` };
+    }
+    if (variant === 3) {
+      // Whole tens from a 3-digit number, no regrouping: 271 - 50 = ?
+      const hundreds = Math.floor(Math.random() * 9) + 1;
+      const tensDigit = Math.floor(Math.random() * 9) + 1;
+      const onesDigit = Math.floor(Math.random() * 10);
+      const bTensUnits = Math.floor(Math.random() * tensDigit) + 1;
+      const { question, answer } = chainSub(hundreds * 100 + tensDigit * 10 + onesDigit, bTensUnits * 10, null);
+      return { id, type, question, answer, options: numOpts(answer), signature: `swt3:${hundreds},${tensDigit},${onesDigit},${bTensUnits}` };
+    }
+    // Whole tens from a 3-digit number, with regrouping: 159 - 60 = ?
+    const hundreds = Math.floor(Math.random() * 9) + 1;
+    const tensDigit = Math.floor(Math.random() * 9); // 0..8, leaves room for a bigger subtrahend
+    const onesDigit = Math.floor(Math.random() * 10);
+    const bTensUnits = Math.floor(Math.random() * (9 - tensDigit)) + tensDigit + 1; // forces a borrow
+    const { question, answer } = chainSub(hundreds * 100 + tensDigit * 10 + onesDigit, bTensUnits * 10, null);
+    return { id, type, question, answer, options: numOpts(answer), signature: `swt4:${hundreds},${tensDigit},${onesDigit},${bTensUnits}` };
+  }
+
+  if (type === "sub-whole-hundreds") {
+    const variant = Math.floor(Math.random() * 2);
+    if (variant === 0) {
+      // Whole hundreds from a 3-digit number: 729 - 200 = ?
+      const a = Math.floor(Math.random() * 900) + 100;
+      const bHundreds = Math.floor(Math.random() * Math.floor(a / 100)) + 1;
+      const { question, answer } = chainSub(a, bHundreds * 100, null);
+      return { id, type, question, answer, options: numOpts(answer), signature: `swh0:${a},${bHundreds}` };
+    }
+    // A 2-digit number from a whole hundred: 700 - 77 = ?
+    const a = (Math.floor(Math.random() * 9) + 1) * 100; // 100..900
+    const b = Math.floor(Math.random() * 90) + 10; // 10..99
+    const { question, answer } = chainSub(a, b, null);
+    return { id, type, question, answer, options: numOpts(answer), signature: `swh1:${a},${b}` };
   }
 
   if (type === "equal-sign") {
@@ -811,6 +954,115 @@ function buildProblem(type: ProblemType, min: number, max: number): Problem {
       options: numOpts(answer),
       signature: `subr:${a},${b}`,
     };
+  }
+
+  if (type === "sub-single-digit") {
+    const variant = Math.floor(Math.random() * 7);
+    if (variant === 0) {
+      // 2-digit - 1-digit, no regrouping: 35 - 4 = ?
+      const tens = Math.floor(Math.random() * 8) + 1;
+      const onesA = Math.floor(Math.random() * 9) + 1;
+      const b = Math.floor(Math.random() * onesA) + 1;
+      const { question, answer } = chainSub(tens * 10 + onesA, b, null);
+      return { id, type, question, answer, options: numOpts(answer), signature: `ssd0:${tens},${onesA},${b}` };
+    }
+    if (variant === 1) {
+      // Whole ten - 1-digit, always regroups: 20 - 2 = ?
+      const a = (Math.floor(Math.random() * 9) + 1) * 10; // 10..90
+      const b = Math.floor(Math.random() * 9) + 1;
+      const { question, answer } = chainSub(a, b, null);
+      return { id, type, question, answer, options: numOpts(answer), signature: `ssd1:${a},${b}` };
+    }
+    if (variant === 2) {
+      // 2-digit - 1-digit, forced regrouping: 33 - 9 = ?
+      const tens = Math.floor(Math.random() * 9) + 1;
+      const onesA = Math.floor(Math.random() * 9);
+      const b = Math.floor(Math.random() * (9 - onesA)) + onesA + 1;
+      const { question, answer } = chainSub(tens * 10 + onesA, b, null);
+      return { id, type, question, answer, options: numOpts(answer), signature: `ssd2:${tens},${onesA},${b}` };
+    }
+    if (variant === 3) {
+      // 3-digit - 1-digit: 217 - 9 = ?
+      const a = Math.floor(Math.random() * 900) + 100;
+      const b = Math.floor(Math.random() * 9) + 1;
+      const { question, answer } = chainSub(a, b, null);
+      return { id, type, question, answer, options: numOpts(answer), signature: `ssd3:${a},${b}` };
+    }
+    const blank = Math.random() < 0.5 ? "minuend" : "subtrahend";
+    if (variant === 4) {
+      // Same shape as variant 0, missing minuend or subtrahend: 66 - __ = 61
+      const tens = Math.floor(Math.random() * 8) + 1;
+      const onesA = Math.floor(Math.random() * 9) + 1;
+      const b = Math.floor(Math.random() * onesA) + 1;
+      const { question, answer } = chainSub(tens * 10 + onesA, b, blank);
+      return { id, type, question, answer, options: numOpts(answer), signature: `ssd4:${tens},${onesA},${b}` };
+    }
+    if (variant === 5) {
+      // Same shape as variant 2, missing minuend or subtrahend: 66 - __ = 58
+      const tens = Math.floor(Math.random() * 9) + 1;
+      const onesA = Math.floor(Math.random() * 9);
+      const b = Math.floor(Math.random() * (9 - onesA)) + onesA + 1;
+      const { question, answer } = chainSub(tens * 10 + onesA, b, blank);
+      return { id, type, question, answer, options: numOpts(answer), signature: `ssd5:${tens},${onesA},${b}` };
+    }
+    // Same shape as variant 3, missing minuend or subtrahend: 103 - __ = 96
+    const a = Math.floor(Math.random() * 900) + 100;
+    const b = Math.floor(Math.random() * 9) + 1;
+    const { question, answer } = chainSub(a, b, blank);
+    return { id, type, question, answer, options: numOpts(answer), signature: `ssd6:${a},${b}` };
+  }
+
+  if (type === "sub-no-regroup") {
+    const variant = Math.floor(Math.random() * 4);
+    if (variant <= 1) {
+      // Two 2-digit numbers, no borrowing: 96 - 54 = ? / 26 - __ = 15
+      const tensA = Math.floor(Math.random() * 9) + 1;
+      const onesA = Math.floor(Math.random() * 10);
+      const tensB = Math.floor(Math.random() * tensA) + 1;
+      const onesB = Math.floor(Math.random() * (onesA + 1));
+      const blank = variant === 1 ? (Math.random() < 0.5 ? "minuend" : "subtrahend") : null;
+      const { question, answer } = chainSub(tensA * 10 + onesA, tensB * 10 + onesB, blank);
+      return { id, type, question, answer, options: numOpts(answer), signature: `snr2:${tensA},${onesA},${tensB},${onesB}` };
+    }
+    // Two 3-digit numbers, no borrowing: 798 - 123 = ? / 543 - __ = 210
+    const hA = Math.floor(Math.random() * 9) + 1;
+    const tA = Math.floor(Math.random() * 10);
+    const oA = Math.floor(Math.random() * 10);
+    const hB = Math.floor(Math.random() * hA) + 1;
+    const tB = Math.floor(Math.random() * (tA + 1));
+    const oB = Math.floor(Math.random() * (oA + 1));
+    const blank = variant === 3 ? (Math.random() < 0.5 ? "minuend" : "subtrahend") : null;
+    const { question, answer } = chainSub(hA * 100 + tA * 10 + oA, hB * 100 + tB * 10 + oB, blank);
+    return { id, type, question, answer, options: numOpts(answer), signature: `snr3:${hA},${tA},${oA},${hB},${tB},${oB}` };
+  }
+
+  if (type === "sub-borrow-hard") {
+    const variant = Math.floor(Math.random() * 3);
+    if (variant === 0) {
+      // Two 2-digit numbers, forced borrowing: 96 - 87 = ?
+      const tensA = Math.floor(Math.random() * 8) + 2; // 2..9
+      const tensB = Math.floor(Math.random() * (tensA - 1)) + 1; // 1..tensA-1
+      const onesA = Math.floor(Math.random() * 9); // 0..8
+      const onesB = Math.floor(Math.random() * (9 - onesA)) + onesA + 1; // onesA+1..9
+      const { question, answer } = chainSub(tensA * 10 + onesA, tensB * 10 + onesB, null);
+      return { id, type, question, answer, options: numOpts(answer), signature: `sbh2:${tensA},${onesA},${tensB},${onesB}` };
+    }
+    if (variant === 1) {
+      // Two 3-digit numbers, forced borrowing: 421 - 388 = ?
+      const hA = Math.floor(Math.random() * 8) + 2; // 2..9
+      const hB = Math.floor(Math.random() * (hA - 1)) + 1; // 1..hA-1, guarantees a > b
+      const tA = Math.floor(Math.random() * 10);
+      const tB = Math.floor(Math.random() * 10);
+      const onesA = Math.floor(Math.random() * 9); // 0..8
+      const onesB = Math.floor(Math.random() * (9 - onesA)) + onesA + 1; // forces a ones borrow
+      const { question, answer } = chainSub(hA * 100 + tA * 10 + onesA, hB * 100 + tB * 10 + onesB, null);
+      return { id, type, question, answer, options: numOpts(answer), signature: `sbh3:${hA},${tA},${onesA},${hB},${tB},${onesB}` };
+    }
+    // Borrow over zeros: 200 - 199 = ?
+    const hundred = (Math.floor(Math.random() * 9) + 1) * 100; // 100..900
+    const diff = Math.floor(Math.random() * 9) + 1; // 1..9
+    const { question, answer } = chainSub(hundred, hundred - diff, null);
+    return { id, type, question, answer, options: numOpts(answer), signature: `sbhz:${hundred},${diff}` };
   }
 
   if (type === "place-value-3") {
@@ -1150,6 +1402,34 @@ function buildProblem(type: ProblemType, min: number, max: number): Problem {
     };
   }
 
+  if (type === "mult-tables-single") {
+    const pool = Math.random() < 0.5 ? [2, 3] : [5, 10];
+    const table = pool[Math.floor(Math.random() * pool.length)];
+    const multiplier = Math.floor(Math.random() * 10) + 1; // 1..10
+    const answer = table * multiplier;
+    return { id, type, question: `${table} x ${multiplier} = ?`, answer, options: numOpts(answer), signature: `mts:${table},${multiplier}` };
+  }
+
+  if (type === "mult-tables-mixed") {
+    const pool = Math.random() < 0.5 ? [2, 3, 4, 5] : [2, 5, 10];
+    const table = pool[Math.floor(Math.random() * pool.length)];
+    const multiplier = Math.floor(Math.random() * 10) + 1;
+    const answer = table * multiplier;
+    return { id, type, question: `${table} x ${multiplier} = ?`, answer, options: numOpts(answer), signature: `mtm:${table},${multiplier}` };
+  }
+
+  if (type === "mult-missing-factor") {
+    const pools = [[2], [5], [10], [2, 5, 10]];
+    const pool = pools[Math.floor(Math.random() * pools.length)];
+    const table = pool[Math.floor(Math.random() * pool.length)];
+    const multiplier = Math.floor(Math.random() * 10) + 1;
+    const product = table * multiplier;
+    const blankFirst = Math.random() < 0.5;
+    const answer = blankFirst ? table : multiplier;
+    const question = blankFirst ? `__ x ${multiplier} = ${product}` : `${table} x __ = ${product}`;
+    return { id, type, question, answer, options: numOpts(answer), signature: `mmf:${table},${multiplier}-${blankFirst}` };
+  }
+
   // ─── Multiplication, fractions & measurement ───────────────────────────────
 
   if (type === "multiply") {
@@ -1177,6 +1457,49 @@ function buildProblem(type: ProblemType, min: number, max: number): Problem {
       answer,
       options: numOpts(answer),
       signature: `mt:${single},${tens}`,
+    };
+  }
+
+  if (type === "mult-by-2-extended") {
+    const variant = Math.floor(Math.random() * 4);
+    if (variant === 0) {
+      // Two times a small number: 2 x 14 = ?
+      const n = Math.floor(Math.random() * 10) + 11; // 11..20
+      const answer = 2 * n;
+      return { id, type, question: `2 x ${n} = ?`, answer, options: numOpts(answer), signature: `m2a:${n}` };
+    }
+    if (variant === 1) {
+      // Two times a multiple of 5: 2 x 55 = ?
+      const n = (Math.floor(Math.random() * 19) + 1) * 5; // 5..95
+      const answer = 2 * n;
+      return { id, type, question: `2 x ${n} = ?`, answer, options: numOpts(answer), signature: `m2b:${n}` };
+    }
+    if (variant === 2) {
+      // Two times a whole ten: 2 x 70 = ?
+      const n = (Math.floor(Math.random() * 9) + 1) * 10; // 10..90
+      const answer = 2 * n;
+      return { id, type, question: `2 x ${n} = ?`, answer, options: numOpts(answer), signature: `m2c:${n}` };
+    }
+    // Two times a whole ten, missing factor: __ x 90 = 180
+    const n = (Math.floor(Math.random() * 9) + 1) * 10;
+    const answer = 2;
+    return { id, type, question: `__ x ${n} = ${2 * n}`, answer, options: numOpts(answer), signature: `m2d:${n}` };
+  }
+
+  if (type === "word-problem-mult") {
+    const a = Math.floor(Math.random() * 4) + 2; // 2..5
+    const bMax = Math.floor(25 / a);
+    const b = Math.floor(Math.random() * bMax) + 1;
+    const name = pickOne(WP_NAMES);
+    const item = pickOne(WP_ITEMS);
+    const answer = a * b;
+    return {
+      id,
+      type,
+      question: `${name} has ${a} bags with ${b} ${item} in each. How many ${item} in total?`,
+      answer,
+      options: numOpts(answer),
+      signature: `wpmul:${a},${b}`,
     };
   }
 
