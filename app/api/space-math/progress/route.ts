@@ -150,7 +150,7 @@ const STAGE_INFO: Record<number, { label: string; standard: string }> = {
 // so nothing on this list is retired once it is mastered.
 const LADDER: number[] = [
   1, 2, 11, 3, 4, 13, 12, 17, 15,
-  5, 60, 16, 63, 6, 61, 62, 7, 68, 64, 8, 65,
+  5, 60, 16, 63, 6, 61, 62, 7, 68, 64, 8, 67, 65,
   26, 23, 22, 24, 20, 21, 25, 27,
   40, 42, 41, 43, 44, 45, 46, 47, 48,
 ];

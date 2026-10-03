@@ -28,10 +28,18 @@ type ProblemType =
   | "sub-mult-10"
   | "equal-sign"
   | "unknown-addend"
+  | "add-regroup-mental"
+  | "add-whole-tens"
+  | "word-problem-add"
   // G2
   | "add-100-regroup"
   | "sub-100-regroup"
   | "place-value-3"
+  | "order-numbers"
+  | "add-no-regroup"
+  | "add-whole-hundreds"
+  | "add-harder-mixed"
+  | "word-problem-mixed"
   | "skip-small"
   | "skip-10-flex"
   | "skip-big"
@@ -45,6 +53,9 @@ type ProblemType =
   | "divide"
   | "multiply-tens"
   | "round"
+  | "round-ten-small"
+  | "round-ten-large"
+  | "round-hundred"
   | "fraction-line"
   | "equiv-fractions"
   | "compare-fractions"
@@ -113,10 +124,13 @@ const TOPIC_PROGRESSION: TopicDef[] = [
   { key: "compare-20",       type: "comparison",      min: 1,   max: 20  },
   { key: "three-addend",     type: "three-addend",    min: 1,   max: 6   },
   { key: "fact-family",      type: "fact-family",     min: 1,   max: 10  },
+  { key: "g1-add-regroup",   type: "add-regroup-mental", min: 1, max: 9   },
   { key: "place-value",      type: "place-value",     min: 1,   max: 9   },
   { key: "count-120",        type: "count-120",       min: 1,   max: 120 },
   { key: "mental-ten",       type: "mental-ten",      min: 10,  max: 90  },
+  { key: "g1-add-whole-tens", type: "add-whole-tens", min: 10,  max: 150 },
   { key: "add-100",          type: "add-100",         min: 10,  max: 90  },
+  { key: "g1-word-problems", type: "word-problem-add", min: 1,  max: 400 },
   { key: "g1-sub-mult-10",   type: "sub-mult-10",     min: 10,  max: 90  },
   { key: "g2-odd-even",      type: "odd-even",        min: 1,   max: 20  },
   { key: "g2-skip-small",    type: "skip-small",      min: 2,   max: 9   },
@@ -125,13 +139,21 @@ const TOPIC_PROGRESSION: TopicDef[] = [
   { key: "g2-skip-backward", type: "skip-backward",   min: 2,   max: 10  },
   { key: "g2-place-3",       type: "place-value-3",   min: 1,   max: 9   },
   { key: "g2-compare-999",   type: "compare-3digit",  min: 100, max: 999 },
+  { key: "g2-order",         type: "order-numbers",   min: 1,   max: 99  },
+  { key: "g2-add-no-regroup", type: "add-no-regroup", min: 10,  max: 89  },
   { key: "g2-add-regroup",   type: "add-100-regroup", min: 10,  max: 99  },
   { key: "g2-sub-regroup",   type: "sub-100-regroup", min: 10,  max: 99  },
   { key: "g2-mental-100",    type: "mental-hundred",  min: 100, max: 800 },
+  { key: "g2-add-whole-hundreds", type: "add-whole-hundreds", min: 100, max: 900 },
+  { key: "g2-add-harder",    type: "add-harder-mixed", min: 10, max: 899 },
+  { key: "g2-word-problems", type: "word-problem-mixed", min: 1, max: 90 },
   { key: "g2-array",         type: "array",           min: 2,   max: 5   },
   { key: "g3-mult",          type: "multiply",        min: 0,   max: 10  },
   { key: "g3-divide",        type: "divide",          min: 1,   max: 10  },
   { key: "g3-mult-tens",     type: "multiply-tens",   min: 10,  max: 90  },
+  { key: "g3-round-ten-small", type: "round-ten-small", min: 1, max: 99  },
+  { key: "g3-round-ten-large", type: "round-ten-large", min: 10, max: 999 },
+  { key: "g3-round-hundred", type: "round-hundred",   min: 10,  max: 990 },
   { key: "g3-round",         type: "round",           min: 10,  max: 999 },
   { key: "g3-fraction-line", type: "fraction-line",   min: 2,   max: 8   },
   { key: "g3-equiv-frac",    type: "equiv-fractions", min: 2,   max: 8   },
@@ -158,30 +180,41 @@ const TOPIC_STAGE: Record<string, { id: number; label: string }> = {
   "sub-1-20":        { id: 60, label: "Subtract within 20" },
   "three-addend":    { id: 61, label: "Three-addend addition" },
   "fact-family":     { id: 62, label: "Fact families" },
+  "g1-add-regroup":  { id: 5,  label: "Add within 20" },
   "g1-equal-sign":   { id: 16, label: "Equal sign true/false" },
   "g1-unknown":      { id: 63, label: "Unknown addend" },
   "compare-20":      { id: 6,  label: "Compare 2-digit numbers" },
   "place-value":     { id: 7,  label: "Tens & ones place value" },
   "mental-ten":      { id: 64, label: "Mental ±10" },
+  "g1-add-whole-tens": { id: 64, label: "Mental ±10" },
   "g1-sub-mult-10":  { id: 65, label: "Subtract multiples of 10" },
   "add-100":         { id: 8,  label: "Add within 100" },
+  "g1-word-problems": { id: 67, label: "Word problems within 20" },
   "count-120":       { id: 68, label: "Count to 120" },
   // G2
+  "g2-add-no-regroup": { id: 20, label: "Add within 100" },
   "g2-add-regroup":  { id: 20, label: "Add within 100" },
   "g2-sub-regroup":  { id: 21, label: "Subtract within 100" },
   "g2-place-3":      { id: 22, label: "3-Digit Place Value" },
+  "g2-order":        { id: 24, label: "Compare 3-Digit" },
   "g2-skip-small":   { id: 23, label: "Skip Count" },
   "g2-skip-10-flex": { id: 23, label: "Skip Count" },
   "g2-skip-big":     { id: 23, label: "Skip Count" },
   "g2-skip-backward": { id: 23, label: "Skip Count" },
   "g2-compare-999":  { id: 24, label: "Compare 3-Digit" },
   "g2-mental-100":   { id: 25, label: "Mental ±100" },
+  "g2-add-whole-hundreds": { id: 25, label: "Mental ±100" },
+  "g2-add-harder":   { id: 20, label: "Add within 100" },
+  "g2-word-problems": { id: 20, label: "Add within 100" },
   "g2-odd-even":     { id: 26, label: "Odd or Even" },
   "g2-array":        { id: 27, label: "Arrays" },
   // G3
   "g3-mult":         { id: 40, label: "Multiplication" },
   "g3-mult-tens":    { id: 41, label: "×Multiples of 10" },
   "g3-divide":       { id: 42, label: "Division" },
+  "g3-round-ten-small": { id: 43, label: "Rounding" },
+  "g3-round-ten-large": { id: 43, label: "Rounding" },
+  "g3-round-hundred": { id: 43, label: "Rounding" },
   "g3-round":        { id: 43, label: "Rounding" },
   "g3-fraction-line": { id: 44, label: "Fractions on Number Line" },
   "g3-equiv-frac":   { id: 45, label: "Equivalent Fractions" },
@@ -302,20 +335,47 @@ function numOpts(answer: number): number[] {
   return Array.from(s).sort((a, b) => a - b);
 }
 
+// Renders a chain of addends, either asking for the total or, with a
+// blankIndex, hiding one addend and showing the total instead.
+function chainAdd(terms: number[], blankIndex: number | null): { question: string; answer: number } {
+  const sum = terms.reduce((s, n) => s + n, 0);
+  const parts = terms.map((t, i) => (i === blankIndex ? "__" : String(t)));
+  if (blankIndex === null) return { question: `${parts.join(" + ")} = ?`, answer: sum };
+  return { question: `${parts.join(" + ")} = ${sum}`, answer: terms[blankIndex] };
+}
+
+const WP_NAMES = ["Mia", "Leo", "Zoe", "Sam", "Ava", "Max", "Ivy", "Eli"];
+const WP_ITEMS = ["apples", "stickers", "marbles", "cookies", "toy cars", "crayons", "shells", "coins"];
+const pickOne = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
+
 function buildProblem(type: ProblemType, min: number, max: number): Problem {
   const id = Math.random().toString(36).substr(2, 9);
 
   if (type === "addition") {
     const left = Math.floor(Math.random() * (max - min)) + min; // min to max-1, leaving room for right
     const right = Math.floor(Math.random() * (max - left)) + 1; // 1 to (max - left), so left+right <= max
-    const answer = left + right;
+    const sum = left + right;
+    // Occasionally ask for a missing addend instead of the sum, so this
+    // rung also covers "4 + __ = 9"-style problems at the same number range.
+    const hideLeft = Math.random() < 0.3 ? Math.random() < 0.5 : null;
+    if (hideLeft === null) {
+      return {
+        id,
+        type,
+        question: `${left} + ${right} = ?`,
+        answer: sum,
+        options: numOpts(sum),
+        signature: `add:${Math.min(left, right)},${Math.max(left, right)}`,
+      };
+    }
+    const answer = hideLeft ? left : right;
     return {
       id,
       type,
-      question: `${left} + ${right} = ?`,
+      question: hideLeft ? `? + ${right} = ${sum}` : `${left} + ? = ${sum}`,
       answer,
       options: numOpts(answer),
-      signature: `add:${Math.min(left, right)},${Math.max(left, right)}`,
+      signature: `add-missing:${left},${right}-${hideLeft}`,
     };
   }
 
@@ -361,6 +421,52 @@ function buildProblem(type: ProblemType, min: number, max: number): Problem {
     };
   }
 
+  if (type === "add-whole-tens") {
+    const variant = Math.floor(Math.random() * 8);
+    const tens = (n: number) => (Math.floor(Math.random() * n) + 1) * 10;
+    if (variant <= 1) {
+      // 2 addends, sum or missing addend: 30 + 80 = ? / ___ + 80 = 110
+      const terms = [tens(9), tens(9)];
+      const { question, answer } = chainAdd(terms, variant === 1 ? 0 : null);
+      return { id, type, question, answer, options: numOpts(answer), signature: `awt2:${terms.join(",")}-${variant}` };
+    }
+    if (variant <= 3) {
+      // 3 addends, sum or missing middle addend
+      const terms = [tens(9), tens(9), tens(9)];
+      const { question, answer } = chainAdd(terms, variant === 3 ? 1 : null);
+      return { id, type, question, answer, options: numOpts(answer), signature: `awt3:${terms.join(",")}-${variant}` };
+    }
+    if (variant <= 5) {
+      // 4 addends, sum or missing second addend
+      const terms = [tens(9), tens(9), tens(9), tens(9)];
+      const { question, answer } = chainAdd(terms, variant === 5 ? 1 : null);
+      return { id, type, question, answer, options: numOpts(answer), signature: `awt4:${terms.join(",")}-${variant}` };
+    }
+    if (variant === 6) {
+      // Complete the next ten: ___ + 8 = 70
+      const target = tens(9); // 10..90, leaves room to go up to 100
+      const ones = Math.floor(Math.random() * 9) + 1;
+      const start = target + 10 - ones; // so start + ones = target + 10
+      const { question, answer } = chainAdd([start, ones], 0);
+      return { id, type, question, answer, options: numOpts(answer), signature: `awt-next:${start},${ones}` };
+    }
+    // Decompose into "complete the ten" + remainder: 62 + 9 = 62 + 8 + ?
+    const ones = Math.floor(Math.random() * 9) + 1; // 1..9, the base's ones digit
+    const base = tens(8) + ones; // e.g. 62
+    const toNextTen = 10 - ones;
+    const remainder = Math.floor(Math.random() * 9) + 1; // 1..9
+    const addend = toNextTen + remainder;
+    const answer = remainder;
+    return {
+      id,
+      type,
+      question: `${base} + ${addend} = ${base} + ${toNextTen} + ?`,
+      answer,
+      options: numOpts(answer),
+      signature: `awt-decomp:${base},${addend}`,
+    };
+  }
+
   if (type === "add-100") {
     // Two easy patterns: round tens + single digit (20+7) or round tens + round tens (20+30)
     const useTens = Math.random() > 0.5;
@@ -386,6 +492,23 @@ function buildProblem(type: ProblemType, min: number, max: number): Problem {
       answer,
       options: numOpts(answer),
       signature: `add100:${left},${right}`,
+    };
+  }
+
+  if (type === "word-problem-add") {
+    const big = Math.random() < 0.4; // occasionally stretch to 3-digit numbers
+    const a = big ? Math.floor(Math.random() * 400) + 100 : Math.floor(Math.random() * 50) + 1;
+    const b = big ? Math.floor(Math.random() * 90) + 1 : Math.floor(Math.random() * 20) + 1;
+    const name = pickOne(WP_NAMES);
+    const item = pickOne(WP_ITEMS);
+    const answer = a + b;
+    return {
+      id,
+      type,
+      question: `${name} has ${a} ${item}. ${name} gets ${b} more. How many ${item} does ${name} have now?`,
+      answer,
+      options: numOpts(answer),
+      signature: `wpa:${a},${b}`,
     };
   }
 
@@ -432,6 +555,35 @@ function buildProblem(type: ProblemType, min: number, max: number): Problem {
       answer,
       options: numOpts(answer),
       signature: `ff:${Math.min(a, b)},${Math.max(a, b)}`,
+    };
+  }
+
+  if (type === "add-regroup-mental") {
+    const count = [2, 3, 4][Math.floor(Math.random() * 3)];
+    let terms: number[];
+    if (count === 2) {
+      // Two 1-digit addends: force a sum >= 10 so regrouping is always in play.
+      let a = 0;
+      let b = 0;
+      do {
+        a = Math.floor(Math.random() * 9) + 1;
+        b = Math.floor(Math.random() * 9) + 1;
+      } while (a + b < 10);
+      terms = [a, b];
+    } else {
+      terms = Array.from({ length: count }, () => Math.floor(Math.random() * 9) + 1);
+    }
+    const sum = terms.reduce((s, n) => s + n, 0);
+    const blankIndex = Math.random() < 0.5 ? Math.floor(Math.random() * terms.length) : null;
+    const parts = terms.map((t, i) => (i === blankIndex ? "__" : String(t)));
+    const answer = blankIndex === null ? sum : terms[blankIndex];
+    return {
+      id,
+      type,
+      question: blankIndex === null ? `${parts.join(" + ")} = ?` : `${parts.join(" + ")} = ${sum}`,
+      answer,
+      options: numOpts(answer),
+      signature: `addrm:${terms.join(",")}-${blankIndex}`,
     };
   }
 
@@ -601,6 +753,37 @@ function buildProblem(type: ProblemType, min: number, max: number): Problem {
 
   // ─── Regrouping & 3-digit numbers ──────────────────────────────────────────
 
+  if (type === "add-no-regroup") {
+    const variant = Math.floor(Math.random() * 3);
+    if (variant === 0) {
+      // 2-digit + 1-digit, no carrying: 34 + 4 = ?
+      const tens = Math.floor(Math.random() * 8) + 1; // 1..8
+      const onesA = Math.floor(Math.random() * 9); // 0..8, leaves room for a 1-digit addend
+      const onesB = Math.floor(Math.random() * (9 - onesA)) + 1; // 1..(9-onesA)
+      const left = tens * 10 + onesA;
+      const { question, answer } = chainAdd([left, onesB], null);
+      return { id, type, question, answer, options: numOpts(answer), signature: `addnr1:${left},${onesB}` };
+    }
+    if (variant === 1) {
+      // Same shape, missing addend: 34 + __ = 38
+      const tens = Math.floor(Math.random() * 8) + 1;
+      const onesA = Math.floor(Math.random() * 9);
+      const onesB = Math.floor(Math.random() * (9 - onesA)) + 1;
+      const left = tens * 10 + onesA;
+      const { question, answer } = chainAdd([left, onesB], 1);
+      return { id, type, question, answer, options: numOpts(answer), signature: `addnr1m:${left},${onesB}` };
+    }
+    // Two 2-digit numbers, no carrying in either place: 34 + 21 = ?
+    const tensA = Math.floor(Math.random() * 8) + 1; // 1..8
+    const tensB = Math.floor(Math.random() * (9 - tensA)) + 1; // keeps tens sum <= 9
+    const onesA = Math.floor(Math.random() * 9); // 0..8
+    const onesB = Math.floor(Math.random() * (9 - onesA)); // keeps ones sum <= 8
+    const left = tensA * 10 + onesA;
+    const right = tensB * 10 + onesB;
+    const { question, answer } = chainAdd([left, right], null);
+    return { id, type, question, answer, options: numOpts(answer), signature: `addnr2:${left},${right}` };
+  }
+
   if (type === "add-100-regroup") {
     // Two-digit + two-digit, often requiring regrouping
     const a = Math.floor(Math.random() * 80) + 11; // 11..90
@@ -631,17 +814,73 @@ function buildProblem(type: ProblemType, min: number, max: number): Problem {
   }
 
   if (type === "place-value-3") {
-    const h = Math.floor(Math.random() * 9) + 1; // 1..9
-    const t = Math.floor(Math.random() * 10);
-    const o = Math.floor(Math.random() * 10);
-    const answer = h * 100 + t * 10 + o;
+    const variants = [
+      // H hundreds + T tens + O ones = ?
+      () => {
+        const h = Math.floor(Math.random() * 9) + 1;
+        const t = Math.floor(Math.random() * 10);
+        const o = Math.floor(Math.random() * 10);
+        return { question: `${h} hundreds + ${t} tens + ${o} ones = ?`, answer: h * 100 + t * 10 + o, sig: `pv3-word:${h},${t},${o}` };
+      },
+      // Build a 3-digit number: 200 + 70 + 3 = ?
+      () => {
+        const h = Math.floor(Math.random() * 9) + 1;
+        const t = Math.floor(Math.random() * 9) + 1;
+        const o = Math.floor(Math.random() * 9) + 1;
+        return { question: `${h * 100} + ${t * 10} + ${o} = ?`, answer: h * 100 + t * 10 + o, sig: `pv3-build:${h},${t},${o}` };
+      },
+      // Missing place value, in scrambled order: 5 + 400 + ___ = 485
+      () => {
+        const h = Math.floor(Math.random() * 9) + 1;
+        const t = Math.floor(Math.random() * 10);
+        const o = Math.floor(Math.random() * 10);
+        const terms = [h * 100, t * 10, o];
+        for (let i = terms.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [terms[i], terms[j]] = [terms[j], terms[i]];
+        }
+        const blankIndex = Math.floor(Math.random() * 3);
+        const { question, answer } = chainAdd(terms, blankIndex);
+        return { question, answer, sig: `pv3-missing:${terms.join(",")}-${blankIndex}` };
+      },
+      // Expanded form with a coefficient blank: 273 = __ x 100 + 7 x 10 + 3 x 1
+      () => {
+        const h = Math.floor(Math.random() * 9) + 1;
+        const t = Math.floor(Math.random() * 10);
+        const o = Math.floor(Math.random() * 10);
+        const num = h * 100 + t * 10 + o;
+        const blank = Math.floor(Math.random() * 3); // 0=hundreds, 1=tens, 2=ones
+        const digits = [h, t, o];
+        const coeffs = digits.map((c, i) => (i === blank ? "__" : String(c)));
+        return { question: `${num} = ${coeffs[0]} x 100 + ${coeffs[1]} x 10 + ${coeffs[2]} x 1`, answer: digits[blank], sig: `pv3-expand:${num}-${blank}` };
+      },
+      // Standard form: 2 x 100 + 7 x 10 + 3 x 1 = ?
+      () => {
+        const h = Math.floor(Math.random() * 9) + 1;
+        const t = Math.floor(Math.random() * 10);
+        const o = Math.floor(Math.random() * 10);
+        return { question: `${h} x 100 + ${t} x 10 + ${o} x 1 = ?`, answer: h * 100 + t * 10 + o, sig: `pv3-standard:${h},${t},${o}` };
+      },
+      // Identify a digit's place: 463 → ? hundreds
+      () => {
+        const num = Math.floor(Math.random() * 900) + 100;
+        const places = [
+          { label: "hundreds", digit: Math.floor(num / 100) % 10 },
+          { label: "tens", digit: Math.floor(num / 10) % 10 },
+          { label: "ones", digit: num % 10 },
+        ];
+        const p = places[Math.floor(Math.random() * places.length)];
+        return { question: `${num} → ? ${p.label}`, answer: p.digit, sig: `pv3-digit:${num}-${p.label}` };
+      },
+    ];
+    const v = variants[Math.floor(Math.random() * variants.length)]();
     return {
       id,
       type,
-      question: `${h} hundreds + ${t} tens + ${o} ones = ?`,
-      answer,
-      options: numOpts(answer),
-      signature: `pv3:${h},${t},${o}`,
+      question: v.question,
+      answer: v.answer,
+      options: numOpts(v.answer),
+      signature: v.sig,
     };
   }
 
@@ -735,6 +974,31 @@ function buildProblem(type: ProblemType, min: number, max: number): Problem {
     };
   }
 
+  if (type === "order-numbers") {
+    const count = 4;
+    const nums = new Set<number>();
+    while (nums.size < count) nums.add(Math.floor(Math.random() * (max - min + 1)) + min);
+    const numbers = Array.from(nums);
+    const ascending = Math.random() < 0.5;
+    const sorted = [...numbers].sort((a, b) => (ascending ? a - b : b - a));
+    const answer = sorted.join(", ");
+    const shuffled = [...numbers].sort(() => Math.random() - 0.5).join(", ");
+    const reversed = [...sorted].reverse().join(", ");
+    const options = Array.from(new Set([answer, shuffled, reversed]));
+    while (options.length < 3) {
+      const extra = [...numbers].sort(() => Math.random() - 0.5).join(", ");
+      if (!options.includes(extra)) options.push(extra);
+    }
+    return {
+      id,
+      type,
+      question: `Order from ${ascending ? "least to greatest" : "greatest to least"}: ${numbers.join(", ")}`,
+      answer,
+      options,
+      signature: `order:${numbers.join(",")}-${ascending}`,
+    };
+  }
+
   if (type === "mental-hundred") {
     const base = (Math.floor(Math.random() * 8) + 1) * 100; // 100..800
     const isAdd = base <= 800;
@@ -746,6 +1010,116 @@ function buildProblem(type: ProblemType, min: number, max: number): Problem {
       answer,
       options: numOpts(answer),
       signature: `m100:${isAdd ? "+" : "-"}-${base}`,
+    };
+  }
+
+  if (type === "add-whole-hundreds") {
+    const hundreds = (n: number) => (Math.floor(Math.random() * n) + 1) * 100;
+    const variant = Math.floor(Math.random() * 4);
+    if (variant === 0) {
+      const a = hundreds(8); // 100..800
+      const b = hundreds(Math.max(1, 9 - a / 100)); // keeps the sum at or under 900
+      const { question, answer } = chainAdd([a, b], null);
+      return { id, type, question, answer, options: numOpts(answer), signature: `awh2:${a},${b}` };
+    }
+    if (variant === 1) {
+      const a = hundreds(7);
+      const remaining = 9 - a / 100;
+      const b = hundreds(Math.max(1, Math.floor(remaining / 2)));
+      const c = hundreds(Math.max(1, remaining - b / 100));
+      const { question, answer } = chainAdd([a, b, c], null);
+      return { id, type, question, answer, options: numOpts(answer), signature: `awh3:${a},${b},${c}` };
+    }
+    if (variant === 2) {
+      const a = hundreds(8);
+      const b = hundreds(Math.max(1, 9 - a / 100));
+      const { question, answer } = chainAdd([a, b], 1);
+      return { id, type, question, answer, options: numOpts(answer), signature: `awh2m:${a},${b}` };
+    }
+    // Complete a thousand: 700 + ___ = 1000
+    const h = Math.floor(Math.random() * 9) + 1; // 1..9
+    const a = h * 100;
+    const b = (10 - h) * 100;
+    const { question, answer } = chainAdd([a, b], 1);
+    return { id, type, question, answer, options: numOpts(answer), signature: `awh1000:${a}` };
+  }
+
+  if (type === "add-harder-mixed") {
+    const d1 = () => Math.floor(Math.random() * 9) + 1; // 1-digit, 1..9
+    const d2 = (lo: number, hi: number) => Math.floor(Math.random() * (hi - lo + 1)) + lo;
+    const tensMul = (n: number) => (Math.floor(Math.random() * n) + 1) * 10;
+    const variant = Math.floor(Math.random() * 13);
+    const build = (terms: number[], blankIndex: number | null, sig: string) => {
+      const { question, answer } = chainAdd(terms, blankIndex);
+      return { id, type, question, answer, options: numOpts(answer), signature: sig };
+    };
+    if (variant === 0) {
+      const base = d2(20, 89);
+      return build([base, d1()], null, `ahm0:${base}`);
+    }
+    if (variant === 1) {
+      const base = d2(20, 89);
+      return build([base, d1()], 1, `ahm1:${base}`);
+    }
+    if (variant === 2) {
+      const base = d2(20, 89);
+      return build([base, d1(), d1()], null, `ahm2:${base}`);
+    }
+    if (variant === 3) {
+      const base = d2(20, 89);
+      return build([base, d1(), d1(), d1()], null, `ahm3:${base}`);
+    }
+    if (variant === 4) {
+      const base = d2(20, 89);
+      return build([base, d1(), d1(), d1()], 2, `ahm4:${base}`);
+    }
+    if (variant === 5) {
+      return build([d2(10, 59), tensMul(4)], null, `ahm5`);
+    }
+    if (variant === 6) {
+      return build([d2(100, 899), d1()], null, `ahm6`);
+    }
+    if (variant === 7) {
+      return build([tensMul(8), tensMul(8), d1(), d1()], null, `ahm7`);
+    }
+    if (variant === 8) {
+      return build([d2(100, 899), tensMul(8)], null, `ahm8`);
+    }
+    if (variant === 9) {
+      return build([d2(100, 899), tensMul(8)], 1, `ahm9`);
+    }
+    if (variant === 10) {
+      return build([d2(10, 89), d2(10, 89), d2(10, 89)], null, `ahm10`);
+    }
+    if (variant === 11) {
+      return build([d2(10, 89), d2(10, 89), d2(10, 89), d2(10, 89)], null, `ahm11`);
+    }
+    // Two 2-digit addends, missing addend, carrying allowed: 39 + __ = 50
+    const a = d2(10, 89);
+    const b = d2(10, Math.max(10, 98 - a));
+    return build([a, b], 1, `ahm12:${a},${b}`);
+  }
+
+  if (type === "word-problem-mixed") {
+    const twoDigit = Math.random() < 0.5;
+    const a = twoDigit ? Math.floor(Math.random() * 70) + 20 : Math.floor(Math.random() * 15) + 5;
+    const isAdd = Math.random() < 0.5;
+    const b = isAdd
+      ? Math.floor(Math.random() * (twoDigit ? 90 - a : 20 - a)) + 1
+      : Math.floor(Math.random() * a) + 1;
+    const name = pickOne(WP_NAMES);
+    const item = pickOne(WP_ITEMS);
+    const answer = isAdd ? a + b : a - b;
+    const question = isAdd
+      ? `${name} has ${a} ${item} and finds ${b} more. How many ${item} does ${name} have now?`
+      : `${name} has ${a} ${item} and gives away ${b}. How many ${item} does ${name} have left?`;
+    return {
+      id,
+      type,
+      question,
+      answer,
+      options: numOpts(answer),
+      signature: `wpm:${isAdd ? "+" : "-"}-${a},${b}`,
     };
   }
 
@@ -817,6 +1191,45 @@ function buildProblem(type: ProblemType, min: number, max: number): Problem {
       answer: quotient,
       options: numOpts(quotient),
       signature: `div:${dividend},${divisor}`,
+    };
+  }
+
+  if (type === "round-ten-small") {
+    const n = Math.floor(Math.random() * 99) + 1; // 1..99
+    const answer = Math.round(n / 10) * 10;
+    return {
+      id,
+      type,
+      question: `Round ${n} to the nearest ten.`,
+      answer,
+      options: numOpts(answer),
+      signature: `rnd10s:${n}`,
+    };
+  }
+
+  if (type === "round-ten-large") {
+    const n = Math.floor(Math.random() * 990) + 10; // 10..999
+    const answer = Math.round(n / 10) * 10;
+    return {
+      id,
+      type,
+      question: `Round ${n} to the nearest ten.`,
+      answer,
+      options: numOpts(answer),
+      signature: `rnd10l:${n}`,
+    };
+  }
+
+  if (type === "round-hundred") {
+    const n = Math.floor(Math.random() * 990) + 10; // 10..999
+    const answer = Math.round(n / 100) * 100;
+    return {
+      id,
+      type,
+      question: `Round ${n} to the nearest hundred.`,
+      answer,
+      options: numOpts(answer),
+      signature: `rndh:${n}`,
     };
   }
 
