@@ -1,164 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { SKILLS, SUBJECT_AREAS, findSkill, type SubjectAreaId } from "../../../lib/spaceMathSkills";
 
 export const dynamic = "force-dynamic";
-
-// Stage → syllabus category mapping. Each stage is one Common Core skill.
-const STAGE_CATEGORY: Record<number, string> = {
-  // ── Kindergarten ──
-  1:  "addition_subtraction", // K Add within 5
-  2:  "addition_subtraction", // K Subtract within 5
-  3:  "addition_subtraction", // K Add within 10
-  4:  "addition_subtraction", // K Subtract within 10
-  11: "number_sense",         // K Count by 1s to 100
-  17: "number_sense",         // K Count by 10s to 100
-  18: "number_sense",         // K Count the next number
-  12: "addition_subtraction", // K Make 10
-  13: "number_sense",         // K Compare 1–10
-  14: "geometry",             // K Shapes
-  15: "place_value",          // K Teen numbers (10 + ones)
-  // ── Grade 1 ──
-  5:  "addition_subtraction", // G1 Add within 20
-  60: "addition_subtraction", // G1 Subtract within 20
-  61: "addition_subtraction", // G1 Three-addend addition
-  62: "addition_subtraction", // G1 Fact families
-  16: "addition_subtraction", // G1 Equal sign true/false
-  63: "addition_subtraction", // G1 Unknown addend
-  6:  "number_sense",         // G1 Compare 2-digit numbers
-  7:  "place_value",          // G1 Tens & ones place value
-  64: "place_value",          // G1 Mental ±10
-  65: "place_value",          // G1 Subtract multiples of 10
-  9:  "measurement",          // G1 Compare lengths
-  66: "measurement",          // G1 Time (hour & half-hour)
-  8:  "addition_subtraction", // G1 Add within 100
-  67: "addition_subtraction", // G1 Word problems within 20
-  68: "number_sense",         // G1 Count to 120
-  10: "geometry",             // G1 Halves & fourths
-  // ── Grade 2 ──
-  20: "addition_subtraction", // G2 Add within 100
-  21: "addition_subtraction", // G2 Subtract within 100
-  22: "place_value",          // G2 3-digit place value
-  23: "number_sense",         // G2 Skip count
-  24: "number_sense",         // G2 Compare 3-digit
-  25: "place_value",          // G2 Mental ±100
-  26: "number_sense",         // G2 Odd/even
-  27: "multiplication",       // G2 Arrays
-  28: "measurement",          // G2 Time to 5 min
-  29: "measurement",          // G2 Money
-  30: "geometry",             // G2 Thirds
-  31: "geometry",             // G2 Polygons
-  // ── Grade 3 ──
-  40: "multiplication",       // G3 Multiplication
-  41: "multiplication",       // G3 ×Multiples of 10
-  42: "multiplication",       // G3 Division
-  43: "place_value",          // G3 Rounding
-  44: "fractions",            // G3 Fractions on number line
-  45: "fractions",            // G3 Equivalent fractions
-  46: "fractions",            // G3 Compare fractions
-  47: "measurement",          // G3 Area
-  48: "measurement",          // G3 Perimeter
-  49: "measurement",          // G3 Time to the minute
-  50: "measurement",          // G3 Elapsed time
-};
-
-// For stages that cover two categories, also record in a secondary one
-const STAGE_SECONDARY_CATEGORY: Record<number, string> = {
-  1: "number_sense",
-  2: "number_sense",
-  3: "number_sense",
-  4: "number_sense",
-  7: "number_sense",
-  20: "place_value",
-  21: "place_value",
-  27: "addition_subtraction",
-  47: "multiplication",
-  48: "addition_subtraction",
-  62: "number_sense",         // fact families touch number sense
-  65: "addition_subtraction", // sub-multiples of 10
-};
-
-const SYLLABUS_CATEGORIES = [
-  { id: "number_sense",         label: "Number Sense",          description: "Counting, skip-count, compare numbers, odd/even" },
-  { id: "addition_subtraction", label: "Addition & Subtraction", description: "Fluency within 20, word problems, regrouping within 100" },
-  { id: "place_value",          label: "Place Value",            description: "Tens, hundreds, mental ±10/±100, rounding" },
-  { id: "multiplication",       label: "Multiplication & Division", description: "Arrays, multiplication facts, division within 100" },
-  { id: "fractions",            label: "Fractions",              description: "Halves/fourths/thirds, fractions on number line, equivalents" },
-  { id: "measurement",          label: "Measurement",            description: "Time, money, length, area, perimeter, elapsed time" },
-  { id: "geometry",             label: "Geometry",               description: "2D/3D shapes, polygons, partition shapes" },
-];
-
-// Each stage = one Common Core syllabus skill. There is no grade placement: the
-// learner sits at whatever point on the ladder they have reached.
-const STAGE_INFO: Record<number, { label: string; standard: string }> = {
-  // ── Kindergarten ──
-  1:  { label: "Add within 5",                       standard: "K.OA.A.5" },
-  2:  { label: "Subtract within 5",                  standard: "K.OA.A.5" },
-  3:  { label: "Add within 10",                      standard: "K.OA.A.2" },
-  4:  { label: "Subtract within 10",                 standard: "K.OA.A.2" },
-  11: { label: "Count by 1s to 100",                 standard: "K.CC.A.1" },
-  17: { label: "Count by 10s to 100",                standard: "K.CC.A.1" },
-  18: { label: "Count the next number",              standard: "K.CC.A.2" },
-  12: { label: "Make 10 (find pair to make 10)",     standard: "K.OA.A.4" },
-  13: { label: "Compare numbers 1–10",               standard: "K.CC.C.6" },
-  14: { label: "Identify shapes (2D & 3D)",          standard: "K.G.A.2" },
-  15: { label: "Teen numbers as 10 + ones",          standard: "K.NBT.A.1" },
-  // ── Grade 1 ──
-  5:  { label: "Add within 20",                      standard: "1.OA.C.6" },
-  60: { label: "Subtract within 20",                 standard: "1.OA.C.6" },
-  61: { label: "Three-addend addition",              standard: "1.OA.A.2" },
-  62: { label: "Fact families (use ↔ subtraction)",  standard: "1.OA.B.4" },
-  16: { label: "Equal sign true/false",              standard: "1.OA.D.7" },
-  63: { label: "Unknown addend (8 + ? = 11)",        standard: "1.OA.D.8" },
-  6:  { label: "Compare two-digit numbers",          standard: "1.NBT.B.3" },
-  7:  { label: "Tens & ones place value",            standard: "1.NBT.B.2" },
-  64: { label: "Mental ±10",                         standard: "1.NBT.C.5" },
-  65: { label: "Subtract multiples of 10 (70 − 30)", standard: "1.NBT.C.6" },
-  9:  { label: "Order & compare lengths",            standard: "1.MD.A.1" },
-  66: { label: "Tell time to hour & half-hour",      standard: "1.MD.B.3" },
-  8:  { label: "Add within 100 (2-digit + 1-digit / multiple of 10)", standard: "1.NBT.C.4" },
-  67: { label: "Word problems within 20",            standard: "1.OA.A.1" },
-  68: { label: "Count to 120 from any number",       standard: "1.NBT.A.1" },
-  10: { label: "Halves & fourths (partition shapes)", standard: "1.G.A.3" },
-  // ── Grade 2 ──
-  20: { label: "Add within 100 (with regrouping)",   standard: "2.NBT.B.5" },
-  21: { label: "Subtract within 100 (with regrouping)", standard: "2.NBT.B.5" },
-  22: { label: "3-digit place value",                standard: "2.NBT.A.1" },
-  23: { label: "Skip count by 5s, 10s, 100s",        standard: "2.NBT.A.2" },
-  24: { label: "Compare 3-digit numbers",            standard: "2.NBT.A.4" },
-  25: { label: "Mental ±100",                        standard: "2.NBT.B.8" },
-  26: { label: "Odd or even (within 20)",            standard: "2.OA.C.3" },
-  27: { label: "Rectangular arrays (foundations of ×)", standard: "2.OA.C.4" },
-  28: { label: "Tell time to the nearest 5 min",     standard: "2.MD.C.7" },
-  29: { label: "Money (coins / cents)",              standard: "2.MD.C.8" },
-  30: { label: "Thirds (partition shapes)",          standard: "2.G.A.3" },
-  31: { label: "Identify polygons (quadrilaterals, pentagons, hexagons)", standard: "2.G.A.1" },
-  // ── Grade 3 ──
-  40: { label: "Multiplication within 100",          standard: "3.OA.C.7" },
-  41: { label: "Multiply by multiples of 10",        standard: "3.NBT.A.3" },
-  42: { label: "Division within 100",                standard: "3.OA.C.7" },
-  43: { label: "Round to nearest 10 or 100",         standard: "3.NBT.A.1" },
-  44: { label: "Fractions on a number line",         standard: "3.NF.A.2" },
-  45: { label: "Equivalent fractions",               standard: "3.NF.A.3.b" },
-  46: { label: "Compare fractions",                  standard: "3.NF.A.3.d" },
-  47: { label: "Area of rectangles",                 standard: "3.MD.C.7" },
-  48: { label: "Perimeter of polygons",              standard: "3.MD.D.8" },
-  49: { label: "Tell time to the minute",            standard: "3.MD.A.1" },
-  50: { label: "Elapsed time word problems",         standard: "3.MD.A.1" },
-};
-// The single linear skill ladder, easiest first — mirrors TOPIC_PROGRESSION in
-// app/space-math/SpaceMathPage.tsx. Spaced repetition keeps every rung in the mix,
-// so nothing on this list is retired once it is mastered.
-const LADDER: number[] = [
-  1, 2, 11, 3, 4, 13, 12, 17, 15,
-  5, 60, 16, 63, 6, 61, 62, 7, 68, 64, 8, 67, 65,
-  26, 23, 22, 24, 20, 21, 25, 27,
-  40, 42, 41, 43, 44, 45, 46, 47, 48,
-];
-// Syllabus skills that don't have a question generator in the game yet
-const UPCOMING: number[] = Object.keys(STAGE_INFO).map(Number).filter((id) => !LADDER.includes(id));
-
-// How many not-yet-mastered skills the game keeps in rotation at once
-const FOCUS_COUNT = 3;
 
 function supabase() {
   return createClient(
@@ -167,39 +11,29 @@ function supabase() {
   );
 }
 
-// ── POST: save a stage result ─────────────────────────────────────────────────
+// ── POST: save one topic's result ─────────────────────────────────────────────
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { player_name, session_id, stage_id, stage_label, correct, total, mastered } = body;
+    const { player_name, session_id, skill_id, correct, total, mastered } = body;
 
-    if (!session_id || !stage_id) {
+    if (!session_id || !skill_id) {
       return NextResponse.json({ success: false, error: "Missing required fields" }, { status: 400 });
     }
 
+    const skill = findSkill(skill_id);
+
     const db = supabase();
-    const rows = [
-      {
-        player_name: player_name ?? "cai",
-        session_id,
-        stage_id,
-        stage_label,
-        skill_category: STAGE_CATEGORY[stage_id] ?? "number_sense",
-        correct,
-        total,
-        mastered,
-      },
-    ];
-
-    // If this stage maps to a secondary category, insert a second row
-    if (STAGE_SECONDARY_CATEGORY[stage_id]) {
-      rows.push({
-        ...rows[0],
-        skill_category: STAGE_SECONDARY_CATEGORY[stage_id],
-      });
-    }
-
-    const { error } = await db.from("space_math_progress").insert(rows);
+    const { error } = await db.from("space_math_progress").insert({
+      player_name: player_name ?? "cai",
+      session_id,
+      skill_id,
+      skill_label: skill?.name ?? skill_id,
+      skill_category: skill?.subject ?? null,
+      correct,
+      total,
+      mastered,
+    });
     if (error) throw error;
 
     return NextResponse.json({ success: true });
@@ -211,7 +45,34 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// ── GET: return aggregated skill levels for a player ─────────────────────────
+// ── GET: return progress grouped by parent-facing subject area ───────────────
+
+type SkillStatus = "mastered" | "practicing" | "not-started";
+
+interface SkillStat {
+  key: string;
+  name: string;
+  standard: string;
+  status: SkillStatus;
+  correct: number;
+  total: number;
+  accuracy: number | null;
+  sessionCount: number;
+  lastPlayed: string | null;
+  reviewedThisWeek: number; // distinct sessions this skill came up in, last 7 days
+}
+
+interface SubjectStat {
+  id: SubjectAreaId;
+  label: string;
+  description: string;
+  masteredCount: number;
+  practicingCount: number;
+  notStartedCount: number;
+  totalCount: number;
+  skills: SkillStat[];
+}
+
 export async function GET(req: NextRequest) {
   try {
     const player = req.nextUrl.searchParams.get("player") ?? "cai";
@@ -225,165 +86,114 @@ export async function GET(req: NextRequest) {
 
     if (error) throw error;
 
-    const rows = data ?? [];
+    // Legacy rows from before the skill_id migration carry their old numeric
+    // stage id (as text) and don't match any current skill key — they stay
+    // in the table as history but aren't attributable to one specific skill
+    // under the new one-row-per-topic model, so they're excluded from the
+    // per-skill/per-subject breakdown below (and from totalQuestions, so
+    // the headline count only reflects what's actually attributable).
+    const rows = (data ?? []).filter((r) => findSkill(r.skill_id));
 
-    // Aggregate per category
-    const categoryMap: Record<string, {
-      correct: number; total: number; masteredCount: number; sessionCount: number;
-      recentCorrect: number; recentTotal: number; lastPlayed: string | null;
-    }> = {};
-
-    for (const cat of SYLLABUS_CATEGORIES) {
-      categoryMap[cat.id] = { correct: 0, total: 0, masteredCount: 0, sessionCount: 0, recentCorrect: 0, recentTotal: 0, lastPlayed: null };
-    }
-
-    // Split into all-time vs recent (last 7 days)
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
+    const rowsBySkill = new Map<string, typeof rows>();
     for (const row of rows) {
-      const c = categoryMap[row.skill_category];
-      if (!c) continue;
-      c.correct += row.correct ?? 0;
-      c.total += row.total ?? 0;
-      if (row.mastered) c.masteredCount++;
-      c.sessionCount++;
-      if (!c.lastPlayed || row.played_at > c.lastPlayed) c.lastPlayed = row.played_at;
-      if (row.played_at >= sevenDaysAgo) {
-        c.recentCorrect += row.correct ?? 0;
-        c.recentTotal += row.total ?? 0;
-      }
+      const list = rowsBySkill.get(row.skill_id);
+      if (list) list.push(row);
+      else rowsBySkill.set(row.skill_id, [row]);
     }
 
-    // Stage mastery map
-    const masteredStages = new Set(
-      rows.filter((r) => r.mastered && r.skill_category === STAGE_CATEGORY[r.stage_id]).map((r) => r.stage_id)
-    );
+    const skillStats: Record<string, SkillStat> = {};
+    for (const skill of SKILLS) {
+      const skillRows = rowsBySkill.get(skill.key) ?? [];
+      const correct = skillRows.reduce((s, r) => s + (r.correct ?? 0), 0);
+      const total = skillRows.reduce((s, r) => s + (r.total ?? 0), 0);
+      const mastered = skillRows.some((r) => r.mastered);
+      const lastPlayed = skillRows.reduce<string | null>(
+        (latest, r) => (!latest || r.played_at > latest ? r.played_at : latest),
+        null
+      );
+      const recentRows = skillRows.filter((r) => r.played_at >= sevenDaysAgo);
+      const status: SkillStatus = mastered ? "mastered" : total > 0 ? "practicing" : "not-started";
 
-    // Compute 0-100 level per category
-    const categoryLevels = SYLLABUS_CATEGORIES.map((cat) => {
-      const c = categoryMap[cat.id];
+      skillStats[skill.key] = {
+        key: skill.key,
+        name: skill.name,
+        standard: skill.standard,
+        status,
+        correct,
+        total,
+        accuracy: total > 0 ? correct / total : null,
+        sessionCount: new Set(skillRows.map((r) => r.session_id)).size,
+        lastPlayed,
+        reviewedThisWeek: new Set(recentRows.map((r) => r.session_id)).size,
+      };
+    }
 
-      // Which stages map to this category?
-      const stagesForCat = Object.entries(STAGE_CATEGORY)
-        .filter(([, v]) => v === cat.id)
-        .map(([k]) => Number(k));
-      const secondaryStages = Object.entries(STAGE_SECONDARY_CATEGORY)
-        .filter(([, v]) => v === cat.id)
-        .map(([k]) => Number(k));
-      const allStages = Array.from(new Set([...stagesForCat, ...secondaryStages]));
-      const masteredInCat = allStages.filter((s) => masteredStages.has(s)).length;
-
-      let level = 0;
-      if (c.total > 0) {
-        const accuracy = c.correct / c.total;           // 0-1
-        const masteryBonus = masteredInCat / Math.max(allStages.length, 1); // 0-1
-        // Weighted: 60% accuracy, 40% mastery
-        level = Math.round((accuracy * 0.6 + masteryBonus * 0.4) * 100);
-        level = Math.max(0, Math.min(100, level));
-      }
-
-      const recentAccuracy = c.recentTotal > 0 ? c.recentCorrect / c.recentTotal : null;
-      const trend: "up" | "down" | "neutral" | "new" =
-        c.total === 0 ? "new"
-        : recentAccuracy === null ? "neutral"
-        : recentAccuracy > (c.correct / c.total) ? "up"
-        : recentAccuracy < (c.correct / c.total) ? "down"
-        : "neutral";
-
+    const subjects: SubjectStat[] = SUBJECT_AREAS.map((area) => {
+      const skillsInArea = SKILLS.filter((s) => s.subject === area.id).map((s) => skillStats[s.key]);
       return {
-        ...cat,
-        level,
-        correct: c.correct,
-        total: c.total,
-        masteredStages: masteredInCat,
-        totalStages: allStages.length,
-        sessionCount: c.sessionCount,
-        lastPlayed: c.lastPlayed,
-        trend,
-        recentAccuracy,
+        id: area.id,
+        label: area.label,
+        description: area.description,
+        masteredCount: skillsInArea.filter((s) => s.status === "mastered").length,
+        practicingCount: skillsInArea.filter((s) => s.status === "practicing").length,
+        notStartedCount: skillsInArea.filter((s) => s.status === "not-started").length,
+        totalCount: skillsInArea.length,
+        skills: skillsInArea,
       };
     });
 
-    const overallLevel = categoryLevels.length > 0
-      ? Math.round(categoryLevels.reduce((s, c) => s + c.level, 0) / categoryLevels.length)
-      : 0;
+    // ── This week ──────────────────────────────────────────────────────────
+    // A skill is "newly mastered this week" if the first row that ever
+    // carried mastered=true for it falls in the last 7 days.
+    const newlyMastered: string[] = [];
+    let practicingThisWeek = 0;
+    let reviewedThisWeek = 0;
+    let reviewedCorrect = 0;
+    let reviewedTotal = 0;
 
-    const strengths = categoryLevels.filter((c) => c.level >= 70);
-    const weaknesses = categoryLevels.filter((c) => c.level < 40 && c.total > 0);
-    const notStarted = categoryLevels.filter((c) => c.total === 0);
+    for (const skill of SKILLS) {
+      const skillRows = rowsBySkill.get(skill.key) ?? [];
+      const stat = skillStats[skill.key];
+      const recentRows = skillRows.filter((r) => r.played_at >= sevenDaysAgo);
+      if (recentRows.length === 0) continue;
 
-    // ── Per-stage stats (only count primary-category rows so totals aren't doubled) ──
-    type StageStat = {
-      stageId: number;
-      rung: number | null;
-      label: string;
-      standard: string;
-      correct: number;
-      total: number;
-      accuracy: number | null;
-      mastered: boolean;
-      lastPlayed: string | null;
-      sessionCount: number;
+      if (stat.status === "mastered") {
+        const firstMastered = skillRows.find((r) => r.mastered);
+        if (firstMastered && firstMastered.played_at >= sevenDaysAgo) {
+          newlyMastered.push(stat.name);
+        } else {
+          // Already mastered before this week, and played again this week —
+          // that's a spaced-repetition pull-back, i.e. reinforcement, not a
+          // regression. It must never read as the skill getting worse.
+          reviewedThisWeek++;
+          reviewedCorrect += recentRows.reduce((s, r) => s + (r.correct ?? 0), 0);
+          reviewedTotal += recentRows.reduce((s, r) => s + (r.total ?? 0), 0);
+        }
+      } else if (stat.status === "practicing") {
+        practicingThisWeek++;
+      }
+    }
+
+    const weeklySummary = {
+      newlyMastered,
+      practicingCount: practicingThisWeek,
+      reviewedCount: reviewedThisWeek,
+      reviewedAccuracy: reviewedTotal > 0 ? reviewedCorrect / reviewedTotal : null,
     };
-    const stageMap: Record<number, StageStat> = {};
-    for (const id of Object.keys(STAGE_INFO).map(Number)) {
-      const info = STAGE_INFO[id];
-      const rung = LADDER.indexOf(id);
-      stageMap[id] = {
-        stageId: id, rung: rung === -1 ? null : rung + 1, label: info.label, standard: info.standard,
-        correct: 0, total: 0, accuracy: null, mastered: masteredStages.has(id),
-        lastPlayed: null, sessionCount: 0,
-      };
-    }
-    for (const row of rows) {
-      const id = row.stage_id;
-      if (!stageMap[id]) continue;
-      // Avoid double counting: only sum from the primary-category row
-      if (row.skill_category !== STAGE_CATEGORY[id]) continue;
-      const s = stageMap[id];
-      s.correct += row.correct ?? 0;
-      s.total += row.total ?? 0;
-      s.sessionCount++;
-      if (!s.lastPlayed || row.played_at > s.lastPlayed) s.lastPlayed = row.played_at;
-    }
-    for (const id of Object.keys(stageMap).map(Number)) {
-      const s = stageMap[id];
-      s.accuracy = s.total > 0 ? s.correct / s.total : null;
-    }
 
-    // ── The ladder: every playable skill in difficulty order ──
-    const ladder = LADDER.map((id) => stageMap[id]).filter(Boolean);
-    const upcoming = UPCOMING.map((id) => stageMap[id]).filter(Boolean);
-    const skillsMastered = ladder.filter((s) => s.mastered).length;
-    const ladderCorrect = ladder.reduce((acc, s) => acc + s.correct, 0);
-    const ladderAttempts = ladder.reduce((acc, s) => acc + s.total, 0);
-    // What the game is working on now: the next few skills not yet mastered
-    const focusSkills = ladder.filter((s) => !s.mastered).slice(0, FOCUS_COUNT);
-    // Mastered skills still in the review rotation, most recently practiced first
-    const reviewSkills = ladder
-      .filter((s) => s.mastered)
-      .sort((a, b) => (b.lastPlayed ?? "").localeCompare(a.lastPlayed ?? ""));
+    const overallMasteredCount = SKILLS.filter((s) => skillStats[s.key].status === "mastered").length;
 
     return NextResponse.json({
       success: true,
       player,
-      overallLevel,
-      ladder,
-      upcoming,
-      focusSkills,
-      reviewSkills,
-      skillsMastered,
-      totalSkills: ladder.length,
-      ladderAccuracy: ladderAttempts > 0 ? ladderCorrect / ladderAttempts : null,
-      ladderCorrect,
-      ladderAttempts,
-      syllabusComplete: ladder.length > 0 && skillsMastered === ladder.length,
-      categoryLevels,
-      strengths: strengths.map((c) => c.label),
-      weaknesses: weaknesses.map((c) => c.label),
-      notStarted: notStarted.map((c) => c.label),
+      subjects,
+      weeklySummary,
+      overallMasteredCount,
+      overallTotalCount: SKILLS.length,
       totalSessions: new Set(rows.map((r) => r.session_id)).size,
-      totalQuestions: rows.reduce((s, r) => s + (r.total ?? 0), 0) / 2, // halve because dual-category rows
+      totalQuestions: rows.reduce((s, r) => s + (r.total ?? 0), 0),
     });
   } catch (e) {
     return NextResponse.json(
