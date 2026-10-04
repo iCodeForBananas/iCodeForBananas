@@ -58,6 +58,15 @@ type ProblemType =
   | "mult-tables-single"
   | "mult-tables-mixed"
   | "mult-missing-factor"
+  | "fraction-equal-parts"
+  | "fraction-pic-to-frac"
+  | "fraction-notation"
+  | "fraction-frac-to-pic"
+  | "fraction-words"
+  | "fraction-of-set"
+  | "compare-fractions-simple"
+  | "fraction-compare-visual"
+  | "fraction-word-problem"
   // G3
   | "multiply"
   | "divide"
@@ -74,6 +83,12 @@ type ProblemType =
   | "area"
   | "perimeter";
 
+interface FractionVisual {
+  shape: "circle" | "square" | "bar" | "set";
+  total: number;
+  shaded: number;
+}
+
 interface Problem {
   id: string;
   type: ProblemType;
@@ -81,6 +96,13 @@ interface Problem {
   answer: number | string;
   options: (number | string)[];
   signature: string;
+  // One or two shapes rendered above the question (one shape, or two for a
+  // side-by-side visual comparison).
+  visual?: FractionVisual[];
+  // When true, each entry in `options` is a "n/d" string rendered as a small
+  // shape (using `optionShape`) instead of as text.
+  optionsArePictures?: boolean;
+  optionShape?: FractionVisual["shape"];
 }
 
 interface TopicRecord {
@@ -170,6 +192,15 @@ const TOPIC_PROGRESSION: TopicDef[] = [
   { key: "g2-mult-tables-single", type: "mult-tables-single", min: 1, max: 10 },
   { key: "g2-mult-tables-mixed", type: "mult-tables-mixed", min: 1, max: 10 },
   { key: "g2-mult-missing-factor", type: "mult-missing-factor", min: 1, max: 10 },
+  { key: "g2-frac-equal-parts", type: "fraction-equal-parts", min: 2, max: 10 },
+  { key: "g2-frac-pic-to-frac", type: "fraction-pic-to-frac", min: 2, max: 10 },
+  { key: "g2-frac-notation", type: "fraction-notation", min: 2, max: 10 },
+  { key: "g2-frac-frac-to-pic", type: "fraction-frac-to-pic", min: 2, max: 10 },
+  { key: "g2-frac-words",    type: "fraction-words",   min: 1,   max: 1   },
+  { key: "g2-frac-of-set",   type: "fraction-of-set",  min: 6,   max: 12  },
+  { key: "g2-compare-frac-simple", type: "compare-fractions-simple", min: 2, max: 10 },
+  { key: "g2-frac-compare-visual", type: "fraction-compare-visual", min: 2, max: 10 },
+  { key: "g2-frac-word-problems", type: "fraction-word-problem", min: 1, max: 12 },
   { key: "g3-mult",          type: "multiply",        min: 0,   max: 10  },
   { key: "g3-divide",        type: "divide",          min: 1,   max: 10  },
   { key: "g3-mult-tens",     type: "multiply-tens",   min: 10,  max: 90  },
@@ -242,6 +273,15 @@ const TOPIC_STAGE: Record<string, { id: number; label: string }> = {
   "g2-mult-tables-single": { id: 27, label: "Arrays" },
   "g2-mult-tables-mixed": { id: 27, label: "Arrays" },
   "g2-mult-missing-factor": { id: 27, label: "Arrays" },
+  "g2-frac-equal-parts": { id: 30, label: "Thirds (partition shapes)" },
+  "g2-frac-pic-to-frac": { id: 44, label: "Fractions on Number Line" },
+  "g2-frac-notation":  { id: 44, label: "Fractions on Number Line" },
+  "g2-frac-frac-to-pic": { id: 44, label: "Fractions on Number Line" },
+  "g2-frac-words":     { id: 44, label: "Fractions on Number Line" },
+  "g2-frac-of-set":    { id: 44, label: "Fractions on Number Line" },
+  "g2-compare-frac-simple": { id: 46, label: "Compare Fractions" },
+  "g2-frac-compare-visual": { id: 46, label: "Compare Fractions" },
+  "g2-frac-word-problems": { id: 44, label: "Fractions on Number Line" },
   // G3
   "g3-mult":         { id: 40, label: "Multiplication" },
   "g3-mult-tens":    { id: 41, label: "×Multiples of 10" },
@@ -383,6 +423,28 @@ function chainAdd(terms: number[], blankIndex: number | null): { question: strin
 const WP_NAMES = ["Mia", "Leo", "Zoe", "Sam", "Ava", "Max", "Ivy", "Eli"];
 const WP_ITEMS = ["apples", "stickers", "marbles", "cookies", "toy cars", "crayons", "shells", "coins"];
 const pickOne = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
+
+// Builds a 4-option set from an explicit candidate pool (for answers that
+// aren't numbers, so numOpts' +/-offset approach doesn't apply).
+function strOpts(answer: string, candidates: string[]): string[] {
+  const s = new Set<string>([answer]);
+  for (const c of [...candidates].sort(() => Math.random() - 0.5)) {
+    if (s.size >= 4) break;
+    if (c !== answer) s.add(c);
+  }
+  return Array.from(s).sort(() => Math.random() - 0.5);
+}
+
+const FRACTION_DENOMS = [2, 3, 4, 5, 6, 8, 10];
+const FRACTION_PART_NAMES: Record<number, string> = {
+  2: "halves", 3: "thirds", 4: "quarters", 5: "fifths", 6: "sixths", 8: "eighths", 10: "tenths",
+};
+const FRACTION_WORDS: Record<string, string> = {
+  "1/2": "one-half", "1/3": "one-third", "2/3": "two-thirds",
+  "1/4": "one-fourth", "3/4": "three-fourths",
+  "1/5": "one-fifth", "1/6": "one-sixth", "1/8": "one-eighth", "1/10": "one-tenth",
+};
+const FRACTION_SHAPES: FractionVisual["shape"][] = ["circle", "square", "bar", "set"];
 
 // Renders a - b, either asking for the difference or, with blank, hiding
 // the minuend or the subtrahend and showing the difference instead.
@@ -1430,6 +1492,202 @@ function buildProblem(type: ProblemType, min: number, max: number): Problem {
     return { id, type, question, answer, options: numOpts(answer), signature: `mmf:${table},${multiplier}-${blankFirst}` };
   }
 
+  // ─── Fractions (parts of a whole / parts of a set) ─────────────────────────
+
+  if (type === "fraction-equal-parts") {
+    const d = FRACTION_DENOMS[Math.floor(Math.random() * FRACTION_DENOMS.length)];
+    if (Math.random() < 0.5) {
+      const answer = `1/${d}`;
+      const candidates = FRACTION_DENOMS.map((x) => `1/${x}`);
+      return {
+        id,
+        type,
+        question: `A whole is divided into ${d} equal parts. Each part is what fraction of the whole?`,
+        answer,
+        options: strOpts(answer, candidates),
+        signature: `fep-a:${d}`,
+      };
+    }
+    const answer = FRACTION_PART_NAMES[d];
+    const candidates = Object.values(FRACTION_PART_NAMES);
+    return {
+      id,
+      type,
+      question: `A whole divided into ${d} equal parts — each part is called a ___.`,
+      answer,
+      options: strOpts(answer, candidates),
+      signature: `fep-b:${d}`,
+    };
+  }
+
+  if (type === "fraction-pic-to-frac") {
+    const shape = FRACTION_SHAPES[Math.floor(Math.random() * FRACTION_SHAPES.length)];
+    const total = FRACTION_DENOMS[Math.floor(Math.random() * FRACTION_DENOMS.length)];
+    const shaded = Math.floor(Math.random() * (total - 1)) + 1;
+    const answer = `${shaded}/${total}`;
+    const candidates = [answer, `${total - shaded}/${total}`, `${Math.max(1, shaded - 1)}/${total}`, `${Math.min(total - 1, shaded + 1)}/${total}`];
+    return {
+      id,
+      type,
+      question: shape === "set" ? "What fraction of the set is shaded?" : "What fraction of the shape is shaded?",
+      answer,
+      options: strOpts(answer, candidates),
+      visual: [{ shape, total, shaded }],
+      signature: `fp2f:${shape}-${shaded}/${total}`,
+    };
+  }
+
+  if (type === "fraction-notation") {
+    const d = FRACTION_DENOMS[Math.floor(Math.random() * FRACTION_DENOMS.length)];
+    const n = Math.floor(Math.random() * (d - 1)) + 1;
+    const variant = Math.floor(Math.random() * 3);
+    if (variant === 0) {
+      return { id, type, question: `In the fraction ${n}/${d}, what is the numerator?`, answer: n, options: numOpts(n), signature: `fnot-num:${n}/${d}` };
+    }
+    if (variant === 1) {
+      return { id, type, question: `In the fraction ${n}/${d}, what is the denominator?`, answer: d, options: numOpts(d), signature: `fnot-den:${n}/${d}` };
+    }
+    const answer = `${n}/${d}`;
+    const candidates = [answer, `${d}/${n}`, `${n}/${d + 1}`, `${n + 1}/${d}`];
+    return {
+      id,
+      type,
+      question: `Numerator: ${n}. Denominator: ${d}. Write the fraction.`,
+      answer,
+      options: strOpts(answer, candidates),
+      signature: `fnot-write:${n}/${d}`,
+    };
+  }
+
+  if (type === "fraction-frac-to-pic") {
+    const shape = FRACTION_SHAPES[Math.floor(Math.random() * FRACTION_SHAPES.length)];
+    const total = FRACTION_DENOMS[Math.floor(Math.random() * FRACTION_DENOMS.length)];
+    const shaded = Math.floor(Math.random() * (total - 1)) + 1;
+    const answer = `${shaded}/${total}`;
+    const wrongShaded = new Set<number>();
+    while (wrongShaded.size < 3) {
+      const w = Math.floor(Math.random() * (total - 1)) + 1;
+      if (w !== shaded) wrongShaded.add(w);
+    }
+    const options = strOpts(answer, [answer, ...Array.from(wrongShaded).map((s) => `${s}/${total}`)]);
+    const asColoring = Math.random() < 0.5;
+    const question = asColoring
+      ? `Color ${total} equal parts to show ${answer}. Which picture is correct?`
+      : `Which picture shows ${answer}?`;
+    return {
+      id,
+      type,
+      question,
+      answer,
+      options,
+      optionsArePictures: true,
+      optionShape: shape,
+      signature: `ff2p:${shape}-${answer}`,
+    };
+  }
+
+  if (type === "fraction-words") {
+    const entries = Object.entries(FRACTION_WORDS);
+    const [frac, word] = entries[Math.floor(Math.random() * entries.length)];
+    if (Math.random() < 0.5) {
+      const candidates = entries.map(([, w]) => w);
+      return {
+        id,
+        type,
+        question: `Which word names the fraction ${frac}?`,
+        answer: word,
+        options: strOpts(word, candidates),
+        signature: `fw-word:${frac}`,
+      };
+    }
+    const candidates = entries.map(([f]) => f);
+    return {
+      id,
+      type,
+      question: `Which fraction is "${word}"?`,
+      answer: frac,
+      options: strOpts(frac, candidates),
+      signature: `fw-frac:${frac}`,
+    };
+  }
+
+  if (type === "fraction-of-set") {
+    const total = Math.floor(Math.random() * (max - min + 1)) + min; // 6..12
+    const part = Math.floor(Math.random() * (total - 1)) + 1;
+    const item = pickOne(WP_ITEMS);
+    const color = pickOne(["red", "blue", "green", "yellow"]);
+    const answer = `${part}/${total}`;
+    const candidates = [answer, `${total - part}/${total}`, `${Math.max(1, part - 1)}/${total}`, `${Math.min(total - 1, part + 1)}/${total}`];
+    return {
+      id,
+      type,
+      question: `There are ${total} ${item}. ${part} of them are ${color}. What fraction of the ${item} are ${color}?`,
+      answer,
+      options: strOpts(answer, candidates),
+      signature: `fos:${part}/${total}`,
+    };
+  }
+
+  if (type === "compare-fractions-simple") {
+    return { ...buildProblem("compare-fractions", min, max), type };
+  }
+
+  if (type === "fraction-compare-visual") {
+    const shape = Math.random() < 0.5 ? "bar" : "set";
+    const total = FRACTION_DENOMS[Math.floor(Math.random() * FRACTION_DENOMS.length)];
+    const shadedA = Math.floor(Math.random() * (total - 1)) + 1;
+    let shadedB = Math.floor(Math.random() * (total - 1)) + 1;
+    while (shadedB === shadedA) shadedB = Math.floor(Math.random() * (total - 1)) + 1;
+    const answer = shadedA < shadedB ? "<" : shadedA > shadedB ? ">" : "=";
+    return {
+      id,
+      type,
+      question: "Compare the shaded parts:",
+      answer,
+      options: ["<", "=", ">"],
+      visual: [
+        { shape, total, shaded: shadedA },
+        { shape, total, shaded: shadedB },
+      ],
+      signature: `fcv:${shape}-${shadedA}vs${shadedB}/${total}`,
+    };
+  }
+
+  if (type === "fraction-word-problem") {
+    const name = pickOne(WP_NAMES);
+    if (Math.random() < 0.5) {
+      const total = Math.floor(Math.random() * (max - min + 1)) + min; // 1..12 range, but see below
+      const safeTotal = Math.max(total, 4);
+      const part = Math.floor(Math.random() * (safeTotal - 1)) + 1;
+      const item = pickOne(WP_ITEMS);
+      const answer = `${part}/${safeTotal}`;
+      const candidates = [answer, `${safeTotal - part}/${safeTotal}`, `${Math.max(1, part - 1)}/${safeTotal}`];
+      return {
+        id,
+        type,
+        question: `${name} has ${safeTotal} ${item} and gives away ${part} of them. What fraction of the ${item} did ${name} give away?`,
+        answer,
+        options: strOpts(answer, candidates),
+        signature: `fwp-basic:${part}/${safeTotal}`,
+      };
+    }
+    const total = Math.max(Math.floor(Math.random() * (max - min + 1)) + min, 6);
+    const partA = Math.floor(Math.random() * (total - 2)) + 1;
+    let partB = Math.floor(Math.random() * (total - 2)) + 1;
+    while (partB === partA) partB = Math.floor(Math.random() * (total - 2)) + 1;
+    const item = pickOne(WP_ITEMS);
+    const otherName = pickOne(WP_NAMES.filter((n) => n !== name));
+    const answer = partA > partB ? name : otherName;
+    return {
+      id,
+      type,
+      question: `${name} ate ${partA}/${total} of a pack of ${item}, and ${otherName} ate ${partB}/${total} of an identical pack. Who ate more?`,
+      answer,
+      options: [name, otherName],
+      signature: `fwp-compare:${partA},${partB},${total}`,
+    };
+  }
+
   // ─── Multiplication, fractions & measurement ───────────────────────────────
 
   if (type === "multiply") {
@@ -1762,6 +2020,92 @@ const playSound = (type: "correct" | "incorrect" | "badge") => {
   } catch (e) {
     console.error("Audio error", e);
   }
+};
+
+// ─── FractionShape ────────────────────────────────────────────────────────────
+
+function polarPoint(cx: number, cy: number, r: number, angleDeg: number) {
+  const rad = ((angleDeg - 90) * Math.PI) / 180;
+  return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+}
+
+// Renders one fraction visual: a pie, a row of bar segments, or a grid of
+// squares/dots, with `shaded` of `total` pieces filled in.
+const FractionShape = ({ visual, size = 120 }: { visual: FractionVisual; size?: number }) => {
+  const { shape, total, shaded } = visual;
+  const fill = "#fbbf24";
+  const empty = "rgba(255,255,255,0.15)";
+  const stroke = "rgba(255,255,255,0.65)";
+
+  if (shape === "circle") {
+    const r = size / 2 - 4;
+    const cx = size / 2;
+    const cy = size / 2;
+    const step = 360 / total;
+    return (
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+        {Array.from({ length: total }, (_, i) => {
+          const start = polarPoint(cx, cy, r, i * step);
+          const end = polarPoint(cx, cy, r, (i + 1) * step);
+          const largeArc = step > 180 ? 1 : 0;
+          const d = `M ${cx} ${cy} L ${start.x} ${start.y} A ${r} ${r} 0 ${largeArc} 1 ${end.x} ${end.y} Z`;
+          return <path key={i} d={d} fill={i < shaded ? fill : empty} stroke={stroke} strokeWidth={2} />;
+        })}
+      </svg>
+    );
+  }
+
+  if (shape === "bar") {
+    const w = size * 1.6;
+    const h = size * 0.55;
+    const segW = w / total;
+    return (
+      <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`}>
+        {Array.from({ length: total }, (_, i) => (
+          <rect key={i} x={i * segW} y={0} width={segW} height={h} fill={i < shaded ? fill : empty} stroke={stroke} strokeWidth={2} />
+        ))}
+      </svg>
+    );
+  }
+
+  // "square" (grid partition of a whole) and "set" (discrete dots) share a grid layout
+  const cols = Math.ceil(Math.sqrt(total));
+  const rows = Math.ceil(total / cols);
+  const cell = size / Math.max(cols, rows);
+  return (
+    <svg width={cols * cell} height={rows * cell} viewBox={`0 0 ${cols * cell} ${rows * cell}`}>
+      {Array.from({ length: total }, (_, i) => {
+        const row = Math.floor(i / cols);
+        const col = i % cols;
+        const filled = i < shaded;
+        if (shape === "set") {
+          return (
+            <circle
+              key={i}
+              cx={col * cell + cell / 2}
+              cy={row * cell + cell / 2}
+              r={cell * 0.35}
+              fill={filled ? fill : empty}
+              stroke={stroke}
+              strokeWidth={2}
+            />
+          );
+        }
+        return (
+          <rect
+            key={i}
+            x={col * cell + 2}
+            y={row * cell + 2}
+            width={cell - 4}
+            height={cell - 4}
+            fill={filled ? fill : empty}
+            stroke={stroke}
+            strokeWidth={2}
+          />
+        );
+      })}
+    </svg>
+  );
 };
 
 // ─── StarBank ─────────────────────────────────────────────────────────────────
@@ -2262,6 +2606,13 @@ export default function SpaceMathPage() {
                     <h2 className='font-black mb-1 tracking-tight leading-snug text-3xl sm:text-4xl md:text-5xl break-words text-white'>
                       {problem.question}
                     </h2>
+                    {problem.visual && (
+                      <div className='flex items-center justify-center gap-6 mt-2'>
+                        {problem.visual.map((v, i) => (
+                          <FractionShape key={i} visual={v} />
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <div className={`grid gap-2 sm:gap-3 flex-1 min-h-0 ${isThreeOptions ? "grid-cols-3" : "grid-cols-2"}`}>
                     {problem.options.map((opt, i) => {
@@ -2274,6 +2625,7 @@ export default function SpaceMathPage() {
                         : isRevealCorrect
                           ? "bg-gradient-to-b from-green-400 to-green-600"
                           : `bg-gradient-to-b ${OPTION_COLORS[i % OPTION_COLORS.length]} hover:brightness-110`;
+                      const optMatch = problem.optionsArePictures && problem.optionShape ? /^(\d+)\/(\d+)$/.exec(String(opt)) : null;
                       return (
                         <button
                           key={i}
@@ -2281,7 +2633,14 @@ export default function SpaceMathPage() {
                           onClick={() => handleAnswer(opt)}
                           className={`flex items-center justify-center rounded-md text-4xl sm:text-6xl md:text-8xl font-black text-white transition-all border-4 border-black shadow-[0_6px_0_#000] sm:shadow-[0_8px_0_#000] active:shadow-none active:translate-y-[6px] sm:active:translate-y-[8px] ${colorClasses}`}
                         >
-                          {opt}
+                          {optMatch ? (
+                            <FractionShape
+                              visual={{ shape: problem.optionShape!, total: Number(optMatch[2]), shaded: Number(optMatch[1]) }}
+                              size={72}
+                            />
+                          ) : (
+                            opt
+                          )}
                         </button>
                       );
                     })}
