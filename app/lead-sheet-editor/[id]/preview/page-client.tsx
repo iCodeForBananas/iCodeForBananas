@@ -151,7 +151,6 @@ const SheetContent = memo(function SheetContent({
   onEditSection,
   bpm,
   kit,
-  stacked = false,
 }: {
   sheet: LeadSheet;
   fullscreen: boolean;
@@ -176,12 +175,6 @@ const SheetContent = memo(function SheetContent({
   onEditSection?: (sectionIndex: number) => void;
   /** Tempo the song's beat markers are read at — the live one, not the saved one. */
   bpm?: number;
-  /**
-   * The Songbook reference's sheet: chords stacked over the syllable they land
-   * on, small section labels. Only the on-screen views ask for it; the print
-   * view keeps the inline [C] form.
-   */
-  stacked?: boolean;
 }) {
   const beatTempo = bpm ?? sheet.tempo ?? DEFAULT_BPM;
   const columnsActive = !!(columnCount || columnWidthVw);
@@ -212,7 +205,7 @@ const SheetContent = memo(function SheetContent({
       </div>
 
       <div
-        className={`${stacked ? "" : "space-y-10"} ${columnsActive ? "leadsheet-columns" : ""}`}
+        className={`space-y-10 ${columnsActive ? "leadsheet-columns" : ""}`}
         style={
           columnsActive
             ? ({
@@ -233,16 +226,6 @@ const SheetContent = memo(function SheetContent({
           const lines = (section.content ?? "").split("\n");
           return (
             <div key={section.id} style={{ breakInside: "avoid" }}>
-              {stacked ? (
-                onEditSection ? (
-                  <button type='button' className={styles.sheetSec} onClick={() => onEditSection(sectionIndex)} title='Rename this section'>
-                    {section.label || section.type}
-                    <Pencil className='w-3 h-3' />
-                  </button>
-                ) : (
-                  <div className={styles.sheetSec}>{section.label || section.type}</div>
-                )
-              ) : (
               <div className='mb-4'>
                 {onEditSection ? (
                   <button
@@ -264,10 +247,9 @@ const SheetContent = memo(function SheetContent({
                   </span>
                 )}
               </div>
-              )}
               {/* No overflow-x here: long lines wrap rather than scroll sideways,
                   so nothing renders a horizontal scrollbar on screen or in print. */}
-              <div className={stacked ? undefined : "space-y-3"}>
+              <div className='space-y-3'>
                 <SortableLines enabled={!!onMoveLine} sectionIndex={sectionIndex} count={lines.length}>
                 {lines.map((line, i) => {
                   // The grip and the row travel together; without reordering the
@@ -294,7 +276,7 @@ const SheetContent = memo(function SheetContent({
                           className='block w-full h-8 rounded border border-dashed border-line-strong/10 border-line-subtle hover:border-line-strong hover:bg-surface-raised transition-colors duration-150'
                         />
                       ) : (
-                        <div key={i} data-fit-line className={stacked ? styles.sheetGap : "h-3"} />
+                        <div key={i} data-fit-line className='h-3' />
                       )
                     );
                   }
@@ -329,7 +311,7 @@ const SheetContent = memo(function SheetContent({
                             }
                           : undefined
                       }
-                      className={`rounded ${stacked ? "" : "px-2"} transition-colors duration-150 ${
+                      className={`rounded px-2 transition-colors duration-150 ${
                         active
                           ? "bg-primary-solid/20 shadow-[inset_3px_0_0_0_var(--ds-color-primary-solid)]"
                           : ""
@@ -357,7 +339,6 @@ const SheetContent = memo(function SheetContent({
                         large={fullscreen}
                         showTime={!!timeline}
                         bpm={beatTempo}
-                        stacked={stacked}
                       />
                     </div>
                   );
@@ -392,8 +373,7 @@ const SheetContent = memo(function SheetContent({
                   </div>
                 )}
               </div>
-              {section.notes && stacked && <p className={styles.sheetNote}>↳ {section.notes}</p>}
-              {section.notes && !stacked && (
+              {section.notes && (
                 <p className={`mt-3 italic text-ink-muted text-ink-muted ${fullscreen ? "text-[1em]" : "text-[0.875em]"}`}>
                   ↳ {section.notes}
                 </p>
@@ -1300,7 +1280,6 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                   <LineDndProvider onMove={editMode ? moveLine : undefined} lineTextAt={lineTextAt}>
                     <SheetContent
                       sheet={sheet}
-                      stacked
                       onEditLine={editMode ? openLineEditor : undefined}
                       onInsertLine={editMode ? openLineInsert : undefined}
                       onMoveLine={editMode ? moveLine : undefined}
@@ -1340,7 +1319,6 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                     <LineDndProvider onMove={editMode ? moveLine : undefined} lineTextAt={lineTextAt}>
                       <SheetContent
                         sheet={sheet}
-                        stacked
                         onEditLine={editMode ? openLineEditor : undefined}
                         onInsertLine={editMode ? openLineInsert : undefined}
                         onMoveLine={editMode ? moveLine : undefined}
