@@ -1,21 +1,28 @@
+import { Atkinson_Hyperlegible } from "next/font/google";
 import { CommandPaletteProvider } from "@/app/components/ui/command-palette";
+import styles from "./lead-sheet-editor.module.css";
+
+const atkinson = Atkinson_Hyperlegible({
+  subsets: ["latin"],
+  weight: ["400", "700"],
+  style: ["normal", "italic"],
+  variable: "--font-atkinson",
+  display: "swap",
+});
 
 /**
  * The songwriting routes.
  *
- * The surface used to be set here because this subtree was the only part of
- * the app on the design system and the rest still carried the banana theme.
- * That is no longer true: the shell in app/layout.tsx is on surface.base and
- * every tool reads Layer 2, so this only re-states the plane for a subtree
- * that is sometimes mounted on its own — the share route renders without the
- * shell around it.
- *
  * This subtree used to carry its own scoped theme override (a deeper,
  * always-dark near-black-and-amber palette independent of the site's
- * light/dark toggle) because it was the odd one out. It no longer needs one:
- * the global dark palette (ink black / Prussian blue / Oxford navy, School
- * Bus Yellow / gold — see tokens/README.md) is now exactly that identity,
- * app-wide, and honors the toggle like everywhere else.
+ * light/dark toggle), then gave it up in favor of the app-wide dark palette
+ * (ink black / Prussian blue / Oxford navy, School Bus Yellow / gold — see
+ * tokens/README.md). It has its own look again now, requested separately
+ * from that app-wide theme: `lead-sheet-editor.module.css`'s `.root`
+ * re-points the same --ds-color-* custom properties everything here already
+ * reads at a different, warmer near-black-and-amber palette (lifted from the
+ * "Open Mic Songbook" design reference), scoped by the CSS Module class so
+ * it cannot leak into any other page the way the old global override could.
  *
  * The command palette is scoped the same way: it only ever knows about songs,
  * and keeping it here keeps its client boundary off every other page.
@@ -23,7 +30,7 @@ import { CommandPaletteProvider } from "@/app/components/ui/command-palette";
 export default function LeadSheetLayout({ children }: { children: React.ReactNode }) {
   return (
     <CommandPaletteProvider>
-      <div className='flex min-h-full flex-1 flex-col bg-surface-base font-sans text-ink-primary'>
+      <div className={`flex min-h-full flex-1 flex-col font-sans ${atkinson.variable} ${styles.root}`}>
         {children}
       </div>
     </CommandPaletteProvider>

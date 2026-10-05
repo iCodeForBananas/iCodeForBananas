@@ -52,6 +52,7 @@ import {
 import { DEFAULT_KIT, kitFromMetadata, kitToMetadata, type KitSettings } from "../../kit";
 import { KitPlayer } from "../../KitPlayer";
 import KitDesigner from "../../KitDesigner";
+import styles from "../../lead-sheet-editor.module.css";
 import PreviewSidebar, {
   MIN_SCALE,
   MAX_SCALE,
@@ -180,19 +181,13 @@ const SheetContent = memo(function SheetContent({
         >
           {sheet.title || "Untitled"}
         </h1>
-        <div className='flex flex-wrap gap-6 text-[0.875em]'>
+        <div className='flex flex-wrap gap-2 text-[0.875em]'>
           {sheet.key && (
-            <span>
-              <span className='uppercase tracking-wider text-[0.75em] text-ink-muted text-ink-muted mr-1'>Key</span>
-              <span className='font-bold text-ink-primary text-[1em]'>{sheet.key}</span>
+            <span className={`${styles.chip} ${styles.chipAccent}`}>
+              Key {sheet.key}
             </span>
           )}
-          {sheet.tempo && (
-            <span>
-              <span className='uppercase tracking-wider text-[0.75em] text-ink-muted text-ink-muted mr-1'>Tempo</span>
-              <span className='font-bold text-ink-primary text-[1em]'>{sheet.tempo} BPM</span>
-            </span>
-          )}
+          {sheet.tempo && <span className={styles.chip}>{sheet.tempo} BPM</span>}
         </div>
         {sheet.general_notes && (
           <p className={`mt-3 italic text-ink-muted text-ink-muted ${fullscreen ? "text-[1em]" : "text-[0.875em]"}`}>

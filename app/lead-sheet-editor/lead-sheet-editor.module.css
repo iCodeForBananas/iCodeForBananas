@@ -1,0 +1,85 @@
+/*
+ * Styles scoped to the Lead Sheet Editor only (CSS Modules generate unique
+ * class names at build time, so nothing here can leak into other pages, and
+ * nothing from the shared design system can override the distinct look this
+ * subtree wants instead of it).
+ *
+ * Values are lifted from the "Open Mic Songbook" design reference (a dark,
+ * near-black stage-lighting palette with a warm amber accent) rather than
+ * approximated. `.root` re-points the same --ds-color-* custom properties
+ * every shared component already reads (Radix Card, Button, Badge, the
+ * Tailwind bg-surface-base / text-ink-* / border-line-* utilities) at the
+ * reference's exact values. Because those properties inherit, this one
+ * override cascades through the whole subtree without the shared
+ * components themselves needing to know lead-sheet-editor looks different —
+ * see app/tokens.css and the `@theme inline` block in app/globals.css for
+ * the chain this relies on. `.leadsheet-doc` (the monospaced chord/lyric
+ * pane, tested by npm run type:check) is left alone on purpose: its own
+ * rule in globals.css sets font-family directly, so it is never affected by
+ * `.root`'s inherited font-family.
+ */
+
+.root {
+  --ds-color-surface-sunken: #0b0d10;
+  --ds-color-surface-base: #0e1013;
+  --ds-color-surface-raised: #121519;
+  --ds-color-surface-overlay: #181c21;
+
+  --ds-color-border-subtle: #23272e;
+  --ds-color-border-strong: #2b3038;
+
+  --ds-color-text-primary: #f3eee6;
+  --ds-color-text-muted: #a3acb8;
+  --ds-color-text-on-primary: #14110b;
+
+  --ds-color-primary-solid: #ffb547;
+  --ds-color-primary-hover: #ffd08a;
+  --ds-color-primary-text: #ffb547;
+
+  --ds-color-focus-ring: #ffb547;
+
+  background: var(--ds-color-surface-base);
+  color: var(--ds-color-text-primary);
+  font-family: var(--font-atkinson), var(--ds-font-sans);
+}
+
+/* Radix Button/TextField corners read a touch sharper in the reference
+   (10px on a ~44px control) than the app's global `radius='medium'`. Reach
+   into Radix's own class names to round them further — still fully scoped,
+   since the selector only matches inside `.root`. */
+.root :global(.rt-BaseButton),
+.root :global(.rt-TextFieldRoot) {
+  border-radius: 10px;
+}
+
+/* Key / Tempo / Capo pills in the sheet header — the reference's `.chip`. */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.875rem;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--ds-color-surface-overlay);
+  color: var(--ds-color-text-primary);
+  border: 1px solid var(--ds-color-border-strong);
+}
+
+.chipAccent {
+  color: var(--ds-color-text-on-primary);
+  background: var(--ds-color-primary-solid);
+  border-color: transparent;
+  font-weight: 700;
+}
+
+/* Song library rows — the reference's flat `.song-item` list, swapped in for
+   the boxed Bento/Card look just for this list. */
+.libraryRow {
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: transparent;
+  padding: 10px 12px;
+}
+
+.libraryRow:hover {
+  background: var(--ds-color-surface-raised);
+}

@@ -29,6 +29,7 @@ import {
 import { VisibilityPicker } from "./VisibilityPicker";
 import { SongAttribution } from "./SongAttribution";
 import type { Visibility } from "./sharing";
+import styles from "./lead-sheet-editor.module.css";
 
 export default function LeadSheetList() {
   const { user, loading: authLoading } = useAuth();
@@ -269,7 +270,8 @@ export default function LeadSheetList() {
           <Bento
             key={sheet.id}
             size={density === "compact" ? "1" : "2"}
-            className={`group cursor-pointer flex flex-col md:flex-row md:items-center md:justify-between gap-2 ${density === "compact" ? "py-1.5" : ""}`}
+            variant='ghost'
+            className={`${styles.libraryRow} group cursor-pointer flex flex-col md:flex-row md:items-center md:justify-between gap-2 ${density === "compact" ? "py-1.5" : ""}`}
             onClick={() => goTo(router, `/lead-sheet-editor/${sheet.id}/preview`)}
           >
             <div className='flex flex-1 min-w-0 items-start gap-2'>
