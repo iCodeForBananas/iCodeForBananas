@@ -344,54 +344,34 @@ const SHADE_STROKE = "rgba(255,255,255,0.65)";
 // something that changes per question/attempt — React remounts the whole
 // component on a key change, which is what resets the shaded set between
 // questions and retries, rather than a useEffect reacting to a prop change.
+//
+// Grading: every question in the game gets exactly two attempts — the
+// generic one/two-attempt flow lives in handleAnswer, not here. Shading
+// itself is freely correctable (tap a cell to shade it, tap again to
+// unshade — no attempt consumed either way); only tapping Check submits
+// the current count and consumes an attempt, via the same onComplete ->
+// handleAnswer path every other question type already answers through, so
+// a question solved on the second attempt is recorded exactly the same
+// way regardless of which question type it was.
 const ShadeGrid = ({
   shape,
   total,
-  target,
   disabled,
   onComplete,
 }: {
   shape: FractionVisual["shape"];
   total: number;
-  target: number;
   disabled: boolean;
   onComplete: (shadedCount: number) => void;
 }) => {
   const [shaded, setShaded] = useState<Set<number>>(new Set());
-  const doneRef = useRef(false);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, []);
-
-  const finish = (count: number) => {
-    doneRef.current = true;
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-      timerRef.current = null;
-    }
-    onComplete(count);
-  };
 
   const tap = (i: number) => {
-    if (disabled || doneRef.current || shaded.has(i)) return;
+    if (disabled) return;
     const next = new Set(shaded);
-    next.add(i);
+    if (next.has(i)) next.delete(i);
+    else next.add(i);
     setShaded(next);
-    if (next.size > target) {
-      // One tap too many — wrong, and immediately so (no grace period once
-      // the mistake has actually happened).
-      finish(next.size);
-    } else if (next.size === target) {
-      // Reached it. There's no submit button, so a brief pause is what
-      // distinguishes "done, that's my answer" from "about to tap one more
-      // by mistake" — a stray tap inside this window overshoots and is
-      // caught by the branch above instead.
-      timerRef.current = setTimeout(() => finish(next.size), 500);
-    }
   };
 
   const cellA11y = (i: number) => ({
@@ -409,9 +389,19 @@ const ShadeGrid = ({
     style: { cursor: disabled ? "default" : "pointer", outline: "none" } as const,
   });
 
-  const progress = (
-    <div className="text-center text-sm font-semibold text-white/70 mt-2">
-      {shaded.size} / {total} shaded
+  const footer = (
+    <div className="flex flex-col items-center gap-3 mt-3">
+      <div className="text-center text-sm font-semibold text-white/70">
+        {shaded.size} / {total} shaded
+      </div>
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => onComplete(shaded.size)}
+        className="px-8 py-3 bg-gradient-to-b from-green-400 to-emerald-600 text-white rounded-md text-lg font-bold border-4 border-black shadow-[0_6px_0_#000] active:shadow-none active:translate-y-[6px] transition-all hover:brightness-110 disabled:opacity-50"
+      >
+        Check
+      </button>
     </div>
   );
 
@@ -434,7 +424,7 @@ const ShadeGrid = ({
             />
           ))}
         </svg>
-        {progress}
+        {footer}
       </div>
     );
   }
@@ -460,7 +450,7 @@ const ShadeGrid = ({
             />
           ))}
         </svg>
-        {progress}
+        {footer}
       </div>
     );
   }
@@ -508,7 +498,7 @@ const ShadeGrid = ({
           );
         })}
       </svg>
-      {progress}
+      {footer}
     </div>
   );
 };
@@ -1025,7 +1015,6 @@ export default function SpaceMathPage() {
                         key={`${problem.id}-${attemptsUsed}`}
                         shape={problem.shadeTarget.shape}
                         total={problem.shadeTarget.total}
-                        target={problem.shadeTarget.target}
                         disabled={selectedAnswer !== null}
                         onComplete={(count) => handleAnswer(count)}
                       />
