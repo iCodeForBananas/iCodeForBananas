@@ -52,6 +52,10 @@ export function useAutoFit({
     if (!container || !content) return;
 
     let raf = 0;
+    // The size the last fit was measured at. A resize that lands on the same
+    // size is the fit's own re-render echoing back, not a reason to fit again;
+    // re-fitting on it is what let a fit chase its own tail.
+    let lastSize = "";
     const schedule = () => {
       cancelAnimationFrame(raf);
       raf = requestAnimationFrame(run);
@@ -62,15 +66,24 @@ export function useAutoFit({
       const H = container.clientHeight;
       const W = container.clientWidth;
       if (H < 40 || W < 80) return;
+      const size = `${W}x${H}`;
+      if (size === lastSize) return;
+      lastSize = size;
 
+      // The column count has to be tried on the element that lays the columns
+      // out. `.leadsheet-columns` carries --leadsheet-col-count inline, which
+      // beats anything inherited from `content`, so setting it on `content`
+      // alone measured every trial at the current count and then applied a
+      // different one — the layout never matched what was measured.
+      const grid = content.querySelector<HTMLElement>(".leadsheet-columns") ?? content;
       const prevHeight = content.style.height;
       const prevFontSize = content.style.fontSize;
-      const prevCols = content.style.getPropertyValue("--leadsheet-col-count");
+      const prevCols = grid.style.getPropertyValue("--leadsheet-col-count");
       content.style.height = `${H}px`;
 
       const items = content.querySelectorAll<HTMLElement>("[data-fit-line]");
       const fits = (pct: number, colCount: number) => {
-        content.style.setProperty("--leadsheet-col-count", String(colCount));
+        grid.style.setProperty("--leadsheet-col-count", String(colCount));
         content.style.fontSize = `${pct}%`;
         if (content.scrollWidth > content.clientWidth + 1) return false;
         if (content.scrollHeight > content.clientHeight + 1) return false;
@@ -100,8 +113,8 @@ export function useAutoFit({
 
       content.style.height = prevHeight;
       content.style.fontSize = prevFontSize;
-      if (prevCols) content.style.setProperty("--leadsheet-col-count", prevCols);
-      else content.style.removeProperty("--leadsheet-col-count");
+      if (prevCols) grid.style.setProperty("--leadsheet-col-count", prevCols);
+      else grid.style.removeProperty("--leadsheet-col-count");
 
       if (best.pct !== scale || best.cols !== cols) onFit({ scale: best.pct, cols: best.cols });
     }

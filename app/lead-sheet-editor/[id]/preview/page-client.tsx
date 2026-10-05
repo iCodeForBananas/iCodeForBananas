@@ -1313,8 +1313,11 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
               {libraryPanel}
               <div className='flex flex-col flex-1 min-w-0'>
                 {editMode && <EditModeBanner error={moveError} onDone={() => setEditMode(false)} className='px-6 sm:px-8' />}
-                {/* Scrollable content — the reference's `.stage` */}
-                <div ref={stageRef} className='flex-1 overflow-y-auto overflow-x-hidden'>
+                {/* Scrollable content — the reference's `.stage`. The scrollbar's
+                    room is reserved even when there is nothing to scroll, so a
+                    fit that adds or removes the scrollbar does not change the
+                    width it was measured at and set off another fit. */}
+                <div ref={stageRef} className='flex-1 overflow-y-auto overflow-x-hidden [scrollbar-gutter:stable]'>
                   <div ref={sheetRef} className='w-full px-6 py-8 sm:px-8' style={{ fontSize: `${fontScale}%` }}>
                     <LineDndProvider onMove={editMode ? moveLine : undefined} lineTextAt={lineTextAt}>
                       <SheetContent
