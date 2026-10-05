@@ -38,6 +38,7 @@ import {
 import TapTiming from "../../TapTiming";
 import TrackEditor from "../../TrackEditor";
 import SyntaxHelp from "../../SyntaxHelp";
+import { useSongbookPortal } from "../../portal";
 
 // ─── Text ↔ LeadSheet ─────────────────────────────────────────────────────────
 
@@ -207,6 +208,7 @@ stopwatch. Add ?t=15 to the link if the song only starts 15 seconds into the vid
 // ─── Edit page ────────────────────────────────────────────────────────────────
 
 export default function EditLeadSheet({ params }: { params: Promise<{ id: string }> }) {
+  const portal = useSongbookPortal();
   const { id } = use(params);
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
@@ -549,7 +551,7 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
                     <ChevronDown className="w-3.5 h-3.5" />
                   </button>
                 </DropdownMenu.Trigger>
-                <DropdownMenu.Content align="end">
+                <DropdownMenu.Content container={portal} align="end">
                   <DropdownMenu.Item onSelect={() => setHelpOpen(true)}>
                     <HelpCircle className="w-4 h-4" /> Help
                   </DropdownMenu.Item>
@@ -617,7 +619,7 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
                         }}
                       >
                         <Select.Trigger aria-label="Chord to replace" className="font-mono" />
-                        <Select.Content>
+                        <Select.Content container={portal}>
                           {chordsInSheet.map(({ chord, count }) => (
                             <Select.Item key={chord} value={chord} className="font-mono">
                               [{chord}] — {count}
@@ -678,7 +680,7 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
                 onChange={(e) => handleChange(e.target.value)}
                 placeholder={PLACEHOLDER}
                 spellCheck={false}
-                className={`leadsheet-doc ${styles.freeTa}`}
+                className={styles.freeTa}
               />
             </label>
           </div>

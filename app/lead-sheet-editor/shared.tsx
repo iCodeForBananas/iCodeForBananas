@@ -5,6 +5,7 @@ import { WifiOff } from "lucide-react";
 import { Badge } from "@radix-ui/themes";
 import ChordHoverPopover from "../components/ChordHoverPopover";
 import { DEFAULT_BPM, formatTime, parseTimeMarker, stripTimeMarker } from "./timing";
+import styles from "./lead-sheet-editor.module.css";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -254,6 +255,7 @@ export function ChordLyricLine({
   large = false,
   showTime = false,
   bpm = DEFAULT_BPM,
+  stacked = false,
 }: {
   line: string;
   large?: boolean;
@@ -261,11 +263,63 @@ export function ChordLyricLine({
   showTime?: boolean;
   /** The song's tempo, which is what a beat marker's chip is read against. */
   bpm?: number;
+  /**
+   * The Songbook reference's form: each chord stacked over the syllable it
+   * lands on. The alignment is structural, so it does not need a fixed-width
+   * face. Off for print and the public share page.
+   */
+  stacked?: boolean;
 }) {
   const marker = parseTimeMarker(line, bpm);
   const body = marker ? stripTimeMarker(line) : line;
   const segments = parseChordProLine(body);
   const hasChords = segments.some((s) => s.chord);
+
+  if (stacked) {
+    const size = large ? { fontSize: "1.5em" } : undefined;
+    const time = showTime && marker && (
+      <span className={`${styles.sheetTime} print:hidden`}>{formatTime(marker.start)}</span>
+    );
+    if (!hasChords) {
+      return (
+        <div className={`${styles.sheetLine} leadsheet-lyric`} style={size}>
+          {time}
+          <span className={styles.sheetLyric}>{body || "\u00A0"}</span>
+        </div>
+      );
+    }
+    // A bar of chords with no words under it reads as a row of changes.
+    if (segments.every((seg) => !seg.lyric.trim())) {
+      return (
+        <div className={`${styles.sheetLine} ${styles.sheetChordRow}`} style={size}>
+          {time}
+          {segments
+            .filter((seg) => seg.chord)
+            .map((seg, i) => (
+              <ChordHoverPopover key={i} chord={seg.chord}>
+                <span className={`${styles.sheetChordBig} leadsheet-chord`}>{seg.chord}</span>
+              </ChordHoverPopover>
+            ))}
+        </div>
+      );
+    }
+    return (
+      <div className={styles.sheetLine} style={size}>
+        {time}
+        {/* A line that opens on a chord parses with an empty first segment. */}
+        {segments
+          .filter((seg) => seg.chord || seg.lyric)
+          .map((seg, i) => (
+            <span key={i} className={styles.sheetSeg}>
+              <span className={`${styles.sheetChord} leadsheet-chord`}>
+                {seg.chord ? <ChordHoverPopover chord={seg.chord}>{seg.chord}</ChordHoverPopover> : "\u00A0"}
+              </span>
+              <span className={`${styles.sheetLyric} leadsheet-lyric`}>{seg.lyric}</span>
+            </span>
+          ))}
+      </div>
+    );
+  }
 
   const timeChip = showTime && marker && (
     <span className="mr-2 select-none rounded bg-surface-raised px-1.5 py-0.5 align-middle font-mono text-[0.7em] text-ink-muted bg-surface-raised text-ink-muted print:hidden">

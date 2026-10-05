@@ -1,6 +1,7 @@
 import { Atkinson_Hyperlegible } from "next/font/google";
 import { CommandPaletteProvider } from "@/app/components/ui/command-palette";
 import styles from "./lead-sheet-editor.module.css";
+import { SongbookPortalHost } from "./portal";
 
 const atkinson = Atkinson_Hyperlegible({
   subsets: ["latin"],
@@ -31,7 +32,7 @@ export default function LeadSheetLayout({ children }: { children: React.ReactNod
   return (
     <CommandPaletteProvider>
       <div className={`flex min-h-full flex-1 flex-col font-sans ${atkinson.variable} ${styles.root}`}>
-        {children}
+        <SongbookPortalHost>{children}</SongbookPortalHost>
       </div>
     </CommandPaletteProvider>
   );

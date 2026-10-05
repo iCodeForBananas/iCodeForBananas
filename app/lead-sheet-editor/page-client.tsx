@@ -18,6 +18,7 @@ import { type SortOrder } from "./library";
 import { VisibilityPicker } from "./VisibilityPicker";
 import { SongAttribution } from "./SongAttribution";
 import styles from "./lead-sheet-editor.module.css";
+import { useSongbookPortal } from "./portal";
 
 /**
  * The full-page library — reachable from the app's own sidebar link, not
@@ -29,6 +30,7 @@ import styles from "./lead-sheet-editor.module.css";
  * about what's in the library.
  */
 export default function LeadSheetList() {
+  const portal = useSongbookPortal();
   const {
     user,
     authLoading,
@@ -174,7 +176,7 @@ export default function LeadSheetList() {
           </Button>
           <Select.Root value={sortOrder} onValueChange={(v) => setSortOrder(v as SortOrder)}>
             <Select.Trigger aria-label='Sort songs' title='Favorites stay at the top either way' data-testid='library-sort' />
-            <Select.Content>
+            <Select.Content container={portal}>
               <Select.Item value='alphabetical'>A–Z</Select.Item>
               <Select.Item value='recent'>Recently updated</Select.Item>
             </Select.Content>

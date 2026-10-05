@@ -49,6 +49,7 @@ import {
   type KitSettings,
 } from "./kit";
 import { KIT_RENDER_SECONDS, kitWavFileName, renderKitToWav } from "./kitRender";
+import { useSongbookPortal } from "./portal";
 
 /**
  * The whole backing track in one sheet.
@@ -89,6 +90,7 @@ export default function KitDesigner({
   /** Only ever used to name a download. */
   songTitle?: string | null;
 }) {
+  const portal = useSongbookPortal();
   const [tab, setTab] = useState<TabId>("presets");
 
   const preset = kit.preset;
@@ -98,6 +100,7 @@ export default function KitDesigner({
   return (
     <Dialog.Root open onOpenChange={(open) => !open && onClose()}>
       <Dialog.Content
+        container={portal}
         maxWidth='48rem'
         aria-describedby={undefined}
         className='flex max-h-[92vh] flex-col overflow-hidden p-0 print:hidden'
@@ -464,6 +467,7 @@ function StepGrid({
 }
 
 function BeatTab({ kit, onChange }: { kit: KitSettings; onChange: (next: KitSettings) => void }) {
+  const portal = useSongbookPortal();
   const step = useKitStep();
   const grid = useMemo(() => effectiveGrid(kit.drums), [kit.drums]);
   const library = useMemo(() => gridFromPattern(kit.drums.pattern), [kit.drums.pattern]);
@@ -485,7 +489,7 @@ function BeatTab({ kit, onChange }: { kit: KitSettings; onChange: (next: KitSett
             onValueChange={(pattern) => onChange({ ...kit, drums: { ...kit.drums, pattern, steps: null } })}
           >
             <Select.Trigger aria-label='Drum pattern' className='min-w-0 flex-1' />
-            <Select.Content position='popper'>
+            <Select.Content container={portal} position='popper'>
               {kit.drums.pattern === CUSTOM_PATTERN && (
                 <Select.Item value={CUSTOM_PATTERN}>{CUSTOM_PATTERN}</Select.Item>
               )}
@@ -552,7 +556,7 @@ function BeatTab({ kit, onChange }: { kit: KitSettings; onChange: (next: KitSett
           }}
         >
           <Select.Trigger aria-label='Percussion part' className='w-full' />
-          <Select.Content position='popper'>
+          <Select.Content container={portal} position='popper'>
             {ACCENT_GROUPS.map((group) => (
               <Select.Group key={group.label}>
                 <Select.Label>{group.label}</Select.Label>
@@ -591,6 +595,7 @@ function DroneTab({
   songKey?: string | null;
   transpose: number;
 }) {
+  const portal = useSongbookPortal();
   const on = hasLayer(kit, "drone");
   const sounding = droneKeyLabel(resolveDroneKey(kit.drone, songKey, transpose));
   const variation = DRONE_STYLES.find((s) => s.value === kit.drone.style) ?? DRONE_STYLES[0];
@@ -606,7 +611,7 @@ function DroneTab({
       <Field label='Key' hint='what the drone holds'>
         <Select.Root value={kit.drone.key} onValueChange={(key) => onChange({ ...kit, drone: { ...kit.drone, key } })}>
           <Select.Trigger aria-label='Drone key' className='w-full' />
-          <Select.Content position='popper'>
+          <Select.Content container={portal} position='popper'>
             <Select.Item value={SONG_KEY}>Song key ({sounding})</Select.Item>
             {DRONE_KEY_GROUPS.map((group) => (
               <Select.Group key={group.label}>

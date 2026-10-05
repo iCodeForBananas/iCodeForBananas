@@ -13,6 +13,7 @@ import {
   stampableLines,
   stripTimeMarker,
 } from "./timing";
+import { useSongbookPortal } from "./portal";
 
 /**
  * Timing a song by ear: start the clock alongside the recording and tap once
@@ -28,6 +29,7 @@ export default function TapTiming({
   onApply: (nextText: string) => void;
   onClose: () => void;
 }) {
+  const portal = useSongbookPortal();
   const lines = useMemo(() => rawText.split("\n"), [rawText]);
   const bpm = useMemo(() => readTempo(rawText), [rawText]);
   // Taps land on the clock. A song already written in beats wants them
@@ -152,6 +154,7 @@ export default function TapTiming({
     // tap handler above instead of pressing whichever button got focused.
     <Dialog.Root open onOpenChange={(open) => !open && onClose()}>
       <Dialog.Content
+        container={portal}
         maxWidth="42rem"
         onOpenAutoFocus={(e) => e.preventDefault()}
         className="flex max-h-[90vh] flex-col overflow-hidden p-0"

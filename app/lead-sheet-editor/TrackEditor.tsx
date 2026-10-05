@@ -53,6 +53,7 @@ import {
 } from "./DrumMachine";
 import { asSectionHeader } from "./songText";
 import { DEFAULT_DRONE_SETTINGS, useDrone } from "./Drone";
+import { useSongbookPortal } from "./portal";
 
 // ─── Track editor ─────────────────────────────────────────────────────────────
 //
@@ -284,6 +285,7 @@ export default function TrackEditor({
   userId?: string | null;
   songTitle?: string;
 }) {
+  const portal = useSongbookPortal();
   const settings = useMemo(() => readSongSettings(rawText), [rawText]);
   const lineSeconds = defaultLineSeconds(settings.bpm);
   const initial = useMemo(
@@ -1150,7 +1152,7 @@ export default function TrackEditor({
             Snap
             <Select.Root size="1" value={String(snapBeats)} onValueChange={(v) => setSnapBeats(parseFloat(v))}>
               <Select.Trigger aria-label="Snap to" />
-              <Select.Content>
+              <Select.Content container={portal}>
                 {SNAP_CHOICES.map((choice) => (
                   <Select.Item key={choice.label} value={String(choice.beats)}>
                     {choice.label}
@@ -1256,7 +1258,7 @@ export default function TrackEditor({
             disabled={recording}
           >
             <Select.Trigger aria-label="Take type" />
-            <Select.Content>
+            <Select.Content container={portal}>
               <Select.Item value="guitar">Guitar</Select.Item>
               <Select.Item value="vocals">Vocals</Select.Item>
               <Select.Item value="other">Other</Select.Item>
@@ -1265,7 +1267,7 @@ export default function TrackEditor({
           {devices.length > 0 && (
             <Select.Root value={deviceId || undefined} onValueChange={setDeviceId} disabled={recording}>
               <Select.Trigger placeholder="Microphone" aria-label="Input device" className="max-w-56 flex-1" />
-              <Select.Content>
+              <Select.Content container={portal}>
                 {devices.map((d) => (
                   <Select.Item key={d.deviceId} value={d.deviceId}>
                     {d.label || `Microphone ${d.deviceId.slice(0, 6)}`}

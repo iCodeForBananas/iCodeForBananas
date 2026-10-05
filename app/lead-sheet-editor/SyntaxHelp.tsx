@@ -5,6 +5,7 @@ import { Check, Copy, X } from "lucide-react";
 import { Button, Dialog, Flex, IconButton } from "@radix-ui/themes";
 import { DRUM_PATTERNS } from "./DrumMachine";
 import { ACCENT_GROUPS } from "./accents";
+import { useSongbookPortal } from "./portal";
 
 // ─── Reference content ────────────────────────────────────────────────────────
 //
@@ -144,10 +145,11 @@ function CopyButton({ text }: { text: string }) {
 }
 
 export default function SyntaxHelp({ onClose }: { onClose: () => void }) {
+  const portal = useSongbookPortal();
   // Escape, the overlay and focus are Radix Dialog's.
   return (
     <Dialog.Root open onOpenChange={(open) => !open && onClose()}>
-      <Dialog.Content maxWidth="42rem" className="flex max-h-[90vh] flex-col overflow-hidden p-0">
+      <Dialog.Content container={portal} maxWidth="42rem" className="flex max-h-[90vh] flex-col overflow-hidden p-0">
         {/* Header */}
         <Flex align="center" justify="between" gap="3" className="border-b border-line-subtle px-4 py-3">
           <div>

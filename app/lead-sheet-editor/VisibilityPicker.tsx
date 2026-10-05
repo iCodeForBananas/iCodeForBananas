@@ -4,6 +4,7 @@ import { Check, Globe, Link2, Lock } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
 import { DropdownMenu } from "@radix-ui/themes";
 import { VISIBILITIES, type Visibility } from "./sharing";
+import { useSongbookPortal } from "./portal";
 
 const ICONS = {
   private: Lock,
@@ -25,6 +26,7 @@ export function VisibilityPicker({
   onChange: (next: Visibility) => void;
   disabled?: boolean;
 }) {
+  const portal = useSongbookPortal();
   const Icon = ICONS[value];
   const current = VISIBILITIES.find((v) => v.value === value);
 
@@ -36,7 +38,7 @@ export function VisibilityPicker({
           {current?.label}
         </Button>
       </DropdownMenu.Trigger>
-      <DropdownMenu.Content align='start' className='min-w-72'>
+      <DropdownMenu.Content container={portal} align='start' className='min-w-72'>
         <DropdownMenu.Label>Who can see this</DropdownMenu.Label>
         {VISIBILITIES.map((option) => (
           <DropdownMenu.Item key={option.value} onSelect={() => onChange(option.value)} className='h-auto py-1.5'>
