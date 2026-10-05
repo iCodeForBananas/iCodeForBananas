@@ -83,3 +83,121 @@
 .libraryRow:hover {
   background: var(--ds-color-surface-raised);
 }
+
+/* ── Topbar ──────────────────────────────────────────────────────────────
+ * The reference's `.topbar`: library toggle, brand/title, the Play / Edit
+ * Lines / Freeform segmented control, then page-specific controls. Shared
+ * by the library, preview and edit pages via <TopBar>, so the three read as
+ * one continuous surface instead of three differently-chromed pages.
+ */
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 16px;
+  /* The app shell's own menu button floats fixed over the top-left corner
+     below `lg` (see BentoPageLayout, which clears it the same way with
+     `pl-8 lg:pl-0`) — without this the library toggle sits right under it. */
+  padding-left: 48px;
+  border-bottom: 1px solid var(--ds-color-border-subtle);
+  background: var(--ds-color-surface-raised);
+}
+
+@media (min-width: 1024px) {
+  .topbar {
+    padding-left: 16px;
+  }
+}
+
+.brand {
+  font-weight: 700;
+  font-size: 17px;
+  letter-spacing: 0.02em;
+  margin-right: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.spacer {
+  flex: 1;
+  min-width: 8px;
+}
+
+/* A topbar/panel icon button — the reference's `.ibtn`. */
+.ibtn {
+  min-width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid var(--ds-color-border-strong);
+  background: var(--ds-color-surface-overlay);
+  color: var(--ds-color-text-primary);
+  font: inherit;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.ibtn:hover {
+  background: var(--ds-color-surface-raised);
+}
+
+.ibtnOn {
+  background: #2a3039;
+  border-color: var(--ds-color-border-strong);
+  color: #fff;
+}
+
+.ibtnAccent {
+  background: var(--ds-color-primary-solid);
+  color: var(--ds-color-text-on-primary);
+  border-color: transparent;
+  font-weight: 700;
+}
+
+/* The Play / Edit Lines / Freeform switch — the reference's `.segctl`. */
+.segctl {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 12px;
+  background: var(--ds-color-surface-overlay);
+  border: 1px solid var(--ds-color-border-strong);
+  gap: 3px;
+}
+
+.segBtn {
+  height: 38px;
+  padding: 0 14px;
+  border-radius: 9px;
+  border: 0;
+  background: transparent;
+  color: var(--ds-color-text-muted);
+  font: inherit;
+  font-size: 15px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.segBtn:hover {
+  color: var(--ds-color-text-primary);
+}
+
+.segBtnOn {
+  background: #2e3540;
+  color: #fff;
+}
+
+/* Hidden below the breakpoint where the topbar runs out of room — the
+   reference's `.hide-sm`. */
+@media (max-width: 820px) {
+  .hideSm {
+    display: none;
+  }
+}

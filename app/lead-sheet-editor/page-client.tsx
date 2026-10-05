@@ -8,7 +8,7 @@ import Link from "next/link";
 import { Plus, Trash2, Music, Eye, Pencil, Copy, Check, Link2, Star, Download } from "lucide-react";
 import type { LeadSheet } from "./shared";
 import { makeSection, getPlainText, OfflineBadge } from "./shared";
-import BentoPageLayout from "@/app/components/BentoPageLayout";
+import TopBar from "./TopBar";
 import { cacheSheet, cacheSheetList, getCachedSheetList, getCachedSheetIds } from "./offlineCache";
 import { goTo } from "./offlineNav";
 import { useCommands } from "@/app/components/ui/command-palette";
@@ -196,15 +196,17 @@ export default function LeadSheetList() {
 
   if (authLoading) {
     return (
-      <BentoPageLayout title='Lead Sheet Editor'>
+      <div className='flex flex-col flex-1 min-h-0'>
+        <TopBar onLibraryClick={() => {}} title='Lead Sheet Editor' />
         <div className='flex-1 flex items-center justify-center text-ink-muted'>Loading...</div>
-      </BentoPageLayout>
+      </div>
     );
   }
 
   if (!user) {
     return (
-      <BentoPageLayout title='Lead Sheet Editor'>
+      <div className='flex flex-col flex-1 min-h-0'>
+        <TopBar onLibraryClick={() => {}} title='Lead Sheet Editor' />
         <div className='flex-1 flex flex-col items-center justify-center text-center'>
           <p className='text-ink-muted mb-6'>Sign in to create and manage your lead sheets.</p>
           <Link
@@ -214,52 +216,65 @@ export default function LeadSheetList() {
             Sign In
           </Link>
         </div>
-      </BentoPageLayout>
+      </div>
     );
   }
 
   return (
-    <BentoPageLayout
-      title='Lead Sheet Editor'
-      titleAdornment={offline && <OfflineBadge />}
-      headerActions={
-        <RadixButton onClick={createSheet}>
-          <Plus className='w-4 h-4' />
-          New Sheet
-        </RadixButton>
-      }
-    >
-      {favoriteError && (
-      <p className='mb-3 text-sm font-medium text-danger'>{favoriteError}</p>
-    )}
-    <div className='mb-3 flex items-center gap-2'>
-      <Input
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        placeholder='Search by title or artist'
-        aria-label='Search by title or artist'
-        data-testid='library-search'
-        className='max-w-xs'
-      />
-      <Button
-        variant='ghost'
-        size='sm'
-        onClick={() => setDensity(density === "compact" ? "comfortable" : "compact")}
-        aria-label={`Switch to ${density === "compact" ? "comfortable" : "compact"} density`}
-        data-testid='library-density'
-      >
-        {density === "compact" ? "Compact" : "Comfortable"}
-      </Button>
-      <Select.Root value={sortOrder} onValueChange={(v) => setSortOrder(v as SortOrder)}>
-        <Select.Trigger aria-label='Sort songs' title='Favorites stay at the top either way' data-testid='library-sort' />
-        <Select.Content>
-          <Select.Item value='alphabetical'>A–Z</Select.Item>
-          <Select.Item value='recent'>Recently updated</Select.Item>
-        </Select.Content>
-      </Select.Root>
-    </div>
+    <div className='flex flex-col flex-1 min-h-0'>
+      {/* The library's not a drawer over a song the way the reference's own
+          "Songs" panel is — it's its own full page, same as before — so the
+          toggle just points at itself; there's nowhere else a click on it
+          could usefully go. */}
+      <TopBar onLibraryClick={() => {}} title='Lead Sheet Editor' />
+      <div className='flex-1 overflow-auto p-4 sm:p-6 flex flex-col'>
+        {/* The reference's `.lib-top`: a heading with the count and the New
+            button, then search — just stretched to full-page width instead
+            of a 280px rail. */}
+        <div className='flex items-center justify-between gap-3 mb-3'>
+          <div className='flex items-center gap-2'>
+            <h1 className='text-sm font-bold uppercase tracking-widest text-ink-muted'>
+              Songs · {sheets.length}
+            </h1>
+            {offline && <OfflineBadge />}
+          </div>
+          <RadixButton onClick={createSheet}>
+            <Plus className='w-4 h-4' />
+            New
+          </RadixButton>
+        </div>
 
-    {sheets.length === 0 ? (
+        {favoriteError && (
+          <p className='mb-3 text-sm font-medium text-danger'>{favoriteError}</p>
+        )}
+        <div className='mb-3 flex items-center gap-2'>
+          <Input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder='Search by title or artist'
+            aria-label='Search by title or artist'
+            data-testid='library-search'
+            className='max-w-xs'
+          />
+          <Button
+            variant='ghost'
+            size='sm'
+            onClick={() => setDensity(density === "compact" ? "comfortable" : "compact")}
+            aria-label={`Switch to ${density === "compact" ? "comfortable" : "compact"} density`}
+            data-testid='library-density'
+          >
+            {density === "compact" ? "Compact" : "Comfortable"}
+          </Button>
+          <Select.Root value={sortOrder} onValueChange={(v) => setSortOrder(v as SortOrder)}>
+            <Select.Trigger aria-label='Sort songs' title='Favorites stay at the top either way' data-testid='library-sort' />
+            <Select.Content>
+              <Select.Item value='alphabetical'>A–Z</Select.Item>
+              <Select.Item value='recent'>Recently updated</Select.Item>
+            </Select.Content>
+          </Select.Root>
+        </div>
+
+        {sheets.length === 0 ? (
       <div className='flex-1 flex flex-col items-center justify-center text-ink-muted'>
         <Music className='w-12 h-12 mb-3 opacity-40' />
         <p>No lead sheets yet. Create your first one!</p>
@@ -355,7 +370,8 @@ export default function LeadSheetList() {
           </Bento>
         ))}
       </div>
-    )}
-    </BentoPageLayout>
+        )}
+      </div>
+    </div>
   );
 }

@@ -6,7 +6,7 @@ import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/app/hooks/useAuth";
 import { Save, Eye, Replace, X, Sparkles, Play, Timer, TimerOff, Clock, HelpCircle, SlidersHorizontal, ChevronDown } from "lucide-react";
 import { Button, DropdownMenu, Flex, IconButton, Select, Separator, Text, TextField } from "@radix-ui/themes";
-import { Breadcrumbs } from "@/app/components/Breadcrumbs";
+import TopBar from "../../TopBar";
 import { RevisionHistory } from "../../RevisionHistory";
 import {
   type LeadSheet,
@@ -401,6 +401,18 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
     goTo(router, `/lead-sheet-editor/${id}/preview`);
   }
 
+  // Where the topbar's "Edit lines" segment lands — same door the old
+  // sidebar toggle used, reached from this page instead of that one.
+  async function handleEditLines() {
+    if (dirty) await saveSheet();
+    goTo(router, `/lead-sheet-editor/${id}/preview?mode=lines`);
+  }
+
+  function handleLibraryClick() {
+    if (dirty && !confirm("Discard unsaved changes?")) return;
+    goTo(router, "/lead-sheet-editor");
+  }
+
   // Play always runs against the saved sheet, so timings typed a second ago count.
   async function handlePlay() {
     if (dirty) await saveSheet();
@@ -441,25 +453,20 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
     <div className="flex flex-col flex-1 min-h-0">
       <main className="flex flex-col flex-1 min-h-0 p-2 sm:p-4">
         <div className="flex flex-col flex-1 min-h-0 rounded-none border-none bg-surface-base overflow-hidden">
-          {/* Toolbar */}
+          <TopBar
+            onLibraryClick={handleLibraryClick}
+            title={songTitle}
+            mode="free"
+            onModeChange={(next) => {
+              if (next === "play") void handlePreview();
+              else if (next === "lines") void handleEditLines();
+            }}
+          />
+          {/* Toolbar — this page's own actions, a second row under the
+              shared mode switch rather than crammed into the reference's
+              single sparse topbar, which never had this many of them. */}
           <div className="shrink-0">
-            <div className="flex items-center justify-between px-4 py-3 sm:px-6 sm:py-4">
-              <Breadcrumbs
-                items={[
-                  {
-                    label: "Lead Sheets",
-                    href: "/lead-sheet-editor",
-                    onNavigate: (e) => {
-                      // Same guard as the old "All Sheets" button — a crumb
-                      // is still a real navigation away from unsaved text.
-                      if (dirty && !confirm("Discard unsaved changes?")) return e.preventDefault();
-                      e.preventDefault();
-                      goTo(router, "/lead-sheet-editor");
-                    },
-                  },
-                  { label: songTitle },
-                ]}
-              />
+            <div className="flex items-center justify-end px-4 py-3 sm:px-6 sm:py-4">
               <Flex align="center" gap="2" wrap="wrap" justify="end">
                 {offline && <OfflineBadge />}
                 {saveError && (

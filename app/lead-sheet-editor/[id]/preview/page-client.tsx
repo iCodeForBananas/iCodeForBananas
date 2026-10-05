@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/app/hooks/useAuth";
 import { Pencil, Plus } from "lucide-react";
-import { Breadcrumbs } from "@/app/components/Breadcrumbs";
 import { Button } from "@radix-ui/themes";
 import {
   type LeadSheet,
@@ -53,6 +52,7 @@ import { DEFAULT_KIT, kitFromMetadata, kitToMetadata, type KitSettings } from ".
 import { KitPlayer } from "../../KitPlayer";
 import KitDesigner from "../../KitDesigner";
 import styles from "../../lead-sheet-editor.module.css";
+import TopBar from "../../TopBar";
 import PreviewSidebar, {
   MIN_SCALE,
   MAX_SCALE,
@@ -935,6 +935,10 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     setAutoPlay(params.get("play") === "1");
+    // The Freeform page's own "Edit lines" segment lands here with this —
+    // same door the old "Edit Lines" sidebar toggle used, just reachable
+    // from the other page too now that the switch is shared chrome.
+    if (params.get("mode") === "lines") setEditMode(true);
   }, [id]);
 
   const handleCopy = async () => {
@@ -1094,8 +1098,6 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
       onOpenChange={setSidebarOpen}
       title={sheet.title}
       offline={offline}
-      onAllSheets={() => goTo(router, "/lead-sheet-editor")}
-      onOpenEditor={() => goTo(router, `/lead-sheet-editor/${id}/edit`)}
       onArrange={() => goTo(router, `/lead-sheet-editor/${id}/edit?arrange=1`)}
       fullscreen={fullscreen}
       onFullscreenChange={setFullscreen}
@@ -1106,8 +1108,6 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
       playbackOpen={playbackOpen}
       onOpenPlayback={openPlayback}
       onClosePlayback={closePlayback}
-      fontScale={fontScale}
-      onFontScaleChange={updateFontScale}
       columnCount={columnCount}
       onColumnCountChange={updateColumnCount}
       columnWidthVw={columnWidthVw}
@@ -1120,8 +1120,6 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
       kitPlaying={kitPlaying}
       onKitPlayingChange={setKitPlaying}
       onOpenKit={() => setKitOpen(true)}
-      editMode={editMode}
-      onEditModeToggle={() => setEditMode((on) => !on)}
       copied={copied}
       onCopy={handleCopy}
       shared={shared}
@@ -1130,27 +1128,53 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
     />
   );
 
-  // Reachable without opening the sidebar — the whole point of a breadcrumb
-  // on a phone or tablet, where the sidebar defaults to closed. Left out of
+  // Reachable without opening the tools panel — the whole point of a topbar
+  // on a phone or tablet, where the panel defaults to closed. Left out of
   // fullscreen on purpose: that mode's job is to clear every bit of chrome
-  // but the sheet, and the sidebar (still one tap away there too) already
+  // but the sheet, and the panel (still one tap away there too) already
   // carries an All Sheets entry.
-  const breadcrumbBar = (
-    <div className='shrink-0 border-b border-line-subtle px-6 py-1 sm:px-8'>
-      <Breadcrumbs
-        items={[
-          {
-            label: "Lead Sheets",
-            href: "/lead-sheet-editor",
-            onNavigate: (e) => {
-              e.preventDefault();
-              goTo(router, "/lead-sheet-editor");
-            },
-          },
-          { label: sheet.title || "Untitled" },
-        ]}
-      />
-    </div>
+  const topBar = (
+    <TopBar
+      onLibraryClick={() => goTo(router, "/lead-sheet-editor")}
+      title={sheet.title || "Untitled"}
+      mode={editMode ? "lines" : "play"}
+      onModeChange={(next) => {
+        if (next === "free") {
+          goTo(router, `/lead-sheet-editor/${id}/edit`);
+          return;
+        }
+        setEditMode(next === "lines");
+      }}
+      rightSlot={
+        !editMode ? (
+          <div className={styles.segctl} role='group' aria-label='Text size'>
+            <button
+              type='button'
+              className={styles.segBtn}
+              onClick={() => updateFontScale(fontScale - 10)}
+              disabled={fontScale <= MIN_SCALE}
+              aria-label='Smaller text'
+            >
+              A−
+            </button>
+            <span className={`${styles.segBtn} select-none tabular-nums`} aria-hidden='true'>
+              {fontScale}%
+            </span>
+            <button
+              type='button'
+              className={styles.segBtn}
+              onClick={() => updateFontScale(fontScale + 10)}
+              disabled={fontScale >= MAX_SCALE}
+              aria-label='Larger text'
+            >
+              A+
+            </button>
+          </div>
+        ) : undefined
+      }
+      toolsOpen={sidebarOpen}
+      onToolsToggle={() => setSidebarOpen((o) => !o)}
+    />
   );
 
   return (
@@ -1176,7 +1200,6 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
       <div className='print:hidden flex flex-col flex-1 min-h-0'>
         {fullscreen ? (
           <div className='fixed inset-0 z-50 flex bg-surface-base'>
-            {toolSidebar}
             <div className='flex flex-col flex-1 min-w-0'>
               {editMode && <EditModeBanner error={moveError} onDone={() => setEditMode(false)} className='px-6 sm:px-8' />}
               <div className='flex-1 overflow-y-auto overflow-x-hidden'>
@@ -1203,13 +1226,13 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                 {playbackOpen && <div className='h-44' />}
               </div>
             </div>
+            {toolSidebar}
           </div>
         ) : (
           <div className='flex flex-col flex-1 min-h-0 p-0 sm:p-4'>
             <div className='relative flex flex-1 min-h-0 rounded-none border-none bg-surface-base overflow-hidden'>
-              {toolSidebar}
               <div className='flex flex-col flex-1 min-w-0'>
-                {breadcrumbBar}
+                {topBar}
                 {editMode && <EditModeBanner error={moveError} onDone={() => setEditMode(false)} className='px-6 sm:px-8' />}
                 {/* Scrollable content */}
                 <div className='flex-1 overflow-y-auto overflow-x-hidden'>
@@ -1236,6 +1259,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                   {playbackOpen && <div className='h-44' />}
                 </div>
               </div>
+              {toolSidebar}
             </div>
           </div>
         )}

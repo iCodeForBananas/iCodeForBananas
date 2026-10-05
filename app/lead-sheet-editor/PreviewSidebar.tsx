@@ -2,7 +2,6 @@
 
 import {
   ArrowDown,
-  ArrowLeft,
   ArrowUp,
   Check,
   Copy,
@@ -11,10 +10,6 @@ import {
   Mic,
   Minimize2,
   Minus,
-  PanelLeftClose,
-  PanelLeftOpen,
-  Pencil,
-  PencilLine,
   Play,
   Plus,
   Printer,
@@ -31,7 +26,6 @@ import { ControlRow, RowButton } from "./SidebarRows";
 
 export const MIN_SCALE = 70;
 export const MAX_SCALE = 160;
-const SCALE_STEP = 10;
 
 export const MIN_COLUMN_COUNT = 1;
 export const MAX_COLUMN_COUNT = 4;
@@ -42,9 +36,8 @@ export const MAX_COLUMN_WIDTH_VW = 50;
 const COLUMN_WIDTH_VW_STEP = 5;
 export const DEFAULT_COLUMN_WIDTH_VW = 30;
 
-/** Width of the open sidebar; the collapsed rail is just wide enough to hold its toggle. */
+/** Width of the open panel. */
 const OPEN_WIDTH = "w-[19rem]";
-const RAIL_WIDTH = "w-14";
 
 /** A square −/+ step button beside a value. */
 function StepButton(props: React.ComponentProps<typeof IconButton>) {
@@ -122,27 +115,6 @@ function ColumnWidthControl({ width, onChange }: { width: number; onChange: (nex
         onClick: () => onChange(width + COLUMN_WIDTH_VW_STEP),
         disabled: width >= MAX_COLUMN_WIDTH_VW,
         "aria-label": "Increase column width",
-        children: <Plus className='w-4 h-4' />,
-      }}
-    />
-  );
-}
-
-function FontScaleControl({ scale, onChange }: { scale: number; onChange: (next: number) => void }) {
-  return (
-    <Stepper
-      label='Size'
-      value={`${scale}%`}
-      decrease={{
-        onClick: () => onChange(scale - SCALE_STEP),
-        disabled: scale <= MIN_SCALE,
-        "aria-label": "Decrease text size",
-        children: <Minus className='w-4 h-4' />,
-      }}
-      increase={{
-        onClick: () => onChange(scale + SCALE_STEP),
-        disabled: scale >= MAX_SCALE,
-        "aria-label": "Increase text size",
         children: <Plus className='w-4 h-4' />,
       }}
     />
@@ -242,24 +214,6 @@ function PlayControl({
 }
 
 /**
- * The switch between reading the song and fixing it. Edit mode stays on the
- * preview — same page, same layout, lines just become tap targets.
- */
-function LineEditControl({ active, onToggle }: { active: boolean; onToggle: () => void }) {
-  return (
-    <RowButton
-      active={active}
-      onClick={onToggle}
-      aria-pressed={active}
-      title={active ? "Stop editing lines" : "Tap a line to edit just that line"}
-    >
-      <PencilLine className='w-4 h-4' />
-      {active ? "Editing" : "Edit Lines"}
-    </RowButton>
-  );
-}
-
-/**
  * The kit, as one row.
  *
  * This replaced a column of separate controls, each with its own popover
@@ -327,15 +281,13 @@ function KitControl({
 }
 
 export interface PreviewSidebarProps {
-  /** Collapsed, the sidebar keeps a rail with just the toggle on it. */
+  /** Open/close is driven by the topbar's Tools toggle now — this panel renders nothing while closed. */
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
   offline: boolean;
 
   // Song
-  onAllSheets: () => void;
-  onOpenEditor: () => void;
   onArrange: () => void;
   fullscreen: boolean;
   onFullscreenChange: (next: boolean) => void;
@@ -350,8 +302,6 @@ export interface PreviewSidebarProps {
   onClosePlayback: () => void;
 
   // Display
-  fontScale: number;
-  onFontScaleChange: (next: number) => void;
   columnCount: number;
   onColumnCountChange: (next: number) => void;
   columnWidthVw: number;
@@ -368,10 +318,6 @@ export interface PreviewSidebarProps {
   onKitPlayingChange: (playing: boolean) => void;
   onOpenKit: () => void;
 
-  // Edit
-  editMode: boolean;
-  onEditModeToggle: () => void;
-
   // Share
   copied: boolean;
   onCopy: () => void;
@@ -381,138 +327,108 @@ export interface PreviewSidebarProps {
 }
 
 /**
- * Every preview tool, in one scrollable column down the left of the sheet.
- * Sections stack in the order a song gets used: get out, play it, read it,
- * hear it, fix it, hand it on. On a phone the open sidebar covers the sheet
- * like a drawer; from `sm` up it takes its own column beside it.
+ * Every preview tool that isn't the Play/Edit Lines/Freeform switch or the
+ * text-size stepper — those moved to <TopBar>, the reference's library and
+ * mode chrome. What's left is the reference's "drums" panel: a scrollable
+ * column of grouped controls, docked to the right the way the mockup docks
+ * its own utility panel, opened and closed from the topbar's Tools toggle
+ * rather than a button of its own. On a phone the open panel covers the
+ * sheet like a drawer; from `sm` up it takes its own column beside it.
  */
 export default function PreviewSidebar(props: PreviewSidebarProps) {
   const { open, onOpenChange } = props;
+  if (!open) return null;
   return (
     <>
-      {open && (
-        <div
-          className='absolute inset-0 z-30 bg-surface-sunken/40 sm:hidden print:hidden'
-          onClick={() => onOpenChange(false)}
-          aria-hidden='true'
-        />
-      )}
+      <div
+        className='absolute inset-0 z-30 bg-surface-sunken/40 sm:hidden print:hidden'
+        onClick={() => onOpenChange(false)}
+        aria-hidden='true'
+      />
       <aside
         aria-label='Preview tools'
-        className={`flex flex-col shrink-0 border-r border-line-subtle bg-surface-base print:hidden ${
-          open ? `absolute inset-y-0 left-0 z-40 ${OPEN_WIDTH} sm:static sm:z-auto` : RAIL_WIDTH
-        }`}
+        className={`flex flex-col shrink-0 border-l border-line-subtle bg-surface-base print:hidden absolute inset-y-0 right-0 z-40 ${OPEN_WIDTH} sm:static sm:z-auto`}
       >
-        {/* Which song this is, and the switch that gets the tools out of the way.
-            The app's own menu button floats over the top-left corner on a phone,
-            so the toggle starts below the band it occupies. */}
-        <div className='flex items-center gap-2 border-b border-line-subtle px-2.5 py-2 pt-[46px] sm:pt-2'>
-          <IconButton
-            type='button'
-            variant='soft'
-            color='gray'
-            onClick={() => onOpenChange(!open)}
-            aria-expanded={open}
-            title={open ? "Hide tools" : "Show tools"}
-            aria-label={open ? "Hide tools" : "Show tools"}
-            className='shrink-0'
-          >
-            {open ? <PanelLeftClose className='w-4 h-4' /> : <PanelLeftOpen className='w-4 h-4' />}
-          </IconButton>
-          {open && (
-            <Flex align='center' gap='2' minWidth='0'>
-              {props.offline && <OfflineBadge />}
-              <Text size='2' weight='bold' truncate>
-                {props.title}
-              </Text>
-            </Flex>
-          )}
+        <div className='flex items-center gap-2 border-b border-line-subtle px-3 py-2'>
+          <Flex align='center' gap='2' minWidth='0'>
+            {props.offline && <OfflineBadge />}
+            <Text size='2' weight='bold' truncate>
+              {props.title}
+            </Text>
+          </Flex>
         </div>
 
-        {open && (
-          <div className='flex-1 overflow-y-auto overscroll-contain'>
-            <SidebarSection title='Song'>
-              <RowButton onClick={props.onAllSheets}>
-                <ArrowLeft className='w-4 h-4' /> All Sheets
-              </RowButton>
-              <RowButton onClick={() => props.onFullscreenChange(!props.fullscreen)}>
-                {props.fullscreen ? (
-                  <>
-                    <Minimize2 className='w-4 h-4' /> Exit Fullscreen
-                  </>
-                ) : (
-                  <>
-                    <Maximize2 className='w-4 h-4' /> Fullscreen
-                  </>
-                )}
-              </RowButton>
-            </SidebarSection>
+        <div className='flex-1 overflow-y-auto overscroll-contain'>
+          <SidebarSection title='Song'>
+            <RowButton onClick={() => props.onFullscreenChange(!props.fullscreen)}>
+              {props.fullscreen ? (
+                <>
+                  <Minimize2 className='w-4 h-4' /> Exit Fullscreen
+                </>
+              ) : (
+                <>
+                  <Maximize2 className='w-4 h-4' /> Fullscreen
+                </>
+              )}
+            </RowButton>
+          </SidebarSection>
 
-            <SidebarSection title='Playback'>
-              <PlayControl
-                hasTiming={props.hasTiming}
-                videoLink={props.videoLink}
-                withVideo={props.withVideo}
-                onWithVideoToggle={props.onWithVideoToggle}
-                offline={props.offline}
-                open={props.playbackOpen}
-                onOpen={props.onOpenPlayback}
-                onClose={props.onClosePlayback}
-              />
-            </SidebarSection>
+          <SidebarSection title='Playback'>
+            <PlayControl
+              hasTiming={props.hasTiming}
+              videoLink={props.videoLink}
+              withVideo={props.withVideo}
+              onWithVideoToggle={props.onWithVideoToggle}
+              offline={props.offline}
+              open={props.playbackOpen}
+              onOpen={props.onOpenPlayback}
+              onClose={props.onClosePlayback}
+            />
+          </SidebarSection>
 
-            <SidebarSection title='Display'>
-              <FontScaleControl scale={props.fontScale} onChange={props.onFontScaleChange} />
-              <ColumnCountControl count={props.columnCount} onChange={props.onColumnCountChange} />
-              <ColumnWidthControl width={props.columnWidthVw} onChange={props.onColumnWidthVwChange} />
-              <TransposeControl steps={props.transposeSteps} onChange={props.onTransposeStepsChange} />
-            </SidebarSection>
+          <SidebarSection title='Display'>
+            <ColumnCountControl count={props.columnCount} onChange={props.onColumnCountChange} />
+            <ColumnWidthControl width={props.columnWidthVw} onChange={props.onColumnWidthVwChange} />
+            <TransposeControl steps={props.transposeSteps} onChange={props.onTransposeStepsChange} />
+          </SidebarSection>
 
-            <SidebarSection title='Audio'>
-              <TempoControl bpm={props.bpm} onBpmChange={props.onBpmChange} />
-              <KitControl
-                kit={props.kit}
-                playing={props.kitPlaying}
-                onPlayingChange={props.onKitPlayingChange}
-                onOpen={props.onOpenKit}
-              />
-              <RowButton onClick={props.onArrange} title='Lay the song out on tracks and record takes onto them'>
-                <Mic className='w-4 h-4' /> Arrange
-              </RowButton>
-            </SidebarSection>
+          <SidebarSection title='Audio'>
+            <TempoControl bpm={props.bpm} onBpmChange={props.onBpmChange} />
+            <KitControl
+              kit={props.kit}
+              playing={props.kitPlaying}
+              onPlayingChange={props.onKitPlayingChange}
+              onOpen={props.onOpenKit}
+            />
+            <RowButton onClick={props.onArrange} title='Lay the song out on tracks and record takes onto them'>
+              <Mic className='w-4 h-4' /> Arrange
+            </RowButton>
+          </SidebarSection>
 
-            <SidebarSection title='Edit'>
-              <LineEditControl active={props.editMode} onToggle={props.onEditModeToggle} />
-              <RowButton onClick={props.onOpenEditor}>
-                <Pencil className='w-4 h-4' /> Open Editor
-              </RowButton>
-            </SidebarSection>
-
-            <SidebarSection title='Share'>
-              <RowButton
-                onClick={props.onCopy}
-                variant={props.copied ? "soft" : "ghost"}
-                color={props.copied ? "teal" : "gray"}
-                highContrast={!props.copied}
-              >
-                {props.copied ? <Check className='w-4 h-4' /> : <Copy className='w-4 h-4' />}
-                {props.copied ? "Copied!" : "Copy Text"}
-              </RowButton>
-              <RowButton
-                onClick={props.onShare}
-                variant={props.shared ? "soft" : "ghost"}
-                color={props.shared ? "teal" : "gray"}
-                highContrast={!props.shared}
-              >
-                {props.shared ? <Check className='w-4 h-4' /> : <Link2 className='w-4 h-4' />}
-                {props.shared ? "Link Copied!" : "Share"}
-              </RowButton>
-              <RowButton onClick={props.onPrint}>
-                <Printer className='w-4 h-4' /> Print
-              </RowButton>
-            </SidebarSection>
-          </div>
-        )}
+          <SidebarSection title='Share'>
+            <RowButton
+              onClick={props.onCopy}
+              variant={props.copied ? "soft" : "ghost"}
+              color={props.copied ? "teal" : "gray"}
+              highContrast={!props.copied}
+            >
+              {props.copied ? <Check className='w-4 h-4' /> : <Copy className='w-4 h-4' />}
+              {props.copied ? "Copied!" : "Copy Text"}
+            </RowButton>
+            <RowButton
+              onClick={props.onShare}
+              variant={props.shared ? "soft" : "ghost"}
+              color={props.shared ? "teal" : "gray"}
+              highContrast={!props.shared}
+            >
+              {props.shared ? <Check className='w-4 h-4' /> : <Link2 className='w-4 h-4' />}
+              {props.shared ? "Link Copied!" : "Share"}
+            </RowButton>
+            <RowButton onClick={props.onPrint}>
+              <Printer className='w-4 h-4' /> Print
+            </RowButton>
+          </SidebarSection>
+        </div>
       </aside>
     </>
   );
