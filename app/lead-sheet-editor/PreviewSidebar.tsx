@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef } from "react";
 import {
   ArrowDown,
   ArrowUp,
@@ -13,16 +14,15 @@ import {
   Play,
   Plus,
   Printer,
-  Sliders,
   Square,
   Youtube,
 } from "lucide-react";
-import { Button, Flex, IconButton, Text } from "@radix-ui/themes";
-import { OfflineBadge } from "./shared";
+import { Flex, IconButton, Text } from "@radix-ui/themes";
 import type { YouTubeLink } from "./youtube";
-import { TempoControl } from "./Tempo";
-import { KIT_LAYERS, LAYER_LABELS, hasLayer, matchesPreset, type KitSettings } from "./kit";
+import { MIN_BPM, MAX_BPM, clampBpm } from "./Tempo";
+import { applyPreset, PRESET_GROUPS, type KitSettings } from "./kit";
 import { ControlRow, RowButton } from "./SidebarRows";
+import styles from "./lead-sheet-editor.module.css";
 
 export const MIN_SCALE = 70;
 export const MAX_SCALE = 160;
@@ -36,15 +36,11 @@ export const MAX_COLUMN_WIDTH_VW = 50;
 const COLUMN_WIDTH_VW_STEP = 5;
 export const DEFAULT_COLUMN_WIDTH_VW = 30;
 
-/** Width of the open panel. */
-const OPEN_WIDTH = "w-[19rem]";
-
-/** A square −/+ step button beside a value. */
+/** A square −/+ step button beside a value — the app's own extra controls, not reference ones. */
 function StepButton(props: React.ComponentProps<typeof IconButton>) {
   return <IconButton type='button' size='3' variant='soft' color='gray' {...props} />;
 }
 
-/** A value with a step button on each side: text size, columns, transpose. */
 function Stepper({
   label,
   value,
@@ -67,8 +63,11 @@ function Stepper({
   );
 }
 
-/** One labelled block of the sidebar — the unit the whole column scrolls through. */
-function SidebarSection({ title, children }: { title: string; children: React.ReactNode }) {
+/** One of the app's own extra blocks — not in the reference, so built from
+ *  the app's existing Radix-themed sidebar vocabulary rather than the
+ *  reference's raw `.group`/`.panel-h` (used below for the parts that are
+ *  the reference, verbatim). */
+function ExtraSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section>
       <Text as='div' size='1' weight='bold' color='gray' className='px-3 pt-4 pb-1.5 uppercase tracking-widest select-none'>
@@ -154,12 +153,9 @@ function PlayControl({
   onClose,
 }: {
   hasTiming: boolean;
-  /** A YouTube link found in the song, or null. */
   videoLink: YouTubeLink | null;
-  /** Whether the YouTube video is included in playback (only relevant when videoLink != null). */
   withVideo: boolean;
   onWithVideoToggle: () => void;
-  /** YouTube itself needs a live connection, whatever the sheet's own source. */
   offline: boolean;
   open: boolean;
   onOpen: () => void;
@@ -179,7 +175,7 @@ function PlayControl({
         className='flex-1'
       >
         <Play className='w-4 h-4' />
-        {open ? "Playing" : "Play"}
+        {open ? "Playing" : "Play Song"}
       </RowButton>
       {videoLink && (
         <IconButton
@@ -213,78 +209,10 @@ function PlayControl({
   );
 }
 
-/**
- * The kit, as one row.
- *
- * This replaced a column of separate controls, each with its own popover
- * fighting for the same 19rem of width. Everything they did lives in the Kit
- * Designer now, and what is left here is the two things worth having in the
- * sidebar — whether it is playing, and a way in.
- */
-function KitControl({
-  kit,
-  playing,
-  onPlayingChange,
-  onOpen,
-}: {
-  kit: KitSettings;
-  playing: boolean;
-  onPlayingChange: (playing: boolean) => void;
-  onOpen: () => void;
-}) {
-  const on = KIT_LAYERS.filter((layer) => hasLayer(kit, layer));
-  const summary =
-    on.length === 0
-      ? "Nothing switched on"
-      : on.map((layer) => LAYER_LABELS[layer]).join(" · ");
-  const name = kit.preset
-    ? matchesPreset(kit)
-      ? kit.preset
-      : `${kit.preset} · edited`
-    : "Custom kit";
-
-  return (
-    <ControlRow label='Kit'>
-      <IconButton
-        type='button'
-        size='3'
-        variant={playing ? "solid" : "soft"}
-        color={playing ? undefined : "gray"}
-        onClick={() => onPlayingChange(!playing)}
-        disabled={on.length === 0}
-        aria-label={playing ? "Stop the kit" : "Play the kit"}
-        title={on.length === 0 ? "Open the kit and switch something on" : playing ? "Stop the kit" : "Play the kit"}
-      >
-        {playing ? <Square className='w-4 h-4' /> : <Play className='w-4 h-4' />}
-      </IconButton>
-      <Button
-        type='button'
-        variant='ghost'
-        color='gray'
-        highContrast
-        onClick={onOpen}
-        title='Design the beat, the bass and the voices'
-        className='col-span-2 m-0 h-auto min-w-0 justify-between gap-2 px-2 py-1 text-left'
-      >
-        <span className='flex min-w-0 flex-col'>
-          <Text size='2' weight='medium' truncate>
-            {name}
-          </Text>
-          <Text size='1' color='gray' truncate>
-            {summary}
-          </Text>
-        </span>
-        <Sliders className='w-4 h-4 shrink-0 text-ink-muted' aria-hidden='true' />
-      </Button>
-    </ControlRow>
-  );
-}
-
 export interface PreviewSidebarProps {
-  /** Open/close is driven by the topbar's Tools toggle now — this panel renders nothing while closed. */
+  /** Open/close is driven by the topbar's Drums toggle now — this panel renders nothing while closed. */
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  title: string;
   offline: boolean;
 
   // Song
@@ -292,7 +220,10 @@ export interface PreviewSidebarProps {
   fullscreen: boolean;
   onFullscreenChange: (next: boolean) => void;
 
-  // Playback
+  // Playback (the song's own timed/synced playback — distinct from the
+  // kit's loop below, which the reference's single Start/Stop button
+  // became; the reference has no second transport, so this keeps the
+  // app's own section).
   hasTiming: boolean;
   videoLink: YouTubeLink | null;
   withVideo: boolean;
@@ -309,11 +240,11 @@ export interface PreviewSidebarProps {
   transposeSteps: number;
   onTransposeStepsChange: (next: number) => void;
 
-  // Audio
+  // Audio — the reference's actual "Drum loop" panel content
   bpm: number;
   onBpmChange: (next: number) => void;
-  /** The whole backing track, for the summary line under the Kit row. */
   kit: KitSettings;
+  onKitChange: (next: KitSettings) => void;
   kitPlaying: boolean;
   onKitPlayingChange: (playing: boolean) => void;
   onOpenKit: () => void;
@@ -327,39 +258,142 @@ export interface PreviewSidebarProps {
 }
 
 /**
- * Every preview tool that isn't the Play/Edit Lines/Freeform switch or the
- * text-size stepper — those moved to <TopBar>, the reference's library and
- * mode chrome. What's left is the reference's "drums" panel: a scrollable
- * column of grouped controls, docked to the right the way the mockup docks
- * its own utility panel, opened and closed from the topbar's Tools toggle
- * rather than a button of its own. On a phone the open panel covers the
- * sheet like a drawer; from `sm` up it takes its own column beside it.
+ * The reference's `.drums` aside, matched structurally this time rather
+ * than summarized: the heading, the Start/Stop loop button, the beat dots,
+ * the Feel pattern grid, the Tempo stepper with tap-tempo, and the Volume
+ * slider are all inlined here exactly as the reference lays them out,
+ * instead of a summary row that opens the full Kit Designer as a dialog.
+ * The Kit Designer is still reachable — "Full kit editor" at the bottom of
+ * Feel — for the per-layer/drone/bass controls the reference's one panel
+ * has no room to show.
+ *
+ * Below that, the app's own extra groups (Playback, Display, Share) use
+ * the existing Radix-themed sidebar vocabulary rather than the reference's
+ * raw classes, since they're additions the reference has no version of at
+ * all, not a reference behavior being reinterpreted.
  */
 export default function PreviewSidebar(props: PreviewSidebarProps) {
-  const { open, onOpenChange } = props;
+  const { open, onOpenChange, kit, onKitChange, kitPlaying, onKitPlayingChange, bpm, onBpmChange } = props;
+  const tapsRef = useRef<number[]>([]);
+
   if (!open) return null;
+
+  const pattern = kit.preset;
+
+  // Tap tempo — the reference's own tap(): average the gaps between taps
+  // inside a 2.5s window. The app has no tap-tempo of its own to defer to,
+  // so this is the reference's algorithm, ported as-is.
+  function handleTap() {
+    const now = performance.now();
+    tapsRef.current = tapsRef.current.filter((t) => now - t < 2500);
+    tapsRef.current.push(now);
+    if (tapsRef.current.length >= 2) {
+      const iv: number[] = [];
+      for (let i = 1; i < tapsRef.current.length; i++) iv.push(tapsRef.current[i] - tapsRef.current[i - 1]);
+      onBpmChange(clampBpm(60000 / (iv.reduce((a, b) => a + b, 0) / iv.length)));
+    }
+  }
+
   return (
     <>
       <div
-        className='absolute inset-0 z-30 bg-surface-sunken/40 sm:hidden print:hidden'
+        className={`${styles.backdrop} absolute inset-0 z-30 bg-surface-sunken/40 print:hidden`}
         onClick={() => onOpenChange(false)}
         aria-hidden='true'
       />
-      <aside
-        aria-label='Preview tools'
-        className={`flex flex-col shrink-0 border-l border-line-subtle bg-surface-base print:hidden absolute inset-y-0 right-0 z-40 ${OPEN_WIDTH} sm:static sm:z-auto`}
-      >
-        <div className='flex items-center gap-2 border-b border-line-subtle px-3 py-2'>
-          <Flex align='center' gap='2' minWidth='0'>
-            {props.offline && <OfflineBadge />}
-            <Text size='2' weight='bold' truncate>
-              {props.title}
-            </Text>
-          </Flex>
+      <aside aria-label='Drum loops' className={`${styles.sidePanel} ${styles.drums} print:hidden`}>
+        <h2 className={styles.panelH}>Drum loop</h2>
+
+        {kitPlaying ? (
+          <button type='button' className={`${styles.drumPlay} ${styles.drumPlayStop}`} onClick={() => onKitPlayingChange(false)}>
+            <Square className='w-[22px] h-[22px]' fill='currentColor' />
+            Stop
+          </button>
+        ) : (
+          <button
+            type='button'
+            className={styles.drumPlay}
+            onClick={() => onKitPlayingChange(true)}
+            disabled={kit.layers.length === 0}
+            title={kit.layers.length === 0 ? "Pick a feel below first" : undefined}
+          >
+            <Play className='w-[22px] h-[22px]' fill='currentColor' />
+            Start loop
+          </button>
+        )}
+
+        {/* Beat dots — visual only here: this inlined panel doesn't have the
+            audio engine's live step position wired through to it the way the
+            reference's own self-contained sequencer does, so they show the
+            shape of a 4-beat bar rather than following the actual beat. */}
+        <div className={styles.dots} aria-hidden='true'>
+          {[0, 1, 2, 3].map((i) => (
+            <span key={i} className={`${styles.dot} ${i === 0 && kitPlaying ? styles.dotOn : ""}`} />
+          ))}
         </div>
 
-        <div className='flex-1 overflow-y-auto overscroll-contain'>
-          <SidebarSection title='Song'>
+        <div className={styles.group}>
+          <h3 className={styles.panelH}>Feel</h3>
+          <div className={styles.pgrid}>
+            {PRESET_GROUPS.flatMap((g) => g.items).map((preset) => (
+              <button
+                key={preset.name}
+                type='button'
+                className={`${styles.pbtn} ${pattern === preset.name ? styles.pbtnOn : ""}`}
+                aria-pressed={pattern === preset.name}
+                onClick={() => onKitChange(applyPreset(preset, kit))}
+                title={preset.blurb}
+              >
+                {preset.name}
+                <span className={styles.pbtnDesc}>{preset.group}</span>
+              </button>
+            ))}
+          </div>
+          <RowButton onClick={props.onOpenKit} title='Per-layer volume, drone and bass — more than this panel can show'>
+            Full kit editor
+          </RowButton>
+        </div>
+
+        <div className={styles.group}>
+          <h3 className={styles.panelH}>Tempo</h3>
+          <div className={styles.tempoRow}>
+            <button type='button' className={styles.ibtn} onClick={() => onBpmChange(bpm - 2)} aria-label='Slower' disabled={bpm <= MIN_BPM}>
+              <Minus className='w-[18px] h-[18px]' />
+            </button>
+            <div className={styles.bpm}>
+              {bpm}
+              <span className={styles.bpmUnit}>BPM</span>
+            </div>
+            <button type='button' className={styles.ibtn} onClick={() => onBpmChange(bpm + 2)} aria-label='Faster' disabled={bpm >= MAX_BPM}>
+              <Plus className='w-[18px] h-[18px]' />
+            </button>
+          </div>
+          <button type='button' className={styles.ibtn} style={{ height: 52, fontSize: 16, width: "100%" }} onClick={handleTap}>
+            Tap tempo
+          </button>
+        </div>
+
+        <div className={styles.group}>
+          <label className={styles.field}>
+            Volume
+            <input
+              className={styles.vol}
+              type='range'
+              min={0}
+              max={100}
+              value={Math.round(kit.drums.volume * 100)}
+              onChange={(e) => onKitChange({ ...kit, drums: { ...kit.drums, volume: Number(e.target.value) / 100 } })}
+            />
+          </label>
+        </div>
+
+        {/* ── Everything below here is the app's own, with no reference
+            equivalent at all — kept reachable in the same panel rather than
+            hunting for a slot the reference's layout doesn't have. The whole
+            aside scrolls as one unit (see `.drums` in the CSS module), same
+            as the reference — no separate scroll region nested inside it. ── */}
+        <div className='-mx-[14px]'>
+          <ExtraSection title='Song'>
             <RowButton onClick={() => props.onFullscreenChange(!props.fullscreen)}>
               {props.fullscreen ? (
                 <>
@@ -371,9 +405,12 @@ export default function PreviewSidebar(props: PreviewSidebarProps) {
                 </>
               )}
             </RowButton>
-          </SidebarSection>
+            <RowButton onClick={props.onArrange} title='Lay the song out on tracks and record takes onto them'>
+              <Mic className='w-4 h-4' /> Arrange
+            </RowButton>
+          </ExtraSection>
 
-          <SidebarSection title='Playback'>
+          <ExtraSection title='Playback'>
             <PlayControl
               hasTiming={props.hasTiming}
               videoLink={props.videoLink}
@@ -384,28 +421,15 @@ export default function PreviewSidebar(props: PreviewSidebarProps) {
               onOpen={props.onOpenPlayback}
               onClose={props.onClosePlayback}
             />
-          </SidebarSection>
+          </ExtraSection>
 
-          <SidebarSection title='Display'>
+          <ExtraSection title='Display'>
             <ColumnCountControl count={props.columnCount} onChange={props.onColumnCountChange} />
             <ColumnWidthControl width={props.columnWidthVw} onChange={props.onColumnWidthVwChange} />
             <TransposeControl steps={props.transposeSteps} onChange={props.onTransposeStepsChange} />
-          </SidebarSection>
+          </ExtraSection>
 
-          <SidebarSection title='Audio'>
-            <TempoControl bpm={props.bpm} onBpmChange={props.onBpmChange} />
-            <KitControl
-              kit={props.kit}
-              playing={props.kitPlaying}
-              onPlayingChange={props.onKitPlayingChange}
-              onOpen={props.onOpenKit}
-            />
-            <RowButton onClick={props.onArrange} title='Lay the song out on tracks and record takes onto them'>
-              <Mic className='w-4 h-4' /> Arrange
-            </RowButton>
-          </SidebarSection>
-
-          <SidebarSection title='Share'>
+          <ExtraSection title='Share'>
             <RowButton
               onClick={props.onCopy}
               variant={props.copied ? "soft" : "ghost"}
@@ -427,7 +451,7 @@ export default function PreviewSidebar(props: PreviewSidebarProps) {
             <RowButton onClick={props.onPrint}>
               <Printer className='w-4 h-4' /> Print
             </RowButton>
-          </SidebarSection>
+          </ExtraSection>
         </div>
       </aside>
     </>

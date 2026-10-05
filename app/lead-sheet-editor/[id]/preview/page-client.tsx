@@ -53,6 +53,8 @@ import { KitPlayer } from "../../KitPlayer";
 import KitDesigner from "../../KitDesigner";
 import styles from "../../lead-sheet-editor.module.css";
 import TopBar from "../../TopBar";
+import LibraryDrawer from "../../LibraryDrawer";
+import { useAutoFit } from "../../useAutoFit";
 import PreviewSidebar, {
   MIN_SCALE,
   MAX_SCALE,
@@ -148,12 +150,15 @@ const SheetContent = memo(function SheetContent({
   onAddSection,
   onEditSection,
   bpm,
+  kit,
 }: {
   sheet: LeadSheet;
   fullscreen: boolean;
   columnCount?: number;
   columnWidthVw?: number;
   transposeSteps?: number;
+  /** For the reference's third chip — the kit's preset name, or "Custom kit". */
+  kit?: KitSettings;
   /** Present only while playback is open — otherwise the sheet renders untouched. */
   timeline?: Timeline;
   activeCueIndex?: number | null;
@@ -182,12 +187,15 @@ const SheetContent = memo(function SheetContent({
           {sheet.title || "Untitled"}
         </h1>
         <div className='flex flex-wrap gap-2 text-[0.875em]'>
-          {sheet.key && (
-            <span className={`${styles.chip} ${styles.chipAccent}`}>
-              Key {sheet.key}
-            </span>
-          )}
-          {sheet.tempo && <span className={styles.chip}>{sheet.tempo} BPM</span>}
+          {/* The reference's exact three chips — capo, tempo, pattern — in that
+              order. Key doesn't get one of its own: the reference has no slot
+              for it here, and it's still readable (and editable) as `Key: G`
+              in Freeform. */}
+          <span className={`${styles.chip} ${sheet.capo ? styles.chipAccent : ""}`}>
+            {sheet.capo ? `Capo ${sheet.capo}` : "No capo"}
+          </span>
+          {sheet.tempo && <span className={styles.chip}>{sheet.tempo} bpm</span>}
+          <span className={styles.chip}>{kit?.preset ?? "Custom kit"}</span>
         </div>
         {sheet.general_notes && (
           <p className={`mt-3 italic text-ink-muted text-ink-muted ${fullscreen ? "text-[1em]" : "text-[0.875em]"}`}>
@@ -268,7 +276,7 @@ const SheetContent = memo(function SheetContent({
                           className='block w-full h-8 rounded border border-dashed border-line-strong/10 border-line-subtle hover:border-line-strong hover:bg-surface-raised transition-colors duration-150'
                         />
                       ) : (
-                        <div key={i} className='h-3' />
+                        <div key={i} data-fit-line className='h-3' />
                       )
                     );
                   }
@@ -282,6 +290,7 @@ const SheetContent = memo(function SheetContent({
                   return withGrip(
                     <div
                       key={i}
+                      data-fit-line
                       data-active-cue={active || undefined}
                       role={onEditLine || seekable ? "button" : undefined}
                       tabIndex={onEditLine ? 0 : undefined}
@@ -453,9 +462,16 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
     moveErrorTimer.current = setTimeout(() => setMoveError(null), 5000);
   };
   const [playbackOpen, setPlaybackOpen] = useState(false);
-  // The tools are open beside the sheet on a laptop, and folded to their rail
-  // on a phone, where the sidebar covers the very song it controls.
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  // Both panels default open on a wide screen and closed on a narrow one —
+  // the reference's own `showLib`/`showDrums: window.innerWidth > 820`,
+  // read once on mount so server and first client render still agree.
+  const [libraryOpen, setLibraryOpen] = useState(false);
+  const [drumsOpen, setDrumsOpen] = useState(false);
+  // Auto-fit on by default, matching the reference — the text size stepper
+  // only takes over once A-/A+ is pressed.
+  const [autoFit, setAutoFit] = useState(true);
+  const stageRef = useRef<HTMLDivElement | null>(null);
+  const sheetRef = useRef<HTMLDivElement | null>(null);
   const [follow, setFollow] = useState(true);
   const [autoPlay, setAutoPlay] = useState(false);
   const [bpm, setBpm] = useState(DEFAULT_BPM);
@@ -487,11 +503,54 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
   // Printing to PDF should offer the song's name, not "Preview Lead Sheet".
   useSongDocumentTitle(sheet?.title);
 
-  // A phone has no room for the sheet and the tools side by side, so the tools
-  // start folded away there and open over the song only when asked for.
+  // A phone has no room for the sheet and a side panel together, so both
+  // start folded away there and open over the song only when asked for; a
+  // wide screen gets both open by default, same as the reference.
   useEffect(() => {
-    if (window.matchMedia("(max-width: 639px)").matches) setSidebarOpen(false);
+    const wide = window.matchMedia("(min-width: 821px)").matches;
+    setLibraryOpen(wide);
+    setDrumsOpen(wide);
   }, []);
+
+  // Mutually exclusive on a narrow screen — opening one closes the other,
+  // the reference's own toggleLib/toggleDrums. Wide enough for both to have
+  // their own column and this is a no-op.
+  const narrow = () => !window.matchMedia("(min-width: 821px)").matches;
+  const toggleLibrary = () => {
+    setLibraryOpen((open) => {
+      const next = !open;
+      if (next && narrow()) setDrumsOpen(false);
+      return next;
+    });
+  };
+  const toggleDrums = () => {
+    setDrumsOpen((open) => {
+      const next = !open;
+      if (next && narrow()) setLibraryOpen(false);
+      return next;
+    });
+  };
+
+  // The reference's fit(): binary-search the largest size/column-count that
+  // lays the sheet out without overflow. Play mode only — editing lines or
+  // fullscreen each need the size pinned, not recalculated out from under
+  // a tap in progress.
+  useAutoFit({
+    enabled: autoFit && !editMode && !fullscreen,
+    containerRef: stageRef,
+    contentRef: sheetRef,
+    minScale: MIN_SCALE,
+    maxScale: MAX_SCALE,
+    minCols: MIN_COLUMN_COUNT,
+    maxCols: MAX_COLUMN_COUNT,
+    scale: fontScale,
+    cols: columnCount,
+    onFit: ({ scale, cols }) => {
+      updateFontScale(scale);
+      updateColumnCount(cols);
+    },
+    deps: [sheet?.id, sheet?.sections, transposeSteps, libraryOpen, drumsOpen],
+  });
 
   // ─── Timed playback ─────────────────────────────────────────────────────────
 
@@ -1090,13 +1149,12 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
     );
   }
 
-  // Every preview tool, in one scrollable column down the left of the sheet —
-  // the same element whether the sheet is fullscreen or framed by the app.
-  const toolSidebar = (
+  // The reference's "drums" panel — now the kit's actual pattern grid,
+  // tempo and volume, inlined directly rather than a dialog's summary row.
+  const drumsPanel = (
     <PreviewSidebar
-      open={sidebarOpen}
-      onOpenChange={setSidebarOpen}
-      title={sheet.title}
+      open={drumsOpen}
+      onOpenChange={setDrumsOpen}
       offline={offline}
       onArrange={() => goTo(router, `/lead-sheet-editor/${id}/edit?arrange=1`)}
       fullscreen={fullscreen}
@@ -1117,6 +1175,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
       bpm={bpm}
       onBpmChange={updateBpm}
       kit={kit}
+      onKitChange={updateKit}
       kitPlaying={kitPlaying}
       onKitPlayingChange={setKitPlaying}
       onOpenKit={() => setKitOpen(true)}
@@ -1128,14 +1187,22 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
     />
   );
 
-  // Reachable without opening the tools panel — the whole point of a topbar
-  // on a phone or tablet, where the panel defaults to closed. Left out of
-  // fullscreen on purpose: that mode's job is to clear every bit of chrome
-  // but the sheet, and the panel (still one tap away there too) already
-  // carries an All Sheets entry.
+  const libraryPanel = libraryOpen && (
+    <LibraryDrawer
+      activeId={id}
+      onNavigate={() => { if (narrow()) setLibraryOpen(false); }}
+      onClose={() => setLibraryOpen(false)}
+    />
+  );
+
+  // Left out of fullscreen on purpose: that mode's job is to clear every
+  // bit of chrome but the sheet (both panels are still one tap away there
+  // via the rail this component no longer has — fullscreen keeps its own
+  // minimal exit affordance below).
   const topBar = (
     <TopBar
-      onLibraryClick={() => goTo(router, "/lead-sheet-editor")}
+      onLibraryClick={toggleLibrary}
+      libraryOpen={libraryOpen}
       title={sheet.title || "Untitled"}
       mode={editMode ? "lines" : "play"}
       onModeChange={(next) => {
@@ -1147,23 +1214,28 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
       }}
       rightSlot={
         !editMode ? (
-          <div className={styles.segctl} role='group' aria-label='Text size'>
+          <div className={styles.sizectl} role='group' aria-label='Text size'>
             <button
               type='button'
-              className={styles.segBtn}
-              onClick={() => updateFontScale(fontScale - 10)}
+              className={styles.ibtn}
+              onClick={() => { setAutoFit(false); updateFontScale(fontScale - 10); }}
               disabled={fontScale <= MIN_SCALE}
               aria-label='Smaller text'
             >
               A−
             </button>
-            <span className={`${styles.segBtn} select-none tabular-nums`} aria-hidden='true'>
-              {fontScale}%
-            </span>
             <button
               type='button'
-              className={styles.segBtn}
-              onClick={() => updateFontScale(fontScale + 10)}
+              className={`${styles.ibtn} ${autoFit ? styles.ibtnOn : ""}`}
+              onClick={() => setAutoFit(true)}
+              aria-pressed={autoFit}
+            >
+              Fit
+            </button>
+            <button
+              type='button'
+              className={styles.ibtn}
+              onClick={() => { setAutoFit(false); updateFontScale(fontScale + 10); }}
               disabled={fontScale >= MAX_SCALE}
               aria-label='Larger text'
             >
@@ -1172,8 +1244,9 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
           </div>
         ) : undefined
       }
-      toolsOpen={sidebarOpen}
-      onToolsToggle={() => setSidebarOpen((o) => !o)}
+      drumsOpen={drumsOpen}
+      onDrumsToggle={toggleDrums}
+      drumsPlaying={kitPlaying}
     />
   );
 
@@ -1220,23 +1293,29 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                       activeCueIndex={activeCueIndex}
                       onSeekToLine={playbackOpen ? seekToLine : undefined}
                       bpm={bpm}
+                      kit={kit}
                     />
                   </LineDndProvider>
                 </div>
                 {playbackOpen && <div className='h-44' />}
               </div>
             </div>
-            {toolSidebar}
+            {drumsPanel}
           </div>
         ) : (
-          <div className='flex flex-col flex-1 min-h-0 p-0 sm:p-4'>
-            <div className='relative flex flex-1 min-h-0 rounded-none border-none bg-surface-base overflow-hidden'>
+          <div className='flex flex-col flex-1 min-h-0'>
+            {topBar}
+            {/* The reference's `.body`: the library and drums panels sit beside
+                the sheet as their own flex columns above 820px, and as
+                absolutely-positioned overlay drawers below it (see
+                `.sidePanel` in the CSS module). */}
+            <div className='relative flex flex-1 min-h-0 overflow-hidden'>
+              {libraryPanel}
               <div className='flex flex-col flex-1 min-w-0'>
-                {topBar}
                 {editMode && <EditModeBanner error={moveError} onDone={() => setEditMode(false)} className='px-6 sm:px-8' />}
-                {/* Scrollable content */}
-                <div className='flex-1 overflow-y-auto overflow-x-hidden'>
-                  <div className='w-full px-6 py-8 sm:px-8' style={{ fontSize: `${fontScale}%` }}>
+                {/* Scrollable content — the reference's `.stage` */}
+                <div ref={stageRef} className='flex-1 overflow-y-auto overflow-x-hidden'>
+                  <div ref={sheetRef} className='w-full px-6 py-8 sm:px-8' style={{ fontSize: `${fontScale}%` }}>
                     <LineDndProvider onMove={editMode ? moveLine : undefined} lineTextAt={lineTextAt}>
                       <SheetContent
                         sheet={sheet}
@@ -1247,19 +1326,20 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                         onEditSection={editMode ? setSectionEdit : undefined}
                         fullscreen={false}
                         columnCount={columnCount}
-                        columnWidthVw={columnWidthVw}
+                        columnWidthVw={autoFit ? undefined : columnWidthVw}
                         transposeSteps={transposeSteps}
                         timeline={playbackOpen ? timeline : undefined}
                         activeCueIndex={activeCueIndex}
                         onSeekToLine={playbackOpen ? seekToLine : undefined}
                         bpm={bpm}
+                        kit={kit}
                       />
                     </LineDndProvider>
                   </div>
                   {playbackOpen && <div className='h-44' />}
                 </div>
               </div>
-              {toolSidebar}
+              {drumsPanel}
             </div>
           </div>
         )}

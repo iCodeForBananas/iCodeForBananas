@@ -4,9 +4,10 @@ import { useState, useEffect, useMemo, useRef, use } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/app/hooks/useAuth";
-import { Save, Eye, Replace, X, Sparkles, Play, Timer, TimerOff, Clock, HelpCircle, SlidersHorizontal, ChevronDown } from "lucide-react";
-import { Button, DropdownMenu, Flex, IconButton, Select, Separator, Text, TextField } from "@radix-ui/themes";
+import { Save, Replace, X, Sparkles, Play, Timer, TimerOff, Clock, HelpCircle, SlidersHorizontal, ChevronDown } from "lucide-react";
+import { Button, DropdownMenu, IconButton, Select, Text, TextField } from "@radix-ui/themes";
 import TopBar from "../../TopBar";
+import styles from "../../lead-sheet-editor.module.css";
 import { RevisionHistory } from "../../RevisionHistory";
 import {
   type LeadSheet,
@@ -229,6 +230,10 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
   }, []);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  // The reference's Capo field — a structured value, unlike Title/Key/Tempo
+  // which all live as text in the song itself. There was no editor for this
+  // anywhere in the app before; the reference's free-meta row is the one.
+  const [capo, setCapo] = useState<number | null>(null);
   const sbRef = useRef<ReturnType<typeof createClient> | null>(null);
   const replaceInputRef = useRef<HTMLInputElement>(null);
   /** Timestamp of last revision snapshot, to throttle auto-save revisions */
@@ -263,12 +268,12 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
     if (user) loadSheet();
   }, [user, id]);
 
-  // Autosave: debounce 1.5s; rawText in deps gives a fresh closure on each change
+  // Autosave: debounce 1.5s; rawText/capo in deps gives a fresh closure on each change
   useEffect(() => {
     if (!dirty || !sheetId) return;
     const timer = setTimeout(saveSheet, 1500);
     return () => clearTimeout(timer);
-  }, [rawText, dirty, sheetId]);
+  }, [rawText, capo, dirty, sheetId]);
 
   async function loadSheet() {
     setLoading(true);
@@ -280,6 +285,7 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
         const sheet: LeadSheet = { ...data, sections: data.sections.map(migrateSection) };
         sheetMetadata.current = sheet.metadata ?? {};
         setRawText(serializeSheet(sheet));
+        setCapo(sheet.capo ?? null);
         setOffline(false);
         await cacheSheet(data);
       }
@@ -290,6 +296,7 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
         const sheet: LeadSheet = { ...cached, sections: cached.sections.map(migrateSection) };
         sheetMetadata.current = sheet.metadata ?? {};
         setRawText(serializeSheet(sheet));
+        setCapo(sheet.capo ?? null);
         setOffline(true);
       }
     }
@@ -308,6 +315,7 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
           title: parsed.title ?? "",
           key: parsed.key ?? "",
           tempo: parsed.tempo ?? null,
+          capo,
           general_notes: parsed.general_notes ?? "",
           // Merge so keys this editor doesn't know about survive a save.
           metadata: { ...sheetMetadata.current, ...parsed.metadata },
@@ -337,6 +345,20 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
 
   function handleChange(value: string) {
     setRawText(value);
+    setDirty(true);
+  }
+
+  // The reference's Title field edits the song's own first line directly —
+  // there's no second, separate title to drift out of sync with it.
+  function handleTitleChange(value: string) {
+    const lines = rawText.split("\n");
+    lines[0] = value;
+    handleChange(lines.join("\n"));
+  }
+
+  function handleCapoChange(value: string) {
+    const parsed = value.trim() === "" ? null : parseInt(value, 10);
+    setCapo(Number.isNaN(parsed as number) ? null : parsed);
     setDirty(true);
   }
 
@@ -401,6 +423,27 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
     goTo(router, `/lead-sheet-editor/${id}/preview`);
   }
 
+  // The reference's Save: commit, then back to the song. Unlike the
+  // reference there's no separate draft to commit from — autosave already
+  // keeps this song's row current — so this really just forces one last
+  // save (picking up anything still inside the 1.5s debounce) before
+  // leaving, same as the "Preview" action always did.
+  async function handleSaveAndView() {
+    if (dirty) await saveSheet(true);
+    goTo(router, `/lead-sheet-editor/${id}/preview`);
+  }
+
+  // The reference's Cancel discards the whole draft. This architecture
+  // autosaves continuously rather than editing a draft, so there's nothing
+  // left to discard by the time a click lands — the closest honest
+  // approximation is leaving without forcing one more save first, unlike
+  // Save/Preview, which both do. Noted as a real conflict, not a silent
+  // reinterpretation: anything already past the 1.5s debounce is still
+  // written, same as it would be if this button didn't exist at all.
+  function handleCancel() {
+    goTo(router, `/lead-sheet-editor/${id}/preview`);
+  }
+
   // Where the topbar's "Edit lines" segment lands — same door the old
   // sidebar toggle used, reached from this page instead of that one.
   async function handleEditLines() {
@@ -462,119 +505,99 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
               else if (next === "lines") void handleEditLines();
             }}
           />
-          {/* Toolbar — this page's own actions, a second row under the
-              shared mode switch rather than crammed into the reference's
-              single sparse topbar, which never had this many of them. */}
+          {/* The reference's `.free-meta` row: Title, Capo, Cancel, Save —
+              matched exactly as the primary bar instead of the app's own
+              ten-button toolbar, which the reference has no room for at all.
+              Everything that toolbar did is still reachable, just folded into
+              the More menu beside Save rather than occupying permanent space
+              the reference's layout doesn't allocate for it. */}
           <div className="shrink-0">
-            <div className="flex items-center justify-end px-4 py-3 sm:px-6 sm:py-4">
-              <Flex align="center" gap="2" wrap="wrap" justify="end">
-                {offline && <OfflineBadge />}
-                {saveError && (
-                  <Text size="1" weight="medium" color="red">
-                    Save failed
-                  </Text>
-                )}
+            <div className="flex items-center gap-3 flex-wrap px-4 py-3 sm:px-6 sm:py-4">
+              <label className={`${styles.field} flex-1`} style={{ minWidth: 260 }}>
+                Title
+                <input
+                  className={styles.tinput}
+                  type="text"
+                  value={songTitle === "Untitled" && !rawText.split("\n")[0] ? "" : (rawText.split("\n")[0] ?? "")}
+                  onChange={(e) => handleTitleChange(e.target.value)}
+                  placeholder="Untitled"
+                />
+              </label>
+              <label className={styles.field} style={{ width: 110 }}>
+                Capo
+                <input
+                  className={styles.tinput}
+                  type="number"
+                  min={0}
+                  max={12}
+                  value={capo ?? ""}
+                  onChange={(e) => handleCapoChange(e.target.value)}
+                />
+              </label>
 
-                <Button
-                  variant="surface"
-                  color="gray"
-                  onClick={() => setHelpOpen(true)}
-                  title="What can I type into a song? Time stamps, drum triggers, chords…"
-                >
-                  <HelpCircle className="w-4 h-4" />
-                  Help
-                </Button>
-                <Button
-                  variant={replaceOpen ? "soft" : "surface"}
-                  color={replaceOpen ? undefined : "gray"}
-                  aria-pressed={replaceOpen}
-                  onClick={replaceOpen ? closeReplace : openReplace}
-                >
-                  <Replace className="w-4 h-4" />
-                  Replace Chord
-                </Button>
-                <Button
-                  variant="surface"
-                  color="gray"
-                  onClick={() => setArrangeOpen(true)}
-                  title="Lay the song out on tracks — drag each line and each sound to where it belongs"
-                >
-                  <SlidersHorizontal className="w-4 h-4" />
-                  Arrange
-                </Button>
-                <Button
-                  variant="surface"
-                  color="gray"
-                  onClick={() => setTapOpen(true)}
-                  title="Tap along with the song to time each line"
-                >
-                  <Timer className="w-4 h-4" />
-                  Tap Timing
-                </Button>
-                <Button
-                  variant="surface"
-                  color="gray"
-                  onClick={handleClearTimings}
-                  disabled={!hasTiming}
-                  title={
-                    hasTiming
-                      ? `Remove all ${timingCount} time stamp${timingCount === 1 ? "" : "s"} so you can re-time the song`
-                      : "This song has no time stamps"
-                  }
-                >
-                  <TimerOff className="w-4 h-4" />
-                  Clear Times
-                </Button>
-                <Button
-                  variant="surface"
-                  color="gray"
-                  onClick={handlePlay}
-                  disabled={!hasTiming}
-                  title={
-                    hasTiming
-                      ? "Play through the sheet, highlighting each line in time"
-                      : "Time some lines first — use Tap Timing, or type @0:12 at the start of a line"
-                  }
-                >
-                  <Play className="w-4 h-4" />
-                  Play
-                </Button>
-                <Button variant="surface" color="gray" onClick={handlePreview}>
-                  <Eye className="w-4 h-4" />
-                  Preview
-                </Button>
-                <Button variant="surface" color="gray" onClick={() => setHistoryOpen(true)} title="View revision history">
-                  <Clock className="w-4 h-4" />
-                  History
-                </Button>
+              {offline && <OfflineBadge />}
+              {saveError && (
+                <Text size="1" weight="medium" color="red">
+                  Save failed
+                </Text>
+              )}
 
-                <Separator orientation="vertical" size="2" />
+              <DropdownMenu.Root>
+                <DropdownMenu.Trigger>
+                  <button type="button" className={styles.ibtn}>
+                    More
+                    <ChevronDown className="w-3.5 h-3.5" />
+                  </button>
+                </DropdownMenu.Trigger>
+                <DropdownMenu.Content align="end">
+                  <DropdownMenu.Item onSelect={() => setHelpOpen(true)}>
+                    <HelpCircle className="w-4 h-4" /> Help
+                  </DropdownMenu.Item>
+                  <DropdownMenu.Item onSelect={() => (replaceOpen ? closeReplace() : openReplace())}>
+                    <Replace className="w-4 h-4" /> Replace Chord
+                  </DropdownMenu.Item>
+                  <DropdownMenu.Item onSelect={() => setArrangeOpen(true)}>
+                    <SlidersHorizontal className="w-4 h-4" /> Arrange
+                  </DropdownMenu.Item>
+                  <DropdownMenu.Item onSelect={() => setTapOpen(true)}>
+                    <Timer className="w-4 h-4" /> Tap Timing
+                  </DropdownMenu.Item>
+                  <DropdownMenu.Item disabled={!hasTiming} onSelect={handleClearTimings}>
+                    <TimerOff className="w-4 h-4" /> Clear Times
+                  </DropdownMenu.Item>
+                  <DropdownMenu.Item disabled={!hasTiming} onSelect={handlePlay}>
+                    <Play className="w-4 h-4" /> Play
+                  </DropdownMenu.Item>
+                  <DropdownMenu.Item onSelect={() => setHistoryOpen(true)}>
+                    <Clock className="w-4 h-4" /> History
+                  </DropdownMenu.Item>
+                  <DropdownMenu.Sub>
+                    <DropdownMenu.SubTrigger>
+                      <Sparkles className="w-4 h-4" /> Get Feedback
+                    </DropdownMenu.SubTrigger>
+                    <DropdownMenu.SubContent>
+                      {FEEDBACK_OPTIONS.map((o) => (
+                        <DropdownMenu.Item key={o.label} onSelect={() => handleAiFeedback(o.label)}>
+                          {o.label}
+                        </DropdownMenu.Item>
+                      ))}
+                    </DropdownMenu.SubContent>
+                  </DropdownMenu.Sub>
+                </DropdownMenu.Content>
+              </DropdownMenu.Root>
 
-                <Button onClick={() => saveSheet(true)} disabled={!dirty || saving}>
-                  <Save className="w-4 h-4" />
-                  {saving ? "Saving..." : dirty ? "Save" : "Saved"}
-                </Button>
-
-                <Separator orientation="vertical" size="2" />
-
-                <DropdownMenu.Root>
-                  <DropdownMenu.Trigger>
-                    <Button variant="surface" color="gray">
-                      <Sparkles className="w-4 h-4" />
-                      Get Feedback
-                      <ChevronDown className="w-3.5 h-3.5" />
-                    </Button>
-                  </DropdownMenu.Trigger>
-                  <DropdownMenu.Content align="end">
-                    <DropdownMenu.Label>Get AI feedback</DropdownMenu.Label>
-                    {FEEDBACK_OPTIONS.map((o) => (
-                      <DropdownMenu.Item key={o.label} onSelect={() => handleAiFeedback(o.label)}>
-                        {o.label}
-                      </DropdownMenu.Item>
-                    ))}
-                  </DropdownMenu.Content>
-                </DropdownMenu.Root>
-              </Flex>
+              <button type="button" className={styles.ibtn} onClick={handleCancel}>
+                Cancel
+              </button>
+              <button
+                type="button"
+                className={`${styles.ibtn} ${styles.ibtnAccent}`}
+                onClick={() => void handleSaveAndView()}
+                disabled={saving}
+              >
+                <Save className="w-4 h-4" />
+                {saving ? "Saving..." : "Save song"}
+              </button>
             </div>
 
             {replaceOpen && (
@@ -644,16 +667,20 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
             )}
           </div>
 
-          {/* Editor — the textarea is its own scroll box, so dragging a selection or
-              swiping on a phone scrolls the song instead of hitting a dead end. */}
-          <div className="flex flex-1 min-h-0 justify-center px-6 py-8">
-            <textarea
-              value={rawText}
-              onChange={(e) => handleChange(e.target.value)}
-              placeholder={PLACEHOLDER}
-              spellCheck={false}
-              className="leadsheet-doc w-full max-w-3xl h-full overflow-auto outline-none resize-none text-base leading-relaxed bg-transparent text-ink-primary placeholder:text-ink-muted"
-            />
+          {/* The reference's `.free` body: a labelled field wrapping the
+              textarea, the label itself doubling as the syntax hint — not
+              placeholder text nobody sees once the song has a first line. */}
+          <div className="flex flex-col flex-1 min-h-0 gap-3 px-6 py-4 sm:px-8">
+            <label className={`${styles.field} flex flex-col flex-1 min-h-0`}>
+              Chords in [brackets] · sections like [CHORUS] · notes start with ↳ or #
+              <textarea
+                value={rawText}
+                onChange={(e) => handleChange(e.target.value)}
+                placeholder={PLACEHOLDER}
+                spellCheck={false}
+                className={`leadsheet-doc ${styles.freeTa}`}
+              />
+            </label>
           </div>
         </div>
       </main>

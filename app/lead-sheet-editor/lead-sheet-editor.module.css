@@ -194,10 +194,301 @@
   color: #fff;
 }
 
-/* Hidden below the breakpoint where the topbar runs out of room — the
-   reference's `.hide-sm`. */
+/* The text-size stepper — the reference's `.sizectl`: three independent
+   `.ibtn`s, not a connected segmented group like `.segctl`. */
+.sizectl {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.livedot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--ds-color-primary-solid);
+}
+
+/* ── Library / Drums side panels ────────────────────────────────────────
+ * The reference's `.lib` and `.drums` asides: fixed-width columns inline
+ * in the `.body` flex row above 820px, absolutely-positioned overlay
+ * drawers with a shadow below it — exactly the reference's own responsive
+ * behavior, not the app's previous rail-or-drawer pattern.
+ */
+.sidePanel {
+  flex: none;
+  background: var(--ds-color-surface-raised);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.lib {
+  width: 280px;
+  border-right: 1px solid var(--ds-color-border-subtle);
+}
+
+.drums {
+  width: 300px;
+  border-left: 1px solid var(--ds-color-border-subtle);
+  gap: 18px;
+  padding: 16px 14px;
+  overflow: auto;
+}
+
+/* The backdrop behind an open panel, overlay mode only. */
+.backdrop {
+  display: none;
+}
+
 @media (max-width: 820px) {
+  .sidePanel {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    z-index: 5;
+    width: min(320px, 88vw);
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.65);
+  }
+
+  .lib {
+    left: 0;
+  }
+
+  .drums {
+    right: 0;
+  }
+
+  .backdrop {
+    display: block;
+  }
+
   .hideSm {
     display: none;
   }
+}
+
+.libTop {
+  padding: 14px 12px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.libRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.panelH {
+  font-size: 13px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ds-color-text-muted);
+  font-weight: 700;
+  margin: 0;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--ds-color-text-muted);
+}
+
+.tinput {
+  height: 44px;
+  width: 100%;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid var(--ds-color-border-strong);
+  background: var(--ds-color-surface-sunken);
+  color: var(--ds-color-text-primary);
+  font: inherit;
+  font-size: 16px;
+}
+
+.tinput:focus {
+  outline: 2px solid var(--ds-color-primary-solid);
+  outline-offset: 1px;
+}
+
+.songlist {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 0 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.songItem {
+  text-align: left;
+  padding: 12px;
+  border-radius: 10px;
+  border: 0;
+  background: transparent;
+  color: var(--ds-color-text-primary);
+  font: inherit;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.songItem:hover {
+  background: var(--ds-color-surface-overlay);
+}
+
+.songItemActive {
+  background: #232830;
+}
+
+.songItemActive .songItemTitle {
+  color: var(--ds-color-primary-text);
+}
+
+.songItemTitle {
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.songItemMeta {
+  font-size: 13px;
+  color: var(--ds-color-text-muted);
+}
+
+/* ── Drum loop panel ───────────────────────────────────────────────────── */
+
+.drumPlay {
+  height: 76px;
+  width: 100%;
+  border-radius: 14px;
+  border: 0;
+  background: var(--ds-color-primary-solid);
+  color: var(--ds-color-text-on-primary);
+  font: inherit;
+  font-size: 21px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.drumPlayStop {
+  background: var(--ds-color-text-primary);
+}
+
+.dots {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  padding: 2px 0;
+}
+
+.dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--ds-color-border-strong);
+}
+
+.dotOn {
+  background: var(--ds-color-primary-solid);
+}
+
+.pgrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.pbtn {
+  min-height: 58px;
+  text-align: left;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--ds-color-border-strong);
+  background: var(--ds-color-surface-overlay);
+  color: var(--ds-color-text-primary);
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+}
+
+.pbtnDesc {
+  color: var(--ds-color-text-muted);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.pbtnOn {
+  border-color: var(--ds-color-primary-solid);
+  background: #241e13;
+}
+
+.tempoRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bpm {
+  flex: 1;
+  text-align: center;
+  font-size: 42px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.bpmUnit {
+  display: block;
+  font-size: 12px;
+  color: var(--ds-color-text-muted);
+  font-weight: 400;
+  letter-spacing: 0.12em;
+  margin-top: 4px;
+}
+
+.vol {
+  width: 100%;
+  accent-color: var(--ds-color-primary-solid);
+  height: 32px;
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ── Freeform editor ───────────────────────────────────────────────────── */
+
+.freeTa {
+  flex: 1;
+  min-height: 240px;
+  resize: none;
+  padding: 16px 18px;
+  border-radius: 12px;
+  border: 1px solid var(--ds-color-border-strong);
+  background: var(--ds-color-surface-sunken);
+  color: var(--ds-color-text-primary);
+  font-size: 20px;
+  line-height: 1.5;
+  outline: none;
+}
+
+.freeTa:focus {
+  outline: 2px solid var(--ds-color-primary-solid);
+  outline-offset: 1px;
 }
