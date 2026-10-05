@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, type KeyboardEvent } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Rocket, Star, Trophy, ChevronRight, Sparkles, Check, X } from "lucide-react";
 import { Button } from "@radix-ui/themes";
@@ -317,6 +317,199 @@ const FractionShape = ({ visual, size = 120 }: { visual: FractionVisual; size?: 
         );
       })}
     </svg>
+  );
+};
+
+// ─── ShadeGrid ────────────────────────────────────────────────────────────────
+// The real click-to-shade primitive: pie wedges / bar segments / grid cells /
+// a set of dots, each one an independently tappable (and keyboard-operable)
+// piece. Grading is immediate and permanent per tap, matching how every
+// other question type in the game answers — tap, see the result — rather
+// than a separate "toggle, then submit" flow: shading one cell too many
+// (going past the target count) resolves the question wrong right then,
+// the same as tapping a wrong multiple-choice button would.
+function wedgePath(cx: number, cy: number, r: number, index: number, total: number): string {
+  const step = 360 / total;
+  const start = polarPoint(cx, cy, r, index * step);
+  const end = polarPoint(cx, cy, r, (index + 1) * step);
+  const largeArc = step > 180 ? 1 : 0;
+  return `M ${cx} ${cy} L ${start.x} ${start.y} A ${r} ${r} 0 ${largeArc} 1 ${end.x} ${end.y} Z`;
+}
+
+const SHADE_FILL = "#fbbf24";
+const SHADE_EMPTY = "rgba(255,255,255,0.15)";
+const SHADE_STROKE = "rgba(255,255,255,0.65)";
+
+// Takes a `key` prop at the call site (not shown in this signature) set to
+// something that changes per question/attempt — React remounts the whole
+// component on a key change, which is what resets the shaded set between
+// questions and retries, rather than a useEffect reacting to a prop change.
+const ShadeGrid = ({
+  shape,
+  total,
+  target,
+  disabled,
+  onComplete,
+}: {
+  shape: FractionVisual["shape"];
+  total: number;
+  target: number;
+  disabled: boolean;
+  onComplete: (shadedCount: number) => void;
+}) => {
+  const [shaded, setShaded] = useState<Set<number>>(new Set());
+  const doneRef = useRef(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
+
+  const finish = (count: number) => {
+    doneRef.current = true;
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    onComplete(count);
+  };
+
+  const tap = (i: number) => {
+    if (disabled || doneRef.current || shaded.has(i)) return;
+    const next = new Set(shaded);
+    next.add(i);
+    setShaded(next);
+    if (next.size > target) {
+      // One tap too many — wrong, and immediately so (no grace period once
+      // the mistake has actually happened).
+      finish(next.size);
+    } else if (next.size === target) {
+      // Reached it. There's no submit button, so a brief pause is what
+      // distinguishes "done, that's my answer" from "about to tap one more
+      // by mistake" — a stray tap inside this window overshoots and is
+      // caught by the branch above instead.
+      timerRef.current = setTimeout(() => finish(next.size), 500);
+    }
+  };
+
+  const cellA11y = (i: number) => ({
+    role: "button" as const,
+    tabIndex: disabled ? -1 : 0,
+    "aria-label": `part ${i + 1} of ${total}${shaded.has(i) ? ", shaded" : ", not shaded"}`,
+    "aria-pressed": shaded.has(i),
+    onClick: () => tap(i),
+    onKeyDown: (e: KeyboardEvent) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        tap(i);
+      }
+    },
+    style: { cursor: disabled ? "default" : "pointer", outline: "none" } as const,
+  });
+
+  const progress = (
+    <div className="text-center text-sm font-semibold text-white/70 mt-2">
+      {shaded.size} / {total} shaded
+    </div>
+  );
+
+  if (shape === "circle") {
+    const size = 280;
+    const r = size / 2 - 6;
+    const cx = size / 2;
+    const cy = size / 2;
+    return (
+      <div>
+        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+          {Array.from({ length: total }, (_, i) => (
+            <path
+              key={i}
+              {...cellA11y(i)}
+              d={wedgePath(cx, cy, r, i, total)}
+              fill={shaded.has(i) ? SHADE_FILL : SHADE_EMPTY}
+              stroke={SHADE_STROKE}
+              strokeWidth={2}
+            />
+          ))}
+        </svg>
+        {progress}
+      </div>
+    );
+  }
+
+  if (shape === "bar") {
+    const w = 320;
+    const h = 110;
+    const segW = w / total;
+    return (
+      <div>
+        <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`}>
+          {Array.from({ length: total }, (_, i) => (
+            <rect
+              key={i}
+              {...cellA11y(i)}
+              x={i * segW}
+              y={0}
+              width={segW}
+              height={h}
+              fill={shaded.has(i) ? SHADE_FILL : SHADE_EMPTY}
+              stroke={SHADE_STROKE}
+              strokeWidth={2}
+            />
+          ))}
+        </svg>
+        {progress}
+      </div>
+    );
+  }
+
+  // "square" (grid partition) and "set" (group of objects) share a grid layout
+  const size = 260;
+  const cols = Math.ceil(Math.sqrt(total));
+  const rows = Math.ceil(total / cols);
+  const cell = size / Math.max(cols, rows);
+  const w = cols * cell;
+  const h = rows * cell;
+  return (
+    <div>
+      <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`}>
+        {Array.from({ length: total }, (_, i) => {
+          const row = Math.floor(i / cols);
+          const col = i % cols;
+          const filled = shaded.has(i);
+          if (shape === "set") {
+            return (
+              <circle
+                key={i}
+                {...cellA11y(i)}
+                cx={col * cell + cell / 2}
+                cy={row * cell + cell / 2}
+                r={cell * 0.38}
+                fill={filled ? SHADE_FILL : SHADE_EMPTY}
+                stroke={SHADE_STROKE}
+                strokeWidth={2}
+              />
+            );
+          }
+          return (
+            <rect
+              key={i}
+              {...cellA11y(i)}
+              x={col * cell + 3}
+              y={row * cell + 3}
+              width={cell - 6}
+              height={cell - 6}
+              fill={filled ? SHADE_FILL : SHADE_EMPTY}
+              stroke={SHADE_STROKE}
+              strokeWidth={2}
+            />
+          );
+        })}
+      </svg>
+      {progress}
+    </div>
   );
 };
 
@@ -826,6 +1019,18 @@ export default function SpaceMathPage() {
                       </div>
                     )}
                   </div>
+                  {problem.shadeTarget ? (
+                    <div className='flex-1 min-h-0 flex flex-col items-center justify-center'>
+                      <ShadeGrid
+                        key={`${problem.id}-${attemptsUsed}`}
+                        shape={problem.shadeTarget.shape}
+                        total={problem.shadeTarget.total}
+                        target={problem.shadeTarget.target}
+                        disabled={selectedAnswer !== null}
+                        onComplete={(count) => handleAnswer(count)}
+                      />
+                    </div>
+                  ) : (
                   <div className={`grid gap-2 sm:gap-3 flex-1 min-h-0 ${isThreeOptions ? "grid-cols-3" : "grid-cols-2"}`}>
                     {problem.options.map((opt, i) => {
                       const isSelected = selectedAnswer === opt;
@@ -857,6 +1062,7 @@ export default function SpaceMathPage() {
                       );
                     })}
                   </div>
+                  )}
                 </div>
               </div>
             </motion.div>

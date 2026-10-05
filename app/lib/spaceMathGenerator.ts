@@ -28,6 +28,12 @@ export interface Problem {
   // shape (using `optionShape`) instead of as text.
   optionsArePictures?: boolean;
   optionShape?: FractionVisual["shape"];
+  // When present, the question is graded by interactive click-to-shade
+  // (ShadeGrid in SpaceMathPage.tsx) instead of multiple-choice buttons.
+  // `answer` is the target shaded count as a number; the UI calls back with
+  // however many cells the kid actually shaded, compared the same way any
+  // other answer is.
+  shadeTarget?: { shape: FractionVisual["shape"]; total: number; target: number };
 }
 
 // ─── Problem Generator ────────────────────────────────────────────────────────
@@ -760,7 +766,7 @@ export function buildProblem(type: ProblemType, min: number, max: number): Probl
   }
 
   if (type === "place-value-3") {
-    const variants = [
+    const variants: Array<() => { question: string; answer: number | string; candidates?: string[]; sig: string }> = [
       // H hundreds + T tens + O ones = ?
       () => {
         const h = Math.floor(Math.random() * 9) + 1;
@@ -790,15 +796,28 @@ export function buildProblem(type: ProblemType, min: number, max: number): Probl
         return { question, answer, sig: `pv3-missing:${terms.join(",")}-${blankIndex}` };
       },
       // Expanded form with a coefficient blank: 273 = __ x 100 + 7 x 10 + 3 x 1
+      // — and sometimes all three: 273 = __ x 100 + __ x 10 + __ x 1
       () => {
         const h = Math.floor(Math.random() * 9) + 1;
         const t = Math.floor(Math.random() * 10);
         const o = Math.floor(Math.random() * 10);
         const num = h * 100 + t * 10 + o;
-        const blank = Math.floor(Math.random() * 3); // 0=hundreds, 1=tens, 2=ones
         const digits = [h, t, o];
-        const coeffs = digits.map((c, i) => (i === blank ? "__" : String(c)));
-        return { question: `${num} = ${coeffs[0]} x 100 + ${coeffs[1]} x 10 + ${coeffs[2]} x 1`, answer: digits[blank], sig: `pv3-expand:${num}-${blank}` };
+        if (Math.random() < 0.5) {
+          const blank = Math.floor(Math.random() * 3); // 0=hundreds, 1=tens, 2=ones
+          const coeffs = digits.map((c, i) => (i === blank ? "__" : String(c)));
+          return { question: `${num} = ${coeffs[0]} x 100 + ${coeffs[1]} x 10 + ${coeffs[2]} x 1`, answer: digits[blank], sig: `pv3-expand:${num}-${blank}` };
+        }
+        // All three blank — the "answer" is the H,T,O triple, picked from a
+        // multiple-choice set of plausible place-value mix-ups.
+        const answer = `${h},${t},${o}`;
+        const candidates = [answer, `${t},${h},${o}`, `${h},${o},${t}`, `${o},${t},${h}`];
+        return {
+          question: `${num} = __ x 100 + __ x 10 + __ x 1`,
+          answer,
+          candidates,
+          sig: `pv3-expand-all:${num}`,
+        };
       },
       // Standard form: 2 x 100 + 7 x 10 + 3 x 1 = ?
       () => {
@@ -825,7 +844,7 @@ export function buildProblem(type: ProblemType, min: number, max: number): Probl
       type,
       question: v.question,
       answer: v.answer,
-      options: numOpts(v.answer),
+      options: typeof v.answer === "number" ? numOpts(v.answer) : strOpts(v.answer, v.candidates ?? [v.answer]),
       signature: v.sig,
     };
   }
@@ -969,10 +988,11 @@ export function buildProblem(type: ProblemType, min: number, max: number): Probl
       return { id, type, question, answer, options: numOpts(answer), signature: `awh2:${a},${b}` };
     }
     if (variant === 1) {
-      const a = hundreds(7);
-      const remaining = 9 - a / 100;
-      const b = hundreds(Math.max(1, Math.floor(remaining / 2)));
-      const c = hundreds(Math.max(1, remaining - b / 100));
+      // Independent draws, not capped to a shared total — three whole-hundreds
+      // addends can genuinely sum past 900 (e.g. 600 + 300 + 400 = 1300).
+      const a = hundreds(9);
+      const b = hundreds(9);
+      const c = hundreds(9);
       const { question, answer } = chainAdd([a, b, c], null);
       return { id, type, question, answer, options: numOpts(answer), signature: `awh3:${a},${b},${c}` };
     }
@@ -1020,7 +1040,7 @@ export function buildProblem(type: ProblemType, min: number, max: number): Probl
       return build([base, d1(), d1(), d1()], 2, `ahm4:${base}`);
     }
     if (variant === 5) {
-      return build([d2(10, 59), tensMul(4)], null, `ahm5`);
+      return build([d2(10, 89), tensMul(4)], null, `ahm5`);
     }
     if (variant === 6) {
       return build([d2(100, 899), d1()], null, `ahm6`);
@@ -1038,12 +1058,51 @@ export function buildProblem(type: ProblemType, min: number, max: number): Probl
       return build([d2(10, 89), d2(10, 89), d2(10, 89)], null, `ahm10`);
     }
     if (variant === 11) {
-      return build([d2(10, 89), d2(10, 89), d2(10, 89), d2(10, 89)], null, `ahm11`);
+      // Full 2-digit range (10-99), not 10-89 — 97 is a valid 2-digit number.
+      return build([d2(10, 99), d2(10, 99), d2(10, 99), d2(10, 99)], null, `ahm11`);
     }
     // Two 2-digit addends, missing addend, carrying allowed: 39 + __ = 50
     const a = d2(10, 89);
     const b = d2(10, Math.max(10, 98 - a));
     return build([a, b], 1, `ahm12:${a},${b}`);
+  }
+
+  if (type === "add-3digit") {
+    const variant = Math.floor(Math.random() * 3);
+    if (variant === 0) {
+      // Two 3-digit numbers, no carrying: 111 + 121 = ?
+      const hA = Math.floor(Math.random() * 9) + 1;
+      const tA = Math.floor(Math.random() * 10);
+      const oA = Math.floor(Math.random() * 10);
+      const hB = Math.floor(Math.random() * (9 - hA)) + 1;
+      const tB = Math.floor(Math.random() * (10 - tA));
+      const oB = Math.floor(Math.random() * (10 - oA));
+      const left = hA * 100 + tA * 10 + oA;
+      const right = hB * 100 + tB * 10 + oB;
+      const { question, answer } = chainAdd([left, right], null);
+      return { id, type, question, answer, options: numOpts(answer), signature: `a3d-nc:${left},${right}` };
+    }
+    if (variant === 1) {
+      // Two 3-digit numbers, with carrying: 397 + 984 = ?
+      const hA = Math.floor(Math.random() * 8) + 1;
+      const tA = Math.floor(Math.random() * 10);
+      const oA = Math.floor(Math.random() * 8) + 1; // 1..8
+      const hB = Math.floor(Math.random() * (9 - hA)) + 1;
+      const tB = Math.floor(Math.random() * 10);
+      const oB = Math.floor(Math.random() * oA) + (10 - oA); // forces oA + oB >= 10, both single digits
+      const left = hA * 100 + tA * 10 + oA;
+      const right = hB * 100 + tB * 10 + oB;
+      const { question, answer } = chainAdd([left, right], null);
+      return { id, type, question, answer, options: numOpts(answer), signature: `a3d-c:${left},${right}` };
+    }
+    // Three 3-digit addends: 456 + 678 + 789 = ?
+    const terms = [
+      Math.floor(Math.random() * 700) + 100,
+      Math.floor(Math.random() * 700) + 100,
+      Math.floor(Math.random() * 700) + 100,
+    ];
+    const { question, answer } = chainAdd(terms, null);
+    return { id, type, question, answer, options: numOpts(answer), signature: `a3d-3:${terms.join(",")}` };
   }
 
   if (type === "word-problem-mixed") {
@@ -1210,19 +1269,39 @@ export function buildProblem(type: ProblemType, min: number, max: number): Probl
       `${otherShaded}/${otherTotal}`,
     ];
     const options = strOpts(answer, candidates);
-    const asColoring = Math.random() < 0.5;
-    const question = asColoring
-      ? `Color ${total} equal parts to show ${answer}. Which picture is correct?`
-      : `Which picture shows ${answer}?`;
     return {
       id,
       type,
-      question,
+      question: `Which picture shows ${answer}?`,
       answer,
       options,
       optionsArePictures: true,
       optionShape: shape,
       signature: `ff2p:${shape}-${answer}`,
+    };
+  }
+
+  if (type === "fraction-shade") {
+    // The actually-interactive version of "show this fraction": the kid taps
+    // cells/wedges to shade them in, graded on how many end up shaded (any N
+    // of M is correct — which specific ones doesn't matter for a fraction).
+    // The UI (ShadeGrid in SpaceMathPage.tsx) owns the tap-by-tap mechanics;
+    // this just picks the shape and the target count.
+    const shape = FRACTION_SHAPES[Math.floor(Math.random() * FRACTION_SHAPES.length)];
+    const total = FRACTION_DENOMS[Math.floor(Math.random() * FRACTION_DENOMS.length)];
+    const target = Math.floor(Math.random() * (total - 1)) + 1;
+    const question =
+      shape === "set"
+        ? `Color ${target} out of ${total} to show ${target}/${total}.`
+        : `Color ${target} equal parts to show ${target}/${total}.`;
+    return {
+      id,
+      type,
+      question,
+      answer: target,
+      options: [],
+      shadeTarget: { shape, total, target },
+      signature: `fshade:${shape}-${target}/${total}`,
     };
   }
 

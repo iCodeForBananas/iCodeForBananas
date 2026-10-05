@@ -45,6 +45,7 @@ export type ProblemType =
   | "add-no-regroup"
   | "add-whole-hundreds"
   | "add-harder-mixed"
+  | "add-3digit"
   | "word-problem-mixed"
   | "sub-single-digit"
   | "sub-no-regroup"
@@ -66,6 +67,7 @@ export type ProblemType =
   | "fraction-pic-to-frac"
   | "fraction-notation"
   | "fraction-frac-to-pic"
+  | "fraction-shade"
   | "fraction-words"
   | "fraction-of-set"
   | "compare-fractions-simple"
@@ -141,7 +143,7 @@ export const SKILLS: SkillDef[] = [
   { key: "sub-1-20", type: "subtraction", min: 1, max: 20, name: "Subtract within 20", subject: "add-subtract", standard: "1.OA.C.6" },
   { key: "g1-equal-sign", type: "equal-sign", min: 1, max: 10, name: "Equal sign true or false", subject: "add-subtract", standard: "1.OA.D.7" },
   { key: "g1-unknown", type: "unknown-addend", min: 1, max: 20, name: "Unknown addend", subject: "add-subtract", standard: "1.OA.D.8" },
-  { key: "compare-20", type: "comparison", min: 1, max: 20, name: "Compare two-digit numbers", subject: "counting", standard: "1.NBT.B.3" },
+  { key: "compare-20", type: "comparison", min: 1, max: 20, name: "Compare numbers to 20", subject: "counting", standard: "1.NBT.B.3" },
   { key: "three-addend", type: "three-addend", min: 1, max: 6, name: "Add three numbers", subject: "add-subtract", standard: "1.OA.A.2" },
   { key: "fact-family", type: "fact-family", min: 1, max: 10, name: "Fact families", subject: "add-subtract", standard: "1.OA.B.4" },
   { key: "g1-add-regroup", type: "add-regroup-mental", min: 1, max: 9, name: "Add 2-4 numbers (mental)", subject: "add-subtract", standard: "1.OA.C.6" },
@@ -160,6 +162,7 @@ export const SKILLS: SkillDef[] = [
   { key: "g2-skip-big", type: "skip-big", min: 20, max: 100, name: "Skip count by 20s, 25s, 50s, 100s", subject: "counting", standard: "2.NBT.A.2" },
   { key: "g2-skip-backward", type: "skip-backward", min: 2, max: 10, name: "Skip count backwards", subject: "counting", standard: "2.NBT.A.2" },
   { key: "g2-place-3", type: "place-value-3", min: 1, max: 9, name: "3-digit place value", subject: "place-value", standard: "2.NBT.A.1" },
+  { key: "g2-compare-99", type: "comparison", min: 21, max: 99, name: "Compare two-digit numbers (21-99)", subject: "counting", standard: "1.NBT.B.3" },
   { key: "g2-compare-999", type: "compare-3digit", min: 100, max: 999, name: "Compare 3-digit numbers", subject: "counting", standard: "2.NBT.A.4" },
   { key: "g2-order", type: "order-numbers", min: 1, max: 99, name: "Order numbers (1-99)", subject: "counting", standard: "2.NBT.A.4" },
   { key: "g2-add-no-regroup", type: "add-no-regroup", min: 10, max: 89, name: "Add within 100 (no regrouping)", subject: "add-subtract", standard: "2.NBT.B.5" },
@@ -173,6 +176,7 @@ export const SKILLS: SkillDef[] = [
   { key: "g2-sub-whole-hundreds", type: "sub-whole-hundreds", min: 100, max: 900, name: "Subtract whole hundreds", subject: "place-value", standard: "2.NBT.B.8" },
   { key: "g2-sub-borrow-hard", type: "sub-borrow-hard", min: 10, max: 999, name: "Subtract within 1000 (borrowing)", subject: "add-subtract", standard: "2.NBT.B.7" },
   { key: "g2-add-harder", type: "add-harder-mixed", min: 10, max: 899, name: "Add mixed 2 & 3-digit numbers", subject: "add-subtract", standard: "2.NBT.B.7" },
+  { key: "g2-add-3digit", type: "add-3digit", min: 100, max: 899, name: "Add 3-digit numbers in columns", subject: "add-subtract", standard: "2.NBT.B.7" },
   { key: "g2-word-problems", type: "word-problem-mixed", min: 1, max: 90, name: "Mixed addition & subtraction word problems", subject: "add-subtract", standard: "2.OA.A.1" },
   { key: "g2-array", type: "array", min: 2, max: 5, name: "Rectangular arrays", subject: "times-divide", standard: "2.OA.C.4" },
   { key: "g2-mult-tables-single", type: "mult-tables-single", min: 1, max: 10, name: "Times tables (2, 3, 5, 10)", subject: "times-divide", standard: "3.OA.C.7" },
@@ -182,6 +186,7 @@ export const SKILLS: SkillDef[] = [
   { key: "g2-frac-pic-to-frac", type: "fraction-pic-to-frac", min: 2, max: 10, name: "Read a fraction from a picture", subject: "fractions", standard: "3.NF.A.1" },
   { key: "g2-frac-notation", type: "fraction-notation", min: 2, max: 10, name: "Numerator & denominator", subject: "fractions", standard: "3.NF.A.1" },
   { key: "g2-frac-frac-to-pic", type: "fraction-frac-to-pic", min: 2, max: 10, name: "Match a fraction to a picture", subject: "fractions", standard: "3.NF.A.1" },
+  { key: "g2-frac-shade", type: "fraction-shade", min: 2, max: 10, name: "Color a fraction (shapes & groups)", subject: "fractions", standard: "3.NF.A.1" },
   { key: "g2-frac-words", type: "fraction-words", min: 1, max: 1, name: "Fractions in words", subject: "fractions", standard: "3.NF.A.1" },
   { key: "g2-frac-of-set", type: "fraction-of-set", min: 6, max: 12, name: "Fractions of a set", subject: "fractions", standard: "3.NF.A.1" },
   { key: "g2-compare-frac-simple", type: "compare-fractions-simple", min: 2, max: 10, name: "Compare fractions (same denominator/numerator)", subject: "fractions", standard: "3.NF.A.3.d" },
