@@ -67,6 +67,8 @@ export function KitPlayer({
     shimmer,
     drums,
     kit.drums.shimmer,
+    kit.drums.levels,
+    kit.drums.swing,
   );
 
   // The drone runs on its own clock — it holds one chord rather than playing

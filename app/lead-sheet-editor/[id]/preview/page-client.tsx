@@ -50,7 +50,7 @@ import {
 } from "../../cues";
 import { DEFAULT_KIT, kitFromMetadata, kitToMetadata, type KitSettings } from "../../kit";
 import { KitPlayer } from "../../KitPlayer";
-import KitDesigner from "../../KitDesigner";
+import DrumEditor from "../../DrumEditor";
 import styles from "../../lead-sheet-editor.module.css";
 import TopBar from "../../TopBar";
 import LibraryDrawer from "../../LibraryDrawer";
@@ -1360,7 +1360,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
         />
 
         {kitOpen && (
-          <KitDesigner
+          <DrumEditor
             kit={kit}
             onChange={updateKit}
             bpm={bpm}

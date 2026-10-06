@@ -14,6 +14,7 @@ import {
   Play,
   Plus,
   Printer,
+  Sliders,
   Square,
   Youtube,
 } from "lucide-react";
@@ -21,6 +22,7 @@ import { Flex, IconButton, Text } from "@radix-ui/themes";
 import type { YouTubeLink } from "./youtube";
 import { MIN_BPM, MAX_BPM, clampBpm } from "./Tempo";
 import { applyPreset, PRESET_GROUPS, type KitSettings } from "./kit";
+import { useKitStep } from "./KitPlayer";
 import { ControlRow, RowButton } from "./SidebarRows";
 import styles from "./lead-sheet-editor.module.css";
 
@@ -275,6 +277,9 @@ export interface PreviewSidebarProps {
 export default function PreviewSidebar(props: PreviewSidebarProps) {
   const { open, onOpenChange, kit, onKitChange, kitPlaying, onKitPlayingChange, bpm, onBpmChange } = props;
   const tapsRef = useRef<number[]>([]);
+  // Live from the kit's own loop, so the dots follow the beat rather than
+  // showing a fixed picture of one.
+  const step = useKitStep();
 
   if (!open) return null;
 
@@ -322,13 +327,12 @@ export default function PreviewSidebar(props: PreviewSidebarProps) {
           </button>
         )}
 
-        {/* Beat dots — visual only here: this inlined panel doesn't have the
-            audio engine's live step position wired through to it the way the
-            reference's own self-contained sequencer does, so they show the
-            shape of a 4-beat bar rather than following the actual beat. */}
         <div className={styles.dots} aria-hidden='true'>
           {[0, 1, 2, 3].map((i) => (
-            <span key={i} className={`${styles.dot} ${i === 0 && kitPlaying ? styles.dotOn : ""}`} />
+            <span
+              key={i}
+              className={`${styles.dot} ${i === 0 ? styles.dotFirst : ""} ${kitPlaying && Math.floor(step / 4) === i ? styles.dotOn : ""}`}
+            />
           ))}
         </div>
 
@@ -341,7 +345,10 @@ export default function PreviewSidebar(props: PreviewSidebarProps) {
                 type='button'
                 className={`${styles.pbtn} ${pattern === preset.name ? styles.pbtnOn : ""}`}
                 aria-pressed={pattern === preset.name}
-                onClick={() => onKitChange(applyPreset(preset, kit))}
+                onClick={() => {
+                  onKitChange(applyPreset(preset, kit));
+                  onBpmChange(preset.bpm);
+                }}
                 title={preset.blurb}
               >
                 {preset.name}
@@ -349,9 +356,10 @@ export default function PreviewSidebar(props: PreviewSidebarProps) {
               </button>
             ))}
           </div>
-          <RowButton onClick={props.onOpenKit} title='Per-layer volume, drone and bass — more than this panel can show'>
-            Full kit editor
-          </RowButton>
+          <button type='button' className={styles.drumEditorBtn} onClick={props.onOpenKit}>
+            <Sliders className='h-5 w-5' />
+            Drum editor
+          </button>
         </div>
 
         <div className={styles.group}>
@@ -392,7 +400,7 @@ export default function PreviewSidebar(props: PreviewSidebarProps) {
             hunting for a slot the reference's layout doesn't have. The whole
             aside scrolls as one unit (see `.drums` in the CSS module), same
             as the reference — no separate scroll region nested inside it. ── */}
-        <div className='-mx-[14px]'>
+        <div>
           <ExtraSection title='Song'>
             <RowButton onClick={() => props.onFullscreenChange(!props.fullscreen)}>
               {props.fullscreen ? (

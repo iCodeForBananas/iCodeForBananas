@@ -37,7 +37,15 @@ export interface LeadSheetMetadata {
   /** Pinned to the top of the song list. */
   favorite?: boolean;
   /** Drum machine state; see normalizeDrumSettings in DrumMachine.tsx. */
-  drums?: { pattern?: string; steps?: unknown; kick?: string; snare?: string; volume?: number };
+  drums?: {
+    pattern?: string;
+    steps?: unknown;
+    kick?: string;
+    snare?: string;
+    volume?: number;
+    swing?: number;
+    levels?: Record<string, number>;
+  };
   /** The held chord under the kit; see normalizeDroneSettings in Drone.tsx. */
   drone?: { key?: string; style?: string; volume?: number };
   /**

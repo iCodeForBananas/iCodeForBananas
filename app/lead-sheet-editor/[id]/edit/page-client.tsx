@@ -319,8 +319,18 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
           tempo: parsed.tempo ?? null,
           capo,
           general_notes: parsed.general_notes ?? "",
-          // Merge so keys this editor doesn't know about survive a save.
-          metadata: { ...sheetMetadata.current, ...parsed.metadata },
+          // Merge so keys this editor doesn't know about survive a save. The
+          // drum line doesn't carry swing or per-track levels, so those come
+          // from what was stored rather than being reset by the text.
+          metadata: {
+            ...sheetMetadata.current,
+            ...parsed.metadata,
+            drums: {
+              ...parsed.metadata?.drums,
+              swing: sheetMetadata.current.drums?.swing ?? 0,
+              levels: sheetMetadata.current.drums?.levels ?? {},
+            },
+          },
           sections: parsed.sections ?? [],
           updated_at: new Date().toISOString(),
         })

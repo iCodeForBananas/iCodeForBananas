@@ -7,6 +7,7 @@ import {
   accentNameFrom,
   isAccentName,
   playAccentStep,
+  type AccentVariation,
 } from "./accents";
 
 // ── Patterns ────────────────────────────────────────────────────────────────
@@ -458,9 +459,30 @@ export const PATTERN_GROUPS: { label: string; items: { name: string; index: numb
 
 export const STEPS_PER_BAR = 16;
 
-/** The four lanes a beat is written on, in the order they stack on screen. */
-export const GRID_LANES = ["kick", "snare", "hihat", "clap"] as const;
+/**
+ * The tracks a beat is written on, in the order they stack on screen. The
+ * first four are the original kit; the last four were added with the drum
+ * editor and read as silence in any song written before them.
+ */
+export const GRID_LANES = ["kick", "snare", "clap", "hihat", "ohat", "rim", "tom", "shaker"] as const;
 export type GridLane = (typeof GRID_LANES)[number];
+
+export const LANE_LABELS: Record<GridLane, string> = {
+  kick: "Kick",
+  snare: "Snare",
+  clap: "Clap",
+  hihat: "Closed hat",
+  ohat: "Open hat",
+  rim: "Rim",
+  tom: "Tom",
+  shaker: "Shaker",
+};
+
+/** A step's value: 0 is silent, 1 a hit, 2 a soft hit. */
+export const CELL_OFF = 0;
+export const CELL_HIT = 1;
+export const CELL_SOFT = 2;
+export const SOFT_GAIN = 0.45;
 
 export type DrumGrid = Record<GridLane, number[]>;
 
@@ -468,19 +490,17 @@ export type DrumGrid = Record<GridLane, number[]>;
 export const CUSTOM_PATTERN = "Custom";
 
 export function emptyGrid(): DrumGrid {
-  return {
-    kick:  Array(STEPS_PER_BAR).fill(0),
-    snare: Array(STEPS_PER_BAR).fill(0),
-    hihat: Array(STEPS_PER_BAR).fill(0),
-    clap:  Array(STEPS_PER_BAR).fill(0),
-  };
+  return Object.fromEntries(GRID_LANES.map((lane) => [lane, Array(STEPS_PER_BAR).fill(CELL_OFF)])) as DrumGrid;
 }
 
-/** Sixteen 0/1s, however short, long or nonsensical the input was. */
+/** Sixteen cells, however short, long or nonsensical the input was. */
 function normalizeLane(raw: unknown): number[] {
-  const lane = Array(STEPS_PER_BAR).fill(0);
+  const lane = Array(STEPS_PER_BAR).fill(CELL_OFF);
   if (!Array.isArray(raw)) return lane;
-  for (let i = 0; i < STEPS_PER_BAR; i++) lane[i] = raw[i] ? 1 : 0;
+  for (let i = 0; i < STEPS_PER_BAR; i++) {
+    const v = raw[i];
+    lane[i] = v === CELL_SOFT ? CELL_SOFT : v ? CELL_HIT : CELL_OFF;
+  }
   return lane;
 }
 
@@ -503,15 +523,13 @@ export function normalizeGrid(raw: unknown): DrumGrid | null {
  */
 export function gridFromPattern(name: string): DrumGrid {
   const pat = DRUM_PATTERNS[patternIndex(name)];
-  const clap = Array(STEPS_PER_BAR).fill(0);
-  clap[4] = 1;
-  clap[12] = 1;
-  return {
-    kick:  [...pat.kick],
-    snare: [...pat.snare],
-    hihat: [...pat.hihat],
-    clap,
-  };
+  const grid = emptyGrid();
+  grid.kick = [...pat.kick];
+  grid.snare = [...pat.snare];
+  grid.hihat = [...pat.hihat];
+  grid.clap[4] = CELL_HIT;
+  grid.clap[12] = CELL_HIT;
+  return grid;
 }
 
 export function gridsEqual(a: DrumGrid, b: DrumGrid): boolean {
@@ -545,7 +563,16 @@ export interface DrumSettings {
   /** Which accent part the Shimmer layer plays; see ACCENT_VARIATIONS. */
   shimmer: string;
   volume: number;
+  /**
+   * How far each track is pushed off the beat, 0 to MAX_SWING. Off-beat
+   * sixteenths only, the way the drum editor's Groove control writes it.
+   */
+  swing: number;
+  /** Per-track level, 0 to 1. A track not in here plays at full level. */
+  levels: Partial<Record<GridLane, number>>;
 }
+
+export const MAX_SWING = 0.667;
 
 export const DEFAULT_DRUM_SETTINGS: DrumSettings = {
   pattern: DRUM_PATTERNS[0].name,
@@ -554,7 +581,24 @@ export const DEFAULT_DRUM_SETTINGS: DrumSettings = {
   snare: "regular",
   shimmer: DEFAULT_ACCENT,
   volume: 0.8,
+  swing: 0,
+  levels: {},
 };
+
+function normalizeLevels(raw: unknown): Partial<Record<GridLane, number>> {
+  if (!raw || typeof raw !== "object") return {};
+  const out: Partial<Record<GridLane, number>> = {};
+  for (const lane of GRID_LANES) {
+    const v = (raw as Record<string, unknown>)[lane];
+    if (typeof v === "number" && isFinite(v)) out[lane] = Math.min(1, Math.max(0, v));
+  }
+  return out;
+}
+
+/** The level a track plays at: its own, or full. */
+export function laneLevel(s: DrumSettings, lane: GridLane): number {
+  return s.levels[lane] ?? 1;
+}
 
 /** Coerce whatever came back from the database into usable settings. */
 export function normalizeDrumSettings(raw: unknown): DrumSettings {
@@ -569,6 +613,8 @@ export function normalizeDrumSettings(raw: unknown): DrumSettings {
     snare:   r.snare === "brush" ? "brush" : "regular",
     shimmer: isAccentName(r.shimmer) ? r.shimmer : DEFAULT_DRUM_SETTINGS.shimmer,
     volume:  Math.min(1, Math.max(0, volume)),
+    swing:   typeof r.swing === "number" && isFinite(r.swing) ? Math.min(MAX_SWING, Math.max(0, r.swing)) : 0,
+    levels:  normalizeLevels(r.levels),
   };
 }
 
@@ -585,7 +631,9 @@ export function isDefaultDrumSettings(s: DrumSettings): boolean {
     s.kick === DEFAULT_DRUM_SETTINGS.kick &&
     s.snare === DEFAULT_DRUM_SETTINGS.snare &&
     s.shimmer === DEFAULT_DRUM_SETTINGS.shimmer &&
-    s.volume === DEFAULT_DRUM_SETTINGS.volume
+    s.volume === DEFAULT_DRUM_SETTINGS.volume &&
+    s.swing === 0 &&
+    GRID_LANES.every((lane) => laneLevel(s, lane) === 1)
   );
 }
 
@@ -606,21 +654,32 @@ const DRUMS_LINE_RE = /\bDrums:\s*([^\n|]*)/i;
  * `k=x---x---x---x---`. Four of those are the whole beat, and they stay
  * readable and editable in the song text, which a JSON array would not be.
  */
-const LANE_KEYS: Record<GridLane, string> = { kick: "k", snare: "s", hihat: "h", clap: "c" };
+const LANE_KEYS: Record<GridLane, string> = {
+  kick: "k",
+  snare: "s",
+  clap: "c",
+  hihat: "h",
+  ohat: "o",
+  rim: "r",
+  tom: "t",
+  shaker: "z",
+};
 
+/** `x` for a hit, `o` for a soft hit, `-` for a rest. */
 function encodeLane(lane: number[]): string {
-  return lane.map((v) => (v ? "x" : "-")).join("");
+  return lane.map((v) => (v === CELL_SOFT ? "o" : v ? "x" : "-")).join("");
 }
 
 function decodeLane(text: string): number[] {
-  const lane = Array(STEPS_PER_BAR).fill(0);
+  const lane = Array(STEPS_PER_BAR).fill(CELL_OFF);
   for (let i = 0; i < Math.min(STEPS_PER_BAR, text.length); i++) {
-    lane[i] = text[i] === "x" || text[i] === "X" || text[i] === "1" ? 1 : 0;
+    const c = text[i];
+    lane[i] = c === "x" || c === "X" || c === "1" ? CELL_HIT : c === "o" || c === "O" || c === "2" ? CELL_SOFT : CELL_OFF;
   }
   return lane;
 }
 
-const LANE_FIELD_RE = /^([kshc])\s*=\s*([-x1 0]{1,16})$/i;
+const LANE_FIELD_RE = /^([kschortz])\s*=\s*([-xXoO012 ]{1,16})$/i;
 
 /** The `Drums: …` line as written into the song text. */
 export function formatDrumSettings(s: DrumSettings): string {
@@ -958,6 +1017,194 @@ function playClap(ctx: BaseAudioContext, dst: AudioNode, when: number) {
   }
 }
 
+/** Open hat: the closed hat's noise, let ring. */
+function playOpenHat(ctx: BaseAudioContext, dst: AudioNode, when: number) {
+  const len = Math.ceil(ctx.sampleRate * 0.35);
+  const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+  const hp = ctx.createBiquadFilter();
+  hp.type = "highpass";
+  hp.frequency.value = 6500;
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.2, when);
+  g.gain.exponentialRampToValueAtTime(0.001, when + 0.3);
+  src.connect(hp);
+  hp.connect(g);
+  g.connect(dst);
+  src.start(when);
+  src.stop(when + 0.35);
+}
+
+/** Rim: a short square click with a flick of noise on top. */
+function playRim(ctx: BaseAudioContext, dst: AudioNode, when: number) {
+  const osc = ctx.createOscillator();
+  const og = ctx.createGain();
+  osc.type = "square";
+  osc.frequency.setValueAtTime(1000, when);
+  og.gain.setValueAtTime(0.2, when);
+  og.gain.exponentialRampToValueAtTime(0.001, when + 0.03);
+  osc.connect(og);
+  og.connect(dst);
+  osc.start(when);
+  osc.stop(when + 0.04);
+
+  const len = Math.ceil(ctx.sampleRate * 0.02);
+  const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+  const hp = ctx.createBiquadFilter();
+  hp.type = "highpass";
+  hp.frequency.value = 3000;
+  const ng = ctx.createGain();
+  ng.gain.setValueAtTime(0.25, when);
+  ng.gain.exponentialRampToValueAtTime(0.001, when + 0.015);
+  src.connect(hp);
+  hp.connect(ng);
+  ng.connect(dst);
+  src.start(when);
+  src.stop(when + 0.02);
+}
+
+/** Tom: a sine that falls a fifth-ish and rings out. */
+function playTom(ctx: BaseAudioContext, dst: AudioNode, when: number) {
+  const osc = ctx.createOscillator();
+  const g = ctx.createGain();
+  osc.type = "sine";
+  osc.frequency.setValueAtTime(200, when);
+  osc.frequency.exponentialRampToValueAtTime(110, when + 0.12);
+  g.gain.setValueAtTime(0.7, when);
+  g.gain.exponentialRampToValueAtTime(0.001, when + 0.3);
+  osc.connect(g);
+  g.connect(dst);
+  osc.start(when);
+  osc.stop(when + 0.32);
+}
+
+/** Shaker: a bright band of noise with a soft attack, quieter than a hat. */
+function playShaker(ctx: BaseAudioContext, dst: AudioNode, when: number) {
+  const len = Math.ceil(ctx.sampleRate * 0.06);
+  const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+  const bp = ctx.createBiquadFilter();
+  bp.type = "bandpass";
+  bp.frequency.value = 6500;
+  bp.Q.value = 1.5;
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.0001, when);
+  g.gain.exponentialRampToValueAtTime(0.16, when + 0.018);
+  g.gain.exponentialRampToValueAtTime(0.001, when + 0.07);
+  src.connect(bp);
+  bp.connect(g);
+  g.connect(dst);
+  src.start(when);
+  src.stop(when + 0.08);
+}
+
+// ── Track routing ─────────────────────────────────────────────────────────────
+
+/** The tracks the kit layer plays. Clap has its own layer; see playDrumStep. */
+const KIT_TRACKS = ["kick", "snare", "hihat", "ohat", "rim", "tom", "shaker"] as const;
+
+/**
+ * Every track's output, as two gain nodes each: one for a hit, one for a soft
+ * hit, both at the track's own level. A voice plays into whichever matches its
+ * cell, so neither the voices nor the step timing need to know about levels.
+ */
+export interface TrackBuses {
+  hit: Record<GridLane, GainNode>;
+  soft: Record<GridLane, GainNode>;
+}
+
+export function makeTrackBuses(
+  ctx: BaseAudioContext,
+  dst: AudioNode,
+  levels: Partial<Record<GridLane, number>>,
+): TrackBuses {
+  const hit = {} as Record<GridLane, GainNode>;
+  const soft = {} as Record<GridLane, GainNode>;
+  for (const lane of GRID_LANES) {
+    const level = levels[lane] ?? 1;
+    hit[lane] = ctx.createGain();
+    hit[lane].gain.value = level;
+    hit[lane].connect(dst);
+    soft[lane] = ctx.createGain();
+    soft[lane].gain.value = level * SOFT_GAIN;
+    soft[lane].connect(dst);
+  }
+  return { hit, soft };
+}
+
+export function setTrackLevels(buses: TrackBuses, levels: Partial<Record<GridLane, number>>): void {
+  for (const lane of GRID_LANES) {
+    const level = levels[lane] ?? 1;
+    buses.hit[lane].gain.value = level;
+    buses.soft[lane].gain.value = level * SOFT_GAIN;
+  }
+}
+
+export interface PlayOptions {
+  drums: boolean;
+  claps: boolean;
+  shimmer: boolean;
+  kick: KickStyle;
+  snare: SnareStyle;
+  accent: AccentVariation;
+  swing: number;
+}
+
+/**
+ * One sixteenth of the loop, written onto the graph. The live scheduler and
+ * the offline render both call this, so what plays and what gets rendered to
+ * a file cannot disagree about a voice, a level or where the swing falls.
+ */
+export function playDrumStep(
+  ctx: BaseAudioContext,
+  buses: TrackBuses,
+  dst: AudioNode,
+  grid: DrumGrid,
+  step: number,
+  when: number,
+  stepDur: number,
+  opts: PlayOptions,
+): void {
+  // Swing pushes the off-beat sixteenths late, the way the Groove control reads.
+  const t = when + (opts.swing && step % 4 === 2 ? stepDur * opts.swing : 0);
+
+  if (opts.drums) {
+    for (const lane of KIT_TRACKS) {
+      const cell = grid[lane][step];
+      if (!cell) continue;
+      const out = cell === CELL_SOFT ? buses.soft[lane] : buses.hit[lane];
+      if (lane === "kick") {
+        if (opts.kick === "808") playKick808(ctx, out, t);
+        else playKick(ctx, out, t);
+      } else if (lane === "snare") {
+        if (opts.snare === "brush") playSnareBrush(ctx, out, t);
+        else playSnare(ctx, out, t);
+      } else if (lane === "hihat") playHihat(ctx, out, t);
+      else if (lane === "ohat") playOpenHat(ctx, out, t);
+      else if (lane === "rim") playRim(ctx, out, t);
+      else if (lane === "tom") playTom(ctx, out, t);
+      else playShaker(ctx, out, t);
+    }
+  }
+  if (opts.claps && grid.clap[step]) {
+    const out = grid.clap[step] === CELL_SOFT ? buses.soft.clap : buses.hit.clap;
+    playClap(ctx, out, t);
+  }
+  // Shimmer plays whatever accent part the song picked, on that part's own
+  // rhythm — a tambourine on the backbeat isn't a shaker turned down.
+  if (opts.shimmer) playAccentStep(ctx, dst, when, opts.accent, step, stepDur);
+}
+
 // ── Rendering ─────────────────────────────────────────────────────────────────
 
 /**
@@ -1054,8 +1301,19 @@ export function scheduleDrums(
   span: DrumSpan,
 ): void {
   const grid = effectiveGrid(settings);
-  const accent = accentByName(settings.shimmer);
   const stepDur = 15 / bpm; // seconds per 16th note
+  const buses = makeTrackBuses(ctx, dst, settings.levels);
+  const opts: PlayOptions = {
+    // Claps and percussion are layers of their own, and either can carry a
+    // render with the kit switched off — the same as during playback.
+    drums: layers.drums,
+    claps: layers.claps,
+    shimmer: layers.shimmer,
+    kick: settings.kick,
+    snare: settings.snare,
+    accent: accentByName(settings.shimmer),
+    swing: settings.swing,
+  };
   // Which sixteenths of the loop fall in the span. Counted from the top of the
   // loop rather than from the span, so every span agrees about where the beat
   // is and one of them can't drift off the others.
@@ -1063,24 +1321,7 @@ export function scheduleDrums(
   const last = Math.ceil(span.to / stepDur);
 
   for (let i = first; i < last; i++) {
-    const when = i * stepDur - span.origin;
-    const step = i % STEPS_PER_BAR;
-
-    if (layers.drums) {
-      if (grid.kick[step]) {
-        if (settings.kick === "808") playKick808(ctx, dst, when);
-        else playKick(ctx, dst, when);
-      }
-      if (grid.snare[step]) {
-        if (settings.snare === "brush") playSnareBrush(ctx, dst, when);
-        else playSnare(ctx, dst, when);
-      }
-      if (grid.hihat[step]) playHihat(ctx, dst, when);
-    }
-    // Claps and percussion are layers of their own, and either can carry a
-    // render with the kit switched off — the same as during playback.
-    if (layers.claps && grid.clap[step]) playClap(ctx, dst, when);
-    if (layers.shimmer) playAccentStep(ctx, dst, when, accent, step, stepDur);
+    playDrumStep(ctx, buses, dst, grid, i % STEPS_PER_BAR, i * stepDur - span.origin, stepDur, opts);
   }
 }
 
@@ -1106,9 +1347,12 @@ export function useDrumScheduler(
   drumsEnabled = true,
   /** Which accent part the shimmer layer plays; see ACCENT_VARIATIONS. */
   shimmerVariation: string = DEFAULT_ACCENT,
+  levels: Partial<Record<GridLane, number>> = {},
+  swing = 0,
 ): number {
   const ctxRef            = useRef<AudioContext | null>(null);
   const masterRef         = useRef<GainNode | null>(null);
+  const busesRef          = useRef<TrackBuses | null>(null);
   const nextTimeRef       = useRef(0);
   const stepRef           = useRef(0);
   const timerRef          = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -1121,6 +1365,8 @@ export function useDrumScheduler(
   const shimmerEnabledRef = useRef(shimmerEnabled);
   const drumsEnabledRef   = useRef(drumsEnabled);
   const accentRef         = useRef(accentByName(shimmerVariation));
+  const swingRef          = useRef(swing);
+  const levelsRef         = useRef(levels);
   const [activeStep, setActiveStep] = useState(-1);
 
   // Keep refs in sync so the scheduler loop picks up changes without restart
@@ -1132,6 +1378,11 @@ export function useDrumScheduler(
   useEffect(() => { shimmerEnabledRef.current = shimmerEnabled; }, [shimmerEnabled]);
   useEffect(() => { drumsEnabledRef.current = drumsEnabled; }, [drumsEnabled]);
   useEffect(() => { accentRef.current = accentByName(shimmerVariation); }, [shimmerVariation]);
+  useEffect(() => { swingRef.current = swing; }, [swing]);
+  useEffect(() => {
+    levelsRef.current = levels;
+    if (busesRef.current) setTrackLevels(busesRef.current, levels);
+  }, [levels]);
   useEffect(() => {
     volumeRef.current = volume;
     if (masterRef.current) masterRef.current.gain.value = volume;
@@ -1160,6 +1411,7 @@ export function useDrumScheduler(
 
     const ctx = ctxRef.current;
     const dst = masterRef.current!;
+    if (!busesRef.current) busesRef.current = makeTrackBuses(ctx, dst, levelsRef.current);
 
     // Start slightly in the future so first note isn't clipped
     nextTimeRef.current = ctx.currentTime + 0.05;
@@ -1173,25 +1425,15 @@ export function useDrumScheduler(
         const step = stepRef.current;
         const when = nextTimeRef.current;
 
-        if (drumsEnabledRef.current) {
-          if (grid.kick[step]) {
-            if (kickStyleRef.current === "808") playKick808(ctx, dst, when);
-            else playKick(ctx, dst, when);
-          }
-          if (grid.snare[step]) {
-            if (snareStyleRef.current === "brush") playSnareBrush(ctx, dst, when);
-            else playSnare(ctx, dst, when);
-          }
-          if (grid.hihat[step]) playHihat(ctx, dst, when);
-        }
-        // Claps follow their own lane. A library pattern's lane is beats 2 and
-        // 4, which is where this layer has always put them.
-        if (clapsEnabledRef.current && grid.clap[step]) playClap(ctx, dst, when);
-        // Shimmer plays whatever accent part the song picked, on that part's
-        // own rhythm — a tambourine on the backbeat isn't a shaker turned down.
-        if (shimmerEnabledRef.current) {
-          playAccentStep(ctx, dst, when, accentRef.current, step, stepDur);
-        }
+        playDrumStep(ctx, busesRef.current!, dst, grid, step, when, stepDur, {
+          drums: drumsEnabledRef.current,
+          claps: clapsEnabledRef.current,
+          shimmer: shimmerEnabledRef.current,
+          kick: kickStyleRef.current,
+          snare: snareStyleRef.current,
+          accent: accentRef.current,
+          swing: swingRef.current,
+        });
 
         // Update visual indicator at the right moment
         const delayMs = Math.max(0, (when - ctx.currentTime) * 1000);
@@ -1221,4 +1463,24 @@ export function useDrumScheduler(
   }, []);
 
   return activeStep;
+}
+
+/** One hit of a single track, for the drum editor's audition button. */
+export function auditionTrack(lane: GridLane, settings: DrumSettings): void {
+  const ctx = new AudioContext();
+  const master = ctx.createGain();
+  master.gain.value = 0.8;
+  master.connect(ctx.destination);
+  const grid = emptyGrid();
+  grid[lane][0] = CELL_HIT;
+  playDrumStep(ctx, makeTrackBuses(ctx, master, settings.levels), master, grid, 0, ctx.currentTime + 0.02, 0.125, {
+    drums: lane !== "clap",
+    claps: lane === "clap",
+    shimmer: false,
+    kick: settings.kick,
+    snare: settings.snare,
+    accent: accentByName(settings.shimmer),
+    swing: 0,
+  });
+  setTimeout(() => ctx.close().catch(() => {}), 1500);
 }

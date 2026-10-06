@@ -21,6 +21,8 @@ import {
 import {
   DEFAULT_DRUM_SETTINGS,
   DRUM_PATTERNS,
+  GRID_LANES,
+  laneLevel,
   normalizeDrumSettings,
   type DrumSettings,
   type KickStyle,
@@ -500,6 +502,8 @@ export function applyPreset(preset: KitPreset, current?: KitSettings): KitSettin
       snare: preset.snare,
       shimmer: preset.shimmer,
       volume: preset.drumVolume,
+      swing: 0,
+      levels: {},
     },
     drone: {
       key: current?.drone.key ?? DEFAULT_DRONE_SETTINGS.key,
@@ -526,6 +530,8 @@ export function matchesPreset(kit: KitSettings): boolean {
     kit.drums.snare === preset.snare &&
     kit.drums.shimmer === preset.shimmer &&
     kit.drums.volume === preset.drumVolume &&
+    kit.drums.swing === 0 &&
+    GRID_LANES.every((lane) => laneLevel(kit.drums, lane) === 1) &&
     kit.drone.style === preset.droneStyle &&
     kit.drone.volume === preset.droneVolume &&
     kit.layers.length === preset.layers.length &&
