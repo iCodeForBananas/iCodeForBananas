@@ -55,6 +55,7 @@ import styles from "../../lead-sheet-editor.module.css";
 import TopBar from "../../TopBar";
 import LibraryDrawer from "../../LibraryDrawer";
 import { useAutoFit } from "../../useAutoFit";
+import { readPanelOpen, writePanelOpen } from "../../panelStorage";
 import PreviewSidebar, {
   MIN_SCALE,
   MAX_SCALE,
@@ -463,8 +464,10 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
   };
   const [playbackOpen, setPlaybackOpen] = useState(false);
   // Both panels default open on a wide screen and closed on a narrow one —
-  // the reference's own `showLib`/`showDrums: window.innerWidth > 820`,
-  // read once on mount so server and first client render still agree.
+  // the reference's own `showLib`/`showDrums: window.innerWidth > 820` —
+  // but only for a first-time visitor with nothing stored yet. Starts false
+  // (SSR-safe; matches whatever the server rendered) and is corrected in the
+  // mount effect below, which also restores a stored preference.
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [drumsOpen, setDrumsOpen] = useState(false);
   // Auto-fit on by default, matching the reference — the text size stepper
@@ -505,20 +508,36 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
 
   // A phone has no room for the sheet and a side panel together, so both
   // start folded away there and open over the song only when asked for; a
-  // wide screen gets both open by default, same as the reference.
+  // wide screen gets both open by default, same as the reference — but only
+  // when Michael hasn't opened or closed one before, in which case that
+  // preference wins regardless of width. This runs once, well before the
+  // panels themselves first render (they're gated behind the sheet's own
+  // async load), so there's no flash of the wrong state to suppress.
   useEffect(() => {
     const wide = window.matchMedia("(min-width: 821px)").matches;
-    setLibraryOpen(wide);
-    setDrumsOpen(wide);
+    const nextLibrary = readPanelOpen("library") ?? wide;
+    let nextDrums = readPanelOpen("drums") ?? wide;
+    // Both restoring open on a narrow screen would stack two near-full-width
+    // overlays on top of each other — the same clash the toggle handlers
+    // below already prevent by closing one when the other opens. This is a
+    // one-time adjustment for this render, not a preference change, so it's
+    // never written back — reopening on a wide screen still restores both.
+    if (!wide && nextLibrary && nextDrums) nextDrums = false;
+    setLibraryOpen(nextLibrary);
+    setDrumsOpen(nextDrums);
   }, []);
 
   // Mutually exclusive on a narrow screen — opening one closes the other,
   // the reference's own toggleLib/toggleDrums. Wide enough for both to have
-  // their own column and this is a no-op.
+  // their own column and this is a no-op. Only the panel Michael actually
+  // asked to open or close is written to storage; the other one's forced
+  // close here is a transient side effect of screen width, not a changed
+  // preference, so its own stored value is left exactly as it was.
   const narrow = () => !window.matchMedia("(min-width: 821px)").matches;
   const toggleLibrary = () => {
     setLibraryOpen((open) => {
       const next = !open;
+      writePanelOpen("library", next);
       if (next && narrow()) setDrumsOpen(false);
       return next;
     });
@@ -526,9 +545,20 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
   const toggleDrums = () => {
     setDrumsOpen((open) => {
       const next = !open;
+      writePanelOpen("drums", next);
       if (next && narrow()) setLibraryOpen(false);
       return next;
     });
+  };
+  // The backdrop click that dismisses an overlay drawer on a narrow screen —
+  // a deliberate close same as the toggle button, so it persists too.
+  const closeLibrary = () => {
+    setLibraryOpen(false);
+    writePanelOpen("library", false);
+  };
+  const closeDrums = () => {
+    setDrumsOpen(false);
+    writePanelOpen("drums", false);
   };
 
   // The reference's fit(): binary-search the largest size/column-count that
@@ -1154,7 +1184,9 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
   const drumsPanel = (
     <PreviewSidebar
       open={drumsOpen}
-      onOpenChange={setDrumsOpen}
+      // Only ever called with false — the backdrop click that dismisses the
+      // overlay on a narrow screen. A real close, so it persists.
+      onOpenChange={() => closeDrums()}
       offline={offline}
       onArrange={() => goTo(router, `/lead-sheet-editor/${id}/edit?arrange=1`)}
       fullscreen={fullscreen}
@@ -1190,8 +1222,11 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
   const libraryPanel = libraryOpen && (
     <LibraryDrawer
       activeId={id}
+      // Auto-closes after picking a song on a narrow screen so the sheet
+      // isn't left hidden behind the drawer — a side effect of the pick,
+      // not a "keep this closed" statement, so it doesn't persist.
       onNavigate={() => { if (narrow()) setLibraryOpen(false); }}
-      onClose={() => setLibraryOpen(false)}
+      onClose={closeLibrary}
     />
   );
 
