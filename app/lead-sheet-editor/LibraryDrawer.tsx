@@ -2,24 +2,33 @@
 
 import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
-import { useLeadSheetLibrary } from "./useLibrary";
+import type { LeadSheet } from "./shared";
 import { goTo } from "./offlineNav";
 import styles from "./lead-sheet-editor.module.css";
 
 /**
  * The reference's `.lib` aside, inlined over the song being worked on
  * instead of a separate page navigated to — exactly how the reference
- * itself behaves. Reads the same `useLeadSheetLibrary` hook the full-page
- * library route (page-client.tsx) does, so the two can never disagree about
- * what's in the library; this view just doesn't expose the per-row
- * management actions (favorite, copy, share, visibility, delete) the
- * reference's own `.song-item` doesn't have room for either — those stay on
- * the full page, still reachable from the app's own sidebar link.
+ * itself behaves. Takes the library's data as props rather than calling
+ * `useLeadSheetLibrary` itself: the preview page now fetches on its own
+ * mount (so opening the drawer is instant, not the first trigger for a
+ * fetch) and this just renders whatever that call already produced. This
+ * view still doesn't expose the per-row management actions (favorite, copy,
+ * share, visibility, delete) the reference's own `.song-item` has no room
+ * for either — those stay on the full page, still reachable from the app's
+ * own sidebar link.
  */
 export default function LibraryDrawer({
   activeId,
   onNavigate,
   onClose,
+  sheets,
+  visibleSheets,
+  query,
+  onQueryChange,
+  offline,
+  cachedIds,
+  onCreateSheet,
 }: {
   /** The song currently open, for the reference's `.is-active` highlight. */
   activeId?: string;
@@ -29,9 +38,18 @@ export default function LibraryDrawer({
   /** Tapping the backdrop on a narrow screen — the reference has no such
    *  backdrop click-away on wide screens, where the panel isn't an overlay. */
   onClose: () => void;
+  sheets: LeadSheet[];
+  visibleSheets: LeadSheet[];
+  query: string;
+  onQueryChange: (query: string) => void;
+  /** True once the live fetch has failed and this list is the cached one. */
+  offline: boolean;
+  /** Which songs have an offline copy — so a song that isn't one reads as
+   *  unreachable the moment the connection drops, not after tapping it. */
+  cachedIds: Set<string>;
+  onCreateSheet: () => Promise<string | null>;
 }) {
   const router = useRouter();
-  const { visibleSheets, sheets, query, setQuery, createSheet } = useLeadSheetLibrary();
 
   async function pick(id: string) {
     if (onNavigate?.() === false) return;
@@ -40,7 +58,7 @@ export default function LibraryDrawer({
 
   async function handleNew() {
     if (onNavigate?.() === false) return;
-    const id = await createSheet();
+    const id = await onCreateSheet();
     if (id) goTo(router, `/lead-sheet-editor/${id}/edit`);
   }
 
@@ -55,11 +73,21 @@ export default function LibraryDrawer({
       <div className={styles.libTop}>
         <div className={styles.libRow}>
           <h2 className={styles.panelH}>Songs · {sheets.length}</h2>
-          <button type='button' className={`${styles.ibtn} ${styles.ibtnAccent}`} onClick={handleNew} aria-label='New song'>
+          <button
+            type='button'
+            className={`${styles.ibtn} ${styles.ibtnAccent}`}
+            onClick={handleNew}
+            aria-label='New song'
+            disabled={offline}
+            title={offline ? "Offline — new songs need a connection" : undefined}
+          >
             <Plus className='w-[18px] h-[18px]' />
             New
           </button>
         </div>
+        {offline && (
+          <p className={styles.offlineNote}>Offline — showing songs saved on this device.</p>
+        )}
         <label className={styles.field}>
           Search
           <input
@@ -67,24 +95,30 @@ export default function LibraryDrawer({
             type='search'
             placeholder='Find a song'
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => onQueryChange(e.target.value)}
           />
         </label>
       </div>
       <nav className={styles.songlist}>
-        {visibleSheets.map((sheet) => (
-          <button
-            key={sheet.id}
-            type='button'
-            className={`${styles.songItem} ${sheet.id === activeId ? styles.songItemActive : ""}`}
-            onClick={() => void pick(sheet.id)}
-          >
-            <span className={styles.songItemTitle}>{sheet.title || "Untitled"}</span>
-            <span className={styles.songItemMeta}>
-              {sheet.capo ? `Capo ${sheet.capo}` : "No capo"} · {sheet.tempo ? `${sheet.tempo} bpm` : "–"}
-            </span>
-          </button>
-        ))}
+        {visibleSheets.map((sheet) => {
+          const reachable = !offline || cachedIds.has(sheet.id);
+          return (
+            <button
+              key={sheet.id}
+              type='button'
+              className={`${styles.songItem} ${sheet.id === activeId ? styles.songItemActive : ""}`}
+              onClick={() => void pick(sheet.id)}
+              disabled={!reachable}
+              title={reachable ? undefined : "Not saved on this device — needs a connection"}
+            >
+              <span className={styles.songItemTitle}>{sheet.title || "Untitled"}</span>
+              <span className={styles.songItemMeta}>
+                {sheet.capo ? `Capo ${sheet.capo}` : "No capo"} · {sheet.tempo ? `${sheet.tempo} bpm` : "–"}
+                {!reachable && " · not downloaded"}
+              </span>
+            </button>
+          );
+        })}
       </nav>
       </aside>
     </>

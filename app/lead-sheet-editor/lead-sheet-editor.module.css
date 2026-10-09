@@ -296,6 +296,12 @@
   justify-content: space-between;
 }
 
+.offlineNote {
+  margin: -4px 0 0;
+  font-size: 12px;
+  color: var(--ds-color-text-muted);
+}
+
 .panelH {
   font-size: 13px;
   letter-spacing: 0.12em;
@@ -356,6 +362,15 @@
 
 .songItem:hover {
   background: var(--ds-color-surface-overlay);
+}
+
+.songItem:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.songItem:disabled:hover {
+  background: transparent;
 }
 
 .songItemActive {

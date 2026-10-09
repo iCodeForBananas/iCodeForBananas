@@ -54,6 +54,7 @@ import DrumEditor from "../../DrumEditor";
 import styles from "../../lead-sheet-editor.module.css";
 import TopBar from "../../TopBar";
 import LibraryDrawer from "../../LibraryDrawer";
+import { useLeadSheetLibrary } from "../../useLibrary";
 import { useAutoFit } from "../../useAutoFit";
 import { readPanelOpen, writePanelOpen } from "../../panelStorage";
 import PreviewSidebar, {
@@ -397,6 +398,19 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
   const { id } = use(params);
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
+  // Fetched here, on the page's own mount, rather than inside the drawer —
+  // the drawer only exists in the tree once it's open, and a hook inside it
+  // wouldn't fire until then. This is what makes opening the drawer instant:
+  // the list (and its IndexedDB copy, for offline) is already in hand.
+  const {
+    sheets: librarySheets,
+    visibleSheets: libraryVisibleSheets,
+    offline: libraryOffline,
+    cachedIds: libraryCachedIds,
+    query: libraryQuery,
+    setQuery: setLibraryQuery,
+    createSheet,
+  } = useLeadSheetLibrary();
   const [sheet, setSheet] = useState<LeadSheet | null>(null);
   const [loading, setLoading] = useState(true);
   const [offline, setOffline] = useState(false);
@@ -1227,6 +1241,13 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
       // not a "keep this closed" statement, so it doesn't persist.
       onNavigate={() => { if (narrow()) setLibraryOpen(false); }}
       onClose={closeLibrary}
+      sheets={librarySheets}
+      visibleSheets={libraryVisibleSheets}
+      query={libraryQuery}
+      onQueryChange={setLibraryQuery}
+      offline={libraryOffline}
+      cachedIds={libraryCachedIds}
+      onCreateSheet={createSheet}
     />
   );
 

@@ -25,7 +25,14 @@ import {
 } from "../../songText";
 import { serializeSheet } from "../../serialize";
 import { snapshotRevision } from "../../revisions";
-import { cacheSheet, getCachedSheet } from "../../offlineCache";
+import {
+  cacheSheet,
+  getCachedSheet,
+  getPendingEdit,
+  queuePendingEdit,
+  clearPendingEdit,
+  type PendingEdit,
+} from "../../offlineCache";
 import { goTo } from "../../offlineNav";
 import { clearAllMarkers, parseTimeMarker } from "../../timing";
 import {
@@ -242,6 +249,26 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
   const lastRevisionAt = useRef<number>(0);
   /** Metadata as loaded, so a save can't drop keys the text doesn't carry. */
   const sheetMetadata = useRef<LeadSheetMetadata>({});
+  /**
+   * The server's `updated_at` this editing session is building on. A save
+   * only lands when the row still carries this exact value — see saveSheet.
+   * Null until the first successful load or save.
+   */
+  const baseUpdatedAt = useRef<string | null>(null);
+  // Set every render so the `online` listener (attached once, below) always
+  // calls the current saveSheet/dirty rather than whatever closed over them
+  // the one time the listener was attached.
+  const dirtyRef = useRef(false);
+  const saveSheetRef = useRef<(manual?: boolean) => Promise<void>>(async () => {});
+  /** A save that hit someone else's newer write — the local edit is still
+   *  queued (never discarded), but writing it now would clobber theirs. */
+  const [saveConflict, setSaveConflict] = useState(false);
+  /** An edit queued from a previous, disconnected session that turned out to
+   *  no longer match the server by the time this one loaded. Shown so it can
+   *  be restored or dropped, rather than silently applied or silently lost. */
+  const [staleEdit, setStaleEdit] = useState<PendingEdit | null>(null);
+  /** Whether the last save attempt actually reached Supabase. */
+  const [queued, setQueued] = useState(false);
 
   const chordsInSheet = useMemo(
     () => (replaceOpen ? collectChords(rawText) : []),
@@ -277,8 +304,18 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
     return () => clearTimeout(timer);
   }, [rawText, capo, dirty, sheetId]);
 
+  /**
+   * Loading has to reckon with three things that might each be the most
+   * current copy of this song: the server, the last full snapshot cached
+   * for offline reading, and an edit queued locally that never made it to
+   * Supabase. A queued edit only gets put back in front of you automatically
+   * when it's provably safe — its base still matches what the server (or,
+   * offline, the cache) actually has. Otherwise it's surfaced as `staleEdit`
+   * rather than picked for you; see the conflict banner below.
+   */
   async function loadSheet() {
     setLoading(true);
+    const pending = await getPendingEdit(id);
     try {
       const { data, error } = await getSb().from("lead_sheets").select("*").eq("id", id).single();
       if (error) throw error;
@@ -286,10 +323,20 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
         setSheetId(data.id);
         const sheet: LeadSheet = { ...data, sections: data.sections.map(migrateSection) };
         sheetMetadata.current = sheet.metadata ?? {};
-        setRawText(serializeSheet(sheet));
-        setCapo(sheet.capo ?? null);
+        baseUpdatedAt.current = data.updated_at;
         setOffline(false);
         await cacheSheet(data);
+
+        if (pending && pending.baseUpdatedAt === data.updated_at) {
+          // Nothing's moved since this edit was queued — safe to resume it.
+          setRawText(pending.rawText);
+          setCapo(pending.capo);
+          setDirty(true);
+        } else {
+          setRawText(serializeSheet(sheet));
+          setCapo(sheet.capo ?? null);
+          if (pending) setStaleEdit(pending);
+        }
       }
     } catch {
       const cached = await getCachedSheet(id);
@@ -297,27 +344,63 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
         setSheetId(cached.id);
         const sheet: LeadSheet = { ...cached, sections: cached.sections.map(migrateSection) };
         sheetMetadata.current = sheet.metadata ?? {};
-        setRawText(serializeSheet(sheet));
-        setCapo(sheet.capo ?? null);
+        baseUpdatedAt.current = cached.updated_at;
         setOffline(true);
+        if (pending && pending.baseUpdatedAt === cached.updated_at) {
+          setRawText(pending.rawText);
+          setCapo(pending.capo);
+          setDirty(true);
+        } else {
+          setRawText(serializeSheet(sheet));
+          setCapo(sheet.capo ?? null);
+          if (pending) setStaleEdit(pending);
+        }
+      } else if (pending) {
+        // No server reach and no full snapshot either, but there is a queued
+        // edit for this id — it's the only copy of this song this device
+        // has, so it's what opens, offline-flagged, still unsynced.
+        setSheetId(id);
+        baseUpdatedAt.current = pending.baseUpdatedAt;
+        setOffline(true);
+        setRawText(pending.rawText);
+        setCapo(pending.capo);
+        setDirty(true);
       }
     }
     setLoading(false);
   }
 
-  async function saveSheet(manual = false) {
+  /**
+   * Every save queues the edit locally first — before the network is even
+   * attempted — so a dropped connection or a closed tab never loses it; see
+   * offlineCache.ts. The write itself is conditioned on the row's
+   * `updated_at` still matching `baseUpdatedAt`: if it doesn't, something
+   * else wrote to this sheet since this session last synced, and landing
+   * this write would silently clobber it. That's surfaced as `saveConflict`
+   * instead — the local edit stays queued either way, so nothing is lost by
+   * stopping to ask.
+   */
+  /**
+   * `text`/`cp` default to the live state, but take an explicit value too —
+   * restoring a stale queued edit has to save *that* text, and by the time
+   * the call after `setRawText` runs, `rawText` in this closure is still the
+   * old value; state updates aren't visible until the next render.
+   */
+  async function saveSheet(manual = false, text = rawText, cp = capo) {
     if (!sheetId) return;
     setSaving(true);
     setSaveError(false);
-    const parsed = parseText(rawText);
+    const parsed = parseText(text);
+    await queuePendingEdit(sheetId, text, cp, baseUpdatedAt.current);
     try {
-      const { error } = await getSb()
+      const nextUpdatedAt = new Date().toISOString();
+      let query = getSb()
         .from("lead_sheets")
         .update({
           title: parsed.title ?? "",
           key: parsed.key ?? "",
           tempo: parsed.tempo ?? null,
-          capo,
+          capo: cp,
           general_notes: parsed.general_notes ?? "",
           // Merge so keys this editor doesn't know about survive a save. The
           // drum line doesn't carry swing or per-track levels, so those come
@@ -332,12 +415,29 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
             },
           },
           sections: parsed.sections ?? [],
-          updated_at: new Date().toISOString(),
+          updated_at: nextUpdatedAt,
         })
         .eq("id", sheetId);
+      // No known baseline (e.g. this session opened entirely from an old
+      // cache and never reached the server) — nothing to compare against,
+      // so write through rather than refuse to ever save at all.
+      if (baseUpdatedAt.current) query = query.eq("updated_at", baseUpdatedAt.current);
+      const { data, error } = await query.select("updated_at");
       if (error) throw error;
+      if (!data || data.length === 0) {
+        // The filter matched nothing: the row's updated_at had already moved
+        // past what this session knew. The edit is still queued above.
+        setSaveConflict(true);
+        setQueued(true);
+        return;
+      }
+
+      baseUpdatedAt.current = data[0].updated_at;
+      await clearPendingEdit(sheetId);
       setDirty(false);
       setSaveError(false);
+      setQueued(false);
+      setSaveConflict(false);
 
       // Save a revision snapshot:
       //   • always on manual saves
@@ -346,13 +446,84 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
       const shouldSnapshot = manual || (now - lastRevisionAt.current > 5 * 60 * 1000);
       if (shouldSnapshot) {
         lastRevisionAt.current = now;
-        await snapshotRevision(getSb(), sheetId, rawText);
+        await snapshotRevision(getSb(), sheetId, text);
       }
     } catch {
+      // Offline, most likely — the edit is already queued locally above, so
+      // it isn't lost; the online listener below retries it on reconnect.
       setSaveError(true);
+      setQueued(true);
     } finally {
       setSaving(false);
     }
+  }
+
+  // Keeps the online-retry listener (attached once, further down) calling
+  // the current saveSheet/dirty rather than whichever ones existed the one
+  // time the listener was attached.
+  dirtyRef.current = dirty;
+  saveSheetRef.current = saveSheet;
+
+  useEffect(() => {
+    function retry() {
+      if (dirtyRef.current) void saveSheetRef.current(true);
+    }
+    window.addEventListener("online", retry);
+    return () => window.removeEventListener("online", retry);
+  }, []);
+
+  // ── Mid-session conflict: this editor's own in-progress text already is
+  // "mine", so these just decide whose write stands. ──────────────────────
+
+  /** Adopt the server's current timestamp as the new baseline, then land
+   *  this session's edit on top of it — a deliberate overwrite, not a blind one. */
+  async function keepMineAfterConflict() {
+    try {
+      const { data } = await getSb().from("lead_sheets").select("updated_at").eq("id", sheetId!).single();
+      if (data) baseUpdatedAt.current = data.updated_at;
+    } catch {
+      // Still offline — the existing baseline stands; saveSheet will queue
+      // again below and this banner can reappear once it reaches Supabase.
+    }
+    setSaveConflict(false);
+    await saveSheet(true);
+  }
+
+  /** Drop this session's edit and reload cleanly from whatever's actually there. */
+  async function discardMineAfterConflict() {
+    if (sheetId) await clearPendingEdit(sheetId);
+    setSaveConflict(false);
+    setDirty(false);
+    setQueued(false);
+    await loadSheet();
+  }
+
+  // ── Stale queued edit found at load time: the editor is currently
+  // showing the server's version, and "mine" is still sitting in
+  // IndexedDB, not yet applied to anything on screen. ─────────────────────
+
+  /** Bring the queued edit into the editor and save it on the server's
+   *  current baseline, same overwrite-on-purpose as the mid-session case. */
+  async function restoreStaleEdit() {
+    if (!staleEdit) return;
+    const edit = staleEdit;
+    setStaleEdit(null);
+    setRawText(edit.rawText);
+    setCapo(edit.capo);
+    setDirty(true);
+    try {
+      const { data } = await getSb().from("lead_sheets").select("updated_at").eq("id", sheetId!).single();
+      if (data) baseUpdatedAt.current = data.updated_at;
+    } catch {
+      // Offline again already — saveSheet below will simply queue it once more.
+    }
+    await saveSheet(true, edit.rawText, edit.capo);
+  }
+
+  /** The editor's already showing the server's version — just drop the queued one. */
+  async function discardStaleEdit() {
+    if (sheetId) await clearPendingEdit(sheetId);
+    setStaleEdit(null);
   }
 
   function handleChange(value: string) {
@@ -448,11 +619,12 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
   // The reference's Cancel discards the whole draft. This architecture
   // autosaves continuously rather than editing a draft, so there's nothing
   // left to discard by the time a click lands — the closest honest
-  // approximation is leaving without forcing one more save first, unlike
-  // Save/Preview, which both do. Noted as a real conflict, not a silent
-  // reinterpretation: anything already past the 1.5s debounce is still
-  // written, same as it would be if this button didn't exist at all.
+  // approximation is leaving without forcing a network save first, unlike
+  // Save/Preview, which both do. It still queues locally (instant, no
+  // network needed) so the keystrokes from inside the current 1.5s debounce
+  // window aren't the one gap in an otherwise edit-loses-nothing editor.
   function handleCancel() {
+    if (dirty && sheetId) void queuePendingEdit(sheetId, rawText, capo, baseUpdatedAt.current);
     goTo(router, `/lead-sheet-editor/${id}/preview`);
   }
 
@@ -463,8 +635,12 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
     goTo(router, `/lead-sheet-editor/${id}/preview?mode=lines`);
   }
 
+  // "Discard" here only ever meant "stop looking at this song" — the edit
+  // still queues locally first, so answering the confirm can't actually lose
+  // anything; it'll sync next time this song is open with a connection.
   function handleLibraryClick() {
     if (dirty && !confirm("Discard unsaved changes?")) return;
+    if (dirty && sheetId) void queuePendingEdit(sheetId, rawText, capo, baseUpdatedAt.current);
     goTo(router, "/lead-sheet-editor");
   }
 
@@ -548,11 +724,28 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
               </label>
 
               {offline && <OfflineBadge />}
-              {saveError && (
-                <Text size="1" weight="medium" color="red">
-                  Save failed
+              {/* One line, whichever of these is true — saving, a clean save,
+                  queued-but-unsynced, or a conflict that needs a decision.
+                  The old version just said "Save failed" and nothing else,
+                  which looked the same whether the next keystroke would fix
+                  it or the edit was sitting unsynced for an hour. */}
+              {saving ? (
+                <Text size="1" color="gray">
+                  Saving…
                 </Text>
-              )}
+              ) : saveConflict ? (
+                <Text size="1" weight="medium" color="red">
+                  Changed elsewhere — see below
+                </Text>
+              ) : queued || saveError ? (
+                <Text size="1" weight="medium" color="amber">
+                  Saved on this device — will sync when back online
+                </Text>
+              ) : dirty ? (
+                <Text size="1" color="gray">
+                  Unsaved changes
+                </Text>
+              ) : null}
 
               <DropdownMenu.Root>
                 <DropdownMenu.Trigger>
@@ -611,6 +804,37 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
                 {saving ? "Saving..." : "Save song"}
               </button>
             </div>
+
+            {saveConflict && (
+              <div className="border-t border-line-subtle bg-danger/10 px-4 py-3 sm:px-6">
+                <div className="max-w-3xl mx-auto flex flex-wrap items-center gap-3">
+                  <Text size="2" weight="medium" color="red" className="flex-1">
+                    This song changed somewhere else while this save was pending. Your edit is still
+                    saved on this device — pick which version should stand.
+                  </Text>
+                  <Button variant="soft" color="gray" onClick={() => void discardMineAfterConflict()}>
+                    Use the other version
+                  </Button>
+                  <Button onClick={() => void keepMineAfterConflict()}>Keep my changes</Button>
+                </div>
+              </div>
+            )}
+
+            {staleEdit && (
+              <div className="border-t border-line-subtle bg-danger/10 px-4 py-3 sm:px-6">
+                <div className="max-w-3xl mx-auto flex flex-wrap items-center gap-3">
+                  <Text size="2" weight="medium" color="red" className="flex-1">
+                    This device has an edit to this song from {" "}
+                    {new Date(staleEdit.queuedAt).toLocaleString()} that never made it online, and the
+                    song&rsquo;s changed since. Restore it, or leave what&rsquo;s showing now.
+                  </Text>
+                  <Button variant="soft" color="gray" onClick={() => void discardStaleEdit()}>
+                    Discard it
+                  </Button>
+                  <Button onClick={() => void restoreStaleEdit()}>Restore my edit</Button>
+                </div>
+              </div>
+            )}
 
             {replaceOpen && (
               <div className="border-t border-line-subtle px-4 py-3 sm:px-6">
