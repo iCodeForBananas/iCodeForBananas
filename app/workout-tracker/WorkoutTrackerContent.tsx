@@ -339,63 +339,60 @@ export default function WorkoutTrackerContent() {
     return i >= 0 ? COLORS[i % COLORS.length] : "var(--ds-color-primary-solid)";
   };
 
+  // One list, in the order the groups used to read. Deadlift sat under both
+  // Pull and Legs; a flat list shows it once.
+  const percentileLifts = [...new Set(LIFT_GROUPS.flatMap((group) => group.lifts))];
+
   const progressContent = (
-    <div className='space-y-6'>
-      {LIFT_GROUPS.map((group) => (
-        <section key={group.group}>
-          <h3 className='text-sm font-semibold mb-3'>{group.title}</h3>
-          <div className='space-y-4'>
-            {group.lifts.map((name) => {
-              const entry = latest.get(name);
-              const pct = entry ? populationPercentile(name, entry.weight) : null;
-              const band = entry ? percentileBand(name, entry.weight) : null;
-              return (
-                <div key={name}>
-                  <div className='flex items-baseline justify-between gap-2 mb-1.5'>
-                    <span className='text-sm font-medium'>
-                      {name}
-                      {entry && entry.weight > 0 && (
-                        <span className='ml-2 text-xs font-normal text-ink-muted'>{entry.weight} lbs</span>
-                      )}
-                    </span>
-                    <span className='text-xs text-ink-muted'>
-                      {band != null ? (
-                        <>
-                          <span className='text-ink-primary font-medium'>{band}</span> percentile
-                        </>
-                      ) : (
-                        "Not logged yet"
-                      )}
-                    </span>
-                  </div>
-                  <div
-                    className='relative h-2.5 rounded-full bg-surface-overlay'
-                    role='meter'
-                    aria-label={`${name}: percentile against the general adult male population, estimated`}
-                    aria-valuemin={0}
-                    aria-valuemax={100}
-                    aria-valuenow={pct != null ? Math.round(pct) : 0}
-                  >
-                    <div
-                      className='absolute inset-y-0 left-0 rounded-full'
-                      style={{ width: `${pct ?? 0}%`, backgroundColor: liftColor(name) }}
-                    />
-                    {/* Quartile notches; the median is the middle one. */}
-                    {[25, 50, 75].map((q) => (
-                      <div key={q} className='absolute inset-y-0 w-0.5 bg-surface-base' style={{ left: `${q}%` }} />
-                    ))}
-                  </div>
-                  <div className='relative h-4 text-10 text-ink-muted mt-1'>
-                    <span className='absolute left-0'>0</span>
-                    <span className='absolute left-1/2 -translate-x-1/2'>Median</span>
-                    <span className='absolute right-0'>100</span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      ))}
+    <div className='space-y-4'>
+      {percentileLifts.map((name) => {
+          const entry = latest.get(name);
+          const pct = entry ? populationPercentile(name, entry.weight) : null;
+          const band = entry ? percentileBand(name, entry.weight) : null;
+          return (
+            <div key={name}>
+              <div className='flex items-baseline justify-between gap-2 mb-1.5'>
+                <span className='text-sm font-medium'>
+                  {name}
+                  {entry && entry.weight > 0 && (
+                    <span className='ml-2 text-xs font-normal text-ink-muted'>{entry.weight} lbs</span>
+                  )}
+                </span>
+                <span className='text-xs text-ink-muted'>
+                  {band != null ? (
+                    <>
+                      <span className='text-ink-primary font-medium'>{band}</span> percentile
+                    </>
+                  ) : (
+                    "Not logged yet"
+                  )}
+                </span>
+              </div>
+              <div
+                className='relative h-2.5 rounded-full bg-surface-overlay'
+                role='meter'
+                aria-label={`${name}: percentile against the general adult male population, estimated`}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={pct != null ? Math.round(pct) : 0}
+              >
+                <div
+                  className='absolute inset-y-0 left-0 rounded-full'
+                  style={{ width: `${pct ?? 0}%`, backgroundColor: liftColor(name) }}
+                />
+                {/* Quartile notches; the median is the middle one. */}
+                {[25, 50, 75].map((q) => (
+                  <div key={q} className='absolute inset-y-0 w-0.5 bg-surface-base' style={{ left: `${q}%` }} />
+                ))}
+              </div>
+              <div className='relative h-4 text-10 text-ink-muted mt-1'>
+                <span className='absolute left-0'>0</span>
+                <span className='absolute left-1/2 -translate-x-1/2'>Median</span>
+                <span className='absolute right-0'>100</span>
+              </div>
+            </div>
+          );
+      })}
     </div>
   );
 
@@ -701,7 +698,7 @@ export default function WorkoutTrackerContent() {
         </Bento>
       )}
 
-      {/* Strength vs the general adult male population, per push/pull/legs
+      {/* Strength vs the general adult male population, per
           lift. "Male, Est." in the title rather than leaving that assumption
           silent — the source table is user-supplied, not a cited dataset,
           and doesn't cover women or account for age. Its own panel right
