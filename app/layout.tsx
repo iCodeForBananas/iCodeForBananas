@@ -14,6 +14,7 @@ import MusicFavoritesBar from "./components/MusicFavoritesBar";
 import PathnameTitleSync from "./components/PathnameTitleSync";
 import CopyPageHandler from "./components/CopyPageHandler";
 import InstallPrompt from "./components/InstallPrompt";
+import UpdateAvailable from "./components/UpdateAvailable";
 
 /**
  * Every face on the site — UI chrome, song titles, library headers, all of
@@ -141,6 +142,7 @@ export default function RootLayout({
         <PathnameTitleSync />
         <CopyPageHandler />
         <InstallPrompt />
+        <UpdateAvailable />
       </body>
     </html>
   );
