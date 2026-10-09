@@ -56,6 +56,13 @@ export const LIFT_GROUPS: { group: LiftGroup; title: string; lifts: string[] }[]
   },
 ];
 
+/**
+ * Every lift once, in group order. A lift that sits in more than one group
+ * (Deadlift) is a single row wherever the groups are flattened, so callers
+ * that list lifts should read this rather than flatMap LIFT_GROUPS.
+ */
+export const PERCENTILE_LIFTS: string[] = [...new Set(LIFT_GROUPS.flatMap((group) => group.lifts))];
+
 type BandLookup =
   | { kind: "below"; pct: number; weight: number }
   | { kind: "above"; pct: number }

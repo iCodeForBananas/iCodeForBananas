@@ -10,7 +10,7 @@ import BentoBoard, { type BentoPanel } from "@/app/components/BentoBoard";
 import { Bento } from "@/app/components/ui/bento";
 import { Button, Flex, IconButton, Select, Text, TextField } from "@radix-ui/themes";
 import { X } from "lucide-react";
-import { LIFT_GROUPS, latestWeights, percentileBand, populationPercentile } from "./percentile";
+import { PERCENTILE_LIFTS, latestWeights, percentileBand, populationPercentile } from "./percentile";
 
 interface LogEntry {
   id: string;
@@ -339,13 +339,9 @@ export default function WorkoutTrackerContent() {
     return i >= 0 ? COLORS[i % COLORS.length] : "var(--ds-color-primary-solid)";
   };
 
-  // One list, in the order the groups used to read. Deadlift sat under both
-  // Pull and Legs; a flat list shows it once.
-  const percentileLifts = [...new Set(LIFT_GROUPS.flatMap((group) => group.lifts))];
-
   const progressContent = (
     <div className='space-y-4'>
-      {percentileLifts.map((name) => {
+      {PERCENTILE_LIFTS.map((name) => {
           const entry = latest.get(name);
           const pct = entry ? populationPercentile(name, entry.weight) : null;
           const band = entry ? percentileBand(name, entry.weight) : null;

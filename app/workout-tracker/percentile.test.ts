@@ -1,5 +1,22 @@
 import { describe, expect, it } from "vitest";
-import { latestWeights, percentileBand, populationPercentile } from "./percentile";
+import { LIFT_GROUPS, PERCENTILE_LIFTS, latestWeights, percentileBand, populationPercentile } from "./percentile";
+
+describe("PERCENTILE_LIFTS", () => {
+  it("lists each lift exactly once", () => {
+    expect(new Set(PERCENTILE_LIFTS).size).toBe(PERCENTILE_LIFTS.length);
+  });
+
+  it("covers every lift in every group, in group order", () => {
+    expect(PERCENTILE_LIFTS).toEqual(["Bench Press", "Overhead Press", "Deadlift", "Barbell Row", "Squat"]);
+    for (const group of LIFT_GROUPS) {
+      for (const lift of group.lifts) expect(PERCENTILE_LIFTS).toContain(lift);
+    }
+  });
+
+  it("only lists lifts that have a percentile table", () => {
+    for (const lift of PERCENTILE_LIFTS) expect(percentileBand(lift, 150)).not.toBeNull();
+  });
+});
 
 describe("populationPercentile", () => {
   it("interpolates linearly within a band", () => {
