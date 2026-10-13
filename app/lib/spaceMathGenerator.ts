@@ -58,7 +58,6 @@ function chainAdd(terms: number[], blankIndex: number | null): { question: strin
   return { question: `${parts.join(" + ")} = ${sum}`, answer: terms[blankIndex] };
 }
 
-const WP_NAMES = ["Mia", "Leo", "Zoe", "Sam", "Ava", "Max", "Ivy", "Eli"];
 const WP_ITEMS = ["apples", "stickers", "marbles", "cookies", "toy cars", "crayons", "shells", "coins"];
 const pickOne = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 
@@ -241,40 +240,6 @@ export function buildProblem(type: ProblemType, min: number, max: number): Probl
       answer,
       options: numOpts(answer),
       signature: `add100:${left},${right}`,
-    };
-  }
-
-  if (type === "word-problem-add") {
-    const big = Math.random() < 0.4; // occasionally stretch to 3-digit numbers
-    const a = big ? Math.floor(Math.random() * 400) + 100 : Math.floor(Math.random() * 50) + 1;
-    const b = big ? Math.floor(Math.random() * 90) + 1 : Math.floor(Math.random() * 20) + 1;
-    const name = pickOne(WP_NAMES);
-    const item = pickOne(WP_ITEMS);
-    const answer = a + b;
-    return {
-      id,
-      type,
-      question: `${name} has ${a} ${item}. ${name} gets ${b} more. How many ${item} does ${name} have now?`,
-      answer,
-      options: numOpts(answer),
-      signature: `wpa:${a},${b}`,
-    };
-  }
-
-  if (type === "word-problem-sub") {
-    const big = Math.random() < 0.4;
-    const a = big ? Math.floor(Math.random() * 400) + 100 : Math.floor(Math.random() * 50) + 5;
-    const b = big ? Math.floor(Math.random() * 90) + 1 : Math.floor(Math.random() * Math.min(a - 1, 20)) + 1;
-    const name = pickOne(WP_NAMES);
-    const item = pickOne(WP_ITEMS);
-    const answer = a - b;
-    return {
-      id,
-      type,
-      question: `${name} has ${a} ${item}. ${name} gives away ${b}. How many ${item} does ${name} have left?`,
-      answer,
-      options: numOpts(answer),
-      signature: `wps:${a},${b}`,
     };
   }
 
@@ -1105,29 +1070,6 @@ export function buildProblem(type: ProblemType, min: number, max: number): Probl
     return { id, type, question, answer, options: numOpts(answer), signature: `a3d-3:${terms.join(",")}` };
   }
 
-  if (type === "word-problem-mixed") {
-    const twoDigit = Math.random() < 0.5;
-    const a = twoDigit ? Math.floor(Math.random() * 70) + 20 : Math.floor(Math.random() * 15) + 5;
-    const isAdd = Math.random() < 0.5;
-    const b = isAdd
-      ? Math.floor(Math.random() * (twoDigit ? 90 - a : 20 - a)) + 1
-      : Math.floor(Math.random() * a) + 1;
-    const name = pickOne(WP_NAMES);
-    const item = pickOne(WP_ITEMS);
-    const answer = isAdd ? a + b : a - b;
-    const question = isAdd
-      ? `${name} has ${a} ${item} and finds ${b} more. How many ${item} does ${name} have now?`
-      : `${name} has ${a} ${item} and gives away ${b}. How many ${item} does ${name} have left?`;
-    return {
-      id,
-      type,
-      question,
-      answer,
-      options: numOpts(answer),
-      signature: `wpm:${isAdd ? "+" : "-"}-${a},${b}`,
-    };
-  }
-
   if (type === "odd-even") {
     const n = Math.floor(Math.random() * max) + min;
     const answer = n % 2 === 0 ? "Even" : "Odd";
@@ -1375,41 +1317,6 @@ export function buildProblem(type: ProblemType, min: number, max: number): Probl
     };
   }
 
-  if (type === "fraction-word-problem") {
-    const name = pickOne(WP_NAMES);
-    if (Math.random() < 0.5) {
-      const total = Math.floor(Math.random() * (max - min + 1)) + min; // 1..12 range, but see below
-      const safeTotal = Math.max(total, 4);
-      const part = Math.floor(Math.random() * (safeTotal - 1)) + 1;
-      const item = pickOne(WP_ITEMS);
-      const answer = `${part}/${safeTotal}`;
-      const candidates = [answer, `${safeTotal - part}/${safeTotal}`, `${Math.max(1, part - 1)}/${safeTotal}`];
-      return {
-        id,
-        type,
-        question: `${name} has ${safeTotal} ${item} and gives away ${part} of them. What fraction of the ${item} did ${name} give away?`,
-        answer,
-        options: strOpts(answer, candidates),
-        signature: `fwp-basic:${part}/${safeTotal}`,
-      };
-    }
-    const total = Math.max(Math.floor(Math.random() * (max - min + 1)) + min, 6);
-    const partA = Math.floor(Math.random() * (total - 2)) + 1;
-    let partB = Math.floor(Math.random() * (total - 2)) + 1;
-    while (partB === partA) partB = Math.floor(Math.random() * (total - 2)) + 1;
-    const item = pickOne(WP_ITEMS);
-    const otherName = pickOne(WP_NAMES.filter((n) => n !== name));
-    const answer = partA > partB ? name : otherName;
-    return {
-      id,
-      type,
-      question: `${name} ate ${partA}/${total} of a pack of ${item}, and ${otherName} ate ${partB}/${total} of an identical pack. Who ate more?`,
-      answer,
-      options: [name, otherName],
-      signature: `fwp-compare:${partA},${partB},${total}`,
-    };
-  }
-
   // ─── Multiplication, fractions & measurement ───────────────────────────────
 
   if (type === "multiply") {
@@ -1464,23 +1371,6 @@ export function buildProblem(type: ProblemType, min: number, max: number): Probl
     const n = (Math.floor(Math.random() * 9) + 1) * 10;
     const answer = 2;
     return { id, type, question: `__ x ${n} = ${2 * n}`, answer, options: numOpts(answer), signature: `m2d:${n}` };
-  }
-
-  if (type === "word-problem-mult") {
-    const a = Math.floor(Math.random() * 4) + 2; // 2..5
-    const bMax = Math.floor(25 / a);
-    const b = Math.floor(Math.random() * bMax) + 1;
-    const name = pickOne(WP_NAMES);
-    const item = pickOne(WP_ITEMS);
-    const answer = a * b;
-    return {
-      id,
-      type,
-      question: `${name} has ${a} bags with ${b} ${item} in each. How many ${item} in total?`,
-      answer,
-      options: numOpts(answer),
-      signature: `wpmul:${a},${b}`,
-    };
   }
 
   if (type === "divide") {

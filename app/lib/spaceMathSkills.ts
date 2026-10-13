@@ -34,9 +34,7 @@ export type ProblemType =
   | "unknown-addend"
   | "add-regroup-mental"
   | "add-whole-tens"
-  | "word-problem-add"
   | "add-sub-chain"
-  | "word-problem-sub"
   // G2
   | "add-100-regroup"
   | "sub-100-regroup"
@@ -46,7 +44,6 @@ export type ProblemType =
   | "add-whole-hundreds"
   | "add-harder-mixed"
   | "add-3digit"
-  | "word-problem-mixed"
   | "sub-single-digit"
   | "sub-no-regroup"
   | "sub-borrow-hard"
@@ -72,13 +69,11 @@ export type ProblemType =
   | "fraction-of-set"
   | "compare-fractions-simple"
   | "fraction-compare-visual"
-  | "fraction-word-problem"
   // G3
   | "multiply"
   | "divide"
   | "multiply-tens"
   | "mult-by-2-extended"
-  | "word-problem-mult"
   | "round"
   | "round-ten-small"
   | "round-ten-large"
@@ -109,7 +104,7 @@ export interface SubjectAreaDef {
 
 export const SUBJECT_AREAS: SubjectAreaDef[] = [
   { id: "counting", label: "Counting & Numbers", description: "Counting, skip-counting, comparing and ordering numbers" },
-  { id: "add-subtract", label: "Add & Subtract", description: "Addition and subtraction fluency, fact families, word problems" },
+  { id: "add-subtract", label: "Add & Subtract", description: "Addition and subtraction fluency, fact families" },
   { id: "place-value", label: "Place Value", description: "Tens, hundreds, mental math, rounding" },
   { id: "times-divide", label: "Times & Divide", description: "Arrays, times tables, multiplication, division" },
   { id: "fractions", label: "Fractions", description: "Equal parts, reading/writing fractions, comparing fractions" },
@@ -153,8 +148,6 @@ export const SKILLS: SkillDef[] = [
   { key: "mental-ten", type: "mental-ten", min: 10, max: 90, name: "Mental plus/minus 10", subject: "place-value", standard: "1.NBT.C.5" },
   { key: "g1-add-whole-tens", type: "add-whole-tens", min: 10, max: 150, name: "Add whole tens", subject: "place-value", standard: "1.NBT.C.4" },
   { key: "add-100", type: "add-100", min: 10, max: 90, name: "Add within 100 (round numbers)", subject: "add-subtract", standard: "1.NBT.C.4" },
-  { key: "g1-word-problems", type: "word-problem-add", min: 1, max: 400, name: "Addition word problems", subject: "add-subtract", standard: "1.OA.A.1" },
-  { key: "g1-word-problems-sub", type: "word-problem-sub", min: 1, max: 400, name: "Subtraction word problems", subject: "add-subtract", standard: "1.OA.A.1" },
   { key: "g1-sub-mult-10", type: "sub-mult-10", min: 10, max: 90, name: "Subtract multiples of 10 (to 90)", subject: "place-value", standard: "1.NBT.C.6" },
   { key: "g2-odd-even", type: "odd-even", min: 1, max: 20, name: "Odd or even", subject: "counting", standard: "2.OA.C.3" },
   { key: "g2-skip-small", type: "skip-small", min: 2, max: 9, name: "Skip count by 2s-9s", subject: "counting", standard: "2.NBT.A.2" },
@@ -177,7 +170,6 @@ export const SKILLS: SkillDef[] = [
   { key: "g2-sub-borrow-hard", type: "sub-borrow-hard", min: 10, max: 999, name: "Subtract within 1000 (borrowing)", subject: "add-subtract", standard: "2.NBT.B.7" },
   { key: "g2-add-harder", type: "add-harder-mixed", min: 10, max: 899, name: "Add mixed 2 & 3-digit numbers", subject: "add-subtract", standard: "2.NBT.B.7" },
   { key: "g2-add-3digit", type: "add-3digit", min: 100, max: 899, name: "Add 3-digit numbers in columns", subject: "add-subtract", standard: "2.NBT.B.7" },
-  { key: "g2-word-problems", type: "word-problem-mixed", min: 1, max: 90, name: "Mixed addition & subtraction word problems", subject: "add-subtract", standard: "2.OA.A.1" },
   { key: "g2-array", type: "array", min: 2, max: 5, name: "Rectangular arrays", subject: "times-divide", standard: "2.OA.C.4" },
   { key: "g2-mult-tables-single", type: "mult-tables-single", min: 1, max: 10, name: "Times tables (2, 3, 5, 10)", subject: "times-divide", standard: "3.OA.C.7" },
   { key: "g2-mult-tables-mixed", type: "mult-tables-mixed", min: 1, max: 10, name: "Mixed times tables practice", subject: "times-divide", standard: "3.OA.C.7" },
@@ -191,12 +183,10 @@ export const SKILLS: SkillDef[] = [
   { key: "g2-frac-of-set", type: "fraction-of-set", min: 6, max: 12, name: "Fractions of a set", subject: "fractions", standard: "3.NF.A.1" },
   { key: "g2-compare-frac-simple", type: "compare-fractions-simple", min: 2, max: 10, name: "Compare fractions (same denominator/numerator)", subject: "fractions", standard: "3.NF.A.3.d" },
   { key: "g2-frac-compare-visual", type: "fraction-compare-visual", min: 2, max: 10, name: "Compare fractions with pictures", subject: "fractions", standard: "3.NF.A.3.d" },
-  { key: "g2-frac-word-problems", type: "fraction-word-problem", min: 1, max: 12, name: "Fraction word problems", subject: "fractions", standard: "3.NF.A.1" },
   { key: "g3-mult", type: "multiply", min: 0, max: 10, name: "Multiplication within 100", subject: "times-divide", standard: "3.OA.C.7" },
   { key: "g3-divide", type: "divide", min: 1, max: 10, name: "Division within 100", subject: "times-divide", standard: "3.OA.C.7" },
   { key: "g3-mult-tens", type: "multiply-tens", min: 10, max: 90, name: "Multiply by multiples of 10", subject: "times-divide", standard: "3.NBT.A.3" },
   { key: "g3-mult-by-2", type: "mult-by-2-extended", min: 2, max: 95, name: "Multiply by 2 (bigger numbers)", subject: "times-divide", standard: "3.OA.C.7" },
-  { key: "g3-word-problems-mult", type: "word-problem-mult", min: 2, max: 25, name: "Multiplication word problems", subject: "times-divide", standard: "3.OA.A.3" },
   { key: "g3-round-ten-small", type: "round-ten-small", min: 1, max: 99, name: "Round to the nearest ten (to 100)", subject: "place-value", standard: "3.NBT.A.1" },
   { key: "g3-round-ten-large", type: "round-ten-large", min: 10, max: 999, name: "Round to the nearest ten (to 1000)", subject: "place-value", standard: "3.NBT.A.1" },
   { key: "g3-round-hundred", type: "round-hundred", min: 10, max: 990, name: "Round to the nearest hundred", subject: "place-value", standard: "3.NBT.A.1" },
