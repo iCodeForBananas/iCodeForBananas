@@ -243,7 +243,9 @@
 }
 
 .drums {
-  width: 300px;
+  /* Wider than the reference's 300px: the kit's whole editor lives in here
+     now, and a 16-step beat row needs the room. */
+  width: 340px;
   border-left: 1px solid var(--ds-color-border-subtle);
   gap: 18px;
   padding: 16px 14px;
@@ -435,41 +437,6 @@
   background: var(--ds-color-primary-solid);
 }
 
-.pgrid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.pbtn {
-  min-height: 58px;
-  text-align: left;
-  padding: 8px 12px;
-  border-radius: 10px;
-  border: 1px solid var(--ds-color-border-strong);
-  background: var(--ds-color-surface-overlay);
-  color: var(--ds-color-text-primary);
-  font: inherit;
-  font-size: 16px;
-  font-weight: 700;
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 2px;
-}
-
-.pbtnDesc {
-  color: var(--ds-color-text-muted);
-  font-size: 12px;
-  font-weight: 400;
-}
-
-.pbtnOn {
-  border-color: var(--ds-color-primary-solid);
-  background: #241e13;
-}
-
 .tempoRow {
   display: flex;
   align-items: center;
@@ -527,138 +494,33 @@
   outline-offset: 1px;
 }
 
-/* ── Drum editor — the reference's `.modal` family, lifted from its CSS ─── */
+/* ── Drum controls — the kit's whole editor, down the Drums panel ──────── */
 
-.modalBack {
-  position: fixed;
-  inset: 0;
-  /* Above the app's own sidebar and menus, the way its Radix dialogs sit. */
-  z-index: 100;
-  background: rgba(5, 6, 8, 0.8);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 16px;
-}
-
-.modal {
-  width: 100%;
-  max-width: 1220px;
-  max-height: calc(100vh - 32px);
-  overflow: auto;
-  background: #14171b;
-  border: 1px solid var(--ds-color-border-strong);
-  border-radius: 16px;
+/* The beat: one row per track, a name then 16 steps. Steps are as narrow
+   as the panel needs; the downbeat of each group of four is set apart. */
+.pSeq {
   display: flex;
   flex-direction: column;
-}
-
-.mHead {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-  padding: 14px 18px;
-  border-bottom: 1px solid var(--ds-color-border-subtle);
-  position: sticky;
-  top: 0;
-  background: #14171b;
-  z-index: 2;
-}
-
-.mTitle {
-  margin: 0 6px 0 0;
-  font-size: 20px;
-  font-weight: 700;
-}
-
-.mMuted {
-  color: var(--ds-color-text-muted);
-}
-
-.miniTempo {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-weight: 700;
-}
-
-.miniTempoValue {
-  min-width: 76px;
-  text-align: center;
-}
-
-.ibtnCream {
-  background: var(--ds-color-text-primary);
-  color: var(--ds-color-text-on-primary);
-  font-weight: 700;
-  min-width: 110px;
-}
-
-.mBody {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 18px;
-  padding: 16px 18px;
-}
-
-.mSeq {
-  flex: 999 1 640px;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.mSide {
-  flex: 1 1 260px;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  background: var(--ds-color-surface-overlay);
-  border: 1px solid var(--ds-color-border-strong);
-  border-radius: 12px;
-  padding: 14px;
-}
-
-.seqscroll {
-  overflow-x: auto;
-  padding-bottom: 4px;
-}
-
-.seqin {
-  min-width: 780px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.srow {
-  display: grid;
   gap: 4px;
+}
+
+.pRow {
+  display: grid;
+  gap: 2px;
   align-items: center;
 }
 
-.num {
-  font-size: 12px;
-  color: var(--ds-color-text-muted);
-  padding-left: 4px;
-}
-
-.grp {
-  margin-left: 8px;
-}
-
-.trk {
-  height: 44px;
+.pTrk {
+  height: 30px;
+  min-width: 0;
   text-align: left;
-  padding: 0 12px;
-  border-radius: 9px;
+  padding: 0 6px;
+  border-radius: 7px;
   border: 1px solid var(--ds-color-border-strong);
   background: var(--ds-color-surface-overlay);
   color: #e9e4db;
   font: inherit;
-  font-size: 15px;
+  font-size: 12px;
   font-weight: 700;
   cursor: pointer;
   white-space: nowrap;
@@ -671,14 +533,18 @@
   color: var(--ds-color-primary-solid);
 }
 
-.st {
-  height: 44px;
+.pSt {
+  height: 30px;
   min-width: 0;
-  border-radius: 7px;
+  border-radius: 4px;
   border: 1px solid var(--ds-color-border-strong);
   background: #1a1e23;
   cursor: pointer;
   padding: 0;
+}
+
+.pGrp {
+  margin-left: 3px;
 }
 
 .stDown {
@@ -701,21 +567,21 @@
 }
 
 .legend {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--ds-color-text-muted);
   display: flex;
-  gap: 14px;
+  gap: 10px;
   align-items: center;
   flex-wrap: wrap;
 }
 
 .sw {
   display: inline-block;
-  width: 14px;
-  height: 14px;
-  border-radius: 4px;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
   vertical-align: -2px;
-  margin-right: 6px;
+  margin-right: 5px;
   border: 1px solid var(--ds-color-border-strong);
 }
 
@@ -725,8 +591,6 @@
   gap: 2px;
   font-size: 13px;
   color: var(--ds-color-text-muted);
-  min-width: 160px;
-  flex: 1 1 160px;
 }
 
 .slRow {
@@ -740,8 +604,9 @@
 
 .choiceRow {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 
 .segBtn:disabled {
@@ -749,26 +614,11 @@
   cursor: not-allowed;
 }
 
-.drone {
-  margin: 0 18px 16px;
-  padding: 14px;
-  border: 1px solid var(--ds-color-border-strong);
-  border-radius: 12px;
-  background: var(--ds-color-surface-overlay);
+/* A choice with more options than the panel is wide (the drone's
+   variations) wraps onto a second row rather than running off the edge. */
+.drums .segctl {
   display: flex;
   flex-wrap: wrap;
-  gap: 16px 24px;
-  align-items: flex-start;
-}
-
-.droneCol {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.droneWide {
-  flex: 1 1 220px;
 }
 
 .droneSummary {
@@ -783,9 +633,9 @@
 }
 
 .nbtn {
-  height: 44px;
-  min-width: 44px;
-  padding: 0 8px;
+  height: 40px;
+  min-width: 0;
+  padding: 0;
   border-radius: 8px;
   border: 1px solid var(--ds-color-border-strong);
   background: #1a1e23;
@@ -802,17 +652,6 @@
   border-color: transparent;
 }
 
-.mix {
-  margin: 0 18px 16px;
-  padding: 14px;
-  border: 1px solid var(--ds-color-border-subtle);
-  border-radius: 12px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 14px 24px;
-  align-items: flex-end;
-}
-
 .layerRow {
   display: flex;
   flex-wrap: wrap;
@@ -822,43 +661,8 @@
 .downloadRow {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: stretch;
   gap: 6px;
-}
-
-.mFoot {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  align-items: center;
-  padding: 14px 18px;
-  border-top: 1px solid var(--ds-color-border-subtle);
-  position: sticky;
-  bottom: 0;
-  background: #14171b;
-}
-
-/* The drum loop panel's button into the editor — the reference's full-width
-   `.ibtn` with its own icon. */
-.drumEditorBtn {
-  height: 52px;
-  width: 100%;
-  border-radius: 10px;
-  border: 1px solid var(--ds-color-border-strong);
-  background: var(--ds-color-surface-overlay);
-  color: #e9e4db;
-  font: inherit;
-  font-size: 16px;
-  font-weight: 700;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  cursor: pointer;
-}
-
-.drumEditorBtn:hover {
-  background: var(--ds-color-surface-raised);
 }
 
 /* Beat dots — the first beat is white when it lands, the rest accent. */

@@ -14,15 +14,15 @@ import {
   Play,
   Plus,
   Printer,
-  Sliders,
   Square,
   Youtube,
 } from "lucide-react";
 import { Flex, IconButton, Text } from "@radix-ui/themes";
 import type { YouTubeLink } from "./youtube";
 import { MIN_BPM, MAX_BPM, clampBpm } from "./Tempo";
-import { applyPreset, PRESET_GROUPS, type KitSettings } from "./kit";
+import type { KitSettings } from "./kit";
 import { useKitStep } from "./KitPlayer";
+import DrumControls, { KitPresetSelect } from "./DrumEditor";
 import { ControlRow, RowButton } from "./SidebarRows";
 import styles from "./lead-sheet-editor.module.css";
 
@@ -249,7 +249,10 @@ export interface PreviewSidebarProps {
   onKitChange: (next: KitSettings) => void;
   kitPlaying: boolean;
   onKitPlayingChange: (playing: boolean) => void;
-  onOpenKit: () => void;
+  /** For the drone's "song key" and the WAV's file name. */
+  songKey?: string | null;
+  transpose?: number;
+  songTitle?: string | null;
 
   // Share
   copied: boolean;
@@ -260,14 +263,12 @@ export interface PreviewSidebarProps {
 }
 
 /**
- * The reference's `.drums` aside, matched structurally this time rather
- * than summarized: the heading, the Start/Stop loop button, the beat dots,
- * the Feel pattern grid, the Tempo stepper with tap-tempo, and the Volume
- * slider are all inlined here exactly as the reference lays them out,
- * instead of a summary row that opens the full Kit Designer as a dialog.
- * The Kit Designer is still reachable — "Full kit editor" at the bottom of
- * Feel — for the per-layer/drone/bass controls the reference's one panel
- * has no room to show.
+ * The Drums panel, and the only place the kit is edited — there is no
+ * separate editor dialog. From the top: the Start/Stop loop button and the
+ * beat dots, a dropdown to pick the kit, the tempo with tap-tempo, then the
+ * kit's whole editor (DrumControls): the beat as a step grid, each track's
+ * sound, the groove, the voices, the layers and volume, the drone, and the
+ * WAV download. Edits apply as they are made.
  *
  * Below that, the app's own extra groups (Playback, Display, Share) use
  * the existing Radix-themed sidebar vocabulary rather than the reference's
@@ -282,8 +283,6 @@ export default function PreviewSidebar(props: PreviewSidebarProps) {
   const step = useKitStep();
 
   if (!open) return null;
-
-  const pattern = kit.preset;
 
   // Tap tempo — the reference's own tap(): average the gaps between taps
   // inside a 2.5s window. The app has no tap-tempo of its own to defer to,
@@ -320,7 +319,7 @@ export default function PreviewSidebar(props: PreviewSidebarProps) {
             className={styles.drumPlay}
             onClick={() => onKitPlayingChange(true)}
             disabled={kit.layers.length === 0}
-            title={kit.layers.length === 0 ? "Pick a feel below first" : undefined}
+            title={kit.layers.length === 0 ? "Pick a kit below first" : undefined}
           >
             <Play className='w-[22px] h-[22px]' fill='currentColor' />
             Start loop
@@ -336,31 +335,7 @@ export default function PreviewSidebar(props: PreviewSidebarProps) {
           ))}
         </div>
 
-        <div className={styles.group}>
-          <h3 className={styles.panelH}>Feel</h3>
-          <div className={styles.pgrid}>
-            {PRESET_GROUPS.flatMap((g) => g.items).map((preset) => (
-              <button
-                key={preset.name}
-                type='button'
-                className={`${styles.pbtn} ${pattern === preset.name ? styles.pbtnOn : ""}`}
-                aria-pressed={pattern === preset.name}
-                onClick={() => {
-                  onKitChange(applyPreset(preset, kit));
-                  onBpmChange(preset.bpm);
-                }}
-                title={preset.blurb}
-              >
-                {preset.name}
-                <span className={styles.pbtnDesc}>{preset.group}</span>
-              </button>
-            ))}
-          </div>
-          <button type='button' className={styles.drumEditorBtn} onClick={props.onOpenKit}>
-            <Sliders className='h-5 w-5' />
-            Drum editor
-          </button>
-        </div>
+        <KitPresetSelect kit={kit} onChange={onKitChange} onBpmChange={onBpmChange} />
 
         <div className={styles.group}>
           <h3 className={styles.panelH}>Tempo</h3>
@@ -381,19 +356,15 @@ export default function PreviewSidebar(props: PreviewSidebarProps) {
           </button>
         </div>
 
-        <div className={styles.group}>
-          <label className={styles.field}>
-            Volume
-            <input
-              className={styles.vol}
-              type='range'
-              min={0}
-              max={100}
-              value={Math.round(kit.drums.volume * 100)}
-              onChange={(e) => onKitChange({ ...kit, drums: { ...kit.drums, volume: Number(e.target.value) / 100 } })}
-            />
-          </label>
-        </div>
+        <DrumControls
+          kit={kit}
+          onChange={onKitChange}
+          bpm={bpm}
+          playing={kitPlaying}
+          songKey={props.songKey}
+          transpose={props.transpose}
+          songTitle={props.songTitle}
+        />
 
         {/* ── Everything below here is the app's own, with no reference
             equivalent at all — kept reachable in the same panel rather than

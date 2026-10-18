@@ -50,7 +50,6 @@ import {
 } from "../../cues";
 import { DEFAULT_KIT, kitFromMetadata, kitToMetadata, type KitSettings } from "../../kit";
 import { KitPlayer } from "../../KitPlayer";
-import DrumEditor from "../../DrumEditor";
 import styles from "../../lead-sheet-editor.module.css";
 import TopBar from "../../TopBar";
 import LibraryDrawer from "../../LibraryDrawer";
@@ -499,7 +498,6 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
   // carrying a [sub] from before that layer was removed now does.
   const [activeLayers, setActiveLayers] = useState<Set<string>>(new Set());
   const [kit, setKit] = useState<KitSettings>(DEFAULT_KIT);
-  const [kitOpen, setKitOpen] = useState(false);
   /**
    * The kit's own transport, which is not the same as the song's.
    *
@@ -1224,7 +1222,9 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
       onKitChange={updateKit}
       kitPlaying={kitPlaying}
       onKitPlayingChange={setKitPlaying}
-      onOpenKit={() => setKitOpen(true)}
+      songKey={sheet?.key ?? null}
+      transpose={transposeSteps}
+      songTitle={sheet?.title ?? null}
       copied={copied}
       onCopy={handleCopy}
       shared={shared}
@@ -1414,21 +1414,6 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
           songKey={sheet?.key ?? null}
           transpose={transposeSteps}
         />
-
-        {kitOpen && (
-          <DrumEditor
-            kit={kit}
-            onChange={updateKit}
-            bpm={bpm}
-            onBpmChange={updateBpm}
-            playing={kitPlaying}
-            onPlayingChange={setKitPlaying}
-            onClose={() => setKitOpen(false)}
-            songKey={sheet?.key ?? null}
-            transpose={transposeSteps}
-            songTitle={sheet?.title ?? null}
-          />
-        )}
 
         {playbackOpen && videoLink && withVideo && !offline && (
           <YouTubePanel link={videoLink} status={video.status} mount={video.mount} />
