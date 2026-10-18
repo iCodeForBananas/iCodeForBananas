@@ -11,6 +11,7 @@ import { Bento } from "@/app/components/ui/bento";
 import { Button, Flex, IconButton, Select, Text, TextField } from "@radix-ui/themes";
 import { X } from "lucide-react";
 import { PERCENTILE_LIFTS, latestWeights, percentileBand, populationPercentile } from "./percentile";
+import { bodyPartLoads, exercisesFor, type BodyPart, type LoadStatus } from "./intensity";
 
 interface LogEntry {
   id: string;
@@ -38,30 +39,6 @@ const COMPOUND: { name: string; type: "weighted" | "bodyweight" }[] = [
   { name: "Weighted Pull-Up", type: "weighted" },
 ];
 
-const BODY_PART_MAP: Partial<Record<string, string[]>> = {
-  "Barbell Row": ["back"],
-  "Bench Press": ["chest"],
-  "Bent Over Rows": ["back"],
-  "Bicep Curls": ["arms"],
-  "Bulgarian Split Squats": ["legs"],
-  Deadlift: ["back", "legs"],
-  Dips: ["chest"],
-  "Overhead Extension": ["arms"],
-  "Overhead Press": ["shoulders"],
-  "Pike Push-ups": ["shoulders"],
-  "Pull-ups": ["back"],
-  "Push-ups": ["chest"],
-  "Sit-ups": ["core"],
-  Squat: ["legs"],
-  "Weighted Pull-Up": ["back"],
-};
-
-// "core" added alongside the existing five rather than folded into "back" —
-// sit-ups work the abs specifically, the same way bicep curls got their own
-// "arms" rather than being folded into "chest" or "shoulders".
-const BODY_PARTS = ["chest", "back", "shoulders", "arms", "legs", "core"] as const;
-type BodyPart = (typeof BODY_PARTS)[number];
-
 /**
  * One color per body part: identity, not ranking, so it takes the
  * categorical set rather than a scale that would imply one part outranks
@@ -76,15 +53,24 @@ const BODY_PART_COLORS: Record<BodyPart, string> = {
   core: "var(--ds-color-track-6)",
 };
 
-const BODY_PART_EXERCISES = (Object.entries(BODY_PART_MAP) as [string, string[]][]).reduce(
-  (acc, [exercise, parts]) => {
-    parts.forEach((part) => {
-      if (part in acc) acc[part as BodyPart].push(exercise);
-    });
-    return acc;
-  },
-  { chest: [], back: [], shoulders: [], arms: [], legs: [], core: [] } as Record<BodyPart, string[]>,
-);
+/**
+ * A day's square in the coverage panel, shaded by how hard that day was on
+ * the part: a set of push-ups is a pale square, a heavy bench a solid one.
+ * Capped at a full heavy session so a stacked day doesn't overflow the mix.
+ */
+const loadShade = (part: BodyPart, load: number) =>
+  `color-mix(in oklab, ${BODY_PART_COLORS[part]} ${Math.round(25 + 75 * Math.min(load, 1))}%, var(--ds-color-surface-overlay))`;
+
+/** Only the two that mean "back off" get color, so they're what the eye lands on. */
+const STATUS_CLASS: Record<LoadStatus, string> = {
+  Fresh: "text-ink-muted",
+  Light: "text-ink-muted",
+  Worked: "text-ink-primary",
+  Heavy: "text-danger",
+  Overworked: "text-danger",
+};
+
+const readyText = (days: number) => (days === 1 ? "ready tomorrow" : `ready in ${days} days`);
 
 const localDateStr = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -317,18 +303,8 @@ export default function WorkoutTrackerContent() {
     return weeks;
   }, [logs]);
 
-  // Count distinct days logged per exercise in the last 14 days
-  const bodyPartCoverage = useMemo(() => {
-    const todayStr = localDateStr(new Date());
-    const cutoff = new Date(todayStr + "T12:00:00");
-    cutoff.setDate(cutoff.getDate() - 13);
-    const cutoffStr = localDateStr(cutoff);
-    const recentLogs = logs.filter((l) => l.date >= cutoffStr && l.date <= todayStr);
-    return BODY_PARTS.map((part) => ({
-      part,
-      days: new Set(recentLogs.filter((l) => (BODY_PART_MAP[l.exercise] ?? []).includes(part)).map((l) => l.date)).size,
-    }));
-  }, [logs]);
+  // Days worked and how hard, per body part, over the last 14 days
+  const bodyPartCoverage = useMemo(() => bodyPartLoads(logs, today()), [logs]);
 
   // ── Bento panel contents ──────────────────────────────────────────────────
 
@@ -449,31 +425,37 @@ export default function WorkoutTrackerContent() {
 
   const coverageContent = (
     <div>
-      <p className='text-xs text-ink-muted mb-4'>sessions in last 14 days</p>
+      <p className='text-xs text-ink-muted mb-4'>days worked in the last 14 · darker is harder</p>
       <div className='space-y-1'>
-        {bodyPartCoverage.map(({ part, days }) => (
+        {bodyPartCoverage.map(({ part, days, status, readyInDays }) => (
           <div
             key={part}
             className='relative flex items-center gap-3 py-3 px-3 rounded-lg cursor-default'
-            onMouseEnter={() => setHoveredBodyPart(part as BodyPart)}
+            onMouseEnter={() => setHoveredBodyPart(part)}
             onMouseLeave={() => setHoveredBodyPart(null)}
           >
-            <div className='capitalize text-sm w-20'>{part}</div>
-            <div className='flex gap-1'>
-              {Array.from({ length: days }, (_, i) => (
+            <div className='capitalize text-sm w-20 shrink-0'>{part}</div>
+            <div className='flex flex-wrap gap-1 flex-1 min-w-0'>
+              {days.map((d) => (
                 <span
-                  key={i}
+                  key={d.date}
                   className='w-4 h-4 rounded-sm'
-                  style={{ backgroundColor: BODY_PART_COLORS[part as BodyPart] }}
+                  style={{ backgroundColor: loadShade(part, d.load) }}
                 />
               ))}
             </div>
-            <div className='text-xs text-ink-muted w-8 text-right'>{days}x</div>
+            <div className='text-right shrink-0'>
+              <div className={`text-xs font-medium ${STATUS_CLASS[status]}`}>{status}</div>
+              {readyInDays > 0 && <div className='text-10 text-ink-muted'>{readyText(readyInDays)}</div>}
+            </div>
             {hoveredBodyPart === part && (
               <div className='absolute top-full left-0 mt-1 z-20 rounded-lg border border-line-subtle bg-surface-overlay px-3 py-2 text-10 text-ink-primary shadow-overlay pointer-events-none whitespace-nowrap'>
                 <div className='font-semibold mb-1 capitalize'>{part} exercises</div>
-                {BODY_PART_EXERCISES[part as BodyPart].map((ex) => (
-                  <div key={ex} className='text-ink-muted'>{ex}</div>
+                {exercisesFor(part).map(({ exercise, primary }) => (
+                  <div key={exercise} className='text-ink-muted'>
+                    {exercise}
+                    {!primary && " · assists"}
+                  </div>
                 ))}
               </div>
             )}
@@ -554,7 +536,8 @@ export default function WorkoutTrackerContent() {
     {
       id: "coverage",
       title: "Body Part Coverage",
-      tooltip: "How many sessions you've hit each muscle group in the last 14 days.",
+      tooltip:
+        "Which muscle groups you've worked in the last 14 days and how hard. A heavy barbell session counts far more than a set of push-ups, and the muscles that assist a lift count too, so stacked press or back days show up. Heavy or Overworked means give it a rest.",
       defaultColSpan: 4,
       defaultRowSpan: 3,
       content: coverageContent,
