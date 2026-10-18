@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { sharedAudioContext } from "./audioContext";
 
 /**
  * The drone: one chord, held under the song for as long as it is switched on.
@@ -310,7 +311,7 @@ export function useDrone(
   useEffect(() => {
     if (!running) return;
 
-    const ctx = new AudioContext();
+    const ctx = sharedAudioContext();
     const master = ctx.createGain();
     const { attack, release } = STYLE_SHAPES[style];
     master.gain.setValueAtTime(0, ctx.currentTime);
@@ -329,7 +330,7 @@ export function useDrone(
       master.gain.linearRampToValueAtTime(0, now + release);
       setTimeout(() => {
         for (const osc of oscs) osc.stop();
-        ctx.close().catch(() => {});
+        master.disconnect();
       }, (release + 0.3) * 1000);
     };
   }, [running, semitone, minor, style]);

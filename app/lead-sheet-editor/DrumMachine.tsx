@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { sharedAudioContext } from "./audioContext";
 import {
   DEFAULT_ACCENT,
   accentByName,
@@ -1399,17 +1400,18 @@ export function useDrumScheduler(
       return;
     }
 
-    // Create AudioContext lazily on first play
-    if (!ctxRef.current) {
-      ctxRef.current = new AudioContext();
-      masterRef.current = ctxRef.current.createGain();
+    // The page's one context, already unlocked by whatever tap got us here
+    // (see audioContext.ts). Our own master and buses go on it on first play.
+    const ctx = sharedAudioContext();
+    if (ctxRef.current !== ctx) {
+      masterRef.current?.disconnect();
+      ctxRef.current = ctx;
+      masterRef.current = ctx.createGain();
       masterRef.current.gain.value = volumeRef.current;
-      masterRef.current.connect(ctxRef.current.destination);
-    } else if (ctxRef.current.state === "suspended") {
-      ctxRef.current.resume();
+      masterRef.current.connect(ctx.destination);
+      busesRef.current = null;
     }
 
-    const ctx = ctxRef.current;
     const dst = masterRef.current!;
     if (!busesRef.current) busesRef.current = makeTrackBuses(ctx, dst, levelsRef.current);
 
@@ -1455,10 +1457,11 @@ export function useDrumScheduler(
     };
   }, [running]);
 
-  // Clean up AudioContext on component unmount
+  // The context is shared, so unplug from it rather than closing it.
   useEffect(() => {
     return () => {
-      ctxRef.current?.close();
+      masterRef.current?.disconnect();
+      ctxRef.current = null;
     };
   }, []);
 
@@ -1467,7 +1470,7 @@ export function useDrumScheduler(
 
 /** One hit of a single track, for the drum editor's audition button. */
 export function auditionTrack(lane: GridLane, settings: DrumSettings): void {
-  const ctx = new AudioContext();
+  const ctx = sharedAudioContext();
   const master = ctx.createGain();
   master.gain.value = 0.8;
   master.connect(ctx.destination);
@@ -1482,5 +1485,5 @@ export function auditionTrack(lane: GridLane, settings: DrumSettings): void {
     accent: accentByName(settings.shimmer),
     swing: 0,
   });
-  setTimeout(() => ctx.close().catch(() => {}), 1500);
+  setTimeout(() => master.disconnect(), 1500);
 }

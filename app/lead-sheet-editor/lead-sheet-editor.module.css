@@ -261,7 +261,10 @@
     position: absolute;
     top: 0;
     bottom: 0;
-    z-index: 5;
+    /* Above its own backdrop, which is z-30: under it, every touch meant for
+       the drawer landed on the backdrop instead — nothing in the drawer could
+       be scrolled, and a tap on Start loop closed it rather than playing. */
+    z-index: 40;
     width: min(320px, 88vw);
     box-shadow: 0 0 40px rgba(0, 0, 0, 0.65);
   }
