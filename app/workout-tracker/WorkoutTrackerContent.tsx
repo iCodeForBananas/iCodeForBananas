@@ -11,7 +11,7 @@ import { Bento } from "@/app/components/ui/bento";
 import { Button, Flex, IconButton, Select, Text, TextField } from "@radix-ui/themes";
 import { X } from "lucide-react";
 import { PERCENTILE_LIFTS, latestWeights, percentileBand, populationPercentile } from "./percentile";
-import { bodyPartLoads, exercisesFor, type BodyPart, type LoadStatus } from "./intensity";
+import { weeklyCoverage } from "./coverage";
 
 interface LogEntry {
   id: string;
@@ -38,39 +38,6 @@ const COMPOUND: { name: string; type: "weighted" | "bodyweight" }[] = [
   { name: "Squat", type: "weighted" },
   { name: "Weighted Pull-Up", type: "weighted" },
 ];
-
-/**
- * One color per body part: identity, not ranking, so it takes the
- * categorical set rather than a scale that would imply one part outranks
- * another.
- */
-const BODY_PART_COLORS: Record<BodyPart, string> = {
-  chest: "var(--ds-color-track-1)",
-  back: "var(--ds-color-track-2)",
-  shoulders: "var(--ds-color-track-3)",
-  arms: "var(--ds-color-track-5)",
-  legs: "var(--ds-color-track-4)",
-  core: "var(--ds-color-track-6)",
-};
-
-/**
- * A day's square in the coverage panel, shaded by how hard that day was on
- * the part: a set of push-ups is a pale square, a heavy bench a solid one.
- * Capped at a full heavy session so a stacked day doesn't overflow the mix.
- */
-const loadShade = (part: BodyPart, load: number) =>
-  `color-mix(in oklab, ${BODY_PART_COLORS[part]} ${Math.round(25 + 75 * Math.min(load, 1))}%, var(--ds-color-surface-overlay))`;
-
-/** Only the two that mean "back off" get color, so they're what the eye lands on. */
-const STATUS_CLASS: Record<LoadStatus, string> = {
-  Fresh: "text-ink-muted",
-  Light: "text-ink-muted",
-  Worked: "text-ink-primary",
-  Heavy: "text-danger",
-  Overworked: "text-danger",
-};
-
-const readyText = (days: number) => (days === 1 ? "ready tomorrow" : `ready in ${days} days`);
 
 const localDateStr = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -215,7 +182,6 @@ export default function WorkoutTrackerContent() {
 
   const [hovered, setHovered] = useState<{ date: string; exercises: string[]; x: number; y: number } | null>(null);
   const [focusedExercise, setFocusedExercise] = useState<string | null>(null);
-  const [hoveredBodyPart, setHoveredBodyPart] = useState<BodyPart | null>(null);
 
   // The most recent entry per exercise, which is what the population
   // percentiles below are measured on.
@@ -303,8 +269,8 @@ export default function WorkoutTrackerContent() {
     return weeks;
   }, [logs]);
 
-  // Days worked and how hard, per body part, over the last 14 days
-  const bodyPartCoverage = useMemo(() => bodyPartLoads(logs, today()), [logs]);
+  // Which muscle groups the last 7 days reached, and through what
+  const coverage = useMemo(() => weeklyCoverage(logs, today()), [logs]);
 
   // ── Bento panel contents ──────────────────────────────────────────────────
 
@@ -423,47 +389,49 @@ export default function WorkoutTrackerContent() {
     </div>
   );
 
-  const coverageContent = (
-    <div>
-      <p className='text-xs text-ink-muted mb-4'>days worked in the last 14 · darker is harder</p>
-      <div className='space-y-1'>
-        {bodyPartCoverage.map(({ part, days, status, readyInDays }) => (
-          <div
-            key={part}
-            className='relative flex items-center gap-3 py-3 px-3 rounded-lg cursor-default'
-            onMouseEnter={() => setHoveredBodyPart(part)}
-            onMouseLeave={() => setHoveredBodyPart(null)}
-          >
-            <div className='capitalize text-sm w-20 shrink-0'>{part}</div>
-            <div className='flex flex-wrap gap-1 flex-1 min-w-0'>
-              {days.map((d) => (
-                <span
-                  key={d.date}
-                  className='w-4 h-4 rounded-sm'
-                  style={{ backgroundColor: loadShade(part, d.load) }}
-                />
-              ))}
-            </div>
-            <div className='text-right shrink-0'>
-              <div className={`text-xs font-medium ${STATUS_CLASS[status]}`}>{status}</div>
-              {readyInDays > 0 && <div className='text-10 text-ink-muted'>{readyText(readyInDays)}</div>}
-            </div>
-            {hoveredBodyPart === part && (
-              <div className='absolute top-full left-0 mt-1 z-20 rounded-lg border border-line-subtle bg-surface-overlay px-3 py-2 text-10 text-ink-primary shadow-overlay pointer-events-none whitespace-nowrap'>
-                <div className='font-semibold mb-1 capitalize'>{part} exercises</div>
-                {exercisesFor(part).map(({ exercise, primary }) => (
-                  <div key={exercise} className='text-ink-muted'>
-                    {exercise}
-                    {!primary && " · assists"}
-                  </div>
-                ))}
+  const coverageContent = (() => {
+    const most = Math.max(...coverage.map((c) => c.score));
+    const missed = coverage.filter((c) => c.score === 0).map((c) => c.muscle);
+    return (
+      <div>
+        <p className='text-sm mb-4'>
+          {most === 0
+            ? "Nothing logged in the last 7 days."
+            : missed.length
+              ? <>Not worked this week: <span className='text-danger font-medium'>{missed.join(", ")}</span></>
+              : "Every muscle group worked this week."}
+        </p>
+        <div className='space-y-3'>
+          {coverage.map(({ muscle, score, exercises }) => (
+            <div key={muscle}>
+              <div className='flex items-center gap-3'>
+                <div className='capitalize text-sm w-24 shrink-0'>{muscle}</div>
+                <div className='flex-1 h-2 rounded-full bg-surface-sunken overflow-hidden'>
+                  {score > 0 && (
+                    <div
+                      className='h-full rounded-full'
+                      style={{ width: `${(score / most) * 100}%`, backgroundColor: "var(--ds-color-primary-solid)" }}
+                    />
+                  )}
+                </div>
               </div>
-            )}
-          </div>
-        ))}
+              <div className='text-xs mt-1'>
+                {exercises.length === 0 ? (
+                  <span className='text-danger'>Not worked</span>
+                ) : (
+                  <span className='text-ink-muted'>
+                    {exercises
+                      .map((e) => `${e.exercise}${e.days > 1 ? ` ×${e.days}` : ""}${e.primary ? "" : " (assist)"}`)
+                      .join(" · ")}
+                  </span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
-    </div>
-  );
+    );
+  })();
 
   const allEntriesContent = (() => {
     if (logs.length === 0) {
@@ -535,9 +503,9 @@ export default function WorkoutTrackerContent() {
     },
     {
       id: "coverage",
-      title: "Body Part Coverage",
+      title: "Muscle Coverage",
       tooltip:
-        "Which muscle groups you've worked in the last 14 days and how hard. A heavy barbell session counts far more than a set of push-ups, and the muscles that assist a lift count too, so stacked press or back days show up. Heavy or Overworked means give it a rest.",
+        "Which muscle groups your workouts in the last 7 days reached, and through which exercises. The bar is days that group was worked, with an assisting role (triceps on a bench, biceps on a row) counting as half. Anything not worked this week is what to balance out next.",
       defaultColSpan: 4,
       defaultRowSpan: 3,
       content: coverageContent,
