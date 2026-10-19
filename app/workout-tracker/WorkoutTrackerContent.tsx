@@ -21,23 +21,12 @@ interface LogEntry {
   weight?: number | null;
 }
 
-const COMPOUND: { name: string; type: "weighted" | "bodyweight" }[] = [
-  { name: "Barbell Row", type: "weighted" },
-  { name: "Bench Press", type: "weighted" },
-  { name: "Bent Over Rows", type: "weighted" },
-  { name: "Bicep Curls", type: "weighted" },
-  { name: "Bulgarian Split Squats", type: "weighted" },
-  { name: "Deadlift", type: "weighted" },
-  { name: "Dips", type: "bodyweight" },
-  { name: "Overhead Extension", type: "weighted" },
-  { name: "Overhead Press", type: "weighted" },
-  { name: "Pike Push-ups", type: "bodyweight" },
-  { name: "Pull-ups", type: "bodyweight" },
-  { name: "Push-ups", type: "bodyweight" },
-  { name: "Sit-ups", type: "bodyweight" },
-  { name: "Squat", type: "weighted" },
-  { name: "Weighted Pull-Up", type: "weighted" },
-];
+/**
+ * What can be logged: the five lifts of a 5x5 program, in program order.
+ *   A: Squat, Bench Press, Barbell Row
+ *   B: Squat, Overhead Press, Deadlift
+ */
+const LIFTS = ["Squat", "Bench Press", "Barbell Row", "Overhead Press", "Deadlift"];
 
 const localDateStr = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -69,7 +58,7 @@ export default function WorkoutTrackerContent() {
     return supabaseRef.current;
   };
   const [date, setDate] = useState(today);
-  // Explicit rather than COMPOUND[0].name — that coupled the log form's
+  // Explicit rather than LIFTS[0] — that coupled the log form's
   // default to whatever happened to sort first in the array, and silently
   // changed to "Barbell Row" the moment it was added at the top of the list.
   const [selected, setSelected] = useState("Bench Press");
@@ -87,29 +76,6 @@ export default function WorkoutTrackerContent() {
   useEffect(() => {
     reload();
   }, [reload]);
-
-  const sortedExercises = useMemo(
-    () => [...COMPOUND].sort((a, b) => a.name.localeCompare(b.name)),
-    [],
-  );
-
-  // The last 8 distinct exercises actually logged, most recent first — same
-  // recency ordering as the entries list below (date desc, exercise name as
-  // the tiebreak for same-day entries) so the two agree with each other.
-  const recentlyUsed = useMemo(() => {
-    const sorted = [...logs].sort(
-      (a, b) => b.date.localeCompare(a.date) || a.exercise.localeCompare(b.exercise),
-    );
-    const seen = new Set<string>();
-    const names: string[] = [];
-    for (const l of sorted) {
-      if (seen.has(l.exercise)) continue;
-      seen.add(l.exercise);
-      names.push(l.exercise);
-      if (names.length === 8) break;
-    }
-    return names;
-  }, [logs]);
 
   const submit = async () => {
     const sb = getSupabase();
@@ -138,7 +104,9 @@ export default function WorkoutTrackerContent() {
   }, [logs]);
 
   const exercisesWithLogs = useMemo(() => {
-    return COMPOUND.filter((c) => chartLogs.some((l) => l.exercise === c.name));
+    // From the logs rather than LIFTS, so exercises logged before the 5x5
+    // list still chart.
+    return [...new Set(chartLogs.map((l) => l.exercise))].sort().map((name) => ({ name }));
   }, [chartLogs]);
 
   const chartData = useMemo(() => {
@@ -535,37 +503,11 @@ export default function WorkoutTrackerContent() {
               className='w-full sm:w-auto'
             />
             <Select.Root size='3' value={selected} onValueChange={selectExercise}>
-              {/* Explicit children rather than Radix's own value->label lookup:
-                  the same exercise now appears in two Select.Items (Recently
-                  Used and the full list), and Radix renders every item that
-                  matches the current value, which without this doubles the
-                  trigger's own text. */}
-              <Select.Trigger aria-label='Exercise' className='w-full sm:flex-1 sm:min-w-[140px]'>
-                {selected}
-              </Select.Trigger>
+              <Select.Trigger aria-label='Exercise' className='w-full sm:flex-1 sm:min-w-[140px]' />
               <Select.Content position='popper'>
-                {recentlyUsed.length > 0 && (
-                  <>
-                    <Select.Group>
-                      <Select.Label>Recently Used</Select.Label>
-                      {/* Same exercise, same value — a pick here sets `selected`
-                          exactly like picking it from the full list below. It's
-                          listed twice on purpose, which is what the label plus
-                          separator are for: without them a repeat looks like a
-                          rendering bug instead of a shortcut. */}
-                      {recentlyUsed.map((name) => (
-                        <Select.Item key={`recent-${name}`} value={name}>{name}</Select.Item>
-                      ))}
-                    </Select.Group>
-                    <Select.Separator />
-                  </>
-                )}
-                <Select.Group>
-                  <Select.Label>All Exercises</Select.Label>
-                  {sortedExercises.map((c) => (
-                    <Select.Item key={c.name} value={c.name}>{c.name}</Select.Item>
-                  ))}
-                </Select.Group>
+                {LIFTS.map((name) => (
+                  <Select.Item key={name} value={name}>{name}</Select.Item>
+                ))}
               </Select.Content>
             </Select.Root>
             <TextField.Root
