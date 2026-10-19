@@ -1,9 +1,15 @@
 /**
  * Which muscle groups the last week of logs actually reached, and through
- * which exercises, so a gap is obvious: a week of bench and curls with no
- * pull-ups shows back as untouched, alongside the exercises that would fix it.
+ * which exercises, so a gap is obvious: a week of squat and bench with no
+ * rows or deadlifts shows back as untouched, alongside the lifts that fix it.
  *
- * Every exercise names the groups it drives and the groups that only assist
+ * The lifts are the five of a 5x5 program, alternating two workouts:
+ *   A: Squat, Bench Press, Barbell Row
+ *   B: Squat, Overhead Press, Deadlift
+ * Anything else logged doesn't count toward coverage. Arms and core have no
+ * lift of their own; they're worked assisting the others.
+ *
+ * Every lift names the groups it drives and the groups that only assist
  * it (triceps on a bench, biceps on a row). A day an exercise was logged
  * scores 1 for each group it drives and 0.5 for each it assists. Logging the
  * same exercise twice on one day is still one day.
@@ -24,21 +30,11 @@ export const MUSCLE_GROUPS = [
 export type MuscleGroup = (typeof MUSCLE_GROUPS)[number];
 
 export const EXERCISE_MUSCLES: Record<string, { primary: MuscleGroup[]; assists: MuscleGroup[] }> = {
-  "Barbell Row": { primary: ["back"], assists: ["biceps", "shoulders"] },
-  "Bench Press": { primary: ["chest"], assists: ["triceps", "shoulders"] },
-  "Bent Over Rows": { primary: ["back"], assists: ["biceps", "shoulders"] },
-  "Bicep Curls": { primary: ["biceps"], assists: [] },
-  "Bulgarian Split Squats": { primary: ["quads", "glutes"], assists: ["hamstrings"] },
-  Deadlift: { primary: ["hamstrings", "glutes", "back"], assists: ["quads", "core"] },
-  Dips: { primary: ["chest", "triceps"], assists: ["shoulders"] },
-  "Overhead Extension": { primary: ["triceps"], assists: [] },
-  "Overhead Press": { primary: ["shoulders"], assists: ["triceps", "core"] },
-  "Pike Push-ups": { primary: ["shoulders"], assists: ["triceps"] },
-  "Pull-ups": { primary: ["back"], assists: ["biceps"] },
-  "Push-ups": { primary: ["chest"], assists: ["triceps", "shoulders"] },
-  "Sit-ups": { primary: ["core"], assists: [] },
   Squat: { primary: ["quads", "glutes"], assists: ["hamstrings", "core"] },
-  "Weighted Pull-Up": { primary: ["back"], assists: ["biceps"] },
+  "Bench Press": { primary: ["chest"], assists: ["triceps", "shoulders"] },
+  "Barbell Row": { primary: ["back"], assists: ["biceps", "shoulders"] },
+  "Overhead Press": { primary: ["shoulders"], assists: ["triceps", "core"] },
+  Deadlift: { primary: ["hamstrings", "glutes", "back"], assists: ["quads", "core"] },
 };
 
 const ASSIST_WEIGHT = 0.5;

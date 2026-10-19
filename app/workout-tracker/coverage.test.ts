@@ -36,25 +36,34 @@ describe("weeklyCoverage", () => {
 
   it("counts days, not entries, and lists drivers before assisters", () => {
     const logs = [
-      { exercise: "Pull-ups", date: "2026-10-16" },
-      { exercise: "Pull-ups", date: "2026-10-16" },
-      { exercise: "Pull-ups", date: "2026-10-17" },
-      { exercise: "Bicep Curls", date: "2026-10-17" },
+      { exercise: "Bench Press", date: "2026-10-16" },
+      { exercise: "Bench Press", date: "2026-10-16" },
+      { exercise: "Bench Press", date: "2026-10-17" },
+      { exercise: "Overhead Press", date: "2026-10-17" },
     ];
-    const biceps = group(weeklyCoverage(logs, "2026-10-17"), "biceps");
-    expect(biceps.exercises.slice(0, 2)).toEqual([
-      { exercise: "Bicep Curls", days: 1, primary: true },
-      { exercise: "Pull-ups", days: 2, primary: false },
+    const shoulders = group(weeklyCoverage(logs, "2026-10-17"), "shoulders");
+    expect(shoulders.exercises).toEqual([
+      { exercise: "Overhead Press", days: 1, primary: true },
+      { exercise: "Bench Press", days: 2, primary: false },
+      { exercise: "Barbell Row", days: 0, primary: false },
     ]);
-    expect(biceps.exercises.slice(2).every((e) => !e.primary && e.days === 0)).toBe(true);
-    expect(biceps.score).toBe(2);
+    expect(shoulders.score).toBe(2);
+  });
+
+  it("counts only the five 5x5 lifts", () => {
+    const cov = weeklyCoverage([{ exercise: "Bicep Curls", date: "2026-10-17" }], "2026-10-17");
+    expect(group(cov, "biceps")).toEqual({
+      muscle: "biceps",
+      score: 0,
+      exercises: [{ exercise: "Barbell Row", days: 0, primary: false }],
+    });
   });
 
   it("ignores logs outside the last seven days, in the future, or for unknown exercises", () => {
     const logs = [
       { exercise: "Squat", date: "2026-10-10" }, // 7 days back: just outside
       { exercise: "Squat", date: "2026-10-18" }, // tomorrow
-      { exercise: "Jumping Jacks", date: "2026-10-17" },
+      { exercise: "Push-ups", date: "2026-10-17" },
     ];
     for (const c of weeklyCoverage(logs, "2026-10-17")) {
       expect(c.score).toBe(0);
@@ -76,8 +85,11 @@ describe("EXERCISE_MUSCLES", () => {
     }
   });
 
-  it("reaches every muscle group from some exercise", () => {
-    const reached = new Set(Object.values(EXERCISE_MUSCLES).flatMap((m) => m.primary));
+  it("is the 5x5 program, and reaches every muscle group from it", () => {
+    expect(Object.keys(EXERCISE_MUSCLES).sort()).toEqual(
+      ["Barbell Row", "Bench Press", "Deadlift", "Overhead Press", "Squat"],
+    );
+    const reached = new Set(Object.values(EXERCISE_MUSCLES).flatMap((m) => [...m.primary, ...m.assists]));
     expect([...reached].sort()).toEqual([...MUSCLE_GROUPS].sort());
   });
 });
