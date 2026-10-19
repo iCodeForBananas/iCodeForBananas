@@ -1,7 +1,7 @@
 /**
  * Which muscle groups the last week of logs actually reached, and through
  * which exercises, so a gap is obvious: a week of bench and curls with no
- * pull-ups shows back as untouched.
+ * pull-ups shows back as untouched, alongside the exercises that would fix it.
  *
  * Every exercise names the groups it drives and the groups that only assist
  * it (triceps on a bench, biceps on a row). A day an exercise was logged
@@ -47,7 +47,10 @@ export interface MuscleCoverage {
   muscle: MuscleGroup;
   /** Days driven count 1, days assisted 0.5. */
   score: number;
-  /** What reached this group, the ones driving it first, then most days first. */
+  /**
+   * Every exercise that works this group, with the days it was logged in the
+   * window (0 if not). The ones driving it first, then most days first.
+   */
   exercises: { exercise: string; days: number; primary: boolean }[];
 }
 
@@ -76,10 +79,10 @@ export function weeklyCoverage(
 
   return MUSCLE_GROUPS.map((muscle) => {
     const exercises: MuscleCoverage["exercises"] = [];
-    for (const [exercise, dates] of daysByExercise) {
-      const { primary, assists } = EXERCISE_MUSCLES[exercise];
-      if (primary.includes(muscle)) exercises.push({ exercise, days: dates.size, primary: true });
-      else if (assists.includes(muscle)) exercises.push({ exercise, days: dates.size, primary: false });
+    for (const [exercise, { primary, assists }] of Object.entries(EXERCISE_MUSCLES)) {
+      const days = daysByExercise.get(exercise)?.size ?? 0;
+      if (primary.includes(muscle)) exercises.push({ exercise, days, primary: true });
+      else if (assists.includes(muscle)) exercises.push({ exercise, days, primary: false });
     }
     exercises.sort(
       (a, b) => Number(b.primary) - Number(a.primary) || b.days - a.days || a.exercise.localeCompare(b.exercise),

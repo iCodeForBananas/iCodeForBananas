@@ -405,7 +405,7 @@ export default function WorkoutTrackerContent() {
           {coverage.map(({ muscle, score, exercises }) => (
             <div key={muscle}>
               <div className='flex items-center gap-3'>
-                <div className='capitalize text-sm w-24 shrink-0'>{muscle}</div>
+                <div className={`capitalize text-sm w-24 shrink-0 ${score === 0 ? "text-danger" : ""}`}>{muscle}</div>
                 <div className='flex-1 h-2 rounded-full bg-surface-sunken overflow-hidden'>
                   {score > 0 && (
                     <div
@@ -415,17 +415,15 @@ export default function WorkoutTrackerContent() {
                   )}
                 </div>
               </div>
-              <div className='text-xs mt-1'>
-                {exercises.length === 0 ? (
-                  <span className='text-danger'>Not worked</span>
-                ) : (
-                  <span className='text-ink-muted'>
-                    {exercises
-                      .map((e) => `${e.exercise}${e.days > 1 ? ` ×${e.days}` : ""}${e.primary ? "" : " (assist)"}`)
-                      .join(" · ")}
-                  </span>
-                )}
-              </div>
+              <ul className='text-xs mt-1 flex flex-wrap gap-x-3 gap-y-0.5'>
+                {exercises.map((e) => (
+                  <li key={e.exercise} className={e.days > 0 ? "text-ink-primary font-medium" : "text-ink-muted"}>
+                    {e.exercise}
+                    {e.days > 1 && ` ×${e.days}`}
+                    {!e.primary && <span className='font-normal text-ink-muted'> (assist)</span>}
+                  </li>
+                ))}
+              </ul>
             </div>
           ))}
         </div>
@@ -505,7 +503,7 @@ export default function WorkoutTrackerContent() {
       id: "coverage",
       title: "Muscle Coverage",
       tooltip:
-        "Which muscle groups your workouts in the last 7 days reached, and through which exercises. The bar is days that group was worked, with an assisting role (triceps on a bench, biceps on a row) counting as half. Anything not worked this week is what to balance out next.",
+        "Which muscle groups your workouts in the last 7 days reached, and through which exercises. Under each group are the exercises that work it, the ones you did this week in bold. The bar is days that group was worked, with an assisting role (triceps on a bench, biceps on a row) counting as half. Anything not worked this week is what to balance out next.",
       defaultColSpan: 4,
       defaultRowSpan: 3,
       content: coverageContent,

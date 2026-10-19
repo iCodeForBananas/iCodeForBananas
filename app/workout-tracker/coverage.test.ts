@@ -6,14 +6,15 @@ const group = (cov: ReturnType<typeof weeklyCoverage>, name: string) => cov.find
 describe("weeklyCoverage", () => {
   it("credits the groups an exercise drives and, at half, the ones it assists", () => {
     const cov = weeklyCoverage([{ exercise: "Bench Press", date: "2026-10-17" }], "2026-10-17");
-    expect(group(cov, "chest")).toEqual({
-      muscle: "chest",
-      score: 1,
-      exercises: [{ exercise: "Bench Press", days: 1, primary: true }],
-    });
+    expect(group(cov, "chest").score).toBe(1);
+    expect(group(cov, "chest").exercises[0]).toEqual({ exercise: "Bench Press", days: 1, primary: true });
     expect(group(cov, "triceps").score).toBe(0.5);
-    expect(group(cov, "triceps").exercises[0].primary).toBe(false);
-    expect(group(cov, "back").exercises).toEqual([]);
+    expect(group(cov, "triceps").exercises.find((e) => e.exercise === "Bench Press")).toEqual({
+      exercise: "Bench Press",
+      days: 1,
+      primary: false,
+    });
+    expect(group(cov, "back").exercises.every((e) => e.days === 0)).toBe(true);
   });
 
   it("shows a week with no pulling as untouched back and biceps", () => {
@@ -26,6 +27,13 @@ describe("weeklyCoverage", () => {
     expect(cov.filter((c) => c.score === 0).map((c) => c.muscle)).toEqual(["back", "biceps"]);
   });
 
+  it("lists squats under quads and glutes even in a week without them", () => {
+    const cov = weeklyCoverage([], "2026-10-17");
+    for (const name of ["quads", "glutes"]) {
+      expect(group(cov, name).exercises).toContainEqual({ exercise: "Squat", days: 0, primary: true });
+    }
+  });
+
   it("counts days, not entries, and lists drivers before assisters", () => {
     const logs = [
       { exercise: "Pull-ups", date: "2026-10-16" },
@@ -34,10 +42,11 @@ describe("weeklyCoverage", () => {
       { exercise: "Bicep Curls", date: "2026-10-17" },
     ];
     const biceps = group(weeklyCoverage(logs, "2026-10-17"), "biceps");
-    expect(biceps.exercises).toEqual([
+    expect(biceps.exercises.slice(0, 2)).toEqual([
       { exercise: "Bicep Curls", days: 1, primary: true },
       { exercise: "Pull-ups", days: 2, primary: false },
     ]);
+    expect(biceps.exercises.slice(2).every((e) => !e.primary && e.days === 0)).toBe(true);
     expect(biceps.score).toBe(2);
   });
 
@@ -47,7 +56,10 @@ describe("weeklyCoverage", () => {
       { exercise: "Squat", date: "2026-10-18" }, // tomorrow
       { exercise: "Jumping Jacks", date: "2026-10-17" },
     ];
-    for (const c of weeklyCoverage(logs, "2026-10-17")) expect(c).toMatchObject({ score: 0, exercises: [] });
+    for (const c of weeklyCoverage(logs, "2026-10-17")) {
+      expect(c.score).toBe(0);
+      expect(c.exercises.every((e) => e.days === 0)).toBe(true);
+    }
     expect(group(weeklyCoverage([{ exercise: "Squat", date: "2026-10-11" }], "2026-10-17"), "quads").score).toBe(1);
   });
 
