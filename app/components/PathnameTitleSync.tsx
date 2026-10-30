@@ -15,11 +15,11 @@ const TITLES: Record<string, string> = {
   "/fretboard-architect":                 "Fretboard Architect | iCodeForBananas",
   "/fretboard-explorer":                  "Fretboard Explorer | iCodeForBananas",
   "/fretboard-quiz":                      "Fretboard Quiz | iCodeForBananas",
-  "/lead-sheet-editor":                   "Lead Sheet Editor | iCodeForBananas",
   "/learning-progress":                   "Learning Progress | iCodeForBananas",
   "/login":                               "Sign In | iCodeForBananas",
   "/inversion-picker":                     "Inversion Picker | iCodeForBananas",
   "/settings":                            "Settings | iCodeForBananas",
+  "/songwriter":                          "Songwriter | iCodeForBananas",
   "/space-math":                          "Space Math | iCodeForBananas",
   "/spelling-bee":                        "Spelling Bee | iCodeForBananas",
   "/workout-tracker":                     "Workout Tracker | iCodeForBananas",
@@ -29,11 +29,11 @@ export default function PathnameTitleSync() {
   const pathname = usePathname();
 
   useEffect(() => {
-    if (pathname.startsWith("/lead-sheet-editor/") && pathname.endsWith("/edit")) {
+    if (pathname.startsWith("/songwriter/") && pathname.endsWith("/edit")) {
       document.title = "Edit Lead Sheet | iCodeForBananas";
       return;
     }
-    if (pathname.startsWith("/lead-sheet-editor/") && pathname.endsWith("/preview")) {
+    if (pathname.startsWith("/songwriter/") && pathname.endsWith("/preview")) {
       document.title = "Preview Lead Sheet | iCodeForBananas";
       return;
     }

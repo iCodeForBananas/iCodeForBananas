@@ -1,7 +1,7 @@
 "use client";
 
 import { AlignLeft, Drum, Eye, Menu, PencilLine } from "lucide-react";
-import styles from "./lead-sheet-editor.module.css";
+import styles from "./songwriter.module.css";
 
 export type EditorMode = "play" | "lines" | "free";
 
@@ -12,7 +12,7 @@ const MODES: { id: EditorMode; label: string; icon: React.ReactNode }[] = [
 ];
 
 /**
- * The bar every lead-sheet-editor page shares — the reference's `.topbar`:
+ * The bar every songwriter page shares — the reference's `.topbar`:
  * a library toggle, the song's name, the Play / Edit Lines / Freeform
  * switch, then (on Play) the text-size stepper, then the Drums toggle.
  * Present in the same place whether you're reading the sheet, tapping

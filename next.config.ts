@@ -5,6 +5,14 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/api/strategy-source": ["./app/strategies/**"],
   },
+  // The lead sheet editor became Songwriter. Keep old bookmarks and shared
+  // song links working.
+  async redirects() {
+    return [
+      { source: "/lead-sheet-editor", destination: "/songwriter", permanent: true },
+      { source: "/lead-sheet-editor/:path*", destination: "/songwriter/:path*", permanent: true },
+    ];
+  },
   async rewrites() {
     return [
       {

@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
 import type { LeadSheet } from "./shared";
 import { goTo } from "./offlineNav";
-import styles from "./lead-sheet-editor.module.css";
+import styles from "./songwriter.module.css";
 
 /**
  * The reference's `.lib` aside, inlined over the song being worked on
@@ -53,13 +53,13 @@ export default function LibraryDrawer({
 
   async function pick(id: string) {
     if (onNavigate?.() === false) return;
-    goTo(router, `/lead-sheet-editor/${id}/preview`);
+    goTo(router, `/songwriter/${id}/preview`);
   }
 
   async function handleNew() {
     if (onNavigate?.() === false) return;
     const id = await onCreateSheet();
-    if (id) goTo(router, `/lead-sheet-editor/${id}/edit`);
+    if (id) goTo(router, `/songwriter/${id}/edit`);
   }
 
   return (

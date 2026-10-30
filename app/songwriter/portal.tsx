@@ -5,7 +5,7 @@ import { createContext, useContext, useState } from "react";
 /**
  * Radix portals its dialogs, menus and select lists to the end of <body>,
  * which is outside this subtree and so outside `.root` in
- * lead-sheet-editor.module.css — they rendered in the app-wide navy and
+ * songwriter.module.css — they rendered in the app-wide navy and
  * Roboto rather than the Songbook palette. The host renders an empty node
  * inside the subtree and the subtree's own overlays portal into it instead,
  * so they inherit the scoped tokens without any global CSS. Overlays are

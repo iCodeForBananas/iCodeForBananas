@@ -1,7 +1,7 @@
 # Migrating songs to ChordPro
 
 The parser, renderer and transforms are in place (`app/lib/chordPro.ts`,
-`app/lib/harmony.ts`, `app/lead-sheet-editor/ChordProSong.tsx`). What is left is
+`app/lib/harmony.ts`, `app/songwriter/ChordProSong.tsx`). What is left is
 moving existing rows, and that part touches live data, so it is written down
 before it is written.
 

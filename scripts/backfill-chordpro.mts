@@ -16,7 +16,7 @@
  * Needs NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.
  */
 import { createClient } from "@supabase/supabase-js";
-import { legacyToChordPro, verifyConversion, type LegacySheet } from "../app/lead-sheet-editor/legacy";
+import { legacyToChordPro, verifyConversion, type LegacySheet } from "../app/songwriter/legacy";
 
 const commit = process.argv.includes("--commit");
 if (!commit && !process.argv.includes("--dry-run")) {

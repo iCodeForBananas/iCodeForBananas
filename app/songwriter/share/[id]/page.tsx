@@ -3,11 +3,11 @@ import ShareLeadSheet from "./page-client";
 
 export const metadata: Metadata = {
   title: "Lead Sheet",
-  description: "View this shared lead sheet. Created with iCodeForBananas Lead Sheet Editor.",
+  description: "View this shared lead sheet. Created with iCodeForBananas Songwriter.",
   keywords: ["lead sheet", "shared sheet", "music", "ChordPro"],
   openGraph: {
     title: "Lead Sheet",
-    description: "View this shared lead sheet. Created with iCodeForBananas Lead Sheet Editor.",
+    description: "View this shared lead sheet. Created with iCodeForBananas Songwriter.",
     type: "website",
   },
 };

@@ -32,7 +32,7 @@ const CHORD_RE = new RegExp(
  *
  * Deliberately strict about what follows the root: section names starting with
  * a note letter are the whole difficulty here, and `Bridge`, `Chorus`, `Bass`
- * and `Ending` all have to come out false. See app/lead-sheet-editor for the
+ * and `Ending` all have to come out false. See app/songwriter for the
  * test that pins both directions.
  */
 export function isChordName(inner: string): boolean {

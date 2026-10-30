@@ -1,6 +1,6 @@
 import { Atkinson_Hyperlegible } from "next/font/google";
 import { CommandPaletteProvider } from "@/app/components/ui/command-palette";
-import styles from "./lead-sheet-editor.module.css";
+import styles from "./songwriter.module.css";
 import { SongbookPortalHost } from "./portal";
 
 const atkinson = Atkinson_Hyperlegible({
@@ -19,7 +19,7 @@ const atkinson = Atkinson_Hyperlegible({
  * light/dark toggle), then gave it up in favor of the app-wide dark palette
  * (ink black / Prussian blue / Oxford navy, School Bus Yellow / gold — see
  * tokens/README.md). It has its own look again now, requested separately
- * from that app-wide theme: `lead-sheet-editor.module.css`'s `.root`
+ * from that app-wide theme: `songwriter.module.css`'s `.root`
  * re-points the same --ds-color-* custom properties everything here already
  * reads at a different, warmer near-black-and-amber palette (lifted from the
  * "Open Mic Songbook" design reference), scoped by the CSS Module class so

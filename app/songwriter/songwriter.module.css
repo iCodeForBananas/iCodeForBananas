@@ -1,5 +1,5 @@
 /*
- * Styles scoped to the Lead Sheet Editor only (CSS Modules generate unique
+ * Styles scoped to the Songwriter only (CSS Modules generate unique
  * class names at build time, so nothing here can leak into other pages, and
  * nothing from the shared design system can override the distinct look this
  * subtree wants instead of it).
@@ -11,7 +11,7 @@
  * Tailwind bg-surface-base / text-ink-* / border-line-* utilities) at the
  * reference's exact values. Because those properties inherit, this one
  * override cascades through the whole subtree without the shared
- * components themselves needing to know lead-sheet-editor looks different —
+ * components themselves needing to know songwriter looks different —
  * see app/tokens.css and the `@theme inline` block in app/globals.css for
  * the chain this relies on. `.leadsheet-doc` (the monospaced chord/lyric
  * pane, tested by npm run type:check) is left alone on purpose: its own

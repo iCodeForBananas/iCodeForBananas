@@ -33,7 +33,7 @@ const check = (label, ok, detail = "") => {
   console.log(`  ${ok ? "pass" : "FAIL"}  ${label}${detail ? `  ${detail}` : ""}`);
 };
 
-await page.goto(`${BASE}/lead-sheet-editor`, { waitUntil: "domcontentloaded" });
+await page.goto(`${BASE}/songwriter`, { waitUntil: "domcontentloaded" });
 await page.evaluate(() => document.fonts.ready);
 
 // ─── The three families are wired ────────────────────────────────────────────

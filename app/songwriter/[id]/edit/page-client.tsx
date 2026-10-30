@@ -7,7 +7,7 @@ import { useAuth } from "@/app/hooks/useAuth";
 import { Save, Replace, X, Sparkles, Play, Timer, TimerOff, Clock, HelpCircle, SlidersHorizontal, ChevronDown } from "lucide-react";
 import { Button, DropdownMenu, IconButton, Select, Text, TextField } from "@radix-ui/themes";
 import TopBar from "../../TopBar";
-import styles from "../../lead-sheet-editor.module.css";
+import styles from "../../songwriter.module.css";
 import { RevisionHistory } from "../../RevisionHistory";
 import {
   type LeadSheet,
@@ -603,7 +603,7 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
 
   async function handlePreview() {
     if (dirty) await saveSheet();
-    goTo(router, `/lead-sheet-editor/${id}/preview`);
+    goTo(router, `/songwriter/${id}/preview`);
   }
 
   // The reference's Save: commit, then back to the song. Unlike the
@@ -613,7 +613,7 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
   // leaving, same as the "Preview" action always did.
   async function handleSaveAndView() {
     if (dirty) await saveSheet(true);
-    goTo(router, `/lead-sheet-editor/${id}/preview`);
+    goTo(router, `/songwriter/${id}/preview`);
   }
 
   // The reference's Cancel discards the whole draft. This architecture
@@ -625,14 +625,14 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
   // window aren't the one gap in an otherwise edit-loses-nothing editor.
   function handleCancel() {
     if (dirty && sheetId) void queuePendingEdit(sheetId, rawText, capo, baseUpdatedAt.current);
-    goTo(router, `/lead-sheet-editor/${id}/preview`);
+    goTo(router, `/songwriter/${id}/preview`);
   }
 
   // Where the topbar's "Edit lines" segment lands — same door the old
   // sidebar toggle used, reached from this page instead of that one.
   async function handleEditLines() {
     if (dirty) await saveSheet();
-    goTo(router, `/lead-sheet-editor/${id}/preview?mode=lines`);
+    goTo(router, `/songwriter/${id}/preview?mode=lines`);
   }
 
   // "Discard" here only ever meant "stop looking at this song" — the edit
@@ -641,13 +641,13 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
   function handleLibraryClick() {
     if (dirty && !confirm("Discard unsaved changes?")) return;
     if (dirty && sheetId) void queuePendingEdit(sheetId, rawText, capo, baseUpdatedAt.current);
-    goTo(router, "/lead-sheet-editor");
+    goTo(router, "/songwriter");
   }
 
   // Play always runs against the saved sheet, so timings typed a second ago count.
   async function handlePlay() {
     if (dirty) await saveSheet();
-    goTo(router, `/lead-sheet-editor/${id}/preview?play=1`);
+    goTo(router, `/songwriter/${id}/preview?play=1`);
   }
 
   if (authLoading || loading) {

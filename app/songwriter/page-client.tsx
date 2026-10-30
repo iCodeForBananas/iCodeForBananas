@@ -17,7 +17,7 @@ import { Button as RadixButton, IconButton, Select } from "@radix-ui/themes";
 import { type SortOrder } from "./library";
 import { VisibilityPicker } from "./VisibilityPicker";
 import { SongAttribution } from "./SongAttribution";
-import styles from "./lead-sheet-editor.module.css";
+import styles from "./songwriter.module.css";
 import { useSongbookPortal } from "./portal";
 
 /**
@@ -57,7 +57,7 @@ export default function LeadSheetList() {
 
   const handleCreateSheet = useCallback(async () => {
     const id = await createSheet();
-    if (id) router.push(`/lead-sheet-editor/${id}/edit`);
+    if (id) router.push(`/songwriter/${id}/edit`);
   }, [createSheet, router]);
 
   // Every song by name, plus the one thing you do when none of them is what
@@ -78,7 +78,7 @@ export default function LeadSheetList() {
         label: sheet.title || "Untitled",
         group: "Songs",
         hint: [sheet.key, sheet.tempo ? `${sheet.tempo} bpm` : null].filter(Boolean).join("  "),
-        run: (): void => goTo(router, `/lead-sheet-editor/${sheet.id}/preview`),
+        run: (): void => goTo(router, `/songwriter/${sheet.id}/preview`),
       })),
     ],
     [sortedSheets, router, handleCreateSheet]
@@ -98,7 +98,7 @@ export default function LeadSheetList() {
     if ((sheet.visibility ?? "private") === "private") {
       await setVisibility(sheet, "unlisted");
     }
-    await navigator.clipboard.writeText(`${window.location.origin}/lead-sheet-editor/share/${sheet.id}`);
+    await navigator.clipboard.writeText(`${window.location.origin}/songwriter/share/${sheet.id}`);
     setSharedId(sheet.id);
     setTimeout(() => setSharedId(null), 2000);
   }
@@ -106,7 +106,7 @@ export default function LeadSheetList() {
   if (authLoading) {
     return (
       <div className='flex flex-col flex-1 min-h-0'>
-        <TopBar onLibraryClick={() => {}} title='Lead Sheet Editor' />
+        <TopBar onLibraryClick={() => {}} title='Songwriter' />
         <div className='flex-1 flex items-center justify-center text-ink-muted'>Loading...</div>
       </div>
     );
@@ -115,7 +115,7 @@ export default function LeadSheetList() {
   if (!user) {
     return (
       <div className='flex flex-col flex-1 min-h-0'>
-        <TopBar onLibraryClick={() => {}} title='Lead Sheet Editor' />
+        <TopBar onLibraryClick={() => {}} title='Songwriter' />
         <div className='flex-1 flex flex-col items-center justify-center text-center'>
           <p className='text-ink-muted mb-6'>Sign in to create and manage your lead sheets.</p>
           <Link
@@ -135,7 +135,7 @@ export default function LeadSheetList() {
           page, the way it was reachable before the editor grew the
           reference's inline drawer — so the toggle just points at itself;
           there's nowhere else a click on it could usefully go. */}
-      <TopBar onLibraryClick={() => {}} title='Lead Sheet Editor' />
+      <TopBar onLibraryClick={() => {}} title='Songwriter' />
       <div className='flex-1 overflow-auto p-4 sm:p-6 flex flex-col'>
         {/* The reference's `.lib-top`: a heading with the count and the New
             button, then search — just stretched to full-page width instead
@@ -196,7 +196,7 @@ export default function LeadSheetList() {
                 size={density === "compact" ? "1" : "2"}
                 variant='ghost'
                 className={`${styles.libraryRow} group cursor-pointer flex flex-col md:flex-row md:items-center md:justify-between gap-2 ${density === "compact" ? "py-1.5" : ""}`}
-                onClick={() => goTo(router, `/lead-sheet-editor/${sheet.id}/preview`)}
+                onClick={() => goTo(router, `/songwriter/${sheet.id}/preview`)}
               >
                 <div className='flex flex-1 min-w-0 items-start gap-2'>
                   <IconButton
@@ -253,12 +253,12 @@ export default function LeadSheetList() {
                     size='1'
                     variant='surface'
                     color='gray'
-                    onClick={(e) => { e.stopPropagation(); goTo(router, `/lead-sheet-editor/${sheet.id}/edit`); }}
+                    onClick={(e) => { e.stopPropagation(); goTo(router, `/songwriter/${sheet.id}/edit`); }}
                   >
                     <Pencil className='w-3.5 h-3.5' />
                     Edit
                   </RadixButton>
-                  <RadixButton size='1' onClick={(e) => { e.stopPropagation(); goTo(router, `/lead-sheet-editor/${sheet.id}/preview`); }}>
+                  <RadixButton size='1' onClick={(e) => { e.stopPropagation(); goTo(router, `/songwriter/${sheet.id}/preview`); }}>
                     <Eye className='w-3.5 h-3.5' />
                     Preview
                   </RadixButton>

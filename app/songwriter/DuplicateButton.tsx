@@ -40,7 +40,7 @@ export function DuplicateButton({ song }: { song: ForkSource }) {
       setError("That did not copy. Try again.");
       return;
     }
-    router.push(`/lead-sheet-editor/${data.id}/edit`);
+    router.push(`/songwriter/${data.id}/edit`);
   }
 
   return (

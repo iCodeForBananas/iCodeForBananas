@@ -6,7 +6,7 @@ Personal dashboard built with Next.js 16, React 19, TypeScript, Supabase, and Ve
 
 - **Task Board** — Kanban board (backlog / in-progress / done)
 - **Space Math** — Cai's math practice progress dashboard
-- **Lead Sheets** — Jazz lead sheet editor
+- **Songwriter** — Write, arrange and play jazz lead sheets
 
 ## Tech Stack
 

@@ -5,7 +5,7 @@ import LoginForm from './LoginForm';
 
 export const metadata: Metadata = {
   title: "Sign In",
-  description: "Sign in to your iCodeForBananas account to access music theory tools, trading dashboards, fitness tracker, lead sheet editor, and more.",
+  description: "Sign in to your iCodeForBananas account to access music theory tools, trading dashboards, fitness tracker, songwriter, and more.",
   keywords: ["sign in", "login", "iCodeForBananas", "account"],
   openGraph: {
     title: "Sign In",

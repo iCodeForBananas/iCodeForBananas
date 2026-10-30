@@ -2,7 +2,7 @@ import { isChordName } from "./chordGrammar";
 
 // ─── Chord transposition ──────────────────────────────────────────────────────
 // Lead sheet chords are written as bracketed tokens, e.g. "[Am7]", "[F#maj7]",
-// "[Am/E]" — see app/lead-sheet-editor/shared.tsx's ChordPro-style parser.
+// "[Am/E]" — see app/songwriter/shared.tsx's ChordPro-style parser.
 
 const NOTE_TO_SEMITONE: Record<string, number> = {
   C: 0,

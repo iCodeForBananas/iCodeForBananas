@@ -50,7 +50,7 @@ import {
 } from "../../cues";
 import { DEFAULT_KIT, kitFromMetadata, kitToMetadata, type KitSettings } from "../../kit";
 import { KitPlayer } from "../../KitPlayer";
-import styles from "../../lead-sheet-editor.module.css";
+import styles from "../../songwriter.module.css";
 import TopBar from "../../TopBar";
 import LibraryDrawer from "../../LibraryDrawer";
 import { useLeadSheetLibrary } from "../../useLibrary";
@@ -1061,7 +1061,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
         // the library page is where visibility ultimately gets fixed up.
       }
     }
-    await navigator.clipboard.writeText(`${window.location.origin}/lead-sheet-editor/share/${id}`);
+    await navigator.clipboard.writeText(`${window.location.origin}/songwriter/share/${id}`);
     setShared(true);
     setTimeout(() => setShared(false), 2000);
   };
@@ -1200,7 +1200,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
       // overlay on a narrow screen. A real close, so it persists.
       onOpenChange={() => closeDrums()}
       offline={offline}
-      onArrange={() => goTo(router, `/lead-sheet-editor/${id}/edit?arrange=1`)}
+      onArrange={() => goTo(router, `/songwriter/${id}/edit?arrange=1`)}
       fullscreen={fullscreen}
       onFullscreenChange={setFullscreen}
       hasTiming={hasTiming}
@@ -1263,7 +1263,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
       mode={editMode ? "lines" : "play"}
       onModeChange={(next) => {
         if (next === "free") {
-          goTo(router, `/lead-sheet-editor/${id}/edit`);
+          goTo(router, `/songwriter/${id}/edit`);
           return;
         }
         setEditMode(next === "lines");

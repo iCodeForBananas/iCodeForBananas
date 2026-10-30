@@ -10,7 +10,7 @@
 //   - /_next/static/* — Next names these by content hash, so a cached copy
 //     can never go stale; a new build gets new filenames instead of new
 //     content at an old one.
-//   - anything under /lead-sheet-editor — network-first, falling back to
+//   - anything under /songwriter — network-first, falling back to
 //     whatever was last fetched successfully. This is what lets a song
 //     you've opened before stay reachable with no connection: the page shell
 //     comes from here, and IndexedDB (see offlineCache.ts) supplies the song
@@ -19,7 +19,7 @@
 // Bump CACHE whenever this strategy changes, or after a deploy you want
 // offline users to pick up right away — activate() drops every other cache,
 // same as the plain offline-page version this replaced.
-const CACHE = "icfb-shell-v1";
+const CACHE = "icfb-shell-v2";
 const OFFLINE_URL = "/offline.html";
 
 self.addEventListener("install", (event) => {
@@ -92,7 +92,7 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  if (url.pathname === "/lead-sheet-editor" || url.pathname.startsWith("/lead-sheet-editor/")) {
+  if (url.pathname === "/songwriter" || url.pathname.startsWith("/songwriter/")) {
     event.respondWith(networkFirst(request));
     return;
   }

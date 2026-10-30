@@ -45,7 +45,7 @@ import {
   type KitSettings,
 } from "./kit";
 import { KIT_RENDER_SECONDS, kitWavFileName, renderKitToWav } from "./kitRender";
-import styles from "./lead-sheet-editor.module.css";
+import styles from "./songwriter.module.css";
 import { useSongbookPortal } from "./portal";
 
 const NOTES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];

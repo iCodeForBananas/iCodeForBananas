@@ -24,7 +24,7 @@ import type { KitSettings } from "./kit";
 import { useKitStep } from "./KitPlayer";
 import DrumControls, { KitPresetSelect } from "./DrumEditor";
 import { ControlRow, RowButton } from "./SidebarRows";
-import styles from "./lead-sheet-editor.module.css";
+import styles from "./songwriter.module.css";
 
 export const MIN_SCALE = 70;
 export const MAX_SCALE = 160;

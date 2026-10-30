@@ -22,7 +22,7 @@ export const LINKS: { href: string; text: string; category: Category; auth?: boo
   { href: "/progression-builder", text: "Progression Builder", category: "Music", abbr: "PB" },
   { href: "/chord-explorer", text: "Chord Explorer", category: "Music", abbr: "CE" },
   { href: "/fretboard-quiz", text: "Fretboard Quiz", category: "Music" },
-  { href: "/lead-sheet-editor", text: "Lead Sheet Editor", category: "Music", abbr: "LS" },
+  { href: "/songwriter", text: "Songwriter", category: "Music", abbr: "SW" },
   // Trading
   { href: "/algo-backtest", text: "Algo Backtest", category: "Trading", abbr: "AB" },
   // Tools
@@ -86,7 +86,7 @@ export default function Sidebar() {
     if (isMobile) setIsOpen(false);
   };
 
-  if (pathname.startsWith("/lead-sheet-editor/share/")) return null;
+  if (pathname.startsWith("/songwriter/share/")) return null;
 
   /**
    * Hover used to be four inline style writes per link, which is why the whole
