@@ -672,8 +672,21 @@ const BacktestChart: React.FC<BacktestChartProps> = ({
     const ts = chart.timeScale();
     const total = data.length;
     const wanted = Math.min(Math.max(visibleCandles, MIN_CANDLES), Math.min(MAX_CANDLES, total));
-    const from = Math.max(0, total - wanted);
-    const to = total - 1;
+    let to = total - 1;
+    // A strategy that holds for years (RSI mean reversion often does) can have
+    // no entry in the last `wanted` bars, which leaves the default view with no
+    // trades on it. Pull the window back so the latest entry sits two thirds in.
+    if (trades.length > 0) {
+      const lastEntryTime = Math.max(...trades.map((t) => t.entryTime));
+      let lastEntryIdx = total - 1;
+      for (let i = 0; i < total; i++) {
+        if (data[i].time >= lastEntryTime) { lastEntryIdx = i; break; }
+      }
+      if (lastEntryIdx < total - wanted) {
+        to = Math.min(total - 1, lastEntryIdx + Math.floor(wanted / 3));
+      }
+    }
+    const from = Math.max(0, to - wanted);
     syncingRangeRef.current = true;
     ts.setVisibleLogicalRange({ from, to });
     if (oscChartRef.current) {
@@ -681,7 +694,7 @@ const BacktestChart: React.FC<BacktestChartProps> = ({
     }
     syncingRangeRef.current = false;
     lastDataLenRef.current = total;
-  }, [visibleCandles, data]);
+  }, [visibleCandles, data, trades]);
 
   // Scroll to selected trade.
   useEffect(() => {
