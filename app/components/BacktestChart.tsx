@@ -26,6 +26,9 @@ import { IndicatorData, BacktestTrade, PositionSide } from "@/app/types";
 import { useChartTheme, type ChartTheme } from "./chartTheme";
 import { calculateSMMA } from "@/app/strategies/alligator";
 import { getSmoothedRocArray } from "@/app/strategies/momentum-roc";
+import { getRsiArray, cumulativeRsiAt } from "@/app/strategies/cumulative-rsi";
+import { ibs } from "@/app/strategies/ibs-mean-reversion";
+import { priorChannel } from "@/app/strategies/turtle";
 
 interface BacktestChartProps {
   data: IndicatorData[];
@@ -86,7 +89,7 @@ type PriceLine = {
 };
 
 type OscillatorPanel = {
-  type: "rsi" | "macd" | "stochastic" | "roc";
+  type: "rsi" | "macd" | "stochastic" | "roc" | "ibs";
   series: { values: (number | undefined)[]; color: string; label: string; lineWidth?: number }[];
   histogram?: { values: (number | undefined)[]; positiveColor: string; negativeColor: string };
   hLines?: { value: number; color: string; dashed: boolean }[];
@@ -325,6 +328,69 @@ function computeIndicators(
         hLines: [
           { value: num("overbought", 80), color: "#ef4444", dashed: true },
           { value: num("oversold", 20), color: "#22c55e", dashed: true },
+        ],
+      };
+      break;
+    }
+    case "faber-trend": {
+      const period = num("smaPeriod", 200);
+      const band = num("bandPercent", 1) / 100;
+      const sma = data.map((d) => d[`sma${period}` as keyof IndicatorData] as number | undefined);
+      priceLines.push({ values: sma, color: "#f97316", label: `SMA ${period}`, lineWidth: 2 });
+      if (band > 0) {
+        priceLines.push({ values: sma.map((v) => (v === undefined ? undefined : v * (1 + band))), color: "#64748b", label: "", lineWidth: 1, dashed: true });
+        priceLines.push({ values: sma.map((v) => (v === undefined ? undefined : v * (1 - band))), color: "#64748b", label: "", lineWidth: 1, dashed: true });
+      }
+      break;
+    }
+    case "turtle": {
+      // Channels of the bars before each one, the levels the strategy compares
+      // that bar's close against.
+      const channel = (period: number) => data.map((_, i) => priorChannel(data, i, period));
+      const entry = channel(num("entryPeriod", 20));
+      const exit = channel(num("exitPeriod", 10));
+      priceLines.push({ values: entry.map((c) => c?.high), color: "#22c55e", label: "Entry high" });
+      priceLines.push({ values: entry.map((c) => c?.low), color: "#ef4444", label: "Entry low" });
+      priceLines.push({ values: exit.map((c) => c?.high), color: "#64748b", label: "Exit high", dashed: true });
+      priceLines.push({ values: exit.map((c) => c?.low), color: "#64748b", label: "Exit low", dashed: true });
+      break;
+    }
+    case "double-7s": {
+      if (params.trendFilter ?? true) {
+        priceLines.push({ values: data.map((d) => d.sma200), color: "#f97316", label: "SMA 200" });
+      }
+      break;
+    }
+    case "cumulative-rsi": {
+      const period = num("rsiPeriod", 2);
+      const days = num("sumDays", 2);
+      const rsi = getRsiArray(data, period);
+      if (params.trendFilter ?? true) {
+        priceLines.push({ values: data.map((d) => d.sma200), color: "#f97316", label: "SMA 200" });
+      }
+      oscillator = {
+        type: "rsi",
+        series: [
+          { values: rsi.map((v) => (Number.isNaN(v) ? undefined : v)), color: "#a855f7", label: `RSI ${period}` },
+          { values: rsi.map((_, i) => { const c = cumulativeRsiAt(rsi, i, days); return Number.isNaN(c) ? undefined : c; }), color: "#3b82f6", label: `Sum of ${days}` },
+        ],
+        hLines: [
+          { value: num("exitLevel", 65), color: "#ef4444", dashed: true },
+          { value: num("entryLevel", 35), color: "#22c55e", dashed: true },
+        ],
+      };
+      break;
+    }
+    case "ibs-mean-reversion": {
+      if (params.trendFilter ?? false) {
+        priceLines.push({ values: data.map((d) => d.sma200), color: "#f97316", label: "SMA 200" });
+      }
+      oscillator = {
+        type: "ibs",
+        series: [{ values: data.map((d) => ibs(d)), color: "#a855f7", label: "IBS" }],
+        hLines: [
+          { value: num("exitIbs", 80) / 100, color: "#ef4444", dashed: true },
+          { value: num("entryIbs", 20) / 100, color: "#22c55e", dashed: true },
         ],
       };
       break;

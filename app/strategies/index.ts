@@ -18,6 +18,11 @@ import keltnerChannel from './keltner-channel';
 import chandelierExit from './chandelier-exit';
 import momentumRoc from './momentum-roc';
 import stochastic from './stochastic';
+import ibsMeanReversion from './ibs-mean-reversion';
+import double7s from './double-7s';
+import cumulativeRsi from './cumulative-rsi';
+import turtle from './turtle';
+import faberTrend from './faber-trend';
 
 export const AVAILABLE_STRATEGIES: Record<string, StrategyDefinition> = {
   // Trend Following
@@ -31,13 +36,18 @@ export const AVAILABLE_STRATEGIES: Record<string, StrategyDefinition> = {
   'chandelier-exit': chandelierExit,
   'donchian-channel': donchianChannel,
   'breakout': breakout,
+  'turtle': turtle,
   'momentum-roc': momentumRoc,
+  'faber-trend': faberTrend,
   // Mean Reversion
   'bollinger-bands': bollingerBands,
   'keltner-channel': keltnerChannel,
   'rsi-mean-reversion': rsiMeanReversion,
   'rsi2': rsi2,
   'stochastic': stochastic,
+  'cumulative-rsi': cumulativeRsi,
+  'double-7s': double7s,
+  'ibs-mean-reversion': ibsMeanReversion,
 };
 
 export * from './types';

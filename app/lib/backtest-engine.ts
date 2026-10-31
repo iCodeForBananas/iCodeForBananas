@@ -622,6 +622,8 @@ export function deriveRequiredIndicators(
       if (typeof value !== "number") continue;
       if (key.toLowerCase().includes("ema")) {
         requiredEMAs.add(value);
+      } else if (key === "smaPeriod") {
+        requiredSMAs.add(value);
       } else if (key === "fastPeriod" || key === "slowPeriod" || key === "midPeriod") {
         if (strategyId.includes("ema")) {
           requiredEMAs.add(value);
