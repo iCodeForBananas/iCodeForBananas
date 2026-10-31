@@ -7,7 +7,9 @@ import { cn } from "@/app/lib/utils";
  * One row of the sidebar. Every tool is a full-width line separated from its
  * neighbours by a hairline rather than boxed in a border of its own — a column
  * of nested boxes reads as clutter at the size these controls run to. `active`
- * fills it with the accent, for a mode that is on.
+ * fills it with the accent, for a mode that is on. Radix sizes buttons as
+ * content-box, so `w-full` alone put the padding outside the panel; border-box
+ * keeps the whole row inside it.
  */
 export function RowButton({
   active = false,
@@ -21,7 +23,7 @@ export function RowButton({
       variant={active ? "solid" : "ghost"}
       color={active ? undefined : "gray"}
       highContrast={!active}
-      className={cn("m-0 h-11 w-full justify-start gap-2.5 rounded-none px-3 print:hidden", className)}
+      className={cn("m-0 box-border h-11 w-full justify-start gap-2.5 rounded-none px-3 print:hidden", className)}
       {...props}
     />
   );
