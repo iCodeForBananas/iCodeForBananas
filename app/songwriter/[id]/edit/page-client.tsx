@@ -700,28 +700,33 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
               the More menu beside Save rather than occupying permanent space
               the reference's layout doesn't allocate for it. */}
           <div className="shrink-0">
-            <div className="flex items-center gap-3 flex-wrap px-4 py-3 sm:px-6 sm:py-4">
-              <label className={`${styles.field} flex-1`} style={{ minWidth: 260 }}>
-                Title
-                <input
-                  className={styles.tinput}
-                  type="text"
-                  value={songTitle === "Untitled" && !rawText.split("\n")[0] ? "" : (rawText.split("\n")[0] ?? "")}
-                  onChange={(e) => handleTitleChange(e.target.value)}
-                  placeholder="Untitled"
-                />
-              </label>
-              <label className={styles.field} style={{ width: 110 }}>
-                Capo
-                <input
-                  className={styles.tinput}
-                  type="number"
-                  min={0}
-                  max={12}
-                  value={capo ?? ""}
-                  onChange={(e) => handleCapoChange(e.target.value)}
-                />
-              </label>
+            <div className="flex items-center gap-3 flex-wrap w-full px-4 py-3 sm:max-w-3xl sm:mx-auto sm:px-8 sm:py-4">
+              {/* Title and Capo share a row on a phone, so the writing area
+                  below starts near the top of the screen instead of under
+                  a stack of full-width fields. */}
+              <div className="flex gap-3 basis-full sm:basis-auto sm:flex-1">
+                <label className={`${styles.field} flex-1 min-w-0 sm:min-w-[260px]`}>
+                  Title
+                  <input
+                    className={styles.tinput}
+                    type="text"
+                    value={songTitle === "Untitled" && !rawText.split("\n")[0] ? "" : (rawText.split("\n")[0] ?? "")}
+                    onChange={(e) => handleTitleChange(e.target.value)}
+                    placeholder="Untitled"
+                  />
+                </label>
+                <label className={`${styles.field} w-20 sm:w-[110px]`}>
+                  Capo
+                  <input
+                    className={styles.tinput}
+                    type="number"
+                    min={0}
+                    max={12}
+                    value={capo ?? ""}
+                    onChange={(e) => handleCapoChange(e.target.value)}
+                  />
+                </label>
+              </div>
 
               {offline && <OfflineBadge />}
               {/* One line, whichever of these is true — saving, a clean save,
@@ -905,10 +910,14 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
 
           {/* The reference's `.free` body: a labelled field wrapping the
               textarea, the label itself doubling as the syntax hint — not
-              placeholder text nobody sees once the song has a first line. */}
-          <div className="flex flex-col flex-1 min-h-0 gap-3 px-6 py-4 sm:px-8">
+              placeholder text nobody sees once the song has a first line.
+              On a phone it runs edge to edge; from sm up it's a centered
+              column the same width as the title row above it. */}
+          <div className="flex flex-col flex-1 min-h-0 w-full gap-3 pt-2 sm:max-w-3xl sm:mx-auto sm:px-8 sm:py-4">
             <label className={`${styles.field} flex flex-col flex-1 min-h-0`}>
-              Chords in [brackets] · sections like [CHORUS] · notes start with ↳ or #
+              <span className={styles.freeHint}>
+                Chords in [brackets] · sections like [CHORUS] · notes start with ↳ or #
+              </span>
               <textarea
                 value={rawText}
                 onChange={(e) => handleChange(e.target.value)}

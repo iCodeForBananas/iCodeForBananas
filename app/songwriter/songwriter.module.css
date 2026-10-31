@@ -474,14 +474,16 @@
 
 /* ── Freeform editor ───────────────────────────────────────────────────── */
 
+/* No border, fill or focus ring: the page is the writing surface, and the
+   caret is enough to show where you are. */
 .freeTa {
   flex: 1;
   min-height: 240px;
   resize: none;
-  padding: 16px 18px;
-  border-radius: 12px;
-  border: 1px solid var(--ds-color-border-strong);
-  background: var(--ds-color-surface-sunken);
+  padding: 8px 18px 16px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
   color: var(--ds-color-text-primary);
   font: inherit;
   font-size: 20px;
@@ -489,9 +491,9 @@
   outline: none;
 }
 
-.freeTa:focus {
-  outline: 2px solid var(--ds-color-primary-solid);
-  outline-offset: 1px;
+/* Lines the syntax hint up with the first character of the text below it. */
+.freeHint {
+  padding: 0 18px;
 }
 
 /* ── Drum controls — the kit's whole editor, down the Drums panel ──────── */
