@@ -13,6 +13,7 @@ import {
   MACDConfig,
   ParameterVariationConfig,
   RiskSettings,
+  SizingSettings,
   INITIAL_CAPITAL,
 } from "@/app/lib/backtest-engine";
 import {
@@ -39,6 +40,7 @@ export interface StrategyRun {
   positionSizePercent: number;
   commissionBps: number;
   slippageBps: number;
+  sizing: SizingSettings;
 }
 
 export interface BacktestJob {
@@ -221,6 +223,7 @@ function cacheKeyFor(
     commissionBps: run.commissionBps,
     slippageBps: run.slippageBps,
     enableShorts: run.enableShorts,
+    sizing: run.sizing,
     initialCapital: INITIAL_CAPITAL,
   });
 }
@@ -497,6 +500,7 @@ function riskSettingsOf(run: StrategyRun): RiskSettings {
     positionSizePercent: run.positionSizePercent,
     commissionBps: run.commissionBps,
     slippageBps: run.slippageBps,
+    sizing: run.sizing,
   };
 }
 

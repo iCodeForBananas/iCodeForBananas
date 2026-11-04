@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ParameterizedResult } from "@/app/strategies";
+import { DEFAULT_SIZING } from "@/app/lib/backtest-engine";
 import { packFull, resultCacheKey, toSummary, unpackFull, type ResultCacheKeyInput } from "./resultCache";
 
 const base: ResultCacheKeyInput = {
@@ -14,6 +15,7 @@ const base: ResultCacheKeyInput = {
   commissionBps: 0,
   slippageBps: 0,
   enableShorts: false,
+  sizing: DEFAULT_SIZING,
   initialCapital: 100_000,
 };
 
@@ -21,6 +23,8 @@ describe("resultCacheKey", () => {
   it("is the same for the same run, whatever order the params arrive in", () => {
     const reordered = { ...base, params: { exitPeriod: 10, entryPeriod: 20 } };
     expect(resultCacheKey(reordered)).toBe(resultCacheKey(base));
+    const sizingReordered = Object.fromEntries(Object.entries(DEFAULT_SIZING).reverse()) as typeof DEFAULT_SIZING;
+    expect(resultCacheKey({ ...base, sizing: sizingReordered })).toBe(resultCacheKey(base));
   });
 
   // Every input that can change a result has to change the key, or a run
@@ -39,6 +43,14 @@ describe("resultCacheKey", () => {
     ["commission", { commissionBps: 1 }],
     ["slippage", { slippageBps: 1 }],
     ["shorts", { enableShorts: true }],
+    ["sizing mode", { sizing: { ...DEFAULT_SIZING, mode: "fixed" } }],
+    ["risk per trade", { sizing: { ...DEFAULT_SIZING, riskPercent: 0.5 } }],
+    ["max position", { sizing: { ...DEFAULT_SIZING, maxPositionPercent: 50 } }],
+    ["ATR stop", { sizing: { ...DEFAULT_SIZING, atrStopMultiple: 3 } }],
+    ["planned gap", { sizing: { ...DEFAULT_SIZING, gapShockPercent: 30 } }],
+    ["gap budget", { sizing: { ...DEFAULT_SIZING, maxGapLossPercent: 5 } }],
+    ["drawdown limit", { sizing: { ...DEFAULT_SIZING, maxDrawdownPercent: 15 } }],
+    ["drawdown pause", { sizing: { ...DEFAULT_SIZING, drawdownPauseBars: 0 } }],
     ["starting capital", { initialCapital: 10_000 }],
   ];
   for (const [what, change] of changes) {

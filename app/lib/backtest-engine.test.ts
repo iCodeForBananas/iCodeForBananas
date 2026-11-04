@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { generateCombinations, MAX_BATCH_RUNS, runBacktestWithParams } from "./backtest-engine";
+import { generateCombinations, LEGACY_SIZING, MAX_BATCH_RUNS, positionCapPercent, runBacktestWithParams, type SizingSettings } from "./backtest-engine";
 import type { IndicatorData } from "@/app/types";
 import type { StrategyDefinition } from "@/app/strategies";
 
@@ -169,5 +169,72 @@ describe("parameter sweep", () => {
     ]);
     expect(values(combos, "fixed")).toEqual([7]);
     expect(combos).toHaveLength(MAX_BATCH_RUNS);
+  });
+});
+
+describe("risk-based sizing and account protection", () => {
+  const flat = (n: number, price = 100): Bar[] => Array(n).fill([price, price, price, price]);
+  const sized = (
+    data: IndicatorData[],
+    signals: Record<number, "buy" | "sell">,
+    sizing: Partial<SizingSettings>,
+    risk: { stopLossPercent?: number; positionSizePercent?: number } = {},
+  ) =>
+    runBacktestWithParams(data, scripted(signals), {}, 10_000, {
+      stopLossPercent: risk.stopLossPercent ?? 0,
+      takeProfitPercent: 0,
+      positionSizePercent: risk.positionSizePercent ?? 100,
+      sizing: { ...LEGACY_SIZING, ...sizing },
+    });
+
+  it("sizes so a stop fill loses exactly the risk %, whatever the stop distance", () => {
+    // 1% of 10,000 at risk over a 5% stop: a $2,000 position, 20 shares.
+    const r = sized(bars([...flat(2), [99, 99, 94, 95]]), { 1: "buy" }, { mode: "risk", riskPercent: 1 }, { stopLossPercent: 5 });
+    expect(r.trades).toHaveLength(1);
+    expect(r.trades[0].reason).toContain("Stop loss hit");
+    expect(r.trades[0].pnl).toBeCloseTo(-100);
+  });
+
+  it("puts an ATR stop the given multiple of the entry bar's ATR away", () => {
+    // ATR 2 × 2 = a stop 4 below 100: $100 at risk / $4 = 25 shares.
+    const data = bars([...flat(2), [99, 99, 95, 96]]).map((d) => ({ ...d, atr: 2 }));
+    const r = sized(data, { 1: "buy" }, { mode: "risk", riskPercent: 1, atrStopMultiple: 2 });
+    expect(r.trades[0].exitPrice).toBeCloseTo(96);
+    expect(r.trades[0].pnl).toBeCloseTo(-100);
+  });
+
+  it("never sizes past the position cap, however tight the stop", () => {
+    // 1% risk over a 0.5% stop would want 200% of the account.
+    const r = sized(bars([...flat(2), [110, 110, 110, 110]]), { 1: "buy", 2: "sell" }, { mode: "risk", riskPercent: 1 }, { stopLossPercent: 0.5 });
+    expect(r.trades[0].pnl).toBeCloseTo(1000); // 100 shares × $10: all in, no more
+  });
+
+  it("takes no trade in risk mode when there's no stop to size from", () => {
+    const r = sized(bars(flat(4)), { 1: "buy" }, { mode: "risk" });
+    expect(r.trades).toHaveLength(0);
+  });
+
+  it("caps size so the planned gap costs no more than the gap budget", () => {
+    // A 10% budget for a 20% gap holds at most half the account, even at a
+    // fixed 100% size, so the 20% gap costs 10%, not 20%.
+    expect(positionCapPercent({ ...LEGACY_SIZING, maxGapLossPercent: 10, gapShockPercent: 20 })).toBe(50);
+    const r = sized(bars([...flat(2), [80, 80, 80, 80]]), { 1: "buy", 2: "sell" }, { maxGapLossPercent: 10, gapShockPercent: 20 });
+    expect(r.trades[0].pnl).toBeCloseTo(-1000);
+  });
+
+  it("goes flat at the drawdown limit, sits out the pause, then trades again", () => {
+    const data = bars([...flat(2), [95, 95, 95, 95], [89, 89, 89, 89], ...flat(5, 89)]);
+    const r = sized(data, { 1: "buy", 4: "buy", 5: "buy", 6: "buy" }, { maxDrawdownPercent: 10, drawdownPauseBars: 2 });
+    expect(r.trades[0].reason).toContain("Max drawdown 10% reached");
+    expect(r.trades[0].exitTime).toBe(3 * DAY);
+    // Tripped on bar 3: bars 4 and 5 are sat out, bar 6 trades.
+    expect(r.trades[1].entryTime).toBe(6 * DAY);
+  });
+
+  it("stays out for good when the pause is 0", () => {
+    const data = bars([...flat(2), [89, 89, 89, 89], ...flat(5, 89)]);
+    const r = sized(data, { 1: "buy", 4: "buy", 6: "buy" }, { maxDrawdownPercent: 10, drawdownPauseBars: 0 });
+    expect(r.trades).toHaveLength(1);
+    expect(r.trades[0].reason).toContain("no new trades for the rest of the run");
   });
 });

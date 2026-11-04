@@ -1,5 +1,6 @@
 import { openDB, type DBSchema, type IDBPDatabase } from "idb";
 import type { ParameterizedResult } from "@/app/strategies";
+import type { SizingSettings } from "@/app/lib/backtest-engine";
 
 /**
  * IndexedDB cache of backtest results, so re-running a variation that has
@@ -66,6 +67,7 @@ export interface ResultCacheKeyInput {
   commissionBps: number;
   slippageBps: number;
   enableShorts: boolean;
+  sizing: SizingSettings;
   initialCapital: number;
 }
 
@@ -75,11 +77,10 @@ export interface ResultCacheKeyInput {
  * all produces a different one.
  */
 export function resultCacheKey(k: ResultCacheKeyInput): string {
-  const params = Object.keys(k.params)
-    .sort()
-    .map((name) => [name, k.params[name]]);
+  const sorted = <T,>(o: Record<string, T>) => Object.keys(o).sort().map((name) => [name, o[name]]);
+  const params = sorted(k.params);
   return JSON.stringify([
-    "v1",
+    "v2",
     k.codeVersion,
     k.dataset,
     k.dataHash,
@@ -91,6 +92,7 @@ export function resultCacheKey(k: ResultCacheKeyInput): string {
     k.commissionBps,
     k.slippageBps,
     k.enableShorts,
+    sorted(k.sizing as unknown as Record<string, unknown>),
     k.initialCapital,
   ]);
 }

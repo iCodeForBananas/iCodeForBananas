@@ -13,13 +13,90 @@ export interface MACDConfig {
 export interface RiskSettings {
   stopLossPercent: number;
   takeProfitPercent: number;
-  // Allocation per trade as % of equity at entry. Default 100 in callers.
+  // Allocation per trade as % of equity at entry, in "fixed" sizing mode.
   // Position size (shares) is locked at entry — we don't re-grow during the
   // trade. Prevents the runaway compounding that was producing absurd PnLs.
   positionSizePercent?: number;
   // Round-trip costs in basis points (1 bp = 0.01%).
   commissionBps?: number; // applied to each fill (entry AND exit)
   slippageBps?: number;   // moves fill price against you (entry AND exit)
+  /** How positions are sized and the account is protected; LEGACY_SIZING if absent. */
+  sizing?: SizingSettings;
+}
+
+/**
+ * Position sizing and account protection.
+ *
+ * In "risk" mode a trade's size comes from how much of the account it may
+ * lose at its stop: shares = equity × riskPercent ÷ (entry − stop). A wide
+ * stop means a small position, a tight one a large position, and either way
+ * a stop fill costs riskPercent of the account. In "fixed" mode the size is
+ * positionSizePercent of equity, as it always was, and the stop just exits.
+ *
+ * Neither mode can stop a gap: a bar that opens past the stop fills at the
+ * open. What a gap costs is the position's size times the gap, so the gap
+ * cap limits size directly: assuming a gap of gapShockPercent can happen,
+ * never hold more than would lose maxGapLossPercent of the account to it.
+ */
+export interface SizingSettings {
+  mode: "fixed" | "risk";
+  /** % of equity lost if the stop fills at its level ("risk" mode). */
+  riskPercent: number;
+  /** Largest position as % of equity ("risk" mode); 100 = no leverage. */
+  maxPositionPercent: number;
+  /** Stop this many ATR(14) from the entry fill; 0 = use stopLossPercent. */
+  atrStopMultiple: number;
+  /** The overnight gap the gap cap plans for, as % of price. */
+  gapShockPercent: number;
+  /** The most of the account a gapShockPercent gap may cost; 0 = no gap cap. */
+  maxGapLossPercent: number;
+  /**
+   * Once equity (marked to market) falls this % below its peak, close any
+   * open position and open nothing new for drawdownPauseBars bars; 0 = off.
+   */
+  maxDrawdownPercent: number;
+  /** Bars to stay out after the drawdown limit trips; 0 = for the rest of the run. */
+  drawdownPauseBars: number;
+}
+
+/** What the page starts every strategy with. */
+export const DEFAULT_SIZING: SizingSettings = {
+  mode: "risk",
+  riskPercent: 1,
+  maxPositionPercent: 100,
+  atrStopMultiple: 2,
+  gapShockPercent: 20,
+  maxGapLossPercent: 10,
+  maxDrawdownPercent: 25,
+  drawdownPauseBars: 20,
+};
+
+/**
+ * The engine's behavior before sizing settings existed: fixed allocation,
+ * a percent stop, no gap cap and no drawdown limit. Used when a caller passes
+ * no sizing, so older callers and saved runs reproduce exactly.
+ */
+export const LEGACY_SIZING: SizingSettings = {
+  mode: "fixed",
+  riskPercent: 1,
+  maxPositionPercent: 100,
+  atrStopMultiple: 0,
+  gapShockPercent: 20,
+  maxGapLossPercent: 0,
+  maxDrawdownPercent: 0,
+  drawdownPauseBars: 0,
+};
+
+/**
+ * The largest position, as % of equity, the gap cap and (in risk mode) the
+ * position cap allow. Never above 100: the engine doesn't borrow.
+ */
+export function positionCapPercent(sizing: SizingSettings): number {
+  let cap = sizing.mode === "risk" ? Math.max(0, Math.min(100, sizing.maxPositionPercent)) : 100;
+  if (sizing.maxGapLossPercent > 0 && sizing.gapShockPercent > 0) {
+    cap = Math.min(cap, (100 * sizing.maxGapLossPercent) / sizing.gapShockPercent);
+  }
+  return cap;
 }
 
 export interface ParameterVariationConfig {
@@ -370,16 +447,41 @@ export function runBacktestWithParams(
   const stopLossPct = Math.max(0, riskSettings?.stopLossPercent ?? 0);
   const takeProfitPct = Math.max(0, riskSettings?.takeProfitPercent ?? 0);
 
+  const sizing = riskSettings?.sizing ?? LEGACY_SIZING;
+  const capPct = positionCapPercent(sizing);
+  const riskPct = Math.max(0, sizing.riskPercent);
+
+  // Drawdown limit: the mark-to-market peak, and the first bar entries are
+  // allowed again after the limit trips (Infinity = never).
+  let peakEquity = initialCapital;
+  let entriesAllowedFrom = 0;
+
   // Open a position at a raw (pre-slippage) price. Stop and target are set
-  // off the actual fill, the way a live bracket order would be.
-  const openPosition = (side: PositionSide, rawPrice: number, time: number, idx: number) => {
+  // off the actual fill, the way a live bracket order would be. `atr` is the
+  // entry bar's ATR, for an ATR stop.
+  const openPosition = (side: PositionSide, rawPrice: number, time: number, idx: number, atr: number | undefined) => {
+    if (idx < entriesAllowedFrom) return;
     const fillPrice = side === PositionSide.LONG ? slipBuy(rawPrice) : slipSell(rawPrice);
     if (fillPrice <= 0) return;
-    const allocation = equity * (positionSizePct / 100);
-    const shares = allocation / fillPrice;
-    if (shares <= 0) return;
     const dir = side === PositionSide.LONG ? 1 : -1;
-    const stopLoss = stopLossPct > 0 ? fillPrice * (1 - dir * stopLossPct / 100) : undefined;
+    // The stop's distance from the fill: ATR-based when asked for and the ATR
+    // has warmed up, else the percent stop, else none.
+    const stopDistance =
+      sizing.atrStopMultiple > 0 && atr !== undefined && atr > 0
+        ? sizing.atrStopMultiple * atr
+        : stopLossPct > 0
+          ? fillPrice * (stopLossPct / 100)
+          : undefined;
+    // Risk sizing can't size a trade with no stop, so it doesn't take one.
+    if (sizing.mode === "risk" && stopDistance === undefined) return;
+    const wanted =
+      sizing.mode === "risk"
+        ? (equity * (riskPct / 100) * fillPrice) / stopDistance!
+        : equity * (positionSizePct / 100);
+    const allocation = Math.min(wanted, equity * (capPct / 100));
+    const shares = allocation / fillPrice;
+    if (!(shares > 0)) return;
+    const stopLoss = stopDistance !== undefined ? fillPrice - dir * stopDistance : undefined;
     const takeProfit = takeProfitPct > 0 ? fillPrice * (1 + dir * takeProfitPct / 100) : undefined;
     // Entry commission is taken out of equity immediately so it shows up in
     // the equity curve at the right time, and charged to the trade's PnL at close.
@@ -518,22 +620,40 @@ export function runBacktestWithParams(
     });
 
     if (signal.action === "buy" && !position && !exitedViaRiskThisBar) {
-      openPosition(PositionSide.LONG, current.close, current.time, i);
+      openPosition(PositionSide.LONG, current.close, current.time, i, current.atr);
     } else if (signal.action === "buy" && (position as OpenPosition | null)?.side === PositionSide.SHORT) {
       closeAtPrice(current.close, current.time, signal.reason);
     } else if (signal.action === "sell" && (position as OpenPosition | null)?.side === PositionSide.LONG) {
       closeAtPrice(current.close, current.time, signal.reason);
     } else if (signal.action === "sell" && !position && enableShorts && !exitedViaRiskThisBar) {
-      openPosition(PositionSide.SHORT, current.close, current.time, i);
+      openPosition(PositionSide.SHORT, current.close, current.time, i, current.atr);
     }
 
     // Mark to market at the close so drawdown and Sharpe see open-trade
     // losses, not just realized ones.
-    const open = position as OpenPosition | null;
-    const unrealized = open
-      ? (open.side === PositionSide.LONG ? current.close - open.entryPrice : open.entryPrice - current.close) * open.shares
-      : 0;
-    equityCurve.push({ time: current.time, equity: equity + unrealized });
+    const markToMarket = () => {
+      const open = position as OpenPosition | null;
+      const unrealized = open
+        ? (open.side === PositionSide.LONG ? current.close - open.entryPrice : open.entryPrice - current.close) * open.shares
+        : 0;
+      return equity + unrealized;
+    };
+
+    // Account-level drawdown limit, checked at the close: past it, go flat
+    // at this close and sit out. The peak restarts from where the account is
+    // then, so the next trip is measured from the new low, not the old high.
+    if (sizing.maxDrawdownPercent > 0) {
+      const marked = markToMarket();
+      if (marked > peakEquity) peakEquity = marked;
+      if (i >= entriesAllowedFrom && marked <= peakEquity * (1 - sizing.maxDrawdownPercent / 100)) {
+        const pause = sizing.drawdownPauseBars > 0 ? `sitting out ${sizing.drawdownPauseBars} bars` : "no new trades for the rest of the run";
+        closeAtPrice(current.close, current.time, `Max drawdown ${sizing.maxDrawdownPercent}% reached; ${pause}`);
+        entriesAllowedFrom = sizing.drawdownPauseBars > 0 ? i + 1 + sizing.drawdownPauseBars : Infinity;
+        peakEquity = equity;
+      }
+    }
+
+    equityCurve.push({ time: current.time, equity: markToMarket() });
   }
 
   // Close any open position at end of data
