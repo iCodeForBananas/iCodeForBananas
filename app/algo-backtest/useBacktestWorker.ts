@@ -11,6 +11,8 @@ export interface BacktestJobResult {
   results: ParameterizedResult[];
   indicatorDataByDataset: Record<string, IndicatorData[]>;
   failedDatasets: string[];
+  /** How many variations came from the result cache instead of running. */
+  cache: { hits: number; total: number; enabled: boolean };
 }
 
 export interface BacktestDetail {
@@ -96,6 +98,7 @@ export function useBacktestWorker() {
           results: msg.results,
           indicatorDataByDataset: msg.indicatorDataByDataset,
           failedDatasets: msg.failedDatasets,
+          cache: msg.cache,
         });
         return;
       }

@@ -22,7 +22,7 @@ import {
   Text,
   TextField,
 } from "@radix-ui/themes";
-import { Check, ChevronDown, ClipboardCopy, Play, X, Zap } from "lucide-react";
+import { Check, ChevronDown, ClipboardCopy, Play, Trash2, X, Zap } from "lucide-react";
 import { cn } from "@/app/lib/utils";
 import { IndicatorData, PositionSide } from "@/app/types";
 import {
@@ -35,7 +35,8 @@ import {
   ParameterVariationConfig,
   INITIAL_CAPITAL,
 } from "@/app/lib/backtest-engine";
-import { useBacktestWorker, type StrategyRun } from "./useBacktestWorker";
+import { useBacktestWorker, type BacktestJobResult, type StrategyRun } from "./useBacktestWorker";
+import { clearResultCache, countCachedResults } from "./resultCache";
 import BacktestProgressPanel from "./BacktestProgressPanel";
 import ResultsBrowser from "./ResultsBrowser";
 
@@ -154,6 +155,19 @@ export default function AlgoBacktestPage() {
   const [indicatorData, setIndicatorData] = useState<IndicatorData[]>([]);
   const [isRunningBatch, setIsRunningBatch] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Results cached in IndexedDB (see resultCache.ts); null while unknown or
+  // if storage isn't available.
+  const [cachedCount, setCachedCount] = useState<number | null>(null);
+  const [lastRunCache, setLastRunCache] = useState<BacktestJobResult["cache"] | null>(null);
+  const refreshCachedCount = useCallback(() => {
+    countCachedResults().then(setCachedCount, () => setCachedCount(null));
+  }, []);
+  useEffect(refreshCachedCount, [refreshCachedCount]);
+  const clearCache = useCallback(async () => {
+    await clearResultCache().catch(() => {});
+    setLastRunCache(null);
+    refreshCachedCount();
+  }, [refreshCachedCount]);
   const [availableDatasets, setAvailableDatasets] = useState<DatasetInfo[]>([]);
   const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
   const [datasetSearch, setDatasetSearch] = useState<string>("");
@@ -447,8 +461,10 @@ export default function AlgoBacktestPage() {
     lastRunsRef.current = perStrategyRuns;
 
     try {
-      const { results: workerResults, indicatorDataByDataset, failedDatasets } =
+      const { results: workerResults, indicatorDataByDataset, failedDatasets, cache } =
         await runBacktestWorker(selectedFiles, perStrategyRuns);
+      setLastRunCache(cache);
+      refreshCachedCount();
 
       datasetIndicatorCache.current = indicatorDataByDataset;
       setResults(workerResults);
@@ -469,7 +485,7 @@ export default function AlgoBacktestPage() {
     } finally {
       setIsRunningBatch(false);
     }
-  }, [selectedFiles, selectedStrategyIds, selectedStrategyId, paramVariations, currentParams, stopLossPercent, takeProfitPercent, enableShorts, positionSizePercent, commissionBps, slippageBps, buildSavedRun, runBacktestWorker]);
+  }, [selectedFiles, selectedStrategyIds, selectedStrategyId, paramVariations, currentParams, stopLossPercent, takeProfitPercent, enableShorts, positionSizePercent, commissionBps, slippageBps, buildSavedRun, runBacktestWorker, refreshCachedCount]);
 
   // Generate markdown report for clipboard
   const generateMarkdownReport = useCallback(() => {
@@ -1241,7 +1257,31 @@ export default function AlgoBacktestPage() {
             </Bento>
           </Grid>
 
-          <Flex justify='end'>
+          <Flex justify='end' align='center' gap='3' wrap='wrap'>
+            {/* Variations that have run before, against the same data with
+                the same code and settings, come back from IndexedDB instead
+                of running again. */}
+            {cachedCount !== null && (
+              <Flex align='center' gap='2' className='mr-auto'>
+                <Text size='1' color='gray'>
+                  {cachedCount.toLocaleString()} cached {cachedCount === 1 ? 'result' : 'results'}
+                  {lastRunCache && lastRunCache.enabled && (
+                    <> · last run {lastRunCache.hits.toLocaleString()} of {lastRunCache.total.toLocaleString()} from cache</>
+                  )}
+                  {lastRunCache && !lastRunCache.enabled && <> · caching unavailable</>}
+                </Text>
+                <Button
+                  size='1'
+                  variant='ghost'
+                  color='gray'
+                  onClick={() => void clearCache()}
+                  disabled={isRunningBatch || cachedCount === 0}
+                >
+                  <Trash2 className='size-3.5' />
+                  Clear cache
+                </Button>
+              </Flex>
+            )}
             <Button
               size='3'
               onClick={runBatchBacktest}
