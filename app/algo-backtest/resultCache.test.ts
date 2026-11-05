@@ -51,6 +51,8 @@ describe("resultCacheKey", () => {
     ["gap budget", { sizing: { ...DEFAULT_SIZING, maxGapLossPercent: 5 } }],
     ["drawdown limit", { sizing: { ...DEFAULT_SIZING, maxDrawdownPercent: 15 } }],
     ["drawdown pause", { sizing: { ...DEFAULT_SIZING, drawdownPauseBars: 0 } }],
+    ["stop loss switch", { sizing: { ...DEFAULT_SIZING, useStopLoss: false } }],
+    ["take profit switch", { sizing: { ...DEFAULT_SIZING, useTakeProfit: true } }],
     ["starting capital", { initialCapital: 10_000 }],
   ];
   for (const [what, change] of changes) {

@@ -214,6 +214,29 @@ describe("risk-based sizing and account protection", () => {
     expect(r.trades).toHaveLength(0);
   });
 
+  it("with the stop off, risk mode goes all in and exits only on the strategy's signal", () => {
+    // A 1% stop and a 2 × ATR stop are both set, and both are ignored: the
+    // 10% drop on bar 2 doesn't stop it out, the sell on bar 3 closes it.
+    const data = bars([...flat(2), [90, 90, 90, 90], [95, 95, 95, 95]]).map((d) => ({ ...d, atr: 1 }));
+    const r = sized(data, { 1: "buy", 3: "sell" }, { mode: "risk", riskPercent: 1, atrStopMultiple: 2, useStopLoss: false, maxGapLossPercent: 10 }, { stopLossPercent: 1 });
+    expect(r.trades).toHaveLength(1);
+    expect(r.trades[0].exitTime).toBe(3 * DAY);
+    expect(r.trades[0].pnl).toBeCloseTo(-500); // 100 shares: 100% of 10,000, no gap cap
+  });
+
+  it("with the stop off, fixed mode keeps its own size", () => {
+    const r = sized(bars([...flat(2), [90, 90, 90, 90]]), { 1: "buy", 2: "sell" }, { useStopLoss: false }, { stopLossPercent: 1, positionSizePercent: 40 });
+    expect(r.trades[0].pnl).toBeCloseTo(-400);
+  });
+
+  it("ignores the take profit percent when take profit is off", () => {
+    const data = bars([...flat(2), [120, 120, 120, 120], [100, 100, 100, 100]]);
+    const on = runBacktestWithParams(data, scripted({ 1: "buy", 3: "sell" }), {}, 10_000, { stopLossPercent: 0, takeProfitPercent: 5, sizing: LEGACY_SIZING });
+    const off = runBacktestWithParams(data, scripted({ 1: "buy", 3: "sell" }), {}, 10_000, { stopLossPercent: 0, takeProfitPercent: 5, sizing: { ...LEGACY_SIZING, useTakeProfit: false } });
+    expect(on.trades[0].reason).toContain("Take profit");
+    expect(off.trades[0].exitTime).toBe(3 * DAY);
+  });
+
   it("caps size so the planned gap costs no more than the gap budget", () => {
     // A 10% budget for a 20% gap holds at most half the account, even at a
     // fixed 100% size, so the 20% gap costs 10%, not 20%.

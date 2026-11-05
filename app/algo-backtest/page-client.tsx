@@ -18,6 +18,7 @@ import {
   IconButton,
   ScrollArea,
   SegmentedControl,
+  Strong,
   Switch,
   Table,
   Text,
@@ -38,6 +39,7 @@ import {
   INITIAL_CAPITAL,
   positionCapPercent,
   SizingSettings,
+  stopOffPositionPercent,
 } from "@/app/lib/backtest-engine";
 import { useBacktestWorker, type BacktestJobResult, type StrategyRun } from "./useBacktestWorker";
 import { clearResultCache, countCachedResults } from "./resultCache";
@@ -76,11 +78,21 @@ interface StrategySettings {
 
 /** Saved sizing over the defaults, so a field added later still gets a value. */
 function sizingFrom(saved: Partial<StrategySettings> | null): SizingSettings {
-  return { ...DEFAULT_SIZING, ...(saved?.sizing ?? {}) };
+  // Settings saved before the take profit switch (2026-11-05) had it on
+  // whenever the percent was above 0.
+  const useTakeProfit = saved?.sizing?.useTakeProfit ?? (saved?.takeProfitPercent ?? 0) > 0;
+  return { ...DEFAULT_SIZING, useTakeProfit, ...(saved?.sizing ?? {}) };
 }
 
 /** One line per sizing setting, for the report. */
 function describeSizing(sizing: SizingSettings, positionSizePercent: number, stopLossPercent: number): string[] {
+  if (!sizing.useStopLoss) {
+    return [
+      `- **Sizing:** ${stopOffPositionPercent(sizing, positionSizePercent)}% of equity per trade (no stop)`,
+      "- **Stop Loss:** Off; the strategy's own signals are the only exits",
+      `- **Drawdown Limit:** ${sizing.maxDrawdownPercent > 0 ? `${sizing.maxDrawdownPercent}% below peak, then ${sizing.drawdownPauseBars > 0 ? `sit out ${sizing.drawdownPauseBars} bars` : 'stop trading'}` : 'Off'}`,
+    ];
+  }
   const cap = positionCapPercent(sizing);
   const stop =
     sizing.atrStopMultiple > 0
@@ -548,9 +560,9 @@ export default function AlgoBacktestPage() {
     const isActiveEditorStrategy = resultStrategyId === selectedStrategyId;
     const savedForResult = isActiveEditorStrategy ? null : loadStrategySettings(resultStrategyId);
     const reportSL = isActiveEditorStrategy ? stopLossPercent : (savedForResult?.stopLossPercent ?? 1);
-    const reportTP = isActiveEditorStrategy ? takeProfitPercent : (savedForResult?.takeProfitPercent ?? 0);
     const reportShorts = isActiveEditorStrategy ? enableShorts : (savedForResult?.enableShorts ?? false);
     const reportSizing = isActiveEditorStrategy ? sizing : sizingFrom(savedForResult);
+    const reportTP = !reportSizing.useTakeProfit ? 0 : isActiveEditorStrategy ? takeProfitPercent : (savedForResult?.takeProfitPercent ?? 0);
     const reportPosSize = isActiveEditorStrategy ? positionSizePercent : (savedForResult?.positionSizePercent ?? 100);
 
     const datasetLabels = selectedFiles.map(f => {
@@ -670,14 +682,15 @@ export default function AlgoBacktestPage() {
 
     const isActiveEditorStrategy = resultStrategyId === selectedStrategyId;
     const savedForResult = isActiveEditorStrategy ? null : loadStrategySettings(resultStrategyId);
-    const sl = isActiveEditorStrategy ? stopLossPercent : (savedForResult?.stopLossPercent ?? 1);
-    const tp = isActiveEditorStrategy ? takeProfitPercent : (savedForResult?.takeProfitPercent ?? 0);
+    const sz = isActiveEditorStrategy ? sizing : sizingFrom(savedForResult);
+    // A switched-off stop or target is no stop or target, whatever its percent.
+    const sl = !sz.useStopLoss ? 0 : isActiveEditorStrategy ? stopLossPercent : (savedForResult?.stopLossPercent ?? 1);
+    const tp = !sz.useTakeProfit ? 0 : isActiveEditorStrategy ? takeProfitPercent : (savedForResult?.takeProfitPercent ?? 0);
     const shorts = isActiveEditorStrategy ? enableShorts : (savedForResult?.enableShorts ?? false);
     const posSize = isActiveEditorStrategy ? positionSizePercent : (savedForResult?.positionSizePercent ?? 100);
     const commission = isActiveEditorStrategy ? commissionBps : (savedForResult?.commissionBps ?? 0);
     const slippage = isActiveEditorStrategy ? slippageBps : (savedForResult?.slippageBps ?? 0);
-    const sz = isActiveEditorStrategy ? sizing : sizingFrom(savedForResult);
-    const atrStop = sz.atrStopMultiple > 0;
+    const atrStop = sz.useStopLoss && sz.atrStopMultiple > 0;
     const hasStop = atrStop || sl > 0;
     const cap = positionCapPercent(sz);
     const stopDistanceText = atrStop
@@ -811,14 +824,15 @@ export default function AlgoBacktestPage() {
     }
     steps.forEach((s, i) => lines.push(`${i + 1}. ${s}`));
 
+    const fixedPct = sz.useStopLoss ? Math.min(posSize, cap) : stopOffPositionPercent(sz, posSize);
     lines.push(
       '',
       '## Risk management',
       '',
-      sz.mode === 'risk'
+      sz.mode === 'risk' && sz.useStopLoss
         ? `- **Position size:** sized from risk, where equity is the Tradier paper account's \`total_equity\` from \`GET /v1/accounts/{id}/balances\`. Shares = floor(min(equity × ${sz.riskPercent / 100} ÷ stop distance, equity × ${cap / 100} ÷ last close)), with the stop distance ${stopDistanceText}, using the last close for the fill. So a stop fill loses about ${sz.riskPercent}% of equity, and no position is ever more than ${cap}% of equity. With no stop distance, don't trade. If shares come to 0, skip the trade and log it. The share count stays fixed until exit; never add to or trim an open position.`
-        : `- **Position size:** ${Math.min(posSize, cap)}% of account equity per new position, where equity is the Tradier paper account's \`total_equity\` from \`GET /v1/accounts/{id}/balances\`. Shares = floor(equity × ${Math.min(posSize, cap) / 100} ÷ last close). If that comes to 0, skip the trade and log it. The share count stays fixed until exit; never add to or trim an open position.`,
-      `- **Gap cap:** ${sz.maxGapLossPercent > 0 ? `a stop can't protect against a bar that opens past it, so size is capped instead: assuming a ${sz.gapShockPercent}% gap, it may cost at most ${sz.maxGapLossPercent}% of equity, which caps a position at ${cap}% of equity. Already in the size formula above.` : 'none.'}`,
+        : `- **Position size:** ${fixedPct}% of account equity per new position${sz.useStopLoss ? '' : ' (no stop, so nothing to size from)'}, where equity is the Tradier paper account's \`total_equity\` from \`GET /v1/accounts/{id}/balances\`. Shares = floor(equity × ${fixedPct / 100} ÷ last close). If that comes to 0, skip the trade and log it. The share count stays fixed until exit; never add to or trim an open position.`,
+      `- **Gap cap:** ${sz.useStopLoss && sz.maxGapLossPercent > 0 ? `a stop can't protect against a bar that opens past it, so size is capped instead: assuming a ${sz.gapShockPercent}% gap, it may cost at most ${sz.maxGapLossPercent}% of equity, which caps a position at ${cap}% of equity. Already in the size formula above.` : 'none.'}`,
       `- **Drawdown limit:** ${sz.maxDrawdownPercent > 0 ? `${sz.maxDrawdownPercent}% below the equity peak (see Execution rules).` : 'none.'}`,
       '- **One position at a time** in this symbol. Ignore entry signals while a position is open, and ignore them while an entry or exit order is still pending.',
       `- **Stop loss:** ${hasStop ? `${atrStop ? `${sz.atrStopMultiple} × ATR(14)` : `${sl}%`}, as a resting order (see Execution rules).` : 'none. The backtest ran without one.'}`,
@@ -1239,9 +1253,81 @@ export default function AlgoBacktestPage() {
 
             <Bento title='Risk'>
               <Flex direction='column' gap='3'>
+                {/* Off means off: no percent stop and no ATR stop, so the
+                    strategy's own signals are the only exits. See
+                    SizingSettings.useStopLoss in backtest-engine. */}
+                <Text as='label' size='2'>
+                  <Flex gap='2' align='center'>
+                    <Switch
+                      size='1'
+                      checked={sizing.useStopLoss}
+                      onCheckedChange={(on) => updateSizing({ useStopLoss: on })}
+                    />
+                    Stop loss
+                  </Flex>
+                </Text>
+                {sizing.useStopLoss ? (
+                  <Flex wrap='wrap' gap='3'>
+                    <NumberField
+                      label='ATR stop ×'
+                      value={sizing.atrStopMultiple}
+                      min={0}
+                      step={0.5}
+                      placeholder='0 = use %'
+                      onChange={(raw) => {
+                        const v = parseFloat(raw);
+                        updateSizing({ atrStopMultiple: isNaN(v) ? 0 : Math.max(0, v) });
+                      }}
+                    />
+                    <NumberField
+                      label={sizing.atrStopMultiple > 0 ? 'Stop loss % (ATR warm-up)' : 'Stop loss %'}
+                      value={stopLossPercent}
+                      min={0}
+                      step={0.5}
+                      placeholder='0 = none'
+                      onChange={(raw) => {
+                        const v = parseFloat(raw);
+                        setStopLossPercent(isNaN(v) ? 0 : Math.max(0, v));
+                      }}
+                    />
+                  </Flex>
+                ) : (
+                  <Text size='1' color='gray'>
+                    Off. The strategy&apos;s own signals are the only entries and exits
+                    {sizing.maxDrawdownPercent > 0 ? ', apart from the account drawdown limit below' : ''}.
+                  </Text>
+                )}
+                <Text as='label' size='2'>
+                  <Flex gap='2' align='center'>
+                    <Switch
+                      size='1'
+                      checked={sizing.useTakeProfit}
+                      onCheckedChange={(on) => {
+                        updateSizing({ useTakeProfit: on });
+                        if (on && takeProfitPercent <= 0) setTakeProfitPercent(5);
+                      }}
+                    />
+                    Take profit
+                  </Flex>
+                </Text>
+                {sizing.useTakeProfit && (
+                  <Flex wrap='wrap' gap='3'>
+                    <NumberField
+                      label='Take profit %'
+                      value={takeProfitPercent}
+                      min={0}
+                      step={0.5}
+                      onChange={(raw) => {
+                        const v = parseFloat(raw);
+                        setTakeProfitPercent(isNaN(v) ? 0 : Math.max(0, v));
+                      }}
+                    />
+                  </Flex>
+                )}
                 {/* Risk sizing derives each trade's size from the stop: a
                     stop fill costs the risk %. Fixed is the old "x% of
-                    equity" sizing. See SizingSettings in backtest-engine. */}
+                    equity" sizing. With no stop, risk sizing has nothing to
+                    size from and goes all in. */}
                 <SegmentedControl.Root
                   size='1'
                   aria-label='Position sizing'
@@ -1251,104 +1337,79 @@ export default function AlgoBacktestPage() {
                   <SegmentedControl.Item value='risk'>Risk per trade</SegmentedControl.Item>
                   <SegmentedControl.Item value='fixed'>Fixed size</SegmentedControl.Item>
                 </SegmentedControl.Root>
-                <Flex wrap='wrap' gap='3'>
-                  {sizing.mode === 'risk' ? (
-                    <>
+                {sizing.mode === 'risk' && !sizing.useStopLoss ? (
+                  <Text size='2'>
+                    Position size: <Strong>100% of equity (no stop)</Strong>
+                  </Text>
+                ) : (
+                  <Flex wrap='wrap' gap='3'>
+                    {sizing.mode === 'risk' ? (
+                      <>
+                        <NumberField
+                          label='Risk per trade %'
+                          value={sizing.riskPercent}
+                          min={0}
+                          step={0.25}
+                          onChange={(raw) => {
+                            const v = parseFloat(raw);
+                            updateSizing({ riskPercent: isNaN(v) ? 0 : Math.max(0, v) });
+                          }}
+                        />
+                        <NumberField
+                          label='Max position %'
+                          value={sizing.maxPositionPercent}
+                          min={0}
+                          max={100}
+                          step={5}
+                          onChange={(raw) => {
+                            const v = parseFloat(raw);
+                            updateSizing({ maxPositionPercent: isNaN(v) ? 100 : Math.max(0, Math.min(100, v)) });
+                          }}
+                        />
+                      </>
+                    ) : (
                       <NumberField
-                        label='Risk per trade %'
-                        value={sizing.riskPercent}
-                        min={0}
-                        step={0.25}
-                        onChange={(raw) => {
-                          const v = parseFloat(raw);
-                          updateSizing({ riskPercent: isNaN(v) ? 0 : Math.max(0, v) });
-                        }}
-                      />
-                      <NumberField
-                        label='Max position %'
-                        value={sizing.maxPositionPercent}
+                        label='Position size %'
+                        value={positionSizePercent}
                         min={0}
                         max={100}
-                        step={5}
+                        step={1}
                         onChange={(raw) => {
                           const v = parseFloat(raw);
-                          updateSizing({ maxPositionPercent: isNaN(v) ? 100 : Math.max(0, Math.min(100, v)) });
+                          setPositionSizePercent(isNaN(v) ? 100 : Math.max(0, Math.min(100, v)));
                         }}
                       />
-                    </>
-                  ) : (
+                    )}
+                  </Flex>
+                )}
+                {/* A stop can't catch a gap; only size can bound what one
+                    costs. It's part of the stop-based protection, so it's
+                    off with the stop. */}
+                {sizing.useStopLoss && (
+                  <Flex wrap='wrap' gap='3'>
                     <NumberField
-                      label='Position size %'
-                      value={positionSizePercent}
+                      label='Max loss to a gap %'
+                      value={sizing.maxGapLossPercent}
                       min={0}
-                      max={100}
                       step={1}
+                      placeholder='0 = off'
                       onChange={(raw) => {
                         const v = parseFloat(raw);
-                        setPositionSizePercent(isNaN(v) ? 100 : Math.max(0, Math.min(100, v)));
+                        updateSizing({ maxGapLossPercent: isNaN(v) ? 0 : Math.max(0, v) });
                       }}
                     />
-                  )}
-                </Flex>
-                <Flex wrap='wrap' gap='3'>
-                  <NumberField
-                    label='ATR stop ×'
-                    value={sizing.atrStopMultiple}
-                    min={0}
-                    step={0.5}
-                    placeholder='0 = use %'
-                    onChange={(raw) => {
-                      const v = parseFloat(raw);
-                      updateSizing({ atrStopMultiple: isNaN(v) ? 0 : Math.max(0, v) });
-                    }}
-                  />
-                  <NumberField
-                    label={sizing.atrStopMultiple > 0 ? 'Stop loss % (ATR warm-up)' : 'Stop loss %'}
-                    value={stopLossPercent}
-                    min={0}
-                    step={0.5}
-                    placeholder='0 = off'
-                    onChange={(raw) => {
-                      const v = parseFloat(raw);
-                      setStopLossPercent(isNaN(v) ? 0 : Math.max(0, v));
-                    }}
-                  />
-                  <NumberField
-                    label='Take profit %'
-                    value={takeProfitPercent}
-                    min={0}
-                    step={0.5}
-                    placeholder='0 = off'
-                    onChange={(raw) => {
-                      const v = parseFloat(raw);
-                      setTakeProfitPercent(isNaN(v) ? 0 : Math.max(0, v));
-                    }}
-                  />
-                </Flex>
-                {/* A stop can't catch a gap; only size can bound what one costs. */}
-                <Flex wrap='wrap' gap='3'>
-                  <NumberField
-                    label='Max loss to a gap %'
-                    value={sizing.maxGapLossPercent}
-                    min={0}
-                    step={1}
-                    placeholder='0 = off'
-                    onChange={(raw) => {
-                      const v = parseFloat(raw);
-                      updateSizing({ maxGapLossPercent: isNaN(v) ? 0 : Math.max(0, v) });
-                    }}
-                  />
-                  <NumberField
-                    label='Gap to plan for %'
-                    value={sizing.gapShockPercent}
-                    min={1}
-                    step={5}
-                    onChange={(raw) => {
-                      const v = parseFloat(raw);
-                      updateSizing({ gapShockPercent: isNaN(v) ? 20 : Math.max(1, v) });
-                    }}
-                  />
-                </Flex>
+                    <NumberField
+                      label='Gap to plan for %'
+                      value={sizing.gapShockPercent}
+                      min={1}
+                      step={5}
+                      onChange={(raw) => {
+                        const v = parseFloat(raw);
+                        updateSizing({ gapShockPercent: isNaN(v) ? 20 : Math.max(1, v) });
+                      }}
+                    />
+                  </Flex>
+                )}
                 <Flex wrap='wrap' gap='3'>
                   <NumberField
                     label='Max drawdown %'
@@ -1374,12 +1435,16 @@ export default function AlgoBacktestPage() {
                   />
                 </Flex>
                 <Text size='1' color='gray'>
-                  {sizing.mode === 'risk'
-                    ? `A stop fill costs ${sizing.riskPercent}% of the account.`
-                    : `Every trade puts ${Math.min(positionSizePercent, positionCapPercent(sizing))}% of the account in.`}{' '}
-                  {sizing.maxGapLossPercent > 0
-                    ? `Positions stay under ${+positionCapPercent(sizing).toFixed(1)}% of the account, so a ${sizing.gapShockPercent}% gap costs at most ${sizing.maxGapLossPercent}%.`
-                    : `No gap cap: a ${sizing.gapShockPercent}% gap could cost up to ${+(((sizing.mode === 'risk' ? sizing.maxPositionPercent : positionSizePercent) * sizing.gapShockPercent) / 100).toFixed(1)}% of the account.`}
+                  {!sizing.useStopLoss
+                    ? `Every trade puts ${stopOffPositionPercent(sizing, positionSizePercent)}% of the account in and stays in until the strategy exits.`
+                    : sizing.mode === 'risk'
+                      ? `A stop fill costs ${sizing.riskPercent}% of the account.`
+                      : `Every trade puts ${Math.min(positionSizePercent, positionCapPercent(sizing))}% of the account in.`}{' '}
+                  {!sizing.useStopLoss
+                    ? `A ${sizing.gapShockPercent}% gap would cost ${+((stopOffPositionPercent(sizing, positionSizePercent) * sizing.gapShockPercent) / 100).toFixed(1)}% of the account.`
+                    : sizing.maxGapLossPercent > 0
+                      ? `Positions stay under ${+positionCapPercent(sizing).toFixed(1)}% of the account, so a ${sizing.gapShockPercent}% gap costs at most ${sizing.maxGapLossPercent}%.`
+                      : `No gap cap: a ${sizing.gapShockPercent}% gap could cost up to ${+(((sizing.mode === 'risk' ? sizing.maxPositionPercent : positionSizePercent) * sizing.gapShockPercent) / 100).toFixed(1)}% of the account.`}
                 </Text>
               </Flex>
             </Bento>

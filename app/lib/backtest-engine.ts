@@ -37,9 +37,18 @@ export interface RiskSettings {
  * open. What a gap costs is the position's size times the gap, so the gap
  * cap limits size directly: assuming a gap of gapShockPercent can happen,
  * never hold more than would lose maxGapLossPercent of the account to it.
+ *
+ * With the stop switched off (useStopLoss false) the strategy's own signals
+ * are the only exits. There is no stop distance to size from, so risk mode
+ * puts 100% of equity in; fixed mode keeps its own size. The position and
+ * gap caps are part of the stop-based protection and are off with it.
  */
 export interface SizingSettings {
   mode: "fixed" | "risk";
+  /** false = no stop loss at all, percent or ATR. */
+  useStopLoss: boolean;
+  /** false = no take profit, whatever takeProfitPercent is. */
+  useTakeProfit: boolean;
   /** % of equity lost if the stop fills at its level ("risk" mode). */
   riskPercent: number;
   /** Largest position as % of equity ("risk" mode); 100 = no leverage. */
@@ -62,6 +71,8 @@ export interface SizingSettings {
 /** What the page starts every strategy with. */
 export const DEFAULT_SIZING: SizingSettings = {
   mode: "risk",
+  useStopLoss: true,
+  useTakeProfit: false,
   riskPercent: 1,
   maxPositionPercent: 100,
   atrStopMultiple: 2,
@@ -78,6 +89,8 @@ export const DEFAULT_SIZING: SizingSettings = {
  */
 export const LEGACY_SIZING: SizingSettings = {
   mode: "fixed",
+  useStopLoss: true,
+  useTakeProfit: true,
   riskPercent: 1,
   maxPositionPercent: 100,
   atrStopMultiple: 0,
@@ -92,11 +105,17 @@ export const LEGACY_SIZING: SizingSettings = {
  * position cap allow. Never above 100: the engine doesn't borrow.
  */
 export function positionCapPercent(sizing: SizingSettings): number {
+  if (!sizing.useStopLoss) return 100;
   let cap = sizing.mode === "risk" ? Math.max(0, Math.min(100, sizing.maxPositionPercent)) : 100;
   if (sizing.maxGapLossPercent > 0 && sizing.gapShockPercent > 0) {
     cap = Math.min(cap, (100 * sizing.maxGapLossPercent) / sizing.gapShockPercent);
   }
   return cap;
+}
+
+/** Position size, as % of equity, with the stop switched off. */
+export function stopOffPositionPercent(sizing: SizingSettings, positionSizePercent: number): number {
+  return sizing.mode === "risk" ? 100 : Math.max(0, Math.min(100, positionSizePercent));
 }
 
 export interface ParameterVariationConfig {
@@ -429,7 +448,9 @@ export function runBacktestWithParams(
   const MAX_TRAIL_POINTS_PER_TRADE = 5000;
 
   const trailingStopEmaPeriod = (params.trailingStopEmaPeriod as number) ?? 0;
-  const hasStopMechanism = trailingStopEmaPeriod > 0 || (riskSettings?.stopLossPercent ?? 0) > 0;
+  const sizing = riskSettings?.sizing ?? LEGACY_SIZING;
+  const stopOff = !sizing.useStopLoss;
+  const hasStopMechanism = trailingStopEmaPeriod > 0 || (!stopOff && (riskSettings?.stopLossPercent ?? 0) > 0);
 
   // Risk-management settings with sensible defaults. Bps = basis points
   // (1 bp = 0.01%). Default sizing is 100% (matches old behavior of "all in"
@@ -444,10 +465,9 @@ export function runBacktestWithParams(
   const slipBuy = (price: number) => price * (1 + slippageMult);
   const slipSell = (price: number) => price * (1 - slippageMult);
 
-  const stopLossPct = Math.max(0, riskSettings?.stopLossPercent ?? 0);
-  const takeProfitPct = Math.max(0, riskSettings?.takeProfitPercent ?? 0);
+  const stopLossPct = stopOff ? 0 : Math.max(0, riskSettings?.stopLossPercent ?? 0);
+  const takeProfitPct = sizing.useTakeProfit ? Math.max(0, riskSettings?.takeProfitPercent ?? 0) : 0;
 
-  const sizing = riskSettings?.sizing ?? LEGACY_SIZING;
   const capPct = positionCapPercent(sizing);
   const riskPct = Math.max(0, sizing.riskPercent);
 
@@ -464,18 +484,23 @@ export function runBacktestWithParams(
     const fillPrice = side === PositionSide.LONG ? slipBuy(rawPrice) : slipSell(rawPrice);
     if (fillPrice <= 0) return;
     const dir = side === PositionSide.LONG ? 1 : -1;
-    // The stop's distance from the fill: ATR-based when asked for and the ATR
-    // has warmed up, else the percent stop, else none.
+    // The stop's distance from the fill: none when the stop is off, else
+    // ATR-based when asked for and the ATR has warmed up, else the percent
+    // stop, else none.
     const stopDistance =
-      sizing.atrStopMultiple > 0 && atr !== undefined && atr > 0
+      stopOff
+        ? undefined
+        : sizing.atrStopMultiple > 0 && atr !== undefined && atr > 0
         ? sizing.atrStopMultiple * atr
         : stopLossPct > 0
           ? fillPrice * (stopLossPct / 100)
           : undefined;
-    // Risk sizing can't size a trade with no stop, so it doesn't take one.
-    if (sizing.mode === "risk" && stopDistance === undefined) return;
-    const wanted =
-      sizing.mode === "risk"
+    // With the stop on, risk sizing can't size a trade that has no stop yet
+    // (no percent stop and the ATR still warming up), so it doesn't take one.
+    if (sizing.mode === "risk" && !stopOff && stopDistance === undefined) return;
+    const wanted = stopOff
+      ? equity * (stopOffPositionPercent(sizing, positionSizePct) / 100)
+      : sizing.mode === "risk"
         ? (equity * (riskPct / 100) * fillPrice) / stopDistance!
         : equity * (positionSizePct / 100);
     const allocation = Math.min(wanted, equity * (capPct / 100));
