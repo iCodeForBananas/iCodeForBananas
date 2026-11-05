@@ -208,47 +208,6 @@ function computeIndicators(
       priceLines.push({ values: ema.map((e, i) => e !== undefined && atr[i] !== undefined ? e - mult * atr[i]! : undefined), color: "#06b6d4", label: "", dashed: true });
       break;
     }
-    case "supertrend": {
-      const atrPeriod = num("atrPeriod", 10);
-      const mult = num("multiplier", 3);
-      const atr = calcATR(data, atrPeriod);
-      const bullLine: (number | undefined)[] = new Array(data.length).fill(undefined);
-      const bearLine: (number | undefined)[] = new Array(data.length).fill(undefined);
-      let prevUp = 0, prevDn = 0, prevST = 0, dir = 1;
-      for (let i = 0; i < data.length; i++) {
-        const a = atr[i];
-        if (a === undefined) continue;
-        const hl2 = (data[i].high + data[i].low) / 2;
-        let up = hl2 + mult * a;
-        let dn = hl2 - mult * a;
-        if (i > 0) {
-          up = (up < prevUp || data[i - 1].close > prevUp) ? up : prevUp;
-          dn = (dn > prevDn || data[i - 1].close < prevDn) ? dn : prevDn;
-          dir = prevST === prevUp ? (data[i].close > up ? 1 : -1) : (data[i].close < dn ? -1 : 1);
-        }
-        const st = dir === 1 ? dn : up;
-        if (dir === 1) bullLine[i] = st;
-        else bearLine[i] = st;
-        prevUp = up; prevDn = dn; prevST = st;
-      }
-      priceLines.push({ values: bullLine, color: "#22c55e", label: "Supertrend ↑", lineWidth: 2 });
-      priceLines.push({ values: bearLine, color: "#ef4444", label: "", lineWidth: 2 });
-      break;
-    }
-    case "chandelier-exit": {
-      const period = num("period", 22);
-      const atrPeriod = num("atrPeriod", 22);
-      const mult = num("multiplier", 3);
-      const atr = calcATR(data, atrPeriod);
-      const chandLong: (number | undefined)[] = [];
-      for (let i = 0; i < data.length; i++) {
-        if (i < period - 1 || atr[i] === undefined) { chandLong.push(undefined); continue; }
-        const hh = Math.max(...data.slice(i - period + 1, i + 1).map((d) => d.high));
-        chandLong.push(hh - mult * atr[i]!);
-      }
-      priceLines.push({ values: chandLong, color: "#f97316", label: "Chandelier Long", lineWidth: 2, dashed: true });
-      break;
-    }
     case "macd-crossover": {
       // The strategy reads the MACD built from this result's own periods, not
       // the default 12/26/9 — plot that same one or the crosses won't match.

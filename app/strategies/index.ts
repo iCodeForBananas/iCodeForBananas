@@ -12,10 +12,8 @@ import rsiMeanReversion from './rsi-mean-reversion';
 import smaCrossover from './sma-crossover';
 import donchianChannel from './donchian-channel';
 import rsi2 from './rsi2';
-import supertrend from './supertrend';
 import tripleEma from './triple-ema';
 import keltnerChannel from './keltner-channel';
-import chandelierExit from './chandelier-exit';
 import momentumRoc from './momentum-roc';
 import stochastic from './stochastic';
 import ibsMeanReversion from './ibs-mean-reversion';
@@ -32,8 +30,6 @@ export const AVAILABLE_STRATEGIES: Record<string, StrategyDefinition> = {
   'sma-crossover': smaCrossover,
   'ema-price-cross': emaPriceCross,
   'macd-crossover': macdCrossover,
-  'supertrend': supertrend,
-  'chandelier-exit': chandelierExit,
   'donchian-channel': donchianChannel,
   'breakout': breakout,
   'turtle': turtle,
