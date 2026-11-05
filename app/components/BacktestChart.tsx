@@ -29,6 +29,11 @@ import { getSmoothedRocArray } from "@/app/strategies/momentum-roc";
 import { getRsiArray, cumulativeRsiAt } from "@/app/strategies/cumulative-rsi";
 import { ibs } from "@/app/strategies/ibs-mean-reversion";
 import { priorChannel } from "@/app/strategies/turtle";
+import { lookbackReturn } from "@/app/strategies/time-series-momentum";
+import { getConnorsRsiArray } from "@/app/strategies/connors-rsi";
+import { monthCalendar } from "@/app/strategies/turn-of-month";
+import { ichimokuAt } from "@/app/strategies/ichimoku";
+import { getKamaArray } from "@/app/strategies/kama-trend";
 
 interface BacktestChartProps {
   data: IndicatorData[];
@@ -89,7 +94,7 @@ type PriceLine = {
 };
 
 type OscillatorPanel = {
-  type: "rsi" | "macd" | "stochastic" | "roc" | "ibs";
+  type: "rsi" | "macd" | "stochastic" | "roc" | "ibs" | "calendar";
   series: { values: (number | undefined)[]; color: string; label: string; lineWidth?: number }[];
   histogram?: { values: (number | undefined)[]; positiveColor: string; negativeColor: string };
   hLines?: { value: number; color: string; dashed: boolean }[];
@@ -352,6 +357,73 @@ function computeIndicators(
           { value: num("entryIbs", 20) / 100, color: "#22c55e", dashed: true },
         ],
       };
+      break;
+    }
+    case "time-series-momentum": {
+      const lookback = num("lookback", 252);
+      const skip = num("skipBars", 0);
+      const threshold = num("threshold", 0);
+      oscillator = {
+        type: "roc",
+        series: [{
+          values: data.map((_, i) => { const r = lookbackReturn(data, i, lookback, skip); return Number.isNaN(r) ? undefined : r; }),
+          color: "#a855f7",
+          label: `${lookback}-bar return %`,
+        }],
+        hLines: threshold > 0
+          ? [{ value: threshold, color: "#22c55e", dashed: true }, { value: -threshold, color: "#ef4444", dashed: true }]
+          : [{ value: 0, color: "#475569", dashed: true }],
+      };
+      break;
+    }
+    case "connors-rsi": {
+      const crsi = getConnorsRsiArray(data, num("rsiPeriod", 3), num("streakPeriod", 2), num("rankPeriod", 100));
+      if (params.trendFilter ?? true) {
+        priceLines.push({ values: data.map((d) => d.sma200), color: "#f97316", label: "SMA 200" });
+      }
+      oscillator = {
+        type: "rsi",
+        series: [{ values: crsi.map((v) => (Number.isNaN(v) ? undefined : v)), color: "#a855f7", label: "ConnorsRSI" }],
+        hLines: [
+          { value: num("exitLevel", 70), color: "#ef4444", dashed: true },
+          { value: num("entryLevel", 10), color: "#22c55e", dashed: true },
+        ],
+      };
+      break;
+    }
+    case "turn-of-month": {
+      // Trading day of the month, and days left in it, at each bar: the
+      // strategy buys where days left reaches the entry line and sells where
+      // the day of the month reaches the exit line.
+      const calendar = monthCalendar(data);
+      oscillator = {
+        type: "calendar",
+        series: [
+          { values: calendar.dayOfMonth, color: "#3b82f6", label: "Trading day" },
+          { values: calendar.daysLeft, color: "#a855f7", label: "Days left" },
+        ],
+        hLines: [
+          { value: num("exitDay", 3), color: "#ef4444", dashed: true },
+          { value: num("entryDaysBefore", 1) - 1, color: "#22c55e", dashed: true },
+        ],
+      };
+      break;
+    }
+    case "ichimoku": {
+      const tenkanPeriod = num("tenkanPeriod", 9);
+      const kijunPeriod = num("kijunPeriod", 26);
+      const senkouPeriod = num("senkouPeriod", 52);
+      const lines = data.map((_, i) => ichimokuAt(data, i, tenkanPeriod, kijunPeriod, senkouPeriod));
+      const defined = (v: number) => (Number.isNaN(v) ? undefined : v);
+      priceLines.push({ values: lines.map((l) => defined(l.tenkan)), color: "#3b82f6", label: `Tenkan ${tenkanPeriod}`, lineWidth: 1 });
+      priceLines.push({ values: lines.map((l) => defined(l.kijun)), color: "#ef4444", label: `Kijun ${kijunPeriod}` });
+      priceLines.push({ values: lines.map((l) => defined(l.senkouA)), color: "#22c55e", label: "Senkou A", lineWidth: 1, dashed: true });
+      priceLines.push({ values: lines.map((l) => defined(l.senkouB)), color: "#f97316", label: "Senkou B", lineWidth: 1, dashed: true });
+      break;
+    }
+    case "kama-trend": {
+      const kama = getKamaArray(data, num("erPeriod", 10), num("fastLength", 2), num("slowLength", 30));
+      priceLines.push({ values: kama.map((v) => (Number.isNaN(v) ? undefined : v)), color: "#f97316", label: "KAMA", lineWidth: 2 });
       break;
     }
     case "momentum-roc": {

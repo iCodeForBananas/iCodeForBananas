@@ -5,6 +5,11 @@ import double7s from "./double-7s";
 import cumulativeRsi, { getRsiArray, cumulativeRsiAt } from "./cumulative-rsi";
 import turtle, { priorChannel } from "./turtle";
 import faberTrend from "./faber-trend";
+import timeSeriesMomentum from "./time-series-momentum";
+import connorsRsi, { streaks, wilderRsi, getConnorsRsiArray } from "./connors-rsi";
+import turnOfMonth, { monthCalendar } from "./turn-of-month";
+import ichimoku, { midpointArray } from "./ichimoku";
+import kamaTrend, { getKamaArray } from "./kama-trend";
 import { deriveRequiredIndicators } from "@/app/lib/backtest-engine";
 
 type Bar = OHLCBar & IndicatorValues;
@@ -128,5 +133,135 @@ describe("MA trend filter (Faber)", () => {
     const req = deriveRequiredIndicators("faber-trend", [{ smaPeriod: 150, bandPercent: 1 }]);
     expect(req.requiredSMAs).toContain(150);
     expect(req.requiredEMAs).not.toContain(150);
+  });
+});
+
+describe("Time-series momentum", () => {
+  const rising = fromCloses(Array.from({ length: 30 }, (_, i) => 100 + i));
+  const falling = fromCloses(Array.from({ length: 30 }, (_, i) => 200 - i));
+
+  it("waits for a full lookback", () => {
+    expect(signal(timeSeriesMomentum, rising.slice(0, 20), null, { lookback: 21 })).toBe("hold");
+  });
+
+  it("buys a positive trailing return and sells a negative one", () => {
+    expect(signal(timeSeriesMomentum, rising, null, { lookback: 21 })).toBe("buy");
+    expect(signal(timeSeriesMomentum, falling, "long", { lookback: 21 })).toBe("sell");
+  });
+
+  it("holds inside the threshold band", () => {
+    const flat = fromCloses(Array.from({ length: 30 }, (_, i) => 100 + (i % 2)));
+    expect(signal(timeSeriesMomentum, flat, "long", { lookback: 21, threshold: 2 })).toBe("hold");
+  });
+});
+
+describe("ConnorsRSI", () => {
+  it("counts up and down streaks", () => {
+    expect(streaks(fromCloses([10, 11, 12, 12, 11, 10, 9, 10]))).toEqual([0, 1, 2, 0, -1, -2, -3, 1]);
+  });
+
+  it("matches a plain Wilder RSI where it overlaps", () => {
+    const closes = [44, 44.3, 44.1, 44.6, 45.2, 45.1, 45.6, 46.1, 45.9, 46.3];
+    const rsi = wilderRsi(closes, 3);
+    expect(rsi.slice(0, 3).every(Number.isNaN)).toBe(true);
+    expect(rsi.slice(3).every((v) => v >= 0 && v <= 100)).toBe(true);
+  });
+
+  it("stays between 0 and 100 and buys a sharp drop in an uptrend", () => {
+    const closes = Array.from({ length: 130 }, (_, i) => 100 + i * 0.5 + (i % 3 === 0 ? 1 : 0));
+    closes.push(closes[closes.length - 1] - 4, closes[closes.length - 1] - 8, closes[closes.length - 1] - 12);
+    const series = fromCloses(closes, { sma200: 50 });
+    const crsi = getConnorsRsiArray(series, 3, 2, 100).filter((v) => !Number.isNaN(v));
+    expect(crsi.length).toBeGreaterThan(0);
+    expect(crsi.every((v) => v >= 0 && v <= 100)).toBe(true);
+    expect(signal(connorsRsi, series)).toBe("buy");
+    const belowTrend = series.map((b) => ({ ...b, sma200: 1000 }));
+    expect(signal(connorsRsi, belowTrend)).toBe("hold");
+  });
+
+  it("never sells while flat", () => {
+    const series = fromCloses([...Array.from({ length: 130 }, (_, i) => 100 + i), 260], { sma200: 50 });
+    expect(signal(connorsRsi, series, null)).toBe("hold");
+    expect(signal(connorsRsi, series, "long")).toBe("sell");
+  });
+});
+
+describe("Turn of the month", () => {
+  // Weekday daily bars at 14:30 UTC from 2024-01-22 through 2024-02-09.
+  const days: Bar[] = [];
+  for (let t = Date.UTC(2024, 0, 22, 14, 30); t <= Date.UTC(2024, 1, 9, 14, 30); t += DAY) {
+    const weekday = new Date(t).getUTCDay();
+    if (weekday !== 0 && weekday !== 6) days.push({ time: t, open: 100, high: 101, low: 99, close: 100 });
+  }
+  const at = (y: number, m: number, d: number) => days.findIndex((b) => b.time === Date.UTC(y, m, d, 14, 30));
+
+  it("numbers trading days and counts the ones left", () => {
+    const cal = monthCalendar(days);
+    const jan31 = at(2024, 0, 31);
+    expect(cal.daysLeft[jan31]).toBe(0);
+    expect(cal.dayOfMonth[at(2024, 1, 5)]).toBe(3);
+    expect(cal.daysLeft[at(2024, 0, 30)]).toBe(1);
+  });
+
+  it("buys the last trading day and sells the third", () => {
+    expect(signal(turnOfMonth, days.slice(0, at(2024, 0, 30) + 1))).toBe("hold");
+    expect(signal(turnOfMonth, days.slice(0, at(2024, 0, 31) + 1))).toBe("buy");
+    expect(signal(turnOfMonth, days.slice(0, at(2024, 1, 2) + 1), "long")).toBe("hold");
+    expect(signal(turnOfMonth, days.slice(0, at(2024, 1, 5) + 1), "long")).toBe("sell");
+  });
+
+  it("only acts on a date's last bar on intraday data", () => {
+    const t = Date.UTC(2024, 0, 31, 14, 30);
+    const bars: Bar[] = [0, 1, 2].map((k) => ({ time: t + k * 60 * 60 * 1000, open: 1, high: 1, low: 1, close: 1 }));
+    bars.push({ time: Date.UTC(2024, 1, 1, 14, 30), open: 1, high: 1, low: 1, close: 1 });
+    const cal = monthCalendar(bars);
+    expect(cal.lastBarOfDay).toEqual([false, false, true, true]);
+    expect(cal.daysLeft.slice(0, 3)).toEqual([0, 0, 0]);
+  });
+});
+
+describe("Ichimoku", () => {
+  it("computes the range midpoint like a direct scan", () => {
+    const series = fromCloses([5, 9, 2, 7, 7, 1, 8, 3, 6, 4]);
+    const mid = midpointArray(series, 3);
+    for (let i = 2; i < series.length; i++) {
+      const window = series.slice(i - 2, i + 1);
+      expect(mid[i]).toBe((Math.max(...window.map((b) => b.high)) + Math.min(...window.map((b) => b.low))) / 2);
+    }
+  });
+
+  it("buys a steady uptrend above the cloud and exits under the Kijun", () => {
+    const up = fromCloses(Array.from({ length: 120 }, (_, i) => 100 + i));
+    expect(signal(ichimoku, up)).toBe("buy");
+    const dropped = [...up, ...fromCloses([150]).map((b) => ({ ...b, time: up.length * DAY }))];
+    expect(signal(ichimoku, dropped, "long")).toBe("sell");
+  });
+
+  it("asks for no engine indicators beyond the defaults", () => {
+    const { requiredSMAs, requiredEMAs } = deriveRequiredIndicators("ichimoku", [getDefaultParams("ichimoku")]);
+    expect(requiredSMAs.sort((a, b) => a - b)).toEqual([20, 50, 200]);
+    expect(requiredEMAs.sort((a, b) => a - b)).toEqual([9, 21]);
+  });
+});
+
+describe("KAMA", () => {
+  it("tracks a flat series exactly and lags a trend", () => {
+    expect(getKamaArray(fromCloses(Array(30).fill(50)), 10, 2, 30).slice(10).every((v) => v === 50)).toBe(true);
+    const kama = getKamaArray(fromCloses(Array.from({ length: 40 }, (_, i) => 100 + i)), 10, 2, 30);
+    expect(kama[39]).toBeLessThan(139);
+    expect(kama[39]).toBeGreaterThan(kama[20]);
+  });
+
+  it("buys an upturn and sells a downturn", () => {
+    const vee = fromCloses([...Array.from({ length: 40 }, (_, i) => 200 - i), ...Array.from({ length: 15 }, (_, i) => 161 + i * 2)]);
+    expect(signal(kamaTrend, vee)).toBe("buy");
+    const peak = fromCloses([...Array.from({ length: 40 }, (_, i) => 100 + i), ...Array.from({ length: 15 }, (_, i) => 139 - i * 2)]);
+    expect(signal(kamaTrend, peak, "long")).toBe("sell");
+  });
+
+  it("asks for no engine indicators beyond the defaults", () => {
+    const { requiredSMAs, requiredEMAs } = deriveRequiredIndicators("kama-trend", [getDefaultParams("kama-trend")]);
+    expect(requiredSMAs.sort((a, b) => a - b)).toEqual([20, 50, 200]);
+    expect(requiredEMAs.sort((a, b) => a - b)).toEqual([9, 21]);
   });
 });

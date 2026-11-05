@@ -21,6 +21,11 @@ import double7s from './double-7s';
 import cumulativeRsi from './cumulative-rsi';
 import turtle from './turtle';
 import faberTrend from './faber-trend';
+import timeSeriesMomentum from './time-series-momentum';
+import kamaTrend from './kama-trend';
+import ichimoku from './ichimoku';
+import connorsRsi from './connors-rsi';
+import turnOfMonth from './turn-of-month';
 
 export const AVAILABLE_STRATEGIES: Record<string, StrategyDefinition> = {
   // Trend Following
@@ -35,6 +40,9 @@ export const AVAILABLE_STRATEGIES: Record<string, StrategyDefinition> = {
   'turtle': turtle,
   'momentum-roc': momentumRoc,
   'faber-trend': faberTrend,
+  'time-series-momentum': timeSeriesMomentum,
+  'kama-trend': kamaTrend,
+  'ichimoku': ichimoku,
   // Mean Reversion
   'bollinger-bands': bollingerBands,
   'keltner-channel': keltnerChannel,
@@ -44,6 +52,9 @@ export const AVAILABLE_STRATEGIES: Record<string, StrategyDefinition> = {
   'cumulative-rsi': cumulativeRsi,
   'double-7s': double7s,
   'ibs-mean-reversion': ibsMeanReversion,
+  'connors-rsi': connorsRsi,
+  // Calendar
+  'turn-of-month': turnOfMonth,
 };
 
 export * from './types';
