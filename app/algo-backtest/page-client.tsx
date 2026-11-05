@@ -53,12 +53,18 @@ const DEFAULT_VISIBLE_CANDLES = 300;
 const STORAGE_KEY_GLOBAL = "algo-backtest-global";
 const STORAGE_KEY_STRATEGY_PREFIX = "algo-backtest-strategy-";
 
-// Which datasets and strategies are ticked is deliberately not in here: the page
-// always opens with nothing selected, so a run is always something you chose.
+// Everything on the page that isn't per strategy, so a refresh comes back to
+// the same run setup. Saved values are checked against what exists now (the
+// strategy registry, the dataset manifest) on the way back in, so a removed
+// strategy or dataset drops out instead of breaking the page.
 interface GlobalSettings {
   selectedStrategyId: string;
   showEquityCurve: boolean;
   visibleCandles: number;
+  selectedFiles?: string[];
+  selectedStrategyIds?: string[];
+  expandedStrategyIds?: string[];
+  datasetSearch?: string;
 }
 
 interface StrategySettings {
@@ -389,14 +395,25 @@ export default function AlgoBacktestPage() {
     }
   }, [selectedStrategyId]);
 
-  // Fetch available datasets on mount
+  // Restore the page's settings on mount. Saving waits until this has run
+  // (settingsRestored), or the first render's empty selections would
+  // overwrite what was saved before they're read back.
+  const [settingsRestored, setSettingsRestored] = useState(false);
   useEffect(() => {
     const saved = loadGlobalSettings();
+    const known = (ids: unknown) =>
+      Array.isArray(ids) ? ids.filter((id): id is string => typeof id === "string" && id in AVAILABLE_STRATEGIES) : [];
     if (saved?.selectedStrategyId && AVAILABLE_STRATEGIES[saved.selectedStrategyId]) {
       setSelectedStrategyId(saved.selectedStrategyId);
     }
     if (saved?.showEquityCurve !== undefined) setShowEquityCurve(saved.showEquityCurve);
     if (saved?.visibleCandles !== undefined) setVisibleCandles(saved.visibleCandles);
+    setSelectedStrategyIds(known(saved?.selectedStrategyIds));
+    setExpandedStrategyIds(known(saved?.expandedStrategyIds));
+    // Pruned to files that still exist once the manifest loads.
+    if (Array.isArray(saved?.selectedFiles)) setSelectedFiles(saved.selectedFiles.filter((f) => typeof f === "string"));
+    if (typeof saved?.datasetSearch === "string") setDatasetSearch(saved.datasetSearch);
+    setSettingsRestored(true);
   }, []);
 
   useEffect(() => {
@@ -407,6 +424,8 @@ export default function AlgoBacktestPage() {
         const result = await response.json();
         if (result.files?.length > 0) {
           setAvailableDatasets(result.files);
+          const exists = new Set((result.files as DatasetInfo[]).map((d) => d.file));
+          setSelectedFiles((prev) => prev.filter((f) => exists.has(f)));
         }
       } catch (err) {
         console.error("Error fetching datasets:", err);
@@ -417,8 +436,17 @@ export default function AlgoBacktestPage() {
 
   // Save global settings when any global preference changes
   useEffect(() => {
-    saveGlobalSettings({ selectedStrategyId, showEquityCurve, visibleCandles });
-  }, [selectedStrategyId, showEquityCurve, visibleCandles]);
+    if (!settingsRestored) return;
+    saveGlobalSettings({
+      selectedStrategyId,
+      showEquityCurve,
+      visibleCandles,
+      selectedFiles,
+      selectedStrategyIds,
+      expandedStrategyIds,
+      datasetSearch,
+    });
+  }, [settingsRestored, selectedStrategyId, showEquityCurve, visibleCandles, selectedFiles, selectedStrategyIds, expandedStrategyIds, datasetSearch]);
 
   // Save per-strategy settings when any strategy-specific setting changes
   useEffect(() => {
@@ -443,7 +471,10 @@ export default function AlgoBacktestPage() {
     if (!strat) return null;
     const saved = loadStrategySettings(strategyId);
     const defaults = getDefaultParams(strategyId);
-    const params = saved?.currentParams ? { ...defaults, ...saved.currentParams } : defaults;
+    const params = { ...defaults };
+    for (const key of Object.keys(defaults)) {
+      if (saved?.currentParams && key in saved.currentParams) params[key] = saved.currentParams[key];
+    }
 
     let variations: ParameterVariationConfig[] = [];
     if (strat.parameters) {

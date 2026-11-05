@@ -53,6 +53,24 @@ const ALL = "__all__";
 /** Rows read from IndexedDB per page; more load as the list scrolls. */
 const PAGE_SIZE = 100;
 const BEATS_BUY_HOLD_KEY = "algo-backtest-beats-buy-hold";
+// Sort and filters, remembered like the switch above.
+const VIEW_KEY = "algo-backtest-results-view";
+
+interface SavedView {
+  sortKey?: string;
+  direction?: string;
+  strategy?: string;
+  dataset?: string;
+}
+
+function loadView(): SavedView {
+  if (typeof window === "undefined") return {};
+  try {
+    return JSON.parse(localStorage.getItem(VIEW_KEY) ?? "{}") ?? {};
+  } catch {
+    return {};
+  }
+}
 
 /**
  * Every result from a run, filterable and sortable by any metric it collected.
@@ -71,10 +89,26 @@ export default function ResultsBrowser({
   onSelect: (row: ResultRow) => void;
   datasetLabel: (file: string) => string;
 }) {
-  const [sortKey, setSortKey] = useState<MetricKey>("pnl");
-  const [direction, setDirection] = useState<Direction>("desc");
-  const [strategy, setStrategy] = useState(ALL);
-  const [dataset, setDataset] = useState(ALL);
+  // A saved filter for a strategy or dataset this run doesn't have falls
+  // back to all, so it can't hide every row.
+  const [saved] = useState(loadView);
+  const [sortKey, setSortKey] = useState<MetricKey>(() =>
+    saved.sortKey && saved.sortKey in METRICS ? (saved.sortKey as MetricKey) : "pnl",
+  );
+  const [direction, setDirection] = useState<Direction>(() => (saved.direction === "asc" ? "asc" : "desc"));
+  const [strategy, setStrategy] = useState(() =>
+    saved.strategy && meta.groups.some((g) => g.strategyId === saved.strategy) ? saved.strategy : ALL,
+  );
+  const [dataset, setDataset] = useState(() =>
+    saved.dataset && meta.groups.some((g) => g.dataset === saved.dataset) ? saved.dataset : ALL,
+  );
+  useEffect(() => {
+    try {
+      localStorage.setItem(VIEW_KEY, JSON.stringify({ sortKey, direction, strategy, dataset }));
+    } catch {
+      // Not remembered this time; the controls still work.
+    }
+  }, [sortKey, direction, strategy, dataset]);
   // Remembered across visits. This list only renders once a run has results,
   // so it never renders on the server and can read storage up front. Storage
   // can still be unavailable (private window, blocked), so it's best-effort.
