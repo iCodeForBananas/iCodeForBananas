@@ -1,11 +1,19 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Flex, IconButton, Select, Switch, Text } from "@radix-ui/themes";
 import { ArrowDownWideNarrow, ArrowUpNarrowWide } from "lucide-react";
 import { Bento } from "../components/ui/bento";
 import { cn } from "@/app/lib/utils";
-import type { ParameterizedResult } from "@/app/strategies";
+import {
+  filteredCount,
+  queryPage,
+  type PageCursor,
+  type ResultRow,
+  type RowFilter,
+  type RunMeta,
+  type SortField,
+} from "./runStore";
 
 type Direction = "asc" | "desc";
 
@@ -13,7 +21,8 @@ interface Metric {
   label: string;
   /** Short form for the row's right-hand column. */
   short: string;
-  value: (r: ParameterizedResult) => number;
+  /** The stored field it sorts on; each has an IndexedDB index. */
+  field: SortField;
   format: (v: number) => string;
   /** Which way is better, so picking a metric puts the best results first. */
   better: Direction;
@@ -25,56 +34,41 @@ const pct = (v: number) => `${v >= 0 ? "+" : ""}${v.toFixed(2)}%`;
 const money = (v: number) => `$${v.toFixed(2)}`;
 
 const METRICS = {
-  pnl: { label: "Strategy P&L", short: "P&L", value: (r) => r.totalPnlPercent, format: pct, better: "desc", signed: true },
-  buyHold: { label: "Buy & hold", short: "B&H", value: (r) => r.buyAndHoldPnlPercent, format: pct, better: "desc", signed: true },
-  alpha: {
-    label: "Alpha vs buy & hold",
-    short: "Alpha",
-    value: (r) => r.totalPnlPercent - r.buyAndHoldPnlPercent,
-    format: pct,
-    better: "desc",
-    signed: true,
-  },
-  winRate: { label: "Win rate", short: "Win", value: (r) => r.winRate, format: (v) => `${v.toFixed(1)}%`, better: "desc" },
-  profitFactor: {
-    label: "Profit factor",
-    short: "PF",
-    // Infinity (no losing trades) sorts above every finite factor.
-    value: (r) => r.profitFactor ?? 0,
-    format: (v) => (v === Infinity ? "∞" : v.toFixed(2)),
-    better: "desc",
-  },
-  maxDrawdown: {
-    label: "Max drawdown",
-    short: "DD",
-    value: (r) => r.maxDrawdownPercent,
-    format: (v) => `-${v.toFixed(2)}%`,
-    better: "asc",
-  },
-  sharpe: { label: "Sharpe ratio", short: "Sharpe", value: (r) => r.sharpeRatio, format: (v) => v.toFixed(2), better: "desc", signed: true },
-  trades: { label: "Total trades", short: "Trades", value: (r) => r.totalTrades, format: (v) => String(v), better: "desc" },
-  avgWin: { label: "Average win", short: "Avg win", value: (r) => r.averageWin, format: money, better: "desc" },
-  avgLoss: { label: "Average loss", short: "Avg loss", value: (r) => r.averageLoss, format: money, better: "asc" },
+  pnl: { label: "Strategy P&L", short: "P&L", field: "totalPnlPercent", format: pct, better: "desc", signed: true },
+  buyHold: { label: "Buy & hold", short: "B&H", field: "buyAndHoldPnlPercent", format: pct, better: "desc", signed: true },
+  alpha: { label: "Alpha vs buy & hold", short: "Alpha", field: "alpha", format: pct, better: "desc", signed: true },
+  winRate: { label: "Win rate", short: "Win", field: "winRate", format: (v) => `${v.toFixed(1)}%`, better: "desc" },
+  // Infinity (no losing trades) sorts above every finite factor.
+  profitFactor: { label: "Profit factor", short: "PF", field: "profitFactor", format: (v) => (v === Infinity ? "∞" : v.toFixed(2)), better: "desc" },
+  maxDrawdown: { label: "Max drawdown", short: "DD", field: "maxDrawdownPercent", format: (v) => `-${v.toFixed(2)}%`, better: "asc" },
+  sharpe: { label: "Sharpe ratio", short: "Sharpe", field: "sharpeRatio", format: (v) => v.toFixed(2), better: "desc", signed: true },
+  trades: { label: "Total trades", short: "Trades", field: "totalTrades", format: (v) => String(v), better: "desc" },
+  avgWin: { label: "Average win", short: "Avg win", field: "averageWin", format: money, better: "desc" },
+  avgLoss: { label: "Average loss", short: "Avg loss", field: "averageLoss", format: money, better: "asc" },
 } satisfies Record<string, Metric>;
 
 type MetricKey = keyof typeof METRICS;
 
 const ALL = "__all__";
-/** A wide sweep can return thousands of results; past this the list stops earning its render cost. */
-const MAX_ROWS = 500;
+/** Rows read from IndexedDB per page; more load as the list scrolls. */
+const PAGE_SIZE = 100;
 const BEATS_BUY_HOLD_KEY = "algo-backtest-beats-buy-hold";
 
-/** Every result from a run, filterable and sortable by any metric it collected. */
+/**
+ * Every result from a run, filterable and sortable by any metric it collected.
+ * The rows stay in IndexedDB; this reads them a page at a time in the chosen
+ * order, so a run of any size costs only what has been scrolled into view.
+ */
 export default function ResultsBrowser({
-  results,
-  activeIndex,
+  meta,
+  active,
   onSelect,
   datasetLabel,
 }: {
-  results: ParameterizedResult[];
-  /** Index into `results` of the one on the chart. */
-  activeIndex: number;
-  onSelect: (index: number) => void;
+  meta: RunMeta;
+  /** The result on the chart. */
+  active: ResultRow | null;
+  onSelect: (row: ResultRow) => void;
   datasetLabel: (file: string) => string;
 }) {
   const [sortKey, setSortKey] = useState<MetricKey>("pnl");
@@ -103,29 +97,69 @@ export default function ResultsBrowser({
 
   const strategies = useMemo(() => {
     const seen = new Map<string, string>();
-    for (const r of results) if (r.strategyId) seen.set(r.strategyId, r.strategyName ?? r.strategyId);
+    for (const g of meta.groups) if (g.strategyId) seen.set(g.strategyId, g.strategyName);
     return [...seen].sort((a, b) => a[1].localeCompare(b[1]));
-  }, [results]);
+  }, [meta]);
 
   const datasets = useMemo(
-    () => [...new Set(results.map((r) => r.dataset).filter((d): d is string => !!d))].sort(),
-    [results],
+    () => [...new Set(meta.groups.map((g) => g.dataset).filter(Boolean))].sort(),
+    [meta],
   );
 
-  const rows = useMemo(() => {
-    const metric: Metric = METRICS[sortKey];
-    const sign = direction === "desc" ? -1 : 1;
-    return results
-      .map((result, index) => ({ result, index }))
-      .filter(({ result: r }) => strategy === ALL || r.strategyId === strategy)
-      .filter(({ result: r }) => dataset === ALL || r.dataset === dataset)
-      .filter(({ result: r }) => !beatsBuyHold || r.totalPnlPercent > r.buyAndHoldPnlPercent)
-      .sort((a, b) => {
-        const d = metric.value(a.result) - metric.value(b.result);
-        // Infinity − Infinity is NaN; treat equal values as ties.
-        return Number.isNaN(d) || d === 0 ? a.index - b.index : sign * Math.sign(d);
-      });
-  }, [results, sortKey, direction, strategy, dataset, beatsBuyHold]);
+  const filter = useMemo<RowFilter>(
+    () => ({
+      strategyId: strategy === ALL ? undefined : strategy,
+      dataset: dataset === ALL ? undefined : dataset,
+      beatsBuyHold,
+    }),
+    [strategy, dataset, beatsBuyHold],
+  );
+  const matching = useMemo(() => filteredCount(meta, filter), [meta, filter]);
+
+  // The pages read so far, and where the next one starts. A query is keyed
+  // by everything that shapes it, so a reply to an older one is dropped.
+  const [rows, setRows] = useState<ResultRow[]>([]);
+  const [next, setNext] = useState<PageCursor | null>(null);
+  const [loading, setLoading] = useState(false);
+  const queryKey = `${meta.runId}|${sortKey}|${direction}|${filter.strategyId}|${filter.dataset}|${filter.beatsBuyHold}`;
+  const queryKeyRef = useRef(queryKey);
+
+  const load = useCallback(
+    async (after: PageCursor | null) => {
+      const key = queryKey;
+      setLoading(true);
+      try {
+        const page = await queryPage({
+          runId: meta.runId,
+          field: METRICS[sortKey].field,
+          direction,
+          ...filter,
+          after,
+          limit: PAGE_SIZE,
+        });
+        if (queryKeyRef.current !== key) return;
+        setRows((prev) => (after ? [...prev, ...page.rows] : page.rows));
+        setNext(page.next);
+      } catch (err) {
+        console.error("Failed to read results:", err);
+      } finally {
+        if (queryKeyRef.current === key) setLoading(false);
+      }
+    },
+    [queryKey, meta.runId, sortKey, direction, filter],
+  );
+
+  useEffect(() => {
+    queryKeyRef.current = queryKey;
+    setRows([]);
+    setNext(null);
+    void load(null);
+  }, [queryKey, load]);
+
+  const onScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const el = e.currentTarget;
+    if (next && !loading && el.scrollTop + el.clientHeight > el.scrollHeight - 400) void load(next);
+  };
 
   const metric: Metric = METRICS[sortKey];
   const showStrategy = strategies.length > 1;
@@ -134,7 +168,7 @@ export default function ResultsBrowser({
   return (
     <Bento
       fill
-      title={`Results · ${rows.length === results.length ? results.length : `${rows.length} of ${results.length}`}`}
+      title={`Results · ${matching === meta.total ? meta.total.toLocaleString() : `${matching.toLocaleString()} of ${meta.total.toLocaleString()}`}`}
       bodyClassName='flex flex-col p-0 overflow-hidden'
     >
       <Flex direction='column' gap='2' className='shrink-0 border-b border-line-subtle p-3'>
@@ -209,21 +243,21 @@ export default function ResultsBrowser({
         </Text>
       </Flex>
 
-      <div className='min-h-0 flex-1 overflow-y-auto'>
+      <div className='min-h-0 flex-1 overflow-y-auto' onScroll={onScroll}>
         {rows.length === 0 ? (
           <Text as='p' size='2' color='gray' className='p-4 text-center'>
-            No results match these filters.
+            {loading ? "Loading…" : "No results match these filters."}
           </Text>
         ) : (
           <ul role='listbox' aria-label='Backtest results' className='divide-y divide-line-subtle'>
-            {rows.slice(0, MAX_ROWS).map(({ result: r, index }, rank) => {
-              const selected = index === activeIndex;
-              const value = metric.value(r);
+            {rows.map((r, rank) => {
+              const selected = active !== null && r.runId === active.runId && r.seq === active.seq;
+              const value = r[metric.field];
               return (
-                <li key={index} role='option' aria-selected={selected}>
+                <li key={r.seq} role='option' aria-selected={selected}>
                   <button
                     type='button'
-                    onClick={() => onSelect(index)}
+                    onClick={() => onSelect(r)}
                     className={cn(
                       "flex w-full items-start gap-3 px-3 py-2 text-left hover:bg-[var(--gray-a3)]",
                       selected && "bg-[var(--accent-a4)] hover:bg-[var(--accent-a4)]",
@@ -268,9 +302,9 @@ export default function ResultsBrowser({
             })}
           </ul>
         )}
-        {rows.length > MAX_ROWS && (
+        {next && rows.length > 0 && (
           <Text as='p' size='1' color='gray' className='border-t border-line-subtle p-3 text-center'>
-            Showing the first {MAX_ROWS} of {rows.length}. Filter to narrow it down.
+            {loading ? "Loading more…" : `Showing ${rows.length.toLocaleString()} of ${matching.toLocaleString()}. Scroll for more.`}
           </Text>
         )}
       </div>

@@ -41,15 +41,11 @@ import {
 } from "@/app/lib/backtest-engine";
 import { useBacktestWorker, type BacktestJobResult, type StrategyRun } from "./useBacktestWorker";
 import { clearResultCache, countCachedResults } from "./resultCache";
+import { getMeta, queryPage, type ResultRow, type RunMeta } from "./runStore";
 import BacktestProgressPanel from "./BacktestProgressPanel";
 import ResultsBrowser from "./ResultsBrowser";
 
 const DEFAULT_VISIBLE_CANDLES = 300;
-// Chart rows fetched for results outside the batch's top ten. Each is a whole
-// dataset (up to ~18k bars), so only the last few are kept.
-const MAX_DETAIL_CHARTS = 6;
-
-const resultKey = (r: ParameterizedResult) => `${r.strategyId ?? ""}|${r.dataset ?? ""}|${r.label}`;
 
 // localStorage keys
 const STORAGE_KEY_GLOBAL = "algo-backtest-global";
@@ -220,15 +216,24 @@ export default function AlgoBacktestPage() {
   const [currentParams, setCurrentParams] = useState<Record<string, number | boolean | string>>({});
   const [paramVariations, setParamVariations] = useState<ParameterVariationConfig[]>([]);
 
-  // Results state (multiple results for batch mode)
-  const [results, setResults] = useState<ParameterizedResult[]>([]);
-  const [activeResultTab, setActiveResultTab] = useState<number>(0);
-
-  // Per-dataset indicator data cache for batch mode (maps dataset file -> IndicatorData[])
-  // useRef instead of useState to avoid React holding old+new copies simultaneously
-  const datasetIndicatorCache = useRef<Record<string, IndicatorData[]>>({});
-  // Chart rows for results the batch didn't keep data for, keyed by resultKey.
-  const detailChartCache = useRef(new Map<string, IndicatorData[]>());
+  // A run's results stay in IndexedDB (see runStore.ts): the page holds the
+  // run's meta, the selected result's row, and that one result's trades,
+  // equity curve and chart rows. Nothing grows with the size of the run, or
+  // with how many results you click through.
+  const [runMeta, setRunMeta] = useState<RunMeta | null>(null);
+  const [activeRow, setActiveRow] = useState<ResultRow | null>(null);
+  const [activeDetail, setActiveDetail] = useState<{
+    row: ResultRow;
+    trades: ParameterizedResult["trades"];
+    equityCurve: ParameterizedResult["equityCurve"];
+  } | null>(null);
+  const activeResult = useMemo<ParameterizedResult | undefined>(() => {
+    if (!activeRow) return undefined;
+    const detail = activeDetail?.row === activeRow ? activeDetail : null;
+    return { ...activeRow, trades: detail?.trades ?? [], equityCurve: detail?.equityCurve ?? [] };
+  }, [activeRow, activeDetail]);
+  // This tab's previous run, deleted when the next one starts.
+  const lastRunIdRef = useRef<string | undefined>(undefined);
   // The per-strategy settings the last run used, to re-run any one result.
   const lastRunsRef = useRef<StrategyRun[]>([]);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -473,10 +478,11 @@ export default function AlgoBacktestPage() {
     if (selectedFiles.length === 0 || selectedStrategyIds.length === 0) return;
     setIsRunningBatch(true);
     setError(null);
-    setResults([]);
+    setRunMeta(null);
+    setActiveRow(null);
+    setActiveDetail(null);
+    setIndicatorData([]);
     setSelectedTradeId(null);
-    datasetIndicatorCache.current = {};
-    detailChartCache.current.clear();
 
     // Build per-strategy run configs. Active strategy uses live editor state.
     const perStrategyRuns = selectedStrategyIds
@@ -501,20 +507,21 @@ export default function AlgoBacktestPage() {
     lastRunsRef.current = perStrategyRuns;
 
     try {
-      const { results: workerResults, indicatorDataByDataset, failedDatasets, cache } =
-        await runBacktestWorker(selectedFiles, perStrategyRuns);
+      const runId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+      const discardRunId = lastRunIdRef.current;
+      lastRunIdRef.current = runId;
+      const { failedDatasets, cache } = await runBacktestWorker(selectedFiles, perStrategyRuns, runId, discardRunId);
       setLastRunCache(cache);
       refreshCachedCount();
 
-      datasetIndicatorCache.current = indicatorDataByDataset;
-      setResults(workerResults);
+      // Open on the run's best result by P&L, read back from IndexedDB.
+      const [meta, { rows }] = await Promise.all([
+        getMeta(runId),
+        queryPage({ runId, field: "totalPnlPercent", direction: "desc", beatsBuyHold: false, limit: 1 }),
+      ]);
+      setRunMeta(meta ?? null);
+      setActiveRow(rows[0] ?? null);
       playDing();
-      setActiveResultTab(0);
-
-      const first = workerResults[0];
-      if (first?.dataset && indicatorDataByDataset[first.dataset]) {
-        setIndicatorData(indicatorDataByDataset[first.dataset]);
-      }
 
       if (failedDatasets.length > 0) {
         setError(`Failed to load ${failedDatasets.length} dataset(s): ${failedDatasets.join("; ")}`);
@@ -529,7 +536,7 @@ export default function AlgoBacktestPage() {
 
   // Generate markdown report for clipboard
   const generateMarkdownReport = useCallback(() => {
-    const result = results[activeResultTab];
+    const result = activeResult;
     if (!result) return '';
     // Prefer the strategy this result was actually generated from. Falls back
     // to the active editor when the API did not tag the result (legacy runs).
@@ -614,7 +621,7 @@ export default function AlgoBacktestPage() {
     }
 
     return lines.join('\n');
-  }, [results, activeResultTab, selectedStrategyId, selectedFiles, availableDatasets, currentParams, stopLossPercent, takeProfitPercent, enableShorts, positionSizePercent, sizing]);
+  }, [activeResult, selectedStrategyId, selectedFiles, availableDatasets, currentParams, stopLossPercent, takeProfitPercent, enableShorts, positionSizePercent, sizing]);
 
   // Copy report to clipboard
   const copyReport = useCallback(async () => {
@@ -634,9 +641,10 @@ export default function AlgoBacktestPage() {
   // Prefetched on result change because Safari drops clipboard permission if
   // the copy has to wait on a network round trip after the click.
   const [strategySource, setStrategySource] = useState<{ id: string; source: string } | null>(null);
-  const activeResultStrategyId = results[activeResultTab]?.strategyId ?? selectedStrategyId;
+  const activeResultStrategyId = activeRow?.strategyId ?? selectedStrategyId;
+  const hasResults = runMeta !== null;
   useEffect(() => {
-    if (results.length === 0) return;
+    if (!hasResults) return;
     let cancelled = false;
     fetch(`/api/strategy-source?id=${encodeURIComponent(activeResultStrategyId)}`)
       .then((r) => (r.ok ? r.text() : null))
@@ -645,7 +653,7 @@ export default function AlgoBacktestPage() {
       })
       .catch(() => {});
     return () => { cancelled = true; };
-  }, [activeResultStrategyId, results.length]);
+  }, [activeResultStrategyId, hasResults]);
 
   // Generate a copy-pasteable prompt that has Claude write a single-file AWS
   // Lambda (pasted into the console's code editor) that paper-trades the
@@ -654,7 +662,7 @@ export default function AlgoBacktestPage() {
   // the live version trades the way the backtest did. If the engine changes,
   // change this with it.
   const generateLambdaPrompt = useCallback(() => {
-    const result = results[activeResultTab];
+    const result = activeResult;
     if (!result) return '';
     const resultStrategyId = result.strategyId ?? selectedStrategyId;
     const strat = AVAILABLE_STRATEGIES[resultStrategyId];
@@ -862,8 +870,7 @@ export default function AlgoBacktestPage() {
 
     return lines.join('\n');
   }, [
-    results,
-    activeResultTab,
+    activeResult,
     selectedStrategyId,
     currentParams,
     stopLossPercent,
@@ -892,37 +899,23 @@ export default function AlgoBacktestPage() {
 
   // Backtest only runs on explicit button click ("Run N Variations") — no auto-run on file or param change.
 
-  const activeResult = results[activeResultTab];
-
-  // Point the chart at the selected result. The batch only keeps trades and
-  // chart rows for its top ten, so anything else is re-run on its own first.
+  // Load the selected result's trades, equity curve and chart rows. Only the
+  // selected one is held; picking another drops the old one first, so a
+  // whole dataset's chart rows are never held twice while the next loads.
   useEffect(() => {
-    if (!activeResult) return;
-    const key = resultKey(activeResult);
-    const chartRows =
-      detailChartCache.current.get(key) ??
-      (activeResult.dataset ? datasetIndicatorCache.current[activeResult.dataset] : undefined);
-    const missingTrades = activeResult.totalTrades > 0 && activeResult.trades.length === 0;
-    if (chartRows && !missingTrades) {
-      setIndicatorData(chartRows);
-      setDetailLoading(false);
-      return;
-    }
-    const run = lastRunsRef.current.find((r) => r.strategyId === activeResult.strategyId);
-    if (!run || !activeResult.dataset) return;
-
+    if (!activeRow?.dataset) return;
+    const run = lastRunsRef.current.find((r) => r.strategyId === activeRow.strategyId);
+    if (!run) return;
     let stale = false;
+    setActiveDetail(null);
+    setIndicatorData([]);
     setDetailLoading(true);
-    runBacktestDetail(activeResult.dataset, run, activeResult.params)
+    runBacktestDetail(activeRow.dataset, run, activeRow.params)
       .then(({ result, indicatorData: rows }) => {
         if (stale) return;
-        const cache = detailChartCache.current;
-        cache.set(key, rows);
-        while (cache.size > MAX_DETAIL_CHARTS) cache.delete(cache.keys().next().value!);
-        // Patch trades in by identity rather than index, in case the list moved.
-        setResults((prev) =>
-          prev.map((r) => (resultKey(r) === key ? { ...r, trades: result.trades, equityCurve: result.equityCurve } : r)),
-        );
+        setActiveDetail({ row: activeRow, trades: result.trades, equityCurve: result.equityCurve });
+        setIndicatorData(rows);
+        setDetailLoading(false);
       })
       .catch((err: unknown) => {
         if (stale) return;
@@ -932,7 +925,7 @@ export default function AlgoBacktestPage() {
     return () => {
       stale = true;
     };
-  }, [activeResult, runBacktestDetail]);
+  }, [activeRow, runBacktestDetail]);
 
   const chartTrades = useMemo(
     () =>
@@ -1464,7 +1457,7 @@ export default function AlgoBacktestPage() {
           </Flex>
 
           {/* ── Results ───────────────────────────────────────────── */}
-          {results.length === 0 ? (
+          {!runMeta ? (
             <Flex align='center' justify='center' py='9'>
               <Text size='2' color='gray'>
                 Run a backtest to see results.
@@ -1576,10 +1569,10 @@ export default function AlgoBacktestPage() {
               <div className='grid grid-cols-[minmax(0,1fr)] gap-3 lg:h-[calc(100dvh-2rem)] lg:min-h-[560px] lg:grid-cols-[minmax(300px,380px)_minmax(0,1fr)]'>
                 <div className='h-[50dvh] min-h-0 lg:h-auto'>
                   <ResultsBrowser
-                    results={results}
-                    activeIndex={activeResultTab}
-                    onSelect={(index) => {
-                      setActiveResultTab(index);
+                    meta={runMeta}
+                    active={activeRow}
+                    onSelect={(row) => {
+                      setActiveRow(row);
                       setSelectedTradeId(null);
                     }}
                     datasetLabel={(file) => availableDatasets.find((d) => d.file === file)?.label ?? file}

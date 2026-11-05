@@ -8,8 +8,9 @@ import type { BacktestDetailJob, BacktestJob, BacktestWorkerMessage, StrategyRun
 export type { StrategyRun };
 
 export interface BacktestJobResult {
-  results: ParameterizedResult[];
-  indicatorDataByDataset: Record<string, IndicatorData[]>;
+  /** The run's results are in IndexedDB under this id; see runStore.ts. */
+  runId: string;
+  total: number;
   failedDatasets: string[];
   /** How many variations came from the result cache instead of running. */
   cache: { hits: number; total: number; enabled: boolean };
@@ -95,8 +96,8 @@ export function useBacktestWorker() {
         pendingRef.current = null;
         setProgress(null);
         pending.resolve({
-          results: msg.results,
-          indicatorDataByDataset: msg.indicatorDataByDataset,
+          runId: msg.runId,
+          total: msg.total,
           failedDatasets: msg.failedDatasets,
           cache: msg.cache,
         });
@@ -121,7 +122,7 @@ export function useBacktestWorker() {
   }, [rejectDetails]);
 
   const run = useCallback(
-    (selectedFiles: string[], runs: StrategyRun[]): Promise<BacktestJobResult> => {
+    (selectedFiles: string[], runs: StrategyRun[], runId: string, discardRunId?: string): Promise<BacktestJobResult> => {
       // Tearing down + respawning the worker is the cleanest way to cancel any
       // in-flight job — Web Workers don't expose cooperative cancellation.
       if (pendingRef.current) {
@@ -133,7 +134,7 @@ export function useBacktestWorker() {
       }
       const worker = ensureWorker();
       const jobId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-      const job: BacktestJob = { type: "run", jobId, selectedFiles, runs };
+      const job: BacktestJob = { type: "run", jobId, runId, discardRunId, selectedFiles, runs };
       setProgress({
         completed: 0,
         total: 0,

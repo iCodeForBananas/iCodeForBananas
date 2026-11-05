@@ -1,6 +1,8 @@
-import { openDB, type DBSchema, type IDBPDatabase } from "idb";
 import type { ParameterizedResult } from "@/app/strategies";
 import type { SizingSettings } from "@/app/lib/backtest-engine";
+import { backtestDb as db, type ResultFull, type ResultSummary } from "./backtestDb";
+
+export type { ResultFull, ResultSummary };
 
 /**
  * IndexedDB cache of backtest results, so re-running a variation that has
@@ -17,41 +19,6 @@ import type { SizingSettings } from "@/app/lib/backtest-engine";
  * The key is the whole input, spelled out (see resultCacheKey), so a hit can
  * only come from a run whose result would be identical.
  */
-
-const DB_NAME = "algo-backtest-results";
-const DB_VERSION = 1;
-
-/** A result minus its trades and equity curve. */
-export type ResultSummary = Omit<ParameterizedResult, "trades" | "equityCurve">;
-
-export interface ResultFull {
-  trades: ParameterizedResult["trades"];
-  /** Equity curve as two parallel columns; far smaller than {time, equity}[]. */
-  times: Float64Array;
-  equity: Float64Array;
-}
-
-interface ResultCacheDB extends DBSchema {
-  summary: { key: string; value: ResultSummary };
-  full: { key: string; value: ResultFull };
-}
-
-let dbPromise: Promise<IDBPDatabase<ResultCacheDB>> | null = null;
-
-function db(): Promise<IDBPDatabase<ResultCacheDB>> {
-  if (!dbPromise) {
-    dbPromise = openDB<ResultCacheDB>(DB_NAME, DB_VERSION, {
-      upgrade(database) {
-        database.createObjectStore("summary");
-        database.createObjectStore("full");
-      },
-    });
-    // A failed open (private mode, blocked storage) shouldn't stick: let the
-    // next call try again rather than caching the rejection forever.
-    dbPromise.catch(() => { dbPromise = null; });
-  }
-  return dbPromise;
-}
 
 export interface ResultCacheKeyInput {
   /** Fingerprint of the code that computes results; see the worker. */

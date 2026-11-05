@@ -1,7 +1,9 @@
 /// <reference lib="webworker" />
 // Web Worker that runs the entire backtest off the main thread (and off Vercel's
 // 60s/1.8GB lambda). The page sends one job; the worker fetches CSVs, runs
-// indicator + backtest passes, and posts back aggregated results.
+// indicator + backtest passes, and writes the results to IndexedDB as it goes
+// (see runStore.ts). Memory stays bounded by one dataset's bars plus the
+// run's ten best results, however many datasets and variations the job has.
 
 import { IndicatorData, PricePoint } from "@/app/types";
 import { AVAILABLE_STRATEGIES, ParameterizedResult } from "@/app/strategies";
@@ -27,8 +29,12 @@ import {
   type ResultFull,
   type ResultSummary,
 } from "./resultCache";
+import { addToGroups, deleteRun, pruneRuns, toRow, writeMeta, writeRows, type ResultRow, type RunGroup } from "./runStore";
 
+/** Results whose trades and equity curve are kept, so opening one is a lookup. */
 const TOP_RESULTS_WITH_FULL_DATA = 10;
+/** Runs older than this are deleted when a new one starts. */
+const RUN_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
 export interface StrategyRun {
   strategyId: string;
@@ -46,14 +52,19 @@ export interface StrategyRun {
 export interface BacktestJob {
   type: "run";
   jobId: string;
+  /** Where this run's results are written; see runStore.ts. */
+  runId: string;
+  /** The page's previous run, whose results it no longer shows. */
+  discardRunId?: string;
   selectedFiles: string[];
   runs: StrategyRun[];
 }
 
 /**
- * Re-run one result on its own to get what a batch drops: its trades, equity
- * curve and chart rows. A batch keeps those for its top results only, since
- * holding them for thousands of variations would run the tab out of memory.
+ * One result's trades, equity curve and chart rows, which a run doesn't keep
+ * for every variation: holding them for thousands of variations is what ran
+ * the tab out of memory. A run's top results come from the cache; anything
+ * else is re-run on its own.
  */
 export interface BacktestDetailJob {
   type: "detail";
@@ -81,8 +92,9 @@ export type BacktestWorkerMessage =
   | {
       type: "done";
       jobId: string;
-      results: ParameterizedResult[];
-      indicatorDataByDataset: Record<string, IndicatorData[]>;
+      /** The results are in IndexedDB under this run; see runStore.ts. */
+      runId: string;
+      total: number;
       failedDatasets: string[];
       /** How many variations came from the result cache instead of running. */
       cache: { hits: number; total: number; enabled: boolean };
@@ -137,8 +149,8 @@ function projectChartRows(rows: IndicatorData[], keys: Set<string>): IndicatorDa
   });
 }
 
-async function sha256(text: string): Promise<string> {
-  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+async function sha256(bytes: BufferSource): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
   return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
@@ -164,7 +176,7 @@ const codeVersion: Promise<string | null> = (async () => {
         return `${url}\n${await res.text()}`;
       }),
     );
-    return await sha256(texts.join("\n"));
+    return await sha256(new TextEncoder().encode(texts.join("\n")));
   } catch {
     return null;
   }
@@ -181,25 +193,48 @@ async function fetchCsv(file: string): Promise<{ data: PricePoint[]; hash: strin
   const url = new URL(`/data/${encodeURIComponent(file)}`, self.location.origin);
   const res = await fetch(url);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const csvText = await res.text();
-  const hash = await sha256(csvText).catch(() => null);
-  const lines = csvText.trim().split("\n");
-  lines.shift(); // header
-  const data = lines
-    .map((line) => {
-      const values = line.split(",");
-      if (values.length < 5) return null;
-      return {
-        time: new Date(values[0]).getTime(),
-        open: parseFloat(values[1]),
-        high: parseFloat(values[2]),
-        low: parseFloat(values[3]),
-        close: parseFloat(values[4]),
-      };
-    })
-    .filter((c): c is PricePoint => c !== null && !isNaN(c.time) && !isNaN(c.close))
-    .sort((a, b) => a.time - b.time);
+  // Hash the bytes as they arrived, rather than re-encoding the decoded text:
+  // one copy of the file in memory instead of two.
+  const bytes = await res.arrayBuffer();
+  const hash = await sha256(bytes).catch(() => null);
+  const csvText = new TextDecoder().decode(bytes);
+  // Walk the lines in place instead of splitting the file into an array of
+  // ~100k strings first.
+  const data: PricePoint[] = [];
+  let start = csvText.indexOf("\n") + 1; // past the header
+  while (start > 0 && start < csvText.length) {
+    let end = csvText.indexOf("\n", start);
+    if (end === -1) end = csvText.length;
+    const values = csvText.slice(start, end).split(",");
+    start = end + 1;
+    if (values.length < 5) continue;
+    const time = new Date(values[0]).getTime();
+    const close = parseFloat(values[4]);
+    if (isNaN(time) || isNaN(close)) continue;
+    data.push({ time, open: parseFloat(values[1]), high: parseFloat(values[2]), low: parseFloat(values[3]), close });
+  }
+  data.sort((a, b) => a.time - b.time);
   return { data, hash };
+}
+
+/**
+ * The best `size` results by P&L seen so far, with their trades and equity
+ * curve packed. Everything else is dropped as soon as it's summarized.
+ */
+class TopResults {
+  private items: { pnl: number; key: string; full: ResultFull }[] = [];
+  constructor(private readonly size: number) {}
+  wants(pnl: number): boolean {
+    return this.items.length < this.size || pnl > this.items[this.items.length - 1].pnl;
+  }
+  add(pnl: number, key: string, full: ResultFull): void {
+    this.items.push({ pnl, key, full });
+    this.items.sort((a, b) => b.pnl - a.pnl);
+    if (this.items.length > this.size) this.items.pop();
+  }
+  entries(): [string, ResultFull][] {
+    return this.items.map((i) => [i.key, i.full]);
+  }
 }
 
 /** The result cache key for one variation, or null when caching is off. */
@@ -233,7 +268,7 @@ function post(message: BacktestWorkerMessage) {
 }
 
 async function runJob(job: BacktestJob): Promise<void> {
-  const { jobId, selectedFiles, runs } = job;
+  const { jobId, runId, selectedFiles, runs } = job;
 
   for (const run of runs) {
     if (!AVAILABLE_STRATEGIES[run.strategyId]) {
@@ -274,39 +309,20 @@ async function runJob(job: BacktestJob): Promise<void> {
     return { fastPeriod: fast, slowPeriod: slow, signalPeriod: signal };
   });
 
-  const batchResults: ParameterizedResult[] = [];
-  const failedDatasets: string[] = [];
-  const chartSliceCache = new Map<string, ReturnType<typeof calculateIndicatorsWithParams>>();
-  // Bars of datasets whose every variation was a cache hit, so indicators
-  // were never computed; kept in case one of them reaches the chart.
-  const rawByDataset = new Map<string, PricePoint[]>();
-  const indicatorsFor = (datasetFile: string) => {
-    let data = chartSliceCache.get(datasetFile);
-    if (!data) {
-      data = calculateIndicatorsWithParams(
-        rawByDataset.get(datasetFile)!,
-        requiredEMAs,
-        requiredSMAs,
-        requiredMACDs,
-        requiredDonchianPeriods,
-      );
-      chartSliceCache.set(datasetFile, data);
-      rawByDataset.delete(datasetFile);
-    }
-    return data;
-  };
+  // The page's last run is no longer shown, and anything a day old is
+  // leftover; neither needs its rows. The meta goes first, so a run that is
+  // cancelled partway is still found and pruned later.
+  if (job.discardRunId) await deleteRun(job.discardRunId).catch(() => {});
+  await pruneRuns(RUN_MAX_AGE_MS, runId).catch(() => {});
+  const createdAt = Date.now();
+  await writeMeta({ runId, createdAt, total: 0, groups: [] });
 
+  const failedDatasets: string[] = [];
+  const groups = new Map<string, RunGroup>();
+  const top = new TopResults(TOP_RESULTS_WITH_FULL_DATA);
+  let seq = 0;
   const version = await codeVersion;
   let cacheHits = 0;
-  // What produced each result, for storing it and for recomputing a cached
-  // one whose full data is needed but wasn't kept.
-  const origin = new Map<ParameterizedResult, {
-    key: string | null;
-    run: StrategyRun;
-    params: Record<string, number | boolean | string>;
-    riskSettings: RiskSettings;
-    computed: boolean;
-  }>();
 
   const variationsPerDataset = runConfigs.reduce((sum, c) => sum + c.combinations.length, 0);
   const total = variationsPerDataset * selectedFiles.length;
@@ -331,6 +347,8 @@ async function runJob(job: BacktestJob): Promise<void> {
     post({ type: "progress", jobId, completed, total, datasetIndex, datasetCount, currentDataset, currentStrategy, phase });
   };
 
+  // One dataset at a time: its bars, indicators and results are all let go
+  // before the next one is fetched.
   for (const [datasetIndex, datasetFile] of selectedFiles.entries()) {
     report(datasetIndex, datasetFile, "loading", undefined, true);
 
@@ -365,11 +383,9 @@ async function runJob(job: BacktestJob): Promise<void> {
       ? await getSummaries(keys).catch(() => [])
       : [];
 
-    // The whole series goes to the chart, not a recent slice: trades from
-    // anywhere in the run need a bar to sit on, and the chart's replayed
-    // indicators (ATR, Supertrend, RSI-2) only match the strategy's when both
-    // start from the same first bar.
-    rawByDataset.set(datasetFile, rawData);
+    let indicators: IndicatorData[] | null = null;
+    const rows: ResultRow[] = [];
+    const summariesToStore: [string, ResultSummary][] = [];
 
     for (const [i, { run, params, riskSettings, key }] of entries.entries()) {
       const strategy = AVAILABLE_STRATEGIES[run.strategyId];
@@ -381,113 +397,49 @@ async function runJob(job: BacktestJob): Promise<void> {
         strategyName: strategy.name,
       };
       const hit = cached[i];
-      let result: ParameterizedResult;
+      let summary: ResultSummary;
       if (hit) {
-        result = { ...hit, ...tags, trades: [], equityCurve: [] };
+        summary = { ...hit, ...tags };
         cacheHits++;
       } else {
-        result = {
-          ...runBacktestWithParams(indicatorsFor(datasetFile), strategy, params, INITIAL_CAPITAL, riskSettings, run.enableShorts),
+        indicators ??= calculateIndicatorsWithParams(rawData, requiredEMAs, requiredSMAs, requiredMACDs, requiredDonchianPeriods);
+        const result: ParameterizedResult = {
+          ...runBacktestWithParams(indicators, strategy, params, INITIAL_CAPITAL, riskSettings, run.enableShorts),
           ...tags,
         };
+        summary = toSummary(result);
+        if (key) {
+          summariesToStore.push([key, summary]);
+          // Only a result that makes the top ten is worth packing; the rest
+          // of this one is garbage the moment the loop moves on.
+          if (top.wants(result.totalPnlPercent)) top.add(result.totalPnlPercent, key, packFull(result));
+        }
       }
-      origin.set(result, { key, run, params, riskSettings, computed: !hit });
-      batchResults.push(result);
+      const row = toRow(runId, seq++, summary);
+      rows.push(row);
+      addToGroups(groups, row);
       completed++;
       report(datasetIndex, datasetFile, "running", strategy.name);
     }
+
+    // This dataset's results go to disk before the next one starts, so they
+    // never pile up. A failed cache write just means a later run recomputes.
+    await writeRows(rows);
+    await putResults(summariesToStore).catch(() => {});
   }
 
-  batchResults.sort((a, b) => b.totalPnlPercent - a.totalPnlPercent);
-
-  // Top results go back with their trades and equity curve. One that came
-  // from the cache has only its summary in hand: take the rest from the full
-  // store, or rerun just that variation if it was never kept.
-  const fullsToStore: [string, ResultFull][] = [];
-  for (let i = 0; i < Math.min(TOP_RESULTS_WITH_FULL_DATA, batchResults.length); i++) {
-    const r = batchResults[i];
-    const o = origin.get(r)!;
-    if (o.computed) {
-      if (o.key) fullsToStore.push([o.key, packFull(r)]);
-      continue;
-    }
-    const full = await getFull(o.key!).catch(() => undefined);
-    if (full) {
-      batchResults[i] = unpackFull(r, full);
-      continue;
-    }
-    const strategy = AVAILABLE_STRATEGIES[o.run.strategyId];
-    const rerun: ParameterizedResult = {
-      ...runBacktestWithParams(indicatorsFor(r.dataset!), strategy, o.params, INITIAL_CAPITAL, o.riskSettings, o.run.enableShorts),
-      dataset: r.dataset,
-      datasetLabel: r.datasetLabel,
-      strategyId: r.strategyId,
-      strategyName: r.strategyName,
-    };
-    batchResults[i] = rerun;
-    fullsToStore.push([o.key!, packFull(rerun)]);
-  }
-
-  const summariesToStore: [string, ResultSummary][] = [];
-  for (const [r, o] of origin) {
-    if (o.computed && o.key) summariesToStore.push([o.key, toSummary(r)]);
-  }
-
-  for (let i = TOP_RESULTS_WITH_FULL_DATA; i < batchResults.length; i++) {
-    batchResults[i].equityCurve = [];
-    batchResults[i].trades = [];
-  }
-
-  const topResults = batchResults.slice(0, TOP_RESULTS_WITH_FULL_DATA);
-  const top10Datasets = [
-    ...new Set(topResults.map((r) => r.dataset).filter((d): d is string => !!d)),
-  ];
-
-  const topByStrategy = new Map<string, Record<string, number | boolean | string>[]>();
-  for (const r of topResults) {
-    if (!r.strategyId) continue;
-    const list = topByStrategy.get(r.strategyId) ?? [];
-    list.push(r.params);
-    topByStrategy.set(r.strategyId, list);
-  }
-  const topEmaSet = new Set<number>();
-  const topSmaSet = new Set<number>();
-  const topDonchianSet = new Set<number>();
-  const topMacdKeySet = new Set<string>();
-  for (const [sid, combos] of topByStrategy) {
-    const reqs = deriveRequiredIndicators(sid, combos);
-    reqs.requiredEMAs.forEach((v) => topEmaSet.add(v));
-    reqs.requiredSMAs.forEach((v) => topSmaSet.add(v));
-    reqs.requiredDonchianPeriods.forEach((v) => topDonchianSet.add(v));
-    for (const m of reqs.requiredMACDs) {
-      topMacdKeySet.add(`${m.fastPeriod}_${m.slowPeriod}_${m.signalPeriod}`);
-    }
-  }
-  const chartKeys = buildChartKeySet({
-    requiredEMAs: Array.from(topEmaSet),
-    requiredSMAs: Array.from(topSmaSet),
-    requiredDonchianPeriods: Array.from(topDonchianSet),
-    requiredMACDs: Array.from(topMacdKeySet).map((k) => {
-      const [fast, slow, signal] = k.split("_").map(Number);
-      return { fastPeriod: fast, slowPeriod: slow, signalPeriod: signal };
-    }),
-  });
-
-  const indicatorDataByDataset: Record<string, IndicatorData[]> = {};
-  for (const datasetFile of top10Datasets) {
-    indicatorDataByDataset[datasetFile] = projectChartRows(indicatorsFor(datasetFile), chartKeys);
-  }
-
-  // Stored before reporting done, so a run started the moment results
-  // appear already hits, and the page's cached count is current. A failed
-  // write just means the next run computes these again.
-  await putResults(summariesToStore, fullsToStore).catch(() => {});
+  // The run's best results keep their trades and equity curve, so opening
+  // one is a cache lookup. A cached top result already has its entry, from
+  // the run that computed it, unless that was evicted; then opening it
+  // reruns that one variation.
+  await putResults([], top.entries()).catch(() => {});
+  await writeMeta({ runId, createdAt, total: seq, groups: [...groups.values()] });
 
   post({
     type: "done",
     jobId,
-    results: batchResults,
-    indicatorDataByDataset,
+    runId,
+    total: seq,
     failedDatasets,
     cache: { hits: cacheHits, total: completed, enabled: version !== null },
   });
