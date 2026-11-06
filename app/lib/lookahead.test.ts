@@ -85,6 +85,88 @@ describe("no strategy or indicator reads bars after the one it decides on", () =
   }
 });
 
+/**
+ * Parameter sets beyond the defaults: every select option and both booleans
+ * at least once, numbers drawn from each parameter's own range. A peek can
+ * hide behind a non-default branch (a source, a mode, a filter).
+ */
+function paramSets(id: string, count: number, seed: number): Record<string, number | boolean | string>[] {
+  const rand = rng(seed);
+  const defs = AVAILABLE_STRATEGIES[id].parameters ?? [];
+  return Array.from({ length: count }, (_, k) => {
+    const params: Record<string, number | boolean | string> = { ...getDefaultParams(id) };
+    for (const p of defs) {
+      if (p.type === "select" && p.options?.length) params[p.key] = p.options[k % p.options.length];
+      else if (p.type === "boolean") params[p.key] = k % 2 === 0;
+      else if (p.type === "number" && p.min !== undefined && p.max !== undefined) {
+        const step = p.step ?? 1;
+        // Long lookbacks would leave too little of the 400 bars to test.
+        const max = Math.min(p.max, p.min + Math.max(step, (p.max - p.min) / 2));
+        params[p.key] = Math.round((p.min + rand() * (max - p.min)) / step) * step;
+      }
+    }
+    return params;
+  });
+}
+
+describe("no strategy peeks under any of its parameters", () => {
+  const original = walk(N, 3);
+
+  for (const id of Object.keys(AVAILABLE_STRATEGIES)) {
+    it(`${id}: signals up to a bar don't change when later bars do, across parameter sets`, () => {
+      const strategy = AVAILABLE_STRATEGIES[id];
+      for (const params of paramSets(id, 6, id.length)) {
+        const req = deriveRequiredIndicators(id, [params]);
+        const calc = (raw: PricePoint[]) =>
+          calculateIndicatorsWithParams(raw, req.requiredEMAs, req.requiredSMAs, req.requiredMACDs, req.requiredDonchianPeriods);
+        const a = calc(original);
+        for (const cutoff of CUTOFFS) {
+          const b = calc(rewriteAfter(original, cutoff, cutoff + 11));
+          for (let i = 1; i <= cutoff; i++) {
+            for (const position of [null, "long", "short"] as const) {
+              const ctx = { index: i, params, position };
+              const sa = strategy.handler({ ...ctx, current: a[i], previous: a[i - 1], series: a });
+              const sb = strategy.handler({ ...ctx, current: b[i], previous: b[i - 1], series: b });
+              expect(sb.action, `${id} ${JSON.stringify(params)} bar ${i} (${position}), future rewritten after ${cutoff}`).toBe(sa.action);
+            }
+          }
+        }
+      }
+    });
+  }
+});
+
+describe("a whole backtest up to a bar doesn't depend on the bars after it", () => {
+  const original = walk(N, 5);
+  const configs = [
+    { label: "stop off", sizing: { ...DEFAULT_SIZING, useStopLoss: false }, shorts: true },
+    { label: "risk sizing with stop and target", sizing: { ...DEFAULT_SIZING, useTakeProfit: true }, shorts: true },
+    { label: "legacy all-in", sizing: LEGACY_SIZING, shorts: false },
+  ];
+
+  for (const id of Object.keys(AVAILABLE_STRATEGIES)) {
+    it(`${id}: trades closed and equity marked by a bar are the same whatever comes after`, () => {
+      const params = getDefaultParams(id);
+      for (const { label, sizing, shorts } of configs) {
+        const risk = { stopLossPercent: 2, takeProfitPercent: 4, sizing };
+        const a = runBacktestWithParams(indicatorsFor(id, original), AVAILABLE_STRATEGIES[id], params, 10_000, risk, shorts);
+        for (const cutoff of CUTOFFS) {
+          const raw = rewriteAfter(original, cutoff, cutoff + 23);
+          const b = runBacktestWithParams(indicatorsFor(id, raw), AVAILABLE_STRATEGIES[id], params, 10_000, risk, shorts);
+          const cutTime = original[cutoff].time;
+          const closedBy = (r: typeof a) => r.trades.filter((t) => t.exitTime <= cutTime);
+          const enteredBy = (r: typeof a) => r.trades.filter((t) => t.entryTime <= cutTime).map((t) => [t.side, t.entryTime, t.entryPrice]);
+          const markedBy = (r: typeof a) => r.equityCurve.filter((p) => p.time <= cutTime);
+          const what = `${id} (${label}), future rewritten after bar ${cutoff}`;
+          expect(closedBy(b), what).toEqual(closedBy(a));
+          expect(enteredBy(b), what).toEqual(enteredBy(a));
+          expect(markedBy(b), what).toEqual(markedBy(a));
+        }
+      }
+    });
+  }
+});
+
 describe("fills are prices that existed when the order went in", () => {
   it("fills a signal at the next bar's open, not the signal bar's close", () => {
     const data: IndicatorData[] = [

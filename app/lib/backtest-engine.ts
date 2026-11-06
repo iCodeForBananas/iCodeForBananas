@@ -726,14 +726,16 @@ export function runBacktestWithParams(
   let peak = initialCapital;
   let maxDrawdown = 0;
   let maxDrawdownPercent = 0;
+  // The deepest drop in dollars and the deepest in percent are tracked
+  // separately: on a compounding curve they're usually different drops, and
+  // a late dollar loss on a big account would otherwise hide an early, deeper
+  // percent loss on a small one.
   for (const point of equityCurve) {
     if (point.equity > peak) peak = point.equity;
     const drawdown = peak - point.equity;
-    const drawdownPercent = (drawdown / peak) * 100;
-    if (drawdown > maxDrawdown) {
-      maxDrawdown = drawdown;
-      maxDrawdownPercent = drawdownPercent;
-    }
+    if (drawdown > maxDrawdown) maxDrawdown = drawdown;
+    const drawdownPercent = peak > 0 ? (drawdown / peak) * 100 : 0;
+    if (drawdownPercent > maxDrawdownPercent) maxDrawdownPercent = drawdownPercent;
   }
 
   const returns = equityCurve.slice(1).map((p, i) => (p.equity - equityCurve[i].equity) / equityCurve[i].equity);

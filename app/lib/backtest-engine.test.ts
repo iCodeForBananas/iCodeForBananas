@@ -122,6 +122,15 @@ describe("equity curve and metrics", () => {
     expect(r.maxDrawdownPercent).toBeCloseTo(20);
   });
 
+  it("reports the deepest percent drawdown, not the percent of the deepest dollar one", () => {
+    // -30% on $10k, then a 10x run, then -10% on $100k: the dollar loss is
+    // bigger the second time, the percent loss the first.
+    const r = run(bars([[100, 100, 100, 100], [100, 100, 100, 100], [100, 100, 100, 100], [70, 70, 70, 70], [1000, 1000, 1000, 1000], [900, 900, 900, 900]]), { 1: "buy" });
+    expect(r.maxDrawdownPercent).toBeCloseTo(30);
+    // $10k -> $7k is $3k; $100k -> $90k is $10k.
+    expect(r.maxDrawdown).toBeCloseTo(10_000);
+  });
+
   it("annualizes Sharpe by the data's bar frequency", () => {
     const rows: Bar[] = [[100, 100, 100, 100]];
     for (let i = 1; i < 40; i++) {
