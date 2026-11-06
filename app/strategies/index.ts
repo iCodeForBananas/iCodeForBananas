@@ -28,6 +28,10 @@ import ichimoku from './ichimoku';
 import connorsRsi from './connors-rsi';
 import turnOfMonth from './turn-of-month';
 import supplyDemand from './supply-demand';
+import adxDmi from './adx-dmi';
+import regressionMomentum from './regression-momentum';
+import connorsR3 from './connors-r3';
+import connorsPercentB from './connors-percent-b';
 
 export const AVAILABLE_STRATEGIES: Record<string, StrategyDefinition> = {
   // Trend Following
@@ -46,6 +50,8 @@ export const AVAILABLE_STRATEGIES: Record<string, StrategyDefinition> = {
   'time-series-momentum': timeSeriesMomentum,
   'kama-trend': kamaTrend,
   'ichimoku': ichimoku,
+  'adx-dmi': adxDmi,
+  'regression-momentum': regressionMomentum,
   // Mean Reversion
   'bollinger-bands': bollingerBands,
   'keltner-channel': keltnerChannel,
@@ -56,6 +62,8 @@ export const AVAILABLE_STRATEGIES: Record<string, StrategyDefinition> = {
   'double-7s': double7s,
   'ibs-mean-reversion': ibsMeanReversion,
   'connors-rsi': connorsRsi,
+  'connors-r3': connorsR3,
+  'connors-percent-b': connorsPercentB,
   // Support & Resistance
   'supply-demand': supplyDemand,
   // Calendar

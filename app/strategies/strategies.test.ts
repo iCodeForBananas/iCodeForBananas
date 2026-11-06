@@ -13,6 +13,10 @@ import kamaTrend, { getKamaArray } from "./kama-trend";
 import supplyDemand, { getZoneSeries, zoneParamsFrom } from "./supply-demand";
 import macdCrossover from "./macd-crossover";
 import emaPullback from "./ema-pullback";
+import adxDmi, { getDmi } from "./adx-dmi";
+import regressionMomentum, { getRegressionMomentum } from "./regression-momentum";
+import connorsR3 from "./connors-r3";
+import connorsPercentB, { getPercentB } from "./connors-percent-b";
 import { deriveRequiredIndicators } from "@/app/lib/backtest-engine";
 
 type Bar = OHLCBar & IndicatorValues;
@@ -393,5 +397,90 @@ describe("EMA trend pullback", () => {
   it("asks the engine for both EMAs", () => {
     const { requiredEMAs } = deriveRequiredIndicators("ema-pullback", [{ fastPeriod: 13, slowPeriod: 34 }]);
     expect(requiredEMAs).toEqual(expect.arrayContaining([13, 34]));
+  });
+});
+
+describe("ADX / DMI", () => {
+  const trend = (n: number, step: number) =>
+    Array.from({ length: n }, (_, i) => {
+      const c = 100 + i * step;
+      return { time: i * DAY, open: c - step / 2, high: c + 1, low: c - 1, close: c } as Bar;
+    });
+
+  it("reads a steady rise as a strong uptrend", () => {
+    const { plusDi, minusDi, adx } = getDmi(trend(60, 2), 14);
+    expect(plusDi[59]).toBeGreaterThan(minusDi[59]);
+    expect(adx[59]).toBeGreaterThan(50);
+    expect(Number.isNaN(adx[26])).toBe(true);
+    expect(Number.isNaN(adx[27])).toBe(false);
+  });
+
+  it("buys an uptrend, shorts a downtrend, and exits when the DIs cross", () => {
+    expect(signal(adxDmi, trend(60, 2))).toBe("buy");
+    expect(signal(adxDmi, trend(60, -1))).toBe("sell");
+    expect(signal(adxDmi, trend(60, -1), "long")).toBe("sell");
+    expect(signal(adxDmi, trend(60, 2), "long")).toBe("hold");
+  });
+
+  it("stays out of a range below the ADX threshold", () => {
+    const range = fromCloses(Array.from({ length: 80 }, (_, i) => 100 + (i % 2 === 0 ? 1 : -1) * 0.2));
+    expect(signal(adxDmi, range)).toBe("hold");
+  });
+});
+
+describe("Regression momentum", () => {
+  it("scores a steady 0.1% a bar trend near its annualized rate", () => {
+    const steady = fromCloses(Array.from({ length: 120 }, (_, i) => 100 * Math.exp(0.001 * i)));
+    const { score, maxGap } = getRegressionMomentum(steady, 90, 252);
+    // exp(0.001 * 252) - 1 = 28.7%, and a perfect fit has R² = 1.
+    expect(score[119]).toBeCloseTo(28.66, 1);
+    expect(Number.isNaN(score[88])).toBe(true);
+    expect(maxGap[119]).toBeCloseTo(0.1, 2);
+  });
+
+  it("buys a strong trend over its SMA and skips one with a big gap", () => {
+    const strong = fromCloses(Array.from({ length: 120 }, (_, i) => 100 * Math.exp(0.003 * i)));
+    expect(signal(regressionMomentum, strong)).toBe("buy");
+    const gapped = fromCloses(Array.from({ length: 120 }, (_, i) => 100 * Math.exp(0.003 * i) * (i >= 110 ? 1.2 : 1)));
+    expect(signal(regressionMomentum, gapped)).toBe("hold");
+  });
+
+  it("exits a long once the close drops under the SMA", () => {
+    const rolled = fromCloses([...Array.from({ length: 119 }, (_, i) => 100 + i), 120]);
+    expect(signal(regressionMomentum, rolled, "long")).toBe("sell");
+  });
+});
+
+describe("Connors R3", () => {
+  const withRsiDrop = (closes: number[]) => fromCloses(closes, { sma200: 50 });
+
+  it("buys after RSI(2) falls three days in a row from under 60 to under 10", () => {
+    // Up, a small dip that starts the drop under 60, then two lower closes.
+    // RSI(2): 44, 17, 6, 2.
+    const drop = [100, 102, 101, 101.5, 100.8, 99.5, 97.5, 94];
+    expect(signal(connorsR3, withRsiDrop(drop))).toBe("buy");
+    expect(signal(connorsR3, fromCloses(drop, { sma200: 200 }))).toBe("hold");
+    // RSI(2): 91, 20, 6, 2. The drop starts above 60.
+    expect(signal(connorsR3, withRsiDrop([100, 101, 102, 103, 102.9, 101, 98, 94]))).toBe("hold");
+  });
+
+  it("sells once RSI(2) closes above the exit level", () => {
+    expect(signal(connorsR3, withRsiDrop([100, 99, 98, 97, 99, 102]), "long")).toBe("sell");
+  });
+});
+
+describe("Connors %b", () => {
+  it("measures the close inside its Bollinger Bands", () => {
+    const pctB = getPercentB(fromCloses([10, 10, 10, 10, 14]), 5, 1);
+    // Mean 10.8, population sd 1.6: the bands run 9.2 to 12.4.
+    expect(pctB[4]).toBeCloseTo((14 - 9.2) / 3.2);
+    expect(Number.isNaN(pctB[3])).toBe(true);
+  });
+
+  it("buys after three closes in the bottom of the bands and sells at the top", () => {
+    const sliding = fromCloses([110, 109, 108, 107, 106, 105, 104, 103, 102], { sma200: 50 });
+    expect(signal(connorsPercentB, sliding)).toBe("buy");
+    expect(signal(connorsPercentB, fromCloses([110, 109, 108, 107, 106, 105, 104, 103, 102], { sma200: 200 }))).toBe("hold");
+    expect(signal(connorsPercentB, fromCloses([100, 101, 102, 103, 104, 105], { sma200: 50 }), "long")).toBe("sell");
   });
 });

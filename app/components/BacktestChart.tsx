@@ -35,6 +35,9 @@ import { monthCalendar } from "@/app/strategies/turn-of-month";
 import { ichimokuAt } from "@/app/strategies/ichimoku";
 import { getKamaArray } from "@/app/strategies/kama-trend";
 import { getZoneSeries, zoneParamsFrom } from "@/app/strategies/supply-demand";
+import { getDmi } from "@/app/strategies/adx-dmi";
+import { getRegressionMomentum, getSmaArray } from "@/app/strategies/regression-momentum";
+import { getPercentB } from "@/app/strategies/connors-percent-b";
 
 interface BacktestChartProps {
   data: IndicatorData[];
@@ -448,6 +451,68 @@ function computeIndicators(
       priceLines.push({ values: edge(zones.demandBottom, zones.demandTop), color: "#22c55e", label: "", lineWidth: 1, dashed: true });
       priceLines.push({ values: edge(zones.supplyBottom, zones.supplyTop), color: "#ef4444", label: "Supply", lineWidth: 2 });
       priceLines.push({ values: edge(zones.supplyTop, zones.supplyBottom), color: "#ef4444", label: "", lineWidth: 1, dashed: true });
+      break;
+    }
+    case "adx-dmi": {
+      const { plusDi, minusDi, adx } = getDmi(data, num("period", 14));
+      const defined = (arr: number[]) => arr.map((v) => (Number.isNaN(v) ? undefined : v));
+      oscillator = {
+        type: "rsi",
+        series: [
+          { values: defined(plusDi), color: "#22c55e", label: "+DI" },
+          { values: defined(minusDi), color: "#ef4444", label: "-DI" },
+          { values: defined(adx), color: "#e2e8f0", label: "ADX", lineWidth: 2 },
+        ],
+        hLines: [{ value: num("adxThreshold", 20), color: "#475569", dashed: true }],
+      };
+      break;
+    }
+    case "regression-momentum": {
+      const maPeriod = num("maPeriod", 100);
+      const { score } = getRegressionMomentum(data, num("lookback", 90), num("barsPerYear", 252));
+      const sma = getSmaArray(data, maPeriod);
+      priceLines.push({ values: sma.map((v) => (Number.isNaN(v) ? undefined : v)), color: "#f97316", label: `SMA ${maPeriod}`, lineWidth: 2 });
+      const minScore = num("minScore", 30);
+      oscillator = {
+        type: "roc",
+        series: [{ values: score.map((v) => (Number.isNaN(v) ? undefined : v)), color: "#a855f7", label: "Slope x R² %/yr" }],
+        hLines: [
+          { value: minScore, color: "#22c55e", dashed: true },
+          { value: num("exitScore", 0), color: "#ef4444", dashed: true },
+          { value: -minScore, color: "#22c55e", dashed: true },
+        ],
+      };
+      break;
+    }
+    case "connors-r3": {
+      if (params.trendFilter ?? true) {
+        priceLines.push({ values: data.map((d) => d.sma200), color: "#f97316", label: "SMA 200" });
+      }
+      const rsi = getRsiArray(data, 2);
+      oscillator = {
+        type: "rsi",
+        series: [{ values: rsi.map((v) => (Number.isNaN(v) ? undefined : v)), color: "#a855f7", label: "RSI(2)" }],
+        hLines: [
+          { value: num("exitLevel", 70), color: "#ef4444", dashed: true },
+          { value: num("startLevel", 60), color: "#475569", dashed: true },
+          { value: num("entryLevel", 10), color: "#22c55e", dashed: true },
+        ],
+      };
+      break;
+    }
+    case "connors-percent-b": {
+      if (params.trendFilter ?? true) {
+        priceLines.push({ values: data.map((d) => d.sma200), color: "#f97316", label: "SMA 200" });
+      }
+      const pctB = getPercentB(data, num("period", 5), num("stdDev", 1));
+      oscillator = {
+        type: "ibs",
+        series: [{ values: pctB.map((v) => (Number.isNaN(v) ? undefined : v)), color: "#a855f7", label: "%b" }],
+        hLines: [
+          { value: num("exitPctB", 80) / 100, color: "#ef4444", dashed: true },
+          { value: num("entryPctB", 20) / 100, color: "#22c55e", dashed: true },
+        ],
+      };
       break;
     }
     case "kama-trend": {
