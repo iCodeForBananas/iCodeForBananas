@@ -209,9 +209,14 @@ async function fetchCsv(file: string): Promise<{ data: PricePoint[]; hash: strin
     start = end + 1;
     if (values.length < 5) continue;
     const time = new Date(values[0]).getTime();
+    const open = parseFloat(values[1]);
+    const high = parseFloat(values[2]);
+    const low = parseFloat(values[3]);
     const close = parseFloat(values[4]);
-    if (isNaN(time) || isNaN(close)) continue;
-    data.push({ time, open: parseFloat(values[1]), high: parseFloat(values[2]), low: parseFloat(values[3]), close });
+    // Orders fill at the next bar's open, so a bar with any unusable price
+    // is dropped rather than half used.
+    if (isNaN(time) || !(open > 0 && high > 0 && low > 0 && close > 0)) continue;
+    data.push({ time, open, high, low, close });
   }
   data.sort((a, b) => a.time - b.time);
   return { data, hash };

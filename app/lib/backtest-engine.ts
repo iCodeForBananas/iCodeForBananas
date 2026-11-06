@@ -551,10 +551,27 @@ export function runBacktestWithParams(
     trailSeries = [];
   };
 
+  // Every decision is made on a closed bar and filled at the next bar's
+  // open: a strategy signal, the close-based trailing stop and the drawdown
+  // limit all read a bar's close, and that close is gone by the time anyone
+  // could act on it. Only the resting stop and target fill inside a bar.
+  type PendingOrder =
+    | { kind: "open"; side: PositionSide; atr: number | undefined }
+    | { kind: "close"; reason: string };
+  let pending: PendingOrder | null = null;
+
   for (let i = 1; i < data.length; i++) {
     const current = data[i];
     const previous = data[i - 1];
     let exitedViaRiskThisBar = false;
+
+    // Fill what the previous bar's close decided, at this bar's open.
+    if (pending) {
+      const order: PendingOrder = pending;
+      pending = null;
+      if (order.kind === "close") closeAtPrice(current.open, current.time, order.reason);
+      else if (!position) openPosition(order.side, current.open, current.time, i, order.atr);
+    }
 
     // Record the effective stop level at the start of this bar before any exit checks.
     // For EMA-based trailing stops the level ratchets with price; for fixed SL it is flat.
@@ -579,7 +596,7 @@ export function runBacktestWithParams(
     // Per-bar trailing-EMA stop — close-based.
     {
       const pos = position as OpenPosition | null;
-      if (pos && trailingStopEmaPeriod > 0 && i > pos.entryIdx) {
+      if (pos && trailingStopEmaPeriod > 0 && i >= pos.entryIdx) {
         const emaKey = `ema${trailingStopEmaPeriod}` as keyof typeof current;
         const emaVal = current[emaKey] as number | undefined;
         if (emaVal !== undefined) {
@@ -589,7 +606,7 @@ export function runBacktestWithParams(
               : current.close >= emaVal;
           if (crossed) {
             const reason = `Trailing stop EMA ${trailingStopEmaPeriod} hit (close ${current.close.toFixed(2)} ${pos.side === PositionSide.LONG ? "≤" : "≥"} EMA ${emaVal.toFixed(2)})`;
-            closeAtPrice(current.close, current.time, reason);
+            pending = { kind: "close", reason };
             exitedViaRiskThisBar = true;
           }
         }
@@ -644,14 +661,18 @@ export function runBacktestWithParams(
       position: held ? (held.side === PositionSide.LONG ? "long" : "short") : null,
     });
 
-    if (signal.action === "buy" && !position && !exitedViaRiskThisBar) {
-      openPosition(PositionSide.LONG, current.close, current.time, i, current.atr);
+    // The ATR an ATR stop is sized from is the signal bar's, the last one
+    // known when the order goes in.
+    if (pending) {
+      // A trailing-stop exit is already queued for the next open.
+    } else if (signal.action === "buy" && !position && !exitedViaRiskThisBar) {
+      pending = { kind: "open", side: PositionSide.LONG, atr: current.atr };
     } else if (signal.action === "buy" && (position as OpenPosition | null)?.side === PositionSide.SHORT) {
-      closeAtPrice(current.close, current.time, signal.reason);
+      pending = { kind: "close", reason: signal.reason };
     } else if (signal.action === "sell" && (position as OpenPosition | null)?.side === PositionSide.LONG) {
-      closeAtPrice(current.close, current.time, signal.reason);
+      pending = { kind: "close", reason: signal.reason };
     } else if (signal.action === "sell" && !position && enableShorts && !exitedViaRiskThisBar) {
-      openPosition(PositionSide.SHORT, current.close, current.time, i, current.atr);
+      pending = { kind: "open", side: PositionSide.SHORT, atr: current.atr };
     }
 
     // Mark to market at the close so drawdown and Sharpe see open-trade
@@ -664,24 +685,26 @@ export function runBacktestWithParams(
       return equity + unrealized;
     };
 
-    // Account-level drawdown limit, checked at the close: past it, go flat
-    // at this close and sit out. The peak restarts from where the account is
-    // then, so the next trip is measured from the new low, not the old high.
+    // Account-level drawdown limit, checked at the close: past it, go flat at
+    // the next open (dropping any entry queued for it) and sit out. The peak
+    // restarts from where the account is marked now, so the next trip is
+    // measured from the new low, not the old high.
     if (sizing.maxDrawdownPercent > 0) {
       const marked = markToMarket();
       if (marked > peakEquity) peakEquity = marked;
       if (i >= entriesAllowedFrom && marked <= peakEquity * (1 - sizing.maxDrawdownPercent / 100)) {
         const pause = sizing.drawdownPauseBars > 0 ? `sitting out ${sizing.drawdownPauseBars} bars` : "no new trades for the rest of the run";
-        closeAtPrice(current.close, current.time, `Max drawdown ${sizing.maxDrawdownPercent}% reached; ${pause}`);
+        pending = position ? { kind: "close", reason: `Max drawdown ${sizing.maxDrawdownPercent}% reached; ${pause}` } : null;
         entriesAllowedFrom = sizing.drawdownPauseBars > 0 ? i + 1 + sizing.drawdownPauseBars : Infinity;
-        peakEquity = equity;
+        peakEquity = marked;
       }
     }
 
     equityCurve.push({ time: current.time, equity: markToMarket() });
   }
 
-  // Close any open position at end of data
+  // Close any open position at end of data, marked at the last close. An
+  // order queued on the last bar has no next open to fill at and is dropped.
   if (position && data.length > 0) {
     const lastCandle = data[data.length - 1];
     closeAtPrice(lastCandle.close, lastCandle.time, "End of data");

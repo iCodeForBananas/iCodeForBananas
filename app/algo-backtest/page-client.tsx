@@ -760,7 +760,7 @@ export default function AlgoBacktestPage() {
     const riskExits: string[] = [];
     if (trailingStopEmaPeriod > 0) {
       riskExits.push(
-        `**Trailing EMA stop.** On a bar after the entry bar, if a long's close is ≤ EMA${trailingStopEmaPeriod} (a short's close ≥ EMA${trailingStopEmaPeriod}), exit at that close with a market order. This one is close-based, so the Lambda evaluates it itself.`,
+        `**Trailing EMA stop.** From the entry bar on, if a long's close is ≤ EMA${trailingStopEmaPeriod} (a short's close ≥ EMA${trailingStopEmaPeriod}), send a market order to exit right after that bar closes. The backtest fills it at the next bar's open. This one is close-based, so the Lambda evaluates it itself.`,
       );
     }
     if (hasStop || tp > 0) {
@@ -880,8 +880,8 @@ export default function AlgoBacktestPage() {
     );
     const steps: string[] = [...riskExits];
     steps.push(
-      `**Strategy signal.** Run the handler. A 'sell' while long ${shorts ? "(or a 'buy' while short) " : ''}closes the position with a market order at the bar close${hasStop || tp > 0 ? ', after first cancelling the resting exit order and confirming the cancel' : ''}. Closing does **not** reverse: a new position can only open on a later bar.`,
-      `**Entry.** Only when flat, and only if no exit happened on this same bar: 'buy' opens a long${shorts ? ", and 'sell' opens a short (`side=sell_short`, closed later with `side=buy_to_cover`)" : ''}. Send a market order right after the bar closes. The backtest filled entries and exits at the signal bar's close, so the live fill will usually be a little worse.`,
+      `**Strategy signal.** Run the handler. A 'sell' while long ${shorts ? "(or a 'buy' while short) " : ''}closes the position with a market order sent right after the bar closes${hasStop || tp > 0 ? ', after first cancelling the resting exit order and confirming the cancel' : ''}. Closing does **not** reverse: a new position can only open on a later bar.`,
+      `**Entry.** Only when flat, and only if no exit happened on this same bar: 'buy' opens a long${shorts ? ", and 'sell' opens a short (`side=sell_short`, closed later with `side=buy_to_cover`)" : ''}. Send a market order right after the bar closes. The backtest decides on the closed bar and fills every entry and exit at the **next bar's open**, which is what that order gets.`,
     );
     if (sz.maxDrawdownPercent > 0) {
       steps.push(

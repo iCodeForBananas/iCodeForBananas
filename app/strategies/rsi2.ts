@@ -4,6 +4,7 @@
 // Sell when 2-period RSI rises above overbought threshold.
 
 import { StrategyDefinition, StrategyHandler, StrategyParameter } from './types';
+import { getRsiArray } from './cumulative-rsi';
 
 const parameters: StrategyParameter[] = [
   {
@@ -40,20 +41,10 @@ const handler: StrategyHandler = ({ current, series, index, params }) => {
   const overbought = (params.overbought as number) ?? 90;
   const trendFilter = (params.trendFilter as boolean) ?? true;
 
-  // Wilder's RSI-2 replayed from bar 1 to current index — matches chart computation.
+  // Wilder's RSI-2, computed once per series (see cumulative-rsi). Replaying
+  // it from bar 1 on every call was O(n²) and stalled minute data.
   if (index < 3) return { action: 'hold', reason: 'Warming up' };
-
-  const rsiPeriod = 2;
-  let ag = 0, al = 0;
-  for (let i = 1; i <= index; i++) {
-    const delta = series[i].close - series[i - 1].close;
-    const g = delta > 0 ? delta : 0;
-    const l = delta < 0 ? -delta : 0;
-    if (i < rsiPeriod) { ag += g; al += l; }
-    else if (i === rsiPeriod) { ag = (ag + g) / rsiPeriod; al = (al + l) / rsiPeriod; }
-    else { ag = (ag * (rsiPeriod - 1) + g) / rsiPeriod; al = (al * (rsiPeriod - 1) + l) / rsiPeriod; }
-  }
-  const rsi2 = al === 0 ? 100 : 100 - 100 / (1 + ag / al);
+  const rsi2 = getRsiArray(series, 2)[index];
 
   const aboveTrend = !trendFilter || (current.sma200 != null && current.close > current.sma200);
 
