@@ -775,22 +775,57 @@ export default function AlgoBacktestPage() {
       );
     }
 
+    // Every AWS resource this bot gets is named from one slug, so a second
+    // strategy or symbol deploys alongside instead of overwriting it.
+    const slug = `tradier-paper-${strat.id}-${symbol}`.toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/-+/g, '-').replace(/-$/, '').slice(0, 56);
+    const schedule = intraday
+      ? `a cron expression in the \`America/New_York\` timezone that fires a few seconds after each ${timeframe} bar closes on weekdays, covering the full session the data uses (the code decides whether orders are allowed)`
+      : `\`cron(15 16 ? * MON-FRI *)\` in the \`America/New_York\` timezone (4:15pm ET, after the close)${timeframe === '1wk' ? ', with the code acting only on the last trading day of the week' : ''}`;
+
     const lines: string[] = [
-      `# Write an AWS Lambda that paper-trades ${strat.name} on ${symbol} (${timeframe} bars)`,
+      `# Build and deploy an AWS Lambda that paper-trades ${strat.name} on ${symbol} (${timeframe} bars)`,
       '',
-      "Write an AWS Lambda function that trades the strategy below through **Tradier's SANDBOX (paper-trading) API only**. It must follow the same rules as the backtest this prompt came from, described exactly below. Wherever something is ambiguous, pick the more conservative reading and say what you chose.",
+      "Write an AWS Lambda function that trades the strategy below through **Tradier's SANDBOX (paper-trading) API only**, then provision and deploy everything it needs yourself, programmatically, with the **Agent Toolkit for AWS** and the **AWS SDK for JavaScript v3**. Don't hand me a console checklist. The function must follow the same rules as the backtest this prompt came from, described exactly below. Wherever something is ambiguous, pick the more conservative reading and say what you chose.",
       '',
-      '## What to hand back',
+      '## 1. Set up your tooling first',
       '',
-      "1. **One file, `index.mjs`**, for the **Node.js 22.x** runtime with handler `index.handler`. I will paste it into the AWS Lambda console code editor, so it can't have npm dependencies: use the built-in global `fetch` for Tradier, and only the AWS SDK v3 clients the runtime already bundles (`@aws-sdk/client-dynamodb`, `@aws-sdk/lib-dynamodb`, `@aws-sdk/client-secrets-manager`). No build step, no TypeScript.",
-      '2. **A setup checklist for the AWS console**: the DynamoDB table (name, partition key), the Secrets Manager secret (name, JSON keys), the environment variables, the IAM permissions, the EventBridge Scheduler schedule, and the function timeout and memory.',
-      "3. **A short test plan**: how to run it once by hand from the console's Test tab and what the log should show.",
+      'Check each of these, and install or configure whatever is missing before writing any code. Tell me what you found and what you installed.',
+      '',
+      "- **Agent Toolkit for AWS** (https://github.com/aws/agent-toolkit-for-aws): the AWS MCP Server plus AWS skills. Check whether its tools are already available to you. If not, install it the way your agent supports: as a plugin (in Claude Code, `/plugin marketplace add aws/agent-toolkit-for-aws` then `/plugin install aws-core@agent-toolkit-for-aws`), with `aws configure agent-toolkit` (AWS CLI 2.35.0 or later), or by adding the AWS MCP Server to your MCP config and running `npx skills add aws/agent-toolkit-for-aws/skills`. Follow the current quick start (https://docs.aws.amazon.com/agent-toolkit/latest/userguide/quick-start.html) for exact versions. Confirm it's connected by asking it which AWS Regions are available. Use it to look up current API shapes, service limits and IAM actions rather than relying on memory.",
+      '- **Node.js 22+ and npm**, for the deploy script.',
+      '- **AWS SDK for JavaScript v3**, installed into a local `deploy/` folder (`npm install` the `@aws-sdk/client-*` packages the deploy script uses). The Lambda itself takes no npm dependencies.',
+      "- **AWS credentials.** Resolve them with the SDK's default provider chain and call `sts:GetCallerIdentity`. Show me the account id, the principal's ARN and the region you'll deploy to, and **wait for me to confirm** before creating anything. If no credentials resolve, stop and tell me how to configure them (for example `aws configure sso` or `aws configure`). Never ask me to paste access keys into chat.",
+      '',
+      '## 2. What to build',
+      '',
+      "1. **`lambda/index.mjs`**, for the **Node.js 22.x** runtime with handler `index.handler`. A single file with no npm dependencies: use the built-in global `fetch` for Tradier, and only the AWS SDK v3 clients the runtime already bundles (`@aws-sdk/client-dynamodb`, `@aws-sdk/lib-dynamodb`, `@aws-sdk/client-secrets-manager`). No build step, no TypeScript. Support a test event `{ \"dryRun\": true }` that runs everything (data, indicators, signal, reconciliation) and logs the orders it would place without placing them or writing state.",
+      `2. **\`deploy/deploy.mjs\`**, an idempotent AWS SDK v3 script that creates each resource below if it's missing and updates it to match if it exists, so running it twice changes nothing. Name everything from the prefix \`${slug}\`, tag every resource \`app=icodeforbananas-backtest\`, \`strategy=${strat.id}\`, \`symbol=${symbol}\`, and print each resource's ARN as it goes:`,
+      `   - **IAM execution role** \`${slug}-role\`, trusted by \`lambda.amazonaws.com\`, with \`AWSLambdaBasicExecutionRole\` and a least-privilege inline policy: \`dynamodb:GetItem\`/\`PutItem\`/\`UpdateItem\` on this table only, and \`secretsmanager:GetSecretValue\` on this secret only. Wait for the role to propagate before creating the function.`,
+      `   - **DynamoDB table** \`${slug}-state\`: partition key \`pk\` (string, holding \`symbol#strategyId\`), on-demand billing, point-in-time recovery on.`,
+      `   - **Secrets Manager secret** \`${slug}/tradier-sandbox\`, a JSON string with \`accessToken\` and \`accountId\`. The script reads both from the environment variables \`TRADIER_SANDBOX_TOKEN\` and \`TRADIER_SANDBOX_ACCOUNT_ID\` on my machine. If they're unset, create the secret with placeholder values and tell me the exact command to set the real ones. Never print, log or commit the values.`,
+      `   - **Lambda function** \`${slug}\`: Node.js 22.x, \`index.handler\`, deployed as a zip of \`lambda/\` built in the script, timeout 60s, memory 256 MB, reserved concurrency 1 (so two invocations can never trade at once), and environment variables \`TABLE_NAME\`, \`SECRET_ID\`, \`SYMBOL\`, \`MAX_DAILY_LOSS_PCT\` (default 2). Wait for each update to finish before the next.`,
+      `   - **EventBridge Scheduler schedule** \`${slug}-schedule\` targeting the function: ${schedule}. Give it its own role, \`${slug}-scheduler-role\`, trusted by \`scheduler.amazonaws.com\` and allowed \`lambda:InvokeFunction\` on this function only, and a retry policy of at most 1 retry.`,
+      "3. **`deploy/teardown.mjs`**, which deletes everything `deploy.mjs` created (schedule, function, roles and their policies, table, secret) after printing what it will delete and asking for confirmation. The secret gets the standard recovery window, not a forced delete.",
+      '',
+      '## 3. Deploy, then verify what you created',
+      '',
+      'Run `deploy.mjs`, then check every resource with SDK read calls rather than trusting the script\'s output:',
+      '',
+      '- `iam:GetRole` and the role\'s policies match the least-privilege policy above.',
+      '- `dynamodb:DescribeTable` shows `ACTIVE`, the key schema and on-demand billing.',
+      '- `secretsmanager:DescribeSecret` exists (don\'t read the value back).',
+      '- `lambda:GetFunctionConfiguration` shows the runtime, handler, timeout, memory, reserved concurrency and environment variables, with `State: Active` and `LastUpdateStatus: Successful`.',
+      '- `scheduler:GetSchedule` shows the expression, timezone, target ARN and role, and that it\'s `ENABLED`.',
+      '- Invoke the function once with `{ "dryRun": true }`, then read its CloudWatch Logs and confirm the JSON log line shows the bar, the indicator values, the signal and what it would have done, with no error.',
+      '',
+      'Finish with a table of every resource (name, ARN, verified yes/no), anything that failed and how you fixed it, and how to redeploy, pause the schedule, and tear it all down.',
       '',
       '## Hard guardrails',
       '',
       "- Base URL is `https://sandbox.tradier.com/v1`. Hardcode it as a constant and throw at startup if it doesn't contain `sandbox.tradier.com`. No environment variable can point this at live trading.",
       '- Read the sandbox access token and paper account id from Secrets Manager (cache them across warm invocations), never from code or plain environment variables.',
       '- Never trade on missing, stale, or incomplete data. When in doubt, do nothing and log why.',
+      '- Only create or change the resources listed above, only in the account and region I confirmed, and nothing with broader permissions than they need.',
       '',
       '## Strategy',
       '',
@@ -901,9 +936,7 @@ export default function AlgoBacktestPage() {
       '',
       '## Scheduling, logging, errors',
       '',
-      intraday
-        ? `- **EventBridge Scheduler:** a cron expression in the \`America/New_York\` timezone that fires a few seconds after each ${timeframe} bar closes on weekdays. Make it cover the full session the data uses, and let the code decide whether orders are allowed.`
-        : `- **EventBridge Scheduler:** \`cron(15 16 ? * MON-FRI *)\` in the \`America/New_York\` timezone (4:15pm ET, after the close)${timeframe === '1wk' ? ', with the code acting only on the last trading day of the week' : ''}.`,
+      `- **Schedule:** ${schedule}, created by \`deploy.mjs\` (see What to build).`,
       '- Write one JSON log line per invocation: bar time, OHLC, the indicator values the handler read, the signal and its reason, the action taken (or why none), orders placed, and the resulting state.',
       '- Retry Tradier calls with backoff on network errors and 5xx responses only, at most 3 attempts. Never retry a 4xx.',
       '- Wrap the whole handler in a try/catch. Log the error and rethrow so the invocation shows as failed, and never leave state half-written: write DynamoDB once, at the end, with a conditional update on `lastProcessedBarTime`.',
