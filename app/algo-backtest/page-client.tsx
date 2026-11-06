@@ -790,7 +790,7 @@ export default function AlgoBacktestPage() {
         tp > 0 ? `take profit ${tp}% in favor of the entry fill (long: fill × ${(1 + tp / 100).toFixed(4)}; short: fill × ${(1 - tp / 100).toFixed(4)})` : null,
       ].filter(Boolean).join(', and ');
       riskExits.push(
-        `**${hasStop && tp > 0 ? 'Stop loss and take profit' : hasStop ? 'Stop loss' : 'Take profit'}.** Levels: ${levels}, computed from the actual average fill price of the entry order. The backtest checks these intrabar against each bar's high/low, and if a bar opens beyond a level it fills at the open. A Lambda that wakes once per bar can't see intrabar prices, so these must be resting orders at Tradier, placed right after the entry fill is confirmed: ${hasStop && tp > 0 ? 'an OCO order (`class=oco`) with a stop leg at the stop level and a limit leg at the target' : hasStop ? 'a stop order (`type=stop`) at the stop level' : 'a limit order (`type=limit`) at the target'}, \`duration=gtc\`. Each invocation, check whether it filled; if so, record the exit and clear the position.`,
+        `**${hasStop && tp > 0 ? 'Stop loss and take profit' : hasStop ? 'Stop loss' : 'Take profit'}.** Levels: ${levels}, computed from the actual average fill price of the entry order. The backtest arms them from the bar after the entry bar: on the entry bar itself, if its high/low reached a level, the trade closes at the next open instead (a market order right after that bar closes). From then on it checks them intrabar against each bar's high/low, and if a bar opens beyond a level it fills at the open. A Lambda that wakes once per bar can't see intrabar prices, so from then on these must be resting orders at Tradier, placed when the entry bar closes (not at the entry fill): ${hasStop && tp > 0 ? 'an OCO order (`class=oco`) with a stop leg at the stop level and a limit leg at the target' : hasStop ? 'a stop order (`type=stop`) at the stop level' : 'a limit order (`type=limit`) at the target'}, \`duration=gtc\`. Each invocation, check whether it filled; if so, record the exit and clear the position.`,
       );
     }
 
@@ -899,7 +899,7 @@ export default function AlgoBacktestPage() {
     );
     const steps: string[] = [...riskExits];
     steps.push(
-      `**Strategy signal.** Run the handler. A 'sell' while long ${shorts ? "(or a 'buy' while short) " : ''}closes the position with a market order sent right after the bar closes${hasStop || tp > 0 ? ', after first cancelling the resting exit order and confirming the cancel' : ''}. ${shorts ? "If the handler, re-run on that same bar as if flat, returns the same action, also open the opposite position at the next open, right after the close fills (a reversal). Otherwise stay flat until a later bar's entry." : "With shorts off, closing never reverses: a new long can only open on a later bar."}`,
+      `**Strategy signal.** Run the handler. A 'sell' while long ${shorts ? "(or a 'buy' while short) " : ''}closes the position with a market order sent right after the bar closes${hasStop || tp > 0 ? ', after first cancelling the resting exit order and confirming the cancel' : ''}. ${sz.allowReversal ? "If the handler, re-run on that same bar as if flat, returns the same action, also open the opposite position at the next open, right after the close fills (a reversal). Otherwise stay flat until a later bar's entry." : "Closing never reverses: a new position can only open on a later bar."}`,
       `**Entry.** Only when flat, and only if no exit happened on this same bar: 'buy' opens a long${shorts ? ", and 'sell' opens a short (`side=sell_short`, closed later with `side=buy_to_cover`)" : ''}. Send a market order right after the bar closes. The backtest decides on the closed bar and fills every entry and exit at the **next bar's open**, which is what that order gets.`,
     );
     if (sz.maxDrawdownPercent > 0) {
@@ -1587,6 +1587,23 @@ export default function AlgoBacktestPage() {
                     <Switch size='1' checked={enableShorts} onCheckedChange={setEnableShorts} />
                     Enable shorts
                   </Flex>
+                </Text>
+                {/* Off, an exit only closes: the chart never shows one trade
+                    ending and the next starting on the same candle. */}
+                <Text as='label' size='2'>
+                  <Flex gap='2' align='center'>
+                    <Switch
+                      size='1'
+                      checked={sizing.allowReversal ?? false}
+                      onCheckedChange={(on) => updateSizing({ allowReversal: on })}
+                    />
+                    Reverse on an opposite signal
+                  </Flex>
+                </Text>
+                <Text size='1' color='gray'>
+                  {sizing.allowReversal
+                    ? 'An exit whose bar also signals the other side closes and reopens at the same next open.'
+                    : 'An exit only closes; the next trade waits for a later bar.'}
                 </Text>
               </Flex>
             </Bento>

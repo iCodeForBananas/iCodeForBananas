@@ -167,6 +167,35 @@ describe("a whole backtest up to a bar doesn't depend on the bars after it", () 
   }
 });
 
+describe("no trade is entered and exited on the same bar", () => {
+  // Tight stops and targets so plenty of entry bars reach them.
+  const configs = [
+    { label: "1% stop", risk: { stopLossPercent: 1, takeProfitPercent: 0, sizing: { ...DEFAULT_SIZING, atrStopMultiple: 0 } } },
+    { label: "1% stop and 1% target", risk: { stopLossPercent: 1, takeProfitPercent: 1, sizing: { ...DEFAULT_SIZING, atrStopMultiple: 0, useTakeProfit: true } } },
+    { label: "stop off", risk: { stopLossPercent: 0, takeProfitPercent: 0, sizing: { ...DEFAULT_SIZING, useStopLoss: false } } },
+    { label: "stop off, reversing", risk: { stopLossPercent: 0, takeProfitPercent: 0, sizing: { ...DEFAULT_SIZING, useStopLoss: false, allowReversal: true } } },
+    { label: "legacy 0.5% stop and target", risk: { stopLossPercent: 0.5, takeProfitPercent: 0.5, sizing: LEGACY_SIZING } },
+  ];
+
+  for (const id of Object.keys(AVAILABLE_STRATEGIES)) {
+    it(`${id}: every trade's exit bar is after its entry bar`, () => {
+      for (const params of [getDefaultParams(id), ...paramSets(id, 2, 99)]) {
+        const req = deriveRequiredIndicators(id, [params]);
+        const data = calculateIndicatorsWithParams(walk(N, 13), req.requiredEMAs, req.requiredSMAs, req.requiredMACDs, req.requiredDonchianPeriods);
+        const barOf = new Map(data.map((d, i) => [d.time, i]));
+        for (const { label, risk } of configs) {
+          for (const shorts of [false, true]) {
+            const r = runBacktestWithParams(data, AVAILABLE_STRATEGIES[id], params, 10_000, risk, shorts);
+            for (const t of r.trades) {
+              expect(barOf.get(t.exitTime)!, `${id} (${label}, shorts ${shorts}) ${t.side} entered bar ${barOf.get(t.entryTime)}, exited: ${t.reason}`).toBeGreaterThan(barOf.get(t.entryTime)!);
+            }
+          }
+        }
+      }
+    });
+  }
+});
+
 describe("fills are prices that existed when the order went in", () => {
   it("fills a signal at the next bar's open, not the signal bar's close", () => {
     const data: IndicatorData[] = [

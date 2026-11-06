@@ -79,6 +79,12 @@ export interface SizingSettings {
    * = whole shares; LEGACY_SIZING keeps the old fractional sizing.
    */
   wholeShares?: boolean;
+  /**
+   * When an exit's bar also fires the opposite entry, close and open the
+   * other side at the same next open (stop-and-reverse). Off: the position
+   * just closes, and a new one waits for a later bar's entry signal.
+   */
+  allowReversal?: boolean;
 }
 
 export interface RiskRange {
@@ -671,11 +677,14 @@ export function runBacktestWithParams(
     if (pending) {
       const order: PendingOrder = pending;
       pending = null;
+      // Nothing opens on the final bar: the position would be closed at that
+      // same bar's close for want of data, a round trip inside one bar.
+      const canOpenHere = i < data.length - 1;
       if (order.kind === "close") closeAtPrice(current.open, current.time, order.reason);
       else if (order.kind === "reverse") {
         closeAtPrice(current.open, current.time, order.reason);
-        openPosition(order.side, current.open, current.time, i, order.atr, order.refPrice);
-      } else if (!position) openPosition(order.side, current.open, current.time, i, order.atr, order.refPrice);
+        if (canOpenHere) openPosition(order.side, current.open, current.time, i, order.atr, order.refPrice);
+      } else if (!position && canOpenHere) openPosition(order.side, current.open, current.time, i, order.atr, order.refPrice);
     }
 
     // Record the effective stop level at the start of this bar before any exit checks.
@@ -724,7 +733,22 @@ export function runBacktestWithParams(
     // to the open is assumed to have been touched first.
     {
       const pos = position as OpenPosition | null;
-      if (pos && (pos.stopLoss !== undefined || pos.takeProfit !== undefined)) {
+      if (pos && pos.entryIdx === i) {
+        // The entry bar. Which came first inside it, the fill or the move to
+        // the stop, can't be told from one bar's OHLC, and a trade is never
+        // opened and closed inside one bar. A stop or target the bar reached
+        // closes the trade at the next open, like any decision on a closed bar.
+        const isLong = pos.side === PositionSide.LONG;
+        const slTouched = pos.stopLoss !== undefined && (isLong ? current.low <= pos.stopLoss : current.high >= pos.stopLoss);
+        const tpTouched = pos.takeProfit !== undefined && (isLong ? current.high >= pos.takeProfit : current.low <= pos.takeProfit);
+        if (pending) {
+          // An exit is already queued for the next open (the trailing stop).
+        } else if (slTouched) {
+          pending = { kind: "close", reason: `Stop loss ${pos.stopLoss!.toFixed(2)} reached on the entry bar; exited at the next open` };
+        } else if (tpTouched) {
+          pending = { kind: "close", reason: `Take profit ${pos.takeProfit!.toFixed(2)} reached on the entry bar; exited at the next open` };
+        }
+      } else if (pos && (pos.stopLoss !== undefined || pos.takeProfit !== undefined)) {
         const isLong = pos.side === PositionSide.LONG;
         // "Beyond" = past the level in the direction that triggers it.
         const slBeyond = (p: number) => pos.stopLoss !== undefined && (isLong ? p <= pos.stopLoss : p >= pos.stopLoss);
@@ -780,7 +804,7 @@ export function runBacktestWithParams(
       // the other way on this bar, a trader does both at the next open:
       // reverse, rather than wait for the entry to fire again.
       const side = signal.action === "buy" ? PositionSide.LONG : PositionSide.SHORT;
-      const canOpen = side === PositionSide.LONG || enableShorts;
+      const canOpen = (sizing.allowReversal ?? false) && (side === PositionSide.LONG || enableShorts);
       const asFlat = canOpen
         ? strategy.handler({ current, previous, index: i, series: data, params, position: null })
         : null;

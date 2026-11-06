@@ -359,15 +359,46 @@ describe("orders a real account could place", () => {
     expect(r.trades[0].pnl).toBeCloseTo(80 * 5);
   });
 
-  it("reverses at one open when the exit bar also fires the opposite entry", () => {
-    const data = bars([[100, 100, 100, 100], [100, 100, 100, 100], [100, 100, 100, 100], [100, 100, 100, 100], [90, 90, 90, 90], [80, 80, 80, 80]]);
+  it("reverses at one open only when reversal is switched on", () => {
+    const data = bars([[100, 100, 100, 100], [100, 100, 100, 100], [100, 100, 100, 100], [100, 100, 100, 100], [90, 90, 90, 90], [80, 80, 80, 80], [80, 80, 80, 80]]);
     // A crossover-style strategy: 'sell' on bar 3 whatever the position.
-    const withShorts = runBacktestWithParams(data, scripted({ 1: "buy", 3: "sell" }), {}, 10_000, { stopLossPercent: 0, takeProfitPercent: 0 }, true);
-    expect(withShorts.trades.map((t) => [t.side, t.entryTime, t.exitTime])).toEqual([
+    const strategy = scripted({ 1: "buy", 3: "sell" });
+    const risk = (allowReversal: boolean) => ({ stopLossPercent: 0, takeProfitPercent: 0, sizing: { ...LEGACY_SIZING, allowReversal } });
+    const reversing = runBacktestWithParams(data, strategy, {}, 10_000, risk(true), true);
+    expect(reversing.trades.map((t) => [t.side, t.entryTime, t.exitTime])).toEqual([
       ["LONG", 2 * DAY, 4 * DAY],
-      ["SHORT", 4 * DAY, 5 * DAY],
+      ["SHORT", 4 * DAY, 6 * DAY],
     ]);
-    const longOnly = runBacktestWithParams(data, scripted({ 1: "buy", 3: "sell" }), {}, 10_000, { stopLossPercent: 0, takeProfitPercent: 0 }, false);
-    expect(longOnly.trades.map((t) => t.side)).toEqual(["LONG"]);
+    // Off (the default), the exit only closes.
+    expect(runBacktestWithParams(data, strategy, {}, 10_000, risk(false), true).trades.map((t) => t.side)).toEqual(["LONG"]);
+    expect(runBacktestWithParams(data, strategy, {}, 10_000, risk(true), false).trades.map((t) => t.side)).toEqual(["LONG"]);
+  });
+});
+
+describe("no trade opens and closes on the same bar", () => {
+  it("defers a stop reached on the entry bar to the next open", () => {
+    // Enters at 100 on bar 2, whose low of 90 is through a 5% stop.
+    const data = bars([[100, 100, 100, 100], [100, 100, 100, 100], [100, 101, 90, 92], [93, 95, 91, 94]]);
+    const r = run(data, { 1: "buy" }, { stopLossPercent: 5 });
+    expect(r.trades).toHaveLength(1);
+    expect([r.trades[0].entryTime, r.trades[0].exitTime, r.trades[0].exitPrice]).toEqual([2 * DAY, 3 * DAY, 93]);
+    expect(r.trades[0].reason).toMatch(/entry bar/);
+  });
+
+  it("defers a take profit reached on the entry bar the same way", () => {
+    const data = bars([[100, 100, 100, 100], [100, 100, 100, 100], [100, 112, 99, 104], [105, 106, 104, 105]]);
+    const r = run(data, { 1: "buy" }, { takeProfitPercent: 10 });
+    expect([r.trades[0].exitTime, r.trades[0].exitPrice]).toEqual([3 * DAY, 105]);
+  });
+
+  it("still fills a stop intrabar from the bar after entry on", () => {
+    const data = bars([[100, 100, 100, 100], [100, 100, 100, 100], [100, 101, 99, 100], [99, 99, 90, 92]]);
+    const r = run(data, { 1: "buy" }, { stopLossPercent: 5 });
+    expect([r.trades[0].exitTime, r.trades[0].exitPrice]).toEqual([3 * DAY, 95]);
+  });
+
+  it("doesn't open on the final bar", () => {
+    const data = bars([[100, 100, 100, 100], [100, 100, 100, 100], [100, 100, 100, 100]]);
+    expect(run(data, { 1: "buy" }).trades).toHaveLength(0);
   });
 });
