@@ -137,6 +137,13 @@ function computeIndicators(
       priceLines.push({ values: data.map((d) => d[`sma${slow}` as keyof IndicatorData] as number | undefined), color: "#f97316", label: `SMA ${slow}` });
       break;
     }
+    case "ema-pullback": {
+      const fast = num("fastPeriod", 20);
+      const slow = num("slowPeriod", 50);
+      priceLines.push({ values: data.map((d) => d[`ema${fast}` as keyof IndicatorData] as number | undefined), color: "#fbbf24", label: `EMA ${fast}` });
+      priceLines.push({ values: data.map((d) => d[`ema${slow}` as keyof IndicatorData] as number | undefined), color: "#a855f7", label: `EMA ${slow}` });
+      break;
+    }
     case "ema-price-cross": {
       const period = num("emaPeriod", 20);
       priceLines.push({ values: data.map((d) => d[`ema${period}` as keyof IndicatorData] as number | undefined), color: "#fbbf24", label: `EMA ${period}` });
@@ -219,6 +226,9 @@ function computeIndicators(
       // the default 12/26/9 — plot that same one or the crosses won't match.
       const k = `${num("fastPeriod", 12)}_${num("slowPeriod", 26)}_${num("signalPeriod", 9)}`;
       const field = (name: string) => data.map((d) => d[`${name}_${k}` as keyof IndicatorData] as number | undefined);
+      if (params.trendFilter ?? false) {
+        priceLines.push({ values: data.map((d) => d.sma200), color: "#f97316", label: "SMA 200" });
+      }
       oscillator = {
         type: "macd",
         series: [

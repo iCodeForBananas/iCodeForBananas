@@ -11,6 +11,8 @@ import turnOfMonth, { monthCalendar } from "./turn-of-month";
 import ichimoku, { midpointArray } from "./ichimoku";
 import kamaTrend, { getKamaArray } from "./kama-trend";
 import supplyDemand, { getZoneSeries, zoneParamsFrom } from "./supply-demand";
+import macdCrossover from "./macd-crossover";
+import emaPullback from "./ema-pullback";
 import { deriveRequiredIndicators } from "@/app/lib/backtest-engine";
 
 type Bar = OHLCBar & IndicatorValues;
@@ -327,5 +329,69 @@ describe("Supply & demand zones", () => {
     const z = getZoneSeries(peak, zoneParamsFrom({ zoneSource: "pivot", pivotStrength: 2, atrPeriod: 2 }));
     expect(Number.isNaN(z.supplyTop[6])).toBe(true);
     expect(z.supplyTop[7]).toBe(111);
+  });
+});
+
+describe("MACD crossover", () => {
+  const K = "12_26_9";
+  const bar = (i: number, macd: number, signal: number, extra: Partial<Bar> = {}): Bar =>
+    ({ time: i * DAY, open: 100, high: 101, low: 99, close: 100, sma200: 90, [`macd_${K}`]: macd, [`macdSignal_${K}`]: signal, ...extra }) as Bar;
+
+  it("buys a cross above the signal line and exits once MACD is back under it", () => {
+    const rule = { rule: "signal" };
+    expect(signal(macdCrossover, [bar(0, 1, 2), bar(1, 2.5, 2)], null, rule)).toBe("buy");
+    expect(signal(macdCrossover, [bar(0, 2.5, 2), bar(1, 2.6, 2)], null, rule)).toBe("hold");
+    // No fresh cross needed to exit, and no strength filter on exits.
+    expect(signal(macdCrossover, [bar(0, 1.9, 2), bar(1, 1.8, 2)], "long", { ...rule, minHistogramPct: 0.5 })).toBe("sell");
+  });
+
+  it("takes longs only above the 200 SMA and shorts only below it", () => {
+    const on = { trendFilter: true };
+    expect(signal(macdCrossover, [bar(0, -1, 0), bar(1, 0.5, 0, { sma200: 110 })], null, on)).toBe("hold");
+    expect(signal(macdCrossover, [bar(0, -1, 0), bar(1, 0.5, 0, { sma200: 110 })])).toBe("buy");
+    expect(signal(macdCrossover, [bar(0, 1, 0), bar(1, -0.5, 0, { sma200: 110 })], null, on)).toBe("sell");
+  });
+
+  it("crosses zero by default, ignoring the signal line", () => {
+    expect(signal(macdCrossover, [bar(0, 0.2, 0.5), bar(1, 0.4, 0.5)])).toBe("hold");
+    expect(signal(macdCrossover, [bar(0, -0.2, 0.5), bar(1, 0.1, 0.5)])).toBe("buy");
+    expect(signal(macdCrossover, [bar(0, 0.2, -0.5), bar(1, -0.1, -0.5)], "long")).toBe("sell");
+  });
+
+  it("sizes the entry filter as a percent of price", () => {
+    expect(signal(macdCrossover, [bar(0, -1, 0), bar(1, 0.05, 0)], null, { minHistogramPct: 0.1 })).toBe("hold");
+    expect(signal(macdCrossover, [bar(0, -1, 0), bar(1, 0.2, 0)], null, { minHistogramPct: 0.1 })).toBe("buy");
+  });
+
+  it("refuses a fast period that isn't shorter than the slow one", () => {
+    expect(signal(macdCrossover, [bar(0, -1, 0), bar(1, 0.5, 0)], null, { fastPeriod: 26, slowPeriod: 26 })).toBe("hold");
+  });
+});
+
+describe("EMA trend pullback", () => {
+  const bar = (i: number, close: number, fast: number, slow: number): Bar =>
+    ({ time: i * DAY, open: close, high: close + 1, low: close - 1, close, ema20: fast, ema50: slow }) as Bar;
+
+  it("buys a close back above the fast EMA while it's above the slow one", () => {
+    expect(signal(emaPullback, [bar(0, 104, 105, 100), bar(1, 106, 105, 100)])).toBe("buy");
+    // Already above the fast EMA: no pullback, no entry.
+    expect(signal(emaPullback, [bar(0, 107, 105, 100), bar(1, 108, 105, 100)])).toBe("hold");
+    // Fast under slow: no long.
+    expect(signal(emaPullback, [bar(0, 94, 95, 100), bar(1, 96, 95, 100)])).toBe("hold");
+  });
+
+  it("holds through a dip under the fast EMA and exits when fast crosses below slow", () => {
+    expect(signal(emaPullback, [bar(0, 106, 105, 100), bar(1, 101, 104, 100)], "long")).toBe("hold");
+    expect(signal(emaPullback, [bar(0, 101, 100.5, 100), bar(1, 98, 99.8, 100)], "long")).toBe("sell");
+  });
+
+  it("mirrors it on the short side", () => {
+    expect(signal(emaPullback, [bar(0, 96, 95, 100), bar(1, 94, 95, 100)])).toBe("sell");
+    expect(signal(emaPullback, [bar(0, 99, 99.8, 100), bar(1, 101, 100.2, 100)], "short")).toBe("buy");
+  });
+
+  it("asks the engine for both EMAs", () => {
+    const { requiredEMAs } = deriveRequiredIndicators("ema-pullback", [{ fastPeriod: 13, slowPeriod: 34 }]);
+    expect(requiredEMAs).toEqual(expect.arrayContaining([13, 34]));
   });
 });

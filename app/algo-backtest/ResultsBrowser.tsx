@@ -313,7 +313,9 @@ export default function ResultsBrowser({
                         P&amp;L <Text color={r.totalPnlPercent >= 0 ? "green" : "red"}>{pct(r.totalPnlPercent)}</Text>
                         {" · "}B&amp;H {pct(r.buyAndHoldPnlPercent)}
                         {" · "}
-                        {r.winRate.toFixed(0)}% win · {r.totalTrades} trades
+                        {r.winRate.toFixed(0)}% win · PF {r.profitFactor == null ? "–" : METRICS.profitFactor.format(r.profitFactor)}
+                        {" · "}
+                        {r.totalTrades} trades
                       </Text>
                     </Flex>
                     <Flex direction='column' align='end' className='shrink-0'>

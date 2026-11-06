@@ -7,6 +7,7 @@ import bollingerBands from './bollinger-bands';
 import breakout from './breakout';
 import emaCrossover from './ema-crossover';
 import emaPriceCross from './ema-price-cross';
+import emaPullback from './ema-pullback';
 import macdCrossover from './macd-crossover';
 import rsiMeanReversion from './rsi-mean-reversion';
 import smaCrossover from './sma-crossover';
@@ -35,6 +36,7 @@ export const AVAILABLE_STRATEGIES: Record<string, StrategyDefinition> = {
   'triple-ema': tripleEma,
   'sma-crossover': smaCrossover,
   'ema-price-cross': emaPriceCross,
+  'ema-pullback': emaPullback,
   'macd-crossover': macdCrossover,
   'donchian-channel': donchianChannel,
   'breakout': breakout,
