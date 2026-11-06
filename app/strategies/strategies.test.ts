@@ -17,6 +17,7 @@ import adxDmi, { getDmi } from "./adx-dmi";
 import regressionMomentum, { getRegressionMomentum } from "./regression-momentum";
 import connorsR3 from "./connors-r3";
 import connorsPercentB, { getPercentB } from "./connors-percent-b";
+import donchianChannel from "./donchian-channel";
 import { deriveRequiredIndicators } from "@/app/lib/backtest-engine";
 
 type Bar = OHLCBar & IndicatorValues;
@@ -482,5 +483,21 @@ describe("Connors %b", () => {
     expect(signal(connorsPercentB, sliding)).toBe("buy");
     expect(signal(connorsPercentB, fromCloses([110, 109, 108, 107, 106, 105, 104, 103, 102], { sma200: 200 }))).toBe("hold");
     expect(signal(connorsPercentB, fromCloses([100, 101, 102, 103, 104, 105], { sma200: 50 }), "long")).toBe("sell");
+  });
+});
+
+describe("Donchian channel", () => {
+  const bar = (i: number, close: number, upper: number, lower: number, mid: number): Bar =>
+    ({ time: i * DAY, open: close, high: close + 1, low: close - 1, close, donchian_20_upperBand: upper, donchian_20_lowerBand: lower, donchian_10_midLine: mid }) as Bar;
+
+  it("enters only on a breakout, never on the midline", () => {
+    expect(signal(donchianChannel, [bar(0, 100, 110, 90, 100), bar(1, 105, 110, 90, 100)])).toBe("hold");
+    expect(signal(donchianChannel, [bar(0, 100, 110, 90, 100), bar(1, 95, 110, 90, 100)])).toBe("hold");
+    expect(signal(donchianChannel, [bar(0, 100, 110, 90, 100), bar(1, 111, 112, 90, 100)])).toBe("buy");
+  });
+
+  it("exits a long under the midline and a short over it", () => {
+    expect(signal(donchianChannel, [bar(0, 100, 110, 90, 100), bar(1, 95, 110, 90, 100)], "long")).toBe("sell");
+    expect(signal(donchianChannel, [bar(0, 100, 110, 90, 100), bar(1, 105, 110, 90, 100)], "short")).toBe("buy");
   });
 });

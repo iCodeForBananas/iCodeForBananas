@@ -323,3 +323,51 @@ describe("stop and target ranges", () => {
     expect([risk.sizing?.atrStopMultiple, risk.takeProfitPercent, risk.stopLossPercent]).toEqual([3, 6, 1]);
   });
 });
+
+describe("orders a real account could place", () => {
+  const fixedAllIn: SizingSettings = { ...LEGACY_SIZING, wholeShares: true };
+
+  it("buys whole shares only", () => {
+    const data = bars([[300, 300, 300, 300], [300, 300, 300, 300], [300, 300, 300, 300], [330, 330, 330, 330]]);
+    const r = runBacktestWithParams(data, scripted({ 1: "buy" }), {}, 10_000, { stopLossPercent: 0, takeProfitPercent: 0, sizing: fixedAllIn });
+    // $10,000 / $300 is 33.3: 33 shares, and the $100 left over stays cash.
+    expect(r.trades[0].pnl).toBeCloseTo(33 * 30);
+  });
+
+  it("skips a trade that sizes to less than one share", () => {
+    const data = bars([[20_000, 20_000, 20_000, 20_000], [20_000, 20_000, 20_000, 20_000], [20_000, 20_000, 20_000, 20_000]]);
+    const r = runBacktestWithParams(data, scripted({ 1: "buy" }), {}, 10_000, { stopLossPercent: 0, takeProfitPercent: 0, sizing: fixedAllIn });
+    expect(r.trades).toHaveLength(0);
+  });
+
+  it("sizes from the signal bar's close, not the next open it can't know yet", () => {
+    // Risk 1% with a 5% stop, decided at a close of 100: $100 at risk over a
+    // $5 stop is 20 shares. The open gaps to 110; the share count doesn't
+    // grow or shrink with it, and the stop sits 5% under the actual fill.
+    const data = bars([[100, 100, 100, 100], [100, 100, 100, 100], [110, 112, 108, 111], [111, 111, 111, 111]]);
+    const sizing: SizingSettings = { ...LEGACY_SIZING, mode: "risk", riskPercent: 1, maxPositionPercent: 100, wholeShares: true };
+    const r = runBacktestWithParams(data, scripted({ 1: "buy" }), {}, 10_000, { stopLossPercent: 5, takeProfitPercent: 0, sizing });
+    expect(r.trades[0].entryPrice).toBe(110);
+    expect(r.trades[0].pnl).toBeCloseTo(20 * (111 - 110));
+  });
+
+  it("never spends more than the account has when the open gaps up", () => {
+    const data = bars([[100, 100, 100, 100], [100, 100, 100, 100], [125, 125, 125, 125], [130, 130, 130, 130]]);
+    const r = runBacktestWithParams(data, scripted({ 1: "buy" }), {}, 10_000, { stopLossPercent: 0, takeProfitPercent: 0, sizing: fixedAllIn });
+    // 100 shares were planned at 100; at 125 the account affords 80.
+    expect(r.trades[0].entryPrice).toBe(125);
+    expect(r.trades[0].pnl).toBeCloseTo(80 * 5);
+  });
+
+  it("reverses at one open when the exit bar also fires the opposite entry", () => {
+    const data = bars([[100, 100, 100, 100], [100, 100, 100, 100], [100, 100, 100, 100], [100, 100, 100, 100], [90, 90, 90, 90], [80, 80, 80, 80]]);
+    // A crossover-style strategy: 'sell' on bar 3 whatever the position.
+    const withShorts = runBacktestWithParams(data, scripted({ 1: "buy", 3: "sell" }), {}, 10_000, { stopLossPercent: 0, takeProfitPercent: 0 }, true);
+    expect(withShorts.trades.map((t) => [t.side, t.entryTime, t.exitTime])).toEqual([
+      ["LONG", 2 * DAY, 4 * DAY],
+      ["SHORT", 4 * DAY, 5 * DAY],
+    ]);
+    const longOnly = runBacktestWithParams(data, scripted({ 1: "buy", 3: "sell" }), {}, 10_000, { stopLossPercent: 0, takeProfitPercent: 0 }, false);
+    expect(longOnly.trades.map((t) => t.side)).toEqual(["LONG"]);
+  });
+});

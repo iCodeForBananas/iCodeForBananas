@@ -73,6 +73,12 @@ export interface SizingSettings {
   stopLossRange?: RiskRange | null;
   /** Sweep the take profit percent across this range. null = a single target. */
   takeProfitRange?: RiskRange | null;
+  /**
+   * Buy whole shares only, the way a broker without fractional shares (like
+   * Tradier) fills. A trade that sizes to under one share is skipped. Absent
+   * = whole shares; LEGACY_SIZING keeps the old fractional sizing.
+   */
+  wholeShares?: boolean;
 }
 
 export interface RiskRange {
@@ -176,6 +182,7 @@ export const LEGACY_SIZING: SizingSettings = {
   maxGapLossPercent: 0,
   maxDrawdownPercent: 0,
   drawdownPauseBars: 0,
+  wholeShares: false,
 };
 
 /**
@@ -391,8 +398,9 @@ export function calculateIndicatorsWithParams(
       }
 
       if (i >= rsiPeriod) {
-        const rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
-        indicatorData.rsi = 100 - 100 / (1 + rs);
+        // No losses in the window is an RSI of 100, not the 99 that capping
+        // the ratio at 100 gave; no movement at all is neutral.
+        indicatorData.rsi = avgLoss === 0 ? (avgGain === 0 ? 50 : 100) : 100 - 100 / (1 + avgGain / avgLoss);
       }
     }
 
@@ -556,36 +564,47 @@ export function runBacktestWithParams(
   let peakEquity = initialCapital;
   let entriesAllowedFrom = 0;
 
-  // Open a position at a raw (pre-slippage) price. Stop and target are set
-  // off the actual fill, the way a live bracket order would be. `atr` is the
-  // entry bar's ATR, for an ATR stop.
-  const openPosition = (side: PositionSide, rawPrice: number, time: number, idx: number, atr: number | undefined) => {
+  const wholeShares = sizing.wholeShares ?? true;
+
+  // Open a position at a raw (pre-slippage) price. The share count is decided
+  // from `refPrice`, the signal bar's close: the order goes in before the next
+  // open is known, so it can't be sized from it. Stop and target are set off
+  // the actual fill, the way a live bracket order would be. `atr` is the
+  // signal bar's ATR, for an ATR stop.
+  const openPosition = (side: PositionSide, rawPrice: number, time: number, idx: number, atr: number | undefined, refPrice: number) => {
     if (idx < entriesAllowedFrom) return;
     const fillPrice = side === PositionSide.LONG ? slipBuy(rawPrice) : slipSell(rawPrice);
-    if (fillPrice <= 0) return;
+    if (fillPrice <= 0 || !(refPrice > 0)) return;
     const dir = side === PositionSide.LONG ? 1 : -1;
     // The stop's distance from the fill: none when the stop is off, else
     // ATR-based when asked for and the ATR has warmed up, else the percent
     // stop, else none.
-    const stopDistance =
+    const stopDistanceAt = (price: number) =>
       stopOff
         ? undefined
         : sizing.atrStopMultiple > 0 && atr !== undefined && atr > 0
         ? sizing.atrStopMultiple * atr
         : stopLossPct > 0
-          ? fillPrice * (stopLossPct / 100)
+          ? price * (stopLossPct / 100)
           : undefined;
+    const stopDistance = stopDistanceAt(fillPrice);
+    const plannedStopDistance = stopDistanceAt(refPrice);
     // With the stop on, risk sizing can't size a trade that has no stop yet
     // (no percent stop and the ATR still warming up), so it doesn't take one.
     if (sizing.mode === "risk" && !stopOff && stopDistance === undefined) return;
     const wanted = stopOff
       ? equity * (stopOffPositionPercent(sizing, positionSizePct) / 100)
       : sizing.mode === "risk"
-        ? (equity * (riskPct / 100) * fillPrice) / stopDistance!
+        ? (equity * (riskPct / 100) * refPrice) / plannedStopDistance!
         : equity * (positionSizePct / 100);
-    const allocation = Math.min(wanted, equity * (capPct / 100));
-    const shares = allocation / fillPrice;
+    const capValue = equity * (capPct / 100);
+    let shares = Math.min(wanted, capValue) / refPrice;
+    // A gap past the planned price can't buy more than the cap at the fill:
+    // a cash account has no more to spend.
+    shares = Math.min(shares, capValue / fillPrice);
+    if (wholeShares) shares = Math.floor(shares + 1e-9);
     if (!(shares > 0)) return;
+    const allocation = shares * fillPrice;
     const stopLoss = stopDistance !== undefined ? fillPrice - dir * stopDistance : undefined;
     const takeProfit = takeProfitPct > 0 ? fillPrice * (1 + dir * takeProfitPct / 100) : undefined;
     // Entry commission is taken out of equity immediately so it shows up in
@@ -636,8 +655,11 @@ export function runBacktestWithParams(
   // limit all read a bar's close, and that close is gone by the time anyone
   // could act on it. Only the resting stop and target fill inside a bar.
   type PendingOrder =
-    | { kind: "open"; side: PositionSide; atr: number | undefined }
-    | { kind: "close"; reason: string };
+    | { kind: "open"; side: PositionSide; atr: number | undefined; refPrice: number }
+    | { kind: "close"; reason: string }
+    // Close, then open the other side at the same open: the exit bar also
+    // fired the opposite entry.
+    | { kind: "reverse"; reason: string; side: PositionSide; atr: number | undefined; refPrice: number };
   let pending: PendingOrder | null = null;
 
   for (let i = 1; i < data.length; i++) {
@@ -650,7 +672,10 @@ export function runBacktestWithParams(
       const order: PendingOrder = pending;
       pending = null;
       if (order.kind === "close") closeAtPrice(current.open, current.time, order.reason);
-      else if (!position) openPosition(order.side, current.open, current.time, i, order.atr);
+      else if (order.kind === "reverse") {
+        closeAtPrice(current.open, current.time, order.reason);
+        openPosition(order.side, current.open, current.time, i, order.atr, order.refPrice);
+      } else if (!position) openPosition(order.side, current.open, current.time, i, order.atr, order.refPrice);
     }
 
     // Record the effective stop level at the start of this bar before any exit checks.
@@ -746,13 +771,25 @@ export function runBacktestWithParams(
     if (pending) {
       // A trailing-stop exit is already queued for the next open.
     } else if (signal.action === "buy" && !position && !exitedViaRiskThisBar) {
-      pending = { kind: "open", side: PositionSide.LONG, atr: current.atr };
-    } else if (signal.action === "buy" && (position as OpenPosition | null)?.side === PositionSide.SHORT) {
-      pending = { kind: "close", reason: signal.reason };
-    } else if (signal.action === "sell" && (position as OpenPosition | null)?.side === PositionSide.LONG) {
-      pending = { kind: "close", reason: signal.reason };
+      pending = { kind: "open", side: PositionSide.LONG, atr: current.atr, refPrice: current.close };
+    } else if (
+      (signal.action === "buy" && (position as OpenPosition | null)?.side === PositionSide.SHORT) ||
+      (signal.action === "sell" && (position as OpenPosition | null)?.side === PositionSide.LONG)
+    ) {
+      // An exit. If the strategy, asked as if already flat, would also enter
+      // the other way on this bar, a trader does both at the next open:
+      // reverse, rather than wait for the entry to fire again.
+      const side = signal.action === "buy" ? PositionSide.LONG : PositionSide.SHORT;
+      const canOpen = side === PositionSide.LONG || enableShorts;
+      const asFlat = canOpen
+        ? strategy.handler({ current, previous, index: i, series: data, params, position: null })
+        : null;
+      pending =
+        asFlat?.action === signal.action
+          ? { kind: "reverse", reason: signal.reason, side, atr: current.atr, refPrice: current.close }
+          : { kind: "close", reason: signal.reason };
     } else if (signal.action === "sell" && !position && enableShorts && !exitedViaRiskThisBar) {
-      pending = { kind: "open", side: PositionSide.SHORT, atr: current.atr };
+      pending = { kind: "open", side: PositionSide.SHORT, atr: current.atr, refPrice: current.close };
     }
 
     // Mark to market at the close so drawdown and Sharpe see open-trade

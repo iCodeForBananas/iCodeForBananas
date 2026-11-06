@@ -28,7 +28,7 @@ const parameters: StrategyParameter[] = [
   },
 ];
 
-const handler: StrategyHandler = ({ current, previous, params }) => {
+const handler: StrategyHandler = ({ current, previous, params, position }) => {
   const period = (params.period as number) || 20;
   const centerLinePeriod = (params.centerLinePeriod as number) || 10;
 
@@ -67,10 +67,12 @@ const handler: StrategyHandler = ({ current, previous, params }) => {
     };
   }
 
-  // Exit signals using center line
+  // Exit signals using center line. They only close a trade: while flat, a
+  // close on either side of the midline is no reason to enter; only a
+  // breakout is.
   if (prevCenterLine !== undefined) {
     // Long exit: price crosses below the center line
-    if (current.close < prevCenterLine) {
+    if (position === 'long' && current.close < prevCenterLine) {
       return {
         action: 'sell',
         reason: `Price crossed below center line (${current.close.toFixed(2)} < ${prevCenterLine.toFixed(2)})`,
@@ -78,7 +80,7 @@ const handler: StrategyHandler = ({ current, previous, params }) => {
     }
 
     // Short exit: price crosses above the center line
-    if (current.close > prevCenterLine) {
+    if (position === 'short' && current.close > prevCenterLine) {
       return {
         action: 'buy',
         reason: `Price crossed above center line (${current.close.toFixed(2)} > ${prevCenterLine.toFixed(2)})`,

@@ -899,7 +899,7 @@ export default function AlgoBacktestPage() {
     );
     const steps: string[] = [...riskExits];
     steps.push(
-      `**Strategy signal.** Run the handler. A 'sell' while long ${shorts ? "(or a 'buy' while short) " : ''}closes the position with a market order sent right after the bar closes${hasStop || tp > 0 ? ', after first cancelling the resting exit order and confirming the cancel' : ''}. Closing does **not** reverse: a new position can only open on a later bar.`,
+      `**Strategy signal.** Run the handler. A 'sell' while long ${shorts ? "(or a 'buy' while short) " : ''}closes the position with a market order sent right after the bar closes${hasStop || tp > 0 ? ', after first cancelling the resting exit order and confirming the cancel' : ''}. ${shorts ? "If the handler, re-run on that same bar as if flat, returns the same action, also open the opposite position at the next open, right after the close fills (a reversal). Otherwise stay flat until a later bar's entry." : "With shorts off, closing never reverses: a new long can only open on a later bar."}`,
       `**Entry.** Only when flat, and only if no exit happened on this same bar: 'buy' opens a long${shorts ? ", and 'sell' opens a short (`side=sell_short`, closed later with `side=buy_to_cover`)" : ''}. Send a market order right after the bar closes. The backtest decides on the closed bar and fills every entry and exit at the **next bar's open**, which is what that order gets.`,
     );
     if (sz.maxDrawdownPercent > 0) {
