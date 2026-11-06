@@ -10,7 +10,7 @@ import { AVAILABLE_STRATEGIES, ParameterizedResult } from "@/app/strategies";
 import {
   calculateIndicatorsWithParams,
   runBacktestWithParams,
-  generateCombinations,
+  generateSweep,
   deriveRequiredIndicators,
   MACDConfig,
   ParameterVariationConfig,
@@ -283,9 +283,8 @@ async function runJob(job: BacktestJob): Promise<void> {
   }
 
   const runConfigs = runs.map((run) => {
-    const combinations = run.paramVariations.length > 0
-      ? generateCombinations(run.paramVariations).map((combo) => ({ ...run.currentParams, ...combo }))
-      : [run.currentParams];
+    // Stop and target ranges sweep alongside the strategy's own parameters.
+    const combinations = generateSweep(run.paramVariations, run.sizing).map((combo) => ({ ...run.currentParams, ...combo }));
     // Always pass riskSettings now — it carries position sizing + costs even
     // when SL/TP are off, which is what bounds PnL to a sensible range.
     const riskSettings = riskSettingsOf(run);

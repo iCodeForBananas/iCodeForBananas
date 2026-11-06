@@ -11,7 +11,7 @@ interface EquityCurveChartProps {
 
 const EquityCurveChart: React.FC<EquityCurveChartProps> = ({
   equityCurve,
-  initialCapital = 100000,
+  initialCapital = 10_000,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);

@@ -2,7 +2,7 @@ import { PricePoint, IndicatorData, BacktestTrade, PositionSide } from "@/app/ty
 import { StrategyDefinition, ParameterizedResult, createParamLabel } from "@/app/strategies";
 
 export const MAX_BATCH_RUNS = 50;
-export const INITIAL_CAPITAL = 100000;
+export const INITIAL_CAPITAL = 10_000;
 
 export interface MACDConfig {
   fastPeriod: number;
@@ -66,6 +66,82 @@ export interface SizingSettings {
   maxDrawdownPercent: number;
   /** Bars to stay out after the drawdown limit trips; 0 = for the rest of the run. */
   drawdownPauseBars: number;
+  /**
+   * Sweep the stop across this range instead of using one value: the percent
+   * stop, or the ATR multiple when the ATR stop is on. null = a single stop.
+   */
+  stopLossRange?: RiskRange | null;
+  /** Sweep the take profit percent across this range. null = a single target. */
+  takeProfitRange?: RiskRange | null;
+}
+
+export interface RiskRange {
+  min: number;
+  max: number;
+  step: number;
+}
+
+/**
+ * Parameter keys a sweep uses for the stop and target. A result's params
+ * carry them, so its label shows the stop it was run with and a rerun of
+ * that result uses the same one.
+ */
+export const RISK_PARAM_KEYS = {
+  stopLossPercent: "stopLossPercent",
+  atrStopMultiple: "atrStopMultiple",
+  takeProfitPercent: "takeProfitPercent",
+} as const;
+
+/** The stop and target ranges a run sweeps, as parameter variations. */
+export function riskVariations(sizing: SizingSettings | undefined): ParameterVariationConfig[] {
+  if (!sizing) return [];
+  const out: ParameterVariationConfig[] = [];
+  const valid = (r: RiskRange | null | undefined): r is RiskRange =>
+    !!r && Number.isFinite(r.min) && Number.isFinite(r.max) && r.step > 0 && r.max >= r.min && r.min >= 0;
+  if (sizing.useStopLoss && valid(sizing.stopLossRange)) {
+    const key = sizing.atrStopMultiple > 0 ? RISK_PARAM_KEYS.atrStopMultiple : RISK_PARAM_KEYS.stopLossPercent;
+    out.push({ key, ...sizing.stopLossRange });
+  }
+  if (sizing.useTakeProfit && valid(sizing.takeProfitRange)) {
+    out.push({ key: RISK_PARAM_KEYS.takeProfitPercent, ...sizing.takeProfitRange });
+  }
+  return out;
+}
+
+// Most values one stop or target range may expand to.
+const MAX_RISK_VALUES = 50;
+
+/**
+ * Every combination a run tests: the strategy's parameter variations,
+ * sampled down to MAX_BATCH_RUNS as usual, each run at every value of the
+ * stop and target ranges. The ranges aren't sampled: testing a range of stops
+ * means testing each one.
+ */
+export function generateSweep(
+  paramVariations: ParameterVariationConfig[],
+  sizing: SizingSettings | undefined,
+): Record<string, number | boolean | string>[] {
+  let combos = generateCombinations(paramVariations);
+  for (const v of riskVariations(sizing)) {
+    const values = generateRangeValues(v.min, v.max, v.step).slice(0, MAX_RISK_VALUES);
+    combos = combos.flatMap((c) => values.map((value) => ({ ...c, [v.key]: value })));
+  }
+  return combos;
+}
+
+/** Risk settings with any stop or target a sweep put in `params` applied. */
+export function withRiskParams(risk: RiskSettings, params: Record<string, number | boolean | string>): RiskSettings {
+  const num = (key: string) => (typeof params[key] === "number" && Number.isFinite(params[key]) ? (params[key] as number) : undefined);
+  const sl = num(RISK_PARAM_KEYS.stopLossPercent);
+  const atr = num(RISK_PARAM_KEYS.atrStopMultiple);
+  const tp = num(RISK_PARAM_KEYS.takeProfitPercent);
+  if (sl === undefined && atr === undefined && tp === undefined) return risk;
+  return {
+    ...risk,
+    stopLossPercent: sl ?? risk.stopLossPercent,
+    takeProfitPercent: tp ?? risk.takeProfitPercent,
+    sizing: risk.sizing && atr !== undefined ? { ...risk.sizing, atrStopMultiple: atr } : risk.sizing,
+  };
 }
 
 /** What the page starts every strategy with. */
@@ -80,6 +156,8 @@ export const DEFAULT_SIZING: SizingSettings = {
   maxGapLossPercent: 10,
   maxDrawdownPercent: 25,
   drawdownPauseBars: 20,
+  stopLossRange: null,
+  takeProfitRange: null,
 };
 
 /**
@@ -426,6 +504,8 @@ export function runBacktestWithParams(
   riskSettings?: RiskSettings,
   enableShorts: boolean = false
 ): ParameterizedResult {
+  // A stop or target sweep passes its value for this run in the params.
+  if (riskSettings) riskSettings = withRiskParams(riskSettings, params);
   const trades: BacktestTrade[] = [];
   const equityCurve: { time: number; equity: number }[] = [];
   let equity = initialCapital;

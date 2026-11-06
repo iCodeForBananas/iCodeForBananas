@@ -1,5 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { generateCombinations, LEGACY_SIZING, MAX_BATCH_RUNS, positionCapPercent, runBacktestWithParams, type SizingSettings } from "./backtest-engine";
+import {
+  DEFAULT_SIZING,
+  generateCombinations,
+  LEGACY_SIZING,
+  MAX_BATCH_RUNS,
+  positionCapPercent,
+  riskVariations,
+  runBacktestWithParams,
+  generateSweep,
+  withRiskParams,
+  type SizingSettings,
+} from "./backtest-engine";
 import type { IndicatorData } from "@/app/types";
 import type { StrategyDefinition } from "@/app/strategies";
 
@@ -271,5 +282,44 @@ describe("risk-based sizing and account protection", () => {
     const r = sized(data, { 1: "buy", 4: "buy", 6: "buy" }, { maxDrawdownPercent: 10, drawdownPauseBars: 0 });
     expect(r.trades).toHaveLength(1);
     expect(r.trades[0].reason).toContain("no new trades for the rest of the run");
+  });
+});
+
+describe("stop and target ranges", () => {
+  it("turns the ranges into sweep keys for whichever stop is active", () => {
+    const range = { min: 1, max: 3, step: 1 };
+    expect(riskVariations({ ...DEFAULT_SIZING, atrStopMultiple: 0, stopLossRange: range }).map((v) => v.key)).toEqual(["stopLossPercent"]);
+    expect(riskVariations({ ...DEFAULT_SIZING, atrStopMultiple: 2, stopLossRange: range }).map((v) => v.key)).toEqual(["atrStopMultiple"]);
+    expect(riskVariations({ ...DEFAULT_SIZING, useTakeProfit: true, takeProfitRange: range }).map((v) => v.key)).toEqual(["takeProfitPercent"]);
+    // A switched-off stop or target sweeps nothing.
+    expect(riskVariations({ ...DEFAULT_SIZING, useStopLoss: false, stopLossRange: range })).toEqual([]);
+    expect(riskVariations({ ...DEFAULT_SIZING, takeProfitRange: range })).toEqual([]);
+    expect(generateSweep([], { ...DEFAULT_SIZING, atrStopMultiple: 0, stopLossRange: range })).toEqual([
+      { stopLossPercent: 1 },
+      { stopLossPercent: 2 },
+      { stopLossPercent: 3 },
+    ]);
+  });
+
+  it("runs every stop value against every sampled parameter set, outside the variation cap", () => {
+    const params = [{ key: "a", min: 1, max: 100, step: 1 }];
+    const sampled = generateCombinations(params).length;
+    const sweep = generateSweep(params, { ...DEFAULT_SIZING, atrStopMultiple: 0, stopLossRange: { min: 1, max: 7, step: 1 } });
+    expect(sweep).toHaveLength(sampled * 7);
+    expect(new Set(sweep.map((c) => c.stopLossPercent)).size).toBe(7);
+  });
+
+  it("runs a swept stop exactly like the same stop set directly", () => {
+    const data = bars([[100, 100, 100, 100], [100, 100, 100, 100], [100, 101, 96, 97], [97, 99, 90, 92], [92, 95, 91, 94]]);
+    const strategy = scripted({ 1: "buy" });
+    const direct = runBacktestWithParams(data, strategy, {}, 10_000, { stopLossPercent: 5, takeProfitPercent: 0 });
+    const swept = runBacktestWithParams(data, strategy, { stopLossPercent: 5 }, 10_000, { stopLossPercent: 1, takeProfitPercent: 0 });
+    expect(swept.trades).toEqual(direct.trades);
+    expect(swept.trades[0].exitPrice).toBe(95);
+  });
+
+  it("applies a swept ATR multiple and take profit to the sizing", () => {
+    const risk = withRiskParams({ stopLossPercent: 1, takeProfitPercent: 0, sizing: DEFAULT_SIZING }, { atrStopMultiple: 3, takeProfitPercent: 6 });
+    expect([risk.sizing?.atrStopMultiple, risk.takeProfitPercent, risk.stopLossPercent]).toEqual([3, 6, 1]);
   });
 });

@@ -16,7 +16,6 @@ import {
   Flex,
   Grid,
   IconButton,
-  ScrollArea,
   SegmentedControl,
   Strong,
   Switch,
@@ -34,12 +33,14 @@ import {
 } from "@/app/strategies";
 import {
   DEFAULT_SIZING,
-  generateCombinations,
   ParameterVariationConfig,
   INITIAL_CAPITAL,
   positionCapPercent,
   SizingSettings,
   stopOffPositionPercent,
+  generateSweep,
+  withRiskParams,
+  type RiskRange,
 } from "@/app/lib/backtest-engine";
 import { useBacktestWorker, type BacktestJobResult, type StrategyRun } from "./useBacktestWorker";
 import { clearResultCache, countCachedResults } from "./resultCache";
@@ -304,7 +305,7 @@ export default function AlgoBacktestPage() {
     });
   }, [availableDatasets]);
 
-  const combinationCount = useMemo(() => generateCombinations(paramVariations).length, [paramVariations]);
+  const combinationCount = useMemo(() => generateSweep(paramVariations, sizing).length, [paramVariations, sizing]);
 
   // The datasets the ticker search currently shows. The timeframe chips and
   // "All" act on these only: typing NQ and pressing 1D must pick NQ 1D, not
@@ -590,10 +591,19 @@ export default function AlgoBacktestPage() {
     // Risk settings + shorts also depend on which strategy produced this result.
     const isActiveEditorStrategy = resultStrategyId === selectedStrategyId;
     const savedForResult = isActiveEditorStrategy ? null : loadStrategySettings(resultStrategyId);
-    const reportSL = isActiveEditorStrategy ? stopLossPercent : (savedForResult?.stopLossPercent ?? 1);
+    // A stop or target sweep ran this result with the values in its params.
+    const reportRisk = withRiskParams(
+      {
+        stopLossPercent: isActiveEditorStrategy ? stopLossPercent : (savedForResult?.stopLossPercent ?? 1),
+        takeProfitPercent: isActiveEditorStrategy ? takeProfitPercent : (savedForResult?.takeProfitPercent ?? 0),
+        sizing: isActiveEditorStrategy ? sizing : sizingFrom(savedForResult),
+      },
+      result.params ?? {},
+    );
+    const reportSL = reportRisk.stopLossPercent;
     const reportShorts = isActiveEditorStrategy ? enableShorts : (savedForResult?.enableShorts ?? false);
-    const reportSizing = isActiveEditorStrategy ? sizing : sizingFrom(savedForResult);
-    const reportTP = !reportSizing.useTakeProfit ? 0 : isActiveEditorStrategy ? takeProfitPercent : (savedForResult?.takeProfitPercent ?? 0);
+    const reportSizing = reportRisk.sizing!;
+    const reportTP = !reportSizing.useTakeProfit ? 0 : reportRisk.takeProfitPercent;
     const reportPosSize = isActiveEditorStrategy ? positionSizePercent : (savedForResult?.positionSizePercent ?? 100);
 
     const datasetLabels = selectedFiles.map(f => {
@@ -713,10 +723,19 @@ export default function AlgoBacktestPage() {
 
     const isActiveEditorStrategy = resultStrategyId === selectedStrategyId;
     const savedForResult = isActiveEditorStrategy ? null : loadStrategySettings(resultStrategyId);
-    const sz = isActiveEditorStrategy ? sizing : sizingFrom(savedForResult);
+    // A stop or target sweep ran this result with the values in its params.
+    const risk = withRiskParams(
+      {
+        stopLossPercent: isActiveEditorStrategy ? stopLossPercent : (savedForResult?.stopLossPercent ?? 1),
+        takeProfitPercent: isActiveEditorStrategy ? takeProfitPercent : (savedForResult?.takeProfitPercent ?? 0),
+        sizing: isActiveEditorStrategy ? sizing : sizingFrom(savedForResult),
+      },
+      result.params ?? {},
+    );
+    const sz = risk.sizing!;
     // A switched-off stop or target is no stop or target, whatever its percent.
-    const sl = !sz.useStopLoss ? 0 : isActiveEditorStrategy ? stopLossPercent : (savedForResult?.stopLossPercent ?? 1);
-    const tp = !sz.useTakeProfit ? 0 : isActiveEditorStrategy ? takeProfitPercent : (savedForResult?.takeProfitPercent ?? 0);
+    const sl = !sz.useStopLoss ? 0 : risk.stopLossPercent;
+    const tp = !sz.useTakeProfit ? 0 : risk.takeProfitPercent;
     const shorts = isActiveEditorStrategy ? enableShorts : (savedForResult?.enableShorts ?? false);
     const posSize = isActiveEditorStrategy ? positionSizePercent : (savedForResult?.positionSizePercent ?? 100);
     const commission = isActiveEditorStrategy ? commissionBps : (savedForResult?.commissionBps ?? 0);
@@ -1031,7 +1050,7 @@ export default function AlgoBacktestPage() {
           }
           const saved = buildSavedRun(sid);
           if (!saved) continue;
-          totalRuns += generateCombinations(saved.paramVariations).length;
+          totalRuns += generateSweep(saved.paramVariations, saved.sizing).length;
         }
         const strategies = selectedStrategyIds.length > 1 ? ` across ${selectedStrategyIds.length} strategies` : "";
         return `Run ${(totalRuns * selectedFiles.length).toLocaleString()} variations${strategies}`;
@@ -1112,7 +1131,7 @@ export default function AlgoBacktestPage() {
                     })}
                   </Flex>
                 )}
-                <ScrollArea type='auto' scrollbars='vertical' style={{ maxHeight: 176 }}>
+                <div className='overflow-y-auto overscroll-contain' style={{ maxHeight: 176 }}>
                   <CheckboxGroup.Root size='1' value={selectedFiles} onValueChange={setSelectedFiles} className='gap-1 pr-3'>
                     {filteredDatasets.map((ds) => (
                       <CheckboxGroup.Item key={ds.file} value={ds.file}>
@@ -1120,7 +1139,7 @@ export default function AlgoBacktestPage() {
                       </CheckboxGroup.Item>
                     ))}
                   </CheckboxGroup.Root>
-                </ScrollArea>
+                </div>
                 {selectedFiles.length === 0 ? (
                   <Text size='1' color='gray'>
                     Pick at least one dataset.
@@ -1166,7 +1185,7 @@ export default function AlgoBacktestPage() {
                 </>
               }
             >
-              <ScrollArea type='auto' scrollbars='vertical' style={{ maxHeight: 280 }}>
+              <div className='overflow-y-auto overscroll-contain' style={{ maxHeight: 280 }}>
                 <Flex direction='column' gap='1' className='pr-3'>
                   {Object.values(AVAILABLE_STRATEGIES).map((s) => {
                     const isChecked = selectedStrategyIds.includes(s.id);
@@ -1312,7 +1331,7 @@ export default function AlgoBacktestPage() {
                     );
                   })}
                 </Flex>
-              </ScrollArea>
+              </div>
             </Bento>
 
             <Bento title='Risk'>
@@ -1331,30 +1350,44 @@ export default function AlgoBacktestPage() {
                   </Flex>
                 </Text>
                 {sizing.useStopLoss ? (
-                  <Flex wrap='wrap' gap='3'>
-                    <NumberField
-                      label='ATR stop ×'
-                      value={sizing.atrStopMultiple}
-                      min={0}
-                      step={0.5}
-                      placeholder='0 = use %'
-                      onChange={(raw) => {
-                        const v = parseFloat(raw);
-                        updateSizing({ atrStopMultiple: isNaN(v) ? 0 : Math.max(0, v) });
-                      }}
+                  <>
+                    <Flex wrap='wrap' gap='3'>
+                      {/* A range on the ATR stop replaces its one multiple; the
+                          percent stays as the ATR warm-up fallback. */}
+                      {!(sizing.stopLossRange && sizing.atrStopMultiple > 0) && (
+                        <NumberField
+                          label='ATR stop ×'
+                          value={sizing.atrStopMultiple}
+                          min={0}
+                          step={0.5}
+                          placeholder='0 = use %'
+                          onChange={(raw) => {
+                            const v = parseFloat(raw);
+                            updateSizing({ atrStopMultiple: isNaN(v) ? 0 : Math.max(0, v) });
+                          }}
+                        />
+                      )}
+                      {!(sizing.stopLossRange && sizing.atrStopMultiple <= 0) && (
+                        <NumberField
+                          label={sizing.atrStopMultiple > 0 ? 'Stop loss % (ATR warm-up)' : 'Stop loss %'}
+                          value={stopLossPercent}
+                          min={0}
+                          step={0.5}
+                          placeholder='0 = none'
+                          onChange={(raw) => {
+                            const v = parseFloat(raw);
+                            setStopLossPercent(isNaN(v) ? 0 : Math.max(0, v));
+                          }}
+                        />
+                      )}
+                    </Flex>
+                    <RiskRangeFields
+                      label={sizing.atrStopMultiple > 0 ? 'Test a range of ATR stops (×)' : 'Test a range of stops (%)'}
+                      range={sizing.stopLossRange ?? null}
+                      fallback={sizing.atrStopMultiple > 0 ? { min: 1, max: 4, step: 0.5 } : { min: 0.5, max: 5, step: 0.5 }}
+                      onChange={(stopLossRange) => updateSizing({ stopLossRange })}
                     />
-                    <NumberField
-                      label={sizing.atrStopMultiple > 0 ? 'Stop loss % (ATR warm-up)' : 'Stop loss %'}
-                      value={stopLossPercent}
-                      min={0}
-                      step={0.5}
-                      placeholder='0 = none'
-                      onChange={(raw) => {
-                        const v = parseFloat(raw);
-                        setStopLossPercent(isNaN(v) ? 0 : Math.max(0, v));
-                      }}
-                    />
-                  </Flex>
+                  </>
                 ) : (
                   <Text size='1' color='gray'>
                     Off. The strategy&apos;s own signals are the only entries and exits
@@ -1375,18 +1408,28 @@ export default function AlgoBacktestPage() {
                   </Flex>
                 </Text>
                 {sizing.useTakeProfit && (
-                  <Flex wrap='wrap' gap='3'>
-                    <NumberField
-                      label='Take profit %'
-                      value={takeProfitPercent}
-                      min={0}
-                      step={0.5}
-                      onChange={(raw) => {
-                        const v = parseFloat(raw);
-                        setTakeProfitPercent(isNaN(v) ? 0 : Math.max(0, v));
-                      }}
+                  <>
+                    {!sizing.takeProfitRange && (
+                      <Flex wrap='wrap' gap='3'>
+                        <NumberField
+                          label='Take profit %'
+                          value={takeProfitPercent}
+                          min={0}
+                          step={0.5}
+                          onChange={(raw) => {
+                            const v = parseFloat(raw);
+                            setTakeProfitPercent(isNaN(v) ? 0 : Math.max(0, v));
+                          }}
+                        />
+                      </Flex>
+                    )}
+                    <RiskRangeFields
+                      label='Test a range of take profits (%)'
+                      range={sizing.takeProfitRange ?? null}
+                      fallback={{ min: 2, max: 10, step: 1 }}
+                      onChange={(takeProfitRange) => updateSizing({ takeProfitRange })}
                     />
-                  </Flex>
+                  </>
                 )}
                 {/* Risk sizing derives each trade's size from the stop: a
                     stop fill costs the risk %. Fixed is the old "x% of
@@ -1856,6 +1899,54 @@ function Stat({
 }
 
 /** A labelled number input. `onChange` gets the raw string so callers decide how to parse and clamp. */
+/**
+ * A switch that turns one stop or target value into a range the run sweeps,
+ * with from / to / step fields while it's on. Each value becomes its own
+ * result, sharing the run's cap on variations with the strategy parameters.
+ */
+function RiskRangeFields({
+  label,
+  range,
+  fallback,
+  onChange,
+}: {
+  label: string;
+  range: RiskRange | null;
+  fallback: RiskRange;
+  onChange: (range: RiskRange | null) => void;
+}) {
+  const set = (key: keyof RiskRange, raw: string) => {
+    const v = parseFloat(raw);
+    if (!range) return;
+    onChange({ ...range, [key]: isNaN(v) ? fallback[key] : Math.max(key === 'step' ? 0.01 : 0, v) });
+  };
+  const count = range && range.step > 0 && range.max >= range.min ? Math.floor((range.max - range.min) / range.step + 1e-9) + 1 : 0;
+  return (
+    <Flex direction='column' gap='2'>
+      <Text as='label' size='1'>
+        <Flex gap='2' align='center'>
+          <Switch size='1' checked={!!range} onCheckedChange={(on) => onChange(on ? fallback : null)} />
+          {label}
+        </Flex>
+      </Text>
+      {range && (
+        <>
+          <Flex wrap='wrap' gap='3'>
+            <NumberField label='From' value={range.min} min={0} step={0.5} onChange={(raw) => set('min', raw)} />
+            <NumberField label='To' value={range.max} min={0} step={0.5} onChange={(raw) => set('max', raw)} />
+            <NumberField label='Step' value={range.step} min={0.01} step={0.25} onChange={(raw) => set('step', raw)} />
+          </Flex>
+          <Text size='1' color='gray'>
+            {count > 0
+              ? `${count} value${count === 1 ? '' : 's'}, each run with every parameter variation`
+              : 'From must not be above To'}
+          </Text>
+        </>
+      )}
+    </Flex>
+  );
+}
+
 function NumberField({
   label,
   value,
