@@ -26,6 +26,7 @@ import kamaTrend from './kama-trend';
 import ichimoku from './ichimoku';
 import connorsRsi from './connors-rsi';
 import turnOfMonth from './turn-of-month';
+import supplyDemand from './supply-demand';
 
 export const AVAILABLE_STRATEGIES: Record<string, StrategyDefinition> = {
   // Trend Following
@@ -53,6 +54,8 @@ export const AVAILABLE_STRATEGIES: Record<string, StrategyDefinition> = {
   'double-7s': double7s,
   'ibs-mean-reversion': ibsMeanReversion,
   'connors-rsi': connorsRsi,
+  // Support & Resistance
+  'supply-demand': supplyDemand,
   // Calendar
   'turn-of-month': turnOfMonth,
 };

@@ -10,6 +10,7 @@ import connorsRsi, { streaks, wilderRsi, getConnorsRsiArray } from "./connors-rs
 import turnOfMonth, { monthCalendar } from "./turn-of-month";
 import ichimoku, { midpointArray } from "./ichimoku";
 import kamaTrend, { getKamaArray } from "./kama-trend";
+import supplyDemand, { getZoneSeries, zoneParamsFrom } from "./supply-demand";
 import { deriveRequiredIndicators } from "@/app/lib/backtest-engine";
 
 type Bar = OHLCBar & IndicatorValues;
@@ -51,9 +52,14 @@ describe("IBS mean reversion", () => {
     expect(signal(ibsMeanReversion, [nearHigh], "long")).toBe("sell");
   });
 
-  it("never sells while flat, so it can't open a short", () => {
+  it("shorts a close near the high and covers a close near the low", () => {
     const nearHigh: Bar = { time: 0, open: 101, high: 110, low: 100, close: 109 };
-    expect(signal(ibsMeanReversion, [nearHigh], null)).toBe("hold");
+    const nearLow: Bar = { time: 0, open: 108, high: 110, low: 100, close: 101 };
+    const middle: Bar = { time: 0, open: 104, high: 110, low: 100, close: 105 };
+    expect(signal(ibsMeanReversion, [nearHigh], null)).toBe("sell");
+    expect(signal(ibsMeanReversion, [nearLow], "short")).toBe("buy");
+    expect(signal(ibsMeanReversion, [middle], "short")).toBe("hold");
+    expect(signal(ibsMeanReversion, [{ ...nearHigh, sma200: 100 }], null, { trendFilter: true })).toBe("hold");
   });
 
   it("skips entries under the 200 SMA when the trend filter is on", () => {
@@ -263,5 +269,63 @@ describe("KAMA", () => {
     const { requiredSMAs, requiredEMAs } = deriveRequiredIndicators("kama-trend", [getDefaultParams("kama-trend")]);
     expect(requiredSMAs.sort((a, b) => a - b)).toEqual([20, 50, 200]);
     expect(requiredEMAs.sort((a, b) => a - b)).toEqual([9, 21]);
+  });
+});
+
+describe("Supply & demand zones", () => {
+  const bar = (i: number, open: number, high: number, low: number, close: number): Bar => ({ time: i * DAY, open, high, low, close });
+  // Bars with a body over half their range, so none of them counts as a base.
+  const warmup = (n: number) => Array.from({ length: n }, (_, i) => bar(i, 99.2, 101, 99, 100.8));
+  const withBars = (head: Bar[], ...rows: [number, number, number, number][]) =>
+    [...head, ...rows.map(([o, h, l, c], k) => bar(head.length + k, o, h, l, c))];
+  const params = { atrPeriod: 3 };
+
+  // Two boring candles, then a rally candle leaving them: demand at 99.5-100.2.
+  const demandBuilt = withBars(warmup(6), [100, 101, 99.5, 100.2], [100.1, 101, 99.6, 100], [100.2, 105.2, 100, 105], [105, 105.3, 103.6, 103.8]);
+  // Two boring candles, then a drop candle leaving them: supply at 100-101.
+  const supplyBuilt = withBars(warmup(6), [100, 101, 99.5, 100.2], [100.1, 101, 99.6, 100], [100, 100.2, 94.8, 95], [95, 97.2, 94.9, 97]);
+
+  it("finds a demand zone from base to impulse, from the impulse bar on", () => {
+    const z = getZoneSeries(demandBuilt, zoneParamsFrom(params));
+    expect(Number.isNaN(z.demandTop[7])).toBe(true);
+    expect(z.demandTop[8]).toBeCloseTo(100.2);
+    expect(z.demandBottom[8]).toBeCloseTo(99.5);
+  });
+
+  it("buys a bounce off a fresh demand zone and sells when it breaks", () => {
+    const bounced = withBars(demandBuilt, [103.8, 104, 100, 102.5]);
+    expect(signal(supplyDemand, bounced, null, params)).toBe("buy");
+    expect(signal(supplyDemand, bounced, null, { ...params, mode: "breakout" })).toBe("hold");
+    const broken = withBars(bounced, [102.5, 102.6, 98, 98.5]);
+    expect(signal(supplyDemand, broken, "long", params)).toBe("sell");
+  });
+
+  it("skips a bounce once the zone has used up its touches", () => {
+    const retests = withBars(demandBuilt, [103.8, 104, 100, 102.5], [102.5, 104.4, 102.4, 104.2], [104.2, 104.3, 100.1, 102.6]);
+    expect(signal(supplyDemand, retests, null, { ...params, maxTouches: 2 })).toBe("buy");
+    expect(signal(supplyDemand, retests, null, { ...params, maxTouches: 1 })).toBe("hold");
+  });
+
+  it("buys a breakout through supply and flips the zone to demand", () => {
+    const broke = withBars(supplyBuilt, [97, 102, 96.8, 101.5]);
+    expect(signal(supplyDemand, broke, null, { ...params, mode: "breakout" })).toBe("buy");
+    expect(signal(supplyDemand, broke, null, params)).toBe("hold");
+    const z = getZoneSeries(broke, zoneParamsFrom(params));
+    expect([z.demandBottom[broke.length - 1], z.demandTop[broke.length - 1]]).toEqual([100, 101]);
+  });
+
+  it("shorts a rejection at supply and covers at demand", () => {
+    const rejected = withBars(supplyBuilt, [97, 100.5, 96.9, 98]);
+    expect(signal(supplyDemand, rejected, null, params)).toBe("sell");
+    const both = withBars(demandBuilt, [103.8, 104, 100, 102.5]);
+    expect(signal(supplyDemand, both, "short", params)).toBe("buy");
+    expect(signal(supplyDemand, both, "short", { ...params, exitAt: "break" })).toBe("hold");
+  });
+
+  it("only knows a swing pivot once the bars after it have closed", () => {
+    const peak = fromCloses([100, 101, 102, 103, 104, 110, 104, 103, 102, 101, 100]);
+    const z = getZoneSeries(peak, zoneParamsFrom({ zoneSource: "pivot", pivotStrength: 2, atrPeriod: 2 }));
+    expect(Number.isNaN(z.supplyTop[6])).toBe(true);
+    expect(z.supplyTop[7]).toBe(111);
   });
 });

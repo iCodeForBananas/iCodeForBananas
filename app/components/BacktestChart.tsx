@@ -34,6 +34,7 @@ import { getConnorsRsiArray } from "@/app/strategies/connors-rsi";
 import { monthCalendar } from "@/app/strategies/turn-of-month";
 import { ichimokuAt } from "@/app/strategies/ichimoku";
 import { getKamaArray } from "@/app/strategies/kama-trend";
+import { getZoneSeries, zoneParamsFrom } from "@/app/strategies/supply-demand";
 
 interface BacktestChartProps {
   data: IndicatorData[];
@@ -421,6 +422,24 @@ function computeIndicators(
       priceLines.push({ values: lines.map((l) => defined(l.senkouB)), color: "#f97316", label: "Senkou B", lineWidth: 1, dashed: true });
       break;
     }
+    case "supply-demand": {
+      // The nearest demand zone under price and supply zone over it, as they
+      // stood going into each bar: what that bar's close is judged against.
+      // A gap where the nearest zone changes keeps one zone's edge from being
+      // joined to the next.
+      const zones = getZoneSeries(data, zoneParamsFrom(params));
+      const edge = (arr: Float64Array, pair: Float64Array) =>
+        data.map((_, i) => {
+          if (i < 1 || Number.isNaN(arr[i - 1])) return undefined;
+          if (i >= 2 && (arr[i - 2] !== arr[i - 1] || pair[i - 2] !== pair[i - 1])) return undefined;
+          return arr[i - 1];
+        });
+      priceLines.push({ values: edge(zones.demandTop, zones.demandBottom), color: "#22c55e", label: "Demand", lineWidth: 2 });
+      priceLines.push({ values: edge(zones.demandBottom, zones.demandTop), color: "#22c55e", label: "", lineWidth: 1, dashed: true });
+      priceLines.push({ values: edge(zones.supplyBottom, zones.supplyTop), color: "#ef4444", label: "Supply", lineWidth: 2 });
+      priceLines.push({ values: edge(zones.supplyTop, zones.supplyBottom), color: "#ef4444", label: "", lineWidth: 1, dashed: true });
+      break;
+    }
     case "kama-trend": {
       const kama = getKamaArray(data, num("erPeriod", 10), num("fastLength", 2), num("slowLength", 30));
       priceLines.push({ values: kama.map((v) => (Number.isNaN(v) ? undefined : v)), color: "#f97316", label: "KAMA", lineWidth: 2 });
@@ -665,7 +684,9 @@ const BacktestChart: React.FC<BacktestChartProps> = ({
         position: exitPosition,
         color: isSel ? "#3b82f6" : t.pnl > 0 ? "#22c55e" : "#ef4444",
         shape: "circle",
-        text: t.pnl > 0 ? `+${t.pnlPercent.toFixed(1)}%` : `${t.pnlPercent.toFixed(1)}%`,
+        // Two decimals: a fill at the next open often lands within a few
+        // hundredths of a percent of entry, which one decimal shows as 0.0%.
+        text: t.pnl > 0 ? `+${t.pnlPercent.toFixed(2)}%` : `${t.pnlPercent.toFixed(2)}%`,
         size: isSel ? 2 : 1,
       });
     }
