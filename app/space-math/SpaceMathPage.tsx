@@ -5,150 +5,23 @@ import { motion, AnimatePresence } from "motion/react";
 import { Rocket, Star, Trophy, ChevronRight, Sparkles, Check, X } from "lucide-react";
 import { Button } from "@radix-ui/themes";
 import styles from "./space-math.module.css";
-import { type ProblemType, SKILLS, findSkill } from "../lib/spaceMathSkills";
+import { findSkill } from "../lib/spaceMathSkills";
+import {
+  type TopicDef,
+  type TopicRecord,
+  DEFAULT_RECORD,
+  advanceRecord,
+  nextMomentum,
+  normalizeRecords,
+  selectTopic,
+  tickTopics,
+} from "../lib/spaceMathSchedule";
 import { type FractionVisual, type Problem, buildProblem } from "../lib/spaceMathGenerator";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-// ProblemType lives in app/lib/spaceMathSkills.ts, and the question generator
-// (buildProblem, FractionVisual, Problem) in app/lib/spaceMathGenerator.ts —
-// this file owns the game/session state machine, not the content.
-
-interface TopicRecord {
-  correct: number;
-  attempts: number;
-  streak: number; // consecutive correct answers
-  interval: number; // questions to wait before this topic comes back
-  dueIn: number; // countdown to next review
-  learned: boolean; // has reached LEARNED_INTERVAL at least once
-}
-
-interface TopicDef {
-  key: string;
-  type: ProblemType;
-  min: number;
-  max: number;
-}
-
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-// Review intervals, counted in questions asked. A correct answer moves a topic one
-// rung up the ladder, a miss knocks it back down. High rungs are the point: a solid
-// skill stays in the mix but only resurfaces every 30–60 questions.
-const INTERVAL_STEPS = [1, 2, 4, 8, 16, 32, 60];
-
-// A topic counts as learned once it reaches this interval. Learned topics are never
-// retired — they just come back rarely, as reinforcement.
-const LEARNED_INTERVAL = 8;
-
-// How many not-yet-learned topics may be in rotation at once. New material is only
-// handed out when the learner is under this many, which is what keeps the
-// progression linear instead of dumping the whole syllabus in at once.
-const LEARNING_CAP = 3;
-
-// One linear ladder of skills, easiest first. The content is Common Core K–3, but
-// the learner is never placed in a grade: they sit at whatever point on the ladder
-// they've reached, and every topic behind them stays in the review mix.
-// Derived from SKILLS (app/lib/spaceMathSkills.ts) rather than hand-duplicated —
-// that file is the single source of truth for which topics exist.
-const TOPIC_PROGRESSION: TopicDef[] = SKILLS.map(({ key, type, min, max }) => ({ key, type, min, max }));
-
-const DEFAULT_RECORD: TopicRecord = { correct: 0, attempts: 0, streak: 0, interval: 1, dueIn: 0, learned: false };
-
-// Fill in fields older saves didn't have, and drop keys no longer on the ladder
-function normalizeRecords(raw: unknown): Record<string, TopicRecord> {
-  const out: Record<string, TopicRecord> = {};
-  if (!raw || typeof raw !== "object") return out;
-  const saved = raw as Record<string, Partial<TopicRecord>>;
-  for (const t of TOPIC_PROGRESSION) {
-    const r = saved[t.key];
-    if (!r) continue;
-    const interval = typeof r.interval === "number" ? r.interval : 1;
-    out[t.key] = {
-      correct: r.correct ?? 0,
-      attempts: r.attempts ?? 0,
-      streak: r.streak ?? 0,
-      interval,
-      dueIn: r.dueIn ?? 0,
-      learned: r.learned ?? interval >= LEARNED_INTERVAL,
-    };
-  }
-  return out;
-}
-
-function stepUp(interval: number): number {
-  return INTERVAL_STEPS.find((s) => s > interval) ?? INTERVAL_STEPS[INTERVAL_STEPS.length - 1];
-}
-
-// A miss drops the topic two rungs rather than all the way back, so one slip on a
-// solid skill turns into a check-in, not a drill
-function stepDown(interval: number): number {
-  const idx = INTERVAL_STEPS.findIndex((s) => s >= interval);
-  const from = idx === -1 ? INTERVAL_STEPS.length - 1 : idx;
-  return INTERVAL_STEPS[Math.max(0, from - 2)];
-}
-
-// Everything the learner has reached so far: all learned topics plus the next few
-// still being learned. Nothing ever leaves this set.
-function unlockedTopics(records: Record<string, TopicRecord>): TopicDef[] {
-  const out: TopicDef[] = [];
-  let learning = 0;
-  for (const t of TOPIC_PROGRESSION) {
-    out.push(t);
-    if (!records[t.key]?.learned) learning++;
-    if (learning >= LEARNING_CAP) break;
-  }
-  return out;
-}
-
-// Pick the next topic. Every unlocked topic stays eligible forever — the schedule,
-// not a difficulty filter, decides what shows up, so a session naturally mixes the
-// new material with reviews of things already learned.
-function selectTopic(records: Record<string, TopicRecord>, lastKey: string | null): TopicDef {
-  const pool = unlockedTopics(records);
-  const due = pool.filter((t) => (records[t.key]?.dueIn ?? 0) <= 0);
-  const candidates = due.length > 0 ? due : pool;
-
-  const weights = candidates.map((t) => {
-    const r = records[t.key] ?? DEFAULT_RECORD;
-    const interval = Math.max(r.interval, 1);
-    const ripeness = (interval - r.dueIn) / interval; // 1 exactly at due, >1 overdue
-    const accuracy = r.attempts > 0 ? r.correct / r.attempts : 0.5;
-    const need = 1.5 - accuracy; // shaky topics get a bigger share of the questions
-    const fresh = r.attempts === 0 ? 2 : 1; // ease brand-new topics in promptly
-    const repeat = t.key === lastKey ? 0.15 : 1; // avoid back-to-back repeats
-    return Math.max(ripeness, 0.02) ** 2 * need * fresh * repeat;
-  });
-
-  const total = weights.reduce((a, b) => a + b, 0);
-  let rand = Math.random() * total;
-  for (let i = 0; i < candidates.length; i++) {
-    rand -= weights[i];
-    if (rand <= 0) return candidates[i];
-  }
-  return candidates[candidates.length - 1];
-}
-
-// Spaced repetition: correct moves the topic up the interval ladder, a miss moves it down
-function advanceRecord(record: TopicRecord, correct: boolean): TopicRecord {
-  const interval = correct ? stepUp(record.interval) : stepDown(record.interval);
-  return {
-    correct: record.correct + (correct ? 1 : 0),
-    attempts: record.attempts + 1,
-    streak: correct ? record.streak + 1 : 0,
-    interval,
-    dueIn: interval,
-    learned: record.learned || (correct && interval >= LEARNED_INTERVAL),
-  };
-}
-
-// Tick down dueIn for every topic except the one just answered
-function tickTopics(records: Record<string, TopicRecord>, exceptKey: string): Record<string, TopicRecord> {
-  const out: Record<string, TopicRecord> = {};
-  for (const [k, v] of Object.entries(records)) {
-    out[k] = k === exceptKey ? v : { ...v, dueIn: Math.max(0, v.dueIn - 1) };
-  }
-  return out;
-}
+// The scheduler (spaced-repetition records, topic ladder and in-round
+// momentum) lives in app/lib/spaceMathSchedule.ts, the skill list in
+// app/lib/spaceMathSkills.ts and the question generator in
+// app/lib/spaceMathGenerator.ts. This file owns the game screen.
 
 // buildProblem lives in app/lib/spaceMathGenerator.ts.
 
@@ -341,18 +214,15 @@ const SHADE_EMPTY = "rgba(255,255,255,0.15)";
 const SHADE_STROKE = "rgba(255,255,255,0.65)";
 
 // Takes a `key` prop at the call site (not shown in this signature) set to
-// something that changes per question/attempt — React remounts the whole
+// something that changes per question — React remounts the whole
 // component on a key change, which is what resets the shaded set between
-// questions and retries, rather than a useEffect reacting to a prop change.
+// questions, rather than a useEffect reacting to a prop change.
 //
-// Grading: every question in the game gets exactly two attempts — the
-// generic one/two-attempt flow lives in handleAnswer, not here. Shading
-// itself is freely correctable (tap a cell to shade it, tap again to
-// unshade — no attempt consumed either way); only tapping Check submits
-// the current count and consumes an attempt, via the same onComplete ->
-// handleAnswer path every other question type already answers through, so
-// a question solved on the second attempt is recorded exactly the same
-// way regardless of which question type it was.
+// Grading: every question in the game gets exactly one answer, handled in
+// handleAnswer, not here. Shading itself is freely correctable (tap a cell
+// to shade it, tap again to unshade); only tapping Check submits the
+// current count, via the same onComplete -> handleAnswer path every other
+// question type answers through.
 const ShadeGrid = ({
   shape,
   total,
@@ -734,7 +604,8 @@ export default function SpaceMathPage() {
   const [selectedAnswer, setSelectedAnswer] = useState<number | string | null>(null);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
   const [score, setScore] = useState<number>(() => readSave()?.score ?? 0);
-  const [attemptsUsed, setAttemptsUsed] = useState(0);
+  // Questions in a row answered right this round; sets how hard the next one may be
+  const [momentum, setMomentum] = useState(0);
   const [gameState, setGameState] = useState<"start" | "playing" | "finale">("start");
   const [sessionId, setSessionId] = useState<string>(() => crypto.randomUUID());
   const [sessionTopicStats, setSessionTopicStats] = useState<Record<string, { correct: number; total: number }>>({});
@@ -759,92 +630,55 @@ export default function SpaceMathPage() {
     localStorage.setItem("space-math-save", JSON.stringify({ score, topicRecords }));
   }, [score, topicRecords]);
 
+  // One answer per question: right or wrong, the next question follows.
   const handleAnswer = (answer: number | string) => {
     if (selectedAnswer !== null || !problem || !currentTopic) return;
     setSelectedAnswer(answer);
     const correct = answer === problem.answer;
     setIsCorrect(correct);
+    playSound(correct ? "correct" : "incorrect");
 
-    // Capture closure values for the timeout
     const capturedSigs = recentSignatures;
     const capturedTopic = currentTopic;
-    const capturedRecords = topicRecords;
     const capturedTopicStats = sessionTopicStats;
-    const capturedSessionId = sessionId;
 
+    // Update records immediately so the POST carries accurate mastery state
+    const updated = advanceRecord(topicRecords[capturedTopic.key] ?? DEFAULT_RECORD, correct);
+    const ticked = tickTopics({ ...topicRecords, [capturedTopic.key]: updated }, capturedTopic.key);
+    setTopicRecords(ticked);
+    setLastTopicKey(capturedTopic.key);
+    setSessionTopicStats({
+      ...capturedTopicStats,
+      [capturedTopic.key]: {
+        correct: (capturedTopicStats[capturedTopic.key]?.correct ?? 0) + (correct ? 1 : 0),
+        total: (capturedTopicStats[capturedTopic.key]?.total ?? 0) + 1,
+      },
+    });
+    postQuestionProgress(capturedTopic.key, correct, ticked, sessionId);
+
+    const nextMomentumValue = nextMomentum(momentum, correct);
+    setMomentum(nextMomentumValue);
+
+    const nextSessionCorrect = sessionCorrect + (correct ? 1 : 0);
     if (correct) {
-      playSound("correct");
       setScore((s) => s + 10);
-      const nextSessionCorrect = sessionCorrect + 1;
       setSessionCorrect(nextSessionCorrect);
-
-      const updated = advanceRecord(capturedRecords[capturedTopic.key] ?? DEFAULT_RECORD, true);
-      const ticked = tickTopics({ ...capturedRecords, [capturedTopic.key]: updated }, capturedTopic.key);
-      setTopicRecords(ticked);
-      setLastTopicKey(capturedTopic.key);
-
-      setSessionTopicStats({
-        ...capturedTopicStats,
-        [capturedTopic.key]: {
-          correct: (capturedTopicStats[capturedTopic.key]?.correct ?? 0) + 1,
-          total: (capturedTopicStats[capturedTopic.key]?.total ?? 0) + 1,
-        },
-      });
-
-      postQuestionProgress(capturedTopic.key, true, ticked, capturedSessionId);
-
-      setTimeout(() => {
-        if (nextSessionCorrect >= SESSION_GOAL) {
-          playSound("badge");
-          setGameState("finale");
-        } else {
-          const next = selectTopic(ticked, capturedTopic.key);
-          setCurrentTopic(next);
-          const p = generateForTopic(next, capturedSigs);
-          setProblem(p);
-          setRecentSignatures((prev) => [...prev.slice(-9), p.signature]);
-        }
-        setSelectedAnswer(null);
-        setIsCorrect(null);
-        setAttemptsUsed(0);
-      }, 2000);
-    } else {
-      playSound("incorrect");
-      const isLastAttempt = attemptsUsed >= 1;
-
-      if (isLastAttempt) {
-        // Final wrong attempt: update records immediately so the POST has accurate mastery state
-        const updated = advanceRecord(capturedRecords[capturedTopic.key] ?? DEFAULT_RECORD, false);
-        const ticked = tickTopics({ ...capturedRecords, [capturedTopic.key]: updated }, capturedTopic.key);
-        setTopicRecords(ticked);
-        setLastTopicKey(capturedTopic.key);
-        setSessionTopicStats({
-          ...capturedTopicStats,
-          [capturedTopic.key]: {
-            correct: capturedTopicStats[capturedTopic.key]?.correct ?? 0,
-            total: (capturedTopicStats[capturedTopic.key]?.total ?? 0) + 1,
-          },
-        });
-        postQuestionProgress(capturedTopic.key, false, ticked, capturedSessionId);
-
-        setTimeout(() => {
-          const next = selectTopic(ticked, capturedTopic.key);
-          setCurrentTopic(next);
-          const p = generateForTopic(next, capturedSigs);
-          setProblem(p);
-          setRecentSignatures((prev) => [...prev.slice(-9), p.signature]);
-          setAttemptsUsed(0);
-          setSelectedAnswer(null);
-          setIsCorrect(null);
-        }, 2000);
-      } else {
-        setTimeout(() => {
-          setAttemptsUsed(1);
-          setSelectedAnswer(null);
-          setIsCorrect(null);
-        }, 2000);
-      }
     }
+
+    setTimeout(() => {
+      if (nextSessionCorrect >= SESSION_GOAL) {
+        playSound("badge");
+        setGameState("finale");
+      } else {
+        const next = selectTopic(ticked, capturedTopic.key, nextMomentumValue);
+        setCurrentTopic(next);
+        const p = generateForTopic(next, capturedSigs);
+        setProblem(p);
+        setRecentSignatures((prev) => [...prev.slice(-9), p.signature]);
+      }
+      setSelectedAnswer(null);
+      setIsCorrect(null);
+    }, 2000);
   };
 
   // Number keys 1..N pick the matching answer tile, left to right, top to
@@ -868,12 +702,13 @@ export default function SpaceMathPage() {
   });
 
   const startGame = () => {
-    const topic = selectTopic(topicRecords, lastTopicKey);
+    // Every round starts from zero momentum, so it opens on review and climbs
+    const topic = selectTopic(topicRecords, lastTopicKey, 0);
     setCurrentTopic(topic);
     const p = generateForTopic(topic, []);
     setProblem(p);
     setRecentSignatures([p.signature]);
-    setAttemptsUsed(0);
+    setMomentum(0);
     setGameState("playing");
   };
 
@@ -882,7 +717,7 @@ export default function SpaceMathPage() {
     setCurrentTopic(null);
     setLastTopicKey(null);
     setSessionCorrect(0);
-    setAttemptsUsed(0);
+    setMomentum(0);
     setProblem(null);
     setSessionTopicStats({});
     setSessionId(crypto.randomUUID());
@@ -1032,7 +867,7 @@ export default function SpaceMathPage() {
                   {problem.shadeTarget ? (
                     <div className='flex-1 min-h-0 flex flex-col items-center justify-center'>
                       <ShadeGrid
-                        key={`${problem.id}-${attemptsUsed}`}
+                        key={problem.id}
                         shape={problem.shadeTarget.shape}
                         total={problem.shadeTarget.total}
                         disabled={selectedAnswer !== null}
@@ -1122,7 +957,8 @@ export default function SpaceMathPage() {
                     setSessionCorrect(0);
                     setSessionTopicStats({});
                     setSessionId(crypto.randomUUID());
-                    const next = selectTopic(topicRecords, lastTopicKey);
+                    setMomentum(0);
+                    const next = selectTopic(topicRecords, lastTopicKey, 0);
                     setCurrentTopic(next);
                     const p = generateForTopic(next, []);
                     setProblem(p);
