@@ -344,6 +344,9 @@ async function tradier(path, { method = 'GET', query, form, retry = true } = {})
       throw lastErr;
     }
     if (res.status >= 400) {
+      // A rejected token means the cached secret is stale (placeholder, or
+      // rotated): drop it so the next invocation reads the secret again.
+      if (res.status === 401) cachedCreds = null;
       throw new TradierError(`Tradier ${res.status} on ${method} ${path}: ${text.slice(0, 300)}`, res.status, text.slice(0, 500));
     }
     try {
