@@ -20,8 +20,8 @@
 import type { Deployment } from './runtime/config';
 
 // Each backtest sized at 100% of the account. They share one sandbox account,
-// so each of the six enabled ones gets 16%, leaving 4% as cash.
-const SHARED_RISK = { allocationPct: 16, maxDailyLossPct: 2, drawdownLimitPct: 25, drawdownPauseBars: 20 } as const;
+// so each of the eight enabled ones gets 12%, leaving 4% as cash.
+const SHARED_RISK = { allocationPct: 12, maxDailyLossPct: 2, drawdownLimitPct: 25, drawdownPauseBars: 20 } as const;
 
 export const DEPLOYMENTS: Deployment[] = [
   {
@@ -90,6 +90,30 @@ export const DEPLOYMENTS: Deployment[] = [
     ...SHARED_RISK,
     historyDays: 30,
     // The TQQQ strategy that trades; IBS TQQQ 15m above is off.
+  },
+  {
+    strategyId: 'ibs-mean-reversion',
+    symbol: 'LIN',
+    // Built from 15-minute timesales, aligned to the ET hour.
+    interval: '1h',
+    params: { entryIbs: 5, exitIbs: 90, trendFilter: false },
+    ...SHARED_RISK,
+    // The backtest asked for 450 bars, but LIN trades thinly outside regular
+    // hours: the 40 days of 15-minute data Tradier keeps make about 426 hourly
+    // bars. With the trend filter off, IBS reads no indicators, so 400 is safe.
+    minBars: 400,
+    historyDays: 40,
+  },
+  {
+    strategyId: 'ibs-mean-reversion',
+    symbol: 'META',
+    // Daily bars from /markets/history; runs at 16:30 ET, orders fill at the next open.
+    interval: '1d',
+    params: { entryIbs: 35, exitIbs: 65, trendFilter: false },
+    ...SHARED_RISK,
+    // The backtest warmed up on at least 325 sessions: about 470 calendar days.
+    minBars: 325,
+    historyDays: 500,
   },
 ];
 

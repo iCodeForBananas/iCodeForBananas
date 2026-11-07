@@ -4,8 +4,8 @@
 import { calculateIndicatorsWithParams, deriveRequiredIndicators } from '@/app/lib/backtest-engine';
 import type { IndicatorValues, OHLCBar } from '@/app/strategies';
 import type { ParamValue } from './config';
-import type { TimesalesRow } from './tradier';
-import { parseEtTimestamp } from './time';
+import type { HistoryRow, TimesalesRow } from './tradier';
+import { etParts, etWallToUtcMs, parseEtTimestamp } from './time';
 
 export interface Bar {
   time: number; // bar open, UTC epoch ms
@@ -53,6 +53,20 @@ export function parseBars(rows: TimesalesRow[], intervalMs: number, nowMs: numbe
   }
   const completed = dedup.filter((b) => b.time + intervalMs <= nowMs);
   return { bars: completed, rawCount: rows.length, invalid, droppedForming: dedup.length - completed.length };
+}
+
+/** A daily bar's time is its session's 09:30 ET open; it closes at 16:00 ET that day. */
+export function sessionClose(barTime: number): number {
+  const p = etParts(barTime);
+  return etWallToUtcMs(p.year, p.month, p.day, 16, 0);
+}
+
+/** Valid, de-duplicated daily bars, oldest first. A session that hasn't closed by `nowMs` (16:00 ET) is dropped. */
+export function parseDailyBars(rows: HistoryRow[], nowMs: number): ParsedBars {
+  const asTimesales: TimesalesRow[] = rows.map((r) => ({ ...r, time: /^\d{4}-\d{2}-\d{2}$/.test(String(r.date)) ? `${r.date}T09:30:00` : 'invalid' }));
+  // parseBars drops a bar whose time + interval is after now: for a session
+  // that is 09:30 + 6h30m = 16:00 ET.
+  return parseBars(asTimesales, 390 * 60_000, nowMs);
 }
 
 /**

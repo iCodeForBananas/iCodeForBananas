@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { resolveDeployment, type ResolvedDeployment } from './config';
-import { runDeployment, type DeploymentState, type RunDeps, type RunEvent } from './run';
+import { expectedBarClose, runDeployment, type DeploymentState, type RunDeps, type RunEvent } from './run';
 import { etParts, etWallToUtcMs } from './time';
-import type { TradierApi, TradierOrder, TradierPosition, TimesalesRow } from './tradier';
+import type { HistoryRow, TradierApi, TradierOrder, TradierPosition, TimesalesRow } from './tradier';
 
 const BAR = 15 * 60_000;
 // Monday 2026-11-09 10:00 ET, a regular-session bar close.
@@ -48,6 +48,7 @@ interface FakeOpts {
   placedStatus?: string;
   fillPrice?: number;
   orderLookup?: Record<string, TradierOrder>;
+  history?: HistoryRow[];
 }
 
 function fakeTradier(o: FakeOpts) {
@@ -66,7 +67,7 @@ function fakeTradier(o: FakeOpts) {
       placed.push(p);
       const id = String(nextId++);
       const status = o.placedStatus ?? 'filled';
-      const last = o.rows[o.rows.length - 1];
+      const last = o.rows[o.rows.length - 1] ?? o.history?.[o.history.length - 1];
       orders.set(id, { id, status, exec_quantity: status === 'filled' ? p.quantity : 0, avg_fill_price: o.fillPrice ?? Number(last.close) });
       return id;
     },
@@ -74,6 +75,7 @@ function fakeTradier(o: FakeOpts) {
       cancelled.push(id);
     },
     timesales: async () => o.rows,
+    history: async () => o.history ?? [],
   };
   return { api, placed, cancelled };
 }
@@ -333,5 +335,64 @@ describe('30-minute deployments', () => {
     // IBS (99.2 - 99) / 2 = 0.1 < 0.4: buy.
     expect(r.action).toBe('entry long');
     expect(h.saved[0].barTime).toBe(BOUNDARY - 2 * BAR);
+  });
+});
+
+describe('daily deployments', () => {
+  const DD = resolveDeployment({ strategyId: 'ibs-mean-reversion', symbol: 'META', interval: '1d', params: { entryIbs: 35, exitIbs: 65 }, allocationPct: 12, minBars: 300, historyDays: 500 });
+  const pad = (n: number) => String(n).padStart(2, '0');
+  /** Weekday sessions ending on `last` (YYYY, M, D), the last one closing near its low. */
+  function days(count: number, last: [number, number, number], lastIbs: number): HistoryRow[] {
+    const out: HistoryRow[] = [];
+    let t = Date.UTC(last[0], last[1] - 1, last[2]);
+    while (out.length < count) {
+      const wd = new Date(t).getUTCDay();
+      if (wd !== 0 && wd !== 6) {
+        const d = new Date(t);
+        const date = `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
+        const isLast = out.length === 0;
+        out.unshift({ date, open: 100, high: 101, low: 99, close: isLast ? 99 + lastIbs * 2 : 100 + Math.sin(out.length) * 0.5, volume: 1e6 });
+      }
+      t -= 86_400_000;
+    }
+    return out;
+  }
+  // Monday 2026-11-09, 16:30 ET.
+  const AT = etWallToUtcMs(2026, 11, 9, 16, 30);
+
+  it('expects the latest weekday 16:00 ET close', () => {
+    expect(expectedBarClose('1d', AT)).toBe(etWallToUtcMs(2026, 11, 9, 16, 0));
+    // Before the close, the previous session (Friday).
+    expect(expectedBarClose('1d', etWallToUtcMs(2026, 11, 9, 12, 0))).toBe(etWallToUtcMs(2026, 11, 6, 16, 0));
+    // Sunday: Friday.
+    expect(expectedBarClose('1d', etWallToUtcMs(2026, 11, 8, 18, 0))).toBe(etWallToUtcMs(2026, 11, 6, 16, 0));
+  });
+
+  it("acts on today's session after the close, placing the order for the next open", async () => {
+    const h = harness({ rows: [], history: days(320, [2026, 11, 9], 0.1), clockState: 'closed', startAt: AT });
+    let asked = '';
+    h.api.timesales = async () => {
+      asked = 'timesales';
+      return [];
+    };
+    const r = await h.run(undefined, DD);
+    expect(asked).toBe('');
+    expect(r.action).toBe('entry long');
+    expect(h.placed).toEqual([expect.objectContaining({ symbol: 'META', side: 'buy' })]);
+    expect(h.log().orderTiming).toMatch(/next open/);
+    expect(h.saved[0].barTime).toBe(etWallToUtcMs(2026, 11, 9, 9, 30));
+  });
+
+  it("drops today's bar before the close", async () => {
+    const h = harness({ rows: [], history: days(320, [2026, 11, 9], 0.1), startAt: etWallToUtcMs(2026, 11, 9, 15, 0) });
+    await h.run({ dryRun: true, evaluateLatest: true }, DD);
+    expect(h.log().bar).toMatchObject({ time: new Date(etWallToUtcMs(2026, 11, 6, 9, 30)).toISOString() });
+  });
+
+  it('does nothing when today has no bar (a holiday)', async () => {
+    const h = harness({ rows: [], history: days(320, [2026, 11, 6], 0.1), startAt: AT });
+    const r = await h.run(undefined, DD);
+    expect(r.reason).toMatch(/stale data/);
+    expect(h.placed).toHaveLength(0);
   });
 });

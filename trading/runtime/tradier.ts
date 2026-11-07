@@ -47,6 +47,15 @@ export interface TimesalesRow {
   volume?: number | string;
 }
 
+export interface HistoryRow {
+  date: string; // YYYY-MM-DD, the session
+  open: number | string;
+  high: number | string;
+  low: number | string;
+  close: number | string;
+  volume?: number | string;
+}
+
 /** What the runtime needs from Tradier; the tests substitute a fake. */
 export interface TradierApi {
   accountId(): Promise<string>;
@@ -58,6 +67,8 @@ export interface TradierApi {
   placeMarketOrder(o: { symbol: string; side: string; quantity: number; tag: string }): Promise<string>;
   cancelOrder(orderId: string): Promise<void>;
   timesales(q: { symbol: string; interval: string; start: string; end: string }): Promise<TimesalesRow[]>;
+  /** Daily bars from /markets/history; start and end are YYYY-MM-DD. */
+  history(q: { symbol: string; start: string; end: string }): Promise<HistoryRow[]>;
 }
 
 const asArray = <T>(x: T | T[] | null | undefined | 'null'): T[] => (x == null || x === 'null' ? [] : Array.isArray(x) ? x : [x]);
@@ -139,5 +150,6 @@ export function createTradierClient(loadCreds: () => Promise<TradierCreds>, fetc
     },
     timesales: async ({ symbol, interval, start, end }) =>
       asArray((await call('/markets/timesales', { query: { symbol, interval, start, end, session_filter: 'all' } }))?.series?.data),
+    history: async ({ symbol, start, end }) => asArray((await call('/markets/history', { query: { symbol, interval: 'daily', start, end } }))?.history?.day),
   };
 }

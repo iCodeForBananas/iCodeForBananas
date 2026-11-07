@@ -7,7 +7,7 @@ import { createHash } from 'node:crypto';
 import { AVAILABLE_STRATEGIES } from '@/app/strategies';
 
 /** Bar sizes in minutes. */
-export const INTERVALS = { '1min': 1, '5min': 5, '15min': 15, '30min': 30, '1h': 60 } as const;
+export const INTERVALS = { '1min': 1, '5min': 5, '15min': 15, '30min': 30, '1h': 60, '1d': 1440 } as const;
 export type Interval = keyof typeof INTERVALS;
 
 /**
@@ -15,7 +15,10 @@ export type Interval = keyof typeof INTERVALS;
  * 15 minutes; 30-minute and 1-hour bars are aggregated from 15-minute ones
  * (aligned to the ET :00, and :30 for 30 minutes).
  */
-export const SOURCE_INTERVAL: Record<Interval, '1min' | '5min' | '15min'> = { '1min': '1min', '5min': '5min', '15min': '15min', '30min': '15min', '1h': '15min' };
+export const SOURCE_INTERVAL: Record<Interval, '1min' | '5min' | '15min' | 'daily'> = { '1min': '1min', '5min': '5min', '15min': '15min', '30min': '15min', '1h': '15min', '1d': 'daily' };
+
+/** Daily bars come from /markets/history, which keeps years of them. */
+export const isDaily = (interval: Interval) => interval === '1d';
 
 export type ParamValue = number | boolean | string;
 
@@ -151,7 +154,9 @@ export function validateDeployments(list: Deployment[]): string[] {
     pct('drawdownLimitPct', r.drawdownLimitPct);
     if (!(Number.isInteger(r.drawdownPauseBars) && r.drawdownPauseBars >= 0)) errors.push(`${at}: drawdownPauseBars must be a whole number >= 0`);
     if (!(Number.isInteger(r.minBars) && r.minBars >= 1)) errors.push(`${at}: minBars must be a whole number >= 1`);
-    if (!(Number.isInteger(r.historyDays) && r.historyDays >= 1 && r.historyDays <= 30)) errors.push(`${at}: historyDays must be a whole number from 1 to 30`);
+    // Tradier keeps 40 days of 1-, 5- and 15-minute timesales, and years of daily history.
+    const maxDays = isDaily(r.interval) ? 3650 : 40;
+    if (!(Number.isInteger(r.historyDays) && r.historyDays >= 1 && r.historyDays <= maxDays)) errors.push(`${at}: historyDays must be a whole number from 1 to ${maxDays}`);
 
     if (r.enabled) {
       allocation += r.allocationPct;

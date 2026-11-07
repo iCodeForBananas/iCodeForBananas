@@ -30,9 +30,14 @@ export interface TradingStackProps extends StackProps {
 /** Every bar close on weekdays, 04:00-20:59 ET: pre-market, regular and after-hours. */
 export function scheduleExpression(d: ResolvedDeployment): string {
   const minutes = INTERVALS[d.interval];
+  // Daily: 16:30 ET, after the close. Sandbox data runs 15 minutes behind, so
+  // the session's bar isn't final until after 16:15.
+  if (minutes >= 1440) return 'cron(30 16 ? * MON-FRI *)';
   // Hourly bars close on the hour; the minute field only takes steps under 60.
   return minutes >= 60 ? 'cron(0 4-20 ? * MON-FRI *)' : `cron(0/${minutes} 4-20 ? * MON-FRI *)`;
 }
+
+const minutesOf = (d: ResolvedDeployment) => INTERVALS[d.interval];
 
 export class TradingStack extends Stack {
   constructor(scope: Construct, id: string, props: TradingStackProps) {
@@ -104,7 +109,7 @@ export class TradingStack extends Stack {
 
       const schedule = new scheduler.CfnSchedule(this, `Schedule-${d.id}`, {
         name,
-        description: `Every ${d.interval} bar close, weekdays 04:00-20:59 ET`,
+        description: minutesOf(d) >= 1440 ? 'Weekdays 16:30 ET, after the close' : `Every ${d.interval} bar close, weekdays 04:00-20:59 ET`,
         scheduleExpression: scheduleExpression(d),
         scheduleExpressionTimezone: 'America/New_York',
         flexibleTimeWindow: { mode: 'OFF' },
