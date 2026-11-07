@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import BentoPageLayout from "../components/BentoPageLayout";
 import { Bento } from "../components/ui/bento";
-import { Badge, Button, Callout, Flex, Tabs } from "@radix-ui/themes";
+import { Badge, Button, Callout } from "@radix-ui/themes";
 
 type SkillStatus = "mastered" | "practicing" | "not-started";
 
@@ -200,9 +200,9 @@ function SubjectCard({ subject }: { subject: SubjectStat }) {
   );
 }
 
-// ─── MathTab ────────────────────────────────────────────────────────────────
+// ─── MathProgress ───────────────────────────────────────────────────────────
 
-function MathTab({ data, loading, error, onRefresh }: {
+function MathProgress({ data, loading, error, onRefresh }: {
   data: ProgressData | null;
   loading: boolean;
   error: string | null;
@@ -281,7 +281,6 @@ function MathTab({ data, loading, error, onRefresh }: {
 }
 
 export default function LearningProgressPage() {
-  const [activeTab, setActiveTab] = useState<"math" | "language">("math");
   const [data, setData] = useState<ProgressData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -307,11 +306,6 @@ export default function LearningProgressPage() {
     load();
   }, [load]);
 
-  const TABS = [
-    { id: "math", label: "📐 Math", available: true },
-    { id: "language", label: "📖 Language Arts", available: false },
-  ] as const;
-
   return (
     <BentoPageLayout title="Cai's Learning Progress">
         {/* Toolbar */}
@@ -326,37 +320,7 @@ export default function LearningProgressPage() {
           </div>
         </div>
 
-        {/* Tabs */}
-        <Tabs.Root value={activeTab} onValueChange={(v) => setActiveTab(v as "math" | "language")} className="mb-6">
-          <Tabs.List>
-            {TABS.map((tab) => (
-              <Tabs.Trigger key={tab.id} value={tab.id} disabled={!tab.available}>
-                <Flex align="center" gap="2">
-                  {tab.label}
-                  {!tab.available && (
-                    <Badge size="1" radius="full" color="gray">
-                      Soon
-                    </Badge>
-                  )}
-                </Flex>
-              </Tabs.Trigger>
-            ))}
-          </Tabs.List>
-        </Tabs.Root>
-
-        {/* Tab content */}
-        {activeTab === "math" && (
-          <MathTab data={data} loading={loading} error={error} onRefresh={load} />
-        )}
-        {activeTab === "language" && (
-          <Bento size="5" className="text-center">
-            <div className="text-4xl mb-3">📖</div>
-            <h3 className="text-lg font-semibold text-ink-primary mb-2">Language Arts coming soon</h3>
-            <p className="text-ink-muted text-sm max-w-sm mx-auto">
-              Reading comprehension, spelling, and phonics progress will appear here once those games are built.
-            </p>
-          </Bento>
-        )}
+        <MathProgress data={data} loading={loading} error={error} onRefresh={load} />
     </BentoPageLayout>
   );
 }
