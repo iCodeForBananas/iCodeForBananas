@@ -3,17 +3,29 @@
 // per entry) and the runtime (which receives one resolved entry as JSON in the
 // DEPLOYMENT environment variable). Pure: no AWS imports.
 
+import { createHash } from 'node:crypto';
 import { AVAILABLE_STRATEGIES } from '@/app/strategies';
 
-/** Bar sizes Tradier's /markets/timesales serves. */
-export const INTERVALS = { '1min': 1, '5min': 5, '15min': 15 } as const;
+/** Bar sizes in minutes. */
+export const INTERVALS = { '1min': 1, '5min': 5, '15min': 15, '30min': 30, '1h': 60 } as const;
 export type Interval = keyof typeof INTERVALS;
+
+/**
+ * The timesales interval each bar size is built from. Tradier serves 1, 5 and
+ * 15 minutes; 30-minute and 1-hour bars are aggregated from 15-minute ones
+ * (aligned to the ET :00, and :30 for 30 minutes).
+ */
+export const SOURCE_INTERVAL: Record<Interval, '1min' | '5min' | '15min'> = { '1min': '1min', '5min': '5min', '15min': '15min', '30min': '15min', '1h': '15min' };
 
 export type ParamValue = number | boolean | string;
 
 export interface Deployment {
-  /** Unique, stable, lowercase-hyphenated. Names the Lambda, the state row and the dashboard row. Never rename a live one. */
-  id: string;
+  /**
+   * Optional. By default the id is built from the settings (see deploymentId),
+   * so it names the Lambda, schedule, state row and dashboard row uniquely.
+   * Changing a setting therefore makes a new deployment with fresh state.
+   */
+  id?: string;
   /** Key in AVAILABLE_STRATEGIES (app/strategies/index.ts). */
   strategyId: string;
   symbol: string;
@@ -38,6 +50,9 @@ export interface Deployment {
 
 export type ResolvedDeployment = Required<Omit<Deployment, 'params'>> & { params: Record<string, ParamValue> };
 
+/** Lambda function and schedule names are limited to 64 characters. */
+export const AWS_NAME_MAX = 64;
+
 export const DEFAULTS = {
   enabled: true,
   enableShorts: false,
@@ -55,10 +70,41 @@ export function strategyDefaults(strategyId: string): Record<string, ParamValue>
   return out;
 }
 
+const slug = (v: ParamValue) =>
+  typeof v === 'boolean'
+    ? v ? 'y' : 'n'
+    : String(v).toLowerCase().replace(/-/g, 'm').replace(/\./g, 'p').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+
+/**
+ * strategy-symbol-interval-<param values in the strategy's order>-<ls|l>, e.g.
+ * "ibs-mean-reversion-qqq-15m-20-50-n-ls" (entryIbs 20, exitIbs 50, trendFilter
+ * off, long and short). Booleans are y/n, "." is p and "-" is m.
+ */
+export function deploymentId(d: Omit<Deployment, 'id'>): string {
+  const params = { ...strategyDefaults(d.strategyId), ...(d.params ?? {}) };
+  const keys = [...(AVAILABLE_STRATEGIES[d.strategyId]?.parameters ?? []).map((p) => p.key), ...Object.keys(params)];
+  const values = [...new Set(keys)].filter((k) => k in params).map((k) => slug(params[k]));
+  const interval = String(d.interval).replace('min', 'm');
+  const sides = d.enableShorts ?? DEFAULTS.enableShorts ? 'ls' : 'l';
+  return [d.strategyId, d.symbol.toLowerCase().replace(/\./g, 'p'), interval, ...values, sides].filter(Boolean).join('-');
+}
+
+/** `${prefix}-${id}`, cut to AWS_NAME_MAX with a hash of the full id appended when it's too long. */
+export function awsName(prefix: string, id: string, max = AWS_NAME_MAX): string {
+  const full = `${prefix}-${id}`;
+  if (full.length <= max) return full;
+  const hash = createHash('sha256').update(id).digest('hex').slice(0, 8);
+  return `${full.slice(0, max - hash.length - 1).replace(/-+$/, '')}-${hash}`;
+}
+
+/** The deployment's Lambda function name, also its schedule's and log group's. */
+export const functionName = (d: { id: string }) => awsName('tradier', d.id);
+
 export function resolveDeployment(d: Deployment): ResolvedDeployment {
   return {
     ...DEFAULTS,
     ...d,
+    id: d.id ?? deploymentId(d),
     params: { ...strategyDefaults(d.strategyId), ...(d.params ?? {}) },
   } as ResolvedDeployment;
 }
@@ -71,10 +117,11 @@ export function validateDeployments(list: Deployment[]): string[] {
   let allocation = 0;
 
   for (const d of list) {
-    const at = `deployment "${d.id}"`;
-    if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(d.id) || d.id.length > 48) errors.push(`${at}: id must be lowercase letters, digits and single hyphens, at most 48 characters`);
-    if (ids.has(d.id)) errors.push(`${at}: duplicate id`);
-    ids.add(d.id);
+    const id = d.id ?? deploymentId(d);
+    const at = `deployment "${id}"`;
+    if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(id) || id.length > 200) errors.push(`${at}: id must be lowercase letters, digits and single hyphens, at most 200 characters`);
+    if (ids.has(id)) errors.push(`${at}: duplicate id (same settings as another deployment?)`);
+    ids.add(id);
 
     const strategy = AVAILABLE_STRATEGIES[d.strategyId];
     if (!strategy) {
@@ -111,7 +158,7 @@ export function validateDeployments(list: Deployment[]): string[] {
       // deployments on a symbol would each see the other's shares as theirs.
       const other = liveSymbols.get(d.symbol);
       if (other) errors.push(`${at}: ${d.symbol} is already traded by enabled deployment "${other}"; one enabled deployment per symbol`);
-      else liveSymbols.set(d.symbol, d.id);
+      else liveSymbols.set(d.symbol, id);
     }
   }
   if (allocation > 100 + 1e-9) errors.push(`enabled deployments allocate ${allocation}% of the account; the total must be <= 100`);

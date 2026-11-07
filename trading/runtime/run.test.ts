@@ -311,3 +311,27 @@ describe('evaluateLatest', () => {
     expect(h.placed).toHaveLength(0);
   });
 });
+
+describe('30-minute deployments', () => {
+  const D30 = resolveDeployment({ strategyId: 'ibs-mean-reversion', symbol: 'AVGO', interval: '30min', params: { entryIbs: 40, exitIbs: 80 }, enableShorts: true, allocationPct: 24, minBars: 100 });
+
+  it('fetch 15-minute timesales and trade the aggregated 30-minute bar', async () => {
+    // 15-minute rows ending at 10:00 ET; the last 30-minute bar (09:30-10:00) closes near its low.
+    const rows = makeRows({ lastIbs: 0.5 });
+    rows[rows.length - 2] = { ...rows[rows.length - 2], high: 101, low: 99, close: 99.6 };
+    rows[rows.length - 1] = { ...rows[rows.length - 1], high: 100, low: 99, close: 99.2 };
+    const h = harness({ rows });
+    let askedFor = '';
+    const ts = h.api.timesales;
+    h.api.timesales = async (q) => {
+      askedFor = q.interval;
+      return ts(q);
+    };
+    const r = await h.run(undefined, D30);
+    expect(askedFor).toBe('15min');
+    expect(h.log().bar).toMatchObject({ time: new Date(BOUNDARY - 2 * BAR).toISOString(), high: 101, low: 99, close: 99.2 });
+    // IBS (99.2 - 99) / 2 = 0.1 < 0.4: buy.
+    expect(r.action).toBe('entry long');
+    expect(h.saved[0].barTime).toBe(BOUNDARY - 2 * BAR);
+  });
+});

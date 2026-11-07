@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { calculateIndicatorsWithParams, deriveRequiredIndicators } from '@/app/lib/backtest-engine';
 import { AVAILABLE_STRATEGIES } from '@/app/strategies';
-import { resolveDeployment, validateDeployments, type Deployment } from './config';
-import { computeSeries, parseBars } from './market';
+import { awsName, deploymentId, functionName, resolveDeployment, validateDeployments, type Deployment } from './config';
+import { aggregateBars, computeSeries, parseBars } from './market';
 import { emfFields } from './metrics';
 import { etDate, etWallToUtcMs, isRegularSessionClose, parseEtTimestamp } from './time';
 import { createTradierClient } from './tradier';
@@ -38,6 +38,24 @@ describe('validateDeployments', () => {
 
   it('lets a disabled deployment share a symbol and stay out of the allocation total', () => {
     expect(validateDeployments([base, { ...base, id: 'b', allocationPct: 90, enabled: false }])).toEqual([]);
+  });
+
+  it('builds the id, and so the Lambda name, from the settings', () => {
+    const d = { strategyId: 'ibs-mean-reversion', symbol: 'QQQ', interval: '15min', params: { entryIbs: 20, exitIbs: 50, trendFilter: false }, enableShorts: true, allocationPct: 50 } as const;
+    expect(deploymentId(d)).toBe('ibs-mean-reversion-qqq-15m-20-50-n-ls');
+    expect(deploymentId({ ...d, enableShorts: false, params: { exitIbs: 92.5 } })).toBe('ibs-mean-reversion-qqq-15m-20-92p5-n-l');
+    expect(resolveDeployment(d).id).toBe('ibs-mean-reversion-qqq-15m-20-50-n-ls');
+    expect(functionName(resolveDeployment(d))).toBe('tradier-ibs-mean-reversion-qqq-15m-20-50-n-ls');
+    // Same settings, same id: synth refuses the copy.
+    expect(validateDeployments([d, { ...d, enabled: false }]).join(' ')).toMatch(/duplicate id/);
+  });
+
+  it('keeps long names within AWS limits, unique by a hash of the full id', () => {
+    const a = awsName('tradier', 'x'.repeat(80) + '-a');
+    const b = awsName('tradier', 'x'.repeat(80) + '-b');
+    expect(a.length).toBeLessThanOrEqual(64);
+    expect(a).not.toBe(b);
+    expect(awsName('tradier', 'short')).toBe('tradier-short');
   });
 
   it('rejects bad ids and intervals', () => {
@@ -90,6 +108,43 @@ describe('market', () => {
     expect(r.bars[0].close).toBe(1.2);
     expect(r.invalid).toBe(1);
     expect(r.droppedForming).toBe(1);
+  });
+
+  it('aggregates 15-minute bars into 30-minute bars on the :00/:30', () => {
+    const t0 = etWallToUtcMs(2026, 11, 9, 9, 30);
+    const b = (k: number, o: number, h: number, l: number, c: number) => ({ time: t0 + k * BAR, open: o, high: h, low: l, close: c, volume: 10 });
+    const src = [b(0, 10, 12, 9, 11), b(1, 11, 13, 10, 12.5), b(2, 12, 12.2, 11, 11.5), b(3, 11.5, 14, 11.2, 13.9)];
+    const r = aggregateBars(src, BAR, 2 * BAR, t0 + 4 * BAR);
+    expect(r.bars).toEqual([
+      { time: t0, open: 10, high: 13, low: 9, close: 12.5, volume: 20 },
+      { time: t0 + 2 * BAR, open: 12, high: 14, low: 11, close: 13.9, volume: 20 },
+    ]);
+    expect(r.droppedIncomplete).toBe(0);
+  });
+
+  it('never builds the newest 30-minute bar from only its first half', () => {
+    const t0 = etWallToUtcMs(2026, 11, 9, 9, 30);
+    const src = [0, 1, 2].map((k) => ({ time: t0 + k * BAR, open: 1, high: 2, low: 0.5, close: 1.5, volume: 1 }));
+    // 10:15: the 10:00-10:30 bar is still forming.
+    expect(aggregateBars(src, BAR, 2 * BAR, t0 + 3 * BAR).bars.map((x) => x.time)).toEqual([t0]);
+    // 10:31 with the 10:15 bar missing: drop it rather than act on half a bar.
+    const r = aggregateBars(src, BAR, 2 * BAR, t0 + 4 * BAR + 60_000);
+    expect(r.bars.map((x) => x.time)).toEqual([t0]);
+    expect(r.droppedIncomplete).toBe(1);
+  });
+
+  it('aggregates four 15-minute bars into an hourly bar on the ET hour', () => {
+    const t0 = etWallToUtcMs(2026, 11, 9, 9, 0);
+    const src = [0, 1, 2, 3, 4].map((k) => ({ time: t0 + k * BAR, open: 10 + k, high: 20 + k, low: 5 - k, close: 11 + k, volume: 1 }));
+    const r = aggregateBars(src, BAR, 4 * BAR, t0 + 5 * BAR);
+    expect(r.bars).toEqual([{ time: t0, open: 10, high: 23, low: 2, close: 14, volume: 4 }]);
+    expect(r.droppedIncomplete).toBe(1);
+  });
+
+  it('keeps an older 30-minute bucket that only traded one half', () => {
+    const t0 = etWallToUtcMs(2026, 11, 9, 4, 0);
+    const src = [0, 2, 3].map((k) => ({ time: t0 + k * BAR, open: 1, high: 2, low: 0.5, close: 1.5, volume: 1 }));
+    expect(aggregateBars(src, BAR, 2 * BAR, t0 + 4 * BAR).bars.map((x) => x.time)).toEqual([t0, t0 + 2 * BAR]);
   });
 
   it('computes exactly what the backtest engine computes', () => {

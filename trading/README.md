@@ -18,16 +18,19 @@ esbuild. Change a strategy, redeploy, and live trading changes with it.
 
    ```ts
    {
-     id: 'rsi2-spy-5m',          // names the Lambda, state row and dashboard section; never rename a live one
      strategyId: 'rsi2',         // a key of AVAILABLE_STRATEGIES
      symbol: 'SPY',
-     interval: '5min',           // 1min | 5min | 15min
+     interval: '5min',           // 1min | 5min | 15min | 30min (30min is aggregated from 15min)
      params: { oversold: 10 },   // on top of the strategy's defaults
      allocationPct: 30,          // enabled deployments must sum to <= 100
    }
    ```
 
-   Every field and default is in [`runtime/config.ts`](runtime/config.ts).
+   The id, and so the Lambda's name, comes from the settings:
+   `tradier-<strategy>-<symbol>-<interval>-<param values>-<ls|l>`, e.g.
+   `tradier-rsi2-spy-5m-10-<...>-l` (booleans are y/n; names over 64
+   characters end in a hash). Every field and default is in
+   [`runtime/config.ts`](runtime/config.ts).
    Synth refuses an unknown strategy or parameter, two **enabled** deployments
    on one symbol (one account holds one net position per symbol), or
    allocations over 100%.
@@ -37,12 +40,14 @@ esbuild. Change a strategy, redeploy, and live trading changes with it.
    cd trading
    npx cdk diff
    npx cdk deploy
-   npm run dry-run -- rsi2-spy-5m
+   npm run dry-run -- --latest            # or pass deployment ids
    ```
 
 To pause one, set `enabled: false` and deploy (its schedule is disabled; the
-Lambda stays). To remove one, flatten its position in Tradier first, then
-delete the entry and deploy.
+Lambda stays). Changing a setting changes the id, so it's a new deployment
+with fresh state and the old one is removed. To remove one, flatten its
+position in Tradier first (or let a replacement adopt it), then delete or
+change the entry and deploy.
 
 ## What runs, every bar close
 

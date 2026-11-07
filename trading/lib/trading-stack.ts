@@ -14,7 +14,7 @@ import * as logs from 'aws-cdk-lib/aws-logs';
 import * as scheduler from 'aws-cdk-lib/aws-scheduler';
 import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import type { Construct } from 'constructs';
-import { INTERVALS, type ResolvedDeployment } from '../runtime/config';
+import { INTERVALS, functionName, type ResolvedDeployment } from '../runtime/config';
 import { METRIC_DIMENSION, METRIC_NAMESPACE } from '../runtime/metrics';
 import { buildDashboard, type DeployedStrategy } from './dashboard';
 
@@ -29,10 +29,10 @@ export interface TradingStackProps extends StackProps {
 
 /** Every bar close on weekdays, 04:00-20:59 ET: pre-market, regular and after-hours. */
 export function scheduleExpression(d: ResolvedDeployment): string {
-  return `cron(0/${INTERVALS[d.interval]} 4-20 ? * MON-FRI *)`;
+  const minutes = INTERVALS[d.interval];
+  // Hourly bars close on the hour; the minute field only takes steps under 60.
+  return minutes >= 60 ? 'cron(0 4-20 ? * MON-FRI *)' : `cron(0/${minutes} 4-20 ? * MON-FRI *)`;
 }
-
-export const functionName = (d: ResolvedDeployment) => `tradier-${d.id}`;
 
 export class TradingStack extends Stack {
   constructor(scope: Construct, id: string, props: TradingStackProps) {
@@ -103,7 +103,7 @@ export class TradingStack extends Stack {
       fn.grantInvoke(schedulerRole);
 
       const schedule = new scheduler.CfnSchedule(this, `Schedule-${d.id}`, {
-        name: `tradier-${d.id}`.slice(0, 64),
+        name,
         description: `Every ${d.interval} bar close, weekdays 04:00-20:59 ET`,
         scheduleExpression: scheduleExpression(d),
         scheduleExpressionTimezone: 'America/New_York',
@@ -118,7 +118,7 @@ export class TradingStack extends Stack {
       });
 
       const errorsAlarm = new cloudwatch.Alarm(this, `ErrorsAlarm-${d.id}`, {
-        alarmName: `tradier-${d.id}-errors`,
+        alarmName: `${name}-errors`,
         alarmDescription: `${d.id} threw on a run (see its log group)`,
         metric: new cloudwatch.Metric({
           namespace: METRIC_NAMESPACE,

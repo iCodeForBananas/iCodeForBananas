@@ -9,7 +9,7 @@
 import { CloudWatchLogsClient, FilterLogEventsCommand } from '@aws-sdk/client-cloudwatch-logs';
 import { InvokeCommand, LambdaClient } from '@aws-sdk/client-lambda';
 import { DEPLOYMENTS } from '../deployments';
-import { resolveDeployment } from '../runtime/config';
+import { functionName, resolveDeployment } from '../runtime/config';
 
 const latest = process.argv.includes('--latest');
 const only = process.argv.slice(2).filter((a) => a !== '--latest');
@@ -19,7 +19,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 let failed = 0;
 for (const d of DEPLOYMENTS.map(resolveDeployment).filter((x) => only.length === 0 || only.includes(x.id))) {
-  const name = `tradier-${d.id}`;
+  const name = functionName(d);
   const startTime = Date.now() - 5_000;
   const res = await lambda.send(new InvokeCommand({ FunctionName: name, Payload: Buffer.from(JSON.stringify({ dryRun: true, evaluateLatest: latest })) }));
   const payload = res.Payload ? Buffer.from(res.Payload).toString() : '';

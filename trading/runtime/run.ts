@@ -10,8 +10,8 @@
 // nothing and logs why.
 
 import { AVAILABLE_STRATEGIES } from '@/app/strategies';
-import { INTERVALS, type ResolvedDeployment } from './config';
-import { computeSeries, parseBars } from './market';
+import { INTERVALS, SOURCE_INTERVAL, type ResolvedDeployment } from './config';
+import { aggregateBars, computeSeries, parseBars, type ParsedBars } from './market';
 import { emfFields, type MetricName } from './metrics';
 import { etDate, etStamp, isRegularSessionClose } from './time';
 import type { TradierApi, TradierOrder } from './tradier';
@@ -192,6 +192,8 @@ export async function runDeployment(d: ResolvedDeployment, event: RunEvent | und
   const evaluateLatest = dryRun && event?.evaluateLatest === true;
   const strategy = AVAILABLE_STRATEGIES[d.strategyId];
   const intervalMs = INTERVALS[d.interval] * 60_000;
+  const sourceInterval = SOURCE_INTERVAL[d.interval];
+  const sourceMs = INTERVALS[sourceInterval] * 60_000;
   const invokedAt = now();
   const metrics: Partial<Record<MetricName, number | null>> = { Invocations: 1 };
   const log: Record<string, unknown> = {
@@ -234,22 +236,24 @@ export async function runDeployment(d: ResolvedDeployment, event: RunEvent | und
     metrics.AccountEquity = accountEquity;
 
     // Market data, polled briefly for the just-closed bar.
-    let data = parseBars([], intervalMs, now());
+    let data: ParsedBars & { droppedIncomplete?: number } = parseBars([], sourceMs, now());
     for (let k = 0; k < FRESHNESS_POLLS; k++) {
       const end = now();
       const rows = await tradier.timesales({
         symbol: d.symbol,
-        interval: d.interval,
+        interval: sourceInterval,
         start: `${etDate(end - d.historyDays * 86_400_000)} 00:00`,
         end: etStamp(end),
       });
-      data = parseBars(rows, intervalMs, now());
+      const parsed = parseBars(rows, sourceMs, now());
+      const agg = aggregateBars(parsed.bars, sourceMs, intervalMs, now());
+      data = { ...parsed, bars: agg.bars, droppedIncomplete: agg.droppedIncomplete };
       const newest = data.bars[data.bars.length - 1];
       if (newest && newest.time + intervalMs >= boundary) break;
       if (k < FRESHNESS_POLLS - 1) await sleep(FRESHNESS_POLL_GAP_MS);
     }
     const bars = data.bars;
-    log.data = { rawBars: data.rawCount, invalidBars: data.invalid, droppedForming: data.droppedForming, completedBars: bars.length };
+    log.data = { sourceInterval, rawBars: data.rawCount, invalidBars: data.invalid, droppedForming: data.droppedForming, droppedIncomplete: data.droppedIncomplete ?? 0, completedBars: bars.length };
 
     const skip = (reason: string, stale = false): RunResult => {
       log.action = 'none';
