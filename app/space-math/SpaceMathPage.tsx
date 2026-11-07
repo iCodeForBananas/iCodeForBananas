@@ -847,6 +847,26 @@ export default function SpaceMathPage() {
     }
   };
 
+  // Number keys 1..N pick the matching answer tile, left to right, top to
+  // bottom. No dependency array: handleAnswer closes over the current state,
+  // so the listener is rebound each render to always call the fresh one.
+  useEffect(() => {
+    if (gameState !== "playing" || !problem || problem.shadeTarget) return;
+    const options = problem.options;
+    const onKeyDown = (e: globalThis.KeyboardEvent) => {
+      if (e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
+      const target = e.target as HTMLElement | null;
+      if (target && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))) return;
+      if (!/^[1-9]$/.test(e.key)) return;
+      const index = Number(e.key) - 1;
+      if (index >= options.length) return;
+      e.preventDefault();
+      handleAnswer(options[index]);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  });
+
   const startGame = () => {
     const topic = selectTopic(topicRecords, lastTopicKey);
     setCurrentTopic(topic);
@@ -1037,8 +1057,15 @@ export default function SpaceMathPage() {
                           key={i}
                           disabled={selectedAnswer !== null}
                           onClick={() => handleAnswer(opt)}
-                          className={`flex items-center justify-center rounded-md text-4xl sm:text-6xl md:text-8xl font-black text-white transition-all border-4 border-black shadow-[0_6px_0_#000] sm:shadow-[0_8px_0_#000] active:shadow-none active:translate-y-[6px] sm:active:translate-y-[8px] ${colorClasses}`}
+                          aria-keyshortcuts={String(i + 1)}
+                          className={`relative flex items-center justify-center rounded-md text-4xl sm:text-6xl md:text-8xl font-black text-white transition-all border-4 border-black shadow-[0_6px_0_#000] sm:shadow-[0_8px_0_#000] active:shadow-none active:translate-y-[6px] sm:active:translate-y-[8px] ${colorClasses}`}
                         >
+                          <span
+                            aria-hidden='true'
+                            className='absolute top-1.5 left-2 sm:top-2 sm:left-3 text-sm sm:text-base font-bold text-white/70 leading-none'
+                          >
+                            {i + 1}
+                          </span>
                           {optMatch ? (
                             <FractionShape
                               visual={{ shape: problem.optionShape!, total: Number(optMatch[2]), shaded: Number(optMatch[1]) }}
