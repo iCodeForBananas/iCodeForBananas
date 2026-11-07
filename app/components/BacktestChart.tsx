@@ -469,7 +469,7 @@ function computeIndicators(
     }
     case "regression-momentum": {
       const maPeriod = num("maPeriod", 100);
-      const { score } = getRegressionMomentum(data, num("lookback", 90), num("barsPerYear", 252));
+      const { score } = getRegressionMomentum(data, num("lookback", 90), Number(params.barsPerYear) || 252);
       const sma = getSmaArray(data, maPeriod);
       priceLines.push({ values: sma.map((v) => (Number.isNaN(v) ? undefined : v)), color: "#f97316", label: `SMA ${maPeriod}`, lineWidth: 2 });
       const minScore = num("minScore", 30);

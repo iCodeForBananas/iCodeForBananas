@@ -8,6 +8,8 @@ import {
   riskVariations,
   runBacktestWithParams,
   generateSweep,
+  HOLDOUT_SPLIT,
+  periodsInOrder,
   withRiskParams,
   type SizingSettings,
 } from "./backtest-engine";
@@ -400,5 +402,33 @@ describe("no trade opens and closes on the same bar", () => {
   it("doesn't open on the final bar", () => {
     const data = bars([[100, 100, 100, 100], [100, 100, 100, 100], [100, 100, 100, 100]]);
     expect(run(data, { 1: "buy" }).trades).toHaveLength(0);
+  });
+});
+
+describe("in-sample and out-of-sample split", () => {
+  it("splits the run's return at the holdout bar, compounding back to the total", () => {
+    // Ten bars; the holdout starts at bar 7. Held from bar 2's open (100) to
+    // the end: 100 -> 140 by bar 6's close, then 140 -> 70.
+    const closes = [100, 100, 100, 110, 120, 130, 140, 120, 100, 70];
+    const data = bars(closes.map((c) => [c, c, c, c]));
+    const r = run(data, { 1: "buy" });
+    expect(HOLDOUT_SPLIT).toBe(0.7);
+    expect(r.holdoutStartTime).toBe(7 * DAY);
+    expect(r.inSamplePnlPercent).toBeCloseTo(40);
+    expect(r.outOfSamplePnlPercent).toBeCloseTo(-50);
+    expect(r.outOfSampleBuyAndHoldPercent).toBeCloseTo(-50);
+    expect((1 + r.inSamplePnlPercent! / 100) * (1 + r.outOfSamplePnlPercent! / 100)).toBeCloseTo(1 + r.totalPnlPercent / 100);
+  });
+});
+
+describe("sweeps skip periods out of order", () => {
+  it("drops fast >= slow and mid out of place", () => {
+    expect(periodsInOrder({ fastPeriod: 9, slowPeriod: 21 })).toBe(true);
+    expect(periodsInOrder({ fastPeriod: 21, slowPeriod: 21 })).toBe(false);
+    expect(periodsInOrder({ fastPeriod: 4, midPeriod: 20, slowPeriod: 18 })).toBe(false);
+    expect(periodsInOrder({ period: 5 })).toBe(true);
+    const sweep = generateSweep([{ key: "fastPeriod", min: 5, max: 50, step: 5 }, { key: "slowPeriod", min: 5, max: 50, step: 5 }], undefined);
+    expect(sweep.length).toBeGreaterThan(0);
+    expect(sweep.every((c) => (c.fastPeriod as number) < (c.slowPeriod as number))).toBe(true);
   });
 });

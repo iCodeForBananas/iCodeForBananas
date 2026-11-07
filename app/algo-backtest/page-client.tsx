@@ -624,6 +624,9 @@ export default function AlgoBacktestPage() {
       `- **Dataset(s):** ${datasetLabels.join(', ')}`,
       `- **Active Dataset:** ${result.datasetLabel ?? 'n/a'}`,
       `- **Initial Capital:** $${INITIAL_CAPITAL.toLocaleString()}`,
+      ...(result.outOfSamplePnlPercent !== undefined
+        ? [`- **In-sample (first 70% of bars):** ${(result.inSamplePnlPercent ?? 0).toFixed(2)}%; **out-of-sample (last 30%):** ${result.outOfSamplePnlPercent.toFixed(2)}% vs buy & hold ${(result.outOfSampleBuyAndHoldPercent ?? 0).toFixed(2)}%`]
+        : []),
       ...describeSizing(reportSizing, reportPosSize, reportSL),
       `- **Take Profit:** ${reportTP > 0 ? `${reportTP}%` : 'Disabled'}`,
       `- **Short Selling:** ${reportShorts ? 'Enabled' : 'Disabled'}`,

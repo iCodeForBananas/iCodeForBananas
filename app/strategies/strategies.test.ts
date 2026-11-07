@@ -357,10 +357,16 @@ describe("MACD crossover", () => {
     expect(signal(macdCrossover, [bar(0, 1, 0), bar(1, -0.5, 0, { sma200: 110 })], null, on)).toBe("sell");
   });
 
-  it("crosses zero by default, ignoring the signal line", () => {
-    expect(signal(macdCrossover, [bar(0, 0.2, 0.5), bar(1, 0.4, 0.5)])).toBe("hold");
-    expect(signal(macdCrossover, [bar(0, -0.2, 0.5), bar(1, 0.1, 0.5)])).toBe("buy");
-    expect(signal(macdCrossover, [bar(0, 0.2, -0.5), bar(1, -0.1, -0.5)], "long")).toBe("sell");
+  it("crosses zero under the zero rule, ignoring the signal line", () => {
+    const zero = { rule: "zero" };
+    expect(signal(macdCrossover, [bar(0, 0.2, 0.5), bar(1, 0.4, 0.5)], null, zero)).toBe("hold");
+    expect(signal(macdCrossover, [bar(0, -0.2, 0.5), bar(1, 0.1, 0.5)], null, zero)).toBe("buy");
+    expect(signal(macdCrossover, [bar(0, 0.2, -0.5), bar(1, -0.1, -0.5)], "long", zero)).toBe("sell");
+  });
+
+  it("defaults to Appel's signal-line rule", () => {
+    expect(signal(macdCrossover, [bar(0, -0.2, 0.5), bar(1, 0.1, 0.5)])).toBe("hold");
+    expect(signal(macdCrossover, [bar(0, 0.2, 0.5), bar(1, 0.6, 0.5)])).toBe("buy");
   });
 
   it("sizes the entry filter as a percent of price", () => {

@@ -28,6 +28,9 @@ export type ResultRow = ResultSummary & {
   seq: number;
   /** totalPnlPercent − buyAndHoldPnlPercent, stored so it can be indexed. */
   alpha: number;
+  /** Always set on a stored row (0 for results from before the split), so they index. */
+  inSamplePnlPercent: number;
+  outOfSamplePnlPercent: number;
 };
 
 /** Results per strategy × dataset, so filtered counts never need a scan. */
@@ -59,7 +62,11 @@ export const SORT_FIELDS = [
   "totalTrades",
   "averageWin",
   "averageLoss",
+  "inSamplePnlPercent",
+  "outOfSamplePnlPercent",
 ] as const;
+/** Sort fields added after version 2 created the runRows store. */
+const FIELDS_ADDED_IN_V3: SortField[] = ["inSamplePnlPercent", "outOfSamplePnlPercent"];
 export type SortField = (typeof SORT_FIELDS)[number];
 
 interface BacktestDB extends DBSchema {
@@ -74,14 +81,14 @@ interface BacktestDB extends DBSchema {
 }
 
 const DB_NAME = "algo-backtest-results";
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 let dbPromise: Promise<IDBPDatabase<BacktestDB>> | null = null;
 
 export function backtestDb(): Promise<IDBPDatabase<BacktestDB>> {
   if (!dbPromise) {
     dbPromise = openDB<BacktestDB>(DB_NAME, DB_VERSION, {
-      upgrade(database, oldVersion) {
+      upgrade(database, oldVersion, _newVersion, transaction) {
         if (oldVersion < 1) {
           database.createObjectStore("summary");
           database.createObjectStore("full");
@@ -90,6 +97,9 @@ export function backtestDb(): Promise<IDBPDatabase<BacktestDB>> {
           const rows = database.createObjectStore("runRows", { keyPath: ["runId", "seq"] });
           for (const field of SORT_FIELDS) rows.createIndex(field, ["runId", field]);
           database.createObjectStore("runMeta", { keyPath: "runId" });
+        } else if (oldVersion < 3) {
+          const rows = transaction.objectStore("runRows");
+          for (const field of FIELDS_ADDED_IN_V3) rows.createIndex(field, ["runId", field]);
         }
       },
       // Another tab holding an older version open would block this upgrade

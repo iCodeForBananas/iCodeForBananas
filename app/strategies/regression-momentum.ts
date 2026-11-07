@@ -154,12 +154,10 @@ const parameters: StrategyParameter[] = [
   {
     key: 'barsPerYear',
     name: 'Bars Per Year',
-    description: 'Annualizes the slope: 252 for daily bars, 52 weekly, about 1,764 hourly (7 a session)',
-    type: 'number',
-    default: 252,
-    min: 52,
-    max: 100000,
-    step: 1,
+    description: 'Annualizes the slope to match the bars: 252 daily, 52 weekly, 1764 hourly (7 a session), 6552 for 15-minute, 98280 for 1-minute. A unit, not something to sweep',
+    type: 'select',
+    default: '252',
+    options: ['252', '52', '1764', '6552', '98280'],
   },
 ];
 
@@ -169,7 +167,7 @@ const handler: StrategyHandler = ({ current, series, index, params, position }) 
   const minScore = (params.minScore as number) ?? 30;
   const exitScore = (params.exitScore as number) ?? 0;
   const maxGapPct = (params.maxGapPct as number) || 15;
-  const barsPerYear = (params.barsPerYear as number) || 252;
+  const barsPerYear = Number(params.barsPerYear) || 252;
 
   const { score, maxGap } = getRegressionMomentum(series, lookback, barsPerYear);
   const sma = getSmaArray(series, maPeriod)[index];

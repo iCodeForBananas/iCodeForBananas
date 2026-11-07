@@ -16,10 +16,10 @@
 // mostly by skipping the crosses that come off a bottom while price is still
 // under its 200 SMA.
 //
-// The default is the zero-line rule. On the daily datasets (22 tickers,
-// 2016-2026, long only, no stop) its median return was 213% against 120% for
-// the signal-line rule, with a profit factor of 2.1 against 1.5 and far fewer
-// trades. On hourly bars the signal-line rule did better (68% against 12%).
+// The default is Appel's published signal-line rule. Defaults come from the
+// literature, not from these datasets: picking whichever rule did best here
+// would tune the default to the very data it's then judged on. (The zero-line
+// rule did better on the daily datasets, the signal-line rule on hourly.)
 //
 // Entries need a fresh cross on the signal bar. Exits only need the MACD to
 // be on the wrong side of its line, so an exit never waits for a cross that
@@ -63,8 +63,8 @@ const parameters: StrategyParameter[] = [
     name: 'Crossover',
     description: 'signal: MACD crosses its signal line. zero: MACD crosses zero (the fast EMA crosses the slow one)',
     type: 'select',
-    default: 'zero',
-    options: ['zero', 'signal'],
+    default: 'signal',
+    options: ['signal', 'zero'],
   },
   {
     key: 'trendFilter',
@@ -89,7 +89,7 @@ const handler: StrategyHandler = ({ current, previous, params, position }) => {
   const fastPeriod = (params.fastPeriod as number) || 12;
   const slowPeriod = (params.slowPeriod as number) || 26;
   const signalPeriod = (params.signalPeriod as number) || 9;
-  const rule = (params.rule as string) === 'signal' ? 'signal' : 'zero';
+  const rule = (params.rule as string) === 'zero' ? 'zero' : 'signal';
   const trendFilter = (params.trendFilter as boolean) ?? false;
   const minPct = (params.minHistogramPct as number) || 0;
 
@@ -133,7 +133,7 @@ const strategy: StrategyDefinition = {
   id: 'macd-crossover',
   name: 'MACD Crossover',
   description:
-    "Appel's MACD: buy when MACD crosses above zero (or its signal line), exit when it falls back below. Optional 200 SMA trend filter. Shorts mirror it.",
+    "Appel's MACD: buy when MACD crosses above its signal line (or zero), exit when it falls back below. Optional 200 SMA trend filter. Shorts mirror it.",
   handler,
   parameters,
 };

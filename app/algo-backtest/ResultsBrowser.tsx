@@ -37,6 +37,10 @@ const METRICS = {
   pnl: { label: "Strategy P&L", short: "P&L", field: "totalPnlPercent", format: pct, better: "desc", signed: true },
   buyHold: { label: "Buy & hold", short: "B&H", field: "buyAndHoldPnlPercent", format: pct, better: "desc", signed: true },
   alpha: { label: "Alpha vs buy & hold", short: "Alpha", field: "alpha", format: pct, better: "desc", signed: true },
+  // Choose by the first 70% of the bars, then check the last 30%, which the
+  // choice never saw. The best of a sweep usually does far worse there.
+  inSample: { label: "In-sample P&L (first 70%)", short: "In-sample", field: "inSamplePnlPercent", format: pct, better: "desc", signed: true },
+  outOfSample: { label: "Out-of-sample P&L (last 30%)", short: "Out-of-sample", field: "outOfSamplePnlPercent", format: pct, better: "desc", signed: true },
   winRate: { label: "Win rate", short: "Win", field: "winRate", format: (v) => `${v.toFixed(1)}%`, better: "desc" },
   // Infinity (no losing trades) sorts above every finite factor.
   profitFactor: { label: "Profit factor", short: "PF", field: "profitFactor", format: (v) => (v === Infinity ? "∞" : v.toFixed(2)), better: "desc" },
@@ -317,6 +321,13 @@ export default function ResultsBrowser({
                         {" · "}
                         {r.totalTrades} trades
                       </Text>
+                      {r.outOfSamplePnlPercent !== undefined && (
+                        <Text size='1' color='gray' className='tabular-nums'>
+                          In-sample <Text color={(r.inSamplePnlPercent ?? 0) >= 0 ? "green" : "red"}>{pct(r.inSamplePnlPercent ?? 0)}</Text>
+                          {" · "}Out-of-sample <Text color={r.outOfSamplePnlPercent >= 0 ? "green" : "red"}>{pct(r.outOfSamplePnlPercent)}</Text>
+                          {" "}(B&amp;H {pct(r.outOfSampleBuyAndHoldPercent ?? 0)})
+                        </Text>
+                      )}
                     </Flex>
                     <Flex direction='column' align='end' className='shrink-0'>
                       <Text

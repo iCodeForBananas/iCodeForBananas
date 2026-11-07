@@ -105,6 +105,17 @@ export interface ParameterizedResult {
   sharpeRatio: number;
   buyAndHoldPnl: number;
   buyAndHoldPnlPercent: number;
+  /**
+   * The same run split in time: return over the first HOLDOUT_SPLIT of the
+   * bars, and over the rest. Choose parameters by the first; the second is
+   * data the choice never saw.
+   */
+  inSamplePnlPercent?: number;
+  outOfSamplePnlPercent?: number;
+  /** Buy and hold over the out-of-sample stretch, for comparison. */
+  outOfSampleBuyAndHoldPercent?: number;
+  /** When the out-of-sample stretch starts. */
+  holdoutStartTime?: number;
   equityCurve: { time: number; equity: number }[];
   trades: {
     id: string;

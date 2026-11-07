@@ -2,6 +2,13 @@ import { PricePoint, IndicatorData, BacktestTrade, PositionSide } from "@/app/ty
 import { StrategyDefinition, ParameterizedResult, createParamLabel } from "@/app/strategies";
 
 export const MAX_BATCH_RUNS = 50;
+
+/**
+ * Share of each dataset's bars that is in-sample. Every result also reports
+ * its return over the rest, so a sweep's winner can be checked on bars the
+ * choice didn't see.
+ */
+export const HOLDOUT_SPLIT = 0.7;
 export const INITIAL_CAPITAL = 10_000;
 
 export interface MACDConfig {
@@ -120,6 +127,21 @@ export function riskVariations(sizing: SizingSettings | undefined): ParameterVar
   return out;
 }
 
+/**
+ * Whether a combination's fast / mid / slow periods are in order. A sweep
+ * over independent ranges produces fast >= slow pairs, which either never
+ * trade or trade the rule backwards; each one is another chance for a lucky
+ * result to top the list, so they're left out.
+ */
+export function periodsInOrder(params: Record<string, number | boolean | string>): boolean {
+  const n = (k: string) => (typeof params[k] === "number" ? (params[k] as number) : undefined);
+  const fast = n("fastPeriod"), mid = n("midPeriod"), slow = n("slowPeriod");
+  if (fast !== undefined && slow !== undefined && fast >= slow) return false;
+  if (fast !== undefined && mid !== undefined && fast >= mid) return false;
+  if (mid !== undefined && slow !== undefined && mid >= slow) return false;
+  return true;
+}
+
 // Most values one stop or target range may expand to.
 const MAX_RISK_VALUES = 50;
 
@@ -133,7 +155,7 @@ export function generateSweep(
   paramVariations: ParameterVariationConfig[],
   sizing: SizingSettings | undefined,
 ): Record<string, number | boolean | string>[] {
-  let combos = generateCombinations(paramVariations);
+  let combos = generateCombinations(paramVariations).filter(periodsInOrder);
   for (const v of riskVariations(sizing)) {
     const values = generateRangeValues(v.min, v.max, v.step).slice(0, MAX_RISK_VALUES);
     combos = combos.flatMap((c) => values.map((value) => ({ ...c, [v.key]: value })));
@@ -896,6 +918,21 @@ export function runBacktestWithParams(
   const buyAndHoldPnlPercent = firstPrice > 0 ? ((lastPrice - firstPrice) / firstPrice) * 100 : 0;
   const buyAndHoldPnl = initialCapital * (buyAndHoldPnlPercent / 100);
 
+  // In-sample / out-of-sample split, at the first bar of the holdout. The
+  // equity there is marked to market, so a trade open across the split
+  // counts toward each side for the part it was open in.
+  const splitBar = Math.max(1, Math.min(data.length - 1, Math.floor(data.length * HOLDOUT_SPLIT)));
+  const holdoutStartTime = data[splitBar]?.time ?? 0;
+  let splitEquity = initialCapital;
+  for (const point of equityCurve) {
+    if (point.time >= holdoutStartTime) break;
+    splitEquity = point.equity;
+  }
+  const inSamplePnlPercent = (splitEquity / initialCapital - 1) * 100;
+  const outOfSamplePnlPercent = splitEquity > 0 ? (equity / splitEquity - 1) * 100 : 0;
+  const splitPrice = data[splitBar - 1]?.close || 0;
+  const outOfSampleBuyAndHoldPercent = splitPrice > 0 ? (lastPrice / splitPrice - 1) * 100 : 0;
+
   return {
     params,
     label: createParamLabel(params),
@@ -913,6 +950,10 @@ export function runBacktestWithParams(
     sharpeRatio,
     buyAndHoldPnl,
     buyAndHoldPnlPercent,
+    inSamplePnlPercent,
+    outOfSamplePnlPercent,
+    outOfSampleBuyAndHoldPercent,
+    holdoutStartTime,
     equityCurve,
     trades: trades.map((t) => ({ ...t, side: t.side.toString() })),
   };
