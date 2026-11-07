@@ -17,6 +17,14 @@ export type Interval = keyof typeof INTERVALS;
  */
 export const SOURCE_INTERVAL: Record<Interval, '1min' | '5min' | '15min' | 'daily'> = { '1min': '1min', '5min': '5min', '15min': '15min', '30min': '15min', '1h': '15min', '1d': 'daily' };
 
+/**
+ * Tradier's sandbox delays all market data by 15 minutes. An intraday bar is
+ * treated as available (and complete) only 15 minutes after it closes: runs
+ * act on the bar that closed 15 minutes before the run, and anything newer in
+ * the response is ignored as possibly incomplete.
+ */
+export const DATA_DELAY_MS = 15 * 60 * 1000;
+
 /** Daily bars come from /markets/history, which keeps years of them. */
 export const isDaily = (interval: Interval) => interval === '1d';
 

@@ -10,13 +10,13 @@
 // nothing and logs why.
 
 import { AVAILABLE_STRATEGIES } from '@/app/strategies';
-import { INTERVALS, SOURCE_INTERVAL, isDaily, type Interval, type ResolvedDeployment } from './config';
+import { DATA_DELAY_MS, INTERVALS, SOURCE_INTERVAL, isDaily, type Interval, type ResolvedDeployment } from './config';
 import { aggregateBars, computeSeries, parseBars, parseDailyBars, sessionClose, type ParsedBars } from './market';
 import { emfFields, type MetricName } from './metrics';
 import { etDate, etParts, etStamp, etWallToUtcMs, isRegularSessionClose } from './time';
 import type { TradierApi, TradierOrder } from './tradier';
 
-/** A just-closed bar must exist, and the run must start, within this long of the boundary. */
+/** The expected bar must exist, and the run must start, within this long of it becoming available. */
 export const MAX_LATENESS_MS = 2 * 60 * 1000;
 /** Daily runs go after the close; a run this long after 16:00 ET is too late. */
 export const DAILY_MAX_LATENESS_MS = 90 * 60 * 1000;
@@ -234,14 +234,19 @@ export async function runDeployment(d: ResolvedDeployment, event: RunEvent | und
   try {
     if (!strategy) throw new Error(`Unknown strategy ${d.strategyId}`);
 
-    // Read the just-closed bar a few seconds after the boundary.
+    // Read the expected bar a few seconds after it becomes available.
+    const delay = daily ? 0 : DATA_DELAY_MS;
     let t = now();
-    const boundary = expectedBarClose(d.interval, t);
-    if (!daily && t - boundary < SETTLE_MS) {
-      await sleep(SETTLE_MS - (t - boundary));
+    const boundary = expectedBarClose(d.interval, t - delay);
+    const availableAt = boundary + delay;
+    if (!daily && t - availableAt < SETTLE_MS) {
+      await sleep(SETTLE_MS - (t - availableAt));
       t = now();
     }
     log.expectedBarClose = new Date(boundary).toISOString();
+    if (delay) log.dataDelayMinutes = delay / 60_000;
+    // Bars are complete only once the delayed feed has passed their close.
+    const dataNow = () => now() - delay;
 
     // Reconciliation inputs first.
     const [clock, balances, positions, orders, stored] = await Promise.all([
@@ -267,8 +272,8 @@ export async function runDeployment(d: ResolvedDeployment, event: RunEvent | und
         data = parseDailyBars(await tradier.history({ symbol: d.symbol, start, end: etDate(end) }), now());
       } else {
         const rows = await tradier.timesales({ symbol: d.symbol, interval: sourceInterval, start: `${start} 00:00`, end: etStamp(end) });
-        const parsed = parseBars(rows, sourceMs, now());
-        const agg = aggregateBars(parsed.bars, sourceMs, intervalMs, now());
+        const parsed = parseBars(rows, sourceMs, dataNow());
+        const agg = aggregateBars(parsed.bars, sourceMs, intervalMs, dataNow());
         data = { ...parsed, bars: agg.bars, droppedIncomplete: agg.droppedIncomplete };
       }
       const newest = data.bars[data.bars.length - 1];
@@ -296,7 +301,7 @@ export async function runDeployment(d: ResolvedDeployment, event: RunEvent | und
       log.evaluateLatest = true;
     } else {
       if (barClose < boundary) return skip(`stale data: newest completed bar closed ${new Date(barClose).toISOString()}, expected ${new Date(boundary).toISOString()}`, true);
-      if (invokedAt - boundary > (daily ? DAILY_MAX_LATENESS_MS : MAX_LATENESS_MS)) return skip(`invoked ${Math.round((invokedAt - boundary) / 1000)}s after the bar closed; too late to act on it`, true);
+      if (invokedAt - availableAt > (daily ? DAILY_MAX_LATENESS_MS : MAX_LATENESS_MS)) return skip(`invoked ${Math.round((invokedAt - availableAt) / 1000)}s after the bar became available; too late to act on it`, true);
     }
     if (bars.length < d.minBars) return skip(`only ${bars.length} completed bars; need ${d.minBars} for warm indicators`);
     if (!(accountEquity > 0)) return skip(`balances returned no usable total_equity (${balances?.total_equity})`);

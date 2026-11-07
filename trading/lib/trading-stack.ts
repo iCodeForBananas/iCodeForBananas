@@ -14,7 +14,7 @@ import * as logs from 'aws-cdk-lib/aws-logs';
 import * as scheduler from 'aws-cdk-lib/aws-scheduler';
 import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import type { Construct } from 'constructs';
-import { INTERVALS, functionName, type ResolvedDeployment } from '../runtime/config';
+import { DATA_DELAY_MS, INTERVALS, functionName, type ResolvedDeployment } from '../runtime/config';
 import { METRIC_DIMENSION, METRIC_NAMESPACE } from '../runtime/metrics';
 import { buildDashboard, type DeployedStrategy } from './dashboard';
 
@@ -34,7 +34,10 @@ export function scheduleExpression(d: ResolvedDeployment): string {
   // the session's bar isn't final until after 16:15.
   if (minutes >= 1440) return 'cron(30 16 ? * MON-FRI *)';
   // Hourly bars close on the hour; the minute field only takes steps under 60.
-  return minutes >= 60 ? 'cron(0 4-20 ? * MON-FRI *)' : `cron(0/${minutes} 4-20 ? * MON-FRI *)`;
+  // Intraday: sandbox data is 15 minutes behind (DATA_DELAY_MS), so each run
+  // fires 15 minutes after a bar closes, when that bar becomes available.
+  const offset = DATA_DELAY_MS / 60_000;
+  return minutes >= 60 ? `cron(${offset} 4-20 ? * MON-FRI *)` : `cron(${offset % minutes}/${minutes} 4-20 ? * MON-FRI *)`;
 }
 
 const minutesOf = (d: ResolvedDeployment) => INTERVALS[d.interval];
@@ -109,7 +112,7 @@ export class TradingStack extends Stack {
 
       const schedule = new scheduler.CfnSchedule(this, `Schedule-${d.id}`, {
         name,
-        description: minutesOf(d) >= 1440 ? 'Weekdays 16:30 ET, after the close' : `Every ${d.interval} bar close, weekdays 04:00-20:59 ET`,
+        description: minutesOf(d) >= 1440 ? 'Weekdays 16:30 ET, after the close' : `${DATA_DELAY_MS / 60_000} minutes after every ${d.interval} bar close, weekdays 04:00-20:59 ET`,
         scheduleExpression: scheduleExpression(d),
         scheduleExpressionTimezone: 'America/New_York',
         flexibleTimeWindow: { mode: 'OFF' },

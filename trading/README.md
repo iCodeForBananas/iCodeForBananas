@@ -51,15 +51,19 @@ change the entry and deploy.
 
 ## What runs, every bar close
 
-Weekdays 04:00-20:59 ET, at each `interval` boundary (EventBridge Scheduler,
-America/New_York):
+Tradier's sandbox delays market data by 15 minutes (`DATA_DELAY_MS` in
+`runtime/config.ts`), so intraday runs fire 15 minutes after each bar closes,
+weekdays 04:00-20:59 ET (EventBridge Scheduler, America/New_York), and act on
+that bar. Anything newer in the response is ignored as possibly incomplete.
+Fills therefore land about 15 minutes after the backtest's would. Daily
+deployments run at 16:30 ET.
 
 1. Reconcile with Tradier (Tradier wins): resolve the pending order, adopt
    Tradier's position on a mismatch, and skip trading the bar on any mismatch
    or unknown open order.
 2. Fetch the same fixed window of `timesales` (`session_filter=all`), drop
    invalid, duplicate and still-forming bars, and skip unless the bar that
-   just closed is there, the run started within 2 minutes of it, and there are
+   became available is there, the run started within 2 minutes of that, and there are
    at least `minBars` bars.
 3. Indicators from the engine, signal from the strategy. Exit first; otherwise
    enter when flat (never both on one bar), sized at `positionSizePct` of the

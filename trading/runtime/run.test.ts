@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { resolveDeployment, type ResolvedDeployment } from './config';
+import { DATA_DELAY_MS, resolveDeployment, type ResolvedDeployment } from './config';
 import { expectedBarClose, runDeployment, type DeploymentState, type RunDeps, type RunEvent } from './run';
 import { etParts, etWallToUtcMs } from './time';
 import type { HistoryRow, TradierApi, TradierOrder, TradierPosition, TimesalesRow } from './tradier';
 
 const BAR = 15 * 60_000;
-// Monday 2026-11-09 10:00 ET, a regular-session bar close.
+// Monday 2026-11-09 10:00 ET, a regular-session bar close. With the sandbox's
+// 15-minute data delay, the run that acts on it fires at 10:15 ET.
 const BOUNDARY = etWallToUtcMs(2026, 11, 9, 10, 0);
+const AVAILABLE = BOUNDARY + DATA_DELAY_MS;
 
 const DEPLOYMENT = resolveDeployment({
   id: 'ibs-qqq-test',
@@ -82,7 +84,7 @@ function fakeTradier(o: FakeOpts) {
 
 function harness(opts: FakeOpts & { state?: Partial<DeploymentState>; startAt?: number }) {
   const tradier = fakeTradier(opts);
-  let clock = opts.startAt ?? BOUNDARY + 6_000;
+  let clock = opts.startAt ?? AVAILABLE + 6_000;
   const saved: { state: DeploymentState; barTime: number }[] = [];
   const lines: Record<string, unknown>[] = [];
   const deps: RunDeps = {
@@ -186,11 +188,29 @@ describe('runDeployment', () => {
     expect(h.log().StaleData).toBe(1);
   });
 
-  it('does nothing when invoked too long after the bar closed', async () => {
-    const h = harness({ rows: makeRows({ lastIbs: 0.1 }), startAt: BOUNDARY + 3 * 60_000 });
+  it('does nothing when invoked too long after the bar became available', async () => {
+    const h = harness({ rows: makeRows({ lastIbs: 0.1 }), startAt: AVAILABLE + 3 * 60_000 });
     const r = await h.run();
     expect(r.reason).toMatch(/too late/);
     expect(h.placed).toHaveLength(0);
+  });
+
+  it('acts on the bar that closed 15 minutes ago and ignores the newer, possibly partial one', async () => {
+    const rows = makeRows({ lastIbs: 0.1 });
+    // The feed already shows part of the 10:00-10:15 bar, closing at its high.
+    rows.push({ time: etIso(BOUNDARY), open: 100, high: 101, low: 99, close: 101, volume: 10 });
+    const h = harness({ rows });
+    const r = await h.run();
+    expect(r.action).toBe('entry long');
+    expect(h.log().bar).toMatchObject({ time: new Date(lastBarTime).toISOString() });
+    expect(h.log().dataDelayMinutes).toBe(15);
+  });
+
+  it('treats the bar as stale when run at its close, before the delayed feed has it', async () => {
+    // At 10:00 the expected bar is the one that closed at 09:45.
+    const h = harness({ rows: makeRows({ lastIbs: 0.1, lastClose: BOUNDARY - 2 * BAR }), startAt: BOUNDARY + 6_000 });
+    const r = await h.run();
+    expect(r.reason).toMatch(/stale data/);
   });
 
   it('does nothing without enough bars for warm indicators', async () => {
@@ -266,7 +286,7 @@ describe('runDeployment', () => {
     // The next bar's entry signal is held back by the pause.
     const next = harness({
       rows: makeRows({ lastIbs: 0.1, lastClose: BOUNDARY + BAR }),
-      startAt: BOUNDARY + BAR + 6_000,
+      startAt: AVAILABLE + BAR + 6_000,
       state: s,
     });
     await next.run();
