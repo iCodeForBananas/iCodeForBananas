@@ -55,7 +55,8 @@ export const AWS_NAME_MAX = 64;
 
 export const DEFAULTS = {
   enabled: true,
-  enableShorts: false,
+  // Every strategy trades both sides unless an entry says otherwise.
+  enableShorts: true,
   positionSizePct: 100,
   maxDailyLossPct: 2,
   drawdownLimitPct: 25,

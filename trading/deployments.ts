@@ -14,6 +14,7 @@
 // with a list of problems if an entry is invalid (unknown strategy or
 // parameter, two enabled entries on one symbol, allocations over 100%, ...).
 //
+// Every deployment trades long and short (enableShorts defaults to true).
 // See runtime/config.ts for every field and its default.
 
 import type { Deployment } from './runtime/config';
@@ -28,7 +29,6 @@ export const DEPLOYMENTS: Deployment[] = [
     symbol: 'QQQ',
     interval: '15min',
     params: { entryIbs: 20, exitIbs: 50, trendFilter: false },
-    enableShorts: true,
     ...SHARED_RISK,
   },
   {
@@ -36,7 +36,6 @@ export const DEPLOYMENTS: Deployment[] = [
     symbol: 'TXN',
     interval: '15min',
     params: { entryIbs: 25, exitIbs: 75, trendFilter: false },
-    enableShorts: true,
     ...SHARED_RISK,
     // The backtest warmed up on at least 375 bars; 14 days covers thin extended-hours sessions.
     minBars: 375,
@@ -47,7 +46,6 @@ export const DEPLOYMENTS: Deployment[] = [
     symbol: 'AMZN',
     interval: '15min',
     params: { entryIbs: 25, exitIbs: 90, trendFilter: false },
-    enableShorts: true,
     ...SHARED_RISK,
     // The backtest warmed up on at least 450 bars.
     minBars: 450,
@@ -59,7 +57,6 @@ export const DEPLOYMENTS: Deployment[] = [
     // Built from 15-minute timesales; see aggregateBars in runtime/market.ts.
     interval: '30min',
     params: { entryIbs: 40, exitIbs: 80, trendFilter: false },
-    enableShorts: true,
     ...SHARED_RISK,
     // The backtest warmed up on at least 400 bars: about 13 trading days of 30-minute bars.
     minBars: 400,
@@ -70,8 +67,10 @@ export const DEPLOYMENTS: Deployment[] = [
     symbol: 'TQQQ',
     interval: '15min',
     params: { entryIbs: 20, exitIbs: 50, trendFilter: false },
-    enableShorts: true,
     ...SHARED_RISK,
+    // Replaced by EMA price cross 1h below: one account holds one net TQQQ
+    // position. Kept deployed with its schedule off, to switch back easily.
+    enabled: false,
   },
   {
     strategyId: 'ema-crossover',
@@ -79,8 +78,6 @@ export const DEPLOYMENTS: Deployment[] = [
     // Built from 15-minute timesales, aligned to the ET hour.
     interval: '1h',
     params: { fastPeriod: 50, slowPeriod: 31 },
-    // Long only: a sell while flat does nothing.
-    enableShorts: false,
     ...SHARED_RISK,
     // 250 one-hour bars is about 16 trading days of all-session data.
     historyDays: 30,
@@ -90,13 +87,9 @@ export const DEPLOYMENTS: Deployment[] = [
     symbol: 'TQQQ',
     interval: '1h',
     params: { emaPeriod: 2 },
-    enableShorts: true,
     ...SHARED_RISK,
     historyDays: 30,
-    // TQQQ is already traded by the IBS deployment above, and one account holds
-    // one net position per symbol. Deployed, but its schedule stays off until
-    // one of the two is chosen.
-    enabled: false,
+    // The TQQQ strategy that trades; IBS TQQQ 15m above is off.
   },
 ];
 
