@@ -1,0 +1,27 @@
+{
+  "name": "tradier-trading",
+  "private": true,
+  "type": "module",
+  "description": "CDK stack: one Tradier sandbox paper-trading Lambda per entry in deployments.ts, plus a CloudWatch dashboard.",
+  "scripts": {
+    "synth": "cdk synth",
+    "diff": "cdk diff",
+    "deploy": "cdk deploy",
+    "typecheck": "tsc --noEmit -p .",
+    "dry-run": "tsx scripts/dry-run.ts"
+  },
+  "devDependencies": {
+    "@aws-sdk/client-cloudwatch-logs": "^3.1164.0",
+    "@aws-sdk/client-dynamodb": "^3.1164.0",
+    "@aws-sdk/client-lambda": "^3.1164.0",
+    "@aws-sdk/client-secrets-manager": "^3.1164.0",
+    "@aws-sdk/lib-dynamodb": "^3.1164.0",
+    "@types/node": "^22.20.5",
+    "aws-cdk": "^2.1148.0",
+    "aws-cdk-lib": "^2.275.0",
+    "constructs": "^10.8.1",
+    "esbuild": "^0.28.2",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3"
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "app": "npx tsx bin/app.ts",
+  "watch": { "include": ["**/*.ts", "../app/strategies/**", "../app/lib/backtest-engine.ts"] },
+  "context": {
+    "@aws-cdk/aws-lambda-nodejs:useLatestRuntimeVersion": true
+  }
+}
