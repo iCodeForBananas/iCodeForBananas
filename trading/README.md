@@ -10,7 +10,10 @@ secret.
 The live Lambda runs the **same code the backtester runs**: the strategy's own
 `handler` from `app/strategies/<id>.ts` and the indicators from
 `calculateIndicatorsWithParams` in `app/lib/backtest-engine.ts`, bundled in by
-esbuild. Change a strategy, redeploy, and live trading changes with it.
+esbuild. Each Lambda bundles only its own strategy: esbuild aliases
+`@trading/strategy` to `app/strategies/<strategyId>.ts`, so an IBS Lambda
+carries no crossover code. Change a strategy, redeploy, and live trading
+changes with it.
 
 ## Add a strategy
 

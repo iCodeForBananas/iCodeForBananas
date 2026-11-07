@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { AVAILABLE_STRATEGIES } from '@/app/strategies';
 import { DATA_DELAY_MS, resolveDeployment, type ResolvedDeployment } from './config';
 import { expectedBarClose, runDeployment, type DeploymentState, type RunDeps, type RunEvent } from './run';
 import { etParts, etWallToUtcMs } from './time';
@@ -87,7 +88,7 @@ function harness(opts: FakeOpts & { state?: Partial<DeploymentState>; startAt?: 
   let clock = opts.startAt ?? AVAILABLE + 6_000;
   const saved: { state: DeploymentState; barTime: number }[] = [];
   const lines: Record<string, unknown>[] = [];
-  const deps: RunDeps = {
+  const deps: Omit<RunDeps, 'strategy'> = {
     tradier: tradier.api,
     store: {
       load: async () => (opts.state ? { pk: DEPLOYMENT.id, ...opts.state } : null),
@@ -101,8 +102,8 @@ function harness(opts: FakeOpts & { state?: Partial<DeploymentState>; startAt?: 
     },
     log: (line) => lines.push(JSON.parse(line)),
   };
-  const run = (event?: RunEvent, d: ResolvedDeployment = DEPLOYMENT) => runDeployment(d, event, deps);
-  return { run, ...tradier, saved, lines, log: () => lines[lines.length - 1] };
+  const run = (event?: RunEvent, d: ResolvedDeployment = DEPLOYMENT) => runDeployment(d, event, { ...deps, strategy: AVAILABLE_STRATEGIES[d.strategyId] });
+  return { run, deps, ...tradier, saved, lines, log: () => lines[lines.length - 1] };
 }
 
 const lastBarTime = BOUNDARY - BAR;
@@ -211,6 +212,13 @@ describe('runDeployment', () => {
     const h = harness({ rows: makeRows({ lastIbs: 0.1, lastClose: BOUNDARY - 2 * BAR }), startAt: BOUNDARY + 6_000 });
     const r = await h.run();
     expect(r.reason).toMatch(/stale data/);
+  });
+
+  it("refuses to run when the bundled strategy is not the deployment's", async () => {
+    const h = harness({ rows: makeRows({ lastIbs: 0.1 }) });
+    const wrong = { ...DEPLOYMENT, strategyId: 'ema-crossover' };
+    await expect(runDeployment(wrong, undefined, { ...h.deps, strategy: AVAILABLE_STRATEGIES['ibs-mean-reversion'] })).rejects.toThrow(/does not match/);
+    expect(h.placed).toHaveLength(0);
   });
 
   it('does nothing without enough bars for warm indicators', async () => {

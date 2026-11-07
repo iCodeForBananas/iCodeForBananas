@@ -2,6 +2,7 @@
 // (referenced, not owned), one scheduler role, and per deployment a Lambda,
 // its log group, its schedule and an errors alarm. Plus the dashboard.
 
+import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { CfnOutput, Duration, RemovalPolicy, Stack, type StackProps } from 'aws-cdk-lib';
@@ -41,6 +42,13 @@ export function scheduleExpression(d: ResolvedDeployment): string {
 }
 
 const minutesOf = (d: ResolvedDeployment) => INTERVALS[d.interval];
+
+/** The deployment's strategy source, relative to the repo root (esbuild's working directory). */
+function strategyEntry(d: ResolvedDeployment): string {
+  const rel = `./app/strategies/${d.strategyId}.ts`;
+  if (!fs.existsSync(path.join(REPO_ROOT, rel))) throw new Error(`No strategy file ${rel} for ${d.id}`);
+  return rel;
+}
 
 export class TradingStack extends Stack {
   constructor(scope: Construct, id: string, props: TradingStackProps) {
@@ -104,6 +112,8 @@ export class TradingStack extends Stack {
           // The runtime ships the AWS SDK v3.
           externalModules: ['@aws-sdk/*'],
           mainFields: ['module', 'main'],
+          // Bundle only this deployment's strategy (see runtime/handler.ts).
+          esbuildArgs: { '--alias:@trading/strategy': strategyEntry(d) },
         },
       });
       table.grant(fn, 'dynamodb:GetItem', 'dynamodb:PutItem');

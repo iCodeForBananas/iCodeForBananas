@@ -1,6 +1,8 @@
 // Lambda entry point, shared by every deployment. The CDK stack bundles this
-// file (with the strategy code from app/) into each deployment's function and
-// passes that deployment, already resolved and validated, as JSON in DEPLOYMENT.
+// file into each deployment's function with only that deployment's strategy:
+// esbuild aliases '@trading/strategy' to app/strategies/<strategyId>.ts, so an
+// IBS Lambda carries no crossover code. The deployment itself, already resolved
+// and validated, arrives as JSON in DEPLOYMENT.
 //
 // Test event { "dryRun": true } runs everything and logs the orders it would
 // place, without placing them, writing state or publishing metrics. Add
@@ -12,6 +14,7 @@ import { GetSecretValueCommand, SecretsManagerClient } from '@aws-sdk/client-sec
 import type { ResolvedDeployment } from './config';
 import { runDeployment, type DeploymentState, type RunEvent, type StateStore } from './run';
 import { createTradierClient, type TradierCreds } from './tradier';
+import strategy from '@trading/strategy';
 
 const TABLE_NAME = process.env.TABLE_NAME;
 const SECRET_ID = process.env.SECRET_ID;
@@ -52,6 +55,7 @@ const store: StateStore = {
 
 export const handler = (event?: RunEvent) =>
   runDeployment(DEPLOYMENT, event, {
+    strategy,
     tradier,
     store,
     now: Date.now,

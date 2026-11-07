@@ -9,7 +9,7 @@
 // Never trades on missing, stale or incomplete data: when in doubt it does
 // nothing and logs why.
 
-import { AVAILABLE_STRATEGIES } from '@/app/strategies';
+import type { StrategyDefinition } from '@/app/strategies/types';
 import { DATA_DELAY_MS, INTERVALS, SOURCE_INTERVAL, isDaily, type Interval, type ResolvedDeployment } from './config';
 import { aggregateBars, computeSeries, parseBars, parseDailyBars, sessionClose, type ParsedBars } from './market';
 import { emfFields, type MetricName } from './metrics';
@@ -96,6 +96,8 @@ export interface StateStore {
 }
 
 export interface RunDeps {
+  /** The deployment's strategy. The Lambda bundles only this one (see handler.ts). */
+  strategy: StrategyDefinition;
   tradier: TradierApi;
   store: StateStore;
   now: () => number;
@@ -208,10 +210,9 @@ export interface RunEvent {
 }
 
 export async function runDeployment(d: ResolvedDeployment, event: RunEvent | undefined, deps: RunDeps): Promise<RunResult> {
-  const { tradier, store, now, sleep } = deps;
+  const { strategy, tradier, store, now, sleep } = deps;
   const dryRun = event?.dryRun === true;
   const evaluateLatest = dryRun && event?.evaluateLatest === true;
-  const strategy = AVAILABLE_STRATEGIES[d.strategyId];
   const intervalMs = INTERVALS[d.interval] * 60_000;
   const sourceInterval = SOURCE_INTERVAL[d.interval];
   const daily = isDaily(d.interval);
@@ -232,7 +233,7 @@ export async function runDeployment(d: ResolvedDeployment, event: RunEvent | und
   const counters: Counters = { fills: 0, tradesClosed: 0, winningTrades: 0 };
 
   try {
-    if (!strategy) throw new Error(`Unknown strategy ${d.strategyId}`);
+    if (strategy?.id !== d.strategyId) throw new Error(`Bundled strategy ${strategy?.id} does not match deployment strategy ${d.strategyId}`);
 
     // Read the expected bar a few seconds after it becomes available.
     const delay = daily ? 0 : DATA_DELAY_MS;
