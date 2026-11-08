@@ -13,14 +13,15 @@ interface ChordDiagramProps {
   tuning?: GuitarTuning;
 }
 
-const STRING_NAMES = [
-  "low E (6th string)",
-  "A (5th string)",
-  "D (4th string)",
-  "G (3rd string)",
-  "B (2nd string)",
-  "high e (1st string)",
-];
+const STRING_ORDINALS = ["6th", "5th", "4th", "3rd", "2nd", "1st"];
+
+/** "low E (6th string)" through "high e (1st string)", for whatever the strings are tuned to. */
+const nameStrings = (notes: string[]) =>
+  notes.map((note, i) => {
+    if (i === 0) return `low ${note} (6th string)`;
+    if (i === notes.length - 1) return `high ${note.toLowerCase()} (1st string)`;
+    return `${note} (${STRING_ORDINALS[i]} string)`;
+  });
 
 export default function ChordDiagram({
   shape,
@@ -31,7 +32,7 @@ export default function ChordDiagram({
 }: ChordDiagramProps) {
   const { toggle, isFavorite } = useFavoriteChords();
   const noteNames = useFlats ? flatNotes : sharpNotes;
-  const stringNames = [`low ${tuning.notes[0]} (6th string)`, ...STRING_NAMES.slice(1)];
+  const stringNames = nameStrings(tuning.notes);
   const getNoteAtFret = (openNote: string, fret: number) => {
     const idx = sharpNotes.indexOf(openNote);
     return noteNames[(idx + fret) % 12];

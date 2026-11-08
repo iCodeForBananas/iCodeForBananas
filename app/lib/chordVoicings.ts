@@ -5,6 +5,7 @@
 
 import {
   type ChordShape,
+  flatNotes,
   sharpToFlat,
   flatToSharp,
   chordShapes,
@@ -149,9 +150,7 @@ export const getNeckVoicings = (
   const voicings: NeckVoicing[] = [];
   const seen = new Set<string>();
 
-  const add = (standardShape: ChordShape | null, id: string, label: string, position?: string) => {
-    if (!standardShape) return;
-    const shape = retuneShape(standardShape, tuning);
+  const place = (shape: ChordShape, id: string, label: string, position?: string) => {
     if (shape.frets.some((fret) => fret > MAX_FRET)) return;
     const key = shape.frets.join(",");
     if (seen.has(key)) return;
@@ -165,6 +164,26 @@ export const getNeckVoicings = (
       ...voicingHeight(shape, tuning.midi),
     });
   };
+
+  const add = (standardShape: ChordShape | null, id: string, label: string, position?: string) => {
+    const shape = standardShape && retuneShape(standardShape, tuning);
+    if (shape) place(shape, id, label, position);
+  };
+
+  // An open tuning's whole point: one finger straight across is a major chord.
+  // First, so it keeps that name when a barre shape retunes to the same grip.
+  if (type === "Major" && tuning.openChordRoot) {
+    const base = (semitoneFromE(note) - semitoneFromE(tuning.openChordRoot) + 12) % 12;
+    for (let shift = base; shift <= MAX_FRET; shift += 12) {
+      const finger = shift === 0 ? 0 : 1;
+      place(
+        { frets: Array(6).fill(shift), fingers: Array(6).fill(finger) },
+        `barre-${shift}`,
+        "Full Barre",
+        shift === 0 ? "Open" : `${shift}fr`
+      );
+    }
+  }
 
   const canonical = flatToSharp[note] ?? note;
   const enharmonic = sharpToFlat[canonical] ?? flatToSharp[note];
@@ -186,6 +205,18 @@ export const getNeckVoicings = (
 
   addBarre(eShapeTemplates[type], "e", "E-Shape Barre", semitoneFromE(note));
   addBarre(aShapeTemplates[type], "a", "A-Shape Barre", semitoneFromA(note));
+
+  // A tuning can defeat every shape a chord has. The same type's shape from
+  // another root, slid up to this one, is still this chord.
+  if (voicings.length === 0) {
+    for (const otherRoot of flatNotes) {
+      const shift = (semitoneFromE(note) - semitoneFromE(otherRoot) + 12) % 12;
+      const other = chordShapes[buildChordKey(otherRoot, type)]?.[0];
+      if (!shift || !other) continue;
+      add(transposeShape(other, shift), "moved", "Open / Standard", `${shift}fr`);
+      if (voicings.length) break;
+    }
+  }
 
   return voicings.sort((a, b) => a.center - b.center || a.bass - b.bass);
 };

@@ -12,9 +12,9 @@ export default function ChordHoverPopover({ chord, children }: { chord: string; 
   const { tuning } = useGuitarSettings();
   const parsed = parseChordName(chord);
   const standardShape = parsed ? resolveChordShape(parsed.note, parsed.type) : null;
+  const shape = standardShape && retuneShape(standardShape, tuning);
 
-  if (!standardShape) return <>{children}</>;
-  const shape = retuneShape(standardShape, tuning);
+  if (!shape) return <>{children}</>;
 
   return (
     <HoverCard.Root openDelay={120} closeDelay={60}>

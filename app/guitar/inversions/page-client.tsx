@@ -4,8 +4,31 @@ import { useMemo } from "react";
 import { flatToSharp, sharpNotes, type ChordShape } from "@/app/lib/chordShapes";
 import { formatChordLabel } from "@/app/lib/chordVoicings";
 import { useGuitarSettings } from "@/app/lib/guitarSettings";
+import { TRIAD_STRING_SETS, triadVoicings, type TriadInversion } from "@/app/lib/triads";
+import { STANDARD_TUNING, type GuitarTuning } from "@/app/lib/tunings";
 import GuitarToolView from "../GuitarToolView";
 import VoicingCard from "../VoicingCard";
+
+/**
+ * The table above is written for standard tuning's top five strings. A tuning
+ * that changes one of them gets the same shapes worked out for its own strings.
+ */
+const retunedInversions = (note: string, voicing: InvVoicing, tuning: GuitarTuning) => {
+  const shapes = triadVoicings(note, voicing === "Major" ? [0, 4, 7] : [0, 3, 7], tuning).filter(
+    (v) => v.stringSet !== TRIAD_STRING_SETS[0].key
+  );
+  const on = (inversion: TriadInversion) =>
+    shapes
+      .filter((v) => v.inversion === inversion)
+      .map((v) => ({
+        shape: v.shape,
+        strings: TRIAD_STRING_SETS.find((set) => set.key === v.stringSet)!.label,
+      }));
+  return { root: on("root"), first: on("first"), second: on("second") };
+};
+
+const changesUpperStrings = (tuning: GuitarTuning) =>
+  tuning.midi.some((open, i) => i > 0 && open !== STANDARD_TUNING.midi[i]);
 
 // ── Inversions ────────────────────────────────────────────────────────────────
 
@@ -73,8 +96,13 @@ export default function InversionsTool() {
 
   const invVoicing: InvVoicing | null = selectedType === "Major" ? "Major" : selectedType === "Minor" ? "Minor" : null;
   const inversions = useMemo(
-    () => (invVoicing ? getInversions(selectedNote, invVoicing) : null),
-    [selectedNote, invVoicing]
+    () => {
+      if (!invVoicing) return null;
+      return changesUpperStrings(tuning)
+        ? retunedInversions(selectedNote, invVoicing, tuning)
+        : getInversions(selectedNote, invVoicing);
+    },
+    [selectedNote, invVoicing, tuning]
   );
 
   const inversionsContent = inversions ? (

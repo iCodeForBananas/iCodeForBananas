@@ -7,7 +7,7 @@ import { Select } from "@radix-ui/themes";
 import { Bento } from "@/app/components/ui/bento";
 import { STANDARD_TUNING, type GuitarTuning } from "../lib/tunings";
 
-const VOICING_OPTION_ORDER = ["Open / Standard", "E-Shape Barre", "A-Shape Barre"];
+const VOICING_OPTION_ORDER = ["Full Barre", "Open / Standard", "E-Shape Barre", "A-Shape Barre"];
 
 /**
  * One chord type (Major, m7, Sus2, ...) for one root: its diagram, plus a
