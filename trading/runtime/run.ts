@@ -12,6 +12,7 @@
 import type { StrategyDefinition } from '@/app/strategies/types';
 import { DATA_DELAY_MS, INTERVALS, SOURCE_INTERVAL, isDaily, type Interval, type ResolvedDeployment } from './config';
 import { aggregateBars, computeSeries, parseBars, parseDailyBars, sessionClose, type ParsedBars } from './market';
+import type { EquityReporter } from './equity-report';
 import { emfFields, type MetricName } from './metrics';
 import { etDate, etParts, etStamp, etWallToUtcMs, isRegularSessionClose } from './time';
 import type { TradierApi, TradierOrder } from './tradier';
@@ -104,6 +105,8 @@ export interface RunDeps {
   sleep: (ms: number) => Promise<void>;
   /** Receives the one JSON log line. */
   log: (line: string) => void;
+  /** Publishes each processed bar's equity to the public dashboard. Best effort. */
+  equityReporter?: EquityReporter;
 }
 
 export interface RunResult {
@@ -481,7 +484,8 @@ export async function runDeployment(d: ResolvedDeployment, event: RunEvent | und
 
     // Metrics after fills, marked to the bar's close.
     const unrealized = unrealizedAt(current.close);
-    metrics.StrategyEquity = state.allocationBase + state.realizedPnlTotal + unrealized;
+    const strategyEquity = state.allocationBase + state.realizedPnlTotal + unrealized;
+    metrics.StrategyEquity = strategyEquity;
     metrics.RealizedPnlTotal = state.realizedPnlTotal;
     metrics.RealizedPnlToday = state.realizedPnlToday;
     metrics.UnrealizedPnl = unrealized;
@@ -501,6 +505,28 @@ export async function runDeployment(d: ResolvedDeployment, event: RunEvent | und
     if (!dryRun) {
       await store.save(state, newest.time);
       log.stateWritten = true;
+      // After the save, and never fatal: a dashboard outage must not touch trading.
+      if (deps.equityReporter) {
+        try {
+          await deps.equityReporter.report({
+            deploymentId: d.id,
+            barTime: barClose,
+            strategyId: d.strategyId,
+            symbol: d.symbol,
+            interval: d.interval,
+            equity: strategyEquity,
+            realizedPnl: state.realizedPnlTotal,
+            unrealizedPnl: unrealized,
+            positionShares: metrics.PositionShares,
+            tradesClosed: state.tradesClosed,
+            winningTrades: state.winningTrades,
+          });
+          log.equityReported = true;
+        } catch (err) {
+          log.equityReported = false;
+          log.equityReportError = (err as Error).message;
+        }
+      }
     } else {
       log.stateWritten = false;
     }

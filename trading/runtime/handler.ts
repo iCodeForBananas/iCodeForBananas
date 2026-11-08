@@ -12,12 +12,14 @@ import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb';
 import { GetSecretValueCommand, SecretsManagerClient } from '@aws-sdk/client-secrets-manager';
 import type { ResolvedDeployment } from './config';
+import { createEquityReporter, type EquityReporterConfig } from './equity-report';
 import { runDeployment, type DeploymentState, type RunEvent, type StateStore } from './run';
 import { createTradierClient, type TradierCreds } from './tradier';
 import strategy from '@trading/strategy';
 
 const TABLE_NAME = process.env.TABLE_NAME;
 const SECRET_ID = process.env.SECRET_ID;
+const EQUITY_SECRET_ID = process.env.EQUITY_SECRET_ID;
 const DEPLOYMENT: ResolvedDeployment = JSON.parse(process.env.DEPLOYMENT ?? 'null');
 if (!TABLE_NAME || !SECRET_ID || !DEPLOYMENT) throw new Error('TABLE_NAME, SECRET_ID and DEPLOYMENT must be set');
 
@@ -35,6 +37,15 @@ async function loadCreds(): Promise<TradierCreds> {
 
 // Module scope, so the credential cache survives warm invocations.
 const tradier = createTradierClient(loadCreds);
+
+async function loadEquityConfig(): Promise<EquityReporterConfig> {
+  const res = await secrets.send(new GetSecretValueCommand({ SecretId: EQUITY_SECRET_ID }));
+  const parsed = JSON.parse(res.SecretString ?? '{}');
+  if (!parsed.url || !parsed.publishableKey || !parsed.token) throw new Error('Equity reporter secret is missing url, publishableKey or token');
+  return { url: parsed.url, publishableKey: parsed.publishableKey, token: parsed.token };
+}
+
+const equityReporter = createEquityReporter(loadEquityConfig);
 
 const store: StateStore = {
   async load(pk) {
@@ -58,6 +69,7 @@ export const handler = (event?: RunEvent) =>
     strategy,
     tradier,
     store,
+    equityReporter,
     now: Date.now,
     sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
     log: (line) => console.log(line),

@@ -95,6 +95,19 @@ deployments together, then a section per deployment with current values,
 totals over the selected range, graphs and a table of its latest decisions.
 Dry runs never publish metrics.
 
+## Live stats: the public page
+
+After each processed bar a Lambda also reports its equity to Supabase, for the
+public [`/trading-equity`](../app/trading-equity) page: every live deployment
+scaled to start at $10,000 on its first report, no AWS sign-in needed. The report
+runs after the state write, is capped at 4 seconds and is never fatal; a failure
+only adds `equityReported: false` and `equityReportError` to the run's log line.
+
+The Lambdas write through `report_trading_equity`, which accepts only a token
+whose SHA-256 is in `trading_equity_reporters`. The token, the Supabase URL and
+the publishable key live in the secret `EQUITY_REPORTER_SECRET_NAME`, outside
+the stack (JSON `{"url": "...", "publishableKey": "...", "token": "..."}`).
+
 ## Operations
 
 | | |

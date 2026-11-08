@@ -25,6 +25,7 @@ export const LINKS: { href: string; text: string; category: Category; auth?: boo
   { href: "/songwriter", text: "Songwriter", category: "Music", abbr: "SW" },
   // Trading
   { href: "/algo-backtest", text: "Algo Backtest", category: "Trading", abbr: "AB" },
+  { href: "/trading-equity", text: "Trading Equity", category: "Trading", abbr: "TE" },
   // Tools
   { href: "/workout-tracker", text: "Workout Tracker", category: "Tools" },
   // Education

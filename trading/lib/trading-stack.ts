@@ -26,6 +26,7 @@ const REPO_ROOT = path.join(TRADING_DIR, '..');
 export interface TradingStackProps extends StackProps {
   deployments: ResolvedDeployment[];
   tradierSecretName: string;
+  equityReporterSecretName: string;
 }
 
 /** Every bar close on weekdays, 04:00-20:59 ET: pre-market, regular and after-hours. */
@@ -64,6 +65,7 @@ export class TradingStack extends Stack {
     });
 
     const secret = secretsmanager.Secret.fromSecretNameV2(this, 'TradierSecret', props.tradierSecretName);
+    const equitySecret = secretsmanager.Secret.fromSecretNameV2(this, 'EquityReporterSecret', props.equityReporterSecretName);
 
     const schedulerRole = new iam.Role(this, 'SchedulerRole', {
       assumedBy: new iam.ServicePrincipal('scheduler.amazonaws.com', {
@@ -101,6 +103,7 @@ export class TradingStack extends Stack {
         environment: {
           TABLE_NAME: table.tableName,
           SECRET_ID: props.tradierSecretName,
+          EQUITY_SECRET_ID: props.equityReporterSecretName,
           DEPLOYMENT: JSON.stringify(d),
           NODE_OPTIONS: '--enable-source-maps',
         },
@@ -118,6 +121,7 @@ export class TradingStack extends Stack {
       });
       table.grant(fn, 'dynamodb:GetItem', 'dynamodb:PutItem');
       secret.grantRead(fn);
+      equitySecret.grantRead(fn);
       fn.grantInvoke(schedulerRole);
 
       const schedule = new scheduler.CfnSchedule(this, `Schedule-${d.id}`, {

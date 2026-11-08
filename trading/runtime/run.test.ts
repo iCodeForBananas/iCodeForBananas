@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { AVAILABLE_STRATEGIES } from '@/app/strategies';
 import { DATA_DELAY_MS, resolveDeployment, type ResolvedDeployment } from './config';
+import type { EquityReporter, EquitySnapshot } from './equity-report';
 import { expectedBarClose, runDeployment, type DeploymentState, type RunDeps, type RunEvent } from './run';
 import { etParts, etWallToUtcMs } from './time';
 import type { HistoryRow, TradierApi, TradierOrder, TradierPosition, TimesalesRow } from './tradier';
@@ -320,6 +321,63 @@ describe('runDeployment', () => {
     await expect(h.run()).rejects.toThrow('Tradier 400');
     expect(h.log().level).toBe('error');
     expect(h.log().Errors).toBe(1);
+  });
+});
+
+describe('equity reporting', () => {
+  const reporter = (impl: () => Promise<void> = async () => {}) => {
+    const reports: EquitySnapshot[] = [];
+    return { reports, equityReporter: { report: async (s: EquitySnapshot) => { reports.push(s); await impl(); } } };
+  };
+  const runWith = (h: ReturnType<typeof harness>, equityReporter: EquityReporter, event?: RunEvent) =>
+    runDeployment(DEPLOYMENT, event, { ...h.deps, equityReporter, strategy: AVAILABLE_STRATEGIES[DEPLOYMENT.strategyId] });
+
+  it('reports equity marked to the bar close, after the state is saved', async () => {
+    const h = harness({ rows: makeRows({ lastIbs: 0.5 }) });
+    const r = reporter(async () => {
+      expect(h.saved).toHaveLength(1);
+    });
+    await runWith(h, r.equityReporter);
+    expect(r.reports).toEqual([
+      {
+        deploymentId: DEPLOYMENT.id,
+        barTime: BOUNDARY,
+        strategyId: 'ibs-mean-reversion',
+        symbol: 'QQQ',
+        interval: '15min',
+        equity: 100_000,
+        realizedPnl: 0,
+        unrealizedPnl: 0,
+        positionShares: 0,
+        tradesClosed: 0,
+        winningTrades: 0,
+      },
+    ]);
+    expect(h.log().equityReported).toBe(true);
+  });
+
+  it('carries on when the report fails, and logs why', async () => {
+    const h = harness({ rows: makeRows({ lastIbs: 0.5 }) });
+    const result = await runWith(h, reporter(async () => { throw new Error('Supabase 500'); }).equityReporter);
+    expect(result.ok).toBe(true);
+    expect(h.saved).toHaveLength(1);
+    expect(h.log().equityReported).toBe(false);
+    expect(h.log().equityReportError).toBe('Supabase 500');
+    expect(h.log().Errors).toBeUndefined();
+  });
+
+  it('does not report a dry run', async () => {
+    const h = harness({ rows: makeRows({ lastIbs: 0.5 }) });
+    const r = reporter();
+    await runWith(h, r.equityReporter, { dryRun: true });
+    expect(r.reports).toEqual([]);
+  });
+
+  it('does not report a bar it skipped', async () => {
+    const h = harness({ rows: makeRows({ lastIbs: 0.5, lastClose: BOUNDARY - BAR }) });
+    const r = reporter();
+    await runWith(h, r.equityReporter);
+    expect(r.reports).toEqual([]);
   });
 });
 

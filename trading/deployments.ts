@@ -123,3 +123,10 @@ export const DEPLOYMENTS: Deployment[] = [
  * touches the credentials.
  */
 export const TRADIER_SECRET_NAME = 'tradier-paper-ibs-mean-reversion-qqq/tradier-sandbox';
+
+/**
+ * Where the Lambdas report equity for the public /trading-equity page: JSON
+ * {"url": "...", "publishableKey": "...", "token": "..."}. Also created outside
+ * the stack; until it exists, runs log the failed report and trade as normal.
+ */
+export const EQUITY_REPORTER_SECRET_NAME = 'tradier-trading/equity-reporter';

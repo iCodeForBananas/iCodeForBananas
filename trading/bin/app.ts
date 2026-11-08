@@ -2,7 +2,7 @@
 //   cd trading && npx cdk deploy
 
 import { App, Tags } from 'aws-cdk-lib';
-import { DEPLOYMENTS, TRADIER_SECRET_NAME } from '../deployments';
+import { DEPLOYMENTS, EQUITY_REPORTER_SECRET_NAME, TRADIER_SECRET_NAME } from '../deployments';
 import { resolveDeployment, validateDeployments } from '../runtime/config';
 import { TradingStack } from '../lib/trading-stack';
 
@@ -18,5 +18,6 @@ new TradingStack(app, 'TradierTrading', {
   env: { account: process.env.CDK_DEFAULT_ACCOUNT, region: process.env.CDK_DEFAULT_REGION },
   deployments: DEPLOYMENTS.map(resolveDeployment),
   tradierSecretName: TRADIER_SECRET_NAME,
+  equityReporterSecretName: EQUITY_REPORTER_SECRET_NAME,
 });
 Tags.of(app).add('app', 'tradier-trading');
