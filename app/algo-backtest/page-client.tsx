@@ -5,24 +5,8 @@ import BacktestChart from "../components/BacktestChart";
 import EquityCurveChart from "../components/EquityCurveChart";
 import BentoPageLayout from "../components/BentoPageLayout";
 import { Bento } from "../components/ui/bento";
-import {
-  Badge,
-  Box,
-  Button,
-  Callout,
-  Checkbox,
-  CheckboxGroup,
-  Code,
-  Flex,
-  Grid,
-  IconButton,
-  SegmentedControl,
-  Strong,
-  Switch,
-  Table,
-  Text,
-  TextField,
-} from "@radix-ui/themes";
+import { Badge, Box, Callout, Checkbox, CheckboxGroup, Code, Flex, Grid, SegmentedControl, Strong, Switch, Table, Text, TextField } from "@radix-ui/themes";
+import { Button } from "@/app/components/ui/button";
 import { Check, ChevronDown, ClipboardCopy, Play, Trash2, X, Zap } from "lucide-react";
 import { cn } from "@/app/lib/utils";
 import { IndicatorData, PositionSide } from "@/app/types";
@@ -1085,7 +1069,7 @@ export default function AlgoBacktestPage() {
               actions={
                 <>
                   <Button
-                    size='1'
+                    size='sm'
                     variant='ghost'
                     onClick={() => setSelectedFiles((prev) => [...new Set([...prev, ...filteredDatasets.map((ds) => ds.file)])])}
                     title={datasetSearch ? "Select every dataset matching the search" : "Select every dataset"}
@@ -1093,9 +1077,8 @@ export default function AlgoBacktestPage() {
                     All
                   </Button>
                   <Button
-                    size='1'
+                    size='sm'
                     variant='ghost'
-                    color='gray'
                     onClick={() => setSelectedFiles([])}
                     disabled={selectedFiles.length === 0}
                   >
@@ -1122,9 +1105,8 @@ export default function AlgoBacktestPage() {
                       return (
                         <Button
                           key={tf}
-                          size='1'
-                          variant={allSelected ? "solid" : "soft"}
-                          color={allSelected ? undefined : "gray"}
+                          size='sm'
+                          variant={allSelected ? "primary" : "secondary"}
                           onClick={() => toggleTimeframe(tf)}
                           aria-pressed={allSelected}
                         >
@@ -1152,18 +1134,17 @@ export default function AlgoBacktestPage() {
                   // hiding, so a selection can never be invisible.
                   <Flex wrap='wrap' gap='1' aria-label='Selected datasets'>
                     {selectedFiles.map((file) => (
-                      <Badge key={file} variant='soft' className='gap-1 pr-0.5'>
+                      <Badge key={file} variant='soft' className='gap-1 pr-1'>
                         {availableDatasets.find((ds) => ds.file === file)?.label ?? file}
-                        <IconButton
-                          size='1'
+                        <Button
+                          size='icon-sm'
                           variant='ghost'
-                          radius='full'
                           aria-label={`Remove ${availableDatasets.find((ds) => ds.file === file)?.label ?? file}`}
                           onClick={() => setSelectedFiles((prev) => prev.filter((f) => f !== file))}
                           className='m-0 h-4 w-4 min-w-0'
                         >
                           <X className='h-3 w-3' />
-                        </IconButton>
+                        </Button>
                       </Badge>
                     ))}
                   </Flex>
@@ -1176,7 +1157,7 @@ export default function AlgoBacktestPage() {
               actions={
                 <>
                   <Button
-                    size='1'
+                    size='sm'
                     variant='ghost'
                     onClick={() =>
                       setSelectedStrategyIds(selectedStrategyIds.length === allStrategyIds.length ? [] : allStrategyIds)
@@ -1247,16 +1228,15 @@ export default function AlgoBacktestPage() {
                             {s.name}
                           </Text>
                           {hasParams && (
-                            <IconButton
-                              size='1'
+                            <Button
+                              size='icon-sm'
                               variant='ghost'
-                              color='gray'
                               onClick={toggleExpand}
                               aria-label={isExpanded ? `Collapse ${s.name} settings` : `Expand ${s.name} settings`}
                               aria-expanded={isExpanded}
                             >
                               <ChevronDown className={cn("size-4 transition-transform", isExpanded && "rotate-180")} />
-                            </IconButton>
+                            </Button>
                           )}
                         </Flex>
 
@@ -1289,7 +1269,7 @@ export default function AlgoBacktestPage() {
                                           onChange={(raw) => setBound("min", raw)}
                                           className='w-20'
                                         />
-                                        <Text size='1' color='gray' className='pb-1.5'>
+                                        <Text size='1' color='gray' className='pb-2'>
                                           →
                                         </Text>
                                         <NumberField
@@ -1323,7 +1303,7 @@ export default function AlgoBacktestPage() {
                                     </Flex>
                                   );
                                 })}
-                                <Button size='1' variant='ghost' onClick={() => setSelectedStrategyId(s.id)}>
+                                <Button size='sm' variant='ghost' onClick={() => setSelectedStrategyId(s.id)}>
                                   Edit →
                                 </Button>
                               </Flex>
@@ -1626,9 +1606,8 @@ export default function AlgoBacktestPage() {
                   {lastRunCache && !lastRunCache.enabled && <> · caching unavailable</>}
                 </Text>
                 <Button
-                  size='1'
+                  size='sm'
                   variant='ghost'
-                  color='gray'
                   onClick={() => void clearCache()}
                   disabled={isRunningBatch || cachedCount === 0}
                 >
@@ -1637,8 +1616,8 @@ export default function AlgoBacktestPage() {
                 </Button>
               </Flex>
             )}
-            <Button
-              size='3'
+            <Button variant="primary"
+              size='lg'
               onClick={runBatchBacktest}
               disabled={isRunningBatch || selectedFiles.length === 0 || selectedStrategyIds.length === 0}
               className='w-full sm:w-auto'
@@ -1734,9 +1713,8 @@ export default function AlgoBacktestPage() {
                         </Flex>
                       </Text>
                       <Button
-                        size='1'
-                        variant='soft'
-                        color={copied ? "green" : "gray"}
+                        size='sm'
+                        variant="secondary"
                         onClick={copyReport}
                         title='Copy backtest report as markdown for LLM review'
                       >
@@ -1744,9 +1722,8 @@ export default function AlgoBacktestPage() {
                         {copied ? "Copied!" : "Copy report"}
                       </Button>
                       <Button
-                        size='1'
-                        variant='soft'
-                        color={lambdaPromptCopied ? "green" : undefined}
+                        size='sm'
+                        variant="secondary"
                         onClick={copyLambdaPrompt}
                         title='Copy a prompt that has Claude write an AWS Lambda that paper-trades this strategy through the Tradier sandbox'
                       >

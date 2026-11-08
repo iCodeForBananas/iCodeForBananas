@@ -156,7 +156,7 @@ export default function ChordInversionsPage() {
   const seconds = useMemo(() => getInversions(selectedNote, voicing, "second"), [selectedNote, voicing]);
 
   const Section = ({ title, subtitle, items }: { title: string; subtitle: string; items: InversionShape[] }) => (
-    <div className='mb-10'>
+    <div className='mb-8'>
       <h3 className='text-xl font-bold mb-1' style={{ color: "var(--ds-color-text-primary)" }}>
         {title}
       </h3>
@@ -184,14 +184,14 @@ export default function ChordInversionsPage() {
                         selectedNote === note ||
                         (flatToSharp[selectedNote] ?? selectedNote) === (flatToSharp[note] ?? note);
                       return (
-                        <ToggleButton key={note} size='1' pressed={active} onClick={() => setSelectedNote(note)}>
+                        <ToggleButton key={note} size='sm' pressed={active} onClick={() => setSelectedNote(note)}>
                           {note}
                         </ToggleButton>
                       );
                     })}
                     <span className='mx-1 text-ink-muted'>|</span>
                     <ToggleButton
-                      size='1'
+                      size='sm'
                       pressed={useFlats}
                       onClick={() => {
                         const newVal = !useFlats;
@@ -213,7 +213,7 @@ export default function ChordInversionsPage() {
                   <p className='text-xs font-semibold text-ink-muted uppercase tracking-wider mb-2'>Voicing</p>
                   <div className='flex gap-2'>
                     {VOICINGS.map((v) => (
-                      <ToggleButton key={v} size='1' pressed={voicing === v} onClick={() => setVoicing(v)}>
+                      <ToggleButton key={v} size='sm' pressed={voicing === v} onClick={() => setVoicing(v)}>
                         {v}
                       </ToggleButton>
                     ))}

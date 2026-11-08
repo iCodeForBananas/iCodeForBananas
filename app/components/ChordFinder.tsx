@@ -151,7 +151,7 @@ export default function ChordFinder({
         <Bento className='flex items-center justify-between gap-3'>
           <div>
             <span className='text-10 font-semibold text-ink-muted uppercase tracking-wider'>Previewing</span>
-            <div className='flex items-baseline gap-2 mt-0.5'>
+            <div className='flex items-baseline gap-2 mt-1'>
               <span className='text-20 font-semibold text-ink-primary'>{pinnedChord.name}</span>
               <span className='text-13 text-ink-muted'>{pinnedChord.notes.join(" – ")}</span>
             </div>
@@ -244,13 +244,13 @@ export default function ChordFinder({
       {/* Chord Results */}
       <div className='space-y-4'>
         {selectedNotes.length === 0 && (
-          <div className='rounded-xl border border-dashed border-line-subtle p-8 text-center text-ink-muted'>
+          <div className='rounded-lg border border-dashed border-line-subtle p-8 text-center text-ink-muted'>
             Select notes on the fretboard above to identify chords
           </div>
         )}
 
         {selectedNotes.length > 0 && exactMatches.length === 0 && partialMatches.length === 0 && (
-          <div className='rounded-xl border border-dashed border-line-strong p-6 text-center text-ink-muted'>
+          <div className='rounded-lg border border-dashed border-line-strong p-6 text-center text-ink-muted'>
             No matching chords found — try selecting different notes
           </div>
         )}

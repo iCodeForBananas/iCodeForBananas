@@ -37,13 +37,13 @@ export default function BentoPageLayout({
             <div
               className={
                 headerActions
-                  ? "flex flex-col gap-3 px-4 pt-2 pb-1.5 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:pt-3 sm:pb-2.5"
-                  : "px-4 pt-2 pb-1.5 sm:px-6 sm:pt-3 sm:pb-2.5"
+                  ? "flex flex-col gap-3 px-4 pt-2 pb-2 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:pt-3 sm:pb-3"
+                  : "px-4 pt-2 pb-2 sm:px-6 sm:pt-3 sm:pb-3"
               }
             >
               {/* Below lg the sidebar collapses to a fixed hamburger button in the top-left corner; clear it. */}
-              <div className='flex flex-col gap-0.5 min-w-0 pl-8 lg:pl-0'>
-                {breadcrumbs && breadcrumbs.length > 0 && <Breadcrumbs items={breadcrumbs} className='-ml-1.5' />}
+              <div className='flex flex-col gap-1 min-w-0 pl-8 lg:pl-0'>
+                {breadcrumbs && breadcrumbs.length > 0 && <Breadcrumbs items={breadcrumbs} className='-ml-2' />}
                 <div className='flex items-center gap-3'>
                   <Heading as='h1' size={{ initial: "5", sm: "6" }} weight='bold' className={titleClassName}>
                     {title}

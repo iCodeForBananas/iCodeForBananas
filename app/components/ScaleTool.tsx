@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Button, Select, Slider } from "@radix-ui/themes";
+import { Select, Slider } from "@radix-ui/themes";
+import { Button } from "@/app/components/ui/button";
 import { Bento } from "@/app/components/ui/bento";
 import { allNotes, getNoteAt } from "@/app/lib/music";
 import {
@@ -33,8 +34,8 @@ const SCALE_TYPES: Record<string, { intervals: number[]; degrees: string[]; tona
  * Which of the five CAGED shapes a note belongs to. That is identity, not
  * importance — no shape outranks another — which is exactly what color.track
  * is for, so they take the categorical set in CAGED order and nothing here
- * names a hue. All five carry the same near-black label; see the amber rule
- * in tokens/README.
+ * names a hue. All five carry text.on-primary; see "Labels on a fill" in
+ * tokens/README.
  */
 const SHAPE_COLOURS: Record<CagedKey, { fill: string; stroke: string }> = {
   C: { fill: "var(--ds-color-track-1)", stroke: "var(--ds-color-border-strong)" },
@@ -180,7 +181,7 @@ export default function ScaleTool({ rootKey, tuning }: { rootKey: string; tuning
   };
 
   return (
-    <div className="flex flex-col gap-5 min-w-0">
+    <div className="flex flex-col gap-4 min-w-0">
       {/* Controls */}
       <div className="flex flex-wrap gap-4 items-end">
         <label className="flex flex-col gap-1" title="The type of scale — each scale has a unique pattern of notes that gives it a distinctive sound and mood">
@@ -195,7 +196,7 @@ export default function ScaleTool({ rootKey, tuning }: { rootKey: string; tuning
           </Select.Root>
         </label>
 
-        <label className="flex flex-col gap-1.5" title="How many frets to display on the neck — drag to see more or fewer positions">
+        <label className="flex flex-col gap-2" title="How many frets to display on the neck — drag to see more or fewer positions">
           <span className="text-10 font-semibold uppercase tracking-wider text-ink-muted">
             Frets: {numFrets}
           </span>
@@ -214,17 +215,16 @@ export default function ScaleTool({ rootKey, tuning }: { rootKey: string; tuning
         </label>
 
         <div
-          className="flex flex-col gap-1.5"
+          className="flex flex-col gap-2"
           title="CAGED: the five chord shapes a guitar can hold, and the five places on the neck the scale sits around them. Pick one to drill it, or show every note at once."
         >
           <span className="text-10 font-semibold uppercase tracking-wider text-ink-muted">
             CAGED shape
           </span>
-          <div className="flex gap-1.5">
+          <div className="flex gap-2">
             <Button
               type="button"
-              variant={selectedShape === null ? "solid" : "surface"}
-              color={selectedShape === null ? undefined : "gray"}
+              variant={selectedShape === null ? "primary" : "secondary"}
               aria-pressed={selectedShape === null}
               onClick={() => chooseShape("all")}
               title="Show every note of the scale on the whole neck, with the root note marked"
@@ -240,7 +240,7 @@ export default function ScaleTool({ rootKey, tuning }: { rootKey: string; tuning
                   type="button"
                   onClick={() => chooseShape(key)}
                   title={`${key} shape — ${CAGED_BLURB[key]}`}
-                  className="rounded-lg px-2.5 py-1 text-sm font-semibold cursor-pointer"
+                  className="rounded-lg px-3 py-1 text-sm font-semibold cursor-pointer"
                   style={{
                     background: active ? colour.fill : "var(--ds-color-surface-sunken)",
                     color: active ? "var(--ds-color-text-on-primary)" : colour.fill,
@@ -256,7 +256,7 @@ export default function ScaleTool({ rootKey, tuning }: { rootKey: string; tuning
       </div>
 
       {/* Fretboard */}
-      <div className="overflow-x-auto rounded-xl" style={{ background: BOARD_BG }}>
+      <div className="overflow-x-auto rounded-lg" style={{ background: BOARD_BG }}>
         <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ display: "block" }}>
           {/* Background */}
           <rect width={W} height={H} fill={BOARD_BG} />

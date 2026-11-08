@@ -133,7 +133,7 @@ export default function InstallPrompt() {
           <img src='/icons/icon-192.png' alt='' className='h-10 w-10 shrink-0' />
           <div className='min-w-0 flex-1'>
             <p className='text-13 font-medium text-ink-primary'>Install iCodeForBananas</p>
-            <p className='mt-0.5 text-12 text-ink-muted'>
+            <p className='mt-1 text-12 text-ink-muted'>
               Add it to your home screen — full screen, no address bar.
             </p>
           </div>

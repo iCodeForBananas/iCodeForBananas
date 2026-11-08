@@ -7,17 +7,15 @@
 @import "@radix-ui/themes/styles.css" layer(radix);
 @import "./tokens.css";
 
-/* ── Radix Themes, bound to the brand ────────────────────────────────────
+/* ── Radix Themes, bound to the iTerm schemes ────────────────────────────
    Every Radix component reads these, so pointing them at Layer 2 tokens is
-   what keeps one palette: the surfaces are the navy ramp, the accent is School
-   Bus Yellow with its near-black label, text is the same two inks Tailwind's
-   text-ink-* use, and all of it flips with data-theme like everything else.
-   Radix still supplies its own gray alpha steps for hairlines and soft fills;
-   those are tints of whatever sits underneath, so they follow along.
+   what keeps one palette. Radix ships its own 26 hue scales and a gray; left
+   alone, `color="red"` or `<Text color="gray">` paint Radix's colors rather
+   than the scheme's, so all of them are replaced here, not just the accent.
 
-   Unlayered on purpose, so it outranks the radix layer it overrides. A
-   component given its own color (color="red") re-declares --accent-* on
-   itself, which is closer than .radix-themes, so that keeps working. */
+   Unlayered on purpose, so it outranks the radix layer it overrides. Every
+   component that takes a color resolves it through [data-accent-color], which
+   is why rewriting --accent-* per hue reaches all of them. */
 .radix-themes {
   --default-font-family: var(--ds-font-sans);
   --heading-font-family: var(--ds-font-display);
@@ -29,13 +27,35 @@
   --color-surface: var(--ds-color-surface-sunken);
   --color-overlay: color-mix(in oklch, var(--ds-color-surface-sunken) 70%, transparent);
 
-  --gray-12: var(--ds-color-text-primary);
+  --gray-1: color-mix(in oklab, var(--ds-color-text-primary) 2%, var(--ds-color-surface-base));
+  --gray-2: color-mix(in oklab, var(--ds-color-text-primary) 4%, var(--ds-color-surface-base));
+  --gray-3: color-mix(in oklab, var(--ds-color-text-primary) 8%, var(--ds-color-surface-base));
+  --gray-4: color-mix(in oklab, var(--ds-color-text-primary) 12%, var(--ds-color-surface-base));
+  --gray-5: color-mix(in oklab, var(--ds-color-text-primary) 16%, var(--ds-color-surface-base));
+  --gray-6: color-mix(in oklab, var(--ds-color-text-primary) 20%, var(--ds-color-surface-base));
+  --gray-7: color-mix(in oklab, var(--ds-color-text-primary) 28%, var(--ds-color-surface-base));
+  --gray-8: color-mix(in oklab, var(--ds-color-text-primary) 40%, var(--ds-color-surface-base));
+  --gray-9: var(--ds-color-text-muted);
+  --gray-10: color-mix(in oklab, var(--ds-color-text-muted) 85%, var(--ds-color-text-primary));
   --gray-11: var(--ds-color-text-muted);
+  --gray-12: var(--ds-color-text-primary);
+  --gray-a1: color-mix(in oklab, var(--ds-color-text-primary) 2%, transparent);
+  --gray-a2: color-mix(in oklab, var(--ds-color-text-primary) 4%, transparent);
+  --gray-a3: color-mix(in oklab, var(--ds-color-text-primary) 8%, transparent);
+  --gray-a4: color-mix(in oklab, var(--ds-color-text-primary) 12%, transparent);
+  --gray-a5: color-mix(in oklab, var(--ds-color-text-primary) 16%, transparent);
+  --gray-a6: color-mix(in oklab, var(--ds-color-text-primary) 20%, transparent);
+  --gray-a7: color-mix(in oklab, var(--ds-color-text-primary) 28%, transparent);
+  --gray-a8: color-mix(in oklab, var(--ds-color-text-primary) 40%, transparent);
+  --gray-a9: color-mix(in oklab, var(--ds-color-text-primary) 55%, transparent);
+  --gray-a10: color-mix(in oklab, var(--ds-color-text-primary) 62%, transparent);
+  --gray-a11: var(--ds-color-text-muted);
+  --gray-a12: var(--ds-color-text-primary);
+  --gray-contrast: var(--ds-color-surface-base);
+  --gray-surface: var(--gray-a2);
+  --gray-indicator: var(--ds-color-text-muted);
+  --gray-track: var(--ds-color-text-muted);
 
-  --accent-9: var(--ds-color-primary-solid);
-  --accent-10: var(--ds-color-primary-hover);
-  --accent-11: var(--ds-color-primary-text);
-  --accent-contrast: var(--ds-color-text-on-primary);
   --focus-8: var(--ds-color-focus-ring);
 
   --cursor-button: pointer;
@@ -45,6 +65,133 @@
   --cursor-menu-item: pointer;
   --cursor-slider-thumb: grab;
   --cursor-slider-thumb-active: grabbing;
+}
+
+/* Radix's hues, collapsed onto the six the schemes have. */
+[data-accent-color="tomato"],
+[data-accent-color="red"],
+[data-accent-color="ruby"],
+[data-accent-color="crimson"] {
+  --hue: var(--ds-color-ansi-red);
+  --hue-bright: var(--ds-color-ansi-bright-red);
+}
+
+[data-accent-color="pink"],
+[data-accent-color="plum"],
+[data-accent-color="purple"],
+[data-accent-color="violet"] {
+  --hue: var(--ds-color-ansi-magenta);
+  --hue-bright: var(--ds-color-ansi-bright-magenta);
+}
+
+[data-accent-color="iris"],
+[data-accent-color="indigo"],
+[data-accent-color="blue"],
+[data-accent-color="sky"] {
+  --hue: var(--ds-color-ansi-blue);
+  --hue-bright: var(--ds-color-ansi-bright-blue);
+}
+
+[data-accent-color="cyan"],
+[data-accent-color="teal"],
+[data-accent-color="jade"] {
+  --hue: var(--ds-color-ansi-cyan);
+  --hue-bright: var(--ds-color-ansi-bright-cyan);
+}
+
+[data-accent-color="green"],
+[data-accent-color="grass"],
+[data-accent-color="mint"],
+[data-accent-color="lime"] {
+  --hue: var(--ds-color-ansi-green);
+  --hue-bright: var(--ds-color-ansi-bright-green);
+}
+
+[data-accent-color="orange"],
+[data-accent-color="brown"],
+[data-accent-color="bronze"],
+[data-accent-color="gold"],
+[data-accent-color="yellow"] {
+  --hue: var(--ds-color-ansi-yellow);
+  --hue-bright: var(--ds-color-ansi-bright-yellow);
+}
+
+/* The app's accent. Amber is what <Theme> names; it means the cursor color. */
+[data-accent-color="amber"] {
+  --hue: var(--ds-color-primary-solid);
+  --hue-bright: var(--ds-color-primary-hover);
+}
+
+/* Gray keeps Radix's own wiring to the --gray-* steps set above. */
+[data-accent-color]:not([data-accent-color="gray"]) {
+  --accent-1: color-mix(in oklab, var(--hue) 3%, var(--ds-color-surface-base));
+  --accent-2: color-mix(in oklab, var(--hue) 5%, var(--ds-color-surface-base));
+  --accent-3: color-mix(in oklab, var(--hue) 10%, var(--ds-color-surface-base));
+  --accent-4: color-mix(in oklab, var(--hue) 14%, var(--ds-color-surface-base));
+  --accent-5: color-mix(in oklab, var(--hue) 18%, var(--ds-color-surface-base));
+  --accent-6: color-mix(in oklab, var(--hue) 24%, var(--ds-color-surface-base));
+  --accent-7: color-mix(in oklab, var(--hue) 32%, var(--ds-color-surface-base));
+  --accent-8: color-mix(in oklab, var(--hue) 45%, var(--ds-color-surface-base));
+  --accent-9: var(--hue);
+  --accent-10: var(--hue-bright);
+  --accent-11: var(--hue);
+  --accent-12: var(--hue);
+  --accent-a1: color-mix(in oklab, var(--hue) 3%, transparent);
+  --accent-a2: color-mix(in oklab, var(--hue) 5%, transparent);
+  --accent-a3: color-mix(in oklab, var(--hue) 10%, transparent);
+  --accent-a4: color-mix(in oklab, var(--hue) 14%, transparent);
+  --accent-a5: color-mix(in oklab, var(--hue) 18%, transparent);
+  --accent-a6: color-mix(in oklab, var(--hue) 24%, transparent);
+  --accent-a7: color-mix(in oklab, var(--hue) 32%, transparent);
+  --accent-a8: color-mix(in oklab, var(--hue) 45%, transparent);
+  --accent-a9: var(--hue);
+  --accent-a10: var(--hue-bright);
+  --accent-a11: var(--hue);
+  --accent-a12: var(--hue);
+  /* Cursor Text: near-black on the dark scheme's pastels, near-white on the
+     light scheme's deep hues, so it carries on every hue in both. */
+  --accent-contrast: var(--ds-color-text-on-primary);
+  --accent-surface: var(--accent-a2);
+  --accent-indicator: var(--hue);
+  --accent-track: var(--hue);
+}
+
+.rt-Link {
+  color: var(--ds-color-link);
+}
+
+/* One corner for every button. Radix scales the radius with the size, which
+   puts four different corners in one toolbar. */
+/* In the utilities layer because that is the one that outranks Radix's, and
+   inside :where() so a utility class on the element still wins. */
+@layer utilities {
+  :where(.rt-BaseButton) {
+    --base-button-border-radius: var(--ds-radius-6);
+    border-radius: var(--ds-radius-6);
+  }
+
+  /* Radix leaves ghost buttons shorter than their siblings and pulls them out
+     with negative margins; here they take the same box as every other size. */
+  :where(.rt-BaseButton.rt-variant-ghost) {
+    box-sizing: border-box;
+    margin: 0;
+  }
+
+  :where(.rt-BaseButton.rt-variant-ghost.rt-r-size-1) {
+    height: var(--space-5);
+  }
+
+  :where(.rt-BaseButton.rt-variant-ghost.rt-r-size-2) {
+    height: var(--space-6);
+  }
+
+  :where(.rt-BaseButton.rt-variant-ghost.rt-r-size-3) {
+    height: var(--space-7);
+  }
+
+  :where(.rt-BaseButton.rt-variant-ghost.rt-r-size-4) {
+    height: var(--space-8);
+  }
 }
 
 /* Radix portals its menus, selects, popovers, tooltips and dialogs to the end
@@ -100,8 +247,8 @@
   --border: var(--ds-color-border-subtle);
   --muted: var(--ds-color-text-muted);
 
-  --selection-bg: var(--ds-color-primary-solid);
-  --selection-text: var(--ds-color-text-on-primary);
+  --selection-bg: var(--ds-color-selection-background);
+  --selection-text: var(--ds-color-selection-text);
 
   /* Chord diagram fretboard ink: strings, frets, nut, labels. One value now,
      where there used to be a near-black and a light grey swapped by hand at
@@ -144,6 +291,7 @@
   --color-primary-text: var(--ds-color-primary-text);
 
   --color-accent-solid: var(--ds-color-accent-solid);
+  --color-link: var(--ds-color-link);
 
   /* Identity, not importance. See color.track in tokens/. */
   --color-track-1: var(--ds-color-track-1);
@@ -241,10 +389,7 @@ main {
   min-height: 100vh;
 }
 
-/* The page is the base plane, in both themes. The banana yellow that used to
-   be the background is the brand accent now: it names the primary action and
-   the active state, and a full-bleed field of it is what made every surface
-   above it have to fight for contrast. */
+/* The page is the base plane, in both themes: the scheme's Background slot. */
 body {
   background: var(--ds-color-surface-base);
   color: var(--ds-color-text-primary);
@@ -350,10 +495,10 @@ optgroup {
    light-theme side of the token set rather than naming colours of their own:
    the surface is fixed here, so the pair that survives on it is fixed too. */
 .leadsheet-force-light .leadsheet-lyric {
-  color: var(--ds-palette-neutral-1) !important;
+  color: var(--ds-palette-light-foreground) !important;
 }
 .leadsheet-force-light .leadsheet-chord {
-  color: var(--ds-palette-amber-3) !important;
+  color: var(--ds-palette-light-cursor) !important;
 }
 
 /* ── Lead sheet multi-column layout ──────────────────────────────────────

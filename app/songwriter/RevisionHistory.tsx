@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { X, GitCompare, Clock } from "lucide-react";
-import { Button } from "@radix-ui/themes";
+import { Button } from "@/app/components/ui/button";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -197,7 +197,7 @@ export function RevisionHistory({
             <span className="text-sm text-ink-muted">{revisions.length} revision{revisions.length !== 1 ? "s" : ""}</span>
           )}
         </div>
-        <Button variant="ghost" color="gray" onClick={onClose}>
+        <Button variant="ghost" onClick={onClose}>
           <X className="w-4 h-4" />
           Close
         </Button>
@@ -229,10 +229,10 @@ export function RevisionHistory({
               >
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-xs font-mono font-semibold">Current</span>
-                  {selA?.id === "current" && <span className="text-[10px] font-bold bg-track-1 text-ink-primary rounded px-1">A</span>}
-                  {selB?.id === "current" && <span className="text-[10px] font-bold bg-primary-solid text-ink-on-primary rounded px-1">B</span>}
+                  {selA?.id === "current" && <span className="text-[10px] font-bold bg-track-1 text-ink-on-primary rounded-md px-1">A</span>}
+                  {selB?.id === "current" && <span className="text-[10px] font-bold bg-primary-solid text-ink-on-primary rounded-md px-1">B</span>}
                 </div>
-                <div className="text-xs text-ink-muted mt-0.5">Unsaved / current</div>
+                <div className="text-xs text-ink-muted mt-1">Unsaved / current</div>
               </button>
               {revisions.map((rev) => {
                 const isA = selA?.id === rev.id;
@@ -252,13 +252,12 @@ export function RevisionHistory({
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-xs font-mono font-semibold">#{rev.num}</span>
                       <div className="flex items-center gap-1">
-                        {isA && <span className="text-[10px] font-bold bg-track-1 text-ink-primary rounded px-1">A</span>}
-                        {isB && <span className="text-[10px] font-bold bg-primary-solid text-ink-on-primary rounded px-1">B</span>}
+                        {isA && <span className="text-[10px] font-bold bg-track-1 text-ink-on-primary rounded-md px-1">A</span>}
+                        {isB && <span className="text-[10px] font-bold bg-primary-solid text-ink-on-primary rounded-md px-1">B</span>}
                         <Button
                           asChild
-                          size="1"
-                          variant="soft"
-                          color="gray"
+                          size="sm"
+                          variant="secondary"
                           title="Restore this version"
                         >
                           {/* A span, not a nested <button>: this sits inside the row's own button. */}
@@ -279,7 +278,7 @@ export function RevisionHistory({
                         </Button>
                       </div>
                     </div>
-                    <div className="text-xs text-ink-muted mt-0.5" title={formatDate(rev.created_at)}>
+                    <div className="text-xs text-ink-muted mt-1" title={formatDate(rev.created_at)}>
                       {relativeTime(rev.created_at)}
                     </div>
                   </button>

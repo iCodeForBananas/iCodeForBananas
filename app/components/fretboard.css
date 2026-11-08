@@ -1,7 +1,7 @@
 /* The fretboard grid.
    Every colour is a Layer 2 token, so the board follows the app's theme rather
-   than pinning one: a fretted note is the primary fill with the near-black
-   label the amber rule requires, an open or in-scale note is a raised surface,
+   than pinning one: a fretted note is the primary fill with its
+   text.on-primary label, an open or in-scale note is a raised surface,
    and the wood between them is the sunken plane the whole board sits on. */
 
 .fretboard {
@@ -50,9 +50,8 @@
 
 /* Quiz feedback: a guess that turned out to be in the scale, and one that did
    not. A tint behind the note rather than a solid fill, because neither status
-   colour can carry a legible label in both themes — a near-black label clears
-   4.9:1 on danger in dark and only 3.4:1 in light. Putting the colour behind
-   ink text sidesteps that instead of picking a theme to fail in.
+   tint is the quieter signal here. Putting the colour behind ink text keeps
+   the note itself as legible as its neighbours.
 
    They live here rather than as utility classes on the element because .note
    sets its own colour, and a rule in the same stylesheet is what reliably wins
@@ -72,7 +71,7 @@
 /* Position variants of a highlighted note: which CAGED shape a note belongs to.
    That is identity rather than importance, which is what color.track is for, so
    they take the categorical set instead of four shades of the same yellow. All
-   four carry the same near-black label, for the reason in tokens/README. */
+   four carry text.on-primary, for the reason in tokens/README. */
 .note.highlight-p0 {
   background-color: var(--ds-color-track-1);
 }

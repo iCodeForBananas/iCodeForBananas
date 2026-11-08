@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { Minus, Plus } from "lucide-react";
-import { IconButton, TextField } from "@radix-ui/themes";
+import { TextField } from "@radix-ui/themes";
+import { Button } from "@/app/components/ui/button";
 import { ControlRow } from "./SidebarRows";
 
 export const MIN_BPM = 30;
@@ -23,17 +24,16 @@ export function TempoControl({ bpm, onBpmChange }: { bpm: number; onBpmChange: (
   // it instead of wrapping into a row of its own shape.
   return (
     <ControlRow label='Tempo'>
-      <IconButton
+      <Button
         type='button'
-        size='3'
-        variant='soft'
-        color='gray'
+        size='icon-lg'
+        variant='secondary'
         onClick={() => onBpmChange(bpm - 1)}
         disabled={bpm <= MIN_BPM}
         aria-label='Decrease tempo'
       >
         <Minus className='w-4 h-4' />
-      </IconButton>
+      </Button>
       <TextField.Root
         type='number'
         inputMode='numeric'
@@ -50,17 +50,16 @@ export function TempoControl({ bpm, onBpmChange }: { bpm: number; onBpmChange: (
         size='3'
         className='w-full [&_input]:text-center [&_input]:tabular-nums'
       />
-      <IconButton
+      <Button
         type='button'
-        size='3'
-        variant='soft'
-        color='gray'
+        size='icon-lg'
+        variant='secondary'
         onClick={() => onBpmChange(bpm + 1)}
         disabled={bpm >= MAX_BPM}
         aria-label='Increase tempo'
       >
         <Plus className='w-4 h-4' />
-      </IconButton>
+      </Button>
     </ControlRow>
   );
 }

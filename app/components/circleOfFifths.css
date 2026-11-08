@@ -84,8 +84,8 @@
   }
 }
 
-/* A major key is the primary fill, so its label is the near-black
-   text.on-primary and never white. See the amber rule in tokens/README. */
+/* A major key is the primary fill, so its label is text.on-primary.
+   See "Labels on a fill" in tokens/README. */
 .major-key {
   fill: var(--ds-color-primary-solid);
   stroke: var(--ds-color-border-strong);

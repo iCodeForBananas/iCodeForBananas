@@ -41,7 +41,7 @@ export function VisibilityPicker({
       <DropdownMenu.Content container={portal} align='start' className='min-w-72'>
         <DropdownMenu.Label>Who can see this</DropdownMenu.Label>
         {VISIBILITIES.map((option) => (
-          <DropdownMenu.Item key={option.value} onSelect={() => onChange(option.value)} className='h-auto py-1.5'>
+          <DropdownMenu.Item key={option.value} onSelect={() => onChange(option.value)} className='h-auto py-2'>
             <span className='flex-1'>
               <span className='block'>{option.label}</span>
               <span className='block text-12 opacity-70'>{option.help}</span>

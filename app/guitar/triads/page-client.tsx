@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useSyncExternalStore } from "react";
-import { Button, TextField } from "@radix-ui/themes";
+import { TextField } from "@radix-ui/themes";
+import { Button } from "@/app/components/ui/button";
 import { parseChordName } from "@/app/lib/chordShapes";
 import { formatChordLabel } from "@/app/lib/chordVoicings";
 import { useGuitarSettings } from "@/app/lib/guitarSettings";
@@ -216,9 +217,9 @@ export default function TriadsTool() {
   // in is the thing to hold still. A progression stacks one of those rows per
   // chord, in the order written, so the whole change reads top to bottom.
   const triadsContent = (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-2">
-        <label className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
+        <label className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
           <span
             className="text-xs font-semibold uppercase tracking-wider text-ink-muted shrink-0"
             title="Type the chords you want to play and every one of them gets its own row of triad shapes"
@@ -237,9 +238,8 @@ export default function TriadsTool() {
           {progressionText.trim() !== "" && (
             <Button
               type="button"
-              size="1"
-              variant="soft"
-              color="gray"
+              size="sm"
+              variant="secondary"
               onClick={() => updateProgression("")}
               title="Clear the progression and go back to the chord picked in Settings"
               className="shrink-0 self-start sm:self-center"
@@ -295,7 +295,7 @@ export default function TriadsTool() {
       {triadRows.map((row, idx) => (
         <div
           key={`${row.key}-${idx}`}
-          className={idx === 0 ? undefined : "border-t border-line-subtle pt-5"}
+          className={idx === 0 ? undefined : "border-t border-line-subtle pt-4"}
         >
           {/* A row only needs naming when there is more than one to tell apart. */}
           {triadRows.length > 1 && (

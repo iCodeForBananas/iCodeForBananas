@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
 import { LogIn, LogOut, Menu, Moon, Sun } from "lucide-react";
-import { IconButton } from "@radix-ui/themes";
+import { Button } from "@/app/components/ui/button";
 import { useAuth } from "@/app/hooks/useAuth";
 import { useTheme } from "@/app/lib/ThemeContext";
 import { cn } from "@/app/lib/utils";
@@ -101,7 +101,7 @@ export default function Sidebar() {
    * Hover used to be four inline style writes per link, which is why the whole
    * sidebar named its own colours: a :hover rule cannot be written inline.
    * With the tokens it is one class list, and the active state is the primary
-   * fill with the near-black label the amber rule requires.
+   * fill with its text.on-primary label.
    */
   const navLinkClass = (href: string) =>
     cn(
@@ -144,16 +144,15 @@ export default function Sidebar() {
   return (
     <>
       {!isOpen && isMobile && (
-        <IconButton
+        <Button
           onClick={toggle}
-          variant='surface'
-          color='gray'
-          size='3'
+          variant='secondary'
+          size='icon-lg'
           className='fixed top-1 left-1 z-[60] print:hidden'
           aria-label='Open sidebar'
         >
           <Menu className='h-5 w-5' />
-        </IconButton>
+        </Button>
       )}
 
       {isOpen && isMobile && (
@@ -175,15 +174,14 @@ export default function Sidebar() {
         )}
       >
         <div className='h-[42px] w-full flex items-center justify-center shrink-0 border-b border-line-subtle'>
-          <IconButton
+          <Button
             onClick={toggle}
             variant='ghost'
-            color='gray'
-            size='2'
+            size='icon'
             aria-label={isOpen ? "Close sidebar" : "Open sidebar"}
           >
             <Menu className='h-5 w-5' />
-          </IconButton>
+          </Button>
         </div>
 
         {!isOpen && !isMobile && (
@@ -216,29 +214,28 @@ export default function Sidebar() {
 
           <div className='flex gap-2 mt-1 mb-1'>
             {mounted && (
-              <IconButton
-                variant='soft'
-                color='gray'
+              <Button size="icon"
+                variant='secondary'
                 onClick={toggleTheme}
                 aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
               >
                 {theme === "dark" ? <Sun className='h-4 w-4' /> : <Moon className='h-4 w-4' />}
-              </IconButton>
+              </Button>
             )}
             {user ? (
-              <IconButton variant='soft' color='gray' onClick={signOut} aria-label='Sign out'>
+              <Button size="icon" variant='secondary' onClick={signOut} aria-label='Sign out'>
                 <LogOut className='h-4 w-4' />
-              </IconButton>
+              </Button>
             ) : (
-              <IconButton asChild variant='soft' color='gray'>
+              <Button size="icon" asChild variant='secondary'>
                 <Link href='/login' aria-label='Sign in'>
                   <LogIn className='h-4 w-4' />
                 </Link>
-              </IconButton>
+              </Button>
             )}
           </div>
 
-          <nav className='flex flex-col gap-5 mt-6'>
+          <nav className='flex flex-col gap-4 mt-6'>
             {CATEGORIES.map((category) => {
               const items = LINKS.filter(
                 (link) => link.category === category && (!link.auth || !!user)

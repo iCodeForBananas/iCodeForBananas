@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import BentoPageLayout from "../components/BentoPageLayout";
-import { Button, IconButton } from "@radix-ui/themes";
+import { Button } from "@/app/components/ui/button";
 import { Bento } from "@/app/components/ui/bento";
 import { X } from "lucide-react";
 import CircleOfFifths from "../components/CircleOfFifths";
@@ -98,19 +98,17 @@ function ProgressionColumn({
         <span className="text-10 font-semibold uppercase tracking-wider text-ink-muted">
           Chord {index + 1}
         </span>
-        <IconButton
-          variant="ghost"
-          color="red"
-          radius="full"
+        <Button size="icon"
+          variant="danger"
           onClick={onRemove}
           title={`Remove ${label} from the progression`}
           aria-label={`Remove ${label} from the progression`}
         >
           <X className="h-4 w-4" />
-        </IconButton>
+        </Button>
       </div>
 
-      <div className="flex flex-col items-center gap-1 rounded-xl border border-primary-solid/30 bg-primary-solid/5 p-3">
+      <div className="flex flex-col items-center gap-1 rounded-lg border border-primary-solid/30 bg-primary-solid/5 p-3">
         <span className="text-24 font-semibold text-ink-primary">{quality === "minor" ? `${note}m` : note}</span>
         {basicVoicing ? (
           <ChordDiagram shape={basicVoicing.shape} label={label} useFlats={useFlats} tuning={tuning} />
@@ -124,7 +122,7 @@ function ProgressionColumn({
         {typeGroups.map((group) => (
           <div key={group.label}>
             <p
-              className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-ink-muted"
+              className="mb-2 text-xs font-semibold uppercase tracking-wider text-ink-muted"
               title={GROUP_TOOLTIPS[group.label]}
             >
               {group.label}
@@ -139,7 +137,7 @@ function ProgressionColumn({
 
         <div>
           <p
-            className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-ink-muted"
+            className="mb-2 text-xs font-semibold uppercase tracking-wider text-ink-muted"
             title={`Every other place to play ${label} up to the 12th fret — the open/first-position shape is already shown above as the basic voicing.`}
           >
             {basicType} Positions Up the Neck
@@ -163,7 +161,7 @@ function ProgressionColumn({
 
         <div>
           <p
-            className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-ink-muted"
+            className="mb-2 text-xs font-semibold uppercase tracking-wider text-ink-muted"
             title={`Every way to play the ${basicType.toLowerCase()} triad inside ${label} on three adjacent strings — every string set, every inversion, through the 12th fret.`}
           >
             {basicType} Triads — Every Position
@@ -219,7 +217,7 @@ export default function ProgressionBuilderPage() {
         </div>
 
         {progression.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-line-subtle p-8 text-center text-ink-muted">
+          <div className="rounded-lg border border-dashed border-line-subtle p-8 text-center text-ink-muted">
             No chords yet — click a note on the wheel above to start your progression.
           </div>
         ) : (
@@ -227,7 +225,7 @@ export default function ProgressionBuilderPage() {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex flex-wrap items-center gap-2">
                 {progression.map((chord, i) => (
-                  <span key={chord.id} className="flex items-center gap-1.5 text-sm text-ink-muted">
+                  <span key={chord.id} className="flex items-center gap-2 text-sm text-ink-muted">
                     {i > 0 && <span className="text-line-strong">→</span>}
                     <span className="rounded-full bg-primary-solid px-3 py-1 font-medium text-ink-on-primary">
                       {chord.quality === "minor" ? `${chord.note}m` : chord.note}
@@ -235,7 +233,7 @@ export default function ProgressionBuilderPage() {
                   </span>
                 ))}
               </div>
-              <Button size="3" variant="soft" color="gray" onClick={clearProgression}>
+              <Button size="lg" variant="secondary" onClick={clearProgression}>
                 Clear progression
               </Button>
             </div>

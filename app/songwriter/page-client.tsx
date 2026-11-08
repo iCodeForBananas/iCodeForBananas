@@ -13,7 +13,7 @@ import { useCommands } from "@/app/components/ui/command-palette";
 import { Input } from "@/app/components/ui/input";
 import { Button } from "@/app/components/ui/button";
 import { Bento } from "@/app/components/ui/bento";
-import { Button as RadixButton, IconButton, Select } from "@radix-ui/themes";
+import { Select } from "@radix-ui/themes";
 import { type SortOrder } from "./library";
 import { VisibilityPicker } from "./VisibilityPicker";
 import { SongAttribution } from "./SongAttribution";
@@ -120,7 +120,7 @@ export default function LeadSheetList() {
           <p className='text-ink-muted mb-6'>Sign in to create and manage your lead sheets.</p>
           <Link
             href='/login'
-            className='inline-block rounded bg-surface-base px-6 py-2 text-sm font-medium text-primary-text'
+            className='inline-block rounded-md bg-surface-base px-6 py-2 text-sm font-medium text-primary-text'
           >
             Sign In
           </Link>
@@ -147,10 +147,10 @@ export default function LeadSheetList() {
             </h1>
             {offline && <OfflineBadge />}
           </div>
-          <RadixButton onClick={handleCreateSheet}>
+          <Button variant="primary" onClick={handleCreateSheet}>
             <Plus className='w-4 h-4' />
             New
-          </RadixButton>
+          </Button>
         </div>
 
         {favoriteError && (
@@ -195,27 +195,26 @@ export default function LeadSheetList() {
                 key={sheet.id}
                 size={density === "compact" ? "1" : "2"}
                 variant='ghost'
-                className={`${styles.libraryRow} group cursor-pointer flex flex-col md:flex-row md:items-center md:justify-between gap-2 ${density === "compact" ? "py-1.5" : ""}`}
+                className={`${styles.libraryRow} group cursor-pointer flex flex-col md:flex-row md:items-center md:justify-between gap-2 ${density === "compact" ? "py-2" : ""}`}
                 onClick={() => goTo(router, `/songwriter/${sheet.id}/preview`)}
               >
                 <div className='flex flex-1 min-w-0 items-start gap-2'>
-                  <IconButton
+                  <Button size="icon"
                     variant='ghost'
-                    color={sheet.metadata?.favorite ? undefined : "gray"}
                     onClick={(e) => { e.stopPropagation(); toggleFavorite(sheet); }}
                     title={sheet.metadata?.favorite ? "Remove from favorites" : "Keep this song at the top"}
                     aria-label={sheet.metadata?.favorite ? "Remove from favorites" : "Add to favorites"}
                     aria-pressed={!!sheet.metadata?.favorite}
-                    className='shrink-0'
+                    className={`shrink-0 ${sheet.metadata?.favorite ? "text-primary-text" : ""}`}
                   >
                     <Star className='w-5 h-5' fill={sheet.metadata?.favorite ? "currentColor" : "none"} />
-                  </IconButton>
+                  </Button>
                   <div className='min-w-0'>
                     <div className='font-semibold text-ink-primary'>
                       {sheet.title || "Untitled"}
                     </div>
                     <SongAttribution song={sheet} />
-                    <div className='text-sm text-ink-muted flex flex-wrap gap-3 mt-0.5'>
+                    <div className='text-sm text-ink-muted flex flex-wrap gap-3 mt-1'>
                       {sheet.key && <span>Key: {sheet.key}</span>}
                       {sheet.artist && <span>{sheet.artist}</span>}
                       {sheet.tempo && <span>{sheet.tempo} BPM</span>}
@@ -232,11 +231,11 @@ export default function LeadSheetList() {
                     </div>
                   </div>
                 </div>
-                <div className='flex flex-wrap items-center gap-1.5 md:ml-3 shrink-0'>
-                  <RadixButton size='1' variant='surface' color='gray' onClick={(e) => { e.stopPropagation(); handleCopyText(sheet); }}>
+                <div className='flex flex-wrap items-center gap-2 md:ml-3 shrink-0'>
+                  <Button size='sm' variant='secondary' onClick={(e) => { e.stopPropagation(); handleCopyText(sheet); }}>
                     {copiedId === sheet.id ? <Check className='w-3.5 h-3.5' /> : <Copy className='w-3.5 h-3.5' />}
                     {copiedId === sheet.id ? "Copied!" : "Copy Text"}
-                  </RadixButton>
+                  </Button>
                   {/* Share opens a private song up to unlisted on its own; the
                       picker here is for dialing visibility back down or up to public. */}
                   <span onClick={(e) => e.stopPropagation()}>
@@ -245,27 +244,25 @@ export default function LeadSheetList() {
                       onChange={(next) => void setVisibility(sheet, next)}
                     />
                   </span>
-                  <RadixButton size='1' variant='surface' color='gray' onClick={(e) => { e.stopPropagation(); handleShare(sheet); }}>
+                  <Button size='sm' variant='secondary' onClick={(e) => { e.stopPropagation(); handleShare(sheet); }}>
                     {sharedId === sheet.id ? <Check className='w-3.5 h-3.5' /> : <Link2 className='w-3.5 h-3.5' />}
                     {sharedId === sheet.id ? "Copied!" : "Share"}
-                  </RadixButton>
-                  <RadixButton
-                    size='1'
-                    variant='surface'
-                    color='gray'
+                  </Button>
+                  <Button
+                    size='sm'
+                    variant='secondary'
                     onClick={(e) => { e.stopPropagation(); goTo(router, `/songwriter/${sheet.id}/edit`); }}
                   >
                     <Pencil className='w-3.5 h-3.5' />
                     Edit
-                  </RadixButton>
-                  <RadixButton size='1' onClick={(e) => { e.stopPropagation(); goTo(router, `/songwriter/${sheet.id}/preview`); }}>
+                  </Button>
+                  <Button variant="primary" size='sm' onClick={(e) => { e.stopPropagation(); goTo(router, `/songwriter/${sheet.id}/preview`); }}>
                     <Eye className='w-3.5 h-3.5' />
                     Preview
-                  </RadixButton>
-                  <IconButton
-                    size='1'
-                    variant='ghost'
-                    color='red'
+                  </Button>
+                  <Button
+                    size='icon-sm'
+                    variant='danger'
                     aria-label={`Delete ${sheet.title || "this song"}`}
                     onClick={(e) => {
                       e.stopPropagation();
@@ -274,7 +271,7 @@ export default function LeadSheetList() {
                     className='ml-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 focus-visible:opacity-100'
                   >
                     <Trash2 className='w-4 h-4' />
-                  </IconButton>
+                  </Button>
                 </div>
               </Bento>
             ))}

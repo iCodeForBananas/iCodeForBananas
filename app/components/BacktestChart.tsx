@@ -20,7 +20,8 @@ import {
   type HistogramData,
   type WhitespaceData,
 } from "lightweight-charts";
-import { IconButton, Text } from "@radix-ui/themes";
+import { Text } from "@radix-ui/themes";
+import { Button } from "@/app/components/ui/button";
 import { Minus, Plus } from "lucide-react";
 import { IndicatorData, BacktestTrade, PositionSide } from "@/app/types";
 import { useChartTheme, type ChartTheme } from "./chartTheme";
@@ -110,6 +111,7 @@ function computeIndicators(
   data: IndicatorData[],
   strategyId: string,
   params: Record<string, number | boolean | string>,
+  c: ChartTheme,
 ): { priceLines: PriceLine[]; oscillator?: OscillatorPanel } {
   const closes = data.map((d) => d.close);
   const priceLines: PriceLine[] = [];
@@ -120,36 +122,36 @@ function computeIndicators(
     case "ema-crossover": {
       const fast = num("fastPeriod", 9);
       const slow = num("slowPeriod", 21);
-      priceLines.push({ values: data.map((d) => d[`ema${fast}` as keyof IndicatorData] as number | undefined), color: "#fbbf24", label: `EMA ${fast}` });
-      priceLines.push({ values: data.map((d) => d[`ema${slow}` as keyof IndicatorData] as number | undefined), color: "#a855f7", label: `EMA ${slow}` });
+      priceLines.push({ values: data.map((d) => d[`ema${fast}` as keyof IndicatorData] as number | undefined), color: c.yellow, label: `EMA ${fast}` });
+      priceLines.push({ values: data.map((d) => d[`ema${slow}` as keyof IndicatorData] as number | undefined), color: c.magenta, label: `EMA ${slow}` });
       break;
     }
     case "triple-ema": {
       const fast = num("fastPeriod", 4);
       const mid = num("midPeriod", 9);
       const slow = num("slowPeriod", 18);
-      priceLines.push({ values: data.map((d) => d[`ema${fast}` as keyof IndicatorData] as number | undefined), color: "#fbbf24", label: `EMA ${fast}` });
-      priceLines.push({ values: data.map((d) => d[`ema${mid}` as keyof IndicatorData] as number | undefined), color: "#22d3ee", label: `EMA ${mid}` });
-      priceLines.push({ values: data.map((d) => d[`ema${slow}` as keyof IndicatorData] as number | undefined), color: "#a855f7", label: `EMA ${slow}` });
+      priceLines.push({ values: data.map((d) => d[`ema${fast}` as keyof IndicatorData] as number | undefined), color: c.yellow, label: `EMA ${fast}` });
+      priceLines.push({ values: data.map((d) => d[`ema${mid}` as keyof IndicatorData] as number | undefined), color: c.brightCyan, label: `EMA ${mid}` });
+      priceLines.push({ values: data.map((d) => d[`ema${slow}` as keyof IndicatorData] as number | undefined), color: c.magenta, label: `EMA ${slow}` });
       break;
     }
     case "sma-crossover": {
       const fast = num("fastPeriod", 50);
       const slow = num("slowPeriod", 200);
-      priceLines.push({ values: data.map((d) => d[`sma${fast}` as keyof IndicatorData] as number | undefined), color: "#3b82f6", label: `SMA ${fast}` });
-      priceLines.push({ values: data.map((d) => d[`sma${slow}` as keyof IndicatorData] as number | undefined), color: "#f97316", label: `SMA ${slow}` });
+      priceLines.push({ values: data.map((d) => d[`sma${fast}` as keyof IndicatorData] as number | undefined), color: c.blue, label: `SMA ${fast}` });
+      priceLines.push({ values: data.map((d) => d[`sma${slow}` as keyof IndicatorData] as number | undefined), color: c.yellow, label: `SMA ${slow}` });
       break;
     }
     case "ema-pullback": {
       const fast = num("fastPeriod", 20);
       const slow = num("slowPeriod", 50);
-      priceLines.push({ values: data.map((d) => d[`ema${fast}` as keyof IndicatorData] as number | undefined), color: "#fbbf24", label: `EMA ${fast}` });
-      priceLines.push({ values: data.map((d) => d[`ema${slow}` as keyof IndicatorData] as number | undefined), color: "#a855f7", label: `EMA ${slow}` });
+      priceLines.push({ values: data.map((d) => d[`ema${fast}` as keyof IndicatorData] as number | undefined), color: c.yellow, label: `EMA ${fast}` });
+      priceLines.push({ values: data.map((d) => d[`ema${slow}` as keyof IndicatorData] as number | undefined), color: c.magenta, label: `EMA ${slow}` });
       break;
     }
     case "ema-price-cross": {
       const period = num("emaPeriod", 20);
-      priceLines.push({ values: data.map((d) => d[`ema${period}` as keyof IndicatorData] as number | undefined), color: "#fbbf24", label: `EMA ${period}` });
+      priceLines.push({ values: data.map((d) => d[`ema${period}` as keyof IndicatorData] as number | undefined), color: c.yellow, label: `EMA ${period}` });
       break;
     }
     case "donchian-channel": {
@@ -160,9 +162,9 @@ function computeIndicators(
       const center = num("centerLinePeriod", 10);
       const prevBar = (key: string) =>
         data.map((_, i) => (i === 0 ? undefined : (data[i - 1][key as keyof IndicatorData] as number | undefined)));
-      priceLines.push({ values: prevBar(`donchian_${period}_upperBand`), color: "#06b6d4", label: `DC ${period}`, dashed: true });
-      priceLines.push({ values: prevBar(`donchian_${period}_lowerBand`), color: "#06b6d4", label: "", dashed: true });
-      priceLines.push({ values: prevBar(`donchian_${center}_midLine`), color: "#22d3ee", label: `Mid ${center}`, lineWidth: 1, dashed: true });
+      priceLines.push({ values: prevBar(`donchian_${period}_upperBand`), color: c.cyan, label: `DC ${period}`, dashed: true });
+      priceLines.push({ values: prevBar(`donchian_${period}_lowerBand`), color: c.cyan, label: "", dashed: true });
+      priceLines.push({ values: prevBar(`donchian_${center}_midLine`), color: c.brightCyan, label: `Mid ${center}`, lineWidth: 1, dashed: true });
       break;
     }
     case "alligator": {
@@ -174,9 +176,9 @@ function computeIndicators(
           return v === undefined || Number.isNaN(v) ? undefined : v;
         });
       };
-      priceLines.push({ values: line(num("jawPeriod", 13), num("jawShift", 8)), color: "#3b82f6", label: "Jaw" });
-      priceLines.push({ values: line(num("teethPeriod", 8), num("teethShift", 5)), color: "#ef4444", label: "Teeth" });
-      priceLines.push({ values: line(num("lipsPeriod", 5), num("lipsShift", 3)), color: "#22c55e", label: "Lips" });
+      priceLines.push({ values: line(num("jawPeriod", 13), num("jawShift", 8)), color: c.blue, label: "Jaw" });
+      priceLines.push({ values: line(num("teethPeriod", 8), num("teethShift", 5)), color: c.red, label: "Teeth" });
+      priceLines.push({ values: line(num("lipsPeriod", 5), num("lipsShift", 3)), color: c.green, label: "Lips" });
       break;
     }
     case "breakout": {
@@ -195,11 +197,11 @@ function computeIndicators(
         upper[i] = hi;
         lower[i] = lo;
       }
-      priceLines.push({ values: upper, color: "#06b6d4", label: `${lookback}-bar high close`, dashed: true });
-      priceLines.push({ values: lower, color: "#06b6d4", label: "", dashed: true });
+      priceLines.push({ values: upper, color: c.cyan, label: `${lookback}-bar high close`, dashed: true });
+      priceLines.push({ values: lower, color: c.cyan, label: "", dashed: true });
       const trail = num("trailingStopEmaPeriod", 0);
       if (trail > 0) {
-        priceLines.push({ values: data.map((d) => d[`ema${trail}` as keyof IndicatorData] as number | undefined), color: "#f97316", label: `Trail EMA ${trail}`, dashed: true });
+        priceLines.push({ values: data.map((d) => d[`ema${trail}` as keyof IndicatorData] as number | undefined), color: c.yellow, label: `Trail EMA ${trail}`, dashed: true });
       }
       break;
     }
@@ -208,9 +210,9 @@ function computeIndicators(
       const mult = num("stdDev", 2);
       const sma = calcSMA(closes, period);
       const std = calcStdDev(closes, period);
-      priceLines.push({ values: sma.map((s, i) => s !== undefined && std[i] !== undefined ? s + mult * std[i]! : undefined), color: "#a855f7", label: `BB±${mult}σ`, dashed: true });
-      priceLines.push({ values: sma, color: "#3b82f6", label: `SMA ${period}`, lineWidth: 1 });
-      priceLines.push({ values: sma.map((s, i) => s !== undefined && std[i] !== undefined ? s - mult * std[i]! : undefined), color: "#a855f7", label: "", dashed: true });
+      priceLines.push({ values: sma.map((s, i) => s !== undefined && std[i] !== undefined ? s + mult * std[i]! : undefined), color: c.magenta, label: `BB±${mult}σ`, dashed: true });
+      priceLines.push({ values: sma, color: c.blue, label: `SMA ${period}`, lineWidth: 1 });
+      priceLines.push({ values: sma.map((s, i) => s !== undefined && std[i] !== undefined ? s - mult * std[i]! : undefined), color: c.magenta, label: "", dashed: true });
       break;
     }
     case "keltner-channel": {
@@ -219,9 +221,9 @@ function computeIndicators(
       const mult = num("multiplier", 2);
       const ema = data.map((d) => d[`ema${emaPeriod}` as keyof IndicatorData] as number | undefined);
       const atr = calcATR(data, atrPeriod);
-      priceLines.push({ values: ema.map((e, i) => e !== undefined && atr[i] !== undefined ? e + mult * atr[i]! : undefined), color: "#06b6d4", label: `KC±${mult}ATR`, dashed: true });
-      priceLines.push({ values: ema, color: "#3b82f6", label: `EMA ${emaPeriod}` });
-      priceLines.push({ values: ema.map((e, i) => e !== undefined && atr[i] !== undefined ? e - mult * atr[i]! : undefined), color: "#06b6d4", label: "", dashed: true });
+      priceLines.push({ values: ema.map((e, i) => e !== undefined && atr[i] !== undefined ? e + mult * atr[i]! : undefined), color: c.cyan, label: `KC±${mult}ATR`, dashed: true });
+      priceLines.push({ values: ema, color: c.blue, label: `EMA ${emaPeriod}` });
+      priceLines.push({ values: ema.map((e, i) => e !== undefined && atr[i] !== undefined ? e - mult * atr[i]! : undefined), color: c.cyan, label: "", dashed: true });
       break;
     }
     case "macd-crossover": {
@@ -230,16 +232,16 @@ function computeIndicators(
       const k = `${num("fastPeriod", 12)}_${num("slowPeriod", 26)}_${num("signalPeriod", 9)}`;
       const field = (name: string) => data.map((d) => d[`${name}_${k}` as keyof IndicatorData] as number | undefined);
       if (params.trendFilter ?? false) {
-        priceLines.push({ values: data.map((d) => d.sma200), color: "#f97316", label: "SMA 200" });
+        priceLines.push({ values: data.map((d) => d.sma200), color: c.yellow, label: "SMA 200" });
       }
       oscillator = {
         type: "macd",
         series: [
-          { values: field("macd"), color: "#3b82f6", label: `MACD ${k.replace(/_/g, "/")}` },
-          { values: field("macdSignal"), color: "#f97316", label: "Signal" },
+          { values: field("macd"), color: c.blue, label: `MACD ${k.replace(/_/g, "/")}` },
+          { values: field("macdSignal"), color: c.yellow, label: "Signal" },
         ],
-        histogram: { values: field("macdHistogram"), positiveColor: "#22c55e", negativeColor: "#ef4444" },
-        hLines: [{ value: 0, color: "#475569", dashed: true }],
+        histogram: { values: field("macdHistogram"), positiveColor: c.green, negativeColor: c.red },
+        hLines: [{ value: 0, color: c.muted, dashed: true }],
       };
       break;
     }
@@ -248,11 +250,11 @@ function computeIndicators(
       const os = num("oversold", 30);
       oscillator = {
         type: "rsi",
-        series: [{ values: data.map((d) => d.rsi), color: "#a855f7", label: "RSI 14" }],
+        series: [{ values: data.map((d) => d.rsi), color: c.magenta, label: "RSI 14" }],
         hLines: [
-          { value: ob, color: "#ef4444", dashed: true },
-          { value: os, color: "#22c55e", dashed: true },
-          { value: 50, color: "#475569", dashed: true },
+          { value: ob, color: c.red, dashed: true },
+          { value: os, color: c.green, dashed: true },
+          { value: 50, color: c.muted, dashed: true },
         ],
       };
       break;
@@ -272,10 +274,10 @@ function computeIndicators(
       }
       oscillator = {
         type: "rsi",
-        series: [{ values: rsiVals, color: "#a855f7", label: "RSI 2" }],
+        series: [{ values: rsiVals, color: c.magenta, label: "RSI 2" }],
         hLines: [
-          { value: num("overbought", 90), color: "#ef4444", dashed: true },
-          { value: num("oversold", 10), color: "#22c55e", dashed: true },
+          { value: num("overbought", 90), color: c.red, dashed: true },
+          { value: num("oversold", 10), color: c.green, dashed: true },
         ],
       };
       break;
@@ -300,12 +302,12 @@ function computeIndicators(
       oscillator = {
         type: "stochastic",
         series: [
-          { values: kVals, color: "#3b82f6", label: "%K" },
-          { values: dVals, color: "#f97316", label: "%D" },
+          { values: kVals, color: c.blue, label: "%K" },
+          { values: dVals, color: c.yellow, label: "%D" },
         ],
         hLines: [
-          { value: num("overbought", 80), color: "#ef4444", dashed: true },
-          { value: num("oversold", 20), color: "#22c55e", dashed: true },
+          { value: num("overbought", 80), color: c.red, dashed: true },
+          { value: num("oversold", 20), color: c.green, dashed: true },
         ],
       };
       break;
@@ -314,10 +316,10 @@ function computeIndicators(
       const period = num("smaPeriod", 200);
       const band = num("bandPercent", 1) / 100;
       const sma = data.map((d) => d[`sma${period}` as keyof IndicatorData] as number | undefined);
-      priceLines.push({ values: sma, color: "#f97316", label: `SMA ${period}`, lineWidth: 2 });
+      priceLines.push({ values: sma, color: c.yellow, label: `SMA ${period}`, lineWidth: 2 });
       if (band > 0) {
-        priceLines.push({ values: sma.map((v) => (v === undefined ? undefined : v * (1 + band))), color: "#64748b", label: "", lineWidth: 1, dashed: true });
-        priceLines.push({ values: sma.map((v) => (v === undefined ? undefined : v * (1 - band))), color: "#64748b", label: "", lineWidth: 1, dashed: true });
+        priceLines.push({ values: sma.map((v) => (v === undefined ? undefined : v * (1 + band))), color: c.muted, label: "", lineWidth: 1, dashed: true });
+        priceLines.push({ values: sma.map((v) => (v === undefined ? undefined : v * (1 - band))), color: c.muted, label: "", lineWidth: 1, dashed: true });
       }
       break;
     }
@@ -327,15 +329,15 @@ function computeIndicators(
       const channel = (period: number) => data.map((_, i) => priorChannel(data, i, period));
       const entry = channel(num("entryPeriod", 20));
       const exit = channel(num("exitPeriod", 10));
-      priceLines.push({ values: entry.map((c) => c?.high), color: "#22c55e", label: "Entry high" });
-      priceLines.push({ values: entry.map((c) => c?.low), color: "#ef4444", label: "Entry low" });
-      priceLines.push({ values: exit.map((c) => c?.high), color: "#64748b", label: "Exit high", dashed: true });
-      priceLines.push({ values: exit.map((c) => c?.low), color: "#64748b", label: "Exit low", dashed: true });
+      priceLines.push({ values: entry.map((c) => c?.high), color: c.green, label: "Entry high" });
+      priceLines.push({ values: entry.map((c) => c?.low), color: c.red, label: "Entry low" });
+      priceLines.push({ values: exit.map((c) => c?.high), color: c.muted, label: "Exit high", dashed: true });
+      priceLines.push({ values: exit.map((c) => c?.low), color: c.muted, label: "Exit low", dashed: true });
       break;
     }
     case "double-7s": {
       if (params.trendFilter ?? true) {
-        priceLines.push({ values: data.map((d) => d.sma200), color: "#f97316", label: "SMA 200" });
+        priceLines.push({ values: data.map((d) => d.sma200), color: c.yellow, label: "SMA 200" });
       }
       break;
     }
@@ -344,31 +346,31 @@ function computeIndicators(
       const days = num("sumDays", 2);
       const rsi = getRsiArray(data, period);
       if (params.trendFilter ?? true) {
-        priceLines.push({ values: data.map((d) => d.sma200), color: "#f97316", label: "SMA 200" });
+        priceLines.push({ values: data.map((d) => d.sma200), color: c.yellow, label: "SMA 200" });
       }
       oscillator = {
         type: "rsi",
         series: [
-          { values: rsi.map((v) => (Number.isNaN(v) ? undefined : v)), color: "#a855f7", label: `RSI ${period}` },
-          { values: rsi.map((_, i) => { const c = cumulativeRsiAt(rsi, i, days); return Number.isNaN(c) ? undefined : c; }), color: "#3b82f6", label: `Sum of ${days}` },
+          { values: rsi.map((v) => (Number.isNaN(v) ? undefined : v)), color: c.magenta, label: `RSI ${period}` },
+          { values: rsi.map((_, i) => { const c = cumulativeRsiAt(rsi, i, days); return Number.isNaN(c) ? undefined : c; }), color: c.blue, label: `Sum of ${days}` },
         ],
         hLines: [
-          { value: num("exitLevel", 65), color: "#ef4444", dashed: true },
-          { value: num("entryLevel", 35), color: "#22c55e", dashed: true },
+          { value: num("exitLevel", 65), color: c.red, dashed: true },
+          { value: num("entryLevel", 35), color: c.green, dashed: true },
         ],
       };
       break;
     }
     case "ibs-mean-reversion": {
       if (params.trendFilter ?? false) {
-        priceLines.push({ values: data.map((d) => d.sma200), color: "#f97316", label: "SMA 200" });
+        priceLines.push({ values: data.map((d) => d.sma200), color: c.yellow, label: "SMA 200" });
       }
       oscillator = {
         type: "ibs",
-        series: [{ values: data.map((d) => ibs(d)), color: "#a855f7", label: "IBS" }],
+        series: [{ values: data.map((d) => ibs(d)), color: c.magenta, label: "IBS" }],
         hLines: [
-          { value: num("exitIbs", 80) / 100, color: "#ef4444", dashed: true },
-          { value: num("entryIbs", 20) / 100, color: "#22c55e", dashed: true },
+          { value: num("exitIbs", 80) / 100, color: c.red, dashed: true },
+          { value: num("entryIbs", 20) / 100, color: c.green, dashed: true },
         ],
       };
       break;
@@ -381,26 +383,26 @@ function computeIndicators(
         type: "roc",
         series: [{
           values: data.map((_, i) => { const r = lookbackReturn(data, i, lookback, skip); return Number.isNaN(r) ? undefined : r; }),
-          color: "#a855f7",
+          color: c.magenta,
           label: `${lookback}-bar return %`,
         }],
         hLines: threshold > 0
-          ? [{ value: threshold, color: "#22c55e", dashed: true }, { value: -threshold, color: "#ef4444", dashed: true }]
-          : [{ value: 0, color: "#475569", dashed: true }],
+          ? [{ value: threshold, color: c.green, dashed: true }, { value: -threshold, color: c.red, dashed: true }]
+          : [{ value: 0, color: c.muted, dashed: true }],
       };
       break;
     }
     case "connors-rsi": {
       const crsi = getConnorsRsiArray(data, num("rsiPeriod", 3), num("streakPeriod", 2), num("rankPeriod", 100));
       if (params.trendFilter ?? true) {
-        priceLines.push({ values: data.map((d) => d.sma200), color: "#f97316", label: "SMA 200" });
+        priceLines.push({ values: data.map((d) => d.sma200), color: c.yellow, label: "SMA 200" });
       }
       oscillator = {
         type: "rsi",
-        series: [{ values: crsi.map((v) => (Number.isNaN(v) ? undefined : v)), color: "#a855f7", label: "ConnorsRSI" }],
+        series: [{ values: crsi.map((v) => (Number.isNaN(v) ? undefined : v)), color: c.magenta, label: "ConnorsRSI" }],
         hLines: [
-          { value: num("exitLevel", 70), color: "#ef4444", dashed: true },
-          { value: num("entryLevel", 10), color: "#22c55e", dashed: true },
+          { value: num("exitLevel", 70), color: c.red, dashed: true },
+          { value: num("entryLevel", 10), color: c.green, dashed: true },
         ],
       };
       break;
@@ -413,12 +415,12 @@ function computeIndicators(
       oscillator = {
         type: "calendar",
         series: [
-          { values: calendar.dayOfMonth, color: "#3b82f6", label: "Trading day" },
-          { values: calendar.daysLeft, color: "#a855f7", label: "Days left" },
+          { values: calendar.dayOfMonth, color: c.blue, label: "Trading day" },
+          { values: calendar.daysLeft, color: c.magenta, label: "Days left" },
         ],
         hLines: [
-          { value: num("exitDay", 3), color: "#ef4444", dashed: true },
-          { value: num("entryDaysBefore", 1) - 1, color: "#22c55e", dashed: true },
+          { value: num("exitDay", 3), color: c.red, dashed: true },
+          { value: num("entryDaysBefore", 1) - 1, color: c.green, dashed: true },
         ],
       };
       break;
@@ -429,10 +431,10 @@ function computeIndicators(
       const senkouPeriod = num("senkouPeriod", 52);
       const lines = data.map((_, i) => ichimokuAt(data, i, tenkanPeriod, kijunPeriod, senkouPeriod));
       const defined = (v: number) => (Number.isNaN(v) ? undefined : v);
-      priceLines.push({ values: lines.map((l) => defined(l.tenkan)), color: "#3b82f6", label: `Tenkan ${tenkanPeriod}`, lineWidth: 1 });
-      priceLines.push({ values: lines.map((l) => defined(l.kijun)), color: "#ef4444", label: `Kijun ${kijunPeriod}` });
-      priceLines.push({ values: lines.map((l) => defined(l.senkouA)), color: "#22c55e", label: "Senkou A", lineWidth: 1, dashed: true });
-      priceLines.push({ values: lines.map((l) => defined(l.senkouB)), color: "#f97316", label: "Senkou B", lineWidth: 1, dashed: true });
+      priceLines.push({ values: lines.map((l) => defined(l.tenkan)), color: c.blue, label: `Tenkan ${tenkanPeriod}`, lineWidth: 1 });
+      priceLines.push({ values: lines.map((l) => defined(l.kijun)), color: c.red, label: `Kijun ${kijunPeriod}` });
+      priceLines.push({ values: lines.map((l) => defined(l.senkouA)), color: c.green, label: "Senkou A", lineWidth: 1, dashed: true });
+      priceLines.push({ values: lines.map((l) => defined(l.senkouB)), color: c.yellow, label: "Senkou B", lineWidth: 1, dashed: true });
       break;
     }
     case "supply-demand": {
@@ -447,10 +449,10 @@ function computeIndicators(
           if (i >= 2 && (arr[i - 2] !== arr[i - 1] || pair[i - 2] !== pair[i - 1])) return undefined;
           return arr[i - 1];
         });
-      priceLines.push({ values: edge(zones.demandTop, zones.demandBottom), color: "#22c55e", label: "Demand", lineWidth: 2 });
-      priceLines.push({ values: edge(zones.demandBottom, zones.demandTop), color: "#22c55e", label: "", lineWidth: 1, dashed: true });
-      priceLines.push({ values: edge(zones.supplyBottom, zones.supplyTop), color: "#ef4444", label: "Supply", lineWidth: 2 });
-      priceLines.push({ values: edge(zones.supplyTop, zones.supplyBottom), color: "#ef4444", label: "", lineWidth: 1, dashed: true });
+      priceLines.push({ values: edge(zones.demandTop, zones.demandBottom), color: c.green, label: "Demand", lineWidth: 2 });
+      priceLines.push({ values: edge(zones.demandBottom, zones.demandTop), color: c.green, label: "", lineWidth: 1, dashed: true });
+      priceLines.push({ values: edge(zones.supplyBottom, zones.supplyTop), color: c.red, label: "Supply", lineWidth: 2 });
+      priceLines.push({ values: edge(zones.supplyTop, zones.supplyBottom), color: c.red, label: "", lineWidth: 1, dashed: true });
       break;
     }
     case "adx-dmi": {
@@ -459,11 +461,11 @@ function computeIndicators(
       oscillator = {
         type: "rsi",
         series: [
-          { values: defined(plusDi), color: "#22c55e", label: "+DI" },
-          { values: defined(minusDi), color: "#ef4444", label: "-DI" },
-          { values: defined(adx), color: "#e2e8f0", label: "ADX", lineWidth: 2 },
+          { values: defined(plusDi), color: c.green, label: "+DI" },
+          { values: defined(minusDi), color: c.red, label: "-DI" },
+          { values: defined(adx), color: c.foreground, label: "ADX", lineWidth: 2 },
         ],
-        hLines: [{ value: num("adxThreshold", 20), color: "#475569", dashed: true }],
+        hLines: [{ value: num("adxThreshold", 20), color: c.muted, dashed: true }],
       };
       break;
     }
@@ -471,53 +473,53 @@ function computeIndicators(
       const maPeriod = num("maPeriod", 100);
       const { score } = getRegressionMomentum(data, num("lookback", 90), Number(params.barsPerYear) || 252);
       const sma = getSmaArray(data, maPeriod);
-      priceLines.push({ values: sma.map((v) => (Number.isNaN(v) ? undefined : v)), color: "#f97316", label: `SMA ${maPeriod}`, lineWidth: 2 });
+      priceLines.push({ values: sma.map((v) => (Number.isNaN(v) ? undefined : v)), color: c.yellow, label: `SMA ${maPeriod}`, lineWidth: 2 });
       const minScore = num("minScore", 30);
       oscillator = {
         type: "roc",
-        series: [{ values: score.map((v) => (Number.isNaN(v) ? undefined : v)), color: "#a855f7", label: "Slope x R² %/yr" }],
+        series: [{ values: score.map((v) => (Number.isNaN(v) ? undefined : v)), color: c.magenta, label: "Slope x R² %/yr" }],
         hLines: [
-          { value: minScore, color: "#22c55e", dashed: true },
-          { value: num("exitScore", 0), color: "#ef4444", dashed: true },
-          { value: -minScore, color: "#22c55e", dashed: true },
+          { value: minScore, color: c.green, dashed: true },
+          { value: num("exitScore", 0), color: c.red, dashed: true },
+          { value: -minScore, color: c.green, dashed: true },
         ],
       };
       break;
     }
     case "connors-r3": {
       if (params.trendFilter ?? true) {
-        priceLines.push({ values: data.map((d) => d.sma200), color: "#f97316", label: "SMA 200" });
+        priceLines.push({ values: data.map((d) => d.sma200), color: c.yellow, label: "SMA 200" });
       }
       const rsi = getRsiArray(data, 2);
       oscillator = {
         type: "rsi",
-        series: [{ values: rsi.map((v) => (Number.isNaN(v) ? undefined : v)), color: "#a855f7", label: "RSI(2)" }],
+        series: [{ values: rsi.map((v) => (Number.isNaN(v) ? undefined : v)), color: c.magenta, label: "RSI(2)" }],
         hLines: [
-          { value: num("exitLevel", 70), color: "#ef4444", dashed: true },
-          { value: num("startLevel", 60), color: "#475569", dashed: true },
-          { value: num("entryLevel", 10), color: "#22c55e", dashed: true },
+          { value: num("exitLevel", 70), color: c.red, dashed: true },
+          { value: num("startLevel", 60), color: c.muted, dashed: true },
+          { value: num("entryLevel", 10), color: c.green, dashed: true },
         ],
       };
       break;
     }
     case "connors-percent-b": {
       if (params.trendFilter ?? true) {
-        priceLines.push({ values: data.map((d) => d.sma200), color: "#f97316", label: "SMA 200" });
+        priceLines.push({ values: data.map((d) => d.sma200), color: c.yellow, label: "SMA 200" });
       }
       const pctB = getPercentB(data, num("period", 5), num("stdDev", 1));
       oscillator = {
         type: "ibs",
-        series: [{ values: pctB.map((v) => (Number.isNaN(v) ? undefined : v)), color: "#a855f7", label: "%b" }],
+        series: [{ values: pctB.map((v) => (Number.isNaN(v) ? undefined : v)), color: c.magenta, label: "%b" }],
         hLines: [
-          { value: num("exitPctB", 80) / 100, color: "#ef4444", dashed: true },
-          { value: num("entryPctB", 20) / 100, color: "#22c55e", dashed: true },
+          { value: num("exitPctB", 80) / 100, color: c.red, dashed: true },
+          { value: num("entryPctB", 20) / 100, color: c.green, dashed: true },
         ],
       };
       break;
     }
     case "kama-trend": {
       const kama = getKamaArray(data, num("erPeriod", 10), num("fastLength", 2), num("slowLength", 30));
-      priceLines.push({ values: kama.map((v) => (Number.isNaN(v) ? undefined : v)), color: "#f97316", label: "KAMA", lineWidth: 2 });
+      priceLines.push({ values: kama.map((v) => (Number.isNaN(v) ? undefined : v)), color: c.yellow, label: "KAMA", lineWidth: 2 });
       break;
     }
     case "momentum-roc": {
@@ -533,10 +535,10 @@ function computeIndicators(
       });
       oscillator = {
         type: "roc",
-        series: [{ values: smoothed, color: "#a855f7", label: `ROC(${rocPeriod})` }],
+        series: [{ values: smoothed, color: c.magenta, label: `ROC(${rocPeriod})` }],
         hLines: [
-          { value: num("entryThreshold", 2), color: "#22c55e", dashed: true },
-          { value: num("exitThreshold", 0), color: "#ef4444", dashed: true },
+          { value: num("entryThreshold", 2), color: c.green, dashed: true },
+          { value: num("exitThreshold", 0), color: c.red, dashed: true },
         ],
       };
       break;
@@ -590,9 +592,9 @@ const BacktestChart: React.FC<BacktestChartProps> = ({
   const colors = useChartTheme();
 
   const { priceLines, oscillator } = useMemo(() => {
-    if (!data || data.length === 0 || !selectedStrategyId) return { priceLines: [] as PriceLine[], oscillator: undefined };
-    return computeIndicators(data, selectedStrategyId, currentParams);
-  }, [data, selectedStrategyId, currentParams]);
+    if (!colors || !data || data.length === 0 || !selectedStrategyId) return { priceLines: [] as PriceLine[], oscillator: undefined };
+    return computeIndicators(data, selectedStrategyId, currentParams, colors);
+  }, [data, selectedStrategyId, currentParams, colors]);
 
   const hasOscillator = !!oscillator;
 
@@ -680,15 +682,14 @@ const BacktestChart: React.FC<BacktestChartProps> = ({
   // Push candles + overlays whenever inputs change.
   useEffect(() => {
     const chart = priceChartRef.current;
-    if (!chart || !data || data.length === 0) return;
+    if (!chart || !colors || !data || data.length === 0) return;
 
     // Candle series — recreate to avoid stale state across dataset switches.
     if (candleSeriesRef.current) {
       chart.removeSeries(candleSeriesRef.current);
       candleSeriesRef.current = null;
     }
-    const up = colors?.up ?? "#22c55e";
-    const down = colors?.down ?? "#ef4444";
+    const { up, down } = colors;
     const candles = chart.addSeries(CandlestickSeries, {
       upColor: up,
       downColor: down,
@@ -749,7 +750,7 @@ const BacktestChart: React.FC<BacktestChartProps> = ({
       markers.push({
         time: (t.entryTime / 1000) as Time,
         position: isLong ? "belowBar" : "aboveBar",
-        color: isSel ? "#3b82f6" : isLong ? "#22c55e" : "#ef4444",
+        color: isSel ? colors.blue : isLong ? colors.green : colors.red,
         shape: isLong ? "arrowUp" : "arrowDown",
         text: isLong ? "BUY" : "SELL",
         size: isSel ? 2 : 1,
@@ -757,7 +758,7 @@ const BacktestChart: React.FC<BacktestChartProps> = ({
       markers.push({
         time: (t.exitTime / 1000) as Time,
         position: exitPosition,
-        color: isSel ? "#3b82f6" : t.pnl > 0 ? "#22c55e" : "#ef4444",
+        color: isSel ? colors.blue : t.pnl > 0 ? colors.green : colors.red,
         shape: "circle",
         // Two decimals: a fill at the next open often lands within a few
         // hundredths of a percent of entry, which one decimal shows as 0.0%.
@@ -777,7 +778,7 @@ const BacktestChart: React.FC<BacktestChartProps> = ({
       if (!ts || ts.length === 0) continue;
       if (selectedTradeId && t.id !== selectedTradeId) continue;
       const trailLine = chart.addSeries(LineSeries, {
-        color: "#ef4444",
+        color: colors.red,
         lineWidth: 1,
         lineStyle: LineStyle.Solid,
         priceLineVisible: false,
@@ -922,16 +923,16 @@ const BacktestChart: React.FC<BacktestChartProps> = ({
   return (
     <div className='w-full h-full flex flex-col bg-surface-raised relative'>
       {/* Zoom controls */}
-      <div className='absolute top-2 right-20 z-10 flex items-center gap-1 rounded-md border border-line-subtle bg-surface-overlay/90 px-1 py-0.5 backdrop-blur'>
-        <IconButton size='1' variant='ghost' color='gray' onClick={zoomOut} aria-label='Zoom out'>
+      <div className='absolute top-2 right-20 z-10 flex items-center gap-1 rounded-md border border-line-subtle bg-surface-overlay/90 px-1 py-1 backdrop-blur'>
+        <Button size='icon-sm' variant='ghost' onClick={zoomOut} aria-label='Zoom out'>
           <Minus className='size-3.5' />
-        </IconButton>
+        </Button>
         <Text size='1' color='gray' className='w-16 text-center tabular-nums'>
           {visibleCandles} bars
         </Text>
-        <IconButton size='1' variant='ghost' color='gray' onClick={zoomIn} aria-label='Zoom in'>
+        <Button size='icon-sm' variant='ghost' onClick={zoomIn} aria-label='Zoom in'>
           <Plus className='size-3.5' />
-        </IconButton>
+        </Button>
       </div>
 
       <div ref={priceContainerRef} className={hasOscillator ? "flex-[3] min-h-0" : "flex-1 min-h-0"} />

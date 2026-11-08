@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { Button } from "@/app/components/ui/button";
 import { Plus } from "lucide-react";
 import type { LeadSheet } from "./shared";
 import { goTo } from "./offlineNav";
@@ -73,9 +74,7 @@ export default function LibraryDrawer({
       <div className={styles.libTop}>
         <div className={styles.libRow}>
           <h2 className={styles.panelH}>Songs · {sheets.length}</h2>
-          <button
-            type='button'
-            className={`${styles.ibtn} ${styles.ibtnAccent}`}
+          <Button variant='primary' size='md'
             onClick={handleNew}
             aria-label='New song'
             disabled={offline}
@@ -83,7 +82,7 @@ export default function LibraryDrawer({
           >
             <Plus className='w-[18px] h-[18px]' />
             New
-          </button>
+          </Button>
         </div>
         {offline && (
           <p className={styles.offlineNote}>Offline — showing songs saved on this device.</p>

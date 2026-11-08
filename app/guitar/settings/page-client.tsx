@@ -16,7 +16,7 @@ import GuitarToolView from "../GuitarToolView";
 // Uniform, touch-friendly control button (≥44px tap target for iPad use)
 /** A 44px touch target for the note and chord-type pickers; `on` is the picked one. */
 function PickButton({ on, ...props }: Omit<React.ComponentProps<typeof ToggleButton>, "pressed"> & { on: boolean }) {
-  return <ToggleButton size='3' className='min-h-[44px] min-w-[44px]' {...props} pressed={on} />;
+  return <ToggleButton size='xl' {...props} pressed={on} />;
 }
 
 export default function GuitarSettingsPage() {
@@ -84,7 +84,7 @@ export default function GuitarSettingsPage() {
           <div className="flex flex-wrap gap-x-6 gap-y-3">
             {TYPE_GROUPS.map((group) => (
               <div key={group.label}>
-                <p className="text-xs text-ink-muted mb-1.5" title={GROUP_TOOLTIPS[group.label]}>
+                <p className="text-xs text-ink-muted mb-2" title={GROUP_TOOLTIPS[group.label]}>
                   {group.label}
                 </p>
                 <div className="flex flex-wrap gap-2">

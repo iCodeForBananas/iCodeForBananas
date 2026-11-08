@@ -187,7 +187,7 @@ export default function ProgressionsTool() {
       >
         {PROGRESSION_GROUPS.map((group) => (
           <div key={group.label}>
-            <p className="sticky top-0 z-10 border-b border-line-subtle bg-surface-sunken px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
+            <p className="sticky top-0 z-10 border-b border-line-subtle bg-surface-sunken px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
               {group.label}
             </p>
             {group.items.map((p) => {

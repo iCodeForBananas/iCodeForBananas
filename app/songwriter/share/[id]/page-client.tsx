@@ -2,7 +2,8 @@
 
 import { useState, useEffect, use } from "react";
 import { Minus, Plus, Printer } from "lucide-react";
-import { Button, IconButton, Text } from "@radix-ui/themes";
+import { Text } from "@radix-ui/themes";
+import { Button } from "@/app/components/ui/button";
 import { createClient } from "@/utils/supabase/client";
 import {
   type LeadSheet,
@@ -57,14 +58,14 @@ function SheetContent({ sheet }: { sheet: LeadSheet }) {
         )}
       </div>
 
-      <div className='space-y-10'>
+      <div className='space-y-8'>
         {sheet.sections.map((section: Section) => {
           const lines = (section.content ?? "").split("\n");
           return (
             <div key={section.id} style={{ breakInside: "avoid" }}>
               <div className='mb-4'>
                 <span
-                  className='text-[0.75em] font-bold uppercase tracking-widest px-2 py-1 rounded'
+                  className='text-[0.75em] font-bold uppercase tracking-widest px-2 py-1 rounded-md'
                   style={{ background: "var(--ds-color-primary-solid)", color: "var(--ds-color-text-on-primary)" }}
                 >
                   {section.label || section.type}
@@ -146,7 +147,7 @@ export default function ShareLeadSheet({ params }: { params: Promise<{ id: strin
   return (
     <>
       {/* Print-only view */}
-      <div className='hidden print:block' style={{ background: "#fff", color: "var(--ds-color-text-on-primary)" }}>
+      <div className='hidden print:block' style={{ background: "#fff", color: "var(--ds-palette-light-foreground)" }}>
         <div className='max-w-3xl mx-auto px-6 py-8' style={{ fontSize: `${fontScale}%` }}>
           <SheetContent sheet={sheet} />
         </div>
@@ -160,32 +161,30 @@ export default function ShareLeadSheet({ params }: { params: Promise<{ id: strin
               iCodeForBananas
             </span>
             <div className='flex items-center gap-2'>
-              <div className='flex items-center gap-1 rounded border border-line-subtle'>
-                <IconButton
+              <div className='flex items-center gap-1 rounded-md border border-line-subtle'>
+                <Button size="icon"
                   type='button'
                   variant='ghost'
-                  color='gray'
                   onClick={() => updateFontScale(fontScale - SCALE_STEP)}
                   disabled={fontScale <= MIN_SCALE}
                   aria-label='Decrease text size'
                 >
                   <Minus className='w-3.5 h-3.5' />
-                </IconButton>
+                </Button>
                 <Text size='1' weight='medium' color='gray' align='center' className='w-10 select-none'>
                   {fontScale}%
                 </Text>
-                <IconButton
+                <Button size="icon"
                   type='button'
                   variant='ghost'
-                  color='gray'
                   onClick={() => updateFontScale(fontScale + SCALE_STEP)}
                   disabled={fontScale >= MAX_SCALE}
                   aria-label='Increase text size'
                 >
                   <Plus className='w-3.5 h-3.5' />
-                </IconButton>
+                </Button>
               </div>
-              <Button variant='surface' color='gray' onClick={() => printSong(sheet.title)}>
+              <Button variant='secondary' onClick={() => printSong(sheet.title)}>
                 <Printer className='w-4 h-4' /> Print
               </Button>
             </div>

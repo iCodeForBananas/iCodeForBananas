@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Check, CornerDownLeft, Plus, Trash2, X } from "lucide-react";
-import { Button, IconButton } from "@radix-ui/themes";
+import { Button } from "@/app/components/ui/button";
 import { ChordLyricLine } from "./shared";
 import { asSectionHeader } from "./songText";
 
@@ -114,12 +114,12 @@ export default function LineEditor({
         role='dialog'
         aria-modal='true'
         aria-label='Edit line'
-        className='w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl bg-surface-base shadow-2xl border-t sm:border border-line-subtle'
+        className='w-full sm:max-w-lg rounded-t-lg sm:rounded-lg bg-surface-base shadow-2xl border-t sm:border border-line-subtle'
       >
         <div className='flex items-center justify-between gap-2 px-4 pt-3 pb-2'>
           <div className='flex items-center gap-2 min-w-0'>
             <span
-              className='text-[0.7rem] font-bold uppercase tracking-widest px-2 py-1 rounded shrink-0'
+              className='text-[0.7rem] font-bold uppercase tracking-widest px-2 py-1 rounded-md shrink-0'
               style={{ background: "var(--ds-color-primary-solid)", color: "var(--ds-color-text-on-primary)" }}
             >
               {target.sectionLabel}
@@ -128,9 +128,9 @@ export default function LineEditor({
               {target.insert ? "New line" : `Line ${target.lineIndex + 1}`}
             </span>
           </div>
-          <IconButton type='button' size='3' variant='ghost' color='gray' onClick={onCancel} aria-label='Close without saving'>
+          <Button type='button' size='icon-lg' variant='ghost' onClick={onCancel} aria-label='Close without saving'>
             <X className='w-5 h-5' />
-          </IconButton>
+          </Button>
         </div>
 
         <div className='px-4 pb-4'>
@@ -149,17 +149,17 @@ export default function LineEditor({
             rows={2}
             spellCheck
             autoCapitalize='sentences'
-            className='leadsheet-doc w-full resize-none rounded-xl border border-line-subtle bg-surface-base bg-surface-sunken px-3 py-2.5 text-[16px] leading-relaxed text-ink-primary outline-none focus:border-primary-solid focus:ring-2 focus:ring-focus/40'
+            className='leadsheet-doc w-full resize-none rounded-lg border border-line-subtle bg-surface-base bg-surface-sunken px-3 py-3 text-[16px] leading-relaxed text-ink-primary outline-none focus:border-primary-solid focus:ring-2 focus:ring-focus/40'
           />
 
-          <div className='mt-3 rounded-xl bg-surface-raised bg-surface-raised px-3 py-2'>
+          <div className='mt-3 rounded-lg bg-surface-raised bg-surface-raised px-3 py-2'>
             <div className='text-[0.65rem] font-medium uppercase tracking-wide text-ink-muted mb-1'>
               Preview
             </div>
             {sectionHeader !== null ? (
               <div className='flex flex-wrap items-center gap-2'>
                 <span
-                  className='text-[0.7rem] font-bold uppercase tracking-widest px-2 py-1 rounded'
+                  className='text-[0.7rem] font-bold uppercase tracking-widest px-2 py-1 rounded-md'
                   style={{ background: "var(--ds-color-primary-solid)", color: "var(--ds-color-text-on-primary)" }}
                 >
                   {sectionHeader}
@@ -184,11 +184,10 @@ export default function LineEditor({
 
           <div className='mt-4 flex gap-2'>
             {onDelete && !target.insert && (
-              <IconButton
+              <Button
                 type='button'
-                size='4'
-                variant='soft'
-                color='red'
+                size='icon-xl'
+                variant='danger'
                 onClick={onDelete}
                 disabled={saving}
                 title='Delete this line'
@@ -196,15 +195,15 @@ export default function LineEditor({
                 className='shrink-0'
               >
                 <Trash2 className='w-5 h-5' />
-              </IconButton>
+              </Button>
             )}
-            <Button type='button' size='4' variant='soft' color='gray' onClick={onCancel} className='flex-1'>
+            <Button type='button' size='xl' variant='secondary' onClick={onCancel} className='flex-1'>
               Cancel
             </Button>
             <Button
               type='button'
-              size='4'
-              color={deletes ? "red" : undefined}
+              size='xl'
+              variant={deletes ? "danger" : "primary"}
               onClick={() => save()}
               disabled={saving}
               className='flex-[2]'
@@ -216,9 +215,8 @@ export default function LineEditor({
 
           <Button
             type='button'
-            size='3'
-            variant='surface'
-            color='gray'
+            size='lg'
+            variant='secondary'
             highContrast
             onClick={() => save(true)}
             disabled={saving}

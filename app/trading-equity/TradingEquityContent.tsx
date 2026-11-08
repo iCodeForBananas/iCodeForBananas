@@ -21,7 +21,7 @@ const SERIES_COLORS = [
   "var(--ds-color-track-2)",
   "var(--ds-color-accent-solid)",
   "var(--ds-color-track-3)",
-  "var(--ds-palette-amber-4)",
+  "var(--ds-color-ansi-bright-yellow)",
   "var(--ds-color-track-1)",
   "var(--ds-color-track-5)",
 ];
@@ -55,7 +55,7 @@ function EquityTooltip({ active, label, payload, labels }: { active?: boolean; l
     <div className="rounded-lg border border-line-strong bg-surface-overlay px-3 py-2 text-xs shadow-lg">
       <div className="mb-1 text-ink-muted">{fullFormat.format(label)} ET</div>
       {rows.map((r) => (
-        <div key={String(r.dataKey)} className="flex items-center gap-2 py-0.5">
+        <div key={String(r.dataKey)} className="flex items-center gap-2 py-1">
           <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: r.color }} />
           <span className="text-ink-primary">{labels.get(String(r.dataKey))}</span>
           <span className="ml-auto pl-4 font-medium tabular-nums text-ink-primary">{money(Number(r.value))}</span>
@@ -130,7 +130,7 @@ export function TradingEquityView({ curves, now }: { curves: EquitySummary[]; no
       <Bento size="3">
         <div className="mb-3 flex flex-wrap gap-x-4 gap-y-1">
           {curves.map((c) => (
-            <span key={c.id} className="flex items-center gap-1.5 text-xs text-ink-primary">
+            <span key={c.id} className="flex items-center gap-2 text-xs text-ink-primary">
               <span className="h-0.5 w-4 rounded-full" style={{ background: colors.get(c.id) }} />
               {c.label}
             </span>
@@ -159,22 +159,22 @@ export function TradingEquityView({ curves, now }: { curves: EquitySummary[]; no
           <tbody>
             {ranked.map((c) => (
               <tr key={c.id} className="border-b border-line-subtle text-right tabular-nums text-ink-primary last:border-0">
-                <td className="px-3 py-2.5 text-left">
+                <td className="px-3 py-3 text-left">
                   <div className="flex items-center gap-2 font-medium">
                     <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: colors.get(c.id) }} />
                     {c.label}
                   </div>
                   <div className="pl-4 text-xs text-ink-muted">{c.strategy}</div>
                 </td>
-                <td className="px-3 py-2.5 font-medium">{money(c.value)}</td>
-                <td className={`px-3 py-2.5 font-medium ${returnClass(c.returnPct)}`}>{signedPct(c.returnPct)}</td>
-                <td className={`px-3 py-2.5 ${wide}`}>{c.maxDrawdownPct.toFixed(2)}%</td>
-                <td className="px-3 py-2.5">{c.position}</td>
-                <td className={`px-3 py-2.5 ${wide}`}>
+                <td className="px-3 py-3 font-medium">{money(c.value)}</td>
+                <td className={`px-3 py-3 font-medium ${returnClass(c.returnPct)}`}>{signedPct(c.returnPct)}</td>
+                <td className={`px-3 py-3 ${wide}`}>{c.maxDrawdownPct.toFixed(2)}%</td>
+                <td className="px-3 py-3">{c.position}</td>
+                <td className={`px-3 py-3 ${wide}`}>
                   {c.trades}
                   {c.trades > 0 && <span className="text-ink-muted"> ({Math.round((c.wins / c.trades) * 100)}% won)</span>}
                 </td>
-                <td className={`px-3 py-2.5 text-ink-muted ${wide}`}>{formatAge(now - c.latestAt)}</td>
+                <td className={`px-3 py-3 text-ink-muted ${wide}`}>{formatAge(now - c.latestAt)}</td>
               </tr>
             ))}
           </tbody>

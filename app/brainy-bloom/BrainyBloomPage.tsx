@@ -11,7 +11,8 @@ import {
   XCircle,
   Star,
 } from "lucide-react";
-import { Button, Callout, Dialog, Flex, IconButton, Table } from "@radix-ui/themes";
+import { Callout, Dialog, Flex, Table } from "@radix-ui/themes";
+import { Button } from "@/app/components/ui/button";
 import { Bento } from "@/app/components/ui/bento";
 
 interface Question {
@@ -210,7 +211,7 @@ const ParentDashboard = ({ history, onClose }: { history: UserHistory[]; onClose
     <Dialog.Content maxWidth="42rem" aria-describedby={undefined} className="flex max-h-[80vh] flex-col overflow-hidden p-0">
       <Flex justify="between" align="center" className="border-b border-line-subtle p-6">
         <Dialog.Title size="6" mb="0" className="flex items-center gap-2"><Settings className="w-6 h-6" /> Parent Dashboard</Dialog.Title>
-        <IconButton size="3" variant="ghost" color="gray" radius="full" onClick={onClose} aria-label="Close dashboard"><XCircle className="w-8 h-8" /></IconButton>
+        <Button size="icon-lg" variant="ghost" onClick={onClose} aria-label="Close dashboard"><XCircle className="w-8 h-8" /></Button>
       </Flex>
       <div className="p-6 overflow-y-auto flex-1">
         <h3 className="text-lg font-semibold mb-4 text-ink-primary">Performance Metrics</h3>
@@ -337,7 +338,7 @@ export default function BrainyBloomPage() {
                 <p className="text-2xl text-ink-muted max-w-md mx-auto mb-12">Ready to grow your brain?</p>
               </motion.div>
               <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => startLevel(1)}
-                className="group relative w-full max-w-md py-12 bg-primary-solid text-ink-on-primary font-black text-5xl rounded-[3rem] shadow-overlay transition-all flex flex-col items-center gap-4">
+                className="group relative w-full max-w-md py-12 bg-primary-solid text-ink-on-primary font-black text-5xl rounded-lg shadow-overlay transition-all flex flex-col items-center gap-4">
                 <span className="flex items-center gap-4">START <ChevronRight className="w-16 h-16" /></span>
                 <span className="text-xl opacity-60 font-bold uppercase tracking-widest">{LEVELS[0]?.title}</span>
               </motion.button>
@@ -354,7 +355,7 @@ export default function BrainyBloomPage() {
             <div className="min-h-screen flex flex-col bg-surface-base">
               <div className="p-6 flex justify-between items-center bg-surface-sunken border-b-4 border-line-subtle">
                 <div className="flex items-center gap-4">
-                  <IconButton size="4" variant="surface" color="gray" onClick={resetAndGoHome} aria-label="Home" className="h-16 w-16 rounded-2xl"><Home className="w-8 h-8" /></IconButton>
+                  <Button size="icon-xl" variant="secondary" onClick={resetAndGoHome} aria-label="Home" className="h-16 w-16 "><Home className="w-8 h-8" /></Button>
                   <div className="text-primary-text font-bold text-lg">Level {currentLevel}/5 <span className="text-ink-muted font-normal text-sm">— {LEVELS[currentLevel - 1]?.description}</span></div>
                 </div>
                 <div className="flex-1 px-8">
@@ -373,19 +374,19 @@ export default function BrainyBloomPage() {
               <div className="flex-1 flex flex-col items-center justify-center p-8">
                 <motion.div key={q.id} initial={{ x: 50, opacity: 0 }} animate={{ x: 0, opacity: 1 }} className="w-full max-w-3xl text-center">
                   <div className="mb-8 flex flex-col items-center">
-                    <IconButton size="4" variant="surface" radius="full" onClick={() => speak(q.prompt)} aria-label="Read the question aloud"
+                    <Button size="icon-xl" variant="secondary" onClick={() => speak(q.prompt)} aria-label="Read the question aloud"
                       className="mb-6 h-24 w-24 shadow-2xl transition-transform hover:scale-105">
                       <Volume2 className="w-12 h-12" />
-                    </IconButton>
+                    </Button>
                     <h2 className="text-4xl font-bold text-ink-primary leading-tight">{q.prompt}</h2>
                   </div>
                   {q.visualData && (
-                    <div className="mb-12 p-12 bg-surface-sunken rounded-3xl border-4 border-dashed border-line-subtle inline-block min-w-[300px]">
+                    <div className="mb-12 p-12 bg-surface-sunken rounded-lg border-4 border-dashed border-line-subtle inline-block min-w-[300px]">
                       {q.visualData.target && <span className="text-9xl">{q.visualData.target}</span>}
                       {q.visualData.matrix && (
                         <div className="grid grid-cols-2 gap-8">
                           {q.visualData.matrix.flat().map((cell: string, j: number) => (
-                            <div key={j} className="w-24 h-24 bg-surface-raised rounded-2xl flex items-center justify-center text-5xl shadow-inner border border-line-strong">{cell}</div>
+                            <div key={j} className="w-24 h-24 bg-surface-raised rounded-lg flex items-center justify-center text-5xl shadow-inner border border-line-strong">{cell}</div>
                           ))}
                         </div>
                       )}
@@ -401,7 +402,7 @@ export default function BrainyBloomPage() {
                   <div className="grid grid-cols-2 gap-6">
                     {q.options.map((option, idx) => (
                       <button key={idx} onClick={() => handleOptionClick(option)} disabled={feedback !== null}
-                        className={`h-32 text-4xl font-bold rounded-3xl transition-all shadow-xl border-2 ${
+                        className={`h-32 text-4xl font-bold rounded-lg transition-all shadow-xl border-2 ${
                           feedback === "incorrect" && option === q.correctAnswer ? "bg-success/25 border-success text-ink-primary scale-105 ring-4 ring-success"
                             : selectedOption === option
                               ? feedback === "correct" ? "bg-success/25 border-success text-ink-primary scale-105" : "bg-danger/25 border-danger text-ink-primary animate-wiggle"
@@ -411,7 +412,7 @@ export default function BrainyBloomPage() {
                   </div>
                   {feedback === "incorrect" && (
                     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mt-8">
-                      <Button onClick={handleContinue} size="4" className="h-auto w-full rounded-3xl py-6 text-2xl font-bold transition-transform hover:scale-105">
+                      <Button variant="primary" onClick={handleContinue} size="xl" className="h-auto w-full py-6 text-2xl font-bold transition-transform hover:scale-105">
                         Continue to Next Question <ChevronRight className="w-8 h-8" />
                       </Button>
                     </motion.div>
@@ -444,7 +445,7 @@ export default function BrainyBloomPage() {
           <motion.div key="complete" exit={{ opacity: 0 }}>
             <div className="min-h-screen flex flex-col items-center justify-center bg-surface-base p-8">
               <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-                className="bg-surface-sunken p-12 rounded-[3rem] shadow-2xl text-center max-w-lg w-full border border-line-subtle">
+                className="bg-surface-sunken p-12 rounded-lg shadow-2xl text-center max-w-lg w-full border border-line-subtle">
                 <div className="text-8xl mb-6">🎉</div>
                 <h2 className="text-5xl font-black mb-4 text-ink-primary">Amazing Job!</h2>
                 <p className="text-xl text-ink-muted mb-8">You finished Level {currentLevel} of 5!</p>
@@ -457,15 +458,15 @@ export default function BrainyBloomPage() {
                     }`}>{l.id}</div>
                   ))}
                 </div>
-                <Bento size="4" title="Level Score" className="mb-8 rounded-3xl">
+                <Bento size="4" title="Level Score" className="mb-8 rounded-lg">
                   <div className="text-6xl font-black text-ink-primary">{sessionScore}/5</div>
                 </Bento>
                 {currentLevel < 5 ? (
-                  <Button onClick={() => startLevel(currentLevel + 1)} size="4" className="h-auto w-full rounded-3xl py-6 text-2xl font-bold transition-transform hover:scale-105">
+                  <Button variant="primary" onClick={() => startLevel(currentLevel + 1)} size="xl" className="h-auto w-full py-6 text-2xl font-bold transition-transform hover:scale-105">
                     Level {currentLevel + 1} <ChevronRight className="w-8 h-8" />
                   </Button>
                 ) : (
-                  <Button onClick={() => { playSound("success"); setGameState("game_complete"); }} size="4" className="h-auto w-full rounded-3xl py-6 text-2xl font-bold transition-transform hover:scale-105">
+                  <Button variant="primary" onClick={() => { playSound("success"); setGameState("game_complete"); }} size="xl" className="h-auto w-full py-6 text-2xl font-bold transition-transform hover:scale-105">
                     See Results <ChevronRight className="w-8 h-8" />
                   </Button>
                 )}
@@ -478,14 +479,14 @@ export default function BrainyBloomPage() {
           <motion.div key="game_complete" exit={{ opacity: 0 }}>
             <div className="min-h-screen flex flex-col items-center justify-center bg-surface-base p-8">
               <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-                className="bg-surface-sunken p-12 rounded-[3rem] shadow-2xl text-center max-w-lg w-full border border-line-subtle">
+                className="bg-surface-sunken p-12 rounded-lg shadow-2xl text-center max-w-lg w-full border border-line-subtle">
                 <div className="text-8xl mb-6">🏆</div>
                 <h2 className="text-5xl font-black mb-4 text-ink-primary">All Done!</h2>
                 <p className="text-xl text-ink-muted mb-8">You completed all 5 levels!</p>
-                <Bento size="4" title="Total Score" className="mb-8 rounded-3xl">
+                <Bento size="4" title="Total Score" className="mb-8 rounded-lg">
                   <div className="text-6xl font-black text-ink-primary">{userState.totalScore}/25</div>
                 </Bento>
-                <Button onClick={resetAndGoHome} size="4" className="h-auto w-full rounded-3xl py-6 text-2xl font-bold transition-transform hover:scale-105">
+                <Button variant="primary" onClick={resetAndGoHome} size="xl" className="h-auto w-full py-6 text-2xl font-bold transition-transform hover:scale-105">
                   <Home className="w-8 h-8" /> Play Again
                 </Button>
               </motion.div>

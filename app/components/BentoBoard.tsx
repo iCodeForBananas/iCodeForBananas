@@ -27,7 +27,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical } from "lucide-react";
-import { IconButton } from "@radix-ui/themes";
+import { Button } from "@/app/components/ui/button";
 import { Bento } from "@/app/components/ui/bento";
 
 // ── Public API ────────────────────────────────────────────────────────────────
@@ -192,10 +192,9 @@ function GridPanel({
         title={panel.title}
         tooltip={panel.tooltip}
         dragHandle={
-          <IconButton
+          <Button
             variant="ghost"
-            color="gray"
-            size="1"
+            size="icon-sm"
             className="cursor-grab touch-none active:cursor-grabbing"
             title="Drag to rearrange this panel"
             aria-label={`Drag to move ${panel.title}`}
@@ -203,7 +202,7 @@ function GridPanel({
             {...listeners}
           >
             <GripVertical size={16} />
-          </IconButton>
+          </Button>
         }
         resizeHandle={
           <div

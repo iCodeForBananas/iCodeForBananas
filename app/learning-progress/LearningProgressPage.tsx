@@ -4,7 +4,8 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import BentoPageLayout from "../components/BentoPageLayout";
 import { Bento } from "../components/ui/bento";
-import { Badge, Button, Callout } from "@radix-ui/themes";
+import { Badge, Callout } from "@radix-ui/themes";
+import { Button } from "@/app/components/ui/button";
 
 type SkillStatus = "mastered" | "practicing" | "not-started";
 
@@ -87,7 +88,7 @@ function WeeklySummaryLine({ summary }: { summary: WeeklySummary }) {
   }
 
   return (
-    <Bento size="3" className="bg-[var(--green-a3)]">
+    <Bento size="3" className="bg-success/15">
       <div className="flex items-start gap-3">
         <span className="text-2xl shrink-0">📅</span>
         <div>
@@ -104,7 +105,7 @@ function WeeklySummaryLine({ summary }: { summary: WeeklySummary }) {
 function SkillRow({ skill }: { skill: SkillStat }) {
   const acc = skill.accuracy != null ? Math.round(skill.accuracy * 100) : null;
   return (
-    <div className="px-4 py-2.5 flex items-center gap-3 hover:bg-surface-sunken">
+    <div className="px-4 py-3 flex items-center gap-3 hover:bg-surface-sunken">
       <div
         className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
           skill.status === "mastered"
@@ -159,7 +160,7 @@ function SubjectCard({ subject }: { subject: SubjectStat }) {
         <div className="flex items-center justify-between">
           <div>
             <h3 className="font-bold text-ink-primary">{subject.label}</h3>
-            <p className="text-xs text-ink-muted mt-0.5">{subject.description}</p>
+            <p className="text-xs text-ink-muted mt-1">{subject.description}</p>
           </div>
           <Badge radius="full" color="gray">Coming soon</Badge>
         </div>
@@ -171,12 +172,12 @@ function SubjectCard({ subject }: { subject: SubjectStat }) {
     <Bento size="2" className="overflow-hidden !p-0">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="w-full text-left px-5 py-4 hover:bg-surface-sunken transition-colors"
+        className="w-full text-left px-4 py-4 hover:bg-surface-sunken transition-colors"
       >
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <h3 className="font-bold text-ink-primary">{subject.label}</h3>
-            <p className="text-xs text-ink-muted mt-0.5">{subject.description}</p>
+            <p className="text-xs text-ink-muted mt-1">{subject.description}</p>
           </div>
           <span className={`text-ink-muted text-sm shrink-0 transition-transform ${open ? "rotate-180" : ""}`}>▾</span>
         </div>
@@ -217,7 +218,7 @@ function MathProgress({ data, loading, error, onRefresh }: {
       <Callout.Root color="red" role="alert">
         <Callout.Text>
           {error}{" "}
-          <Button size="1" variant="soft" color="red" onClick={onRefresh} className="ml-1">
+          <Button size="sm" variant="danger" onClick={onRefresh} className="ml-1">
             Retry
           </Button>
         </Callout.Text>
@@ -230,17 +231,17 @@ function MathProgress({ data, loading, error, onRefresh }: {
   const { subjects, weeklySummary, overallMasteredCount, overallTotalCount, totalSessions, totalQuestions } = data;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <WeeklySummaryLine summary={weeklySummary} />
 
       {/* Headline */}
-      <Bento size="3" className="flex items-center gap-5 flex-wrap">
-        <div className="w-20 h-20 rounded-2xl flex flex-col items-center justify-center shadow-sm shrink-0 bg-primary-solid text-ink-on-primary">
+      <Bento size="3" className="flex items-center gap-4 flex-wrap">
+        <div className="w-20 h-20 rounded-lg flex flex-col items-center justify-center shadow-sm shrink-0 bg-primary-solid text-ink-on-primary">
           <span className="text-3xl font-black leading-none tabular-nums">{overallMasteredCount}</span>
-          <span className="text-[10px] font-semibold opacity-80 mt-0.5">of {overallTotalCount}</span>
+          <span className="text-[10px] font-semibold opacity-80 mt-1">of {overallTotalCount}</span>
         </div>
         <div className="flex-1 min-w-[220px]">
-          <div className="text-10 font-semibold uppercase tracking-wider text-ink-muted mb-0.5">Skills mastered so far</div>
+          <div className="text-10 font-semibold uppercase tracking-wider text-ink-muted mb-1">Skills mastered so far</div>
           <h2 className="text-2xl font-black text-ink-primary">Spaced repetition · one skill at a time</h2>
           <p className="text-xs text-ink-muted mt-1">
             No grade level — Cai works up a single ordered list of skills. A skill that&apos;s mastered doesn&apos;t
@@ -314,7 +315,7 @@ export default function LearningProgressPage() {
             {lastUpdated && (
               <span className="text-xs text-ink-muted">Updated {lastUpdated.toLocaleTimeString()}</span>
             )}
-            <Button variant="surface" color="gray" onClick={load} disabled={loading}>
+            <Button variant="secondary" onClick={load} disabled={loading}>
               {loading ? "Loading…" : "↻ Refresh"}
             </Button>
           </div>

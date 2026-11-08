@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import { Button, Checkbox, Flex, Select, Slider, Text } from "@radix-ui/themes";
+import { Checkbox, Flex, Select, Slider, Text } from "@radix-ui/themes";
+import { Button } from "@/app/components/ui/button";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -363,8 +364,8 @@ export default function FretboardArchitect() {
           <Section title="KEY">
             <div style={{ display:"flex", flexWrap:"wrap", gap:4 }}>
               {ALL_ROOTS.map(r => (
-                <Button key={r} size="1" onClick={() => setRoot(r)} aria-pressed={root === r}
-                  variant={root === r ? "solid" : "soft"} color={root === r ? undefined : "gray"}>
+                <Button key={r} size="sm" onClick={() => setRoot(r)} aria-pressed={root === r}
+                  variant={root === r ? "primary" : "secondary"}>
                   {r}{ENHARMONIC[r] ? `/${ENHARMONIC[r]}` : ""}
                 </Button>
               ))}
@@ -444,8 +445,8 @@ export default function FretboardArchitect() {
                 <div style={{ fontSize:10, color:"var(--ds-color-text-muted)" }}>Root</div>
                 <div style={{ display:"flex", flexWrap:"wrap", gap:3 }}>
                   {ALL_ROOTS.map(r => (
-                    <Button key={r} size="1" onClick={() => setVoicingRoot(r)} aria-pressed={voicingRoot === r}
-                      variant={voicingRoot === r ? "solid" : "soft"} color={voicingRoot === r ? "teal" : "gray"}>
+                    <Button key={r} size="sm" onClick={() => setVoicingRoot(r)} aria-pressed={voicingRoot === r}
+                      variant={voicingRoot === r ? "primary" : "secondary"}>
                       {r}
                     </Button>
                   ))}
@@ -656,7 +657,7 @@ export default function FretboardArchitect() {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
-      <Text as="div" size="1" weight="bold" color="gray" className="mb-1.5 border-b border-line-subtle pb-1 uppercase tracking-widest">
+      <Text as="div" size="1" weight="bold" color="gray" className="mb-2 border-b border-line-subtle pb-1 uppercase tracking-widest">
         {title}
       </Text>
       <Flex direction="column" gap="1">
@@ -668,8 +669,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function RadioBtn({ selected, onClick, children }: { selected: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
-    <Button size="1" onClick={onClick} aria-pressed={selected} variant={selected ? "solid" : "soft"}
-      color={selected ? undefined : "gray"} className="justify-start font-mono">
+    <Button size="sm" onClick={onClick} aria-pressed={selected} variant={selected ? "primary" : "secondary"} className="justify-start font-mono">
       {children}
     </Button>
   );

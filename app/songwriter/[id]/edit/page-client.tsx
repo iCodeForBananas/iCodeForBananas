@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/app/hooks/useAuth";
 import { Save, Replace, X, Sparkles, Play, Timer, TimerOff, Clock, HelpCircle, SlidersHorizontal, ChevronDown } from "lucide-react";
-import { Button, DropdownMenu, IconButton, Select, Text, TextField } from "@radix-ui/themes";
+import { DropdownMenu, Select, Text, TextField } from "@radix-ui/themes";
+import { Button } from "@/app/components/ui/button";
 import TopBar from "../../TopBar";
 import styles from "../../songwriter.module.css";
 import { RevisionHistory } from "../../RevisionHistory";
@@ -754,10 +755,10 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
 
               <DropdownMenu.Root>
                 <DropdownMenu.Trigger>
-                  <button type="button" className={styles.ibtn}>
+                  <Button variant='secondary' size='lg'>
                     More
                     <ChevronDown className="w-3.5 h-3.5" />
-                  </button>
+                  </Button>
                 </DropdownMenu.Trigger>
                 <DropdownMenu.Content container={portal} align="end">
                   <DropdownMenu.Item onSelect={() => setHelpOpen(true)}>
@@ -796,18 +797,16 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
                 </DropdownMenu.Content>
               </DropdownMenu.Root>
 
-              <button type="button" className={styles.ibtn} onClick={handleCancel}>
+              <Button variant='secondary' size='lg' onClick={handleCancel}>
                 Cancel
-              </button>
-              <button
-                type="button"
-                className={`${styles.ibtn} ${styles.ibtnAccent}`}
+              </Button>
+              <Button variant='primary' size='lg'
                 onClick={() => void handleSaveAndView()}
                 disabled={saving}
               >
                 <Save className="w-4 h-4" />
                 {saving ? "Saving..." : "Save song"}
-              </button>
+              </Button>
             </div>
 
             {saveConflict && (
@@ -817,10 +816,10 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
                     This song changed somewhere else while this save was pending. Your edit is still
                     saved on this device — pick which version should stand.
                   </Text>
-                  <Button variant="soft" color="gray" onClick={() => void discardMineAfterConflict()}>
+                  <Button variant="secondary" onClick={() => void discardMineAfterConflict()}>
                     Use the other version
                   </Button>
-                  <Button onClick={() => void keepMineAfterConflict()}>Keep my changes</Button>
+                  <Button variant="primary" onClick={() => void keepMineAfterConflict()}>Keep my changes</Button>
                 </div>
               </div>
             )}
@@ -833,10 +832,10 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
                     {new Date(staleEdit.queuedAt).toLocaleString()} that never made it online, and the
                     song&rsquo;s changed since. Restore it, or leave what&rsquo;s showing now.
                   </Text>
-                  <Button variant="soft" color="gray" onClick={() => void discardStaleEdit()}>
+                  <Button variant="secondary" onClick={() => void discardStaleEdit()}>
                     Discard it
                   </Button>
-                  <Button onClick={() => void restoreStaleEdit()}>Restore my edit</Button>
+                  <Button variant="primary" onClick={() => void restoreStaleEdit()}>Restore my edit</Button>
                 </div>
               </div>
             )}
@@ -890,7 +889,7 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
                         spellCheck={false}
                         className="w-32 font-mono"
                       />
-                      <Button variant="soft" onClick={applyReplace} disabled={!canReplace}>
+                      <Button variant="secondary" onClick={applyReplace} disabled={!canReplace}>
                         Replace All
                       </Button>
                       {replaceResult && (
@@ -900,9 +899,9 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
                       )}
                     </>
                   )}
-                  <IconButton variant="ghost" color="gray" onClick={closeReplace} aria-label="Close replace" className="ml-auto">
+                  <Button size="icon" variant="ghost" onClick={closeReplace} aria-label="Close replace" className="ml-auto">
                     <X className="w-4 h-4" />
-                  </IconButton>
+                  </Button>
                 </div>
               </div>
             )}

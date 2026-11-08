@@ -17,25 +17,33 @@ OKLCH. Identical in every theme. Component code never names these.
 
 ## The palette
 
-Five named brand colors, converted to OKLCH losslessly (each round-trips back
-to the exact same sRGB hex — see the primitives themselves for the numbers):
+Both themes are the iCodeForBananas iTerm schemes
+([github.com/iCodeForBananas/itermcolors](https://github.com/iCodeForBananas/itermcolors)),
+imported slot for slot into `palette.dark` and `palette.light`. Each value is
+converted to OKLCH losslessly and round-trips to the hex in its description.
+Each job sits on the same slot in both themes:
 
-| | Hex | Job |
-|---|---|---|
-| Ink Black | `#000814` | `palette.neutral.2` — the base background |
-| Prussian Blue | `#001d3d` | `palette.neutral.3` — raised surfaces |
-| Oxford Navy | `#003566` | `palette.neutral.4` — overlay surfaces |
-| School Bus Yellow | `#ffc300` | `palette.amber.solid` — the signature fill |
-| Gold | `#ffd60a` | `palette.amber.hover` / `.text` — highlights |
+| Job | iTerm slot | Dark | Light |
+|---|---|---|---|
+| `surface.base` | Background | `#0f1114` | `#fdfcfa` |
+| `surface.raised` | Cursor Guide | `#1b1e23` | `#f1eee6` |
+| `text.primary` | Foreground | `#e6e8eb` | `#0a0c0e` |
+| `text.muted` | ANSI black / white | `#98a2b0` | `#3f464e` |
+| `primary.solid`, `primary.text`, `focus-ring` | Cursor | `#ffcc00` | `#755000` |
+| `primary.hover` | bright yellow / yellow | `#f2cc60` | `#8a5a00` |
+| `text.on-primary` | Cursor Text | `#0f1114` | `#fdfcfa` |
+| `selection.background` | Selection | `#27456b` | `#bbd6f5` |
+| `link` | Link | `#a5d6ff` | `#0b5fd0` |
+| `danger` / `success` | ANSI red / green | `#ff8a82` / `#6fd28a` | `#c21f2e` / `#157a34` |
+| `accent.solid` | ANSI cyan | `#56d4dd` | `#0d7478` |
+| `track.1`-`.6` | ANSI blue, magenta, red, cyan, green, yellow | | |
 
-Dark background, bright accent used sparingly — the three blues carry real
-chroma (0.03 to 0.10, not a whisper of tint) because they are meant to read as
-blue, and the neutral ramp tapers that back toward true neutral above step 8
-so body text stays a crisp near-white rather than visibly blue. The two
-yellows only ever fill a small area at a time: a button, an active state, a
-line of emphasized text. `palette.neutral.1` (sunken) and steps 5-12 are
-derived by continuing the same ramp past the three named colors, not named
-brand values themselves.
+`color.ansi.*` exposes the six hues and their bright variants for what has no
+semantic name of its own: indicator lines on a chart, Radix's `color` prop.
+
+A terminal has one background and one highlighted line; the app has four
+surface planes. `palette.derived` holds the only colors that are not iTerm
+slots, the planes the schemes do not have, continued from their own anchors.
 
 **Layer 2, semantics** (`semantic/`, `themes/`). Purpose-named aliases that
 reference Layer 1 by path. This is the only layer component code is allowed to
@@ -50,13 +58,8 @@ when a component genuinely needs a knob of its own, not in advance.
 `color.track.1` to `.6` are a categorical set, for things that differ in kind
 rather than in importance: a recorded track, a drum voice, a pad. They are the
 one place a colour carries identity instead of meaning, which is why they are a
-flat set rather than a ramp and why none of them is the brand. Assign them in
-order and let them repeat.
-
-They take a near-black label for the same reason the amber does, and on a light
-surface a track swatch draws a `border.strong` outline: a fill this saturated
-cannot clear 3:1 against near-white at a lightness that also carries that
-label. `tokens:check` records that as a mitigation rather than a pass.
+flat set rather than a ramp and why none of them is the primary. Assign them in
+order and let them repeat. A filled swatch takes `text.on-primary` as its label.
 
 ## Themes
 
@@ -73,20 +76,16 @@ disagree about which theme is on. There is no `.dark` class any more, and no
 `dark:` variant left in the app either — a semantic token already carries both
 themes, which is the whole point of having them.
 
-Anything a theme does not list inherits its dark value deliberately. That is
-why `color.text.on-primary` and `color.primary.solid` appear only once.
+Light lists every color role, because every role reads a different scheme.
 
-## The amber rule
+## Labels on a fill
 
-`color.primary.solid` (School Bus Yellow) is a light color (L 0.848). White on
-it fails every contrast target there is; the near-black `color.text.on-primary`
-lands near 11.5:1. **The label on a filled amber control is never white.**
-`npm run tokens:check` enforces this, and `palette.amber.contrast` carries the
-long-form explanation.
-
-The same physics forces `color.primary.text`, `color.danger`, `color.success`
-and `color.accent.solid` to differ between themes: no single lightness is
-legible as text on both a near-black and a near-white surface.
+`text.on-primary` is the scheme's Cursor Text, and it flips with the theme:
+near-black on the dark scheme's bright cursor and pastels, near-white on the
+light scheme's deep ones. **Put it on any filled accent, status or track color,
+and never hard-code white or black on a fill.** `npm run tokens:check` enforces
+the pairs. A tint (`bg-track-3/25`) reads as the surface under it, so it takes
+`text.primary` instead.
 
 ## Typography
 
@@ -152,25 +151,48 @@ Two things in this layer are load-bearing and easy to undo:
 - **`cn()` is taught the type scale.** `text-13` is a size and
   `text-ink-muted` is a colour, and tailwind-merge cannot tell them apart, so
   by default it files them together and keeps one. That silently deleted the
-  near-black label from the primary button and left near-white text on amber.
-  `app/lib/utils.test.ts` pins it.
+  label from the primary button once. `app/lib/utils.test.ts` pins it.
 - **No `outline-none` on a focusable control.** In Tailwind v4 it sets the
   outline style through a variable that `focus-visible:outline-2` then reads,
   so the two together produce a 2px outline that does not draw. Write
   `focus-visible:outline-solid` and leave the default alone.
+
+## Buttons
+
+`app/components/ui/button.tsx` is the only button. Nothing else imports Radix's
+`Button` or `IconButton`. A call site says what the button is for, and the look
+lives in that one file:
+
+| | |
+|---|---|
+| `variant` | `primary` (the one action that matters most), `secondary` (default), `ghost`, `danger` |
+| `size` | `sm` 24, `md` 32, `lg` 40, `xl` 48; `icon-sm`, `icon`, `icon-lg`, `icon-xl` for a lone icon |
+
+A choice among options is a `ToggleButton`, which is the same button with a
+pressed state. A raw `<button>` is only for something that is not visually a
+button: a list row, a sequencer cell, a game's answer tile.
+
+## Spacing and radius
+
+Spacing is the 4px scale, and these are the steps: `1 2 3 4 6 8 12`, plus
+`16 20 24` for page-level rhythm and clearing a fixed bar. Half steps and `5`,
+`7`, `9`, `10`, `11` are off the scale. CSS outside Tailwind uses
+`var(--ds-space-*)`.
+
+Radius is three steps: `rounded-md` for a control, `rounded-lg` for a card,
+dialog or panel, `rounded-full` for a dot, avatar or pill.
 
 ## What is deliberately not on the system
 
 **Painted scenes.** `app/shoot-simulator/ShootSimulator.tsx` is a night street
 drawn into a canvas — brick, bark, neon, graffiti, robots — and
 `SpaceBackground` in `app/space-math/SpaceMathPage.tsx` is a starfield. Layer 2
-names four planes, two border weights, three inks and three status colours; it
 has nothing to say about what colour a comet tail is, and flattening a scene
-into four greys would delete the artwork rather than standardise it. The chrome
-around both is on the tokens.
+into sixteen terminal colours would delete the artwork rather than standardise
+it. The chrome around both is on the tokens.
 
 That is the only exception. Grepping `app/` for a colour literal or a Tailwind
-palette class returns those two files, plus the print stylesheet, where white
+palette class returns those two scenes, plus the print stylesheet, where white
 paper and black ink are the point.
 
 ## What is deliberately not tokenized here
@@ -189,10 +211,8 @@ The tokens exist so CSS written outside Tailwind resolves to the same numbers.
 
 ## Gamut
 
-Two brand anchors, `palette.amber.hover` and `palette.amber.text`, are more
-saturated than sRGB can show. They render as written on a P3 display and clip
-to the gamut edge on an sRGB one. `tokens:check` reports them and measures the
-clipped result, so the contrast numbers hold on either display.
+Two dark-scheme hues, red and magenta, sit on the edge of sRGB and report as
+out of gamut in `tokens:check` by a rounding error. They render as their hex.
 
 The build pipeline (Lightning CSS, via Tailwind v4) rewrites every `oklch()`
 into a hex fallback plus an exact `lab()`. That is why grepping the built CSS

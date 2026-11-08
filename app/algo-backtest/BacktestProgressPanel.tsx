@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Button, Flex, Heading, Progress, Text } from "@radix-ui/themes";
+import { Flex, Heading, Progress, Text } from "@radix-ui/themes";
+import { Button } from "@/app/components/ui/button";
 import type { BacktestProgress } from "./useBacktestWorker";
 
 const formatDuration = (ms: number) => {
@@ -80,7 +81,7 @@ export default function BacktestProgressPanel({
         </Flex>
 
         <Flex mt='6'>
-          <Button variant='soft' color='gray' onClick={onCancel}>
+          <Button variant='secondary' onClick={onCancel}>
             Cancel
           </Button>
         </Flex>

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Pause, Play, RotateCcw, Rewind, FastForward, X, Crosshair } from "lucide-react";
-import { Button, IconButton } from "@radix-ui/themes";
+import { Button } from "@/app/components/ui/button";
 import { formatTime, nextCueAfter, type Cue, type Timeline } from "./timing";
 
 const NUDGE_SECONDS = 5;
@@ -172,15 +172,15 @@ export function PlaybackBar({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <IconButton type="button" size="3" variant="soft" color="gray" onClick={playback.restart} aria-label="Back to start">
+          <Button type="button" size="icon-lg" variant="secondary" onClick={playback.restart} aria-label="Back to start">
             <RotateCcw className="h-4 w-4" />
-          </IconButton>
-          <IconButton type="button" size="3" variant="soft" color="gray" onClick={() => playback.nudge(-NUDGE_SECONDS)} aria-label="Back 5 seconds">
+          </Button>
+          <Button type="button" size="icon-lg" variant="secondary" onClick={() => playback.nudge(-NUDGE_SECONDS)} aria-label="Back 5 seconds">
             <Rewind className="h-4 w-4" />
-          </IconButton>
-          <Button
+          </Button>
+          <Button variant="primary"
             type="button"
-            size="3"
+            size="lg"
             onClick={playback.toggle}
             disabled={!playback.ready}
             aria-label={playing ? "Pause" : "Play"}
@@ -188,15 +188,15 @@ export function PlaybackBar({
             {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
             {!playback.ready ? "Loading" : playing ? "Pause" : "Play"}
           </Button>
-          <IconButton type="button" size="3" variant="soft" color="gray" onClick={() => playback.nudge(NUDGE_SECONDS)} aria-label="Forward 5 seconds">
+          <Button type="button" size="icon-lg" variant="secondary" onClick={() => playback.nudge(NUDGE_SECONDS)} aria-label="Forward 5 seconds">
             <FastForward className="h-4 w-4" />
-          </IconButton>
+          </Button>
 
           {/* What you should be playing right now */}
           <div className="min-w-0 flex-1 px-2">
             {activeCue ? (
               <div className="min-w-0">
-                <span className="mr-2 rounded px-1.5 py-0.5 text-[0.65rem] font-bold uppercase tracking-widest" style={{ background: "var(--ds-color-primary-solid)", color: "var(--ds-color-text-on-primary)" }}>
+                <span className="mr-2 rounded-md px-2 py-1 text-[0.65rem] font-bold uppercase tracking-widest" style={{ background: "var(--ds-color-primary-solid)", color: "var(--ds-color-text-on-primary)" }}>
                   {activeCue.sectionLabel}
                 </span>
                 <span className="truncate align-middle font-mono text-sm text-ink-primary">
@@ -217,9 +217,8 @@ export function PlaybackBar({
 
           <Button
             type="button"
-            size="3"
-            variant={follow ? "solid" : "soft"}
-            color={follow ? undefined : "gray"}
+            size="lg"
+            variant={follow ? "primary" : "secondary"}
             aria-pressed={follow}
             onClick={() => onFollowChange(!follow)}
             title="Keep the current line scrolled into view"
@@ -227,9 +226,9 @@ export function PlaybackBar({
             <Crosshair className="h-4 w-4" />
             Follow
           </Button>
-          <IconButton type="button" size="3" variant="soft" color="gray" onClick={onClose} aria-label="Close playback">
+          <Button type="button" size="icon-lg" variant="secondary" onClick={onClose} aria-label="Close playback">
             <X className="h-4 w-4" />
-          </IconButton>
+          </Button>
         </div>
       </div>
     </div>

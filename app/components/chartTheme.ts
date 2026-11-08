@@ -19,6 +19,16 @@ export interface ChartTheme {
   accent: string;
   /** The accent at low opacity, for area fills under a line. */
   accentFill: string;
+  /** Indicator lines and markers: the scheme's ANSI hues, resolved for canvas. */
+  red: string;
+  green: string;
+  blue: string;
+  yellow: string;
+  magenta: string;
+  cyan: string;
+  brightCyan: string;
+  foreground: string;
+  muted: string;
 }
 
 let scratch: CanvasRenderingContext2D | null = null;
@@ -45,6 +55,15 @@ export function readChartTheme(): ChartTheme {
     down: resolveColor(token("--ds-color-danger")),
     accent: resolveColor(token("--ds-color-primary-solid")),
     accentFill: resolveColor(token("--ds-color-primary-solid"), 0.18),
+    red: resolveColor(token("--ds-color-ansi-red")),
+    green: resolveColor(token("--ds-color-ansi-green")),
+    blue: resolveColor(token("--ds-color-ansi-blue")),
+    yellow: resolveColor(token("--ds-color-ansi-yellow")),
+    magenta: resolveColor(token("--ds-color-ansi-magenta")),
+    cyan: resolveColor(token("--ds-color-ansi-cyan")),
+    brightCyan: resolveColor(token("--ds-color-ansi-bright-cyan")),
+    foreground: resolveColor(token("--ds-color-text-primary")),
+    muted: resolveColor(token("--ds-color-text-muted")),
   };
 }
 

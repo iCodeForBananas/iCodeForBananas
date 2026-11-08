@@ -91,7 +91,7 @@ export default function GeminiKeyModal({ isOpen, onClose }: GeminiKeyModalProps)
         </Button>
 
         <h2 className="mb-2 font-display text-20 font-semibold text-ink-primary">Set Gemini API Key</h2>
-        <p className="mb-5 text-13 text-ink-muted">
+        <p className="mb-4 text-13 text-ink-muted">
           Your key is stored as a secure, HttpOnly cookie for 2 days and never logged.
         </p>
 
@@ -105,13 +105,15 @@ export default function GeminiKeyModal({ isOpen, onClose }: GeminiKeyModalProps)
               placeholder="Enter your Gemini API key"
               className="h-10 pr-16"
             />
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="sm"
               onClick={() => setShowKey((v) => !v)}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-12 font-medium text-ink-muted hover:text-ink-primary"
+              className="absolute right-2 top-1/2 -translate-y-1/2"
             >
               {showKey ? "Hide" : "Show"}
-            </button>
+            </Button>
           </div>
 
           {feedback && (

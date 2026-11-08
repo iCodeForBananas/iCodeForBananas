@@ -1,8 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { ToggleButton } from "@/app/components/ui/toggle-button";
 import { Download, Volume2 } from "lucide-react";
-import { Select, Button as RadixButton, Text } from "@radix-ui/themes";
+import { Select, Text } from "@radix-ui/themes";
+import { Button } from "@/app/components/ui/button";
 import { ACCENT_GROUPS, auditionAccent } from "./accents";
 import {
   CELL_HIT,
@@ -203,7 +205,7 @@ export default function DrumControls({
             Hit
           </span>
           <span>
-            <span className={styles.sw} style={{ background: "color-mix(in srgb, var(--ds-color-primary-solid) 38%, #1A1E23)" }} />
+            <span className={styles.sw} style={{ background: "color-mix(in srgb, var(--ds-color-primary-solid) 38%, var(--ds-color-surface-sunken))" }} />
             Soft
           </span>
           <span>Tap a step to cycle hit, soft, off.</span>
@@ -229,24 +231,24 @@ export default function DrumControls({
               ))}
             </Select.Content>
           </Select.Root>
-          <button
-            type='button'
-            className={styles.ibtn}
+          <Button
+            variant='secondary'
+            size='md'
             disabled={!edited}
             onClick={() => onChange({ ...kit, drums: { ...kit.drums, steps: null } })}
             title='Put the beat back the way the pattern has it'
           >
             Reset
-          </button>
+          </Button>
         </div>
       </div>
 
       <div className={styles.group}>
         <div className={styles.libRow}>
           <h3 className={styles.panelH}>Sound · {selected}</h3>
-          <button type='button' className={styles.ibtn} onClick={() => auditionTrack(track, kit.drums)} aria-label={`Hear ${selected}`}>
+          <Button variant='secondary' size='md' onClick={() => auditionTrack(track, kit.drums)} aria-label={`Hear ${selected}`}>
             <Volume2 className='h-[18px] w-[18px]' />
-          </button>
+          </Button>
         </div>
         <label className={styles.sl}>
           <span className={styles.slRow}>
@@ -262,9 +264,9 @@ export default function DrumControls({
             onChange={(e) => setLevel(track, Number(e.target.value) / 100)}
           />
         </label>
-        <button type='button' className={styles.ibtn} onClick={() => setGrid({ ...grid, [track]: Array(STEPS_PER_BAR).fill(CELL_OFF) })}>
+        <Button variant='secondary' size='md' onClick={() => setGrid({ ...grid, [track]: Array(STEPS_PER_BAR).fill(CELL_OFF) })}>
           Clear {selected} row
-        </button>
+        </Button>
         <label className={styles.sl}>
           <span className={styles.slRow}>
             <span>Swing</span>
@@ -292,15 +294,12 @@ export default function DrumControls({
                 ["808", "808"],
               ] as const
             ).map(([value, label]) => (
-              <button
+              <ToggleButton size='md' pressed={kit.drums.kick === value}
                 key={value}
-                type='button'
-                className={`${styles.segBtn} ${kit.drums.kick === value ? styles.segBtnOn : ""}`}
-                aria-pressed={kit.drums.kick === value}
                 onClick={() => onChange({ ...kit, drums: { ...kit.drums, kick: value } })}
               >
                 {label}
-              </button>
+              </ToggleButton>
             ))}
           </div>
         </div>
@@ -313,15 +312,12 @@ export default function DrumControls({
                 ["brush", "Brush"],
               ] as const
             ).map(([value, label]) => (
-              <button
+              <ToggleButton size='md' pressed={kit.drums.snare === value}
                 key={value}
-                type='button'
-                className={`${styles.segBtn} ${kit.drums.snare === value ? styles.segBtnOn : ""}`}
-                aria-pressed={kit.drums.snare === value}
                 onClick={() => onChange({ ...kit, drums: { ...kit.drums, snare: value } })}
               >
                 {label}
-              </button>
+              </ToggleButton>
             ))}
           </div>
         </div>
@@ -355,15 +351,12 @@ export default function DrumControls({
         <h3 className={styles.panelH}>Layers</h3>
         <div className={styles.layerRow}>
           {KIT_LAYERS.map((layer) => (
-            <button
+            <ToggleButton size='md' pressed={hasLayer(kit, layer)}
               key={layer}
-              type='button'
-              className={`${styles.ibtn} ${hasLayer(kit, layer) ? styles.ibtnOn : ""}`}
-              aria-pressed={hasLayer(kit, layer)}
               onClick={() => onChange(toggleLayer(kit, layer))}
             >
               {LAYER_LABELS[layer]}
-            </button>
+            </ToggleButton>
           ))}
         </div>
         <label className={styles.sl}>
@@ -385,51 +378,40 @@ export default function DrumControls({
       <div className={styles.group}>
         <div className={styles.libRow}>
           <h3 className={styles.panelH}>Drone</h3>
-          <button
-            type='button'
-            className={`${styles.ibtn} ${droneOn ? styles.ibtnAccent : ""}`}
+          <Button variant='primary' size='md'
             onClick={() => onChange(toggleLayer(kit, "drone"))}
             aria-pressed={droneOn}
           >
             {droneOn ? "On" : "Off"}
-          </button>
+          </Button>
         </div>
         <span className={styles.droneSummary}>
           {soundingLabel} · {(DRONE_STYLES.find((s) => s.value === drone.style) ?? DRONE_STYLES[0]).label}
         </span>
         <div className={styles.notes}>
           {NOTES.map((note) => (
-            <button
+            <ToggleButton size='md' pressed={note === dronePitch} className='min-w-0 px-0'
               key={note}
-              type='button'
-              className={`${styles.nbtn} ${note === dronePitch ? styles.nbtnOn : ""}`}
-              aria-pressed={note === dronePitch}
               onClick={() => {
                 setDroneKey(note, sounding.minor);
                 if (!droneOn) onChange(toggleLayer(kit, "drone"));
               }}
             >
               {note}
-            </button>
+            </ToggleButton>
           ))}
         </div>
         <div className={styles.segctl} role='group' aria-label='Chord shape'>
-          <button
-            type='button'
-            className={`${styles.segBtn} ${!sounding.minor ? styles.segBtnOn : ""}`}
-            aria-pressed={!sounding.minor}
+          <ToggleButton size='md' pressed={!sounding.minor}
             onClick={() => setDroneKey(dronePitch, false)}
           >
             Major
-          </button>
-          <button
-            type='button'
-            className={`${styles.segBtn} ${sounding.minor ? styles.segBtnOn : ""}`}
-            aria-pressed={sounding.minor}
+          </ToggleButton>
+          <ToggleButton size='md' pressed={sounding.minor}
             onClick={() => setDroneKey(dronePitch, true)}
           >
             Minor
-          </button>
+          </ToggleButton>
         </div>
         <label className={styles.field}>
           Key · what the drone holds
@@ -452,16 +434,13 @@ export default function DrumControls({
         </label>
         <div className={styles.segctl} role='group' aria-label='Drone variation'>
           {DRONE_STYLES.map((s) => (
-            <button
+            <ToggleButton size='md' pressed={drone.style === s.value}
               key={s.value}
-              type='button'
-              className={`${styles.segBtn} ${drone.style === s.value ? styles.segBtnOn : ""}`}
-              aria-pressed={drone.style === s.value}
               onClick={() => onChange({ ...kit, drone: { ...drone, style: s.value as DroneStyle } })}
               title={s.blurb}
             >
               {s.label}
-            </button>
+            </ToggleButton>
           ))}
         </div>
         <label className={styles.sl}>
@@ -482,9 +461,7 @@ export default function DrumControls({
 
       <div className={styles.group}>
         <KitDownload kit={kit} bpm={bpm} songTitle={songTitle} songKey={songKey} transpose={transpose} />
-        <button
-          type='button'
-          className={styles.ibtn}
+        <Button variant='secondary' size='md'
           onClick={() =>
             onChange({
               ...kit,
@@ -495,7 +472,7 @@ export default function DrumControls({
           title='Clear every step, the swing and the levels, and turn the drone off'
         >
           Start blank
-        </button>
+        </Button>
       </div>
     </>
   );
@@ -544,17 +521,16 @@ function KitDownload({
 
   return (
     <div className={styles.downloadRow}>
-      <RadixButton
+      <Button
         type='button'
-        variant='soft'
-        color='gray'
+        variant='secondary'
         disabled={silent || rendering}
         onClick={download}
         title={silent ? "Switch a layer on first" : `Render ${KIT_RENDER_SECONDS} seconds of this kit as a WAV`}
       >
         <Download className='h-4 w-4' />
         {rendering ? "Rendering…" : `Download ${KIT_RENDER_SECONDS} seconds`}
-      </RadixButton>
+      </Button>
       {error && (
         <Text size='1' color='red'>
           Couldn’t render the kit: {error}

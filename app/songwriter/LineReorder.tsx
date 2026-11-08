@@ -20,7 +20,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical } from "lucide-react";
-import { IconButton } from "@radix-ui/themes";
+import { Button } from "@/app/components/ui/button";
 import { ChordLyricLine } from "./shared";
 
 // ─── Dragging lines around ────────────────────────────────────────────────────
@@ -60,25 +60,24 @@ export function SortableLine({ id, children }: { id: string; children: ReactNode
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Translate.toString(transform), transition }}
-      className={`flex items-start gap-1 rounded ${isDragging ? "opacity-40" : ""} ${
+      className={`flex items-start gap-1 rounded-md ${isDragging ? "opacity-40" : ""} ${
         isOver && !isDragging ? "ring-2 ring-focus" : ""
       }`}
     >
-      <IconButton
+      <Button
         ref={setActivatorNodeRef}
         {...attributes}
         {...listeners}
         variant='ghost'
-        color='gray'
-        size='2'
+        size='icon'
         // Without this a drag off the grip scrolls the page instead.
         style={{ touchAction: "none" }}
         aria-label='Drag to move this line'
         title='Drag to move this line'
-        className='m-0 mt-0.5 shrink-0 cursor-grab active:cursor-grabbing'
+        className='m-0 mt-1 shrink-0 cursor-grab active:cursor-grabbing'
       >
         <GripVertical className='h-4 w-4' />
-      </IconButton>
+      </Button>
       <div className='min-w-0 flex-1'>{children}</div>
     </div>
   );
@@ -170,7 +169,7 @@ export function LineDndProvider({
       {children}
       <DragOverlay dropAnimation={null}>
         {dragging && (
-          <div className='flex items-center gap-1 rounded-lg border-2 border-primary-solid bg-surface-base px-2 py-1.5 shadow-xl bg-surface-base'>
+          <div className='flex items-center gap-1 rounded-lg border-2 border-primary-solid bg-surface-base px-2 py-2 shadow-xl bg-surface-base'>
             <GripVertical className='h-4 w-4 shrink-0 text-ink-muted text-ink-muted' />
             <div className='min-w-0'>
               <ChordLyricLine line={lineTextAt(dragging)} />

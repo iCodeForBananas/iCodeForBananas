@@ -45,7 +45,7 @@ export default function UpdateAvailable() {
           <RefreshCw className='h-5 w-5 shrink-0 text-primary-text' aria-hidden='true' />
           <div className='min-w-0 flex-1'>
             <p className='text-13 font-medium text-ink-primary'>Update available</p>
-            <p className='mt-0.5 text-12 text-ink-muted'>Reload for the newest version.</p>
+            <p className='mt-1 text-12 text-ink-muted'>Reload for the newest version.</p>
           </div>
           <Button variant='primary' size='sm' onClick={() => window.location.reload()}>
             Reload

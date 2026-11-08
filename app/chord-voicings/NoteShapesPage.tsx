@@ -154,7 +154,7 @@ export default function NoteShapesPage() {
                       return (
                         <ToggleButton
                           key={note}
-                          size='1'
+                          size='sm'
                           pressed={active}
                           onClick={() => {
                             setSelectedNote(note);
@@ -167,7 +167,7 @@ export default function NoteShapesPage() {
                     })}
                     <span className='mx-1 text-ink-muted'>|</span>
                     <ToggleButton
-                      size='1'
+                      size='sm'
                       pressed={useFlats}
                       onClick={() => {
                         const newVal = !useFlats;

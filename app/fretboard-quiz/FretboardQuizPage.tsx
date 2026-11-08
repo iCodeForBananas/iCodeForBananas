@@ -6,7 +6,7 @@ import { allNotes, getNoteAt, generateChordsAndScales } from "../lib/music";
 import { useGuitarSettings } from "../lib/guitarSettings";
 import BentoBoard, { type BentoPanel } from "../components/BentoBoard";
 import { Bento } from "@/app/components/ui/bento";
-import { Button } from "@radix-ui/themes";
+import { Button } from "@/app/components/ui/button";
 import { ToggleButton } from "@/app/components/ui/toggle-button";
 
 const SCALE_TYPES = [
@@ -180,7 +180,7 @@ export default function FretboardQuizPage() {
   const scoreContent = (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap gap-3">
-        <Bento size="1" className="flex flex-1 min-w-[110px] flex-col gap-0.5">
+        <Bento size="1" className="flex flex-1 min-w-[110px] flex-col gap-1">
           <span
             className="text-xs font-semibold uppercase tracking-wider text-ink-muted"
             title="How many of the scale's fretboard positions you have found so far"
@@ -195,7 +195,7 @@ export default function FretboardQuizPage() {
           </span>
         </Bento>
 
-        <Bento size="1" className="flex flex-1 min-w-[110px] flex-col gap-0.5">
+        <Bento size="1" className="flex flex-1 min-w-[110px] flex-col gap-1">
           <span
             className="text-xs font-semibold uppercase tracking-wider text-ink-muted"
             title="Correct guesses as a share of every guess you have made this round"
@@ -207,7 +207,7 @@ export default function FretboardQuizPage() {
           </span>
         </Bento>
 
-        <Bento size="1" className="flex flex-1 min-w-[110px] flex-col gap-0.5">
+        <Bento size="1" className="flex flex-1 min-w-[110px] flex-col gap-1">
           <span
             className="text-xs font-semibold uppercase tracking-wider text-ink-muted"
             title="Guesses on notes that are not in this scale"
@@ -231,7 +231,7 @@ export default function FretboardQuizPage() {
       </div>
 
       {isComplete && (
-        <div className="rounded-xl border border-success/40 bg-success/10 px-4 py-3 text-13 font-medium text-success">
+        <div className="rounded-lg border border-success/40 bg-success/10 px-4 py-3 text-13 font-medium text-success">
           🎉 Every {selectedKey} {selectedScaleType} note found — {scorePercent}% accuracy.
         </div>
       )}
@@ -246,7 +246,7 @@ export default function FretboardQuizPage() {
         { swatch: "bg-surface-raised", label: "Not guessed yet", border: "border border-line-subtle" },
       ].map((row) => (
         <div key={row.label} className="flex items-center gap-3">
-          <div className={`h-5 w-5 shrink-0 rounded ${row.swatch} ${row.border}`} />
+          <div className={`h-5 w-5 shrink-0 rounded-md ${row.swatch} ${row.border}`} />
           <span className="text-sm text-ink-muted">{row.label}</span>
         </div>
       ))}
@@ -291,7 +291,7 @@ export default function FretboardQuizPage() {
 
       {/* ── Controls — two rows in a bento card, pinned at top ───────────────── */}
       <div
-        className="mb-4 flex flex-col gap-4 rounded-2xl bg-surface-raised p-4 sm:p-5"
+        className="mb-4 flex flex-col gap-4 rounded-lg bg-surface-raised p-4 sm:p-4"
         style={{ border: "1px solid var(--border-color)" }}
       >
 
@@ -307,7 +307,7 @@ export default function FretboardQuizPage() {
             {allNotes.map((note) => (
               <ToggleButton
                 key={note}
-                size='3'
+                size='lg'
                 pressed={selectedKey === note}
                 onClick={() => handleKeyChange(note)}
                 title={`Quiz the ${note} ${selectedScaleType} scale — starts a fresh round`}
@@ -331,7 +331,7 @@ export default function FretboardQuizPage() {
             {SCALE_TYPES.map((type) => (
               <ToggleButton
                 key={type}
-                size='3'
+                size='lg'
                 pressed={selectedScaleType === type}
                 onClick={() => handleScaleTypeChange(type)}
                 title={SCALE_TOOLTIPS[type] ?? type}
@@ -342,9 +342,8 @@ export default function FretboardQuizPage() {
             ))}
           </div>
           <Button
-            size='3'
-            variant='soft'
-            color='gray'
+            size='lg'
+            variant='secondary'
             onClick={resetRound}
             title="Clear every guess and start this scale again"
             className={`${TOUCH_BUTTON} ml-auto`}

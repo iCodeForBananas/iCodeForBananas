@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
+import { Button } from "@/app/components/ui/button";
 import { useTheme } from "../lib/ThemeContext";
 import Fretboard from "./Fretboard";
 import {
@@ -38,7 +39,7 @@ function TuningControl({ tuning, setTuning, theme }: TuningControlProps) {
           <select
             id={`tun-${i}`}
             key={i}
-            className='border rounded px-3 py-1 text-sm'
+            className='border rounded-md px-3 py-1 text-sm'
             value={note}
             onChange={(e) => updateTuning(i, e.target.value)}
           >
@@ -50,12 +51,9 @@ function TuningControl({ tuning, setTuning, theme }: TuningControlProps) {
           </select>
         ))}
       </div>
-      <button
-        className='rounded border border-line-subtle px-4 py-2 text-ink-primary transition-colors duration-120 ease-ui hover:bg-surface-overlay'
-        onClick={resetTuning}
-      >
+      <Button variant='secondary' onClick={resetTuning}>
         Reset Tuning
-      </button>
+      </Button>
     </div>
   );
 }
@@ -177,7 +175,7 @@ export default function ProgressionsView() {
         <div className='lg:col-span-2'>
           <h5 className='text-lg font-semibold mb-3'>Chord Progression</h5>
           <select
-            className='w-full border rounded px-3 py-2 mb-3'
+            className='w-full border rounded-md px-3 py-2 mb-3'
             value={progressionKey}
             onChange={(e) => {
               setProgressionKey(e.target.value);
@@ -189,7 +187,7 @@ export default function ProgressionsView() {
             ))}
           </select>
           <select
-            className='w-full border rounded px-3 py-2 mb-3'
+            className='w-full border rounded-md px-3 py-2 mb-3'
             value={formulaIndex}
             onChange={(e) => {
               const value = parseInt(e.target.value, 10);
@@ -204,7 +202,7 @@ export default function ProgressionsView() {
             ))}
           </select>
           <select
-            className='w-full border rounded px-3 py-2 mb-3'
+            className='w-full border rounded-md px-3 py-2 mb-3'
             value={voicing}
             onChange={(e) => {
               setVoicing(e.target.value);
@@ -224,7 +222,7 @@ export default function ProgressionsView() {
               <div key={index} className='flex items-center mb-2 gap-2'>
                 <span className='text-sm opacity-60 w-16 shrink-0'>Chord {index + 1}</span>
                 <select
-                  className='border rounded px-2 py-1 text-sm w-20 shrink-0'
+                  className='border rounded-md px-2 py-1 text-sm w-20 shrink-0'
                   value={rootNote}
                   onChange={(e) => {
                     const newName = e.target.value + suffix;
@@ -236,7 +234,7 @@ export default function ProgressionsView() {
                   ))}
                 </select>
                 <select
-                  className='flex-1 border rounded px-2 py-1 text-sm'
+                  className='flex-1 border rounded-md px-2 py-1 text-sm'
                   value={suffix}
                   onChange={(e) => {
                     const newName = rootNote + e.target.value;
@@ -248,27 +246,26 @@ export default function ProgressionsView() {
                   ))}
                 </select>
                 {entry.name && (
-                  <button
-                    className='opacity-40 hover:opacity-100 text-lg leading-none px-1'
+                  <Button
+                    variant='ghost'
+                    size='icon-sm'
                     onClick={() => updateChordInProgression(index, "name", "")}
                     title='Clear chord'
+                    aria-label='Clear chord'
                   >
                     ×
-                  </button>
+                  </Button>
                 )}
               </div>
             );
           })}
 
-          <div className='mt-3'>
-            <button
-              className='mr-2 rounded border border-line-subtle bg-surface-raised px-4 py-2 text-13 text-ink-primary transition-colors duration-120 ease-ui hover:bg-surface-overlay'
-              onClick={generateProgression}
-            >
+          <div className='mt-3 flex flex-wrap gap-2'>
+            <Button variant='secondary' onClick={generateProgression}>
               Generate Random Progression
-            </button>
-            <button
-              className='mr-2 rounded bg-primary-solid px-4 py-2 text-13 text-ink-on-primary transition-colors duration-120 ease-ui hover:bg-primary-hover'
+            </Button>
+            <Button
+              variant='primary'
               onClick={() => {
                 const progressionData = {
                   chords: chordProgression.map((e) => e.name).filter(Boolean),
@@ -279,14 +276,10 @@ export default function ProgressionsView() {
               }}
             >
               Pin Progression
-            </button>
-            <button
-              className='rounded border border-danger/40 px-4 py-2 text-13 text-danger transition-colors duration-120 ease-ui hover:bg-danger/10'
-              onClick={resetAll}
-              title='Reset all selections to default values'
-            >
+            </Button>
+            <Button variant='danger' onClick={resetAll} title='Reset all selections to default values'>
               Reset All
-            </button>
+            </Button>
           </div>
         </div>
       </div>

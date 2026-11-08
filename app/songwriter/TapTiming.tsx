@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Play, Pause, RotateCcw, Undo2, SkipForward, X, Check } from "lucide-react";
-import { Button, Dialog, IconButton, Separator } from "@radix-ui/themes";
+import { Dialog, Separator } from "@radix-ui/themes";
+import { Button } from "@/app/components/ui/button";
 import {
   applyStamps,
   clearAllMarkers,
@@ -171,9 +172,9 @@ export default function TapTiming({
           </div>
           <div className="flex items-center gap-3">
             <span className="font-mono text-2xl tabular-nums text-primary-text">{formatTime(elapsed)}</span>
-            <IconButton variant="ghost" color="gray" onClick={onClose} aria-label="Close tap timing">
+            <Button size="icon" variant="ghost" onClick={onClose} aria-label="Close tap timing">
               <X className="h-4 w-4" />
-            </IconButton>
+            </Button>
           </div>
         </div>
 
@@ -189,7 +190,7 @@ export default function TapTiming({
               <div
                 key={i}
                 data-cursor={atCursor || undefined}
-                className={`flex items-baseline gap-2 rounded px-2 py-1 font-mono text-sm ${
+                className={`flex items-baseline gap-2 rounded-md px-2 py-1 font-mono text-sm ${
                   atCursor ? "bg-primary-solid/20 ring-1 ring-focus" : ""
                 }`}
               >
@@ -223,27 +224,27 @@ export default function TapTiming({
 
         {/* Transport */}
         <div className="flex flex-wrap items-center gap-2 border-t border-line-subtle px-4 py-3">
-          <Button size="3" variant="surface" onClick={() => setRunning((r) => !r)}>
+          <Button size="lg" variant="secondary" onClick={() => setRunning((r) => !r)}>
             {running ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
             {running ? "Pause" : elapsed > 0 ? "Resume" : "Start"}
           </Button>
-          <Button size="3" onClick={tap} disabled={!running || done} className="flex-1">
+          <Button variant="primary" size="lg" onClick={tap} disabled={!running || done} className="flex-1">
             {done ? "All lines timed" : "Tap line in  (Space)"}
           </Button>
-          <IconButton size="3" variant="surface" color="gray" onClick={undo} disabled={cursor === 0} title="Undo last tap (Backspace)" aria-label="Undo last tap">
+          <Button size="icon-lg" variant="secondary" onClick={undo} disabled={cursor === 0} title="Undo last tap (Backspace)" aria-label="Undo last tap">
             <Undo2 className="h-4 w-4" />
-          </IconButton>
-          <IconButton size="3" variant="surface" color="gray" onClick={skip} disabled={done} title="Skip this line (↓)" aria-label="Skip this line">
+          </Button>
+          <Button size="icon-lg" variant="secondary" onClick={skip} disabled={done} title="Skip this line (↓)" aria-label="Skip this line">
             <SkipForward className="h-4 w-4" />
-          </IconButton>
-          <IconButton size="3" variant="surface" color="gray" onClick={reset} title="Start over" aria-label="Start over">
+          </Button>
+          <Button size="icon-lg" variant="secondary" onClick={reset} title="Start over" aria-label="Start over">
             <RotateCcw className="h-4 w-4" />
-          </IconButton>
+          </Button>
           <Separator orientation="vertical" size="2" />
-          <Button size="3" variant="ghost" color="gray" onClick={clearTimings}>
+          <Button size="lg" variant="ghost" onClick={clearTimings}>
             Clear all
           </Button>
-          <Button size="3" onClick={apply} disabled={stamps.size === 0}>
+          <Button variant="primary" size="lg" onClick={apply} disabled={stamps.size === 0}>
             <Check className="h-4 w-4" />
             Save {stamps.size} time{stamps.size === 1 ? "" : "s"}
           </Button>

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { Button } from "@/app/components/ui/button";
 import { motion, AnimatePresence } from "motion/react";
 import { Crown, Bug as Bee, Sparkles, ChevronUp, ChevronDown, GraduationCap } from "lucide-react";
 import confetti from "canvas-confetti";
@@ -361,7 +362,7 @@ export default function SpellingBeePage() {
           <BeeCharacter />
           <h1 className='text-5xl font-black uppercase tracking-widest text-ink-muted'>Spelling Bee</h1>
           {hasProgress && (
-            <div className='bg-surface-raised border-2 border-primary-solid rounded-2xl px-6 py-4 text-center'>
+            <div className='bg-surface-raised border-2 border-primary-solid rounded-lg px-6 py-4 text-center'>
               <div className='text-primary-text text-xs font-black uppercase tracking-widest mb-1'>Saved Progress</div>
               <div className='text-ink-muted text-2xl font-black'>{grade}</div>
               <div className='text-ink-muted text-sm mt-1'>
@@ -369,21 +370,15 @@ export default function SpellingBeePage() {
               </div>
             </div>
           )}
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={startGame}
-            className='bg-primary-solid hover:bg-primary-hover text-ink-on-primary px-16 py-6 rounded-full text-3xl font-black uppercase tracking-wider transition-colors shadow-[0_6px_0_var(--ds-palette-amber-3)] active:shadow-none active:translate-y-1'
-          >
-            {hasProgress ? "Continue" : "Start!"}
-          </motion.button>
+          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+            <Button variant='primary' size='xl' onClick={startGame}>
+              {hasProgress ? "Continue" : "Start!"}
+            </Button>
+          </motion.div>
           {hasProgress && (
-            <button
-              onClick={resetProgress}
-              className='text-ink-muted text-sm font-bold uppercase tracking-widest hover:text-primary-text transition-colors'
-            >
+            <Button variant='ghost' size='sm' onClick={resetProgress}>
               Reset progress
-            </button>
+            </Button>
           )}
         </motion.div>
       </div>
@@ -437,7 +432,7 @@ export default function SpellingBeePage() {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className={`fixed top-4 left-1/2 -translate-x-1/2 z-40 px-5 py-3 rounded-full font-black uppercase tracking-wider text-sm md:text-base flex items-center gap-2 shadow-2xl border-2 ${
+            className={`fixed top-4 left-1/2 -translate-x-1/2 z-40 px-4 py-3 rounded-full font-black uppercase tracking-wider text-sm md:text-base flex items-center gap-2 shadow-2xl border-2 ${
               toast.kind === "gradeUp"
                 ? "bg-success/25 border-success text-ink-primary"
                 : toast.kind === "mastery"
@@ -463,13 +458,13 @@ export default function SpellingBeePage() {
               · {currentQuestion.subject} / {currentQuestion.skill}
             </span>
           </h2>
-          <div className='bg-surface-raised px-3 py-0.5 md:px-4 md:py-1 rounded-full border-2 border-line-subtle text-ink-muted text-[10px] md:text-sm font-black uppercase shadow-sm shrink-0'>
+          <div className='bg-surface-raised px-3 py-1 md:px-4 md:py-1 rounded-full border-2 border-line-subtle text-ink-muted text-[10px] md:text-sm font-black uppercase shadow-sm shrink-0'>
             Lvl {progress.level.toFixed(2)} · {progress.totalCorrect}/{progress.totalAnswered}
             {progress.totalAnswered > 0 && ` · ${accuracy}%`}
           </div>
         </div>
         {/* Grade pips: Pre-K → 5th */}
-        <div className='flex gap-1 md:gap-1.5 items-center'>
+        <div className='flex gap-1 md:gap-2 items-center'>
           {GRADES.map((_g, i) => {
             const isPast = i < gradeIdx;
             const isCurrent = i === gradeIdx;
@@ -490,7 +485,7 @@ export default function SpellingBeePage() {
         </div>
         {/* Mastery streak indicator */}
         {transient.streak > 0 && (
-          <div className='mt-1 flex items-center gap-1.5'>
+          <div className='mt-1 flex items-center gap-2'>
             {Array.from({ length: MASTERY_STREAK }).map((_, i) => (
               <div
                 key={i}
@@ -517,7 +512,7 @@ export default function SpellingBeePage() {
             initial={{ scale: 0.5, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ type: "spring", stiffness: 200, damping: 15 }}
-            className='px-6 py-5 md:px-10 md:py-8 bg-surface-raised rounded-3xl md:rounded-[2rem] border-4 md:border-8 border-line-subtle shadow-2xl min-w-[8rem] md:min-w-[12rem] text-center'
+            className='px-6 py-4 md:px-8 md:py-8 bg-surface-raised rounded-lg md:rounded-lg border-4 md:border-8 border-line-subtle shadow-2xl min-w-[8rem] md:min-w-[12rem] text-center'
           >
             {currentQuestion.kind === "emoji" && (
               <span className='text-5xl md:text-8xl leading-tight block'>{currentQuestion.emoji}</span>
@@ -538,7 +533,7 @@ export default function SpellingBeePage() {
               {promptCta}
             </p>
           )}
-          <div className='flex gap-1.5 md:gap-2 items-center mt-1'>
+          <div className='flex gap-2 md:gap-2 items-center mt-1'>
             {[0, 1].map((i) => (
               <div
                 key={i}
@@ -556,7 +551,7 @@ export default function SpellingBeePage() {
         </div>
 
         {/* Answer choices */}
-        <div className='w-full bg-surface-raised p-3 md:p-6 rounded-2xl md:rounded-3xl border-2 md:border-4 border-line-subtle shadow-xl shrink-0'>
+        <div className='w-full bg-surface-raised p-3 md:p-6 rounded-lg md:rounded-lg border-2 md:border-4 border-line-subtle shadow-xl shrink-0'>
           <div className='flex flex-wrap gap-2 md:gap-4 justify-center'>
             <AnimatePresence mode='popLayout'>
               {options.map((opt) => {
@@ -582,7 +577,7 @@ export default function SpellingBeePage() {
                     whileTap={!disabled ? { scale: 0.95 } : {}}
                     onClick={() => handleAnswerClick(opt)}
                     disabled={disabled}
-                    className={`px-4 py-3 md:px-8 md:py-5 font-black rounded-xl md:rounded-2xl border-b-2 md:border-b-4 flex items-center justify-center transition-colors ${
+                    className={`px-4 py-3 md:px-8 md:py-4 font-black rounded-lg md:rounded-lg border-b-2 md:border-b-4 flex items-center justify-center transition-colors ${
                       isLetter
                         ? "text-3xl md:text-5xl font-serif min-w-[4rem] md:min-w-[6rem]"
                         : "text-lg md:text-2xl min-w-[5rem] md:min-w-[8rem]"
@@ -615,7 +610,7 @@ export default function SpellingBeePage() {
             <motion.div
               initial={{ scale: 0.7, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              className='bg-surface-raised border-8 border-primary-solid p-10 md:p-12 rounded-3xl shadow-2xl text-center max-w-lg w-full'
+              className='bg-surface-raised border-8 border-primary-solid p-8 md:p-12 rounded-lg shadow-2xl text-center max-w-lg w-full'
             >
               <GraduationCap className='w-28 h-28 md:w-32 md:h-32 text-primary-text mx-auto mb-4' />
               <h1 className='text-4xl md:text-5xl font-black mb-3 uppercase tracking-widest text-primary-text'>
@@ -634,12 +629,9 @@ export default function SpellingBeePage() {
                   <div className='text-xs md:text-sm uppercase tracking-widest text-ink-muted'>Accuracy</div>
                 </div>
               </div>
-              <button
-                onClick={dismissGraduation}
-                className='bg-primary-solid hover:bg-primary-hover text-ink-on-primary px-10 py-4 rounded-full text-xl md:text-2xl font-black uppercase tracking-wider transition-all shadow-[0_6px_0_var(--ds-palette-amber-3)] active:shadow-none active:translate-y-1 inline-flex items-center gap-2 mx-auto'
-              >
+              <Button variant='primary' size='xl' onClick={dismissGraduation}>
                 <Crown className='w-6 h-6' /> Keep Buzzing!
-              </button>
+              </Button>
             </motion.div>
           </motion.div>
         )}

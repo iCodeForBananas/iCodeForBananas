@@ -17,7 +17,8 @@ import {
   Square,
   Youtube,
 } from "lucide-react";
-import { Flex, IconButton, Text } from "@radix-ui/themes";
+import { Flex, Text } from "@radix-ui/themes";
+import { Button, type ButtonProps } from "@/app/components/ui/button";
 import type { YouTubeLink } from "./youtube";
 import { MIN_BPM, MAX_BPM, clampBpm } from "./Tempo";
 import type { KitSettings } from "./kit";
@@ -39,8 +40,8 @@ const COLUMN_WIDTH_VW_STEP = 5;
 export const DEFAULT_COLUMN_WIDTH_VW = 30;
 
 /** A square −/+ step button beside a value — the app's own extra controls, not reference ones. */
-function StepButton(props: React.ComponentProps<typeof IconButton>) {
-  return <IconButton type='button' size='3' variant='soft' color='gray' {...props} />;
+function StepButton(props: ButtonProps) {
+  return <Button type='button' size='icon-lg' variant='secondary' {...props} />;
 }
 
 function Stepper({
@@ -51,8 +52,8 @@ function Stepper({
 }: {
   label: string;
   value: React.ReactNode;
-  decrease: React.ComponentProps<typeof IconButton>;
-  increase: React.ComponentProps<typeof IconButton>;
+  decrease: ButtonProps;
+  increase: ButtonProps;
 }) {
   return (
     <ControlRow label={label}>
@@ -72,7 +73,7 @@ function Stepper({
 function ExtraSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section>
-      <Text as='div' size='1' weight='bold' color='gray' className='px-3 pt-4 pb-1.5 uppercase tracking-widest select-none'>
+      <Text as='div' size='1' weight='bold' color='gray' className='px-3 pt-4 pb-2 uppercase tracking-widest select-none'>
         {title}
       </Text>
       <div className='divide-y divide-line-subtle border-y border-line-subtle'>{children}</div>
@@ -180,11 +181,10 @@ function PlayControl({
         {open ? "Playing" : "Play Song"}
       </RowButton>
       {videoLink && (
-        <IconButton
+        <Button
           type='button'
-          size='3'
-          variant={withVideo && !offline ? "soft" : "ghost"}
-          color={withVideo && !offline ? "red" : "gray"}
+          size='icon-lg'
+          variant={withVideo && !offline ? "secondary" : "ghost"}
           onClick={onWithVideoToggle}
           disabled={offline}
           aria-pressed={withVideo && !offline}
@@ -202,10 +202,10 @@ function PlayControl({
                 ? "YouTube video enabled — click to play without it"
                 : "Click to play with the linked YouTube video"
           }
-          className='m-0 h-11 w-12 rounded-none border-l border-line-subtle'
+          className='m-0 h-11 w-12 border-l border-line-subtle'
         >
           <Youtube className='w-4 h-4' />
-        </IconButton>
+        </Button>
       )}
     </Flex>
   );
@@ -309,21 +309,22 @@ export default function PreviewSidebar(props: PreviewSidebarProps) {
         <h2 className={styles.panelH}>Drum loop</h2>
 
         {kitPlaying ? (
-          <button type='button' className={`${styles.drumPlay} ${styles.drumPlayStop}`} onClick={() => onKitPlayingChange(false)}>
-            <Square className='w-[22px] h-[22px]' fill='currentColor' />
+          <Button variant='secondary' size='xl' className='w-full' onClick={() => onKitPlayingChange(false)}>
+            <Square className='w-5 h-5' fill='currentColor' />
             Stop
-          </button>
+          </Button>
         ) : (
-          <button
-            type='button'
-            className={styles.drumPlay}
+          <Button
+            variant='primary'
+            size='xl'
+            className='w-full'
             onClick={() => onKitPlayingChange(true)}
             disabled={kit.layers.length === 0}
             title={kit.layers.length === 0 ? "Pick a kit below first" : undefined}
           >
-            <Play className='w-[22px] h-[22px]' fill='currentColor' />
+            <Play className='w-5 h-5' fill='currentColor' />
             Start loop
-          </button>
+          </Button>
         )}
 
         <div className={styles.dots} aria-hidden='true'>
@@ -340,20 +341,20 @@ export default function PreviewSidebar(props: PreviewSidebarProps) {
         <div className={styles.group}>
           <h3 className={styles.panelH}>Tempo</h3>
           <div className={styles.tempoRow}>
-            <button type='button' className={styles.ibtn} onClick={() => onBpmChange(bpm - 2)} aria-label='Slower' disabled={bpm <= MIN_BPM}>
+            <Button variant='secondary' size='lg' onClick={() => onBpmChange(bpm - 2)} aria-label='Slower' disabled={bpm <= MIN_BPM}>
               <Minus className='w-[18px] h-[18px]' />
-            </button>
+            </Button>
             <div className={styles.bpm}>
               {bpm}
               <span className={styles.bpmUnit}>BPM</span>
             </div>
-            <button type='button' className={styles.ibtn} onClick={() => onBpmChange(bpm + 2)} aria-label='Faster' disabled={bpm >= MAX_BPM}>
+            <Button variant='secondary' size='lg' onClick={() => onBpmChange(bpm + 2)} aria-label='Faster' disabled={bpm >= MAX_BPM}>
               <Plus className='w-[18px] h-[18px]' />
-            </button>
+            </Button>
           </div>
-          <button type='button' className={styles.ibtn} style={{ height: 52, fontSize: 16, width: "100%" }} onClick={handleTap}>
+          <Button variant='secondary' size='xl' className='w-full' onClick={handleTap}>
             Tap tempo
-          </button>
+          </Button>
         </div>
 
         <DrumControls
@@ -411,18 +412,14 @@ export default function PreviewSidebar(props: PreviewSidebarProps) {
           <ExtraSection title='Share'>
             <RowButton
               onClick={props.onCopy}
-              variant={props.copied ? "soft" : "ghost"}
-              color={props.copied ? "teal" : "gray"}
-              highContrast={!props.copied}
+              variant={props.copied ? "secondary" : "ghost"}
             >
               {props.copied ? <Check className='w-4 h-4' /> : <Copy className='w-4 h-4' />}
               {props.copied ? "Copied!" : "Copy Text"}
             </RowButton>
             <RowButton
               onClick={props.onShare}
-              variant={props.shared ? "soft" : "ghost"}
-              color={props.shared ? "teal" : "gray"}
-              highContrast={!props.shared}
+              variant={props.shared ? "secondary" : "ghost"}
             >
               {props.shared ? <Check className='w-4 h-4' /> : <Link2 className='w-4 h-4' />}
               {props.shared ? "Link Copied!" : "Share"}

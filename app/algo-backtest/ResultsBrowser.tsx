@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Flex, IconButton, Select, Switch, Text } from "@radix-ui/themes";
+import { Flex, Select, Switch, Text } from "@radix-ui/themes";
+import { Button } from "@/app/components/ui/button";
 import { ArrowDownWideNarrow, ArrowUpNarrowWide } from "lucide-react";
 import { Bento } from "../components/ui/bento";
 import { cn } from "@/app/lib/utils";
@@ -232,16 +233,15 @@ export default function ResultsBrowser({
               </Select.Group>
             </Select.Content>
           </Select.Root>
-          <IconButton
-            size='1'
-            variant='soft'
-            color='gray'
+          <Button
+            size='icon-sm'
+            variant='secondary'
             onClick={() => setDirection((d) => (d === "desc" ? "asc" : "desc"))}
             aria-label={direction === "desc" ? "Highest first" : "Lowest first"}
             title={direction === "desc" ? "Highest first" : "Lowest first"}
           >
             {direction === "desc" ? <ArrowDownWideNarrow className='size-3.5' /> : <ArrowUpNarrowWide className='size-3.5' />}
-          </IconButton>
+          </Button>
         </Flex>
         {(showStrategy || showDataset) && (
           <Flex gap='2'>
@@ -301,7 +301,7 @@ export default function ResultsBrowser({
                       selected && "bg-[var(--accent-a4)] hover:bg-[var(--accent-a4)]",
                     )}
                   >
-                    <Text size='1' color='gray' className='w-7 shrink-0 pt-0.5 tabular-nums'>
+                    <Text size='1' color='gray' className='w-7 shrink-0 pt-1 tabular-nums'>
                       {rank + 1}
                     </Text>
                     <Flex direction='column' gap='1' className='min-w-0 flex-1'>

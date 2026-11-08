@@ -1,6 +1,8 @@
 "use client";
 
 import { AlignLeft, Drum, Eye, Menu, PencilLine } from "lucide-react";
+import { ToggleButton } from "@/app/components/ui/toggle-button";
+import { Button } from "@/app/components/ui/button";
 import styles from "./songwriter.module.css";
 
 export type EditorMode = "play" | "lines" | "free";
@@ -46,31 +48,26 @@ export default function TopBar({
 }) {
   return (
     <header className={styles.topbar}>
-      <button
-        type='button'
-        className={`${styles.ibtn} ${libraryOpen ? styles.ibtnOn : ""}`}
+      <ToggleButton size='lg' pressed={!!libraryOpen}
         onClick={onLibraryClick}
         aria-label='Song library'
-        aria-pressed={!!libraryOpen}
       >
         <Menu className='w-5 h-5' />
         <span className={styles.hideSm}>Songs</span>
-      </button>
+      </ToggleButton>
       <span className={`${styles.brand} ${styles.hideSm}`}>{title}</span>
 
       {mode && onModeChange && (
         <div className={styles.segctl} role='group' aria-label='Mode'>
           {MODES.map((m) => (
-            <button
+            <Button variant='secondary' size='lg'
               key={m.id}
-              type='button'
-              className={`${styles.segBtn} ${mode === m.id ? styles.segBtnOn : ""}`}
               onClick={() => onModeChange(m.id)}
               aria-pressed={mode === m.id}
             >
               {m.icon}
               {m.label}
-            </button>
+            </Button>
           ))}
         </div>
       )}
@@ -80,17 +77,14 @@ export default function TopBar({
       {rightSlot}
 
       {onDrumsToggle && (
-        <button
-          type='button'
-          className={`${styles.ibtn} ${drumsOpen ? styles.ibtnOn : ""}`}
+        <ToggleButton size='lg' pressed={!!drumsOpen}
           onClick={onDrumsToggle}
           aria-label='Drum loops'
-          aria-pressed={!!drumsOpen}
         >
           {drumsPlaying && <span className={styles.livedot} />}
           <Drum className='w-5 h-5' />
           <span className={styles.hideSm}>Drums</span>
-        </button>
+        </ToggleButton>
       )}
     </header>
   );

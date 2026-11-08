@@ -1,6 +1,7 @@
 "use client";
 
-import { Button, Text } from "@radix-ui/themes";
+import { Text } from "@radix-ui/themes";
+import { Button } from "@/app/components/ui/button";
 import { cn } from "@/app/lib/utils";
 
 /**
@@ -19,11 +20,10 @@ export function RowButton({
   return (
     <Button
       type='button'
-      size='3'
-      variant={active ? "solid" : "ghost"}
-      color={active ? undefined : "gray"}
+      size='xl'
+      variant={active ? "primary" : "ghost"}
       highContrast={!active}
-      className={cn("m-0 box-border h-11 w-full justify-start gap-2.5 rounded-none px-3 print:hidden", className)}
+      className={cn("m-0 box-border w-full justify-start gap-3 px-3 print:hidden", className)}
       {...props}
     />
   );
@@ -37,7 +37,7 @@ export function RowButton({
  */
 export function ControlRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className='grid grid-cols-[4.5rem_2.5rem_minmax(0,1fr)_2.5rem] items-center gap-x-1.5 px-3 py-2 print:hidden'>
+    <div className='grid grid-cols-[4.5rem_2.5rem_minmax(0,1fr)_2.5rem] items-center gap-x-2 px-3 py-2 print:hidden'>
       <Text size='2' weight='medium' className='select-none'>
         {label}
       </Text>

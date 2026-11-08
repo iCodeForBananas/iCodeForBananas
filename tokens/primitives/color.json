@@ -1,76 +1,289 @@
 {
   "palette": {
-    "$description": "Layer 1 primitives. Raw values only, no meaning attached. Component code never names these; it goes through the Layer 2 semantic aliases in tokens/semantic. Layer 1 is identical in every theme.",
-
-    "neutral": {
-      "$description": "Ink-and-navy ramp at hue ~250. Steps 2-4 are not tuned freely: they are the brand's own Ink Black, Prussian Blue and Oxford Navy, converted to OKLCH losslessly (round-trips back to the exact same sRGB hex). Chroma is real here, not a whisper — 0.03 to 0.10 through the dark end — because these are meant to read as blue, not as a tinted grey. It tapers back toward neutral above step 8 so text.primary stays a crisp near-white rather than a visibly blue one. Step 1 is the darkest, step 12 the lightest, in both themes; it is the semantic layer that decides which end means 'background'.",
-      "1":  { "$type": "color", "$value": "oklch(0.095 0.026 248)", "$description": "Sunken — darker than Ink Black itself, for what sits behind the base plane. Not one of the five named brand colors; derived by continuing the same ramp one step further down." },
-      "2":  { "$type": "color", "$value": "oklch(0.1305 0.0340 246.56)", "$description": "Ink Black (#000814) — the base background." },
-      "3":  { "$type": "color", "$value": "oklch(0.2308 0.0710 252.90)", "$description": "Prussian Blue (#001d3d) — raised surfaces (cards, panels)." },
-      "4":  { "$type": "color", "$value": "oklch(0.3284 0.0999 252.57)", "$description": "Oxford Navy (#003566) — overlay surfaces (menus, popovers, dialogs)." },
-      "5":  { "$type": "color", "$value": "oklch(0.394 0.110 250)" },
-      "6":  { "$type": "color", "$value": "oklch(0.473 0.095 250)" },
-      "7":  { "$type": "color", "$value": "oklch(0.563 0.075 250)" },
-      "8":  { "$type": "color", "$value": "oklch(0.659 0.055 250)" },
-      "9":  { "$type": "color", "$value": "oklch(0.758 0.038 250)" },
-      "10": { "$type": "color", "$value": "oklch(0.849 0.024 250)" },
-      "11": { "$type": "color", "$value": "oklch(0.925 0.014 250)" },
-      "12": { "$type": "color", "$value": "oklch(0.971 0.006 250)" }
+    "$description": "Layer 1 primitives. The dark and light groups are the two schemes from github.com/iCodeForBananas/itermcolors, slot for slot, converted to OKLCH losslessly: each value round-trips to the hex in its description. Component code never names these; it goes through the Layer 2 aliases in tokens/semantic. Layer 1 is identical in every theme.",
+    "dark": {
+      "background": {
+        "$type": "color",
+        "$value": "oklch(0.1768 0.0070 258.37)",
+        "$description": "Background Color #0f1114"
+      },
+      "foreground": {
+        "$type": "color",
+        "$value": "oklch(0.9303 0.0046 258.33)",
+        "$description": "Foreground Color #e6e8eb"
+      },
+      "cursor": {
+        "$type": "color",
+        "$value": "oklch(0.8652 0.1768 90.38)",
+        "$description": "Cursor Color #ffcc00"
+      },
+      "cursor-text": {
+        "$type": "color",
+        "$value": "oklch(0.1768 0.0070 258.37)",
+        "$description": "Cursor Text Color #0f1114"
+      },
+      "cursor-guide": {
+        "$type": "color",
+        "$value": "oklch(0.2341 0.0106 260.69)",
+        "$description": "Cursor Guide Color #1b1e23"
+      },
+      "selection": {
+        "$type": "color",
+        "$value": "oklch(0.3862 0.0745 255.09)",
+        "$description": "Selection Color #27456b"
+      },
+      "selected-text": {
+        "$type": "color",
+        "$value": "oklch(0.9303 0.0046 258.33)",
+        "$description": "Selected Text Color #e6e8eb"
+      },
+      "link": {
+        "$type": "color",
+        "$value": "oklch(0.8560 0.0768 244.09)",
+        "$description": "Link Color #a5d6ff"
+      },
+      "black": {
+        "$type": "color",
+        "$value": "oklch(0.7088 0.0234 256.76)",
+        "$description": "Ansi 0 Color #98a2b0"
+      },
+      "bright-black": {
+        "$type": "color",
+        "$value": "oklch(0.7919 0.0197 255.55)",
+        "$description": "Ansi 8 Color #b3bcc8"
+      },
+      "red": {
+        "$type": "color",
+        "$value": "oklch(0.7598 0.1432 25.07)",
+        "$description": "Ansi 1 Color #ff8a82"
+      },
+      "bright-red": {
+        "$type": "color",
+        "$value": "oklch(0.8014 0.1134 25.81)",
+        "$description": "Ansi 9 Color #ffa198"
+      },
+      "green": {
+        "$type": "color",
+        "$value": "oklch(0.7850 0.1392 150.92)",
+        "$description": "Ansi 2 Color #6fd28a"
+      },
+      "bright-green": {
+        "$type": "color",
+        "$value": "oklch(0.8416 0.1641 145.75)",
+        "$description": "Ansi 10 Color #7ee787"
+      },
+      "yellow": {
+        "$type": "color",
+        "$value": "oklch(0.7904 0.1386 85.24)",
+        "$description": "Ansi 3 Color #e3b341"
+      },
+      "bright-yellow": {
+        "$type": "color",
+        "$value": "oklch(0.8574 0.1331 89.95)",
+        "$description": "Ansi 11 Color #f2cc60"
+      },
+      "blue": {
+        "$type": "color",
+        "$value": "oklch(0.7685 0.1214 252.34)",
+        "$description": "Ansi 4 Color #79b8ff"
+      },
+      "bright-blue": {
+        "$type": "color",
+        "$value": "oklch(0.8560 0.0768 244.09)",
+        "$description": "Ansi 12 Color #a5d6ff"
+      },
+      "magenta": {
+        "$type": "color",
+        "$value": "oklch(0.8005 0.1275 305.86)",
+        "$description": "Ansi 5 Color #d2a8ff"
+      },
+      "bright-magenta": {
+        "$type": "color",
+        "$value": "oklch(0.8668 0.0845 307.38)",
+        "$description": "Ansi 13 Color #e2c5ff"
+      },
+      "cyan": {
+        "$type": "color",
+        "$value": "oklch(0.8036 0.1107 201.78)",
+        "$description": "Ansi 6 Color #56d4dd"
+      },
+      "bright-cyan": {
+        "$type": "color",
+        "$value": "oklch(0.8538 0.1008 200.98)",
+        "$description": "Ansi 14 Color #76e3ea"
+      },
+      "white": {
+        "$type": "color",
+        "$value": "oklch(0.9713 0.0068 247.90)",
+        "$description": "Ansi 7 Color #f2f6fa"
+      },
+      "bright-white": {
+        "$type": "color",
+        "$value": "oklch(1 0 0)",
+        "$description": "Ansi 15 Color #ffffff"
+      }
     },
-
-    "amber": {
-      "$description": "The one accent that carries the brand — School Bus Yellow and Gold, used sparingly for signature moments and highlights against the ink-and-navy ramp above. Steps 1 to 6 are a monotonic ramp at the same hue family for tints, borders and text on light surfaces. The four named variants below are not ramp positions: solid and hover/text are the two brand yellows themselves (School Bus Yellow, Gold), converted losslessly from their hex values, not freely tuned.",
-      "1": { "$type": "color", "$value": "oklch(0.24 0.035 90)" },
-      "2": { "$type": "color", "$value": "oklch(0.33 0.060 90)" },
-      "3": { "$type": "color", "$value": "oklch(0.45 0.090 90)" },
-      "4": { "$type": "color", "$value": "oklch(0.62 0.125 90)" },
-      "5": { "$type": "color", "$value": "oklch(0.75 0.150 90)" },
-      "6": { "$type": "color", "$value": "oklch(0.93 0.078 90)" },
-      "solid":    { "$type": "color", "$value": "oklch(0.8479 0.1736 86.06)", "$description": "School Bus Yellow (#ffc300) at full strength: a filled button, the active state of a control, the signature brand moment. Whatever sits on top of this is palette.amber.contrast, never white. See that token." },
-      "hover":    { "$type": "color", "$value": "oklch(0.8849 0.1805 94.78)", "$description": "Gold (#ffd60a) — hover for a solid School-Bus-Yellow fill, and every other 'highlight' job (focus ring, active text, an icon that needs to pop). Brighter than solid, not darker: on a dark UI, lifting toward the light is what reads as 'closer to the pointer'." },
-      "text":     { "$type": "color", "$value": "oklch(0.8849 0.1805 94.78)", "$description": "Gold again — amber as text or an icon color on a dark surface. Not for light surfaces; step 3 is the light-surface equivalent." },
-      "contrast": { "$type": "color", "$value": "oklch(0.19 0.024 250)", "$description": "The near-black-navy label that goes on top of amber.solid. THIS IS NOT A BUG AND MUST NOT BE 'FIXED' TO WHITE. School Bus Yellow at L 0.848 is a light color: white on it fails every contrast target there is, while this near-black lands well clear of 4.5:1. Every design system with a light-yellow primary has to make this call, and the label is the side that gives. Hued into the ink ramp (~250) rather than left neutral, so it reads as part of the same family instead of a flat grey stamped on top." }
+    "light": {
+      "background": {
+        "$type": "color",
+        "$value": "oklch(0.9913 0.0029 84.56)",
+        "$description": "Background Color #fdfcfa"
+      },
+      "foreground": {
+        "$type": "color",
+        "$value": "oklch(0.1530 0.0054 248.22)",
+        "$description": "Foreground Color #0a0c0e"
+      },
+      "cursor": {
+        "$type": "color",
+        "$value": "oklch(0.4600 0.0959 77.96)",
+        "$description": "Cursor Color #755000"
+      },
+      "cursor-text": {
+        "$type": "color",
+        "$value": "oklch(0.9913 0.0029 84.56)",
+        "$description": "Cursor Text Color #fdfcfa"
+      },
+      "cursor-guide": {
+        "$type": "color",
+        "$value": "oklch(0.9492 0.0111 89.72)",
+        "$description": "Cursor Guide Color #f1eee6"
+      },
+      "selection": {
+        "$type": "color",
+        "$value": "oklch(0.8663 0.0520 252.00)",
+        "$description": "Selection Color #bbd6f5"
+      },
+      "selected-text": {
+        "$type": "color",
+        "$value": "oklch(0 0 0)",
+        "$description": "Selected Text Color #000000"
+      },
+      "link": {
+        "$type": "color",
+        "$value": "oklch(0.5112 0.1896 258.88)",
+        "$description": "Link Color #0b5fd0"
+      },
+      "black": {
+        "$type": "color",
+        "$value": "oklch(0.2086 0.0085 264.37)",
+        "$description": "Ansi 0 Color #16181c"
+      },
+      "bright-black": {
+        "$type": "color",
+        "$value": "oklch(0.5595 0.0163 254.67)",
+        "$description": "Ansi 8 Color #6e757e"
+      },
+      "red": {
+        "$type": "color",
+        "$value": "oklch(0.5260 0.1952 23.46)",
+        "$description": "Ansi 1 Color #c21f2e"
+      },
+      "bright-red": {
+        "$type": "color",
+        "$value": "oklch(0.5761 0.2267 24.81)",
+        "$description": "Ansi 9 Color #e0132a"
+      },
+      "green": {
+        "$type": "color",
+        "$value": "oklch(0.5087 0.1375 148.22)",
+        "$description": "Ansi 2 Color #157a34"
+      },
+      "bright-green": {
+        "$type": "color",
+        "$value": "oklch(0.5439 0.1557 148.44)",
+        "$description": "Ansi 10 Color #008736"
+      },
+      "yellow": {
+        "$type": "color",
+        "$value": "oklch(0.5078 0.1080 73.30)",
+        "$description": "Ansi 3 Color #8a5a00"
+      },
+      "bright-yellow": {
+        "$type": "color",
+        "$value": "oklch(0.5663 0.1217 71.37)",
+        "$description": "Ansi 11 Color #a26800"
+      },
+      "blue": {
+        "$type": "color",
+        "$value": "oklch(0.5112 0.1896 258.88)",
+        "$description": "Ansi 4 Color #0b5fd0"
+      },
+      "bright-blue": {
+        "$type": "color",
+        "$value": "oklch(0.5695 0.2132 258.25)",
+        "$description": "Ansi 12 Color #006ff1"
+      },
+      "magenta": {
+        "$type": "color",
+        "$value": "oklch(0.5199 0.2183 306.76)",
+        "$description": "Ansi 5 Color #8a33c8"
+      },
+      "bright-magenta": {
+        "$type": "color",
+        "$value": "oklch(0.5752 0.2715 307.74)",
+        "$description": "Ansi 13 Color #a526f0"
+      },
+      "cyan": {
+        "$type": "color",
+        "$value": "oklch(0.5090 0.0837 199.20)",
+        "$description": "Ansi 6 Color #0d7478"
+      },
+      "bright-cyan": {
+        "$type": "color",
+        "$value": "oklch(0.5516 0.0938 200.50)",
+        "$description": "Ansi 14 Color #008288"
+      },
+      "white": {
+        "$type": "color",
+        "$value": "oklch(0.3908 0.0164 251.76)",
+        "$description": "Ansi 7 Color #3f464e"
+      },
+      "bright-white": {
+        "$type": "color",
+        "$value": "oklch(0 0 0)",
+        "$description": "Ansi 15 Color #000000"
+      }
     },
-
-    "teal": {
-      "$description": "Cool counter-accent at hue ~190. Used sparingly, and never competing with amber for the same job. Its purpose is a second, orthogonal axis of meaning, not a second brand color.",
-      "1": { "$type": "color", "$value": "oklch(0.62 0.105 190)", "$description": "Only light theme uses this. Teal at step 2 clears 3:1 against a dark surface but lands near 2.2:1 against a near-white one, so light needs its own step." },
-      "2": { "$type": "color", "$value": "oklch(0.72 0.12 190)" },
-      "3": { "$type": "color", "$value": "oklch(0.80 0.11 190)" }
+    "derived": {
+      "$description": "The only colors that are not iTerm slots. A terminal has one background and one highlighted line; the app has four surface planes, so the missing planes are continued from the scheme's own anchors at the same hue.",
+      "dark-sunken": {
+        "$type": "color",
+        "$value": "oklch(0.1468 0.0070 258.37)",
+        "$description": "One step below the dark Background, for what sits behind the base plane."
+      },
+      "dark-overlay": {
+        "$type": "color",
+        "$value": "oklch(0.2910 0.0122 260.69)",
+        "$description": "One step above the dark Cursor Guide, for menus and dialogs."
+      },
+      "light-sunken": {
+        "$type": "color",
+        "$value": "oklch(0.9192 0.0111 89.72)",
+        "$description": "One step below the light Cursor Guide, for inset fields and wells."
+      }
     },
-
-    "track": {
-      "$description": "A categorical set, for things that differ in kind rather than in importance: a recorded track, a drum voice, a pad. These are the one place in the system where a colour carries identity instead of meaning, which is why they are a flat set rather than a ramp and why none of them is the brand. They sit at close to the same lightness so no track shouts louder than another, and far enough apart in hue to be told apart at the size of a five pixel bar.",
-      "1": { "$type": "color", "$value": "oklch(0.62 0.155 275)" },
-      "2": { "$type": "color", "$value": "oklch(0.62 0.165 305)" },
-      "3": { "$type": "color", "$value": "oklch(0.62 0.170 15)" },
-      "4": { "$type": "color", "$value": "oklch(0.68 0.125 230)" },
-      "5": { "$type": "color", "$value": "oklch(0.68 0.135 155)" },
-      "6": { "$type": "color", "$value": "oklch(0.66 0.140 45)" }
-    },
-
-    "danger": {
-      "$description": "Step 1 is for light theme, step 2 for dark. A status color has to be legible as text on whatever surface it lands on, and no single lightness manages that against both a near-black and a near-white background.",
-      "1": { "$type": "color", "$value": "oklch(0.55 0.185 30)" },
-      "2": { "$type": "color", "$value": "oklch(0.64 0.20 30)" }
-    },
-
-    "success": {
-      "$description": "Step 1 is for light theme, step 2 for dark. See danger.",
-      "1": { "$type": "color", "$value": "oklch(0.51 0.140 150)" },
-      "2": { "$type": "color", "$value": "oklch(0.72 0.15 150)" }
-    },
-    "white":   { "$type": "color", "$value": "oklch(1 0 0)" },
-
     "alpha": {
-      "$description": "Translucent hairlines. Borders use these rather than an opaque neutral so that one border value reads correctly at every surface elevation instead of needing a variant per surface.",
+      "$description": "Translucent hairlines, tints of each scheme's bright white (white in dark, black in light). One border value reads correctly at every surface step.",
       "light": {
-        "6":  { "$type": "color", "$value": "oklch(1 0 0 / 0.06)" },
-        "12": { "$type": "color", "$value": "oklch(1 0 0 / 0.12)" }
+        "6": {
+          "$type": "color",
+          "$value": "oklch(1 0 0 / 0.08)"
+        },
+        "12": {
+          "$type": "color",
+          "$value": "oklch(1 0 0 / 0.16)"
+        }
       },
       "dark": {
-        "8":  { "$type": "color", "$value": "oklch(0 0 0 / 0.08)" },
-        "14": { "$type": "color", "$value": "oklch(0 0 0 / 0.14)" }
+        "8": {
+          "$type": "color",
+          "$value": "oklch(0 0 0 / 0.1)"
+        },
+        "14": {
+          "$type": "color",
+          "$value": "oklch(0 0 0 / 0.18)"
+        }
       }
     }
   }

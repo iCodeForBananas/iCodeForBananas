@@ -276,7 +276,7 @@ export function ChordLyricLine({
   const hasChords = segments.some((s) => s.chord);
 
   const timeChip = showTime && marker && (
-    <span className="mr-2 select-none rounded bg-surface-raised px-1.5 py-0.5 align-middle font-mono text-[0.7em] text-ink-muted bg-surface-raised text-ink-muted print:hidden">
+    <span className="mr-2 select-none rounded-md bg-surface-raised px-2 py-1 align-middle font-mono text-[0.7em] text-ink-muted bg-surface-raised text-ink-muted print:hidden">
       {formatTime(marker.start)}
     </span>
   );

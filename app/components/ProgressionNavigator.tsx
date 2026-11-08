@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useMemo, useState, useEffect } from "react";
+import { Button } from "@/app/components/ui/button";
 
 // Common-practice next-steps by FUNCTION, not pitch.
 const NEXT: Record<string, string[]> = {
@@ -99,7 +100,7 @@ export default function ProgressionNavigator({ startKey = "G", bpm = 80 }: Progr
             setKey(e.target.value);
             reset();
           }}
-          className='rounded-lg border border-line-subtle bg-surface-sunken px-3 py-1.5 text-ink-primary focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus'
+          className='rounded-lg border border-line-subtle bg-surface-sunken px-3 py-2 text-ink-primary focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus'
         >
           {KEYS.map((k) => (
             <option key={k} value={k}>
@@ -107,12 +108,9 @@ export default function ProgressionNavigator({ startKey = "G", bpm = 80 }: Progr
             </option>
           ))}
         </select>
-        <button
-          onClick={() => setPlaying((p) => !p)}
-          className='rounded-lg bg-primary-solid px-4 py-1.5 font-medium text-ink-on-primary transition-colors duration-120 ease-ui hover:bg-primary-hover'
-        >
+        <Button variant='primary' onClick={() => setPlaying((p) => !p)}>
           {playing ? "Stop" : "Play"}
-        </button>
+        </Button>
         <span className='text-sm font-medium'>{bpm} BPM</span>
       </div>
 
@@ -133,7 +131,7 @@ export default function ProgressionNavigator({ startKey = "G", bpm = 80 }: Progr
             <button
               key={f}
               onClick={() => addStep(f)}
-              className={`${bgColor} p-3 rounded-xl transition-colors font-bold shadow-md`}
+              className={`${bgColor} p-3 rounded-lg transition-colors font-bold shadow-md`}
             >
               <div className='text-xs opacity-80'>{f}</div>
               <div className='text-lg'>{label}</div>
@@ -148,7 +146,7 @@ export default function ProgressionNavigator({ startKey = "G", bpm = 80 }: Progr
       </div>
 
       {/* Progression timeline */}
-      <div className='flex flex-wrap items-center gap-2 rounded-xl border border-line-subtle bg-surface-raised p-4'>
+      <div className='flex flex-wrap items-center gap-2 rounded-lg border border-line-subtle bg-surface-raised p-4'>
         {prog.map((s, i) => {
           const active = playing ? i === beat % prog.length : i === prog.length - 1;
           return (
@@ -162,19 +160,12 @@ export default function ProgressionNavigator({ startKey = "G", bpm = 80 }: Progr
             </div>
           );
         })}
-        <button
-          onClick={reset}
-          className='ml-auto rounded-lg border border-line-subtle bg-surface-sunken px-3 py-2 text-13 font-medium text-ink-primary transition-colors duration-120 ease-ui hover:bg-surface-overlay'
-        >
+        <Button variant='secondary' onClick={reset} className='ml-auto'>
           Reset
-        </button>
-        <button
-          onClick={() => setProg((p) => p.slice(0, -1))}
-          disabled={prog.length <= 1}
-          className='rounded-lg bg-primary-solid px-3 py-2 text-13 font-medium text-ink-on-primary transition-colors duration-120 ease-ui hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50'
-        >
+        </Button>
+        <Button variant='primary' onClick={() => setProg((p) => p.slice(0, -1))} disabled={prog.length <= 1}>
           Undo
-        </button>
+        </Button>
       </div>
 
       {/* Tip */}

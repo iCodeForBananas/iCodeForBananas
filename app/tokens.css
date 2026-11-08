@@ -8,46 +8,61 @@
  */
 
 :root {
-  --ds-palette-neutral-1: oklch(0.095 0.026 248); /** Sunken — darker than Ink Black itself, for what sits behind the base plane. Not one of the five named brand colors; derived by continuing the same ramp one step further down. */
-  --ds-palette-neutral-2: oklch(0.1305 0.0340 246.56); /** Ink Black (#000814) — the base background. */
-  --ds-palette-neutral-3: oklch(0.2308 0.0710 252.90); /** Prussian Blue (#001d3d) — raised surfaces (cards, panels). */
-  --ds-palette-neutral-4: oklch(0.3284 0.0999 252.57); /** Oxford Navy (#003566) — overlay surfaces (menus, popovers, dialogs). */
-  --ds-palette-neutral-5: oklch(0.394 0.110 250);
-  --ds-palette-neutral-6: oklch(0.473 0.095 250);
-  --ds-palette-neutral-7: oklch(0.563 0.075 250);
-  --ds-palette-neutral-8: oklch(0.659 0.055 250);
-  --ds-palette-neutral-9: oklch(0.758 0.038 250);
-  --ds-palette-neutral-10: oklch(0.849 0.024 250);
-  --ds-palette-neutral-11: oklch(0.925 0.014 250);
-  --ds-palette-neutral-12: oklch(0.971 0.006 250);
-  --ds-palette-amber-1: oklch(0.24 0.035 90);
-  --ds-palette-amber-2: oklch(0.33 0.060 90);
-  --ds-palette-amber-3: oklch(0.45 0.090 90);
-  --ds-palette-amber-4: oklch(0.62 0.125 90);
-  --ds-palette-amber-5: oklch(0.75 0.150 90);
-  --ds-palette-amber-6: oklch(0.93 0.078 90);
-  --ds-palette-amber-solid: oklch(0.8479 0.1736 86.06); /** School Bus Yellow (#ffc300) at full strength: a filled button, the active state of a control, the signature brand moment. Whatever sits on top of this is palette.amber.contrast, never white. See that token. */
-  --ds-palette-amber-hover: oklch(0.8849 0.1805 94.78); /** Gold (#ffd60a) — hover for a solid School-Bus-Yellow fill, and every other 'highlight' job (focus ring, active text, an icon that needs to pop). Brighter than solid, not darker: on a dark UI, lifting toward the light is what reads as 'closer to the pointer'. */
-  --ds-palette-amber-text: oklch(0.8849 0.1805 94.78); /** Gold again — amber as text or an icon color on a dark surface. Not for light surfaces; step 3 is the light-surface equivalent. */
-  --ds-palette-amber-contrast: oklch(0.19 0.024 250); /** The near-black-navy label that goes on top of amber.solid. THIS IS NOT A BUG AND MUST NOT BE 'FIXED' TO WHITE. School Bus Yellow at L 0.848 is a light color: white on it fails every contrast target there is, while this near-black lands well clear of 4.5:1. Every design system with a light-yellow primary has to make this call, and the label is the side that gives. Hued into the ink ramp (~250) rather than left neutral, so it reads as part of the same family instead of a flat grey stamped on top. */
-  --ds-palette-teal-1: oklch(0.62 0.105 190); /** Only light theme uses this. Teal at step 2 clears 3:1 against a dark surface but lands near 2.2:1 against a near-white one, so light needs its own step. */
-  --ds-palette-teal-2: oklch(0.72 0.12 190);
-  --ds-palette-teal-3: oklch(0.80 0.11 190);
-  --ds-palette-track-1: oklch(0.62 0.155 275);
-  --ds-palette-track-2: oklch(0.62 0.165 305);
-  --ds-palette-track-3: oklch(0.62 0.170 15);
-  --ds-palette-track-4: oklch(0.68 0.125 230);
-  --ds-palette-track-5: oklch(0.68 0.135 155);
-  --ds-palette-track-6: oklch(0.66 0.140 45);
-  --ds-palette-danger-1: oklch(0.55 0.185 30);
-  --ds-palette-danger-2: oklch(0.64 0.20 30);
-  --ds-palette-success-1: oklch(0.51 0.140 150);
-  --ds-palette-success-2: oklch(0.72 0.15 150);
-  --ds-palette-white: oklch(1 0 0);
-  --ds-palette-alpha-light-6: oklch(1 0 0 / 0.06);
-  --ds-palette-alpha-light-12: oklch(1 0 0 / 0.12);
-  --ds-palette-alpha-dark-8: oklch(0 0 0 / 0.08);
-  --ds-palette-alpha-dark-14: oklch(0 0 0 / 0.14);
+  --ds-palette-dark-background: oklch(0.1768 0.0070 258.37); /** Background Color #0f1114 */
+  --ds-palette-dark-foreground: oklch(0.9303 0.0046 258.33); /** Foreground Color #e6e8eb */
+  --ds-palette-dark-cursor: oklch(0.8652 0.1768 90.38); /** Cursor Color #ffcc00 */
+  --ds-palette-dark-cursor-text: oklch(0.1768 0.0070 258.37); /** Cursor Text Color #0f1114 */
+  --ds-palette-dark-cursor-guide: oklch(0.2341 0.0106 260.69); /** Cursor Guide Color #1b1e23 */
+  --ds-palette-dark-selection: oklch(0.3862 0.0745 255.09); /** Selection Color #27456b */
+  --ds-palette-dark-selected-text: oklch(0.9303 0.0046 258.33); /** Selected Text Color #e6e8eb */
+  --ds-palette-dark-link: oklch(0.8560 0.0768 244.09); /** Link Color #a5d6ff */
+  --ds-palette-dark-black: oklch(0.7088 0.0234 256.76); /** Ansi 0 Color #98a2b0 */
+  --ds-palette-dark-bright-black: oklch(0.7919 0.0197 255.55); /** Ansi 8 Color #b3bcc8 */
+  --ds-palette-dark-red: oklch(0.7598 0.1432 25.07); /** Ansi 1 Color #ff8a82 */
+  --ds-palette-dark-bright-red: oklch(0.8014 0.1134 25.81); /** Ansi 9 Color #ffa198 */
+  --ds-palette-dark-green: oklch(0.7850 0.1392 150.92); /** Ansi 2 Color #6fd28a */
+  --ds-palette-dark-bright-green: oklch(0.8416 0.1641 145.75); /** Ansi 10 Color #7ee787 */
+  --ds-palette-dark-yellow: oklch(0.7904 0.1386 85.24); /** Ansi 3 Color #e3b341 */
+  --ds-palette-dark-bright-yellow: oklch(0.8574 0.1331 89.95); /** Ansi 11 Color #f2cc60 */
+  --ds-palette-dark-blue: oklch(0.7685 0.1214 252.34); /** Ansi 4 Color #79b8ff */
+  --ds-palette-dark-bright-blue: oklch(0.8560 0.0768 244.09); /** Ansi 12 Color #a5d6ff */
+  --ds-palette-dark-magenta: oklch(0.8005 0.1275 305.86); /** Ansi 5 Color #d2a8ff */
+  --ds-palette-dark-bright-magenta: oklch(0.8668 0.0845 307.38); /** Ansi 13 Color #e2c5ff */
+  --ds-palette-dark-cyan: oklch(0.8036 0.1107 201.78); /** Ansi 6 Color #56d4dd */
+  --ds-palette-dark-bright-cyan: oklch(0.8538 0.1008 200.98); /** Ansi 14 Color #76e3ea */
+  --ds-palette-dark-white: oklch(0.9713 0.0068 247.90); /** Ansi 7 Color #f2f6fa */
+  --ds-palette-dark-bright-white: oklch(1 0 0); /** Ansi 15 Color #ffffff */
+  --ds-palette-light-background: oklch(0.9913 0.0029 84.56); /** Background Color #fdfcfa */
+  --ds-palette-light-foreground: oklch(0.1530 0.0054 248.22); /** Foreground Color #0a0c0e */
+  --ds-palette-light-cursor: oklch(0.4600 0.0959 77.96); /** Cursor Color #755000 */
+  --ds-palette-light-cursor-text: oklch(0.9913 0.0029 84.56); /** Cursor Text Color #fdfcfa */
+  --ds-palette-light-cursor-guide: oklch(0.9492 0.0111 89.72); /** Cursor Guide Color #f1eee6 */
+  --ds-palette-light-selection: oklch(0.8663 0.0520 252.00); /** Selection Color #bbd6f5 */
+  --ds-palette-light-selected-text: oklch(0 0 0); /** Selected Text Color #000000 */
+  --ds-palette-light-link: oklch(0.5112 0.1896 258.88); /** Link Color #0b5fd0 */
+  --ds-palette-light-black: oklch(0.2086 0.0085 264.37); /** Ansi 0 Color #16181c */
+  --ds-palette-light-bright-black: oklch(0.5595 0.0163 254.67); /** Ansi 8 Color #6e757e */
+  --ds-palette-light-red: oklch(0.5260 0.1952 23.46); /** Ansi 1 Color #c21f2e */
+  --ds-palette-light-bright-red: oklch(0.5761 0.2267 24.81); /** Ansi 9 Color #e0132a */
+  --ds-palette-light-green: oklch(0.5087 0.1375 148.22); /** Ansi 2 Color #157a34 */
+  --ds-palette-light-bright-green: oklch(0.5439 0.1557 148.44); /** Ansi 10 Color #008736 */
+  --ds-palette-light-yellow: oklch(0.5078 0.1080 73.30); /** Ansi 3 Color #8a5a00 */
+  --ds-palette-light-bright-yellow: oklch(0.5663 0.1217 71.37); /** Ansi 11 Color #a26800 */
+  --ds-palette-light-blue: oklch(0.5112 0.1896 258.88); /** Ansi 4 Color #0b5fd0 */
+  --ds-palette-light-bright-blue: oklch(0.5695 0.2132 258.25); /** Ansi 12 Color #006ff1 */
+  --ds-palette-light-magenta: oklch(0.5199 0.2183 306.76); /** Ansi 5 Color #8a33c8 */
+  --ds-palette-light-bright-magenta: oklch(0.5752 0.2715 307.74); /** Ansi 13 Color #a526f0 */
+  --ds-palette-light-cyan: oklch(0.5090 0.0837 199.20); /** Ansi 6 Color #0d7478 */
+  --ds-palette-light-bright-cyan: oklch(0.5516 0.0938 200.50); /** Ansi 14 Color #008288 */
+  --ds-palette-light-white: oklch(0.3908 0.0164 251.76); /** Ansi 7 Color #3f464e */
+  --ds-palette-light-bright-white: oklch(0 0 0); /** Ansi 15 Color #000000 */
+  --ds-palette-derived-dark-sunken: oklch(0.1468 0.0070 258.37); /** One step below the dark Background, for what sits behind the base plane. */
+  --ds-palette-derived-dark-overlay: oklch(0.2910 0.0122 260.69); /** One step above the dark Cursor Guide, for menus and dialogs. */
+  --ds-palette-derived-light-sunken: oklch(0.9192 0.0111 89.72); /** One step below the light Cursor Guide, for inset fields and wells. */
+  --ds-palette-alpha-light-6: oklch(1 0 0 / 0.08);
+  --ds-palette-alpha-light-12: oklch(1 0 0 / 0.16);
+  --ds-palette-alpha-dark-8: oklch(0 0 0 / 0.1);
+  --ds-palette-alpha-dark-14: oklch(0 0 0 / 0.18);
   --ds-space-2: 2px;
   --ds-space-4: 4px;
   --ds-space-8: 8px;
@@ -103,44 +118,83 @@
   --ds-font-weight-body: 400;
   --ds-font-weight-ui: 500;
   --ds-font-weight-emphasis: 600;
-  --ds-color-surface-sunken: var(--ds-palette-neutral-1);
-  --ds-color-surface-base: var(--ds-palette-neutral-2);
-  --ds-color-surface-raised: var(--ds-palette-neutral-3);
-  --ds-color-surface-overlay: var(--ds-palette-neutral-4);
+  --ds-color-surface-sunken: var(--ds-palette-derived-dark-sunken);
+  --ds-color-surface-base: var(--ds-palette-dark-background);
+  --ds-color-surface-raised: var(--ds-palette-dark-cursor-guide);
+  --ds-color-surface-overlay: var(--ds-palette-derived-dark-overlay);
+  --ds-color-text-primary: var(--ds-palette-dark-foreground);
+  --ds-color-text-muted: var(--ds-palette-dark-black);
+  --ds-color-text-on-primary: var(--ds-palette-dark-cursor-text);
+  --ds-color-primary-solid: var(--ds-palette-dark-cursor);
+  --ds-color-primary-hover: var(--ds-palette-dark-bright-yellow);
+  --ds-color-primary-text: var(--ds-palette-dark-cursor);
+  --ds-color-accent-solid: var(--ds-palette-dark-cyan);
+  --ds-color-link: var(--ds-palette-dark-link);
+  --ds-color-selection-background: var(--ds-palette-dark-selection);
+  --ds-color-selection-text: var(--ds-palette-dark-selected-text);
+  --ds-color-ansi-red: var(--ds-palette-dark-red);
+  --ds-color-ansi-bright-red: var(--ds-palette-dark-bright-red);
+  --ds-color-ansi-green: var(--ds-palette-dark-green);
+  --ds-color-ansi-bright-green: var(--ds-palette-dark-bright-green);
+  --ds-color-ansi-yellow: var(--ds-palette-dark-yellow);
+  --ds-color-ansi-bright-yellow: var(--ds-palette-dark-bright-yellow);
+  --ds-color-ansi-blue: var(--ds-palette-dark-blue);
+  --ds-color-ansi-bright-blue: var(--ds-palette-dark-bright-blue);
+  --ds-color-ansi-magenta: var(--ds-palette-dark-magenta);
+  --ds-color-ansi-bright-magenta: var(--ds-palette-dark-bright-magenta);
+  --ds-color-ansi-cyan: var(--ds-palette-dark-cyan);
+  --ds-color-ansi-bright-cyan: var(--ds-palette-dark-bright-cyan);
+  --ds-color-track-1: var(--ds-palette-dark-blue);
+  --ds-color-track-2: var(--ds-palette-dark-magenta);
+  --ds-color-track-3: var(--ds-palette-dark-red);
+  --ds-color-track-4: var(--ds-palette-dark-cyan);
+  --ds-color-track-5: var(--ds-palette-dark-green);
+  --ds-color-track-6: var(--ds-palette-dark-yellow);
+  --ds-color-danger: var(--ds-palette-dark-red);
+  --ds-color-success: var(--ds-palette-dark-green);
+  --ds-color-focus-ring: var(--ds-palette-dark-cursor);
   --ds-color-border-subtle: var(--ds-palette-alpha-light-6);
   --ds-color-border-strong: var(--ds-palette-alpha-light-12);
-  --ds-color-text-primary: var(--ds-palette-neutral-12);
-  --ds-color-text-muted: var(--ds-palette-neutral-9); /** Secondary text: labels, metadata, timestamps. Still clears 4.5:1 on surface.base. It is muted, not disabled, and there is deliberately no third dimmer tier, because a third tier is where hierarchy turns into illegibility. */
-  --ds-color-text-on-primary: var(--ds-palette-amber-contrast); /** The label on a filled amber control. Resolves to a near-black, and that is correct: see palette.amber.contrast for why it can never be white. Identical in both themes, because primary.solid is identical in both themes. */
-  --ds-color-primary-solid: var(--ds-palette-amber-solid);
-  --ds-color-primary-hover: var(--ds-palette-amber-hover);
-  --ds-color-primary-text: var(--ds-palette-amber-text); /** Amber as text or an icon rather than a fill: a link, an active nav item, a chord symbol. This is the token that has to flip between themes, because amber bright enough to read on near-black is far too light to read on near-white. */
-  --ds-color-accent-solid: var(--ds-palette-teal-2); /** The teal counter-accent as a fill, for a second axis of meaning that would be ambiguous in amber. The intended first use is marking a capo transform as distinct from a key change. */
-  --ds-color-track-1: var(--ds-palette-track-1);
-  --ds-color-track-2: var(--ds-palette-track-2);
-  --ds-color-track-3: var(--ds-palette-track-3);
-  --ds-color-track-4: var(--ds-palette-track-4);
-  --ds-color-track-5: var(--ds-palette-track-5);
-  --ds-color-track-6: var(--ds-palette-track-6);
-  --ds-color-danger: var(--ds-palette-danger-2);
-  --ds-color-success: var(--ds-palette-success-2);
-  --ds-color-focus-ring: var(--ds-palette-amber-text); /** Always visible, never removed. An outline may be replaced with a different visible treatment; it may not be replaced with nothing. This is the one place the accent appears without being the primary action, because the user put it there by pressing Tab. */
   --ds-shadow-raised: 0 1px 2px 0 oklch(0 0 0 / 0.28), inset 0 1px 0 0 oklch(1 0 0 / 0.04); /** A card or panel sitting on the base plane. The inset line is a single hairline of light along the top edge, the way a raised physical surface catches the light above it. Barely visible by design. */
   --ds-shadow-overlay: 0 8px 24px -8px oklch(0 0 0 / 0.45), 0 2px 6px -2px oklch(0 0 0 / 0.3), inset 0 1px 0 0 oklch(1 0 0 / 0.05); /** A menu, popover or dialog floating over the whole page. The one place a shadow is allowed to be noticeable, because an overlay has to read as detached rather than merely lighter. Still soft and still tight: a large blur with a negative spread, not a heavy drop shadow. */
 }
 
 [data-theme="light"] {
-  --ds-color-surface-sunken: var(--ds-palette-neutral-11);
-  --ds-color-surface-base: var(--ds-palette-neutral-12);
-  --ds-color-surface-raised: var(--ds-palette-white);
-  --ds-color-surface-overlay: var(--ds-palette-white);
+  --ds-color-surface-sunken: var(--ds-palette-derived-light-sunken);
+  --ds-color-surface-base: var(--ds-palette-light-background);
+  --ds-color-surface-raised: var(--ds-palette-light-cursor-guide);
+  --ds-color-surface-overlay: var(--ds-palette-light-background);
+  --ds-color-text-primary: var(--ds-palette-light-foreground);
+  --ds-color-text-muted: var(--ds-palette-light-white);
+  --ds-color-text-on-primary: var(--ds-palette-light-cursor-text);
+  --ds-color-primary-solid: var(--ds-palette-light-cursor);
+  --ds-color-primary-hover: var(--ds-palette-light-yellow);
+  --ds-color-primary-text: var(--ds-palette-light-cursor);
+  --ds-color-accent-solid: var(--ds-palette-light-cyan);
+  --ds-color-link: var(--ds-palette-light-link);
+  --ds-color-selection-background: var(--ds-palette-light-selection);
+  --ds-color-selection-text: var(--ds-palette-light-selected-text);
+  --ds-color-ansi-red: var(--ds-palette-light-red);
+  --ds-color-ansi-bright-red: var(--ds-palette-light-bright-red);
+  --ds-color-ansi-green: var(--ds-palette-light-green);
+  --ds-color-ansi-bright-green: var(--ds-palette-light-bright-green);
+  --ds-color-ansi-yellow: var(--ds-palette-light-yellow);
+  --ds-color-ansi-bright-yellow: var(--ds-palette-light-bright-yellow);
+  --ds-color-ansi-blue: var(--ds-palette-light-blue);
+  --ds-color-ansi-bright-blue: var(--ds-palette-light-bright-blue);
+  --ds-color-ansi-magenta: var(--ds-palette-light-magenta);
+  --ds-color-ansi-bright-magenta: var(--ds-palette-light-bright-magenta);
+  --ds-color-ansi-cyan: var(--ds-palette-light-cyan);
+  --ds-color-ansi-bright-cyan: var(--ds-palette-light-bright-cyan);
+  --ds-color-track-1: var(--ds-palette-light-blue);
+  --ds-color-track-2: var(--ds-palette-light-magenta);
+  --ds-color-track-3: var(--ds-palette-light-red);
+  --ds-color-track-4: var(--ds-palette-light-cyan);
+  --ds-color-track-5: var(--ds-palette-light-green);
+  --ds-color-track-6: var(--ds-palette-light-yellow);
+  --ds-color-danger: var(--ds-palette-light-red);
+  --ds-color-success: var(--ds-palette-light-green);
+  --ds-color-focus-ring: var(--ds-palette-light-cursor);
   --ds-color-border-subtle: var(--ds-palette-alpha-dark-8);
   --ds-color-border-strong: var(--ds-palette-alpha-dark-14);
-  --ds-color-text-primary: var(--ds-palette-neutral-1);
-  --ds-color-text-muted: var(--ds-palette-neutral-6);
-  --ds-color-primary-text: var(--ds-palette-amber-3); /** Amber text has to drop a long way in lightness to survive on a near-white surface. amber.text at L 0.856 lands near 1.2:1 here, which is invisible. This is the single most likely token for someone to 'simplify' back to the brand value; doing so would delete the text. */
-  --ds-color-accent-solid: var(--ds-palette-teal-1);
-  --ds-color-danger: var(--ds-palette-danger-1);
-  --ds-color-success: var(--ds-palette-success-1);
-  --ds-color-focus-ring: var(--ds-palette-amber-3);
 }

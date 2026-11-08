@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { Check, Copy, X } from "lucide-react";
-import { Button, Dialog, Flex, IconButton } from "@radix-ui/themes";
+import { Dialog, Flex } from "@radix-ui/themes";
+import { Button } from "@/app/components/ui/button";
 import { DRUM_PATTERNS } from "./DrumMachine";
 import { ACCENT_GROUPS } from "./accents";
 import { useSongbookPortal } from "./portal";
@@ -124,9 +125,8 @@ function CopyButton({ text }: { text: string }) {
   return (
     <Button
       type="button"
-      size="1"
-      variant="surface"
-      color={copied ? "green" : "gray"}
+      size="sm"
+      variant="secondary"
       onClick={async () => {
         try {
           await navigator.clipboard.writeText(text);
@@ -160,18 +160,18 @@ export default function SyntaxHelp({ onClose }: { onClose: () => void }) {
               Everything you can type into a sheet, and what it does when you hit Play.
             </Dialog.Description>
           </div>
-          <IconButton variant="ghost" color="gray" onClick={onClose} aria-label="Close syntax help">
+          <Button size="icon" variant="ghost" onClick={onClose} aria-label="Close syntax help">
             <X className="h-4 w-4" />
-          </IconButton>
+          </Button>
         </Flex>
 
         {/* Entries */}
-        <div className="flex-1 space-y-5 overflow-auto px-4 py-4">
+        <div className="flex-1 space-y-4 overflow-auto px-4 py-4">
           {ENTRIES.map((entry) => (
             <section key={entry.title}>
               <h3 className="text-sm font-medium text-primary-text">{entry.title}</h3>
               <p className="mt-1 text-xs leading-relaxed text-ink-muted">{entry.blurb}</p>
-              <div className="mt-2 flex items-start gap-2 rounded border border-line-subtle bg-surface-raised px-3 py-2">
+              <div className="mt-2 flex items-start gap-2 rounded-md border border-line-subtle bg-surface-raised px-3 py-2">
                 <pre className="flex-1 overflow-x-auto whitespace-pre font-mono text-xs leading-relaxed text-ink-primary">
                   {entry.example}
                 </pre>
@@ -198,9 +198,9 @@ export default function SyntaxHelp({ onClose }: { onClose: () => void }) {
             <p className="mt-1 text-xs leading-relaxed text-ink-muted">
               Every tag the player understands, and what it does.
             </p>
-            <div className="mt-2 divide-y divide-line-subtle rounded border border-line-subtle">
+            <div className="mt-2 divide-y divide-line-subtle rounded-md border border-line-subtle">
               {TAG_REFERENCE.map((tag) => (
-                <div key={tag.tag} className="flex items-baseline gap-3 px-3 py-1.5">
+                <div key={tag.tag} className="flex items-baseline gap-3 px-3 py-2">
                   <code className="w-28 shrink-0 font-mono text-xs text-ink-primary">{tag.tag}</code>
                   <span className="text-xs leading-relaxed text-ink-muted">{tag.does}</span>
                 </div>
@@ -214,11 +214,11 @@ export default function SyntaxHelp({ onClose }: { onClose: () => void }) {
             <p className="mt-1 text-xs leading-relaxed text-ink-muted">
               Names you can put on the Drums: line.
             </p>
-            <div className="mt-2 flex flex-wrap gap-1.5">
+            <div className="mt-2 flex flex-wrap gap-2">
               {DRUM_PATTERNS.map((p) => (
                 <span
                   key={p.name}
-                  className="rounded border border-line-subtle bg-surface-raised px-2 py-1 font-mono text-[0.7rem] text-ink-muted"
+                  className="rounded-md border border-line-subtle bg-surface-raised px-2 py-1 font-mono text-[0.7rem] text-ink-muted"
                 >
                   {p.name}
                 </span>
@@ -235,12 +235,12 @@ export default function SyntaxHelp({ onClose }: { onClose: () => void }) {
             {ACCENT_GROUPS.map((group) => (
               <div key={group.label} className="mt-2">
                 <p className="text-[0.7rem] uppercase tracking-wide text-ink-muted">{group.label}</p>
-                <div className="mt-1 flex flex-wrap gap-1.5">
+                <div className="mt-1 flex flex-wrap gap-2">
                   {group.items.map((item) => (
                     <span
                       key={item.name}
                       title={item.description}
-                      className="rounded border border-line-subtle bg-surface-raised px-2 py-1 font-mono text-[0.7rem] text-ink-muted"
+                      className="rounded-md border border-line-subtle bg-surface-raised px-2 py-1 font-mono text-[0.7rem] text-ink-muted"
                     >
                       {item.name}
                     </span>
@@ -253,7 +253,7 @@ export default function SyntaxHelp({ onClose }: { onClose: () => void }) {
 
         {/* Footer */}
         <Flex align="center" justify="end" className="border-t border-line-subtle px-4 py-3">
-          <Button size="3" onClick={onClose}>
+          <Button variant="primary" size="lg" onClick={onClose}>
             Got it
           </Button>
         </Flex>

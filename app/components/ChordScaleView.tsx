@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
+import { Button } from "@/app/components/ui/button";
 import { useTheme } from "../lib/ThemeContext";
 import Fretboard from "./Fretboard";
 import { allNotes, defaultTuning, totalFrets, generateChordsAndScales } from "../lib/music";
@@ -30,7 +31,7 @@ function TuningControl({ tuning, setTuning, theme }: TuningControlProps) {
           <select
             id={`tun-${i}`}
             key={i}
-            className='border rounded px-3 py-1 text-sm'
+            className='border rounded-md px-3 py-1 text-sm'
             value={note}
             onChange={(e) => updateTuning(i, e.target.value)}
           >
@@ -42,12 +43,9 @@ function TuningControl({ tuning, setTuning, theme }: TuningControlProps) {
           </select>
         ))}
       </div>
-      <button
-        className='rounded border border-line-subtle px-4 py-2 text-ink-primary transition-colors duration-120 ease-ui hover:bg-surface-overlay'
-        onClick={resetTuning}
-      >
+      <Button variant='secondary' onClick={resetTuning}>
         Reset Tuning
-      </button>
+      </Button>
     </div>
   );
 }
@@ -100,7 +98,7 @@ export default function ChordScaleView() {
         <div className='lg:col-span-2'>
           <h5 className='text-lg font-semibold mb-3'>Chords & Scales</h5>
           <select
-            className='w-full border rounded px-3 py-2 mb-3'
+            className='w-full border rounded-md px-3 py-2 mb-3'
             value={chord}
             onChange={(e) => {
               setChord(e.target.value);
@@ -111,7 +109,7 @@ export default function ChordScaleView() {
             {chordOptions}
           </select>
           <select
-            className='w-full border rounded px-3 py-2 mb-3'
+            className='w-full border rounded-md px-3 py-2 mb-3'
             value={scale}
             onChange={(e) => {
               setScale(e.target.value);

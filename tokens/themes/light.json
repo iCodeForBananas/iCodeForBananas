@@ -1,38 +1,171 @@
 {
   "light": {
-    "$description": "Light theme. Overrides Layer 2 semantics ONLY, emitted under [data-theme=\"light\"]. Layer 1 primitives are never redefined per theme: when a value must change between themes, the fix is to point the semantic alias at a different primitive, not to redefine the primitive. Anything absent here inherits its dark value on purpose, which is why text.on-primary and primary.solid are not listed.",
-
+    "$description": "Light theme: Layer 2 overrides only, emitted under [data-theme=\"light\"]. Every role is the same iTerm slot as dark, read from the light scheme.",
     "color": {
       "surface": {
-        "$description": "Elevation runs the other way in light: raised means whiter, not lighter grey. overlay and raised share a value because the neutral ramp tops out at white, so an overlay is separated from a raised card by its shadow instead. That is the normal light-theme convention.",
-        "sunken":  { "$type": "color", "$value": "{palette.neutral.11}" },
-        "base":    { "$type": "color", "$value": "{palette.neutral.12}" },
-        "raised":  { "$type": "color", "$value": "{palette.white}" },
-        "overlay": { "$type": "color", "$value": "{palette.white}" }
+        "sunken": {
+          "$type": "color",
+          "$value": "{palette.derived.light-sunken}"
+        },
+        "base": {
+          "$type": "color",
+          "$value": "{palette.light.background}"
+        },
+        "raised": {
+          "$type": "color",
+          "$value": "{palette.light.cursor-guide}"
+        },
+        "overlay": {
+          "$type": "color",
+          "$value": "{palette.light.background}"
+        }
       },
-
-      "border": {
-        "subtle": { "$type": "color", "$value": "{palette.alpha.dark.8}" },
-        "strong": { "$type": "color", "$value": "{palette.alpha.dark.14}" }
-      },
-
       "text": {
-        "primary": { "$type": "color", "$value": "{palette.neutral.1}" },
-        "muted":   { "$type": "color", "$value": "{palette.neutral.6}" }
+        "primary": {
+          "$type": "color",
+          "$value": "{palette.light.foreground}"
+        },
+        "muted": {
+          "$type": "color",
+          "$value": "{palette.light.white}"
+        },
+        "on-primary": {
+          "$type": "color",
+          "$value": "{palette.light.cursor-text}"
+        }
       },
-
       "primary": {
-        "text": { "$type": "color", "$value": "{palette.amber.3}", "$description": "Amber text has to drop a long way in lightness to survive on a near-white surface. amber.text at L 0.856 lands near 1.2:1 here, which is invisible. This is the single most likely token for someone to 'simplify' back to the brand value; doing so would delete the text." }
+        "solid": {
+          "$type": "color",
+          "$value": "{palette.light.cursor}"
+        },
+        "hover": {
+          "$type": "color",
+          "$value": "{palette.light.yellow}"
+        },
+        "text": {
+          "$type": "color",
+          "$value": "{palette.light.cursor}"
+        }
       },
-
       "accent": {
-        "solid": { "$type": "color", "$value": "{palette.teal.1}" }
+        "solid": {
+          "$type": "color",
+          "$value": "{palette.light.cyan}"
+        }
       },
-
-      "danger":  { "$type": "color", "$value": "{palette.danger.1}" },
-      "success": { "$type": "color", "$value": "{palette.success.1}" },
-
-      "focus-ring": { "$type": "color", "$value": "{palette.amber.3}" }
+      "link": {
+        "$type": "color",
+        "$value": "{palette.light.link}"
+      },
+      "selection": {
+        "background": {
+          "$type": "color",
+          "$value": "{palette.light.selection}"
+        },
+        "text": {
+          "$type": "color",
+          "$value": "{palette.light.selected-text}"
+        }
+      },
+      "ansi": {
+        "red": {
+          "$type": "color",
+          "$value": "{palette.light.red}"
+        },
+        "bright-red": {
+          "$type": "color",
+          "$value": "{palette.light.bright-red}"
+        },
+        "green": {
+          "$type": "color",
+          "$value": "{palette.light.green}"
+        },
+        "bright-green": {
+          "$type": "color",
+          "$value": "{palette.light.bright-green}"
+        },
+        "yellow": {
+          "$type": "color",
+          "$value": "{palette.light.yellow}"
+        },
+        "bright-yellow": {
+          "$type": "color",
+          "$value": "{palette.light.bright-yellow}"
+        },
+        "blue": {
+          "$type": "color",
+          "$value": "{palette.light.blue}"
+        },
+        "bright-blue": {
+          "$type": "color",
+          "$value": "{palette.light.bright-blue}"
+        },
+        "magenta": {
+          "$type": "color",
+          "$value": "{palette.light.magenta}"
+        },
+        "bright-magenta": {
+          "$type": "color",
+          "$value": "{palette.light.bright-magenta}"
+        },
+        "cyan": {
+          "$type": "color",
+          "$value": "{palette.light.cyan}"
+        },
+        "bright-cyan": {
+          "$type": "color",
+          "$value": "{palette.light.bright-cyan}"
+        }
+      },
+      "track": {
+        "1": {
+          "$type": "color",
+          "$value": "{palette.light.blue}"
+        },
+        "2": {
+          "$type": "color",
+          "$value": "{palette.light.magenta}"
+        },
+        "3": {
+          "$type": "color",
+          "$value": "{palette.light.red}"
+        },
+        "4": {
+          "$type": "color",
+          "$value": "{palette.light.cyan}"
+        },
+        "5": {
+          "$type": "color",
+          "$value": "{palette.light.green}"
+        },
+        "6": {
+          "$type": "color",
+          "$value": "{palette.light.yellow}"
+        }
+      },
+      "danger": {
+        "$type": "color",
+        "$value": "{palette.light.red}"
+      },
+      "success": {
+        "$type": "color",
+        "$value": "{palette.light.green}"
+      },
+      "focus-ring": {
+        "$type": "color",
+        "$value": "{palette.light.cursor}"
+      },
+      "border": {
+        "subtle": {
+          "$type": "color",
+          "$value": "{palette.alpha.dark.8}"
+        },
+        "strong": {
+          "$type": "color",
+          "$value": "{palette.alpha.dark.14}"
+        }
+      }
     }
   }
 }

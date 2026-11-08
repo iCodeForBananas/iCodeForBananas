@@ -242,7 +242,7 @@ function CommandPalette({
                       }}
                       onMouseMove={() => setActive(() => ordered.indexOf(command))}
                       className={cn(
-                        "flex w-full items-center justify-between gap-4 rounded px-3 py-2 text-left text-13",
+                        "flex w-full items-center justify-between gap-4 rounded-md px-3 py-2 text-left text-13",
                         "outline-none transition-colors duration-120 ease-ui motion-reduce:transition-none",
                         isActive ? "bg-surface-raised text-ink-primary" : "text-ink-muted"
                       )}

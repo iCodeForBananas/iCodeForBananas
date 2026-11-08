@@ -25,20 +25,20 @@ export interface BreadcrumbItem {
 export function Breadcrumbs({ items, className = "" }: { items: BreadcrumbItem[]; className?: string }) {
   if (items.length === 0) return null;
   return (
-    <nav aria-label='Breadcrumb' className={`flex flex-wrap items-center gap-0.5 text-13 text-ink-muted ${className}`}>
+    <nav aria-label='Breadcrumb' className={`flex flex-wrap items-center gap-1 text-13 text-ink-muted ${className}`}>
       {items.map((item, i) => (
-        <span key={`${item.href ?? item.label}-${i}`} className='flex items-center gap-0.5 min-w-0'>
+        <span key={`${item.href ?? item.label}-${i}`} className='flex items-center gap-1 min-w-0'>
           {i > 0 && <ChevronRight className='w-3.5 h-3.5 shrink-0 opacity-60' aria-hidden='true' />}
           {item.href ? (
             <Link
               href={item.href}
               onClick={item.onNavigate}
-              className='flex min-h-[44px] items-center rounded px-1.5 font-medium transition-colors hover:bg-surface-overlay hover:text-ink-primary'
+              className='flex min-h-[44px] items-center rounded-md px-2 font-medium transition-colors hover:bg-surface-overlay hover:text-ink-primary'
             >
               {item.label}
             </Link>
           ) : (
-            <span className='flex min-h-[44px] items-center truncate px-1.5 font-medium text-ink-primary' aria-current='page'>
+            <span className='flex min-h-[44px] items-center truncate px-2 font-medium text-ink-primary' aria-current='page'>
               {item.label}
             </span>
           )}

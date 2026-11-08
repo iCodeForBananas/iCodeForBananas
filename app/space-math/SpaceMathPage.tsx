@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, type KeyboardEvent } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Rocket, Star, Trophy, ChevronRight, Sparkles, Check, X } from "lucide-react";
-import { Button } from "@radix-ui/themes";
+import { Button } from "@/app/components/ui/button";
 import styles from "./space-math.module.css";
 import { findSkill } from "../lib/spaceMathSkills";
 import {
@@ -118,9 +118,9 @@ function polarPoint(cx: number, cy: number, r: number, angleDeg: number) {
 // squares/dots, with `shaded` of `total` pieces filled in.
 const FractionShape = ({ visual, size = 120 }: { visual: FractionVisual; size?: number }) => {
   const { shape, total, shaded } = visual;
-  const fill = "#fbbf24";
-  const empty = "rgba(255,255,255,0.15)";
-  const stroke = "rgba(255,255,255,0.65)";
+  const fill = "var(--ds-color-primary-solid)";
+  const empty = "color-mix(in oklab, var(--ds-color-text-primary) 15%, transparent)";
+  const stroke = "var(--ds-color-text-muted)";
 
   if (shape === "circle") {
     const r = size / 2 - 4;
@@ -209,9 +209,9 @@ function wedgePath(cx: number, cy: number, r: number, index: number, total: numb
   return `M ${cx} ${cy} L ${start.x} ${start.y} A ${r} ${r} 0 ${largeArc} 1 ${end.x} ${end.y} Z`;
 }
 
-const SHADE_FILL = "#fbbf24";
-const SHADE_EMPTY = "rgba(255,255,255,0.15)";
-const SHADE_STROKE = "rgba(255,255,255,0.65)";
+const SHADE_FILL = "var(--ds-color-primary-solid)";
+const SHADE_EMPTY = "color-mix(in oklab, var(--ds-color-text-primary) 15%, transparent)";
+const SHADE_STROKE = "var(--ds-color-text-muted)";
 
 // Takes a `key` prop at the call site (not shown in this signature) set to
 // something that changes per question — React remounts the whole
@@ -261,17 +261,12 @@ const ShadeGrid = ({
 
   const footer = (
     <div className="flex flex-col items-center gap-3 mt-3">
-      <div className="text-center text-sm font-semibold text-white/70">
+      <div className="text-center text-sm font-semibold text-ink-muted">
         {shaded.size} / {total} shaded
       </div>
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={() => onComplete(shaded.size)}
-        className="px-8 py-3 bg-gradient-to-b from-green-400 to-emerald-600 text-white rounded-md text-lg font-bold border-4 border-black shadow-[0_6px_0_#000] active:shadow-none active:translate-y-[6px] transition-all hover:brightness-110 disabled:opacity-50"
-      >
+      <Button variant="primary" size="xl" disabled={disabled} onClick={() => onComplete(shaded.size)}>
         Check
-      </button>
+      </Button>
     </div>
   );
 
@@ -377,10 +372,10 @@ const ShadeGrid = ({
 
 const StarBank = ({ score, onClear }: { score: number; onClear: () => void }) => (
   <div className='w-full p-3 pl-14 flex items-start sm:items-center gap-4 z-50 relative min-h-[60px]'>
-    <Button size='1' variant='soft' color='red' onClick={onClear} className='shrink-0 uppercase'>
+    <Button size='sm' variant='danger' onClick={onClear} className='shrink-0 uppercase'>
       Clear
     </Button>
-    <div className='flex flex-wrap gap-1.5 flex-1 content-start'>
+    <div className='flex flex-wrap gap-2 flex-1 content-start'>
       <AnimatePresence>
         {Array.from({ length: Math.floor(score / 10) }).map((_, i) => (
           <motion.div
@@ -391,7 +386,7 @@ const StarBank = ({ score, onClear }: { score: number; onClear: () => void }) =>
             transition={{ type: "spring", stiffness: 260, damping: 20 }}
             className='w-5 h-5'
           >
-            <Star className='w-5 h-5 text-yellow-400 fill-yellow-400 drop-shadow-sm' />
+            <Star className='w-5 h-5 text-primary-text fill-primary-text drop-shadow-sm' />
           </motion.div>
         ))}
       </AnimatePresence>
@@ -408,9 +403,9 @@ const SessionProgressBar = ({ correct }: { correct: number }) => {
   const isDone = correct >= SESSION_GOAL;
   return (
     <div className='w-full mb-2 shrink-0'>
-      <div className='flex justify-between items-center mb-1.5 px-1'>
-        <div className='flex items-center gap-1.5 text-xs font-bold text-ink-muted uppercase tracking-wider'>
-          <Star className='w-3 h-3 text-yellow-400 fill-yellow-400' />
+      <div className='flex justify-between items-center mb-2 px-1'>
+        <div className='flex items-center gap-2 text-xs font-bold text-ink-muted uppercase tracking-wider'>
+          <Star className='w-3 h-3 text-primary-text fill-primary-text' />
           Session
         </div>
         <span className={`text-xs font-bold ${isDone ? "text-primary-text" : "text-ink-muted"}`}>
@@ -419,7 +414,7 @@ const SessionProgressBar = ({ correct }: { correct: number }) => {
       </div>
       <div className='w-full h-2.5 bg-surface-raised/80 rounded-full overflow-hidden border border-line-strong'>
         <motion.div
-          className={`h-full rounded-full ${isDone ? "bg-gradient-to-r from-yellow-400 to-amber-500" : "bg-gradient-to-r from-fuchsia-500 via-purple-500 to-cyan-500"}`}
+          className={`h-full rounded-full ${isDone ? "bg-primary-solid" : "bg-accent-solid"}`}
           initial={{ width: 0 }}
           animate={{ width: `${pct}%` }}
           transition={{ type: "spring", stiffness: 80, damping: 15 }}
@@ -584,13 +579,13 @@ function readSave() {
 // so the four tiles always read as distinct, playful choices rather than a
 // wall of identical grey buttons.
 const OPTION_COLORS = [
-  "from-pink-400 to-fuchsia-600",
-  "from-sky-400 to-blue-600",
-  "from-lime-400 to-green-600",
-  "from-amber-300 to-orange-500",
+  "bg-track-2",
+  "bg-track-1",
+  "bg-track-5",
+  "bg-track-6",
 ];
 
-const CONFETTI_COLORS = ["bg-pink-400", "bg-cyan-400", "bg-lime-400", "bg-amber-300", "bg-fuchsia-500"];
+const CONFETTI_COLORS = ["bg-track-1", "bg-track-2", "bg-track-3", "bg-track-4", "bg-track-5", "bg-track-6"];
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -731,20 +726,20 @@ export default function SpaceMathPage() {
   const isThreeOptions = problem && problem.options.length === 3;
 
   return (
-    <div className='flex-1 bg-black text-ink-primary selection:bg-primary-solid/30 relative flex flex-col overflow-hidden max-h-screen'>
+    <div className='flex-1 bg-surface-sunken text-ink-primary selection:bg-primary-solid/30 relative flex flex-col overflow-hidden max-h-screen'>
       <SpaceBackground />
       <StarBank score={score} onClear={clearStars} />
       <main className='relative z-10 w-full pt-4 sm:pt-6 px-4 sm:px-6 pb-20 sm:pb-24 flex flex-col items-center flex-1 min-h-0 overflow-hidden'>
         <div className='w-full flex justify-between items-center mb-3 sm:mb-4 shrink-0'>
           <div className='flex items-center gap-3'>
-            <div className='p-2 bg-gradient-to-br from-fuchsia-500 to-indigo-600 rounded-md border-2 border-black shadow-[0_3px_0_#000]'>
-              <Rocket className='w-5 h-5 sm:w-6 sm:h-6 text-white' />
+            <div className='p-2 bg-primary-solid rounded-md'>
+              <Rocket className='w-5 h-5 sm:w-6 sm:h-6 text-ink-on-primary' />
             </div>
             <div>
               <h1 className='text-lg sm:text-xl font-bold tracking-tight'>Space Math</h1>
             </div>
           </div>
-          <Button size='1' variant='surface' color='gray' onClick={resetGame} className='uppercase'>
+          <Button size='sm' variant='secondary' onClick={resetGame} className='uppercase'>
             Reset
           </Button>
         </div>
@@ -774,18 +769,13 @@ export default function SpaceMathPage() {
                 </motion.div>
               </div>
               <div>
-                <h2 className='text-3xl sm:text-4xl md:text-5xl font-black mb-3 sm:mb-4 bg-gradient-to-r from-pink-400 via-amber-300 to-cyan-400 bg-clip-text text-transparent'>
+                <h2 className='text-3xl sm:text-4xl md:text-5xl font-black mb-3 sm:mb-4 text-primary-text'>
                   Ready for Launch?
                 </h2>
               </div>
-              <button
-                onClick={startGame}
-                className='group relative px-10 sm:px-12 py-5 sm:py-6 bg-gradient-to-b from-fuchsia-500 to-purple-600 text-white rounded-md text-xl sm:text-2xl font-bold border-4 border-black shadow-[0_10px_0_#000] active:shadow-none active:translate-y-[10px] transition-all hover:brightness-110'
-              >
-                <span className='flex items-center gap-3'>
-                  START MISSION <ChevronRight className='w-7 h-7 sm:w-8 sm:h-8' />
-                </span>
-              </button>
+              <Button variant='primary' size='xl' onClick={startGame}>
+                START MISSION <ChevronRight className='w-5 h-5' />
+              </Button>
             </motion.div>
           )}
 
@@ -820,7 +810,7 @@ export default function SpaceMathPage() {
                           cy='112'
                           r='104'
                           fill='none'
-                          stroke='rgba(255,255,255,0.35)'
+                          stroke='var(--ds-color-border-strong)'
                           strokeWidth='14'
                         />
                         <motion.circle
@@ -828,7 +818,7 @@ export default function SpaceMathPage() {
                           cy='112'
                           r='104'
                           fill='none'
-                          stroke={isCorrect ? "#22c55e" : "#ef4444"}
+                          stroke={isCorrect ? "var(--ds-color-success)" : "var(--ds-color-danger)"}
                           strokeWidth='14'
                           strokeLinecap='round'
                           strokeDasharray={2 * Math.PI * 104}
@@ -838,22 +828,22 @@ export default function SpaceMathPage() {
                         />
                       </svg>
                       <div
-                        className={`p-12 rounded-full border-4 border-black shadow-2xl ${isCorrect ? "bg-green-500" : `bg-red-500 ${styles.shake}`}`}
+                        className={`p-12 rounded-full shadow-overlay ${isCorrect ? "bg-success" : `bg-danger ${styles.shake}`}`}
                       >
                         {isCorrect ? (
-                          <Check className='w-32 h-32 text-white' />
+                          <Check className='w-32 h-32 text-ink-on-primary' />
                         ) : (
-                          <X className='w-32 h-32 text-white' />
+                          <X className='w-32 h-32 text-ink-on-primary' />
                         )}
                       </div>
                     </div>
                   </motion.div>
                 )}
               </AnimatePresence>
-              <div className='w-full flex-1 min-h-0 p-1 rounded-lg bg-gradient-to-br from-fuchsia-500 via-purple-500 to-cyan-500 shadow-2xl'>
-                <div className='w-full h-full bg-gradient-to-b from-slate-900 to-indigo-950 rounded-md p-4 sm:p-6 relative overflow-hidden flex flex-col'>
+              <div className='w-full flex-1 min-h-0'>
+                <div className='w-full h-full bg-surface-raised border border-line-subtle rounded-lg p-4 sm:p-6 relative overflow-hidden flex flex-col'>
                   <div className='text-center mb-2 sm:mb-3 shrink-0'>
-                    <h2 className='font-black mb-1 tracking-tight leading-snug text-3xl sm:text-4xl md:text-5xl break-words text-white'>
+                    <h2 className='font-black mb-1 tracking-tight leading-snug text-3xl sm:text-4xl md:text-5xl break-words text-ink-primary'>
                       {problem.question}
                     </h2>
                     {problem.visual && (
@@ -881,11 +871,11 @@ export default function SpaceMathPage() {
                       const isRevealCorrect = selectedAnswer !== null && !isSelected && opt === problem.answer;
                       const colorClasses = isSelected
                         ? isCorrect
-                          ? "bg-gradient-to-b from-green-400 to-green-600"
-                          : `bg-gradient-to-b from-red-400 to-red-600 ${styles.shake}`
+                          ? "bg-success"
+                          : `bg-danger ${styles.shake}`
                         : isRevealCorrect
-                          ? "bg-gradient-to-b from-green-400 to-green-600"
-                          : `bg-gradient-to-b ${OPTION_COLORS[i % OPTION_COLORS.length]} hover:brightness-110`;
+                          ? "bg-success"
+                          : `${OPTION_COLORS[i % OPTION_COLORS.length]} hover:brightness-110`;
                       const optMatch = problem.optionsArePictures && problem.optionShape ? /^(\d+)\/(\d+)$/.exec(String(opt)) : null;
                       return (
                         <button
@@ -893,11 +883,11 @@ export default function SpaceMathPage() {
                           disabled={selectedAnswer !== null}
                           onClick={() => handleAnswer(opt)}
                           aria-keyshortcuts={String(i + 1)}
-                          className={`relative flex items-center justify-center rounded-md text-4xl sm:text-6xl md:text-8xl font-black text-white transition-all border-4 border-black shadow-[0_6px_0_#000] sm:shadow-[0_8px_0_#000] active:shadow-none active:translate-y-[6px] sm:active:translate-y-[8px] ${colorClasses}`}
+                          className={`relative flex items-center justify-center rounded-md text-4xl sm:text-6xl md:text-8xl font-black text-ink-on-primary transition-all ${colorClasses}`}
                         >
                           <span
                             aria-hidden='true'
-                            className='absolute top-1.5 left-2 sm:top-2 sm:left-3 text-sm sm:text-base font-bold text-white/70 leading-none'
+                            className='absolute top-1.5 left-2 sm:top-2 sm:left-3 text-sm sm:text-base font-bold opacity-70 leading-none'
                           >
                             {i + 1}
                           </span>
@@ -944,7 +934,7 @@ export default function SpaceMathPage() {
                 ))}
               </div>
               <div>
-                <h2 className='text-4xl sm:text-5xl md:text-6xl font-black mb-3 sm:mb-4 bg-gradient-to-r from-yellow-300 via-pink-400 to-purple-400 bg-clip-text text-transparent animate-pulse'>
+                <h2 className='text-4xl sm:text-5xl md:text-6xl font-black mb-3 sm:mb-4 text-primary-text animate-pulse'>
                   SESSION COMPLETE!
                 </h2>
                 <p className='text-2xl sm:text-3xl text-ink-muted'>
@@ -952,8 +942,7 @@ export default function SpaceMathPage() {
                 </p>
               </div>
               <div className='flex flex-col gap-4 items-center'>
-                <button
-                  onClick={() => {
+                <Button variant='primary' size='xl' onClick={() => {
                     setSessionCorrect(0);
                     setSessionTopicStats({});
                     setSessionId(crypto.randomUUID());
@@ -964,17 +953,12 @@ export default function SpaceMathPage() {
                     setProblem(p);
                     setRecentSignatures([p.signature]);
                     setGameState("playing");
-                  }}
-                  className='px-10 sm:px-12 py-5 sm:py-6 bg-gradient-to-b from-green-400 to-emerald-600 text-white rounded-md text-xl sm:text-2xl font-bold border-4 border-black shadow-[0_10px_0_#000] active:shadow-none active:translate-y-[10px] transition-all hover:brightness-110'
-                >
+                  }}>
                   KEEP GOING
-                </button>
-                <button
-                  onClick={resetGame}
-                  className='px-8 py-4 bg-surface-raised rounded-md text-lg sm:text-xl font-bold border-2 border-black hover:bg-surface-raised transition-colors'
-                >
+                </Button>
+                <Button variant='secondary' size='xl' onClick={resetGame}>
                   START OVER
-                </button>
+                </Button>
               </div>
             </motion.div>
           )}

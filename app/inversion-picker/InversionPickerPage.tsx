@@ -124,7 +124,7 @@ function InversionGroup({ heading, subheading, shapes, label, stringLabels }: In
   if (!shapes.length) return null;
   return (
     <div>
-      <div className="text-xs font-semibold uppercase tracking-widest text-ink-muted mb-0.5">{heading}</div>
+      <div className="text-xs font-semibold uppercase tracking-widest text-ink-muted mb-1">{heading}</div>
       {subheading && <div className="text-xs text-ink-muted mb-3">{subheading}</div>}
       <div className="flex flex-wrap gap-6">
         {shapes.map((shape, i) => (
@@ -158,7 +158,7 @@ export default function InversionPickerPage() {
           <div className="text-xs font-semibold uppercase tracking-widest text-ink-muted mb-2">Note</div>
           <div className="flex flex-wrap gap-1">
             {sharpNotes.map((n) => (
-              <ToggleButton key={n} size="1" pressed={note === n} onClick={() => setNote(n)}>
+              <ToggleButton key={n} size="sm" pressed={note === n} onClick={() => setNote(n)}>
                 {n}
               </ToggleButton>
             ))}
@@ -169,7 +169,7 @@ export default function InversionPickerPage() {
           <div className="text-xs font-semibold uppercase tracking-widest text-ink-muted mb-2">Type</div>
           <div className="flex flex-wrap gap-1">
             {chordTypes.map((t) => (
-              <ToggleButton key={t} size="1" pressed={type === t} onClick={() => setType(t)}>
+              <ToggleButton key={t} size="sm" pressed={type === t} onClick={() => setType(t)}>
                 {t}
               </ToggleButton>
             ))}

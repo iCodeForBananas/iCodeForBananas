@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/app/hooks/useAuth";
 import { Pencil, Plus } from "lucide-react";
-import { Button } from "@radix-ui/themes";
+import { Button } from "@/app/components/ui/button";
 import {
   type LeadSheet,
   type Section,
@@ -116,7 +116,7 @@ function EditModeBanner({
 }) {
   return (
     <div
-      className={`flex items-center justify-between gap-2 border-t py-1.5 print:hidden ${
+      className={`flex items-center justify-between gap-2 border-t py-2 print:hidden ${
         error
           ? "border-danger/30 bg-danger/10"
           : "border-primary-solid/30 bg-primary-solid/10"
@@ -129,7 +129,7 @@ function EditModeBanner({
       >
         {error ?? "Tap a line to edit it, or drag its grip to move it."}
       </span>
-      <Button type='button' size='1' onClick={onDone} className='shrink-0'>
+      <Button variant="primary" type='button' size='sm' onClick={onDone} className='shrink-0'>
         Done
       </Button>
     </div>
@@ -206,7 +206,7 @@ const SheetContent = memo(function SheetContent({
       </div>
 
       <div
-        className={`space-y-10 ${columnsActive ? "leadsheet-columns" : ""}`}
+        className={`space-y-8 ${columnsActive ? "leadsheet-columns" : ""}`}
         style={
           columnsActive
             ? ({
@@ -233,7 +233,7 @@ const SheetContent = memo(function SheetContent({
                     type='button'
                     onClick={() => onEditSection(sectionIndex)}
                     title='Rename this section'
-                    className='inline-flex items-center gap-1.5 text-[0.75em] font-bold uppercase tracking-widest px-2 py-1 rounded transition-opacity duration-150 hover:opacity-80'
+                    className='inline-flex items-center gap-2 text-[0.75em] font-bold uppercase tracking-widest px-2 py-1 rounded-md transition-opacity duration-150 hover:opacity-80'
                     style={{ background: "var(--ds-color-primary-solid)", color: "var(--ds-color-text-on-primary)" }}
                   >
                     {section.label || section.type}
@@ -241,7 +241,7 @@ const SheetContent = memo(function SheetContent({
                   </button>
                 ) : (
                   <span
-                    className='text-[0.75em] font-bold uppercase tracking-widest px-2 py-1 rounded'
+                    className='text-[0.75em] font-bold uppercase tracking-widest px-2 py-1 rounded-md'
                     style={{ background: "var(--ds-color-primary-solid)", color: "var(--ds-color-text-on-primary)" }}
                   >
                     {section.label || section.type}
@@ -274,7 +274,7 @@ const SheetContent = memo(function SheetContent({
                           type='button'
                           onClick={() => onEditLine(sectionIndex, i)}
                           aria-label={`Edit blank line ${i + 1}`}
-                          className='block w-full h-8 rounded border border-dashed border-line-strong/10 border-line-subtle hover:border-line-strong hover:bg-surface-raised transition-colors duration-150'
+                          className='block w-full h-8 rounded-md border border-dashed border-line-strong/10 border-line-subtle hover:border-line-strong hover:bg-surface-raised transition-colors duration-150'
                         />
                       ) : (
                         <div key={i} data-fit-line className='h-3' />
@@ -312,13 +312,13 @@ const SheetContent = memo(function SheetContent({
                             }
                           : undefined
                       }
-                      className={`rounded px-2 transition-colors duration-150 ${
+                      className={`rounded-md px-2 transition-colors duration-150 ${
                         active
                           ? "bg-primary-solid/20 shadow-[inset_3px_0_0_0_var(--ds-color-primary-solid)]"
                           : ""
                       } ${
                         onEditLine
-                          ? "cursor-pointer py-1.5 border border-dashed border-line-strong/10 border-line-subtle hover:border-line-strong hover:bg-surface-raised active:bg-primary-solid/15 active:bg-primary-solid/20"
+                          ? "cursor-pointer py-2 border border-dashed border-line-strong/10 border-line-subtle hover:border-line-strong hover:bg-surface-raised active:bg-primary-solid/15 active:bg-primary-solid/20"
                           : seekable
                             ? "cursor-pointer print:cursor-auto"
                             : ""
@@ -326,7 +326,7 @@ const SheetContent = memo(function SheetContent({
                     >
                       {cueInfo && (
                         <span
-                          className={`inline-flex items-center gap-1 text-[0.65em] font-bold tracking-wide uppercase px-1.5 py-0.5 rounded mr-2 print:hidden ${
+                          className={`inline-flex items-center gap-1 text-[0.65em] font-bold tracking-wide uppercase px-2 py-1 rounded-md mr-2 print:hidden ${
                             !cueInfo.isStop
                               ? "bg-success/15 text-success bg-success/15 text-success"
                               : "bg-danger/15 text-danger"
@@ -350,8 +350,7 @@ const SheetContent = memo(function SheetContent({
                     {onInsertLine && (
                       <Button
                         type='button'
-                        variant='surface'
-                        color='gray'
+                        variant='secondary'
                         onClick={() => onInsertLine(sectionIndex, lines.length)}
                         className='flex-1'
                       >
@@ -362,8 +361,7 @@ const SheetContent = memo(function SheetContent({
                     {onAddSection && (
                       <Button
                         type='button'
-                        variant='surface'
-                        color='gray'
+                        variant='secondary'
                         onClick={() => onAddSection(sectionIndex)}
                         title='Start a new verse, chorus or bridge after this one'
                       >
@@ -383,7 +381,7 @@ const SheetContent = memo(function SheetContent({
           );
         })}
         {onAddSection && sheet.sections.length === 0 && (
-          <Button type='button' size='3' variant='surface' color='gray' onClick={() => onAddSection(-1)} className='w-full'>
+          <Button type='button' size='lg' variant='secondary' onClick={() => onAddSection(-1)} className='w-full'>
             <Plus className='w-3.5 h-3.5' />
             Add section
           </Button>
@@ -1271,32 +1269,28 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
       rightSlot={
         !editMode ? (
           <div className={styles.sizectl} role='group' aria-label='Text size'>
-            <button
-              type='button'
-              className={styles.ibtn}
+            <Button
+              variant='secondary'
+              size='lg'
               onClick={() => { setAutoFit(false); updateFontScale(fontScale - 10); }}
               disabled={fontScale <= MIN_SCALE}
               aria-label='Smaller text'
             >
               A−
-            </button>
-            <button
-              type='button'
-              className={`${styles.ibtn} ${autoFit ? styles.ibtnOn : ""}`}
+            </Button>
+            <Button variant='secondary' size='lg'
               onClick={() => setAutoFit(true)}
               aria-pressed={autoFit}
             >
               Fit
-            </button>
-            <button
-              type='button'
-              className={styles.ibtn}
+            </Button>
+            <Button variant='secondary' size='lg'
               onClick={() => { setAutoFit(false); updateFontScale(fontScale + 10); }}
               disabled={fontScale >= MAX_SCALE}
               aria-label='Larger text'
             >
               A+
-            </button>
+            </Button>
           </div>
         ) : undefined
       }
@@ -1310,7 +1304,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
     <>
       {/* Print-only view: chrome-free layout that only renders when printing.
           The screen view below is hidden via print:hidden so only this prints. */}
-      <div className='hidden print:block' style={{ background: "#fff", color: "var(--ds-color-text-on-primary)" }}>
+      <div className='hidden print:block' style={{ background: "#fff", color: "var(--ds-palette-light-foreground)" }}>
         <div className='leadsheet-force-light max-w-3xl mx-auto px-2 py-4' style={{ fontSize: `${fontScale}%` }}>
           <SheetContent sheet={sheet} fullscreen={false} transposeSteps={transposeSteps} />
         </div>

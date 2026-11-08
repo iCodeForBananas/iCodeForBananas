@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Button, Callout, Flex, IconButton, Select, Slider, Text, TextField } from "@radix-ui/themes";
+import { Callout, Flex, Select, Slider, Text, TextField } from "@radix-ui/themes";
+import { Button } from "@/app/components/ui/button";
 import {
   Check,
   Cloud,
@@ -96,10 +97,9 @@ const BEATS_PER_BAR = 4;
 /** How long a fade takes — the same four seconds the preview's cues use. */
 const FADE_SECONDS = 4;
 
-// text-ink-on-primary is tuned for a solid, opaque fill — near-black,
-// readable on bright amber. These bars are a translucent tint over an
-// already near-black surface, so that same near-black text nearly
-// disappears; text-ink-primary (near-white) is what actually reads here.
+// text-ink-on-primary is tuned for a solid, opaque fill. These bars are a
+// translucent tint over the surface, so they read as the surface does and
+// take text-ink-primary instead.
 const LAYER_STYLES: Record<string, { bar: string; edge: string; dot: string }> = {
   drum: { bar: "bg-track-5/25 text-ink-primary", edge: "bg-track-5", dot: "bg-track-5" },
   claps: { bar: "bg-track-4/25 text-ink-primary", edge: "bg-track-4", dot: "bg-track-4" },
@@ -228,14 +228,14 @@ const trackEnd = (track: LocalTrack) => trackStart(track) + track.durationSec;
 function LevelMeter({ level }: { level: number }) {
   const bars = 10;
   return (
-    <div className="flex h-5 items-end gap-0.5">
+    <div className="flex h-5 items-end gap-1">
       {Array.from({ length: bars }, (_, i) => {
         const active = level >= (i + 1) / bars;
         const color = i < 7 ? "bg-success" : i < 9 ? "bg-primary-solid" : "bg-danger";
         return (
           <div
             key={i}
-            className={`w-1.5 rounded-sm transition-all duration-75 ${active ? color : "bg-surface-raised"}`}
+            className={`w-1.5 rounded-md transition-all duration-75 ${active ? color : "bg-surface-raised"}`}
             style={{ height: `${40 + i * 7}%` }}
           />
         );
@@ -1092,32 +1092,31 @@ export default function TrackEditor({
               </span>
               {/* Never unmounted while the arranger is open — a destroyed iframe
                   stops playing, and the audio is the whole point. */}
-              <div ref={videoMount} className="h-14 w-24 overflow-hidden rounded bg-surface-base" />
+              <div ref={videoMount} className="h-14 w-24 overflow-hidden rounded-md bg-surface-base" />
             </div>
           )}
-          <IconButton variant="ghost" color="gray" onClick={close} aria-label="Close arranger">
+          <Button size="icon" variant="ghost" onClick={close} aria-label="Close arranger">
             <X className="h-4 w-4" />
-          </IconButton>
+          </Button>
         </div>
       </div>
 
       {/* Toolbar */}
       <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-line-subtle px-4 py-2">
-        <Button onClick={togglePlay} disabled={!playback.ready}>
+        <Button variant="primary" onClick={togglePlay} disabled={!playback.ready}>
           {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
           {playing ? "Pause" : "Play"}
         </Button>
         <span className="w-16 font-mono text-sm tabular-nums text-primary-text">{formatTime(time)}</span>
 
         {recording ? (
-          <Button color="red" onClick={stopRecording}>
+          <Button variant="danger" onClick={stopRecording}>
             <Square className="h-3.5 w-3.5 fill-current" />
             Stop
           </Button>
         ) : (
           <Button
-            variant={arming ? "solid" : "surface"}
-            color={arming ? "crimson" : "gray"}
+            variant={arming ? "danger" : "secondary"}
             onClick={arming ? () => setArming(false) : openRecorder}
             title="Record a take onto its own track, from the playhead"
             aria-pressed={arming}
@@ -1130,22 +1129,20 @@ export default function TrackEditor({
 
         <div className="mx-1 w-px self-stretch bg-surface-raised" />
 
-        <IconButton
-          variant="surface"
-          color="gray"
+        <Button size="icon"
+          variant="secondary"
           onClick={() => setZoom((z) => Math.max(MIN_ZOOM, z / 1.4))}
           aria-label="Zoom out"
         >
           <ZoomOut className="h-4 w-4" />
-        </IconButton>
-        <IconButton
-          variant="surface"
-          color="gray"
+        </Button>
+        <Button size="icon"
+          variant="secondary"
           onClick={() => setZoom((z) => Math.min(MAX_ZOOM, z * 1.4))}
           aria-label="Zoom in"
         >
           <ZoomIn className="h-4 w-4" />
-        </IconButton>
+        </Button>
 
         <Text as="label" size="1" color="gray" className="ml-1">
           <Flex align="center" gap="2">
@@ -1165,7 +1162,7 @@ export default function TrackEditor({
 
         {/* Selected clip */}
         {selectedSound && (
-          <div className="ml-1 flex items-center gap-2 rounded border border-line-subtle px-2 py-1">
+          <div className="ml-1 flex items-center gap-2 rounded-md border border-line-subtle px-2 py-1">
             <span className="text-xs font-medium uppercase tracking-wide text-ink-muted">
               {layerLabel(selectedSound.layer)}
             </span>
@@ -1173,30 +1170,28 @@ export default function TrackEditor({
               {formatArrangementTime(selectedSound.start)}–{formatArrangementTime(selectedSound.end)}
             </span>
             <Button
-              size="1"
-              variant={selectedSound.fadeIn ? "solid" : "ghost"}
-              color={selectedSound.fadeIn ? undefined : "gray"}
+              size="sm"
+              variant={selectedSound.fadeIn ? "primary" : "ghost"}
               aria-pressed={!!selectedSound.fadeIn}
               onClick={() => patchSound(selectedSound.id, { fadeIn: !selectedSound.fadeIn })}
             >
               Fade in
             </Button>
             <Button
-              size="1"
-              variant={selectedSound.fadeOut ? "solid" : "ghost"}
-              color={selectedSound.fadeOut ? undefined : "gray"}
+              size="sm"
+              variant={selectedSound.fadeOut ? "primary" : "ghost"}
               aria-pressed={!!selectedSound.fadeOut}
               onClick={() => patchSound(selectedSound.id, { fadeOut: !selectedSound.fadeOut })}
             >
               Fade out
             </Button>
-            <IconButton size="1" variant="ghost" color="red" onClick={removeSelected} aria-label="Delete clip">
+            <Button size="icon-sm" variant="danger" onClick={removeSelected} aria-label="Delete clip">
               <Trash2 className="h-3.5 w-3.5" />
-            </IconButton>
+            </Button>
           </div>
         )}
         {selectedLyric && (
-          <div className="ml-1 flex items-center gap-2 rounded border border-line-subtle px-2 py-1">
+          <div className="ml-1 flex items-center gap-2 rounded-md border border-line-subtle px-2 py-1">
             <span className="max-w-[16rem] truncate font-mono text-xs text-ink-muted">
               {selectedLyric.text || "(blank line)"}
             </span>
@@ -1204,9 +1199,8 @@ export default function TrackEditor({
               {formatArrangementTime(selectedLyric.start)}–{formatArrangementTime(selectedLyric.end)}
             </span>
             <Button
-              size="1"
+              size="sm"
               variant="ghost"
-              color="gray"
               onClick={removeSelected}
               title="Give this line's time back to the line above"
             >
@@ -1216,14 +1210,13 @@ export default function TrackEditor({
         )}
 
         <div className="ml-auto flex items-center gap-2">
-          <Button variant="ghost" color="gray" onClick={resetAll} title="Put every clip back where the song has it">
+          <Button variant="ghost" onClick={resetAll} title="Put every clip back where the song has it">
             <RotateCcw className="h-3.5 w-3.5" />
             Reset
           </Button>
           {audio.length > 0 && (
             <Button
               variant="ghost"
-              color="gray"
               onClick={exportWAV}
               disabled={exporting || recording}
               title="Mix every un-muted take down to one WAV"
@@ -1232,7 +1225,7 @@ export default function TrackEditor({
               {exporting ? "Mixing…" : "Export"}
             </Button>
           )}
-          <Button onClick={apply} disabled={!dirty}>
+          <Button variant="primary" onClick={apply} disabled={!dirty}>
             <Check className="h-4 w-4" />
             Apply to song
           </Button>
@@ -1277,7 +1270,7 @@ export default function TrackEditor({
             </Select.Root>
           )}
           {!recording && (
-            <Button color="crimson" onClick={startRecording}>
+            <Button variant="danger" onClick={startRecording}>
               <Mic className="h-3.5 w-3.5" />
               Record from {formatTime(time)}
             </Button>
@@ -1294,9 +1287,9 @@ export default function TrackEditor({
         <Callout.Root color="red" size="1" className="shrink-0 rounded-none">
           <Callout.Text className="flex items-center gap-2">
             <span className="flex-1">{audioError}</span>
-            <IconButton size="1" variant="ghost" color="red" onClick={() => setAudioError(null)} aria-label="Dismiss">
+            <Button size="icon-sm" variant="danger" onClick={() => setAudioError(null)} aria-label="Dismiss">
               <X className="h-3.5 w-3.5" />
-            </IconButton>
+            </Button>
           </Callout.Text>
         </Callout.Root>
       )}
@@ -1359,26 +1352,24 @@ export default function TrackEditor({
               <TrackName>
                 <span className={`h-2 w-2 shrink-0 rounded-full ${layerStyle(layer).dot}`} />
                 <span className="flex-1 truncate text-ink-muted">{layerLabel(layer)}</span>
-                <IconButton
-                  size="1"
+                <Button
+                  size="icon-sm"
                   variant="ghost"
-                  color="gray"
                   onClick={() => addClipAtPlayhead(layer)}
                   title={`Add a ${layerLabel(layer)} clip at the playhead`}
                   aria-label={`Add a ${layerLabel(layer)} clip`}
                 >
                   <Plus className="h-3.5 w-3.5" />
-                </IconButton>
-                <IconButton
-                  size="1"
-                  variant="ghost"
-                  color="red"
+                </Button>
+                <Button
+                  size="icon-sm"
+                  variant="danger"
                   onClick={() => removeTrack(layer)}
                   title={`Remove the ${layerLabel(layer)} track`}
                   aria-label={`Remove the ${layerLabel(layer)} track`}
                 >
                   <X className="h-3.5 w-3.5" />
-                </IconButton>
+                </Button>
               </TrackName>
               <div
                 className="relative"
@@ -1445,26 +1436,24 @@ export default function TrackEditor({
                   aria-label={`${track.name} volume`}
                   className="w-10"
                 />
-                <IconButton
-                  size="1"
+                <Button
+                  size="icon-sm"
                   variant="ghost"
-                  color="gray"
                   onClick={() => toggleTakeMute(track.id)}
                   title={track.muted ? "Unmute" : "Mute"}
                   aria-label={track.muted ? `Unmute ${track.name}` : `Mute ${track.name}`}
                 >
                   {track.muted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
-                </IconButton>
-                <IconButton
-                  size="1"
-                  variant="ghost"
-                  color="red"
+                </Button>
+                <Button
+                  size="icon-sm"
+                  variant="danger"
                   onClick={() => deleteTake(track)}
                   title={`Delete ${track.name}`}
                   aria-label={`Delete ${track.name}`}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
-                </IconButton>
+                </Button>
               </TrackName>
               <div className="relative" style={{ width, touchAction: "none" }}>
                 <Grid duration={duration} zoom={zoom} beat={beatSeconds} />
@@ -1523,7 +1512,7 @@ export default function TrackEditor({
           what it landed on. */}
       {ghost && (
         <div
-          className="pointer-events-none fixed z-[90] max-w-64 truncate rounded bg-primary-solid px-2 py-1 text-xs font-medium text-ink-on-primary shadow-lg"
+          className="pointer-events-none fixed z-[90] max-w-64 truncate rounded-md bg-primary-solid px-2 py-1 text-xs font-medium text-ink-on-primary shadow-lg"
           style={{ left: ghost.x + 14, top: ghost.y + 14 }}
         >
           {ghost.label}
@@ -1572,9 +1561,8 @@ function Library({
           {layers.map((layer) => (
             <Button
               key={layer}
-              size="1"
-              variant="surface"
-              color="gray"
+              size="sm"
+              variant="secondary"
               onPointerDown={(e) =>
                 onGrab(e, { kind: "sound", layer, label: layerLabel(layer) })
               }
@@ -1598,7 +1586,7 @@ function Library({
               <div className="mb-1 px-1 text-[0.65rem] font-medium uppercase tracking-wide text-ink-muted">
                 {group.section || "Song"}
               </div>
-              <div className="flex flex-col gap-0.5">
+              <div className="flex flex-col gap-1">
                 {group.items.map((clip) => (
                   <div
                     key={clip.id}
@@ -1610,7 +1598,7 @@ function Library({
                       })
                     }
                     title={clip.text || "(blank line)"}
-                    className="cursor-grab truncate rounded bg-surface-raised px-2 py-1 text-xs text-ink-muted transition-colors select-none hover:bg-surface-raised hover:text-ink-primary active:cursor-grabbing"
+                    className="cursor-grab truncate rounded-md bg-surface-raised px-2 py-1 text-xs text-ink-muted transition-colors select-none hover:bg-surface-raised hover:text-ink-primary active:cursor-grabbing"
                     style={{ touchAction: "none" }}
                   >
                     {clip.text || "·"}
@@ -1631,7 +1619,7 @@ function Library({
 function TrackName({ children }: { children: React.ReactNode }) {
   return (
     <div
-      className="sticky left-0 z-20 flex shrink-0 items-start gap-2 border-r border-line-subtle bg-surface-base px-3 pt-2.5 text-13 font-medium uppercase tracking-wide"
+      className="sticky left-0 z-20 flex shrink-0 items-start gap-2 border-r border-line-subtle bg-surface-base px-3 pt-3 text-13 font-medium uppercase tracking-wide"
       style={{ width: GUTTER }}
     >
       {children}
@@ -1736,7 +1724,7 @@ function ClipBox({
     <div
       title={title}
       onPointerDown={(e) => onPointerDown(e, "move")}
-      className={`absolute flex cursor-grab items-center overflow-hidden rounded px-2 text-13 font-medium whitespace-nowrap select-none active:cursor-grabbing ${className} ${
+      className={`absolute flex cursor-grab items-center overflow-hidden rounded-md px-2 text-13 font-medium whitespace-nowrap select-none active:cursor-grabbing ${className} ${
         selected ? "ring-2 ring-focus" : ""
       }`}
       style={{ left, width, top, height: LANE_HEIGHT, touchAction: "none" }}

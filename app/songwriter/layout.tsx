@@ -14,16 +14,9 @@ const atkinson = Atkinson_Hyperlegible({
 /**
  * The songwriting routes.
  *
- * This subtree used to carry its own scoped theme override (a deeper,
- * always-dark near-black-and-amber palette independent of the site's
- * light/dark toggle), then gave it up in favor of the app-wide dark palette
- * (ink black / Prussian blue / Oxford navy, School Bus Yellow / gold — see
- * tokens/README.md). It has its own look again now, requested separately
- * from that app-wide theme: `songwriter.module.css`'s `.root`
- * re-points the same --ds-color-* custom properties everything here already
- * reads at a different, warmer near-black-and-amber palette (lifted from the
- * "Open Mic Songbook" design reference), scoped by the CSS Module class so
- * it cannot leak into any other page the way the old global override could.
+ * Colors follow the app-wide iTerm schemes and the light/dark switch like
+ * every other page (see tokens/README.md). `songwriter.module.css`'s `.root`
+ * only sets this subtree's typeface.
  *
  * The command palette is scoped the same way: it only ever knows about songs,
  * and keeping it here keeps its client boundary off every other page.

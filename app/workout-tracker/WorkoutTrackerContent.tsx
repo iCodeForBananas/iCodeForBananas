@@ -8,7 +8,8 @@ import { useAuth } from "@/app/hooks/useAuth";
 import BentoPageLayout from "@/app/components/BentoPageLayout";
 import BentoBoard, { type BentoPanel } from "@/app/components/BentoBoard";
 import { Bento } from "@/app/components/ui/bento";
-import { Button, Flex, IconButton, Select, Text, TextField } from "@radix-ui/themes";
+import { Flex, Select, Text, TextField } from "@radix-ui/themes";
+import { Button } from "@/app/components/ui/button";
 import { X } from "lucide-react";
 import { PERCENTILE_LIFTS, latestWeights, percentileBand, populationPercentile } from "./percentile";
 import { weeklyCoverage } from "./coverage";
@@ -257,7 +258,7 @@ export default function WorkoutTrackerContent() {
           const band = entry ? percentileBand(name, entry.weight) : null;
           return (
             <div key={name}>
-              <div className='flex items-baseline justify-between gap-2 mb-1.5'>
+              <div className='flex items-baseline justify-between gap-2 mb-2'>
                 <span className='text-sm font-medium'>
                   {name}
                   {entry && entry.weight > 0 && (
@@ -309,7 +310,7 @@ export default function WorkoutTrackerContent() {
           {week.map((day) => (
             <div
               key={day.date}
-              className='w-full aspect-square rounded-sm cursor-default'
+              className='w-full aspect-square rounded-md cursor-default'
               style={{
                 backgroundColor:
                   day.count === 0
@@ -383,7 +384,7 @@ export default function WorkoutTrackerContent() {
                   )}
                 </div>
               </div>
-              <ul className='text-xs mt-1 flex flex-wrap gap-x-3 gap-y-0.5'>
+              <ul className='text-xs mt-1 flex flex-wrap gap-x-3 gap-y-1'>
                 {exercises.map((e) => (
                   <li key={e.exercise} className={e.days > 0 ? "text-ink-primary font-medium" : "text-ink-muted"}>
                     {e.exercise}
@@ -434,22 +435,22 @@ export default function WorkoutTrackerContent() {
                 )}
               </div>
               {user?.id === l.user_id && (
-                <IconButton size='3' variant='ghost' color='red' onClick={() => remove(l.id)} aria-label='Delete' className='shrink-0'>
+                <Button size='icon-lg' variant='danger' onClick={() => remove(l.id)} aria-label='Delete' className='shrink-0'>
                   <X className='h-4 w-4' />
-                </IconButton>
+                </Button>
               )}
             </div>
           ))}
         </div>
         {totalPages > 1 && (
           <Flex align='center' justify='center' gap='3' mt='4'>
-            <Button size='3' variant='surface' color='gray' onClick={() => setPage((p) => p - 1)} disabled={page === 0}>
+            <Button size='lg' variant='secondary' onClick={() => setPage((p) => p - 1)} disabled={page === 0}>
               ← Prev
             </Button>
             <Text size='2' color='gray'>
               {page + 1} / {totalPages}
             </Text>
-            <Button size='3' variant='surface' color='gray' onClick={() => setPage((p) => p + 1)} disabled={page >= totalPages - 1}>
+            <Button size='lg' variant='secondary' onClick={() => setPage((p) => p + 1)} disabled={page >= totalPages - 1}>
               Next →
             </Button>
           </Flex>
@@ -522,7 +523,7 @@ export default function WorkoutTrackerContent() {
               onKeyDown={(e) => e.key === "Enter" && submit()}
               className='w-full sm:w-24'
             />
-            <Button size='3' onClick={submit} className='w-full sm:w-auto'>
+            <Button variant="primary" size='lg' onClick={submit} className='w-full sm:w-auto'>
               Submit
             </Button>
           </div>

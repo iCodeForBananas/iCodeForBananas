@@ -48,8 +48,8 @@ const roboto = Roboto({
  */
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f6f5f2" },
-    { media: "(prefers-color-scheme: dark)", color: "#16130f" },
+    { media: "(prefers-color-scheme: light)", color: "#fdfcfa" },
+    { media: "(prefers-color-scheme: dark)", color: "#0f1114" },
   ],
 };
 

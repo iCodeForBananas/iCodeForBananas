@@ -137,42 +137,36 @@ const CHECKS = [
     fg: `${T}-muted`, bg: `${S}-${s}`, min: 4.5, label: `text.muted on surface.${s}`,
   })),
 
-  // The amber accent as text. This is the pair the spec singles out, and the
-  // one that forced primary.text to differ between themes.
+  // The accent as text, and links.
   ...["base", "raised", "overlay"].map((s) => ({
     fg: `${P}-text`, bg: `${S}-${s}`, min: 4.5, label: `primary.text on surface.${s}`,
   })),
+  ...["base", "raised", "overlay"].map((s) => ({
+    fg: "--ds-color-link", bg: `${S}-${s}`, min: 4.5, label: `link on surface.${s}`,
+  })),
 
-  // The hard rule: the label on a filled amber control.
+  // The hard rule: the label on a filled control.
   { fg: `${T}-on-primary`, bg: `${P}-solid`, min: 4.5, label: "text.on-primary on primary.solid" },
   { fg: `${T}-on-primary`, bg: `${P}-hover`, min: 4.5, label: "text.on-primary on primary.hover" },
+
+  // Selected text keeps the scheme's own pair.
+  {
+    fg: "--ds-color-selection-text", bg: "--ds-color-selection-background", min: 4.5,
+    label: "selection.text on selection.background",
+  },
 
   // Status colors as text.
   { fg: "--ds-color-danger", bg: `${S}-base`, min: 4.5, label: "danger on surface.base" },
   { fg: "--ds-color-success", bg: `${S}-base`, min: 4.5, label: "success on surface.base" },
 
   // Non-text contrast: a control's fill or ring against the plane behind it.
-  {
-    fg: `${P}-solid`, bg: `${S}-base`, min: 3, label: "primary.solid on surface.base",
-    mitigation:
-      "In light theme, amber at L 0.851 cannot clear 3:1 against a near-white " +
-      "surface. A filled amber control on a light surface must draw a " +
-      "border.strong outline so its boundary is discernible.",
-  },
+  { fg: `${P}-solid`, bg: `${S}-base`, min: 3, label: "primary.solid on surface.base" },
   { fg: "--ds-color-accent-solid", bg: `${S}-base`, min: 3, label: "accent.solid on surface.base" },
 
   // The categorical set. Each has to be discernible against the plane it sits
-  // on, and each has to carry a label, which is the amber rule again: at this
-  // lightness a white label would be the thing that gives.
+  // on, and each has to carry a label.
   ...[1, 2, 3, 4, 5, 6].flatMap((n) => [
-    {
-      fg: `--ds-color-track-${n}`, bg: `${S}-base`, min: 3, label: `track.${n} on surface.base`,
-      mitigation:
-        "Same as the amber button: a fill this saturated cannot clear 3:1 " +
-        "against a near-white surface at a lightness that still carries a " +
-        "near-black label. On a light surface a track swatch draws a " +
-        "border.strong outline for its boundary.",
-    },
+    { fg: `--ds-color-track-${n}`, bg: `${S}-base`, min: 3, label: `track.${n} on surface.base` },
     { fg: `${T}-on-primary`, bg: `--ds-color-track-${n}`, min: 4.5, label: `text.on-primary on track.${n}` },
   ]),
   { fg: "--ds-color-focus-ring", bg: `${S}-base`, min: 3, label: "focus-ring on surface.base" },
