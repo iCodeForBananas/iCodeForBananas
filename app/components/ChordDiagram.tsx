@@ -1,13 +1,16 @@
 "use client";
 
-import { sharpNotes, flatNotes, stringNotes, type ChordShape } from "../lib/chordShapes";
+import { sharpNotes, flatNotes, type ChordShape } from "../lib/chordShapes";
 import { useFavoriteChords, type FavoriteChord } from "../lib/FavoriteChordsContext";
+import { STANDARD_TUNING, type GuitarTuning } from "../lib/tunings";
 
 interface ChordDiagramProps {
   shape: ChordShape;
   label?: string;
   useFlats?: boolean;
   dotColor?: string;
+  /** What the strings are tuned to, which decides the note each dot is named. */
+  tuning?: GuitarTuning;
 }
 
 const STRING_NAMES = [
@@ -24,9 +27,11 @@ export default function ChordDiagram({
   label,
   useFlats = false,
   dotColor = "var(--ds-color-primary-solid)",
+  tuning = STANDARD_TUNING,
 }: ChordDiagramProps) {
   const { toggle, isFavorite } = useFavoriteChords();
   const noteNames = useFlats ? flatNotes : sharpNotes;
+  const stringNames = [`low ${tuning.notes[0]} (6th string)`, ...STRING_NAMES.slice(1)];
   const getNoteAtFret = (openNote: string, fret: number) => {
     const idx = sharpNotes.indexOf(openNote);
     return noteNames[(idx + fret) % 12];
@@ -36,7 +41,7 @@ export default function ChordDiagram({
   const favorited = isFavorite(id);
 
   const handleClick = () => {
-    const chord: FavoriteChord = { id, label: label || "Chord", shape };
+    const chord: FavoriteChord = { id, label: label || "Chord", shape, tuningId: tuning.id };
     toggle(chord);
   };
 
@@ -73,7 +78,7 @@ export default function ChordDiagram({
             <span
               key={i}
               className="absolute text-center text-xs font-medium"
-              title={fret === -1 ? `Don't play the ${STRING_NAMES[i]} — mute this string` : undefined}
+              title={fret === -1 ? `Don't play the ${stringNames[i]} — mute this string` : undefined}
               style={{ left: `${i * stringSpacing + 10}px`, transform: "translateX(-50%)", color: fret === -1 ? "var(--chord-ink)" : "transparent" }}>
               {fret === -1 ? "✕" : ""}
             </span>
@@ -97,14 +102,14 @@ export default function ChordDiagram({
         ))}
         {shape.frets.map((fretNum, si) => {
           if (fretNum === -1) return null;
-          const note = getNoteAtFret(stringNotes[si], fretNum);
+          const note = getNoteAtFret(tuning.notes[si], fretNum);
           const dotSize = 18;
           if (fretNum === 0) {
             return (
               <div
                 key={si}
                 className="absolute rounded-full flex items-center justify-center font-bold"
-                title={`Play the ${STRING_NAMES[si]} open (no frets pressed) — sounds the note ${note}`}
+                title={`Play the ${stringNames[si]} open (no frets pressed) — sounds the note ${note}`}
                 style={{ left: `${si * stringSpacing + 10 - dotSize / 2}px`, top: `${20 - dotSize - 2}px`, width: `${dotSize}px`, height: `${dotSize}px`, fontSize: "9px", zIndex: 2, backgroundColor: dotColor, border: `2px solid ${dotColor}`, color: "var(--ds-color-text-on-primary)" }}
               >
                 {note}
@@ -116,7 +121,7 @@ export default function ChordDiagram({
             <div
               key={si}
               className="absolute rounded-full flex items-center justify-center font-bold"
-              title={`Press the ${STRING_NAMES[si]} at fret ${fretNum} — plays the note ${note}`}
+              title={`Press the ${stringNames[si]} at fret ${fretNum} — plays the note ${note}`}
               style={{ left: `${si * stringSpacing + 10 - dotSize / 2}px`, top: `${20 + displayPos * fretSpacing + fretSpacing / 2 - dotSize / 2}px`, width: `${dotSize}px`, height: `${dotSize}px`, fontSize: "9px", zIndex: 2, backgroundColor: dotColor, color: "var(--ds-color-text-on-primary)" }}
             >
               {note}

@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import "./circleOfFifths.css";
 import ChordDiagram from "./ChordDiagram";
 import { flatToSharp, resolveChordShape } from "../lib/chordShapes";
+import { STANDARD_TUNING, retuneShape, type GuitarTuning } from "../lib/tunings";
 
 interface ChordInfo {
   major: string;
@@ -45,7 +46,9 @@ const parseChordNote = (chord: string, type: "major" | "minor"): string => {
 export default function CircleOfFifths({
   activeNote,
   onSelectNote,
+  tuning = STANDARD_TUNING,
 }: {
+  tuning?: GuitarTuning;
   activeNote: string;
   onSelectNote: (note: string, quality: "major" | "minor") => void;
 }) {
@@ -117,7 +120,8 @@ export default function CircleOfFifths({
   // and its grip appears next to the key, so practising the circle never means
   // looking something up somewhere else.
   const previewName = hovered ? hovered.chord.split("/")[0] : null;
-  const previewShape = hovered ? resolveChordShape(hovered.note, hovered.type === "minor" ? "Minor" : "Major") : null;
+  const previewChord = hovered ? resolveChordShape(hovered.note, hovered.type === "minor" ? "Minor" : "Major") : null;
+  const previewShape = previewChord ? retuneShape(previewChord, tuning) : null;
   const previewBelow = hovered ? hovered.y - hovered.radius < PREVIEW_HEIGHT : false;
 
   return (
@@ -206,7 +210,7 @@ export default function CircleOfFifths({
                 transform: previewBelow ? "translate(-50%, 0)" : "translate(-50%, -100%)",
               }}
             >
-              <ChordDiagram shape={previewShape} label={previewName} useFlats={previewName.includes("♭")} />
+              <ChordDiagram shape={previewShape} label={previewName} useFlats={previewName.includes("♭")} tuning={tuning} />
             </div>,
             document.body,
           )}

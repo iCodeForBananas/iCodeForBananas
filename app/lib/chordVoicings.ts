@@ -15,6 +15,7 @@ import {
   semitoneFromE,
   semitoneFromA,
 } from "./chordShapes";
+import { STANDARD_TUNING, retuneShape, type GuitarTuning } from "./tunings";
 
 // ── Chord type groups ─────────────────────────────────────────────────────────
 
@@ -97,13 +98,10 @@ export interface LabeledShape {
 /** Highest fret a finger is asked to reach — past this the shape is off the neck. */
 const MAX_FRET = 17;
 
-/** Standard tuning, as MIDI note numbers: E2 A2 D3 G3 B3 E4. */
-const STRING_MIDI = [40, 45, 50, 55, 59, 64];
-
 /** The notes a shape actually sounds, in MIDI numbers, lowest string first. */
-const shapePitches = (shape: ChordShape): number[] =>
+const shapePitches = (shape: ChordShape, midi: number[]): number[] =>
   shape.frets
-    .map((fret, i) => (fret < 0 ? null : STRING_MIDI[i] + fret))
+    .map((fret, i) => (fret < 0 ? null : midi[i] + fret))
     .filter((pitch): pitch is number => pitch !== null);
 
 /**
@@ -112,8 +110,8 @@ const shapePitches = (shape: ChordShape): number[] =>
  * a C barre that shares that bass but sits above it on every other string. The
  * bass breaks ties, so two voicings centred alike order by their bottom end.
  */
-const voicingHeight = (shape: ChordShape): { center: number; bass: number } => {
-  const pitches = shapePitches(shape);
+const voicingHeight = (shape: ChordShape, midi: number[]): { center: number; bass: number } => {
+  const pitches = shapePitches(shape, midi);
   if (!pitches.length) return { center: 0, bass: 0 };
   return {
     center: pitches.reduce((sum, pitch) => sum + pitch, 0) / pitches.length,
@@ -143,12 +141,17 @@ export interface NeckVoicing extends LabeledShape {
  * offered at every octave that still fits on the neck — that repetition is what
  * lets a chord be found near whichever fret the progression is anchored at.
  */
-export const getNeckVoicings = (note: string, type: string): NeckVoicing[] => {
+export const getNeckVoicings = (
+  note: string,
+  type: string,
+  tuning: GuitarTuning = STANDARD_TUNING
+): NeckVoicing[] => {
   const voicings: NeckVoicing[] = [];
   const seen = new Set<string>();
 
-  const add = (shape: ChordShape | null, id: string, label: string, position?: string) => {
-    if (!shape) return;
+  const add = (standardShape: ChordShape | null, id: string, label: string, position?: string) => {
+    if (!standardShape) return;
+    const shape = retuneShape(standardShape, tuning);
     if (shape.frets.some((fret) => fret > MAX_FRET)) return;
     const key = shape.frets.join(",");
     if (seen.has(key)) return;
@@ -159,7 +162,7 @@ export const getNeckVoicings = (note: string, type: string): NeckVoicing[] => {
       label,
       position,
       startFret: shapeStartFret(shape),
-      ...voicingHeight(shape),
+      ...voicingHeight(shape, tuning.midi),
     });
   };
 
@@ -188,9 +191,13 @@ export const getNeckVoicings = (note: string, type: string): NeckVoicing[] => {
 };
 
 /** The Chord Types cards want each shape once, where it naturally falls. */
-export const getVoicings = (note: string, type: string): LabeledShape[] => {
+export const getVoicings = (
+  note: string,
+  type: string,
+  tuning: GuitarTuning = STANDARD_TUNING
+): LabeledShape[] => {
   const seen = new Set<string>();
-  return getNeckVoicings(note, type).filter((v) => {
+  return getNeckVoicings(note, type, tuning).filter((v) => {
     if (seen.has(v.label)) return false;
     seen.add(v.label);
     return true;

@@ -3,6 +3,7 @@
 import { useFavoriteChords } from "../lib/FavoriteChordsContext";
 import { Card } from "@radix-ui/themes";
 import ChordDiagram from "./ChordDiagram";
+import { tuningById } from "../lib/tunings";
 
 export default function FavoriteChordsBar() {
   const { favorites, toggle } = useFavoriteChords();
@@ -16,7 +17,7 @@ export default function FavoriteChordsBar() {
           <Card key={fav.id} asChild size="1" className="shrink-0 transition-opacity duration-120 ease-ui hover:opacity-60">
             <button type="button" onClick={() => toggle(fav)} aria-label={`Remove ${fav.label} from favorites`}>
               <div className="pointer-events-none">
-                <ChordDiagram shape={fav.shape} label={fav.label} />
+                <ChordDiagram shape={fav.shape} label={fav.label} tuning={tuningById(fav.tuningId)} />
               </div>
             </button>
           </Card>

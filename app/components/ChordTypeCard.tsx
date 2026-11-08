@@ -5,6 +5,7 @@ import { type LabeledShape, getVoicings, CHORD_TYPE_TOOLTIPS, formatChordLabel }
 import ChordDiagram from "./ChordDiagram";
 import { Select } from "@radix-ui/themes";
 import { Bento } from "@/app/components/ui/bento";
+import { STANDARD_TUNING, type GuitarTuning } from "../lib/tunings";
 
 const VOICING_OPTION_ORDER = ["Open / Standard", "E-Shape Barre", "A-Shape Barre"];
 
@@ -18,19 +19,21 @@ export default function ChordTypeCard({
   note,
   type,
   useFlats,
+  tuning = STANDARD_TUNING,
 }: {
   note: string;
   type: string;
   useFlats: boolean;
+  tuning?: GuitarTuning;
 }) {
   const [voicingIndex, setVoicingIndex] = useState(0);
 
   const options = useMemo(() => {
-    const all = getVoicings(note, type);
+    const all = getVoicings(note, type, tuning);
     return VOICING_OPTION_ORDER.map((label) => all.find((v) => v.label === label)).filter(
       (v): v is LabeledShape => Boolean(v)
     );
-  }, [note, type]);
+  }, [note, type, tuning]);
 
   const clampedIndex = Math.min(voicingIndex, Math.max(0, options.length - 1));
   const selected = options[clampedIndex];
@@ -45,7 +48,7 @@ export default function ChordTypeCard({
         {type}
       </span>
       {selected ? (
-        <ChordDiagram shape={selected.shape} label={chordLabel} useFlats={useFlats} />
+        <ChordDiagram shape={selected.shape} label={chordLabel} useFlats={useFlats} tuning={tuning} />
       ) : (
         <p className="text-xs text-ink-muted">No voicing available.</p>
       )}

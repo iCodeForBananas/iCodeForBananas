@@ -33,6 +33,7 @@ import {
   GROUP_TOOLTIPS,
   formatChordLabel,
 } from "../lib/chordVoicings";
+import { TUNINGS, tuningById, type GuitarTuning } from "../lib/tunings";
 import { Button, Select, TextField } from "@radix-ui/themes";
 import { ToggleButton } from "@/app/components/ui/toggle-button";
 import { Bento } from "@/app/components/ui/bento";
@@ -157,12 +158,14 @@ function VoicingCard({
   sublabel,
   position,
   useFlats,
+  tuning,
 }: {
   shape: ChordShape;
   chordLabel: string;
   sublabel: string;
   position?: string;
   useFlats: boolean;
+  tuning: GuitarTuning;
 }) {
   const sublabelTitle =
     VOICING_LABEL_TOOLTIPS[sublabel] ??
@@ -180,7 +183,7 @@ function VoicingCard({
 
   return (
     <div className="flex flex-col items-center gap-1">
-      <ChordDiagram shape={shape} label={chordLabel} useFlats={useFlats} />
+      <ChordDiagram shape={shape} label={chordLabel} useFlats={useFlats} tuning={tuning} />
       <span className="text-xs font-medium text-ink-muted text-center" title={sublabelTitle}>
         {sublabel}
       </span>
@@ -195,8 +198,8 @@ function VoicingCard({
 
 const TRIAD_PROGRESSION_KEY = "chord-explorer-triad-progression";
 
-// The typed progression outlives this component, so it lives outside it, in the
-// smallest external store React can subscribe to.
+// The typed progression and the tuning outlive this component, so they live
+// outside it, in the smallest external store React can subscribe to.
 //
 // Reading localStorage during a render would have the server send an empty field
 // and the client draw a full one — React hydrates against markup that no longer
@@ -208,37 +211,41 @@ const TRIAD_PROGRESSION_KEY = "chord-explorer-triad-progression";
 //
 // Memory is the source of truth and localStorage only mirrors it, so a browser
 // with storage blocked still gets a working field for the visit.
-let storedProgression: string | null = null;
-const progressionListeners = new Set<() => void>();
+function storedText(key: string) {
+  let value: string | null = null;
+  const listeners = new Set<() => void>();
 
-function progressionSnapshot(): string {
-  if (storedProgression === null) {
-    try {
-      storedProgression = window.localStorage.getItem(TRIAD_PROGRESSION_KEY) ?? "";
-    } catch {
-      storedProgression = "";
-    }
-  }
-  return storedProgression;
+  return {
+    snapshot(): string {
+      if (value === null) {
+        try {
+          value = window.localStorage.getItem(key) ?? "";
+        } catch {
+          value = "";
+        }
+      }
+      return value;
+    },
+    /** What the server renders, and what the client hydrates against. */
+    serverSnapshot: () => "",
+    subscribe(onChange: () => void): () => void {
+      listeners.add(onChange);
+      return () => listeners.delete(onChange);
+    },
+    write(next: string): void {
+      value = next;
+      try {
+        window.localStorage.setItem(key, next);
+      } catch {
+        // Storage blocked — the value still works for this visit.
+      }
+      for (const listener of listeners) listener();
+    },
+  };
 }
 
-/** What the server renders, and what the client hydrates against. */
-const progressionServerSnapshot = () => "";
-
-function subscribeProgression(onChange: () => void): () => void {
-  progressionListeners.add(onChange);
-  return () => progressionListeners.delete(onChange);
-}
-
-function writeProgression(next: string): void {
-  storedProgression = next;
-  try {
-    window.localStorage.setItem(TRIAD_PROGRESSION_KEY, next);
-  } catch {
-    // Storage blocked — the progression still works for this visit.
-  }
-  for (const listener of progressionListeners) listener();
-}
+const progressionStore = storedText(TRIAD_PROGRESSION_KEY);
+const tuningStore = storedText("chord-explorer-tuning");
 
 /** How many chords one progression may draw before it stops being a progression. */
 const MAX_PROGRESSION_CHORDS = 12;
@@ -274,11 +281,13 @@ function TriadStringSets({
   intervals,
   chordLabel,
   useFlats,
+  tuning,
 }: {
   shapes: TriadVoicing[];
   intervals: readonly number[];
   chordLabel: string;
   useFlats: boolean;
+  tuning: GuitarTuning;
 }) {
   return (
     <div className="grid grid-cols-1 gap-y-6 sm:grid-cols-3 sm:gap-y-0 divide-y sm:divide-y-0 sm:divide-x divide-line-subtle">
@@ -313,6 +322,7 @@ function TriadStringSets({
                       chordLabel={chordLabel}
                       sublabel={inv.label}
                       useFlats={useFlats}
+                      tuning={tuning}
                     />
                     <span
                       className="text-xs text-ink-muted text-center tabular-nums"
@@ -343,6 +353,7 @@ function ProgressionChordCard({
   index,
   pinnedId,
   useFlats,
+  tuning,
   onPick,
 }: {
   roman: string;
@@ -355,6 +366,7 @@ function ProgressionChordCard({
   /** Set when this one chord was picked by hand, overriding the fret anchor. */
   pinnedId?: string;
   useFlats: boolean;
+  tuning: GuitarTuning;
   onPick: (voicingId: string) => void;
 }) {
   const pinnedIndex = pinnedId ? voicings.findIndex((v) => v.id === pinnedId) : -1;
@@ -372,7 +384,7 @@ function ProgressionChordCard({
         {roman}
       </span>
       {shape ? (
-        <ChordDiagram shape={shape} label={label} useFlats={useFlats} />
+        <ChordDiagram shape={shape} label={label} useFlats={useFlats} tuning={tuning} />
       ) : (
         <div className="flex flex-col items-center gap-1 py-4">
           <span className="text-sm font-semibold text-ink-primary">{label}</span>
@@ -406,6 +418,9 @@ export default function ChordExplorerPage() {
   const [selectedNote, setSelectedNote] = useState("C");
   const [selectedType, setSelectedType] = useState<ChordType>("Major");
   const [useFlats, setUseFlats] = useState(false);
+  const tuning = tuningById(
+    useSyncExternalStore(tuningStore.subscribe, tuningStore.snapshot, tuningStore.serverSnapshot)
+  );
 
   const displayNotes = useFlats ? flatNotes : sharpNotes;
   const chordLabel = formatChordLabel(selectedNote, selectedType);
@@ -426,11 +441,11 @@ export default function ChordExplorerPage() {
   // time. Leave it empty and it falls back to the chord picked at the top of the
   // page, which is what the panel has always shown.
   const progressionText = useSyncExternalStore(
-    subscribeProgression,
-    progressionSnapshot,
-    progressionServerSnapshot
+    progressionStore.subscribe,
+    progressionStore.snapshot,
+    progressionStore.serverSnapshot
   );
-  const updateProgression = writeProgression;
+  const updateProgression = progressionStore.write;
 
   /**
    * The progression as chords to draw. Tokens that are not chords are kept so
@@ -456,12 +471,12 @@ export default function ChordExplorerPage() {
         note,
         type,
         spec,
-        shapes: triadVoicings(note, spec.intervals),
+        shapes: triadVoicings(note, spec.intervals, tuning),
         triadLabel: formatChordLabel(note, spec.quality),
         sourceLabel: formatChordLabel(note, type),
       }];
     });
-  }, [typedChords, selectedNote, selectedType]);
+  }, [typedChords, selectedNote, selectedType, tuning]);
 
   const [selectedProgressionName, setSelectedProgressionName] = useState(PROGRESSION_GROUPS[0].items[0].name);
   // Per-chord voicing picks, scoped to the progression they were made on so
@@ -492,8 +507,8 @@ export default function ChordExplorerPage() {
 
   // Each chord's rungs up the neck, lowest-sounding first.
   const progressionVoicingSets = useMemo(
-    () => progressionChords.map((c) => getNeckVoicings(c.note, c.quality)),
-    [progressionChords]
+    () => progressionChords.map((c) => getNeckVoicings(c.note, c.quality, tuning)),
+    [progressionChords, tuning]
   );
 
   // Which rung of each chord the chosen fret lands on.
@@ -549,7 +564,7 @@ export default function ChordExplorerPage() {
   const chordTypeCardsContent = (
     <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))" }}>
       {chordTypes.map((type) => (
-        <ChordTypeCard key={type} note={selectedNote} type={type} useFlats={useFlats} />
+        <ChordTypeCard key={type} note={selectedNote} type={type} useFlats={useFlats} tuning={tuning} />
       ))}
     </div>
   );
@@ -597,6 +612,7 @@ export default function ChordExplorerPage() {
                 chordLabel={`${chordLabel} ${inv.title}`}
                 sublabel={item.strings}
                 useFlats={useFlats}
+                tuning={tuning}
               />
             ))}
           </div>
@@ -714,6 +730,7 @@ export default function ChordExplorerPage() {
             intervals={row.spec.intervals}
             chordLabel={row.triadLabel}
             useFlats={useFlats}
+            tuning={tuning}
           />
         </div>
       ))}
@@ -848,6 +865,7 @@ export default function ChordExplorerPage() {
               index={selectedIndices[i] ?? 0}
               pinnedId={pinnedVoicings[i]}
               useFlats={useFlats}
+              tuning={tuning}
               onPick={(voicingId) => handleProgressionVoicingChange(i, voicingId)}
             />
           ))}
@@ -873,7 +891,7 @@ export default function ChordExplorerPage() {
         "The Circle of Fifths — keys close together on the wheel share the most notes and sound natural played in sequence. Your Root Note is marked wherever it appears, and clicking any key makes it the new root for the whole page.",
       defaultColSpan: 5,
       defaultRowSpan: 4,
-      content: <CircleOfFifths activeNote={selectedNote} onSelectNote={handleCircleSelect} />,
+      content: <CircleOfFifths activeNote={selectedNote} onSelectNote={handleCircleSelect} tuning={tuning} />,
     },
     {
       id: "inversions",
@@ -900,7 +918,7 @@ export default function ChordExplorerPage() {
         "See every note of a scale laid out across all six strings and every fret — great for understanding where you can solo or add a melody over your chord progression. Pick a CAGED shape to narrow it to one position: the stretch of neck around one of the five chord shapes, with that chord ringed inside it. The scale is built on the Root Note you picked at the top of the page.",
       defaultColSpan: 12,
       defaultRowSpan: 5,
-      content: <ScaleTool rootKey={canonicalNote} />,
+      content: <ScaleTool rootKey={canonicalNote} tuning={tuning.notes} />,
     },
     {
       id: "finder",
@@ -909,7 +927,7 @@ export default function ChordExplorerPage() {
         "Work the other way round: click notes on the fretboard and this names every chord they spell. Positions of your Root Note are outlined so you can see where it sits on the neck.",
       defaultColSpan: 12,
       defaultRowSpan: 6,
-      content: <ChordFinder rootNote={canonicalNote} />,
+      content: <ChordFinder rootNote={canonicalNote} tuning={tuning.notes} />,
     },
     {
       id: "progression-generator",
@@ -925,8 +943,9 @@ export default function ChordExplorerPage() {
   return (
     <div className="flex flex-1 min-h-0 flex-col p-4 sm:p-6">
 
-      {/* ── Controls — two rows in a bento card, pinned at top ───────────────── */}
+      {/* ── Settings — one card at the top that every panel below follows ───── */}
       <Bento className="mb-4 flex flex-col gap-4">
+        <h2 className="font-display text-20 font-semibold text-ink-primary">Settings</h2>
 
         {/* Row 1: Root note */}
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
@@ -991,6 +1010,29 @@ export default function ChordExplorerPage() {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+
+        {/* Row 3: Tuning */}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <p
+            className="text-xs font-semibold text-ink-muted uppercase tracking-wider shrink-0"
+            title="What your strings are tuned to — every chord, scale and fretboard on this page is drawn for it"
+          >
+            Tuning
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            {TUNINGS.map((t) => (
+              <PickButton
+                key={t.id}
+                on={tuning.id === t.id}
+                onClick={() => tuningStore.write(t.id)}
+                title={t.description}
+              >
+                {t.name}
+              </PickButton>
+            ))}
+            <span className="ml-1 text-xs text-ink-muted tabular-nums">{tuning.notes.join(" ")}</span>
           </div>
         </div>
       </Bento>

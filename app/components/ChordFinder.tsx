@@ -59,8 +59,10 @@ function identifyChords(selectedNotes: string[]): ChordMatch[] {
  * pick notes and it names them — so the root only marks where it sits on the
  * neck rather than choosing anything for you.
  */
-export default function ChordFinder({ rootNote }: { rootNote?: string } = {}) {
-  const tuning = defaultTuning;
+export default function ChordFinder({
+  rootNote,
+  tuning = defaultTuning,
+}: { rootNote?: string; tuning?: string[] } = {}) {
   const totalFrets = 12;
 
   // Set of "stringIndex-fret" keys that are currently selected

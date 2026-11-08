@@ -7,6 +7,8 @@ export interface FavoriteChord {
   id: string;
   label: string;
   shape: ChordShape;
+  /** The tuning `shape` was drawn for. Absent on chords saved before tunings existed. */
+  tuningId?: string;
 }
 
 interface FavoriteChordsContextType {

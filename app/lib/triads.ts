@@ -1,4 +1,5 @@
 import { flatToSharp, sharpNotes, transposeShape, type ChordShape } from "./chordShapes";
+import { STANDARD_TUNING, type GuitarTuning } from "./tunings";
 
 // ─── Triads ───────────────────────────────────────────────────────────────────
 //
@@ -14,9 +15,6 @@ import { flatToSharp, sharpNotes, transposeShape, type ChordShape } from "./chor
 // every position it exists in, and the shapes come out identical to the ones a
 // player would write by hand — the arithmetic of "the next chord tone above this
 // one, on the next string" is what a guitarist is doing when they find these.
-
-/** Standard tuning, as MIDI note numbers: E2 A2 D3 G3 B3 E4. */
-const STRING_MIDI = [40, 45, 50, 55, 59, 64];
 
 /**
  * The three-string groups triads are played on, low to high. Adjacent strings
@@ -130,7 +128,7 @@ export interface TriadVoicing {
 }
 
 /**
- * The smallest fret on `stringIndex` sounding pitch class `pc` strictly above
+ * The smallest fret on a string tuned to `open` sounding pitch class `pc` strictly above
  * `aboveMidi`. That "strictly above" is what stacks the triad: each note is the
  * next chord tone up rather than any note of that name.
  *
@@ -139,8 +137,7 @@ export interface TriadVoicing {
  * octave higher. So this alone does not guarantee a closed voicing; the caller
  * checks the span.
  */
-function nextToneAbove(stringIndex: number, pc: number, aboveMidi: number): number {
-  const open = STRING_MIDI[stringIndex];
+function nextToneAbove(open: number, pc: number, aboveMidi: number): number {
   const fret = (((pc - open) % 12) + 12) % 12;
   // The pitch class recurs every 12 frets; step up until it clears the note below.
   let midi = open + fret;
@@ -171,7 +168,12 @@ const MAX_FRET = 16;
  * ones come round again twelve frets higher, which is the point of learning them
  * rather than a separate thing to learn.
  */
-export function triadVoicings(rootNote: string, intervals: readonly number[]): TriadVoicing[] {
+export function triadVoicings(
+  rootNote: string,
+  intervals: readonly number[],
+  tuning: GuitarTuning = STANDARD_TUNING
+): TriadVoicing[] {
+  const midi = tuning.midi;
   const root = semitoneOf(rootNote);
   const tones = intervals.map((interval) => (root + interval) % 12);
   const voicings: TriadVoicing[] = [];
@@ -184,13 +186,13 @@ export function triadVoicings(rootNote: string, intervals: readonly number[]): T
       const [s0, s1, s2] = set.strings;
 
       for (let f0 = 0; f0 <= MAX_FRET; f0++) {
-        if ((STRING_MIDI[s0] + f0) % 12 !== order[0]) continue;
+        if ((midi[s0] + f0) % 12 !== order[0]) continue;
 
-        const m0 = STRING_MIDI[s0] + f0;
-        const f1 = nextToneAbove(s1, order[1], m0);
-        const m1 = STRING_MIDI[s1] + f1;
-        const f2 = nextToneAbove(s2, order[2], m1);
-        const m2 = STRING_MIDI[s2] + f2;
+        const m0 = midi[s0] + f0;
+        const f1 = nextToneAbove(midi[s1], order[1], m0);
+        const m1 = midi[s1] + f1;
+        const f2 = nextToneAbove(midi[s2], order[2], m1);
+        const m2 = midi[s2] + f2;
         if (f1 > MAX_FRET || f2 > MAX_FRET) continue;
 
         // The three notes have to fit inside one octave, or it is not this

@@ -29,13 +29,6 @@ const SCALE_TYPES: Record<string, { intervals: number[]; degrees: string[]; tona
   "Locrian":          { intervals: [0, 1, 3, 5, 6, 8, 10], degrees: ["1","b2","b3","4","b5","b6","b7"],   tonality: "minor" },
 };
 
-const TUNINGS: Record<string, string[]> = {
-  "Standard (EADGBE)": ["E","A","D","G","B","E"],
-  "Drop D (DADGBE)":   ["D","A","D","G","B","E"],
-  "Open G (DGDGBD)":   ["D","G","D","G","B","D"],
-  "Open E (EBEG#BE)":  ["E","B","E","G#","B","E"],
-};
-
 /**
  * Which of the five CAGED shapes a note belongs to. That is identity, not
  * importance — no shape outranks another — which is exactly what color.track
@@ -99,16 +92,15 @@ function lsGet(key: string, fallback: string): string {
 
 
 /**
- * `rootKey` is owned by the page so one Root Note drives every panel — the
- * scale has no root of its own to fall out of step with the chords.
+ * `rootKey` and `tuning` are owned by the page so one set of settings drives
+ * every panel — the scale has no root or tuning of its own to fall out of step
+ * with the chords.
  */
-export default function ScaleTool({ rootKey }: { rootKey: string }) {
+export default function ScaleTool({ rootKey, tuning }: { rootKey: string; tuning: string[] }) {
   const [scaleType,  setScaleType]  = useState(() => lsGet("st-scale",  "Major"));
   const [numFrets,   setNumFrets]   = useState(() => parseInt(lsGet("st-frets", "15")));
-  const [tuningName, setTuningName] = useState(() => lsGet("st-tuning", "Standard (EADGBE)"));
   const [shapeKey,   setShapeKey]   = useState(() => lsGet("st-caged", "all"));
 
-  const tuning    = TUNINGS[tuningName]    ?? TUNINGS["Standard (EADGBE)"];
   const scaleData = SCALE_TYPES[scaleType] ?? SCALE_TYPES["Major"];
 
   const selectedShape = (CAGED_ORDER as readonly string[]).includes(shapeKey)
@@ -199,18 +191,6 @@ export default function ScaleTool({ rootKey }: { rootKey: string }) {
             <Select.Trigger title="Choose a scale type — Major sounds bright and happy, Minor sounds darker, Pentatonic is great for beginners and soloing" />
             <Select.Content position="popper">
               {Object.keys(SCALE_TYPES).map(s => <Select.Item key={s} value={s}>{s}</Select.Item>)}
-            </Select.Content>
-          </Select.Root>
-        </label>
-
-        <label className="flex flex-col gap-1" title="How your guitar strings are tuned from low E to high e — Standard EADGBE is the most common tuning for beginners">
-          <span className="text-10 font-semibold uppercase tracking-wider text-ink-muted">
-            Tuning
-          </span>
-          <Select.Root value={tuningName} onValueChange={v => { setTuningName(v); localStorage.setItem("st-tuning", v); }}>
-            <Select.Trigger title="Choose your guitar's tuning — this changes which notes appear on each string and fret" />
-            <Select.Content position="popper">
-              {Object.keys(TUNINGS).map(t => <Select.Item key={t} value={t}>{t}</Select.Item>)}
             </Select.Content>
           </Select.Root>
         </label>
