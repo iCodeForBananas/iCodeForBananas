@@ -2,7 +2,8 @@
 
 import { useState, useMemo } from "react";
 import "../components/fretboard.css";
-import { allNotes, getNoteAt, generateChordsAndScales, defaultTuning } from "../lib/music";
+import { allNotes, getNoteAt, generateChordsAndScales } from "../lib/music";
+import { useGuitarSettings } from "../lib/guitarSettings";
 import BentoBoard, { type BentoPanel } from "../components/BentoBoard";
 import { Bento } from "@/app/components/ui/bento";
 import { Button } from "@radix-ui/themes";
@@ -45,7 +46,7 @@ export default function FretboardQuizPage() {
   const [incorrectGuesses, setIncorrectGuesses] = useState<Set<string>>(new Set());
   const [incorrectCount, setIncorrectCount] = useState(0);
 
-  const tuning = defaultTuning;
+  const tuning = useGuitarSettings().tuning.notes;
 
   const { scales } = useMemo(() => generateChordsAndScales(), []);
 
@@ -261,7 +262,7 @@ export default function FretboardQuizPage() {
       id: "fretboard",
       title: "Fretboard",
       tooltip:
-        "The first twelve frets in standard tuning, with every note hidden. Click a position to guess whether it belongs to the selected scale — correct guesses reveal the note.",
+        "The first twelve frets in your Guitar Settings tuning, with every note hidden. Click a position to guess whether it belongs to the selected scale — correct guesses reveal the note.",
       defaultColSpan: 12,
       defaultRowSpan: 3,
       content: fretboardContent,

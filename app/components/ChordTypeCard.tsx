@@ -12,7 +12,7 @@ const VOICING_OPTION_ORDER = ["Open / Standard", "E-Shape Barre", "A-Shape Barre
 /**
  * One chord type (Major, m7, Sus2, ...) for one root: its diagram, plus a
  * dropdown to swap between the open shape and the E-/A-shape barre options.
- * Shared between chord-explorer's Chord Types panel and progression-builder's
+ * Shared between the Chord Types tool and progression-builder's
  * per-chord columns, so a voicing added to one shows up the same way in both.
  */
 export default function ChordTypeCard({

@@ -1,5 +1,5 @@
 // Chord type groups, and every playable way to voice one of those types for a
-// given root, up and down the neck. Extracted from chord-explorer so
+// given root, up and down the neck. Shared by the Guitar tools so
 // progression-builder (and anything else that wants "all the ways to play
 // this chord") can share it instead of re-deriving it.
 
@@ -21,7 +21,7 @@ import { STANDARD_TUNING, retuneShape, type GuitarTuning } from "./tunings";
 
 // The full catalog — every type this page knows a shape for, grouped for
 // browsing freely by anyone who wants to go from a major root to a minor
-// voicing or back (chord-explorer's Chord Types panel: no root here is
+// voicing or back (the Chord Types tool: no root here is
 // "a minor chord" or "a major chord," it's just a root note).
 export const TYPE_GROUPS = [
   { label: "Triads", types: ["Major", "Minor"] },

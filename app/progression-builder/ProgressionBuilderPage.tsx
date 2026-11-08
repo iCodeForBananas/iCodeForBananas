@@ -22,6 +22,7 @@ import {
   triadSpecFor,
   neckTriadVoicings,
 } from "../lib/triads";
+import { useGuitarSettings } from "../lib/guitarSettings";
 
 const STRING_SET_LABEL = Object.fromEntries(TRIAD_STRING_SETS.map((s) => [s.key, s.label]));
 const INVERSION_LABEL = Object.fromEntries(TRIAD_INVERSIONS.map((i) => [i.key, i.label]));
@@ -44,7 +45,7 @@ interface ProgressionChord {
 /**
  * One chord in the progression: its basic voicing (open/standard, in
  * whichever quality it was picked as) up top, then every other chord type it
- * could be — grouped the same way chord-explorer groups them — each with its
+ * could be — grouped the same way the Chord Types tool groups them — each with its
  * own shape/neck-position picker.
  */
 function ProgressionColumn({
@@ -57,6 +58,7 @@ function ProgressionColumn({
   onRemove: () => void;
 }) {
   const { note, quality } = chord;
+  const { tuning } = useGuitarSettings();
   const useFlats = note.includes("b");
   const basicType = quality === "minor" ? "Minor" : "Major";
   const label = formatChordLabel(note, basicType);
@@ -65,19 +67,19 @@ function ProgressionColumn({
   const typeGroups = quality === "minor" ? MINOR_TYPE_GROUPS : MAJOR_TYPE_GROUPS;
 
   const basicVoicing = useMemo(() => {
-    const options = getVoicings(note, basicType);
+    const options = getVoicings(note, basicType, tuning);
     return options.find((v) => v.label === "Open / Standard") ?? options[0] ?? null;
-  }, [note, basicType]);
+  }, [note, basicType, tuning]);
 
   // Every other place this same triad can be played higher up the neck —
   // the open/first-position shape above already covers the first few frets,
   // so this is deliberately everything past that, up to the 12th fret.
   const neckPositions = useMemo(
     () =>
-      getNeckVoicings(note, basicType).filter(
+      getNeckVoicings(note, basicType, tuning).filter(
         (v) => !v.label.startsWith("Open") && v.startFret > FIRST_POSITION_FRET && v.startFret <= MAX_NECK_SECTION_FRET
       ),
-    [note, basicType]
+    [note, basicType, tuning]
   );
 
   // Every three-note grip for this triad through the 12th fret — all string
@@ -87,8 +89,8 @@ function ProgressionColumn({
   const neckTriads = useMemo(() => {
     const spec = triadSpecFor(basicType);
     if (!spec) return [];
-    return neckTriadVoicings(note, spec.intervals).filter((v) => v.startFret <= MAX_NECK_SECTION_FRET);
-  }, [note, basicType]);
+    return neckTriadVoicings(note, spec.intervals, tuning).filter((v) => v.startFret <= MAX_NECK_SECTION_FRET);
+  }, [note, basicType, tuning]);
 
   return (
     <Bento className="flex w-[340px] shrink-0 flex-col gap-4">
@@ -111,7 +113,7 @@ function ProgressionColumn({
       <div className="flex flex-col items-center gap-1 rounded-xl border border-primary-solid/30 bg-primary-solid/5 p-3">
         <span className="text-24 font-semibold text-ink-primary">{quality === "minor" ? `${note}m` : note}</span>
         {basicVoicing ? (
-          <ChordDiagram shape={basicVoicing.shape} label={label} useFlats={useFlats} />
+          <ChordDiagram shape={basicVoicing.shape} label={label} useFlats={useFlats} tuning={tuning} />
         ) : (
           <p className="text-xs text-ink-muted">No voicing available.</p>
         )}
@@ -129,7 +131,7 @@ function ProgressionColumn({
             </p>
             <div className="grid grid-cols-2 gap-2">
               {group.types.map((type) => (
-                <ChordTypeCard key={type} note={note} type={type} useFlats={useFlats} />
+                <ChordTypeCard key={type} note={note} type={type} useFlats={useFlats} tuning={tuning} />
               ))}
             </div>
           </div>
@@ -148,7 +150,7 @@ function ProgressionColumn({
             <div className="grid grid-cols-2 gap-2">
               {neckPositions.map((v) => (
                 <Bento key={v.id} size="1" className="flex flex-col items-center gap-1">
-                  <ChordDiagram shape={v.shape} label={label} useFlats={useFlats} />
+                  <ChordDiagram shape={v.shape} label={label} useFlats={useFlats} tuning={tuning} />
                   <span className="text-10 text-ink-muted">
                     {v.label}
                     {v.position ? ` (${v.position})` : ""}
@@ -172,7 +174,7 @@ function ProgressionColumn({
             <div className="grid grid-cols-2 gap-2">
               {neckTriads.map((v) => (
                 <Bento key={v.id} size="1" className="flex flex-col items-center gap-1">
-                  <ChordDiagram shape={v.shape} label={label} useFlats={useFlats} />
+                  <ChordDiagram shape={v.shape} label={label} useFlats={useFlats} tuning={tuning} />
                   <span className="text-10 text-ink-muted">
                     {INVERSION_LABEL[v.inversion]} · {STRING_SET_LABEL[v.stringSet]} ({v.startFret}fr)
                   </span>
@@ -187,6 +189,7 @@ function ProgressionColumn({
 }
 
 export default function ProgressionBuilderPage() {
+  const { tuning } = useGuitarSettings();
   const [progression, setProgression] = useState<ProgressionChord[]>([]);
   const nextId = useRef(0);
 
@@ -212,7 +215,7 @@ export default function ProgressionBuilderPage() {
         </p>
 
         <div className="mx-auto w-full max-w-[520px] shrink-0">
-          <CircleOfFifths activeNote={lastNote} onSelectNote={addChord} />
+          <CircleOfFifths activeNote={lastNote} onSelectNote={addChord} tuning={tuning} />
         </div>
 
         {progression.length === 0 ? (

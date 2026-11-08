@@ -11,6 +11,8 @@ const nextConfig: NextConfig = {
     return [
       { source: "/lead-sheet-editor", destination: "/songwriter", permanent: true },
       { source: "/lead-sheet-editor/:path*", destination: "/songwriter/:path*", permanent: true },
+      // Chord Explorer's panels became the separate Guitar tools.
+      { source: "/chord-explorer", destination: "/guitar/settings", permanent: true },
     ];
   },
   async rewrites() {

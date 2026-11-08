@@ -237,8 +237,12 @@ export function triadVoicings(
  * an octave is exhaustive: the pitches a shape sounds only repeat every 12
  * frets, so there is no third position squeezed in between.
  */
-export function neckTriadVoicings(rootNote: string, intervals: readonly number[]): TriadVoicing[] {
-  const base = triadVoicings(rootNote, intervals);
+export function neckTriadVoicings(
+  rootNote: string,
+  intervals: readonly number[],
+  tuning: GuitarTuning = STANDARD_TUNING
+): TriadVoicing[] {
+  const base = triadVoicings(rootNote, intervals, tuning);
   const voicings: TriadVoicing[] = [...base];
 
   for (const voicing of base) {
