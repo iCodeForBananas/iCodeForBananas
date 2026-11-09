@@ -27,8 +27,8 @@ export const MIN_EASE = 1.3;
 
 /** Share of a level that must be read without help to open the next one. */
 export const UNLOCK_SHARE = 0.8;
-export const NEW_CARDS_PER_BATCH = 8;
-export const MAX_REVIEWS_PER_BATCH = 30;
+/** Flashcards shown per round, counting same-round repeats. */
+export const ROUND_SIZE = 25;
 /** Cards that pass between a missed card and its repeat. */
 export const REDRILL_GAP = 3;
 
@@ -109,11 +109,6 @@ export function applyGrade(state: CardState, grade: Grade, today: string, now: n
   };
 }
 
-/** The interval a grade would give, for the label on its button. */
-export function previewInterval(state: CardState, grade: Grade, today: string): number {
-  return applyGrade(state, grade, today, 0).intervalDays;
-}
-
 // ─── The ladder ───────────────────────────────────────────────────────────────
 
 const CARDS_BY_LEVEL: Card[][] = LEVELS.map((_, index) => CARDS.filter((card) => card.levelIndex === index));
@@ -165,11 +160,24 @@ export function newCards(states: CardStates): Card[] {
   return CARDS.filter((card) => card.levelIndex < unlocked && !states[card.id]?.reviews);
 }
 
-/** Reviews first, overdue before due, then the next new cards up the ladder. */
-export function buildBatch(states: CardStates, today: string): QueueItem[] {
-  return [...dueCards(states, today).slice(0, MAX_REVIEWS_PER_BATCH), ...newCards(states).slice(0, NEW_CARDS_PER_BATCH)].map(
-    (card) => ({ cardId: card.id, redrill: false }),
-  );
+/**
+ * Trims the queue to the slots left in the round, then fills any gap: reviews
+ * first, overdue before due, then new cards up the ladder. Filling as the round
+ * goes means a level that opens mid-round feeds its cards into the same round.
+ */
+export function topUpQueue(queue: QueueItem[], states: CardStates, today: string, slots: number): QueueItem[] {
+  const open = Math.max(0, slots);
+  const kept = queue.slice(0, open);
+  const queued = new Set(kept.map((item) => item.cardId));
+  const extra = [...dueCards(states, today), ...newCards(states)]
+    .filter((card) => !queued.has(card.id))
+    .slice(0, open - kept.length)
+    .map((card) => ({ cardId: card.id, redrill: false }));
+  return [...kept, ...extra];
+}
+
+export function buildRound(states: CardStates, today: string): QueueItem[] {
+  return topUpQueue([], states, today, ROUND_SIZE);
 }
 
 /** Moves past the card at the front, sending it back in if it scored under Good. */
@@ -186,7 +194,7 @@ const GRADES: readonly string[] = Object.keys(GRADE_QUALITY);
 const DAY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const isCount = (n: unknown): n is number => Number.isInteger(n) && (n as number) >= 0 && (n as number) < 1_000_000;
 
-/** Validates a state that came from the network or localStorage. */
+/** Validates a state that came from the network. */
 export function parseCardState(value: unknown): CardState | null {
   if (!value || typeof value !== "object") return null;
   const v = value as Record<string, unknown>;
@@ -208,23 +216,4 @@ export function parseCardState(value: unknown): CardState | null {
     lastGrade: v.lastGrade as Grade | null,
     updatedAt: v.updatedAt as number,
   };
-}
-
-export interface MergeResult {
-  merged: CardStates;
-  /** Cards this device has newer than the server, which still need uploading. */
-  localNewer: string[];
-}
-
-/** Keeps whichever copy of each card changed last. */
-export function mergeStates(local: CardStates, remote: CardStates): MergeResult {
-  const merged: CardStates = { ...remote };
-  const localNewer: string[] = [];
-  for (const [id, state] of Object.entries(local)) {
-    if (!remote[id] || state.updatedAt > remote[id].updatedAt) {
-      merged[id] = state;
-      localNewer.push(id);
-    }
-  }
-  return { merged, localNewer };
 }

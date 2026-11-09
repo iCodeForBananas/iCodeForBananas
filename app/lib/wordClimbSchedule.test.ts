@@ -4,20 +4,20 @@ import {
   type CardState,
   type CardStates,
   MIN_EASE,
-  NEW_CARDS_PER_BATCH,
   NEW_CARD_STATE,
   REDRILL_GAP,
+  ROUND_SIZE,
   addDays,
   advanceQueue,
   applyGrade,
-  buildBatch,
+  buildRound,
   dueCards,
   levelProgress,
   localDay,
-  mergeStates,
   newCards,
   nextEase,
   parseCardState,
+  topUpQueue,
   unlockedLevelCount,
 } from "./wordClimbSchedule";
 
@@ -134,10 +134,40 @@ describe("unlocking", () => {
 });
 
 describe("sessions", () => {
-  it("starts a new child on the first batch of words", () => {
-    const batch = buildBatch({}, TODAY);
-    expect(batch).toHaveLength(NEW_CARDS_PER_BATCH);
-    expect(batch.map((item) => item.cardId)).toEqual(CARDS.slice(0, NEW_CARDS_PER_BATCH).map((card) => card.id));
+  it("starts a new child on the first level's words, easiest first", () => {
+    const firstLevel = CARDS.filter((card) => card.levelIndex === 0);
+    expect(buildRound({}, TODAY).map((item) => item.cardId)).toEqual(firstLevel.map((card) => card.id));
+  });
+
+  it("caps a round at 25 cards", () => {
+    let states: CardStates = {};
+    LEVELS.forEach((_, index) => {
+      states = secureLevel(states, index);
+    });
+    const allDue = Object.fromEntries(Object.entries(states).map(([id, state]) => [id, { ...state, dueOn: TODAY }]));
+    expect(ROUND_SIZE).toBe(25);
+    expect(buildRound(allDue, TODAY)).toHaveLength(25);
+  });
+
+  it("fills the round from a level that opens partway through", () => {
+    const states = secureLevel({}, 0);
+    const next = topUpQueue([], states, TODAY, 5);
+    expect(next).toHaveLength(5);
+    for (const item of next) expect(CARDS.find((card) => card.id === item.cardId)?.levelIndex).toBe(1);
+  });
+
+  it("keeps a repeat ahead of filler and doesn't queue a card twice", () => {
+    const repeat = { cardId: CARDS[0].id, redrill: true };
+    const next = topUpQueue([repeat], {}, TODAY, 4);
+    expect(next[0]).toEqual(repeat);
+    expect(new Set(next.map((item) => item.cardId)).size).toBe(4);
+  });
+
+  it("drops what no longer fits when the round runs out of slots", () => {
+    const queue = CARDS.slice(0, 3).map((card) => ({ cardId: card.id, redrill: false }));
+    expect(topUpQueue(queue, {}, TODAY, 2)).toEqual(queue.slice(0, 2));
+    expect(topUpQueue(queue, {}, TODAY, 0)).toEqual([]);
+    expect(topUpQueue(queue, {}, TODAY, -1)).toEqual([]);
   });
 
   it("puts due reviews ahead of new cards, oldest first", () => {
@@ -146,7 +176,7 @@ describe("sessions", () => {
       [a.id]: { ...grade(NEW_CARD_STATE, "good"), dueOn: "2026-11-09" },
       [b.id]: { ...grade(NEW_CARD_STATE, "good"), dueOn: "2026-11-01" },
     };
-    expect(buildBatch(states, TODAY).slice(0, 2).map((item) => item.cardId)).toEqual([b.id, a.id]);
+    expect(buildRound(states, TODAY).slice(0, 2).map((item) => item.cardId)).toEqual([b.id, a.id]);
   });
 
   it("doesn't show a card again before it's due", () => {
@@ -197,16 +227,5 @@ describe("saved progress", () => {
     ["a missing field", { ...saved, secure: undefined }],
   ])("rejects %s", (_name, value) => {
     expect(parseCardState(value)).toBeNull();
-  });
-
-  it("keeps the newest copy of each card and lists what the server lacks", () => {
-    const older = { ...saved, updatedAt: 1, reps: 1 };
-    const newer = { ...saved, updatedAt: 2, reps: 2 };
-    const { merged, localNewer } = mergeStates(
-      { both: newer, stale: older, onlyLocal: older },
-      { both: older, stale: newer, onlyRemote: older },
-    );
-    expect(merged).toEqual({ both: newer, stale: newer, onlyLocal: older, onlyRemote: older });
-    expect(localNewer.sort()).toEqual(["both", "onlyLocal"]);
   });
 });
