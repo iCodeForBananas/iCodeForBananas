@@ -23,6 +23,7 @@ const TITLES: Record<string, string> = {
   "/space-math":                          "Space Math | iCodeForBananas",
   "/spelling-bee":                        "Spelling Bee | iCodeForBananas",
   "/trading-equity":                      "Trading Equity | iCodeForBananas",
+  "/word-climb":                          "Word Climb | iCodeForBananas",
   "/workout-tracker":                     "Workout Tracker | iCodeForBananas",
 };
 
