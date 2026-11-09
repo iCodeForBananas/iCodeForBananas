@@ -68,9 +68,11 @@ Layer 2 semantics and nothing else. A value that has to change between themes
 is fixed by pointing the semantic alias at a different primitive, never by
 redefining the primitive.
 
-`data-theme` on `<html>` is the only switch. `app/lib/ThemeContext.tsx` writes
-it and the inline script in `app/layout.tsx` writes it again before first
-paint; `globals.css` points Tailwind's `dark:` variant at the same attribute,
+`data-theme` on `<html>` is the only switch, and the operating system's
+`prefers-color-scheme` is the only thing that sets it. The inline script in
+`app/layout.tsx` writes it before first paint and `app/lib/ThemeContext.tsx`
+keeps it in step when the system changes while the app is open; there is no
+in-app override. `globals.css` points Tailwind's `dark:` variant at the same attribute,
 so a rule written with the variant and a rule written with a token cannot
 disagree about which theme is on. There is no `.dark` class any more, and no
 `dark:` variant left in the app either — a semantic token already carries both

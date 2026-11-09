@@ -3,10 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
-import { LogIn, LogOut, Menu, Moon, Sun } from "lucide-react";
+import { LogIn, LogOut, Menu } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
 import { useAuth } from "@/app/hooks/useAuth";
-import { useTheme } from "@/app/lib/ThemeContext";
 import { cn } from "@/app/lib/utils";
 
 const MOBILE_BREAKPOINT = 1024;
@@ -48,8 +47,6 @@ export default function Sidebar() {
   const [isOpen, setIsOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const { user, signOut } = useAuth();
-  const { theme, toggleTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     const mobile = isMobileDevice();
@@ -63,7 +60,6 @@ export default function Sidebar() {
       const stored = localStorage.getItem(SIDEBAR_OPEN_KEY);
       setIsOpen(stored === null ? true : stored === "true");
     }
-    setMounted(true);
   }, []);
 
   useEffect(() => {
@@ -213,15 +209,6 @@ export default function Sidebar() {
           </Link>
 
           <div className='flex gap-2 mt-1 mb-1'>
-            {mounted && (
-              <Button size="icon"
-                variant='secondary'
-                onClick={toggleTheme}
-                aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-              >
-                {theme === "dark" ? <Sun className='h-4 w-4' /> : <Moon className='h-4 w-4' />}
-              </Button>
-            )}
             {user ? (
               <Button size="icon" variant='secondary' onClick={signOut} aria-label='Sign out'>
                 <LogOut className='h-4 w-4' />

@@ -89,7 +89,7 @@ export default function ChordDiagram({
           <span
             className="absolute text-xs font-medium"
             title={`This chord shape starts at fret ${startFret} — slide your fretting hand up the neck to this position`}
-            style={{ left: `${diagramWidth + 2}px`, top: "24px", color: "color-mix(in srgb, var(--chord-ink) 50%, transparent)" }}
+            style={{ left: `${diagramWidth + 2}px`, top: "24px", color: "var(--ds-color-text-muted)" }}
           >
             {startFret}fr
           </span>

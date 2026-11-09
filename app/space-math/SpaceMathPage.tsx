@@ -372,7 +372,7 @@ const ShadeGrid = ({
 
 const StarBank = ({ score, onClear }: { score: number; onClear: () => void }) => (
   <div className='w-full p-3 pl-14 flex items-start sm:items-center gap-4 z-50 relative min-h-[60px]'>
-    <Button size='sm' variant='danger' onClick={onClear} className='shrink-0 uppercase'>
+    <Button size='sm' variant='danger' onClick={onClear} className='shrink-0 uppercase bg-surface-base'>
       Clear
     </Button>
     <div className='flex flex-wrap gap-2 flex-1 content-start'>

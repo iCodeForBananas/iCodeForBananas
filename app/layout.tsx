@@ -41,10 +41,9 @@ const roboto = Roboto({
 
 /**
  * The browser chrome sits on the same plane as the page, so this is
- * color.surface.base in each theme rather than the brand. Written as sRGB
- * because the meta tag is read before any stylesheet: these are exactly what
- * `oklch(0.19 0.009 80)` and `oklch(0.97 0.004 85)` resolve to, and
- * `npm run tokens:check` is what keeps those two values honest.
+ * color.surface.base in each theme rather than the brand: the Background
+ * color of the Light and Dark iTerm schemes. Written as sRGB because the meta
+ * tag is read before any stylesheet.
  */
 export const viewport: Viewport = {
   themeColor: [
@@ -94,10 +93,10 @@ export default function RootLayout({
             off [data-theme="light"], and globals.css points Tailwind's `dark:`
             variant at the same attribute. The server renders data-theme="dark"
             below, which is the token default; this corrects it to light before
-            the first paint when that is what the visitor wants. */}
+            the first paint when the operating system is set to light. */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('theme');var d=window.matchMedia('(prefers-color-scheme:dark)').matches;var dark=t==='dark'||(t===null&&d);var h=document.documentElement;h.setAttribute('data-theme',dark?'dark':'light');h.classList.toggle('dark',dark);h.classList.toggle('light',!dark)}catch(e){}})()`,
+            __html: `(function(){try{var dark=window.matchMedia('(prefers-color-scheme:dark)').matches;var h=document.documentElement;h.setAttribute('data-theme',dark?'dark':'light');h.classList.toggle('dark',dark);h.classList.toggle('light',!dark)}catch(e){}})()`,
           }}
         />
         {/* Chrome offers the install prompt once, early — often before React
@@ -135,14 +134,16 @@ export default function RootLayout({
                 </div>
               </div>
             </FavoriteChordsProvider>
+            {/* Inside Theme: a solid button's fill is Radix's accent color,
+                which is only defined under it. */}
+            <InstallPrompt />
+            <UpdateAvailable />
           </Theme>
         </ThemeProvider>
         <Analytics />
         <SpeedInsights />
         <PathnameTitleSync />
         <CopyPageHandler />
-        <InstallPrompt />
-        <UpdateAvailable />
       </body>
     </html>
   );

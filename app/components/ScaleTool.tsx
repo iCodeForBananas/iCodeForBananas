@@ -242,7 +242,7 @@ export default function ScaleTool({ rootKey, tuning }: { rootKey: string; tuning
                   title={`${key} shape — ${CAGED_BLURB[key]}`}
                   className="rounded-lg px-3 py-1 text-sm font-semibold cursor-pointer"
                   style={{
-                    background: active ? colour.fill : "var(--ds-color-surface-sunken)",
+                    background: active ? colour.fill : "var(--ds-color-surface-base)",
                     color: active ? "var(--ds-color-text-on-primary)" : colour.fill,
                     border: `1px solid ${active ? colour.fill : "var(--ds-color-border-subtle)"}`,
                   }}
@@ -453,7 +453,7 @@ export default function ScaleTool({ rootKey, tuning }: { rootKey: string; tuning
                   {/* The degree is the same label at lower emphasis, so it is
                       the same colour held back rather than a second one. */}
                   <span
-                    className="text-10 leading-tight opacity-60"
+                    className="text-10 leading-tight"
                     style={{ color: isRoot ? ROOT_TEXT : "var(--ds-color-text-on-primary)" }}
                   >
                     {degree}

@@ -6,8 +6,6 @@ type Theme = "light" | "dark";
 
 interface ThemeContextType {
   theme: Theme;
-  setTheme: (theme: Theme) => void;
-  toggleTheme: () => void;
   mounted: boolean;
 }
 
@@ -32,6 +30,9 @@ export const useTheme = () => {
  *
  * Both are written by the inline script in app/layout.tsx, which runs before
  * first paint.
+ *
+ * The operating system decides which theme is on. There is no override, so
+ * the app and the system can't disagree.
  */
 function applyTheme(t: Theme) {
   const html = document.documentElement;
@@ -43,35 +44,32 @@ function applyTheme(t: Theme) {
 
 export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
   // Matches the data-theme the server renders, so the first client render
-  // agrees with the markup; the effect below corrects it from storage.
+  // agrees with the markup; the effect below corrects it from the system.
   const [theme, setThemeState] = useState<Theme>("dark");
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    const stored = localStorage.getItem("theme") as Theme | null;
-    const systemDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    const initial: Theme = stored ?? (systemDark ? "dark" : "light");
-    setThemeState(initial);
-    applyTheme(initial);
+    const systemDark = window.matchMedia("(prefers-color-scheme: dark)");
+    // Tokens first, then state: charts re-read the tokens when `theme` changes.
+    const sync = () => {
+      const next: Theme = systemDark.matches ? "dark" : "light";
+      applyTheme(next);
+      setThemeState(next);
+    };
+    sync();
     setMounted(true);
-  }, []);
-
-  const setTheme = (t: Theme) => {
-    setThemeState(t);
-    applyTheme(t);
     try {
-      localStorage.setItem("theme", t);
+      // What the old sidebar toggle saved. Nothing reads it any more.
+      localStorage.removeItem("theme");
     } catch {
       // localStorage unavailable in some private-browsing environments
     }
-  };
-
-  const toggleTheme = () => {
-    setTheme(theme === "dark" ? "light" : "dark");
-  };
+    systemDark.addEventListener("change", sync);
+    return () => systemDark.removeEventListener("change", sync);
+  }, []);
 
   return (
-    <ThemeContext.Provider value={{ theme, setTheme, toggleTheme, mounted }}>
+    <ThemeContext.Provider value={{ theme, mounted }}>
       {children}
     </ThemeContext.Provider>
   );
