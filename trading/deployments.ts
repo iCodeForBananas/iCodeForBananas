@@ -75,6 +75,9 @@ export const DEPLOYMENTS: Deployment[] = [
     // The backtest warmed up on at least 400 bars: about 13 trading days of 30-minute bars.
     minBars: 400,
     historyDays: 21,
+    // Replaced by IBS AVGO 1h below: one account holds one net AVGO position.
+    // Kept deployed with its schedule off, to switch back easily.
+    enabled: false,
   },
   {
     strategyId: 'ibs-mean-reversion',
@@ -128,6 +131,19 @@ export const DEPLOYMENTS: Deployment[] = [
     // The backtest warmed up on at least 325 sessions: about 470 calendar days.
     minBars: 325,
     historyDays: 500,
+  },
+  {
+    strategyId: 'ibs-mean-reversion',
+    symbol: 'AVGO',
+    // Built from 15-minute timesales, aligned to the ET hour. Replaces IBS AVGO 30m above.
+    interval: '1h',
+    params: { entryIbs: 35, exitIbs: 75, trendFilter: false },
+    ...SHARED_RISK,
+    // The backtest warmed up on at least 375 bars (5x the longest parameter). AVGO
+    // trades actively in extended hours, so 36 calendar days of all-session data
+    // make roughly 25 trading days of up to 16 hourly bars.
+    minBars: 375,
+    historyDays: 36,
   },
 ];
 
