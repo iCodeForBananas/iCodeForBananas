@@ -40,6 +40,20 @@ export const DEPLOYMENTS: Deployment[] = [
     // The backtest warmed up on at least 375 bars; 14 days covers thin extended-hours sessions.
     minBars: 375,
     historyDays: 14,
+    // Replaced by IBS TXN 1d below: one account holds one net TXN position.
+    // Kept deployed with its schedule off, to switch back easily.
+    enabled: false,
+  },
+  {
+    strategyId: 'ibs-mean-reversion',
+    symbol: 'TXN',
+    // Daily bars from /markets/history; runs at 16:30 ET, orders fill at the next open.
+    interval: '1d',
+    params: { entryIbs: 10, exitIbs: 80, trendFilter: false },
+    ...SHARED_RISK,
+    // The backtest warmed up on at least 400 sessions: about 580 calendar days.
+    minBars: 400,
+    historyDays: 600,
   },
   {
     strategyId: 'ibs-mean-reversion',
