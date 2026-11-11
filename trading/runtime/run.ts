@@ -78,7 +78,7 @@ export interface DeploymentState {
   pendingOrder: PendingOrder | null;
   lastProcessedBarTime: number | null;
   tradingDay: string | null;
-  /** The deployment's equity at its first run: account equity x allocationPct. */
+  /** The deployment's starting equity (its startingEquity; see rebase). */
   allocationBase: number | null;
   realizedPnlTotal: number;
   realizedPnlToday: number;
@@ -135,6 +135,30 @@ export function freshState(d: ResolvedDeployment): DeploymentState {
     tradesClosed: 0,
     winningTrades: 0,
   };
+}
+
+/**
+ * Puts the deployment on its startingEquity. A fresh deployment just starts
+ * there. One that started on another base (deployments used to take a share of
+ * the shared account) keeps its percent return: realized P&L, the day's start
+ * and the drawdown peak are all scaled by startingEquity / old base. An open
+ * position keeps its share count; the next entry is sized on the new equity.
+ */
+export function rebase(state: DeploymentState, startingEquity: number, notes: string[]): void {
+  const old = state.allocationBase;
+  if (old === startingEquity) return;
+  state.allocationBase = startingEquity;
+  if (old == null || !(old > 0)) {
+    notes.push(`first run: starting equity ${startingEquity}`);
+    return;
+  }
+  const k = startingEquity / old;
+  state.realizedPnlTotal *= k;
+  state.realizedPnlToday *= k;
+  if (state.dayStartEquity != null) state.dayStartEquity *= k;
+  if (state.peakEquity != null) state.peakEquity *= k;
+  if (state.position) state.position = { ...state.position, realizedPnl: (state.position.realizedPnl ?? 0) * k };
+  notes.push(`starting equity rebased from ${old.toFixed(2)} to ${startingEquity}: realized P&L, day start and peak scaled by ${k.toFixed(6)}`);
 }
 
 interface Counters {
@@ -308,7 +332,6 @@ export async function runDeployment(d: ResolvedDeployment, event: RunEvent | und
       if (invokedAt - availableAt > (daily ? DAILY_MAX_LATENESS_MS : MAX_LATENESS_MS)) return skip(`invoked ${Math.round((invokedAt - availableAt) / 1000)}s after the bar became available; too late to act on it`, true);
     }
     if (bars.length < d.minBars) return skip(`only ${bars.length} completed bars; need ${d.minBars} for warm indicators`);
-    if (!(accountEquity > 0)) return skip(`balances returned no usable total_equity (${balances?.total_equity})`);
 
     const duplicate = state.lastProcessedBarTime != null && newest.time <= state.lastProcessedBarTime;
     if (duplicate && !dryRun) return skip(`bar ${log.bar && (log.bar as { time: string }).time} already processed`);
@@ -325,10 +348,7 @@ export async function runDeployment(d: ResolvedDeployment, event: RunEvent | und
     let blockTrading: string | null = null;
     const nowMs = now();
 
-    if (state.allocationBase == null) {
-      state.allocationBase = accountEquity * (d.allocationPct / 100);
-      notes.push(`first run: allocation ${d.allocationPct}% of ${accountEquity} = ${state.allocationBase.toFixed(2)}`);
-    }
+    rebase(state, d.startingEquity, notes);
 
     const unrealizedAt = (price: number) => (state.position ? (price - state.position.entryPrice) * state.position.shares * (state.position.side === 'long' ? 1 : -1) : 0);
 
@@ -337,7 +357,7 @@ export async function runDeployment(d: ResolvedDeployment, event: RunEvent | und
     if (state.tradingDay !== today || state.dayStartEquity == null) {
       state.tradingDay = today;
       state.realizedPnlToday = 0;
-      state.dayStartEquity = state.allocationBase + state.realizedPnlTotal + unrealizedAt(current.close);
+      state.dayStartEquity = d.startingEquity + state.realizedPnlTotal + unrealizedAt(current.close);
       notes.push(`new trading day ${today}, starting equity ${state.dayStartEquity.toFixed(2)}`);
     }
 
@@ -386,7 +406,7 @@ export async function runDeployment(d: ResolvedDeployment, event: RunEvent | und
     }
 
     // --- The deployment's own equity, marked to this bar's close.
-    const realizedEquity = state.allocationBase + state.realizedPnlTotal;
+    const realizedEquity = d.startingEquity + state.realizedPnlTotal;
     const equity = realizedEquity + unrealizedAt(current.close);
 
     const positionSide = state.position ? state.position.side : null;
@@ -484,7 +504,7 @@ export async function runDeployment(d: ResolvedDeployment, event: RunEvent | und
 
     // Metrics after fills, marked to the bar's close.
     const unrealized = unrealizedAt(current.close);
-    const strategyEquity = state.allocationBase + state.realizedPnlTotal + unrealized;
+    const strategyEquity = d.startingEquity + state.realizedPnlTotal + unrealized;
     metrics.StrategyEquity = strategyEquity;
     metrics.RealizedPnlTotal = state.realizedPnlTotal;
     metrics.RealizedPnlToday = state.realizedPnlToday;

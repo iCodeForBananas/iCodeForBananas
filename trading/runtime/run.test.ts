@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { AVAILABLE_STRATEGIES } from '@/app/strategies';
 import { DATA_DELAY_MS, resolveDeployment, type ResolvedDeployment } from './config';
 import type { EquityReporter, EquitySnapshot } from './equity-report';
-import { expectedBarClose, runDeployment, type DeploymentState, type RunDeps, type RunEvent } from './run';
+import { expectedBarClose, rebase, runDeployment, type DeploymentState, type RunDeps, type RunEvent } from './run';
 import { etParts, etWallToUtcMs } from './time';
 import type { HistoryRow, TradierApi, TradierOrder, TradierPosition, TimesalesRow } from './tradier';
 
@@ -19,7 +19,7 @@ const DEPLOYMENT = resolveDeployment({
   interval: '15min',
   params: { entryIbs: 20, exitIbs: 50, trendFilter: false },
   enableShorts: true,
-  allocationPct: 100,
+  startingEquity: 100_000,
 });
 
 const etIso = (ms: number) => {
@@ -112,7 +112,7 @@ const metricNames = (line: Record<string, unknown>) =>
   ((line._aws as { CloudWatchMetrics: { Metrics: { Name: string }[] }[] } | undefined)?.CloudWatchMetrics[0].Metrics ?? []).map((m) => m.Name);
 
 describe('runDeployment', () => {
-  it('enters long on a low IBS close, sized to the allocation, and records the fill', async () => {
+  it('enters long on a low IBS close, sized to its starting equity, and records the fill', async () => {
     const h = harness({ rows: makeRows({ lastIbs: 0.1 }) });
     const r = await h.run();
     expect(r.action).toBe('entry long');
@@ -280,13 +280,14 @@ describe('runDeployment', () => {
   });
 
   it('trips the drawdown limit: closes the position and pauses entries', async () => {
-    // Allocation 10,000, 100 shares bought at 125, close ~99.8: equity ~7,480, under the 75% floor.
+    // Starting equity 10,000, 100 shares bought at 125, close ~99.8: equity ~7,480, under the 75% floor.
+    const D10K = { ...DEPLOYMENT, startingEquity: 10_000 };
     const h = harness({
       rows: makeRows({ lastIbs: 0.4 }),
       positions: [{ symbol: 'QQQ', quantity: 100, cost_basis: 12_500 }],
       state: { allocationBase: 10_000, peakEquity: 10_000, position: { side: 'long', shares: 100, entryPrice: 125, entryTime: 0, exitOrderId: null, realizedPnl: 0 } },
     });
-    await h.run();
+    await h.run(undefined, D10K);
     expect(h.placed).toEqual([expect.objectContaining({ side: 'sell', quantity: 100 })]);
     const s = h.saved[0].state;
     expect(s.drawdownTripBarTime).toBe(lastBarTime);
@@ -298,7 +299,7 @@ describe('runDeployment', () => {
       startAt: AVAILABLE + BAR + 6_000,
       state: s,
     });
-    await next.run();
+    await next.run(undefined, D10K);
     expect(next.placed).toHaveLength(0);
     expect(next.log().why).toMatch(/drawdown pause, 1\/20 bars/);
   });
@@ -311,6 +312,35 @@ describe('runDeployment', () => {
     await h.run();
     expect(h.placed).toHaveLength(0);
     expect(h.log().why).toMatch(/daily loss -2500.00 reached 2%/);
+  });
+
+  it('trades its own starting equity whatever the account holds', async () => {
+    const h = harness({ rows: makeRows({ lastIbs: 0.1 }), equity: 250_000 });
+    await h.run(undefined, { ...DEPLOYMENT, startingEquity: 10_000 });
+    const close = 99 + 0.1 * 2;
+    expect(h.placed[0]).toMatchObject({ side: 'buy', quantity: Math.floor(10_000 / close) });
+    expect(h.saved[0].state.allocationBase).toBe(10_000);
+    expect(h.log().StrategyEquity).toBeCloseTo(10_000, 0);
+  });
+
+  it('rebases a deployment that started on a share of the account, keeping its percent return', () => {
+    const notes: string[] = [];
+    const state = {
+      allocationBase: 24_000, realizedPnlTotal: 480, realizedPnlToday: -240, dayStartEquity: 24_240, peakEquity: 25_200,
+      position: { side: 'long', shares: 10, entryPrice: 100, entryTime: 0, exitOrderId: null, realizedPnl: 24 },
+    } as DeploymentState;
+    rebase(state, 10_000, notes);
+    expect(state.allocationBase).toBe(10_000);
+    expect(state.realizedPnlTotal).toBeCloseTo(200);
+    expect(state.realizedPnlToday).toBeCloseTo(-100);
+    expect(state.dayStartEquity).toBeCloseTo(10_100);
+    expect(state.peakEquity).toBeCloseTo(10_500);
+    expect(state.position).toMatchObject({ shares: 10, realizedPnl: 10 });
+    expect(notes[0]).toMatch(/rebased from 24000.00 to 10000/);
+    // Already on it: nothing changes.
+    rebase(state, 10_000, notes);
+    expect(state.realizedPnlTotal).toBeCloseTo(200);
+    expect(notes).toHaveLength(1);
   });
 
   it('logs an error line with Errors=1 and rethrows when Tradier fails', async () => {
@@ -401,7 +431,7 @@ describe('evaluateLatest', () => {
 });
 
 describe('30-minute deployments', () => {
-  const D30 = resolveDeployment({ strategyId: 'ibs-mean-reversion', symbol: 'AVGO', interval: '30min', params: { entryIbs: 40, exitIbs: 80 }, enableShorts: true, allocationPct: 24, minBars: 100 });
+  const D30 = resolveDeployment({ strategyId: 'ibs-mean-reversion', symbol: 'AVGO', interval: '30min', params: { entryIbs: 40, exitIbs: 80 }, enableShorts: true, startingEquity: 100_000, minBars: 100 });
 
   it('fetch 15-minute timesales and trade the aggregated 30-minute bar', async () => {
     // 15-minute rows ending at 10:00 ET; the last 30-minute bar (09:30-10:00) closes near its low.
@@ -425,7 +455,7 @@ describe('30-minute deployments', () => {
 });
 
 describe('daily deployments', () => {
-  const DD = resolveDeployment({ strategyId: 'ibs-mean-reversion', symbol: 'META', interval: '1d', params: { entryIbs: 35, exitIbs: 65 }, allocationPct: 12, minBars: 300, historyDays: 500 });
+  const DD = resolveDeployment({ strategyId: 'ibs-mean-reversion', symbol: 'META', interval: '1d', params: { entryIbs: 35, exitIbs: 65 }, startingEquity: 100_000, minBars: 300, historyDays: 500 });
   const pad = (n: number) => String(n).padStart(2, '0');
   /** Weekday sessions ending on `last` (YYYY, M, D), the last one closing near its low. */
   function days(count: number, last: [number, number, number], lastIbs: number): HistoryRow[] {

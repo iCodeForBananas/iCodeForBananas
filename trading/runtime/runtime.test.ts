@@ -8,7 +8,7 @@ import { etDate, etWallToUtcMs, isRegularSessionClose, parseEtTimestamp } from '
 import { createTradierClient } from './tradier';
 import { DEPLOYMENTS } from '../deployments';
 
-const base: Deployment = { id: 'a', strategyId: 'ibs-mean-reversion', symbol: 'QQQ', interval: '15min', allocationPct: 50 };
+const base: Deployment = { id: 'a', strategyId: 'ibs-mean-reversion', symbol: 'QQQ', interval: '15min' };
 
 describe('validateDeployments', () => {
   it('accepts the checked-in deployments', () => {
@@ -29,19 +29,25 @@ describe('validateDeployments', () => {
     expect(errors.join('\n')).toMatch(/"entryIbs" must be a number/);
   });
 
-  it('rejects duplicate ids, two enabled deployments on a symbol, and over-allocation', () => {
-    const errors = validateDeployments([base, { ...base }, { ...base, id: 'c', allocationPct: 60 }]).join('\n');
+  it('rejects duplicate ids, two enabled deployments on a symbol, and a starting equity <= 0', () => {
+    const errors = validateDeployments([base, { ...base }, { ...base, id: 'c', symbol: 'SPY', startingEquity: 0 }]).join('\n');
     expect(errors).toMatch(/duplicate id/);
     expect(errors).toMatch(/QQQ is already traded/);
-    expect(errors).toMatch(/allocate 160%/);
+    expect(errors).toMatch(/startingEquity must be > 0/);
   });
 
-  it('lets a disabled deployment share a symbol and stay out of the allocation total', () => {
-    expect(validateDeployments([base, { ...base, id: 'b', allocationPct: 90, enabled: false }])).toEqual([]);
+  it('gives every deployment its own $10,000 by default, however many there are', () => {
+    expect(resolveDeployment(base).startingEquity).toBe(10_000);
+    const many = ['QQQ', 'SPY', 'IWM', 'DIA', 'TLT', 'GLD', 'XLF', 'XLE', 'XLK', 'XLV', 'XLY'].map((symbol, i) => ({ ...base, id: `d${i}`, symbol }));
+    expect(validateDeployments(many)).toEqual([]);
+  });
+
+  it('lets a disabled deployment share a symbol', () => {
+    expect(validateDeployments([base, { ...base, id: 'b', enabled: false }])).toEqual([]);
   });
 
   it('builds the id, and so the Lambda name, from the settings', () => {
-    const d = { strategyId: 'ibs-mean-reversion', symbol: 'QQQ', interval: '15min', params: { entryIbs: 20, exitIbs: 50, trendFilter: false }, enableShorts: true, allocationPct: 50 } as const;
+    const d = { strategyId: 'ibs-mean-reversion', symbol: 'QQQ', interval: '15min', params: { entryIbs: 20, exitIbs: 50, trendFilter: false }, enableShorts: true } as const;
     expect(deploymentId(d)).toBe('ibs-mean-reversion-qqq-15m-20-50-n-ls');
     expect(deploymentId({ ...d, enableShorts: false, params: { exitIbs: 92.5 } })).toBe('ibs-mean-reversion-qqq-15m-20-92p5-n-l');
     expect(resolveDeployment(d).id).toBe('ibs-mean-reversion-qqq-15m-20-50-n-ls');

@@ -46,8 +46,13 @@ export interface Deployment {
   /** false: the Lambda exists but its schedule is disabled. */
   enabled?: boolean;
   enableShorts?: boolean;
-  /** Share of the account's equity this deployment trades with, when it first runs. Enabled deployments must sum to <= 100. */
-  allocationPct: number;
+  /**
+   * Dollars this deployment trades with, as if it had its own account: its
+   * equity is this + its realized P&L + its open P&L, and nothing else in the
+   * shared Tradier account counts. Every deployment gets the same amount so
+   * their results compare directly.
+   */
+  startingEquity?: number;
   /** Percent of the deployment's equity put into each position. */
   positionSizePct?: number;
   maxDailyLossPct?: number;
@@ -68,6 +73,7 @@ export const DEFAULTS = {
   enabled: true,
   // Every strategy trades both sides unless an entry says otherwise.
   enableShorts: true,
+  startingEquity: 10_000,
   positionSizePct: 100,
   maxDailyLossPct: 2,
   drawdownLimitPct: 25,
@@ -126,7 +132,6 @@ export function validateDeployments(list: Deployment[]): string[] {
   const errors: string[] = [];
   const ids = new Set<string>();
   const liveSymbols = new Map<string, string>();
-  let allocation = 0;
 
   for (const d of list) {
     const id = d.id ?? deploymentId(d);
@@ -156,7 +161,7 @@ export function validateDeployments(list: Deployment[]): string[] {
     const pct = (name: string, v: number, max = 100) => {
       if (!(typeof v === 'number' && v > 0 && v <= max)) errors.push(`${at}: ${name} must be > 0 and <= ${max}`);
     };
-    pct('allocationPct', r.allocationPct);
+    if (!(typeof r.startingEquity === 'number' && r.startingEquity > 0)) errors.push(`${at}: startingEquity must be > 0`);
     pct('positionSizePct', r.positionSizePct);
     pct('maxDailyLossPct', r.maxDailyLossPct);
     pct('drawdownLimitPct', r.drawdownLimitPct);
@@ -167,7 +172,6 @@ export function validateDeployments(list: Deployment[]): string[] {
     if (!(Number.isInteger(r.historyDays) && r.historyDays >= 1 && r.historyDays <= maxDays)) errors.push(`${at}: historyDays must be a whole number from 1 to ${maxDays}`);
 
     if (r.enabled) {
-      allocation += r.allocationPct;
       // One Tradier account holds one net position per symbol, so two live
       // deployments on a symbol would each see the other's shares as theirs.
       const other = liveSymbols.get(d.symbol);
@@ -175,6 +179,5 @@ export function validateDeployments(list: Deployment[]): string[] {
       else liveSymbols.set(d.symbol, id);
     }
   }
-  if (allocation > 100 + 1e-9) errors.push(`enabled deployments allocate ${allocation}% of the account; the total must be <= 100`);
   return errors;
 }

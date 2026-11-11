@@ -14,14 +14,15 @@
 // with a list of problems if an entry is invalid (unknown strategy or
 // parameter, two enabled entries on one symbol, allocations over 100%, ...).
 //
-// Every deployment trades long and short (enableShorts defaults to true).
+// Every deployment trades long and short (enableShorts defaults to true), and
+// each one trades its own $10,000 (startingEquity): its equity is that plus its
+// own P&L, never the shared account's balance, so results compare directly.
 // See runtime/config.ts for every field and its default.
 
 import type { Deployment } from './runtime/config';
 
-// Each backtest sized at 100% of the account. They share one sandbox account,
-// so each of the eight enabled ones gets 12%, leaving 4% as cash.
-const SHARED_RISK = { allocationPct: 12, maxDailyLossPct: 2, drawdownLimitPct: 25, drawdownPauseBars: 20 } as const;
+// Each backtest sized at 100% of its own $10,000; so does each deployment.
+const SHARED_RISK = { startingEquity: 10_000, maxDailyLossPct: 2, drawdownLimitPct: 25, drawdownPauseBars: 20 } as const;
 
 export const DEPLOYMENTS: Deployment[] = [
   {
@@ -144,6 +145,19 @@ export const DEPLOYMENTS: Deployment[] = [
     // make roughly 25 trading days of up to 16 hourly bars.
     minBars: 375,
     historyDays: 36,
+  },
+  {
+    strategyId: 'ema-price-cross',
+    symbol: 'MU',
+    // Built from 15-minute timesales, aligned to the ET :00 and :30.
+    interval: '30min',
+    params: { emaPeriod: 63 },
+    ...SHARED_RISK,
+    // The backtest warmed up on at least 315 bars (5x the EMA period). MU trades
+    // actively in extended hours, so 17 calendar days of all-session data make
+    // about 12 trading days of up to 32 half-hour bars.
+    minBars: 315,
+    historyDays: 17,
   },
 ];
 

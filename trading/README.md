@@ -25,7 +25,7 @@ changes with it.
      symbol: 'SPY',
      interval: '5min',           // 1min | 5min | 15min | 30min (30min is aggregated from 15min)
      params: { oversold: 10 },   // on top of the strategy's defaults
-     allocationPct: 30,          // enabled deployments must sum to <= 100
+     // startingEquity: 10_000   // the default: its own $10,000, not a share of the account
    }
    ```
 
@@ -35,8 +35,8 @@ changes with it.
    characters end in a hash). Every field and default is in
    [`runtime/config.ts`](runtime/config.ts).
    Synth refuses an unknown strategy or parameter, two **enabled** deployments
-   on one symbol (one account holds one net position per symbol), or
-   allocations over 100%.
+   on one symbol (one account holds one net position per symbol), or a
+   `startingEquity` that isn't positive.
 2. Deploy and check it:
 
    ```
@@ -76,9 +76,17 @@ deployments run at 16:30 ET.
    09:30-16:00 ET. An order POST is never retried.
 5. One conditional state write, and one JSON log line with metrics.
 
-**Deployment equity** = its allocation of the account at its first run + its
-realized P&L + open P&L at the bar's close. Sizing, the daily loss limit and the
-drawdown limit all use it, so strategies don't eat each other's risk budget.
+**Deployment equity** = its `startingEquity` ($10,000 for every deployment) +
+its realized P&L + open P&L at the bar's close. The Tradier account's balance
+never enters into it: each deployment trades as if it had its own $10,000
+account, so they compare directly. Sizing, the daily loss limit and the
+drawdown limit all use it. The sandbox account only has to be big enough to
+carry every deployment's position at once.
+
+Deployments used to start on a share of the account (`allocationPct`). On its
+next run, one that did is rebased to its `startingEquity`: realized P&L, the
+day's start and the drawdown peak are scaled by the same factor, so its percent
+return carries over. An open position keeps its share count until it closes.
 
 ## Live stats: the dashboard
 

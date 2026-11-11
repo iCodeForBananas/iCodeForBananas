@@ -45,7 +45,7 @@ export function buildDashboard(scope: Construct, deployed: DeployedStrategy[]): 
   const list = deployed.map(({ deployment: d }) => `\`${d.id}\` ${d.strategyId} on ${d.symbol} ${d.interval}${d.enabled ? '' : ' (disabled)'}`).join(' · ');
   dashboard.addWidgets(
     new cloudwatch.TextWidget({
-      markdown: `# Tradier sandbox paper trading\n${list || 'No deployments.'}\n\nStrategy equity = the deployment's allocation + its realized P&L + open P&L at the last bar's close. Dry runs never publish metrics.`,
+      markdown: `# Tradier sandbox paper trading\n${list || 'No deployments.'}\n\nStrategy equity = the deployment's own starting equity + its realized P&L + open P&L at the last bar's close. Dry runs never publish metrics.`,
       width: WIDTH,
       height: 3,
     }),
@@ -89,7 +89,7 @@ export function buildDashboard(scope: Construct, deployed: DeployedStrategy[]): 
   for (const { deployment: d, fn, logGroup } of deployed) {
     dashboard.addWidgets(
       new cloudwatch.TextWidget({
-        markdown: `## ${d.id}\n${d.strategyId} on **${d.symbol}** ${d.interval} · params \`${JSON.stringify(d.params)}\` · ${d.allocationPct}% allocation · shorts ${d.enableShorts ? 'on' : 'off'} · max daily loss ${d.maxDailyLossPct}% · drawdown limit ${d.drawdownLimitPct}% / ${d.drawdownPauseBars} bars`,
+        markdown: `## ${d.id}\n${d.strategyId} on **${d.symbol}** ${d.interval} · params \`${JSON.stringify(d.params)}\` · starts at $${d.startingEquity.toLocaleString('en-US')} · shorts ${d.enableShorts ? 'on' : 'off'} · max daily loss ${d.maxDailyLossPct}% · drawdown limit ${d.drawdownLimitPct}% / ${d.drawdownPauseBars} bars`,
         width: WIDTH,
         height: 2,
       }),
