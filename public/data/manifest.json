@@ -890,6 +890,62 @@
    "label": "QQQ 5M"
   },
   {
+   "file": "SOFI-15m-2026-11-10.csv",
+   "symbol": "SOFI",
+   "timeframe": "15m",
+   "date": "2026-11-10",
+   "label": "SOFI 15M"
+  },
+  {
+   "file": "SOFI-1d-2026-11-10.csv",
+   "symbol": "SOFI",
+   "timeframe": "1d",
+   "date": "2026-11-10",
+   "label": "SOFI 1D"
+  },
+  {
+   "file": "SOFI-1h-2026-11-10.csv",
+   "symbol": "SOFI",
+   "timeframe": "1h",
+   "date": "2026-11-10",
+   "label": "SOFI 1H"
+  },
+  {
+   "file": "SOFI-1m-2026-11-10.csv",
+   "symbol": "SOFI",
+   "timeframe": "1m",
+   "date": "2026-11-10",
+   "label": "SOFI 1M"
+  },
+  {
+   "file": "SOFI-1wk-2026-11-10.csv",
+   "symbol": "SOFI",
+   "timeframe": "1wk",
+   "date": "2026-11-10",
+   "label": "SOFI 1WK"
+  },
+  {
+   "file": "SOFI-2m-2026-11-10.csv",
+   "symbol": "SOFI",
+   "timeframe": "2m",
+   "date": "2026-11-10",
+   "label": "SOFI 2M"
+  },
+  {
+   "file": "SOFI-30m-2026-11-10.csv",
+   "symbol": "SOFI",
+   "timeframe": "30m",
+   "date": "2026-11-10",
+   "label": "SOFI 30M"
+  },
+  {
+   "file": "SOFI-5m-2026-11-10.csv",
+   "symbol": "SOFI",
+   "timeframe": "5m",
+   "date": "2026-11-10",
+   "label": "SOFI 5M"
+  },
+  {
    "file": "SPY-15m-2026-11-10.csv",
    "symbol": "SPY",
    "timeframe": "15m",
