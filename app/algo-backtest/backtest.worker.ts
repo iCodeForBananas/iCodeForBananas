@@ -96,6 +96,11 @@ export type BacktestWorkerMessage =
       runId: string;
       total: number;
       failedDatasets: string[];
+      /**
+       * The server stopped answering partway (or never did), so the run
+       * stopped there; every dataset from that point on is in failedDatasets.
+       */
+      unreachable: boolean;
       /** How many variations came from the result cache instead of running. */
       cache: { hits: number; total: number; enabled: boolean };
     }
@@ -183,6 +188,33 @@ const codeVersion: Promise<string | null> = (async () => {
 })();
 
 /**
+ * fetch() rejected instead of returning a response: nothing answered at all.
+ * The dev server is stopped or restarting, or the connection dropped — not a
+ * problem with the file, so the run stops rather than failing every dataset
+ * after it one by one.
+ */
+class ServerUnreachableError extends Error {
+  constructor() {
+    super("couldn't reach the server");
+  }
+}
+
+/** Waits between attempts when a fetch gets no response. */
+const FETCH_RETRY_DELAYS_MS = [500, 1500, 3000];
+
+/** fetch(), retried a few times when nothing answers: a dev server reloading takes a moment. */
+async function fetchWithRetry(url: URL): Promise<Response> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await fetch(url);
+    } catch {
+      if (attempt >= FETCH_RETRY_DELAYS_MS.length) throw new ServerUnreachableError();
+      await new Promise((resolve) => setTimeout(resolve, FETCH_RETRY_DELAYS_MS[attempt]));
+    }
+  }
+}
+
+/**
  * A dataset's bars, plus a hash of the file's bytes: its version, for the
  * result cache. Null hash if hashing isn't available, which skips the cache
  * for that dataset.
@@ -191,7 +223,7 @@ async function fetchCsv(file: string): Promise<{ data: PricePoint[]; hash: strin
   // Workers don't have a document base, so relative URLs throw — resolve
   // against the worker's own origin (same-origin as the page that spawned it).
   const url = new URL(`/data/${encodeURIComponent(file)}`, self.location.origin);
-  const res = await fetch(url);
+  const res = await fetchWithRetry(url);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   // Hash the bytes as they arrived, rather than re-encoding the decoded text:
   // one copy of the file in memory instead of two.
@@ -322,6 +354,7 @@ async function runJob(job: BacktestJob): Promise<void> {
   await writeMeta({ runId, createdAt, total: 0, groups: [] });
 
   const failedDatasets: string[] = [];
+  let unreachable = false;
   const groups = new Map<string, RunGroup>();
   const top = new TopResults(TOP_RESULTS_WITH_FULL_DATA);
   let seq = 0;
@@ -361,6 +394,12 @@ async function runJob(job: BacktestJob): Promise<void> {
     try {
       ({ data: rawData, hash: dataHash } = await fetchCsv(datasetFile));
     } catch (err) {
+      if (err instanceof ServerUnreachableError) {
+        unreachable = true;
+        for (const file of selectedFiles.slice(datasetIndex)) failedDatasets.push(`${file}: ${err.message}`);
+        completed += variationsPerDataset * (selectedFiles.length - datasetIndex);
+        break;
+      }
       failedDatasets.push(`${datasetFile}: ${err instanceof Error ? err.message : "fetch error"}`);
       completed += variationsPerDataset;
       continue;
@@ -445,6 +484,7 @@ async function runJob(job: BacktestJob): Promise<void> {
     runId,
     total: seq,
     failedDatasets,
+    unreachable,
     cache: { hits: cacheHits, total: completed, enabled: version !== null },
   });
 }

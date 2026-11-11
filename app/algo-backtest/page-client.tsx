@@ -538,7 +538,7 @@ export default function AlgoBacktestPage() {
       const runId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
       const discardRunId = lastRunIdRef.current;
       lastRunIdRef.current = runId;
-      const { failedDatasets, cache } = await runBacktestWorker(selectedFiles, perStrategyRuns, runId, discardRunId);
+      const { failedDatasets, unreachable, cache } = await runBacktestWorker(selectedFiles, perStrategyRuns, runId, discardRunId);
       setLastRunCache(cache);
       refreshCachedCount();
 
@@ -551,7 +551,15 @@ export default function AlgoBacktestPage() {
       setActiveRow(rows[0] ?? null);
       playDing();
 
-      if (failedDatasets.length > 0) {
+      if (unreachable) {
+        // One cause, not a list of identical per-file errors.
+        const loaded = selectedFiles.length - failedDatasets.length;
+        setError(
+          `Couldn't reach the server, so ${failedDatasets.length} of ${selectedFiles.length} dataset(s) didn't load` +
+            `${loaded > 0 ? ` (results below cover the other ${loaded})` : ""}. ` +
+            "Check that the dev server is running, or your connection, and run again.",
+        );
+      } else if (failedDatasets.length > 0) {
         setError(`Failed to load ${failedDatasets.length} dataset(s): ${failedDatasets.join("; ")}`);
       }
     } catch (err) {

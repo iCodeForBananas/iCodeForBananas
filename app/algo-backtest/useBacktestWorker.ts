@@ -12,6 +12,8 @@ export interface BacktestJobResult {
   runId: string;
   total: number;
   failedDatasets: string[];
+  /** The run stopped because the server couldn't be reached; see backtest.worker.ts. */
+  unreachable: boolean;
   /** How many variations came from the result cache instead of running. */
   cache: { hits: number; total: number; enabled: boolean };
 }
@@ -99,6 +101,7 @@ export function useBacktestWorker() {
           runId: msg.runId,
           total: msg.total,
           failedDatasets: msg.failedDatasets,
+          unreachable: msg.unreachable,
           cache: msg.cache,
         });
         return;

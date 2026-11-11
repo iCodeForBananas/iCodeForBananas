@@ -19,7 +19,7 @@
 // Bump CACHE whenever this strategy changes, or after a deploy you want
 // offline users to pick up right away — activate() drops every other cache,
 // same as the plain offline-page version this replaced.
-const CACHE = "icfb-shell-v2";
+const CACHE = "icfb-shell-v3";
 const OFFLINE_URL = "/offline.html";
 
 self.addEventListener("install", (event) => {
@@ -86,6 +86,12 @@ self.addEventListener("fetch", (event) => {
 
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
+
+  // Local development: never serve from cache. `next dev` keeps a chunk's URL
+  // across edits, so cache-first would keep handing back the code from before
+  // them. (InstallPrompt doesn't register this worker in development at all;
+  // this covers one an earlier visit already installed.)
+  if (url.hostname === "localhost" || url.hostname === "127.0.0.1") return;
 
   if (url.pathname.startsWith("/_next/static/")) {
     event.respondWith(cacheFirst(request));

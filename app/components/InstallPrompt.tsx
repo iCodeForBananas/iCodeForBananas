@@ -55,6 +55,20 @@ export default function InstallPrompt() {
 
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
+    if (process.env.NODE_ENV !== "production") {
+      // `next dev` keeps a chunk's URL across edits, so sw.js's cache-first
+      // rule for /_next/static would keep serving the code from before them.
+      // Run without a service worker here, and drop any an earlier visit left.
+      navigator.serviceWorker
+        .getRegistrations()
+        .then((registrations) => registrations.forEach((registration) => registration.unregister()))
+        .catch(() => {});
+      caches
+        .keys()
+        .then((keys) => keys.forEach((key) => caches.delete(key)))
+        .catch(() => {});
+      return;
+    }
     const register = () => {
       navigator.serviceWorker.register("/sw.js").catch(() => {
         // No service worker means no install offer, which is the status quo.
