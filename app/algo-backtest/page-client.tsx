@@ -703,12 +703,13 @@ export default function AlgoBacktestPage() {
     return () => { cancelled = true; };
   }, [activeResultStrategyId, hasResults]);
 
-  // Generate a copy-pasteable prompt that has Claude write a single-file AWS
-  // Lambda (pasted into the console's code editor) that paper-trades the
-  // active result's strategy through Tradier's sandbox API. Every rule below
-  // mirrors what runBacktestWithParams in backtest-engine.ts actually does, so
-  // the live version trades the way the backtest did. If the engine changes,
-  // change this with it.
+  // Generate a copy-pasteable prompt that has Claude add the active result's
+  // strategy to the live paper-trading CDK stack in trading/ (one entry in
+  // trading/deployments.ts), deploy it and check it. The stack runs the same
+  // strategy handler and indicators the backtester does, so the prompt only
+  // has to carry the settings, the source, and whatever the backtest used that
+  // the live runtime can't reproduce. If the runtime (trading/runtime) gains
+  // or loses a feature, change the gaps below with it.
   const generateLambdaPrompt = useCallback(() => {
     const result = activeResult;
     if (!result) return '';
@@ -731,233 +732,137 @@ export default function AlgoBacktestPage() {
     // A switched-off stop or target is no stop or target, whatever its percent.
     const sl = !sz.useStopLoss ? 0 : risk.stopLossPercent;
     const tp = !sz.useTakeProfit ? 0 : risk.takeProfitPercent;
+    const atrStop = sz.useStopLoss && sz.atrStopMultiple > 0;
     const shorts = isActiveEditorStrategy ? enableShorts : (savedForResult?.enableShorts ?? false);
     const posSize = isActiveEditorStrategy ? positionSizePercent : (savedForResult?.positionSizePercent ?? 100);
     const commission = isActiveEditorStrategy ? commissionBps : (savedForResult?.commissionBps ?? 0);
     const slippage = isActiveEditorStrategy ? slippageBps : (savedForResult?.slippageBps ?? 0);
-    const atrStop = sz.useStopLoss && sz.atrStopMultiple > 0;
-    const hasStop = atrStop || sl > 0;
     const cap = positionCapPercent(sz);
-    const stopDistanceText = atrStop
-      ? `${sz.atrStopMultiple} × the signal bar's \`atr\`${sl > 0 ? ` (fill × ${sl / 100} while \`atr\` is still undefined)` : ' (no trade while `atr` is still undefined)'}`
-      : `fill × ${sl / 100}`;
+    const fixedPct = sz.useStopLoss ? Math.min(posSize, cap) : stopOffPositionPercent(sz, posSize);
 
     const resolvedParams = (strat.parameters ?? []).map((param) => ({
       param,
       value: result.params[param.key] ?? currentParams[param.key] ?? param.default,
     }));
-    // The engine, not the handler, applies this key to any strategy carrying it.
     const trailingStopEmaPeriod =
       Number(resolvedParams.find((p) => p.param.key === 'trailingStopEmaPeriod')?.value ?? 0) || 0;
     const longestPeriod = Math.max(
       26,
       ...resolvedParams.map(({ value }) => (typeof value === 'number' ? value : 0)),
     );
-    const historyBars = Math.max(250, longestPeriod * 5);
+    const minBars = Math.max(250, longestPeriod * 5);
 
     const dataset = availableDatasets.find((d) => d.file === result.dataset);
-    const symbol = dataset?.symbol ?? 'UNKNOWN (use the symbol this was backtested against)';
+    const symbol = dataset?.symbol ?? 'UNKNOWN';
     const timeframe = (dataset?.timeframe ?? 'unknown').toLowerCase();
-    const intraday = !['1d', '1wk', 'unknown'].includes(timeframe);
-    const tradierBars: Record<string, string> = {
-      '1m': '`GET /v1/markets/timesales?interval=1min`',
-      '2m': '`GET /v1/markets/timesales?interval=1min`, aggregated into 2-minute bars',
-      '5m': '`GET /v1/markets/timesales?interval=5min`',
-      '15m': '`GET /v1/markets/timesales?interval=15min`',
-      '30m': '`GET /v1/markets/timesales?interval=15min`, aggregated into 30-minute bars',
-      '1h': '`GET /v1/markets/timesales?interval=15min`, aggregated into 1-hour bars',
-      '1d': '`GET /v1/markets/history?interval=daily`',
-      '1wk': '`GET /v1/markets/history?interval=weekly`',
-    };
+    // Dataset timeframe -> the runtime's Interval (trading/runtime/config.ts).
+    const liveIntervals: Record<string, string> = { '1m': '1min', '5m': '5min', '15m': '15min', '30m': '30min', '1h': '1h', '1d': '1d' };
+    const interval = liveIntervals[timeframe];
+    // Calendar days that hold minBars bars. Intraday data is 04:00-20:00 ET
+    // (16 hours a session); Tradier keeps 40 days of timesales.
+    const historyDays = interval === '1d'
+      ? Math.ceil(minBars * 1.5)
+      : interval
+        ? Math.min(40, Math.ceil((minBars / ((16 * 60) / ({ '1min': 1, '5min': 5, '15min': 15, '30min': 30, '1h': 60 } as Record<string, number>)[interval])) * 1.4) + 3)
+        : 0;
     const source = strategySource?.id === resultStrategyId ? strategySource.source : null;
 
-    const riskExits: string[] = [];
-    if (trailingStopEmaPeriod > 0) {
-      riskExits.push(
-        `**Trailing EMA stop.** From the entry bar on, if a long's close is ≤ EMA${trailingStopEmaPeriod} (a short's close ≥ EMA${trailingStopEmaPeriod}), send a market order to exit right after that bar closes. The backtest fills it at the next bar's open. This one is close-based, so the Lambda evaluates it itself.`,
-      );
-    }
-    if (hasStop || tp > 0) {
-      const levels = [
-        atrStop
-          ? `stop loss ${stopDistanceText} against the entry fill (long: fill − that distance; short: fill + it)`
-          : sl > 0 ? `stop loss ${sl}% against the entry fill (long: fill × ${(1 - sl / 100).toFixed(4)}; short: fill × ${(1 + sl / 100).toFixed(4)})` : null,
-        tp > 0 ? `take profit ${tp}% in favor of the entry fill (long: fill × ${(1 + tp / 100).toFixed(4)}; short: fill × ${(1 - tp / 100).toFixed(4)})` : null,
-      ].filter(Boolean).join(', and ');
-      riskExits.push(
-        `**${hasStop && tp > 0 ? 'Stop loss and take profit' : hasStop ? 'Stop loss' : 'Take profit'}.** Levels: ${levels}, computed from the actual average fill price of the entry order. The backtest arms them from the bar after the entry bar: on the entry bar itself, if its high/low reached a level, the trade closes at the next open instead (a market order right after that bar closes). From then on it checks them intrabar against each bar's high/low, and if a bar opens beyond a level it fills at the open. A Lambda that wakes once per bar can't see intrabar prices, so from then on these must be resting orders at Tradier, placed when the entry bar closes (not at the entry fill): ${hasStop && tp > 0 ? 'an OCO order (`class=oco`) with a stop leg at the stop level and a limit leg at the target' : hasStop ? 'a stop order (`type=stop`) at the stop level' : 'a limit order (`type=limit`) at the target'}, \`duration=gtc\`. Each invocation, check whether it filled; if so, record the exit and clear the position.`,
-      );
-    }
+    // Everything the backtest did that the live runtime does not.
+    const gaps: string[] = [];
+    if (!interval) gaps.push(`**Bar interval ${timeframe}.** The runtime supports 1min, 5min, 15min, 30min, 1h and 1d only.`);
+    if (symbol === 'UNKNOWN') gaps.push("**Symbol.** The dataset this result came from isn't known; ask me which ticker.");
+    if (atrStop) gaps.push(`**ATR stop loss** (${sz.atrStopMultiple} × ATR). The runtime places no stop orders.`);
+    else if (sl > 0) gaps.push(`**Stop loss ${sl}%.** The runtime places no stop orders.`);
+    if (tp > 0) gaps.push(`**Take profit ${tp}%.** The runtime places no limit/target orders.`);
+    if (trailingStopEmaPeriod > 0) gaps.push(`**Trailing EMA${trailingStopEmaPeriod} stop.** The backtest engine applies it outside the strategy handler; the runtime doesn't.`);
+    if (sz.mode === 'risk' && sz.useStopLoss) gaps.push(`**Risk-based sizing** (${sz.riskPercent}% of equity per stop distance). The runtime sizes as a fixed % of equity (\`positionSizePct\`).`);
+    if (sz.allowReversal) gaps.push('**Reversals** (close and open the other side on one bar). The runtime exits or enters on a bar, never both.');
 
-    // Every AWS resource this bot gets is named from one slug, so a second
-    // strategy or symbol deploys alongside instead of overwriting it.
-    const slug = `tradier-paper-${strat.id}-${symbol}`.toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/-+/g, '-').replace(/-$/, '').slice(0, 56);
-    const schedule = intraday
-      ? `a cron expression in the \`America/New_York\` timezone that fires a few seconds after each ${timeframe} bar closes on weekdays, covering the full session the data uses (the code decides whether orders are allowed)`
-      : `\`cron(15 16 ? * MON-FRI *)\` in the \`America/New_York\` timezone (4:15pm ET, after the close)${timeframe === '1wk' ? ', with the code acting only on the last trading day of the week' : ''}`;
-
-    const lines: string[] = [
-      `# Build and deploy an AWS Lambda that paper-trades ${strat.name} on ${symbol} (${timeframe} bars)`,
-      '',
-      "Write an AWS Lambda function that trades the strategy below through **Tradier's SANDBOX (paper-trading) API only**, then provision and deploy everything it needs yourself, programmatically, with the **Agent Toolkit for AWS** and the **AWS SDK for JavaScript v3**. Don't hand me a console checklist. The function must follow the same rules as the backtest this prompt came from, described exactly below. Wherever something is ambiguous, pick the more conservative reading and say what you chose.",
-      '',
-      '## 1. Set up your tooling first',
-      '',
-      'Check each of these, and install or configure whatever is missing before writing any code. Tell me what you found and what you installed.',
-      '',
-      "- **Agent Toolkit for AWS** (https://github.com/aws/agent-toolkit-for-aws): the AWS MCP Server plus AWS skills. Check whether its tools are already available to you. If not, install it the way your agent supports: as a plugin (in Claude Code, `/plugin marketplace add aws/agent-toolkit-for-aws` then `/plugin install aws-core@agent-toolkit-for-aws`), with `aws configure agent-toolkit` (AWS CLI 2.35.0 or later), or by adding the AWS MCP Server to your MCP config and running `npx skills add aws/agent-toolkit-for-aws/skills`. Follow the current quick start (https://docs.aws.amazon.com/agent-toolkit/latest/userguide/quick-start.html) for exact versions. Confirm it's connected by asking it which AWS Regions are available. Use it to look up current API shapes, service limits and IAM actions rather than relying on memory.",
-      '- **Node.js 22+ and npm**, for the deploy script.',
-      '- **AWS SDK for JavaScript v3**, installed into a local `deploy/` folder (`npm install` the `@aws-sdk/client-*` packages the deploy script uses). The Lambda itself takes no npm dependencies.',
-      "- **AWS credentials.** Resolve them with the SDK's default provider chain and call `sts:GetCallerIdentity`. Show me the account id, the principal's ARN and the region you'll deploy to, and **wait for me to confirm** before creating anything. If no credentials resolve, stop and tell me how to configure them (for example `aws configure sso` or `aws configure`). Never ask me to paste access keys into chat.",
-      '',
-      '## 2. What to build',
-      '',
-      "1. **`lambda/index.mjs`**, for the **Node.js 22.x** runtime with handler `index.handler`. A single file with no npm dependencies: use the built-in global `fetch` for Tradier, and only the AWS SDK v3 clients the runtime already bundles (`@aws-sdk/client-dynamodb`, `@aws-sdk/lib-dynamodb`, `@aws-sdk/client-secrets-manager`). No build step, no TypeScript. Support a test event `{ \"dryRun\": true }` that runs everything (data, indicators, signal, reconciliation) and logs the orders it would place without placing them or writing state.",
-      `2. **\`deploy/deploy.mjs\`**, an idempotent AWS SDK v3 script that creates each resource below if it's missing and updates it to match if it exists, so running it twice changes nothing. Name everything from the prefix \`${slug}\`, tag every resource \`app=icodeforbananas-backtest\`, \`strategy=${strat.id}\`, \`symbol=${symbol}\`, and print each resource's ARN as it goes:`,
-      `   - **IAM execution role** \`${slug}-role\`, trusted by \`lambda.amazonaws.com\`, with \`AWSLambdaBasicExecutionRole\` and a least-privilege inline policy: \`dynamodb:GetItem\`/\`PutItem\`/\`UpdateItem\` on this table only, and \`secretsmanager:GetSecretValue\` on this secret only. Wait for the role to propagate before creating the function.`,
-      `   - **DynamoDB table** \`${slug}-state\`: partition key \`pk\` (string, holding \`symbol#strategyId\`), on-demand billing, point-in-time recovery on.`,
-      `   - **Secrets Manager secret** \`${slug}/tradier-sandbox\`, a JSON string with \`accessToken\` and \`accountId\`. The script reads both from the environment variables \`TRADIER_SANDBOX_TOKEN\` and \`TRADIER_SANDBOX_ACCOUNT_ID\` on my machine. If they're unset, create the secret with placeholder values and tell me the exact command to set the real ones. Never print, log or commit the values.`,
-      `   - **Lambda function** \`${slug}\`: Node.js 22.x, \`index.handler\`, deployed as a zip of \`lambda/\` built in the script, timeout 60s, memory 256 MB, reserved concurrency 1 (so two invocations can never trade at once), and environment variables \`TABLE_NAME\`, \`SECRET_ID\`, \`SYMBOL\`, \`MAX_DAILY_LOSS_PCT\` (default 2). Wait for each update to finish before the next.`,
-      `   - **EventBridge Scheduler schedule** \`${slug}-schedule\` targeting the function: ${schedule}. Give it its own role, \`${slug}-scheduler-role\`, trusted by \`scheduler.amazonaws.com\` and allowed \`lambda:InvokeFunction\` on this function only, and a retry policy of at most 1 retry.`,
-      "3. **`deploy/teardown.mjs`**, which deletes everything `deploy.mjs` created (schedule, function, roles and their policies, table, secret) after printing what it will delete and asking for confirmation. The secret gets the standard recovery window, not a forced delete.",
-      '',
-      '## 3. Deploy, then verify what you created',
-      '',
-      'Run `deploy.mjs`, then check every resource with SDK read calls rather than trusting the script\'s output:',
-      '',
-      '- `iam:GetRole` and the role\'s policies match the least-privilege policy above.',
-      '- `dynamodb:DescribeTable` shows `ACTIVE`, the key schema and on-demand billing.',
-      '- `secretsmanager:DescribeSecret` exists (don\'t read the value back).',
-      '- `lambda:GetFunctionConfiguration` shows the runtime, handler, timeout, memory, reserved concurrency and environment variables, with `State: Active` and `LastUpdateStatus: Successful`.',
-      '- `scheduler:GetSchedule` shows the expression, timezone, target ARN and role, and that it\'s `ENABLED`.',
-      '- Invoke the function once with `{ "dryRun": true }`, then read its CloudWatch Logs and confirm the JSON log line shows the bar, the indicator values, the signal and what it would have done, with no error.',
-      '',
-      'Finish with a table of every resource (name, ARN, verified yes/no), anything that failed and how you fixed it, and how to redeploy, pause the schedule, and tear it all down.',
-      '',
-      '## Hard guardrails',
-      '',
-      "- Base URL is `https://sandbox.tradier.com/v1`. Hardcode it as a constant and throw at startup if it doesn't contain `sandbox.tradier.com`. No environment variable can point this at live trading.",
-      '- Read the sandbox access token and paper account id from Secrets Manager (cache them across warm invocations), never from code or plain environment variables.',
-      '- Never trade on missing, stale, or incomplete data. When in doubt, do nothing and log why.',
-      '- Only create or change the resources listed above, only in the account and region I confirmed, and nothing with broader permissions than they need.',
-      '',
-      '## Strategy',
-      '',
-      `- **Name:** ${strat.name} (\`${strat.id}\`)`,
-      `- **Summary:** ${strat.description}`,
-      `- **Symbol:** ${symbol}`,
-      `- **Bar interval:** ${timeframe}`,
-      `- **Direction:** ${shorts ? 'long and short' : "long only. A 'sell' signal while flat does nothing."}`,
+    const params = Object.fromEntries(resolvedParams.map(({ param, value }) => [param.key, value]));
+    const entry = [
+      '{',
+      `  strategyId: '${strat.id}',`,
+      `  symbol: '${symbol}',`,
+      `  interval: '${interval ?? timeframe}',`,
+      `  params: { ${Object.entries(params).map(([k, v]) => `${k}: ${typeof v === 'string' ? `'${v}'` : v}`).join(', ')} },`,
+      '  ...SHARED_RISK,',
+      ...(shorts ? [] : ['  enableShorts: false,']),
+      ...(fixedPct !== 100 ? [`  positionSizePct: ${fixedPct},`] : []),
+      // SHARED_RISK in deployments.ts already sets 25% / 20 bars.
+      ...(sz.maxDrawdownPercent > 0 && sz.maxDrawdownPercent !== 25 ? [`  drawdownLimitPct: ${sz.maxDrawdownPercent},`] : []),
+      ...(sz.maxDrawdownPercent > 0 && sz.drawdownPauseBars !== 20 ? [`  drawdownPauseBars: ${sz.drawdownPauseBars},`] : []),
+      `  minBars: ${minBars},`,
+      `  historyDays: ${historyDays},`,
+      '}',
     ];
 
-    if (resolvedParams.length > 0) {
-      lines.push('', '### Parameters (use these exact values)', '', '| Key | Value | Meaning |', '|---|---|---|');
-      for (const { param, value } of resolvedParams) {
-        lines.push(`| \`${param.key}\` | **${value}** | ${param.description} |`);
-      }
+    const lines: string[] = [
+      `# Deploy ${strat.name} on ${symbol} (${interval ?? timeframe}) to the Tradier paper-trading stack`,
+      '',
+      "Add this backtested strategy to the live paper-trading CDK stack in `trading/`, deploy it, and check it's running. Read `trading/README.md`, `trading/deployments.ts` and `trading/runtime/config.ts` first; they're the source of truth for how this works. Don't write a new Lambda, deploy script or CloudFormation template: the stack builds the Lambda, schedule, state row, alarm and dashboard section from one entry in `DEPLOYMENTS`, and bundles the strategy straight from `app/strategies/`.",
+      '',
+      'Work through it without stopping to ask, except where a step below says to stop.',
+      '',
+      '## 1. The strategy code',
+      '',
+      `Make \`app/strategies/${strat.id}.ts\` match the source below, which is what the backtest ran. If the file is missing, create it and register it in \`app/strategies/index.ts\` under \`'${strat.id}'\`. If it exists and differs, the source below wins; tell me what changed. If it already matches, leave it.`,
+      '',
+    ];
+    if (source) {
+      lines.push('```ts', source.trimEnd(), '```');
+    } else {
+      lines.push(`(The source couldn't be loaded when this prompt was copied. Use \`app/strategies/${strat.id}.ts\` as it is and say so.)`);
     }
 
-    lines.push('', '### Signal logic (port this exactly)', '');
-    if (source) {
+    lines.push(
+      '',
+      '## 2. The deployment entry',
+      '',
+      'Add this to `DEPLOYMENTS` in `trading/deployments.ts`, with a short comment like the existing entries (what the backtest warmed up on, where daily bars come from, and so on):',
+      '',
+      '```ts',
+      ...entry,
+      '```',
+      '',
+      `- **minBars / historyDays** are estimates: ${minBars} bars covers 5× the longest parameter (${longestPeriod}). Check \`historyDays\` really yields \`minBars\` bars for ${symbol}${interval === '1d' ? ' (sessions, not calendar days)' : '; thinly traded names have few extended-hours bars, and intraday history is capped at 40 days'}. If it can't, lower \`minBars\` only as far as the strategy's indicators allow, and say why in the comment.`,
+      `- **One enabled deployment per symbol.** If another enabled entry already trades ${symbol}, set it to \`enabled: false\` with a comment saying this one replaced it (the existing TXN and TQQQ entries show the pattern). The new deployment adopts Tradier's open position on its first run.`,
+      '- **Allocations must total ≤ 100%** across enabled entries. If adding this one goes over, stop and show me the current split and a proposed rebalance before changing any other entry.',
+      `- Synth fails on an unknown strategy or parameter; fix the entry, don't loosen the validation.`,
+    );
+
+    lines.push('', '## 3. What the backtest did that the live runtime can\'t', '');
+    if (gaps.length) {
       lines.push(
-        "This is the strategy's TypeScript source from the backtester. Port `handler` to plain JavaScript without changing its behavior. It gets `{ current, previous, index, series, params, position }`: `series` is every bar oldest to newest with the indicator fields below attached, `current = series[index]`, `previous = series[index - 1]`, `position` is the position held going into this bar (`'long'`, `'short'` or `null` when flat, after any stop or target fill on this bar), and it returns `{ action: \"buy\" | \"sell\" | \"hold\", reason }`. Evaluate it once per invocation, on the most recent **completed** bar.",
+        'The runtime trades market orders on the strategy signal only, with fixed-% sizing, a daily loss limit and a drawdown pause. This backtest also used:',
         '',
-        '```ts',
-        source.trimEnd(),
-        '```',
+        ...gaps.map((g) => `- ${g}`),
+        '',
+        "**Stop here and tell me** before deploying: live results won't match the backtest. I'll either accept it, or ask you to add the feature to `trading/runtime` (with tests in `runtime/*.test.ts`) first.",
       );
     } else {
-      lines.push(`The strategy source couldn't be loaded, so work from the summary: ${strat.description}. Tell me you did that.`);
+      lines.push('Nothing: every setting this backtest used maps onto the runtime.');
     }
-
     lines.push(
       '',
-      '### Indicator fields the strategy reads',
-      '',
-      'Compute these over the whole fetched history, oldest bar first. Recursive indicators (EMA, RSI, ATR, MACD) depend on where the history starts, so always fetch the same generous window (see Market data).',
-      '',
-      '- `sma{n}`: mean of the last n closes, including the current bar.',
-      '- `ema{n}`: undefined for the first n−1 bars. At bar n−1 it is the SMA of the first n closes; after that, `ema = (close − prev) × 2/(n+1) + prev`. Provide `ema{n}` for every EMA period the strategy asks for, plus `ema9` and `ema21`.',
-      '- `rsi`: 14-period Wilder RSI. Take the simple average of the first 14 close-to-close gains and losses, then smooth with `avg = (avg × 13 + x) / 14`. `rsi = 100 − 100/(1 + avgGain/avgLoss)`, and when `avgLoss` is 0 treat the ratio as 100.',
-      '- `atr`: 14-period Wilder ATR. `TR = max(high − low, |high − prevClose|, |low − prevClose|)`, seeded with the mean of the first 14 TRs, then `(atr × 13 + TR) / 14`.',
-      '- `macd_{f}_{s}_{g}`, `macdSignal_{f}_{s}_{g}`, `macdHistogram_{f}_{s}_{g}`: MACD line = EMA_f − EMA_s (both seeded as above). The signal line is an EMA_g of the MACD line, seeded with the first MACD value. Histogram = MACD − signal. The 12/26/9 set is also exposed as `macd`, `macdSignal`, and `macdHistogram`.',
-      '- `donchian_{n}_upperBand` / `_lowerBand` / `_midLine`: highest high and lowest low of the last n bars including the current one, and their midpoint. The 20-bar set is also exposed as `upperBand`, `lowerBand`, and `midLine`.',
-      "- `prevClose`, `prevHigh`, `prevLow`: the previous bar's values.",
+      `Costs the backtest assumed, for comparing results later (nothing to configure): ${commission} bps commission, ${slippage} bps slippage per fill.`,
     );
 
     lines.push(
       '',
-      '## Execution rules (these mirror the backtest engine exactly)',
+      '## 4. Check, ship, deploy',
       '',
-      'Each invocation handles the newest completed bar, in this order:',
+      '1. From the repo root: `npx tsc --noEmit`, `npx eslint <changed files>`, `npm run build`, `npm test`. In `trading/`: `npm run typecheck`. Fix anything this change broke.',
+      '2. Commit and push following `CLAUDE.md` (branch, then fast-forward `main`). Never push red.',
+      '3. `aws sts get-caller-identity` to confirm credentials resolve. If they don\'t, stop and tell me how to sign in; never ask me to paste keys.',
+      '4. `cd trading && npx cdk diff`. Expect new resources for this deployment, plus a disabled schedule if you replaced one. If it would replace or delete anything else (the state table, another deployment\'s Lambda), stop and show me.',
+      '5. `npx cdk deploy --require-approval never`.',
+      '6. `npm run dry-run -- --latest <deployment id>` (the id is built from the entry; see `deploymentId` in `runtime/config.ts`). Confirm the logged line shows bars, indicator values and a signal with no error, and enough bars for `minBars`.',
       '',
-    );
-    const steps: string[] = [...riskExits];
-    steps.push(
-      `**Strategy signal.** Run the handler. A 'sell' while long ${shorts ? "(or a 'buy' while short) " : ''}closes the position with a market order sent right after the bar closes${hasStop || tp > 0 ? ', after first cancelling the resting exit order and confirming the cancel' : ''}. ${sz.allowReversal ? "If the handler, re-run on that same bar as if flat, returns the same action, also open the opposite position at the next open, right after the close fills (a reversal). Otherwise stay flat until a later bar's entry." : "Closing never reverses: a new position can only open on a later bar."}`,
-      `**Entry.** Only when flat, and only if no exit happened on this same bar: 'buy' opens a long${shorts ? ", and 'sell' opens a short (`side=sell_short`, closed later with `side=buy_to_cover`)" : ''}. Send a market order right after the bar closes. The backtest decides on the closed bar and fills every entry and exit at the **next bar's open**, which is what that order gets.`,
-    );
-    if (sz.maxDrawdownPercent > 0) {
-      steps.push(
-        `**Drawdown limit.** Last, mark the account to market: \`total_equity\` from balances. Keep its running peak in DynamoDB as \`peakEquity\`. If equity is ≤ peakEquity × ${(1 - sz.maxDrawdownPercent / 100).toFixed(4)} (${sz.maxDrawdownPercent}% below the peak) and entries are currently allowed, close any open position with a market order (cancel resting exit orders first), ${sz.drawdownPauseBars > 0 ? `allow no new entries for the next ${sz.drawdownPauseBars} bars (store the first bar time entries are allowed again as \`entriesAllowedFrom\`)` : 'and allow no new entries again until a person resets `entriesAllowedFrom` by hand'}, then set peakEquity to the equity after that close, so the next trip is measured from here.`,
-      );
-    }
-    steps.forEach((s, i) => lines.push(`${i + 1}. ${s}`));
-
-    const fixedPct = sz.useStopLoss ? Math.min(posSize, cap) : stopOffPositionPercent(sz, posSize);
-    lines.push(
-      '',
-      '## Risk management',
-      '',
-      sz.mode === 'risk' && sz.useStopLoss
-        ? `- **Position size:** sized from risk, where equity is the Tradier paper account's \`total_equity\` from \`GET /v1/accounts/{id}/balances\`. Shares = floor(min(equity × ${sz.riskPercent / 100} ÷ stop distance, equity × ${cap / 100} ÷ last close)), with the stop distance ${stopDistanceText}, using the last close for the fill. So a stop fill loses about ${sz.riskPercent}% of equity, and no position is ever more than ${cap}% of equity. With no stop distance, don't trade. If shares come to 0, skip the trade and log it. The share count stays fixed until exit; never add to or trim an open position.`
-        : `- **Position size:** ${fixedPct}% of account equity per new position${sz.useStopLoss ? '' : ' (no stop, so nothing to size from)'}, where equity is the Tradier paper account's \`total_equity\` from \`GET /v1/accounts/{id}/balances\`. Shares = floor(equity × ${fixedPct / 100} ÷ last close). If that comes to 0, skip the trade and log it. The share count stays fixed until exit; never add to or trim an open position.`,
-      `- **Gap cap:** ${sz.useStopLoss && sz.maxGapLossPercent > 0 ? `a stop can't protect against a bar that opens past it, so size is capped instead: assuming a ${sz.gapShockPercent}% gap, it may cost at most ${sz.maxGapLossPercent}% of equity, which caps a position at ${cap}% of equity. Already in the size formula above.` : 'none.'}`,
-      `- **Drawdown limit:** ${sz.maxDrawdownPercent > 0 ? `${sz.maxDrawdownPercent}% below the equity peak (see Execution rules).` : 'none.'}`,
-      '- **One position at a time** in this symbol. Ignore entry signals while a position is open, and ignore them while an entry or exit order is still pending.',
-      `- **Stop loss:** ${hasStop ? `${atrStop ? `${sz.atrStopMultiple} × ATR(14)` : `${sl}%`}, as a resting order (see Execution rules).` : 'none. The backtest ran without one.'}`,
-      `- **Take profit:** ${tp > 0 ? `${tp}%, as a resting order (see Execution rules).` : 'none. The backtest ran without one.'}`,
-      `- **Trailing stop:** ${trailingStopEmaPeriod > 0 ? `close-based, EMA${trailingStopEmaPeriod} (see Execution rules).` : 'none.'}`,
-      "- **Max daily loss:** not part of the backtest, so it has no backtested value. Add it as an environment variable, `MAX_DAILY_LOSS_PCT` (default 2). Track realized P&L per trading day (US/Eastern) in DynamoDB, and once the loss reaches that % of the day's starting equity, stop opening new positions for the rest of the day. Exits keep working.",
-      `- **Costs the backtest assumed:** ${commission} bps commission and ${slippage} bps slippage per fill. Nothing to send to Tradier; this is here so live results can be compared fairly.`,
-    );
-
-    lines.push(
-      '',
-      '## Market data',
-      '',
-      `- Bars: ${tradierBars[timeframe] ?? 'whichever Tradier endpoint matches the bar interval'}. Fetch at least the last ${historyBars} bars on every invocation so the indicators have warmed up.`,
-      intraday
-        ? '- The backtest data **includes pre-market and after-hours bars**, so use `session_filter=all` to match. Only place orders during regular hours (9:30am–4:00pm ET), because market orders are regular-session only. Outside regular hours, still evaluate the signal and log what you would have done.'
-        : '- Use only completed bars. Run after the close so the most recent daily or weekly bar is final.',
-      '- Drop the bar that is still forming. If the newest completed bar is older than one interval (plus a small grace period), treat the data as stale and do nothing.',
-      intraday
-        ? '- Build bars in UTC epoch milliseconds, oldest first. Timesales returns timestamps in US/Eastern, so convert them.'
-        : '- Build bars in UTC epoch milliseconds, oldest first.',
-    );
-
-    lines.push(
-      '',
-      '## Orders and state',
-      '',
-      '- Place orders with `POST /v1/accounts/{id}/orders`, form-encoded, `class=equity` (or `class=oco` for the bracket), with the market orders `duration=day`. Only update state after `GET /v1/accounts/{id}/orders/{orderId}` shows `status=filled`, and use its `avg_fill_price` as the entry price that stop and target levels are computed from.',
-      "- If an order is still open or partially filled at the next invocation, keep waiting: don't place another. If it was rejected or cancelled, log it and go back to flat.",
-      '- **DynamoDB**, one item keyed by `symbol#strategyId`: `position` (side, shares, entryPrice, entryTime, stopLevel, targetLevel, exitOrderId), `pendingOrderId`, `lastProcessedBarTime` (so a retried or duplicate invocation never acts on the same bar twice), `tradingDay`, `dayStartEquity`, `realizedPnlToday`, `peakEquity`, `entriesAllowedFrom`.',
-      '- On every invocation, reconcile against Tradier (`GET /v1/accounts/{id}/positions` and open orders) before doing anything. If they disagree with DynamoDB, trust Tradier, log the mismatch loudly, and skip trading on this invocation.',
-    );
-
-    lines.push(
-      '',
-      '## Scheduling, logging, errors',
-      '',
-      `- **Schedule:** ${schedule}, created by \`deploy.mjs\` (see What to build).`,
-      '- Write one JSON log line per invocation: bar time, OHLC, the indicator values the handler read, the signal and its reason, the action taken (or why none), orders placed, and the resulting state.',
-      '- Retry Tradier calls with backoff on network errors and 5xx responses only, at most 3 attempts. Never retry a 4xx.',
-      '- Wrap the whole handler in a try/catch. Log the error and rethrow so the invocation shows as failed, and never leave state half-written: write DynamoDB once, at the end, with a conditional update on `lastProcessedBarTime`.',
+      'Finish with: the deployment id and Lambda name, the dry-run signal, what the `TradierTrading` dashboard URL is (stack output), and anything you changed beyond the new entry.',
       '',
       '---',
       '',
-      `*Backtest this came from (for comparison, not to enforce): ${result.datasetLabel ?? dataset?.label ?? 'n/a'}, ${result.totalPnlPercent >= 0 ? '+' : ''}${result.totalPnlPercent.toFixed(2)}% over ${result.totalTrades} trades, ${result.winRate.toFixed(1)}% win rate, ${result.maxDrawdownPercent.toFixed(2)}% max drawdown, Sharpe ${result.sharpeRatio.toFixed(2)}, starting from $${INITIAL_CAPITAL.toLocaleString()}.*`,
+      `*Backtest this came from (for comparison, not to enforce): ${result.datasetLabel ?? dataset?.label ?? 'n/a'}, ${shorts ? 'long and short' : 'long only'}, ${result.totalPnlPercent >= 0 ? '+' : ''}${result.totalPnlPercent.toFixed(2)}% over ${result.totalTrades} trades, ${result.winRate.toFixed(1)}% win rate, ${result.maxDrawdownPercent.toFixed(2)}% max drawdown, Sharpe ${result.sharpeRatio.toFixed(2)}, starting from $${INITIAL_CAPITAL.toLocaleString()}.*`,
     );
 
     return lines.join('\n');
@@ -1733,7 +1638,7 @@ export default function AlgoBacktestPage() {
                         size='sm'
                         variant="secondary"
                         onClick={copyLambdaPrompt}
-                        title='Copy a prompt that has Claude write an AWS Lambda that paper-trades this strategy through the Tradier sandbox'
+                        title='Copy a prompt that has Claude add this strategy to the Tradier paper-trading CDK stack and deploy it'
                       >
                         {lambdaPromptCopied ? <Check className='size-3.5' /> : <Zap className='size-3.5' />}
                         {lambdaPromptCopied ? "Copied!" : "Copy Lambda prompt"}
