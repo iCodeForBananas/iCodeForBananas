@@ -129,11 +129,6 @@ aws secretsmanager put-secret-value --secret-id <name> --secret-string file://cr
 The base URL is hardcoded to `https://sandbox.tradier.com/v1` and checked on
 every request; nothing can point it at live trading.
 
-## Legacy
-
-[`legacy/`](legacy) keeps the hand-deployed, single-file Lambdas from before
-this stack (Bollinger Bands on LIN). The stack doesn't deploy them.
-
 ## Tests
 
 `npm test` at the repo root runs `runtime/*.test.ts`: the whole run against a
