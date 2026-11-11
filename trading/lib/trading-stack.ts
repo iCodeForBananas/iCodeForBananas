@@ -5,7 +5,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { CfnOutput, Duration, RemovalPolicy, Stack, type StackProps } from 'aws-cdk-lib';
+import { CfnOutput, Duration, RemovalPolicy, Stack, Tags, type StackProps } from 'aws-cdk-lib';
 import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as iam from 'aws-cdk-lib/aws-iam';
@@ -119,7 +119,14 @@ export class TradingStack extends Stack {
           esbuildArgs: { '--alias:@trading/strategy': strategyEntry(d) },
         },
       });
-      table.grant(fn, 'dynamodb:GetItem', 'dynamodb:PutItem');
+      // Its own state row only: the key is the deployment id.
+      fn.addToRolePolicy(
+        new iam.PolicyStatement({
+          actions: ['dynamodb:GetItem', 'dynamodb:PutItem'],
+          resources: [table.tableArn],
+          conditions: { 'ForAllValues:StringEquals': { 'dynamodb:LeadingKeys': [d.id] } },
+        }),
+      );
       secret.grantRead(fn);
       equitySecret.grantRead(fn);
       fn.grantInvoke(schedulerRole);
@@ -154,6 +161,11 @@ export class TradingStack extends Stack {
         comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
         treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
       });
+
+      for (const resource of [fn, logGroup, schedule, errorsAlarm]) {
+        Tags.of(resource).add('strategy', d.strategyId);
+        Tags.of(resource).add('symbol', d.symbol);
+      }
 
       deployed.push({ deployment: d, fn, logGroup, errorsAlarm });
       new CfnOutput(this, `Function-${d.id}`, { value: fn.functionArn });
