@@ -126,9 +126,10 @@ export function TradingEquityView({ curves, now }: { curves: EquitySummary[]; no
   const wide = "hidden sm:table-cell";
 
   return (
-    <div className="flex flex-col gap-4">
-      <Bento size="3">
-        <div className="mb-3 flex flex-wrap gap-x-4 gap-y-1">
+    <div className="flex flex-1 flex-col gap-4">
+      {/* The chart takes whatever height the table leaves, never under 340px. */}
+      <Bento size="3" className="flex flex-1 flex-col">
+        <div className="mb-3 flex shrink-0 flex-wrap gap-x-4 gap-y-1">
           {curves.map((c) => (
             <span key={c.id} className="flex items-center gap-2 text-xs text-ink-primary">
               <span className="h-0.5 w-4 rounded-full" style={{ background: colors.get(c.id) }} />
@@ -136,7 +137,7 @@ export function TradingEquityView({ curves, now }: { curves: EquitySummary[]; no
             </span>
           ))}
         </div>
-        <div className="h-[340px] sm:h-[420px]">
+        <div className="min-h-[340px] flex-1">
           <ClientOnly>
             <EquityChart curves={curves} />
           </ClientOnly>
@@ -212,12 +213,9 @@ export default function TradingEquityContent() {
   }, []);
 
   return (
-    <main className="mx-auto w-full max-w-5xl px-4 py-6">
+    <main className="flex w-full flex-1 flex-col px-4 py-4">
       <header className="mb-4">
         <h1 className="text-2xl font-bold text-ink-primary">Trading Equity</h1>
-        <p className="mt-1 text-sm text-ink-muted">
-          Live paper-trading strategies, each scaled to start at {money(STARTING_CAPITAL)} on its first report. Pattern day trader limits are ignored.
-        </p>
       </header>
 
       {error && curves === null && <Bento size="3" className="text-sm text-ink-muted">Couldn&apos;t load the curves: {error}</Bento>}
