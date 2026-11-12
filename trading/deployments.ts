@@ -159,6 +159,20 @@ export const DEPLOYMENTS: Deployment[] = [
     minBars: 315,
     historyDays: 17,
   },
+  {
+    strategyId: 'ema-crossover',
+    symbol: 'AAPL',
+    // Daily bars from /markets/history; runs at 16:30 ET, orders fill at the next open.
+    interval: '1d',
+    params: { fastPeriod: 3, slowPeriod: 161 },
+    ...SHARED_RISK,
+    // The backtest traded long only.
+    enableShorts: false,
+    // The backtest warmed up on at least 805 sessions (5x the slow EMA period):
+    // 1208 calendar days make about 830 sessions.
+    minBars: 805,
+    historyDays: 1208,
+  },
 ];
 
 /**
