@@ -1,5 +1,5 @@
 // Turns what the trading Lambdas report (supabase/migrations/20261108_trading_equity.sql)
-// into what /trading-equity shows. Pure.
+// into what /trading-leaderboard shows. Pure.
 
 /** Every deployment is shown as if it had started with this much. */
 export const STARTING_CAPITAL = 10_000;

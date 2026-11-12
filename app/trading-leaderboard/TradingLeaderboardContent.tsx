@@ -119,7 +119,7 @@ function returnClass(pct: number): string {
 }
 
 /** What the page shows, given the curves. Colors follow each curve's position in `curves`. */
-export function TradingEquityView({ curves, now }: { curves: EquitySummary[]; now: number }) {
+export function TradingLeaderboardView({ curves, now }: { curves: EquitySummary[]; now: number }) {
   const colors = new Map(curves.map((c, i) => [c.id, colorAt(i)]));
   const ranked = [...curves].sort((a, b) => b.returnPct - a.returnPct);
   const headCell = "px-3 py-2 font-medium";
@@ -185,7 +185,7 @@ export function TradingEquityView({ curves, now }: { curves: EquitySummary[]; no
   );
 }
 
-export default function TradingEquityContent() {
+export default function TradingLeaderboardContent() {
   const [curves, setCurves] = useState<EquitySummary[] | null>(null);
   const [loadedAt, setLoadedAt] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -215,13 +215,13 @@ export default function TradingEquityContent() {
   return (
     <main className="flex w-full flex-1 flex-col px-4 py-4">
       <header className="mb-4">
-        <h1 className="text-2xl font-bold text-ink-primary">Trading Equity</h1>
+        <h1 className="text-2xl font-bold text-ink-primary">Trading Leaderboard</h1>
       </header>
 
       {error && curves === null && <Bento size="3" className="text-sm text-ink-muted">Couldn&apos;t load the curves: {error}</Bento>}
       {!error && curves === null && <Bento size="3" className="text-sm text-ink-muted">Loading&hellip;</Bento>}
       {curves?.length === 0 && <Bento size="3" className="text-sm text-ink-muted">No deployment has reported in the last 7 days.</Bento>}
-      {curves && curves.length > 0 && <TradingEquityView curves={curves} now={loadedAt} />}
+      {curves && curves.length > 0 && <TradingLeaderboardView curves={curves} now={loadedAt} />}
     </main>
   );
 }

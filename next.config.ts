@@ -13,6 +13,8 @@ const nextConfig: NextConfig = {
       { source: "/lead-sheet-editor/:path*", destination: "/songwriter/:path*", permanent: true },
       // Chord Explorer's panels became the separate Guitar tools.
       { source: "/chord-explorer", destination: "/guitar/settings", permanent: true },
+      // Trading Equity became the Trading Leaderboard.
+      { source: "/trading-equity", destination: "/trading-leaderboard", permanent: true },
     ];
   },
   async rewrites() {

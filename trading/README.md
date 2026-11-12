@@ -106,7 +106,7 @@ Dry runs never publish metrics.
 ## Live stats: the public page
 
 After each processed bar a Lambda also reports its equity to Supabase, for the
-public [`/trading-equity`](../app/trading-equity) page: every live deployment
+public [`/trading-leaderboard`](../app/trading-leaderboard) page: every live deployment
 scaled to start at $10,000 on its first report, no AWS sign-in needed. The report
 runs after the state write, is capped at 4 seconds and is never fatal; a failure
 only adds `equityReported: false` and `equityReportError` to the run's log line.

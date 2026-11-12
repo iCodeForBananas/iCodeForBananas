@@ -32,7 +32,7 @@ export const LINKS: { href: string; text: string; category: Category; auth?: boo
   { href: "/fretboard-quiz", text: "Fretboard Quiz", category: "Guitar" },
   // Trading
   { href: "/algo-backtest", text: "Algo Backtest", category: "Trading", abbr: "AB" },
-  { href: "/trading-equity", text: "Trading Equity", category: "Trading", abbr: "TE" },
+  { href: "/trading-leaderboard", text: "Trading Leaderboard", category: "Trading", abbr: "TL" },
   // Tools
   { href: "/workout-tracker", text: "Workout Tracker", category: "Tools" },
   // Education

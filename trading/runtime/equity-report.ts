@@ -1,5 +1,5 @@
 // Publishes each processed bar's equity to Supabase for the public
-// /trading-equity page (supabase/migrations/20261108_trading_equity.sql).
+// /trading-leaderboard page (supabase/migrations/20261108_trading_equity.sql).
 // Global fetch only. Best effort: the caller logs a failure and trades on.
 
 export interface EquitySnapshot {
