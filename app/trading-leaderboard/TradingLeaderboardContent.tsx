@@ -123,7 +123,9 @@ export function TradingLeaderboardView({ curves, now }: { curves: EquitySummary[
   const colors = new Map(curves.map((c, i) => [c.id, colorAt(i)]));
   const ranked = [...curves].sort((a, b) => b.returnPct - a.returnPct);
   const headCell = "px-3 py-2 font-medium";
-  const wide = "hidden sm:table-cell";
+  // The deployment column stays put while the numbers scroll past it, on the
+  // card's own surface so they slide underneath rather than through it.
+  const pinned = "sticky left-0 z-[1] bg-surface-raised";
 
   return (
     <div className="flex flex-1 flex-col gap-4">
@@ -144,23 +146,28 @@ export function TradingLeaderboardView({ curves, now }: { curves: EquitySummary[
         </div>
       </Bento>
 
-      <Bento size="1" className="overflow-x-auto">
-        <table className="w-full text-sm">
+      {/* Every column, at its natural width: on a narrow screen the table is
+          wider than the card and scrolls sideways natively. Radix's Card clips
+          its own overflow, so the scrolling box is this div inside it, not
+          the card. min-w-full keeps the table filling the card when it fits. */}
+      <Bento size="1">
+        <div className="overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch]">
+        <table className="w-max min-w-full whitespace-nowrap text-sm">
           <thead>
             <tr className="border-b border-line-subtle text-right text-xs text-ink-muted">
-              <th className={`${headCell} text-left`}>Deployment</th>
+              <th className={`${headCell} ${pinned} text-left`}>Deployment</th>
               <th className={headCell}>Value</th>
               <th className={headCell}>Return</th>
-              <th className={`${headCell} ${wide}`}>Max drawdown</th>
+              <th className={headCell}>Max drawdown</th>
               <th className={headCell}>Position</th>
-              <th className={`${headCell} ${wide}`}>Trades</th>
-              <th className={`${headCell} ${wide}`}>Updated</th>
+              <th className={headCell}>Trades</th>
+              <th className={headCell}>Updated</th>
             </tr>
           </thead>
           <tbody>
             {ranked.map((c) => (
               <tr key={c.id} className="border-b border-line-subtle text-right tabular-nums text-ink-primary last:border-0">
-                <td className="px-3 py-3 text-left">
+                <td className={`px-3 py-3 text-left ${pinned}`}>
                   <div className="flex items-center gap-2 font-medium">
                     <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: colors.get(c.id) }} />
                     {c.label}
@@ -169,17 +176,18 @@ export function TradingLeaderboardView({ curves, now }: { curves: EquitySummary[
                 </td>
                 <td className="px-3 py-3 font-medium">{money(c.value)}</td>
                 <td className={`px-3 py-3 font-medium ${returnClass(c.returnPct)}`}>{signedPct(c.returnPct)}</td>
-                <td className={`px-3 py-3 ${wide}`}>{c.maxDrawdownPct.toFixed(2)}%</td>
+                <td className="px-3 py-3">{c.maxDrawdownPct.toFixed(2)}%</td>
                 <td className="px-3 py-3">{c.position}</td>
-                <td className={`px-3 py-3 ${wide}`}>
+                <td className="px-3 py-3">
                   {c.trades}
                   {c.trades > 0 && <span className="text-ink-muted"> ({Math.round((c.wins / c.trades) * 100)}% won)</span>}
                 </td>
-                <td className={`px-3 py-3 text-ink-muted ${wide}`}>{formatAge(now - c.latestAt)}</td>
+                <td className="px-3 py-3 text-ink-muted">{formatAge(now - c.latestAt)}</td>
               </tr>
             ))}
           </tbody>
         </table>
+        </div>
       </Bento>
     </div>
   );
