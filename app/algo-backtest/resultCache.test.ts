@@ -53,6 +53,10 @@ describe("resultCacheKey", () => {
     ["drawdown pause", { sizing: { ...DEFAULT_SIZING, drawdownPauseBars: 0 } }],
     ["stop loss switch", { sizing: { ...DEFAULT_SIZING, useStopLoss: false } }],
     ["take profit switch", { sizing: { ...DEFAULT_SIZING, useTakeProfit: true } }],
+    ["whole shares", { sizing: { ...DEFAULT_SIZING, wholeShares: !DEFAULT_SIZING.wholeShares } }],
+    ["stop and reverse", { sizing: { ...DEFAULT_SIZING, allowReversal: !DEFAULT_SIZING.allowReversal } }],
+    ["stop sweep", { sizing: { ...DEFAULT_SIZING, stopLossRange: { min: 1, max: 3, step: 1 } } }],
+    ["take profit sweep", { sizing: { ...DEFAULT_SIZING, takeProfitRange: { min: 2, max: 6, step: 2 } } }],
     ["starting capital", { initialCapital: 10_000 }],
   ];
   for (const [what, change] of changes) {
