@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import type { EquityCurveRow } from "@/app/lib/tradingEquity";
+import { filterDeployments, tradingStats } from "@/app/lib/tradingStats";
 
 export const dynamic = "force-dynamic";
 
@@ -11,7 +13,8 @@ const CORS_HEADERS = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, Mcp-Session-Id, Mcp-Protocol-Version",
 };
 
-// Public, read-only MCP server over the lead_sheets and workout_logs tables.
+// Public, read-only MCP server over the lead_sheets and workout_logs tables,
+// and the live trading equity snapshots (get_trading_stats).
 //
 // Uses the service role key, server-side only — never sent to a client,
 // never committed (SUPABASE_SERVICE_ROLE_KEY is in .gitignore'd .env* files
@@ -93,6 +96,33 @@ const TOOLS = [
       additionalProperties: false,
     },
   },
+  {
+    name: "get_trading_stats",
+    description:
+      "Statistics on every live paper-trading strategy (AWS Lambdas trading Tradier's sandbox), for analyzing how " +
+      "they are doing. Per deployment: what it trades (strategy, description, symbol, bar interval, exact " +
+      "parameters, long only or long and short), when it started reporting, equity, return %, max and current " +
+      "drawdown %, open position, trades closed, wins, losses, win rate, and daily-return statistics (mean, " +
+      "standard deviation, best and worst day, share of up days, annualized Sharpe). Also portfolio totals and " +
+      "notes on how the figures are measured. Returns count from each deployment's first report, so a young " +
+      "deployment has few days and trades: weigh sample size before drawing conclusions.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        deployment: {
+          type: "string",
+          description:
+            'Only deployments whose id, symbol or strategy id contains this, case-insensitive, e.g. "AVGO" or "ibs".',
+        },
+        include_equity_curve: {
+          type: "boolean",
+          description: "Also return each deployment's daily equity, one value per trading day (default false).",
+        },
+      },
+      additionalProperties: false,
+    },
+    annotations: { title: "Live trading statistics", readOnlyHint: true, openWorldHint: false },
+  },
 ];
 
 async function callTool(name: string, args: Record<string, unknown>): Promise<unknown> {
@@ -151,6 +181,16 @@ async function callTool(name: string, args: Record<string, unknown>): Promise<un
     const { data, error } = await query;
     if (error) throw error;
     return (data ?? []).map((row) => ({ ...row, weight_unit: "lbs" }));
+  }
+
+  if (name === "get_trading_stats") {
+    // The same public, read-only RPC /trading-leaderboard reads: one row per
+    // deployment that reported in the last 7 days, with its equity curve.
+    const { data, error } = await supabase.rpc("trading_equity_curves");
+    if (error) throw error;
+    const deployment = typeof args.deployment === "string" ? args.deployment : undefined;
+    const rows = filterDeployments((data ?? []) as EquityCurveRow[], deployment);
+    return tradingStats(rows, Date.now(), args.include_equity_curve === true);
   }
 
   throw new Error(`Unknown tool: ${name}`);
