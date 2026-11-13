@@ -38,11 +38,10 @@ const parameters: StrategyParameter[] = [
     description: 'Simple moving average that sets the direction: long only above it, short only below it (default: 200)',
     type: 'number',
     default: 200,
-    // A sweep covers the whole range, from a 2-bar average to a 250-bar one;
-    // steps of 8 land exactly on 250.
-    min: 2,
+    // A sweep covers the whole range, from a 5-bar average to a 250-bar one.
+    min: 5,
     max: 250,
-    step: 8,
+    step: 5,
   },
   {
     key: 'trendExit',
