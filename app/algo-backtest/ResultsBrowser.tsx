@@ -3,11 +3,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Flex, Select, Switch, Text } from "@radix-ui/themes";
 import { Button } from "@/app/components/ui/button";
-import { ArrowDownWideNarrow, ArrowUpNarrowWide } from "lucide-react";
+import { ArrowDownWideNarrow, ArrowUpNarrowWide, ChevronDown } from "lucide-react";
 import { Bento } from "../components/ui/bento";
 import { cn } from "@/app/lib/utils";
 import {
+  countMatching,
   filteredCount,
+  needsScan,
   queryPage,
   type PageCursor,
   type ResultRow,
@@ -66,7 +68,17 @@ interface SavedView {
   direction?: string;
   strategy?: string;
   dataset?: string;
+  minTrades?: number;
+  maxDrawdown?: string;
+  profitable?: boolean;
+  profitableOutOfSample?: boolean;
+  finiteProfitFactor?: boolean;
 }
+
+/** Choices for the minimum-trades filter; 0 is any. */
+const MIN_TRADES = [0, 5, 10, 20, 30, 50, 100];
+/** Choices for the max-drawdown filter, in percent. */
+const MAX_DRAWDOWNS = ["10", "15", "20", "25", "30", "40", "50"];
 
 function loadView(): SavedView {
   if (typeof window === "undefined") return {};
@@ -107,13 +119,24 @@ export default function ResultsBrowser({
   const [dataset, setDataset] = useState(() =>
     saved.dataset && meta.groups.some((g) => g.dataset === saved.dataset) ? saved.dataset : ALL,
   );
+  const [minTrades, setMinTrades] = useState(() => (MIN_TRADES.includes(saved.minTrades ?? 0) ? (saved.minTrades ?? 0) : 0));
+  const [maxDrawdown, setMaxDrawdown] = useState(() => (saved.maxDrawdown && MAX_DRAWDOWNS.includes(saved.maxDrawdown) ? saved.maxDrawdown : ALL));
+  const [profitable, setProfitable] = useState(() => saved.profitable === true);
+  const [profitableOutOfSample, setProfitableOutOfSample] = useState(() => saved.profitableOutOfSample === true);
+  const [finiteProfitFactor, setFiniteProfitFactor] = useState(() => saved.finiteProfitFactor === true);
+  const extraActive = [minTrades > 0, maxDrawdown !== ALL, profitable, profitableOutOfSample, finiteProfitFactor].filter(Boolean).length;
+  // Open on arrival when a remembered filter is on, so it never hides rows unseen.
+  const [moreOpen, setMoreOpen] = useState(extraActive > 0);
   useEffect(() => {
     try {
-      localStorage.setItem(VIEW_KEY, JSON.stringify({ sortKey, direction, strategy, dataset }));
+      localStorage.setItem(
+        VIEW_KEY,
+        JSON.stringify({ sortKey, direction, strategy, dataset, minTrades, maxDrawdown, profitable, profitableOutOfSample, finiteProfitFactor }),
+      );
     } catch {
       // Not remembered this time; the controls still work.
     }
-  }, [sortKey, direction, strategy, dataset]);
+  }, [sortKey, direction, strategy, dataset, minTrades, maxDrawdown, profitable, profitableOutOfSample, finiteProfitFactor]);
   // Remembered across visits. This list only renders once a run has results,
   // so it never renders on the server and can read storage up front. Storage
   // can still be unavailable (private window, blocked), so it's best-effort.
@@ -150,17 +173,40 @@ export default function ResultsBrowser({
       strategyId: strategy === ALL ? undefined : strategy,
       dataset: dataset === ALL ? undefined : dataset,
       beatsBuyHold,
+      minTrades,
+      maxDrawdownPct: maxDrawdown === ALL ? undefined : Number(maxDrawdown),
+      profitable,
+      profitableOutOfSample,
+      finiteProfitFactor,
     }),
-    [strategy, dataset, beatsBuyHold],
+    [strategy, dataset, beatsBuyHold, minTrades, maxDrawdown, profitable, profitableOutOfSample, finiteProfitFactor],
   );
-  const matching = useMemo(() => filteredCount(meta, filter), [meta, filter]);
+  const filterKey = JSON.stringify(filter);
+  const countKey = `${meta.runId}|${filterKey}`;
+  // The group tallies count the simple filters instantly; the rest need one
+  // pass over the stored rows, so the count shows once that pass is done.
+  const tallied = needsScan(filter) ? null : filteredCount(meta, filter);
+  const [scanned, setScanned] = useState<{ key: string; n: number } | null>(null);
+  useEffect(() => {
+    if (!needsScan(filter)) return;
+    let cancelled = false;
+    countMatching(meta, filter)
+      .then((n) => {
+        if (!cancelled) setScanned({ key: countKey, n });
+      })
+      .catch((err) => console.error("Failed to count results:", err));
+    return () => {
+      cancelled = true;
+    };
+  }, [meta, filter, countKey]);
+  const matching = tallied ?? (scanned?.key === countKey ? scanned.n : null);
 
   // The pages read so far, and where the next one starts. A query is keyed
   // by everything that shapes it, so a reply to an older one is dropped.
   const [rows, setRows] = useState<ResultRow[]>([]);
   const [next, setNext] = useState<PageCursor | null>(null);
   const [loading, setLoading] = useState(false);
-  const queryKey = `${meta.runId}|${sortKey}|${direction}|${filter.strategyId}|${filter.dataset}|${filter.beatsBuyHold}`;
+  const queryKey = `${meta.runId}|${sortKey}|${direction}|${filterKey}`;
   const queryKeyRef = useRef(queryKey);
 
   const load = useCallback(
@@ -207,7 +253,9 @@ export default function ResultsBrowser({
   return (
     <Bento
       fill
-      title={`Results · ${matching === meta.total ? meta.total.toLocaleString() : `${matching.toLocaleString()} of ${meta.total.toLocaleString()}`}`}
+      title={`Results · ${
+        matching === meta.total ? meta.total.toLocaleString() : `${matching === null ? "…" : matching.toLocaleString()} of ${meta.total.toLocaleString()}`
+      }`}
       bodyClassName='flex flex-col p-0 overflow-hidden'
     >
       <Flex direction='column' gap='2' className='shrink-0 border-b border-line-subtle p-3'>
@@ -279,6 +327,56 @@ export default function ResultsBrowser({
             Only results that beat buy &amp; hold
           </Flex>
         </Text>
+        <button
+          type='button'
+          onClick={() => setMoreOpen((o) => !o)}
+          aria-expanded={moreOpen}
+          className='flex min-h-6 items-center gap-1 self-start text-xs text-ink-muted hover:text-ink-primary'
+        >
+          More filters{extraActive > 0 && ` (${extraActive} on)`}
+          <ChevronDown aria-hidden className={cn("size-3.5 transition-transform", moreOpen && "rotate-180")} />
+        </button>
+        {moreOpen && (
+          <Flex direction='column' gap='2'>
+            <Flex gap='2'>
+              <Select.Root size='1' value={String(minTrades)} onValueChange={(v) => setMinTrades(Number(v))}>
+                <Select.Trigger className='min-w-0 flex-1' aria-label='Minimum trades' />
+                <Select.Content position='popper'>
+                  {MIN_TRADES.map((n) => (
+                    <Select.Item key={n} value={String(n)}>
+                      {n === 0 ? "Any number of trades" : `At least ${n} trades`}
+                    </Select.Item>
+                  ))}
+                </Select.Content>
+              </Select.Root>
+              <Select.Root size='1' value={maxDrawdown} onValueChange={setMaxDrawdown}>
+                <Select.Trigger className='min-w-0 flex-1' aria-label='Maximum drawdown' />
+                <Select.Content position='popper'>
+                  <Select.Item value={ALL}>Any drawdown</Select.Item>
+                  {MAX_DRAWDOWNS.map((d) => (
+                    <Select.Item key={d} value={d}>
+                      Drawdown at most {d}%
+                    </Select.Item>
+                  ))}
+                </Select.Content>
+              </Select.Root>
+            </Flex>
+            {(
+              [
+                [finiteProfitFactor, setFiniteProfitFactor, "Hide infinite profit factor (no losing trades)"],
+                [profitable, setProfitable, "Only profitable results"],
+                [profitableOutOfSample, setProfitableOutOfSample, "Only profitable out-of-sample (last 30%)"],
+              ] as const
+            ).map(([checked, set, label]) => (
+              <Text key={label} as='label' size='1' color='gray'>
+                <Flex gap='2' align='center'>
+                  <Switch size='1' checked={checked} onCheckedChange={set} />
+                  {label}
+                </Flex>
+              </Text>
+            ))}
+          </Flex>
+        )}
       </Flex>
 
       <div className='min-h-0 flex-1 overflow-y-auto' onScroll={onScroll}>
@@ -351,7 +449,7 @@ export default function ResultsBrowser({
         )}
         {next && rows.length > 0 && (
           <Text as='p' size='1' color='gray' className='border-t border-line-subtle p-3 text-center'>
-            {loading ? "Loading more…" : `Showing ${rows.length.toLocaleString()} of ${matching.toLocaleString()}. Scroll for more.`}
+            {loading ? "Loading more…" : `Showing ${rows.length.toLocaleString()}${matching === null ? "" : ` of ${matching.toLocaleString()}`}. Scroll for more.`}
           </Text>
         )}
       </div>

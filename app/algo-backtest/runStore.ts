@@ -47,17 +47,56 @@ export interface RowFilter {
   strategyId?: string;
   dataset?: string;
   beatsBuyHold: boolean;
+  /** At least this many closed trades. 0 or unset: any. */
+  minTrades?: number;
+  /** Max drawdown at most this percent. Unset: any. */
+  maxDrawdownPct?: number;
+  /** Total P&L above zero. */
+  profitable?: boolean;
+  /** P&L over the held-out last 30% above zero. */
+  profitableOutOfSample?: boolean;
+  /** Drop an infinite profit factor (a run with no losing trades). */
+  finiteProfitFactor?: boolean;
 }
 
-export function matchesFilter(row: Pick<ResultRow, "strategyId" | "dataset" | "totalPnlPercent" | "buyAndHoldPnlPercent">, f: RowFilter): boolean {
+type FilterFields = Pick<
+  ResultRow,
+  "strategyId" | "dataset" | "totalPnlPercent" | "buyAndHoldPnlPercent" | "totalTrades" | "maxDrawdownPercent" | "profitFactor"
+> & { outOfSamplePnlPercent?: number };
+
+export function matchesFilter(row: FilterFields, f: RowFilter): boolean {
   return (
     (!f.strategyId || row.strategyId === f.strategyId) &&
     (!f.dataset || row.dataset === f.dataset) &&
-    (!f.beatsBuyHold || row.totalPnlPercent > row.buyAndHoldPnlPercent)
+    (!f.beatsBuyHold || row.totalPnlPercent > row.buyAndHoldPnlPercent) &&
+    (!f.minTrades || row.totalTrades >= f.minTrades) &&
+    (f.maxDrawdownPct === undefined || row.maxDrawdownPercent <= f.maxDrawdownPct) &&
+    (!f.profitable || row.totalPnlPercent > 0) &&
+    (!f.profitableOutOfSample || (row.outOfSamplePnlPercent ?? 0) > 0) &&
+    (!f.finiteProfitFactor || Number.isFinite(row.profitFactor))
   );
 }
 
-/** How many rows a filter matches, from the run's group tallies. */
+/** Whether the filter uses anything the run's group tallies can't count. */
+export function needsScan(f: RowFilter): boolean {
+  return !!(f.minTrades || f.maxDrawdownPct !== undefined || f.profitable || f.profitableOutOfSample || f.finiteProfitFactor);
+}
+
+/**
+ * How many of a run's rows a filter matches: from the group tallies when it
+ * can, else by walking the rows once (one row in memory at a time).
+ */
+export async function countMatching(meta: RunMeta, f: RowFilter): Promise<number> {
+  if (!needsScan(f)) return filteredCount(meta, f);
+  const tx = (await backtestDb()).transaction("runRows");
+  let n = 0;
+  for (let cursor = await tx.store.openCursor(runRange(meta.runId)); cursor; cursor = await cursor.continue()) {
+    if (matchesFilter(cursor.value, f)) n++;
+  }
+  return n;
+}
+
+/** How many rows a filter matches, from the run's group tallies. Ignores what needsScan covers. */
 export function filteredCount(meta: RunMeta, f: RowFilter): number {
   let n = 0;
   for (const g of meta.groups) {

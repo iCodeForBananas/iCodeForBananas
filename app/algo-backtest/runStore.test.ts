@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addToGroups, filteredCount, matchesFilter, toRow, type RunGroup, type RunMeta } from "./runStore";
+import { addToGroups, filteredCount, matchesFilter, needsScan, toRow, type RowFilter, type RunGroup, type RunMeta } from "./runStore";
 import type { ResultSummary } from "./backtestDb";
 
 const summary = (over: Partial<ResultSummary>): ResultSummary =>
@@ -64,5 +64,39 @@ describe("filtered counts", () => {
     for (const f of filters) {
       expect(filteredCount(meta, f)).toBe(rows.filter((r) => matchesFilter(r, f)).length);
     }
+  });
+});
+
+describe("result filters", () => {
+  const base = { beatsBuyHold: false };
+  const pass = (over: Partial<ResultSummary>, f: Partial<RowFilter>) => matchesFilter(summary(over), { ...base, ...f });
+
+  it("drops runs with too few trades", () => {
+    expect(pass({ totalTrades: 1 }, { minTrades: 10 })).toBe(false);
+    expect(pass({ totalTrades: 10 }, { minTrades: 10 })).toBe(true);
+    expect(pass({ totalTrades: 1 }, { minTrades: 0 })).toBe(true);
+  });
+
+  it("drops an infinite profit factor only when asked", () => {
+    expect(pass({ profitFactor: Infinity }, { finiteProfitFactor: true })).toBe(false);
+    expect(pass({ profitFactor: 2.5 }, { finiteProfitFactor: true })).toBe(true);
+    expect(pass({ profitFactor: Infinity }, {})).toBe(true);
+  });
+
+  it("filters on drawdown, total P&L and out-of-sample P&L", () => {
+    expect(pass({ maxDrawdownPercent: 25 }, { maxDrawdownPct: 20 })).toBe(false);
+    expect(pass({ maxDrawdownPercent: 20 }, { maxDrawdownPct: 20 })).toBe(true);
+    expect(pass({ totalPnlPercent: -1 }, { profitable: true })).toBe(false);
+    expect(pass({ totalPnlPercent: 0 }, { profitable: true })).toBe(false);
+    expect(pass({ outOfSamplePnlPercent: -3 }, { profitableOutOfSample: true })).toBe(false);
+    expect(pass({ outOfSamplePnlPercent: 4 }, { profitableOutOfSample: true })).toBe(true);
+    expect(pass({ outOfSamplePnlPercent: undefined }, { profitableOutOfSample: true })).toBe(false);
+  });
+
+  it("needs a scan to count only for filters the group tallies don't cover", () => {
+    expect(needsScan({ beatsBuyHold: true, strategyId: "turtle" })).toBe(false);
+    expect(needsScan({ beatsBuyHold: false, minTrades: 5 })).toBe(true);
+    expect(needsScan({ beatsBuyHold: false, maxDrawdownPct: 0 })).toBe(true);
+    expect(needsScan({ beatsBuyHold: false, finiteProfitFactor: true })).toBe(true);
   });
 });
