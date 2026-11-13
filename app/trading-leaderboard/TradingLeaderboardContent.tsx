@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { ChevronDown } from "lucide-react";
 import ClientOnly from "@/app/lib/ClientOnly";
 import { Bento } from "@/app/components/ui/bento";
 import { createClient } from "@/utils/supabase/client";
 import { STARTING_CAPITAL, formatAge, mergeCurves, niceScale, summarize, type EquityCurveRow, type EquitySummary } from "@/app/lib/tradingEquity";
+import { deploymentDetails } from "@/app/lib/deploymentDetails";
 
 const REFRESH_MS = 60_000;
 
@@ -112,6 +114,110 @@ function EquityChart({ curves }: { curves: EquitySummary[] }) {
   );
 }
 
+/** The chart's height limits while dragging its handle, in px. */
+const CHART_MIN = 200;
+const CHART_MAX = 1600;
+const CHART_STEP = 24;
+const HEIGHT_KEY = "trading-leaderboard-chart-height";
+const clampHeight = (h: number) => Math.round(Math.min(CHART_MAX, Math.max(CHART_MIN, h)));
+
+/**
+ * The chart's height: null until the reader drags the handle (the chart then
+ * fills what the table leaves), then a fixed px height, remembered on this
+ * device. Storage can be unavailable; the page works the same without it.
+ * The view only mounts once the curves have loaded in the browser, so reading
+ * storage on the first render can't cause a hydration mismatch.
+ */
+function useChartHeight() {
+  const [height, setHeight] = useState<number | null>(() => {
+    try {
+      const saved = Number(localStorage.getItem(HEIGHT_KEY));
+      return saved >= CHART_MIN ? clampHeight(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+  const save = (h: number | null) => {
+    try {
+      if (h === null) localStorage.removeItem(HEIGHT_KEY);
+      else localStorage.setItem(HEIGHT_KEY, String(h));
+    } catch {}
+  };
+  return { height, setHeight, save };
+}
+
+/**
+ * A grip under the chart: drag it (mouse, pen or finger) up or down to resize
+ * the chart, or focus it and use the arrow keys. Double-click resets it.
+ */
+function ChartResizeHandle({
+  frame,
+  height,
+  onResize,
+  onCommit,
+}: {
+  frame: React.RefObject<HTMLDivElement | null>;
+  height: number | null;
+  onResize: (h: number) => void;
+  onCommit: (h: number | null) => void;
+}) {
+  const drag = useRef<{ y: number; h: number; last: number } | null>(null);
+  const current = () => height ?? frame.current?.getBoundingClientRect().height ?? CHART_MIN;
+
+  const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    const h = current();
+    drag.current = { y: e.clientY, h, last: h };
+  };
+  const onPointerMove = (e: PointerEvent<HTMLDivElement>) => {
+    if (!drag.current) return;
+    const h = clampHeight(drag.current.h + e.clientY - drag.current.y);
+    drag.current.last = h;
+    onResize(h);
+  };
+  const onPointerEnd = () => {
+    if (!drag.current) return;
+    onCommit(drag.current.last);
+    drag.current = null;
+  };
+  const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    const by: Record<string, number> = { ArrowDown: CHART_STEP, ArrowUp: -CHART_STEP, PageDown: CHART_STEP * 5, PageUp: -CHART_STEP * 5 };
+    let h: number | null = null;
+    if (e.key in by) h = clampHeight(current() + by[e.key]);
+    else if (e.key === "Home") h = CHART_MIN;
+    else if (e.key === "End") h = CHART_MAX;
+    if (h === null) return;
+    e.preventDefault();
+    onResize(h);
+    onCommit(h);
+  };
+
+  return (
+    <div
+      role="separator"
+      aria-orientation="horizontal"
+      aria-label="Resize the chart"
+      aria-valuemin={CHART_MIN}
+      aria-valuemax={CHART_MAX}
+      aria-valuenow={Math.round(height ?? CHART_MIN)}
+      tabIndex={0}
+      title="Drag to resize. Double-click to reset."
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerEnd}
+      onPointerCancel={onPointerEnd}
+      onKeyDown={onKeyDown}
+      onDoubleClick={() => onCommit(null)}
+      // Tall enough to hit with a thumb; touch-none so a drag resizes instead of scrolling the page.
+      className="group -mb-3 flex h-11 shrink-0 cursor-row-resize touch-none select-none items-center justify-center rounded-md outline-none focus-visible:ring-2 focus-visible:ring-[var(--ds-color-accent-solid)]"
+    >
+      <span className="h-1.5 w-12 rounded-full bg-line-strong transition-colors group-hover:bg-ink-muted group-active:bg-ink-muted" />
+    </div>
+  );
+}
+
 function returnClass(pct: number): string {
   if (pct > 0) return "text-success";
   if (pct < 0) return "text-danger";
@@ -126,11 +232,22 @@ export function TradingLeaderboardView({ curves, now }: { curves: EquitySummary[
   // The deployment column stays put while the numbers scroll past it, on the
   // card's own surface so they slide underneath rather than through it.
   const pinned = "sticky left-0 z-[1] bg-surface-raised";
+  const { height, setHeight, save } = useChartHeight();
+  const frame = useRef<HTMLDivElement>(null);
+  const details = useMemo(() => new Map(curves.map((c) => [c.id, deploymentDetails(c)])), [curves]);
+  const [open, setOpen] = useState<ReadonlySet<string>>(new Set());
+  const toggle = (id: string) =>
+    setOpen((prev) => {
+      const next = new Set(prev);
+      if (!next.delete(id)) next.add(id);
+      return next;
+    });
 
   return (
     <div className="flex flex-1 flex-col gap-4">
-      {/* The chart takes whatever height the table leaves, never under 340px. */}
-      <Bento size="3" className="flex flex-1 flex-col">
+      {/* Until the handle is dragged, the chart takes whatever height the
+          table leaves, never under 340px; after, the height dragged to. */}
+      <Bento size="3" className={`flex flex-col ${height === null ? "flex-1" : ""}`}>
         <div className="mb-3 flex shrink-0 flex-wrap gap-x-4 gap-y-1">
           {curves.map((c) => (
             <span key={c.id} className="flex items-center gap-2 text-xs text-ink-primary">
@@ -139,11 +256,20 @@ export function TradingLeaderboardView({ curves, now }: { curves: EquitySummary[
             </span>
           ))}
         </div>
-        <div className="min-h-[340px] flex-1">
+        <div ref={frame} className={height === null ? "min-h-[340px] flex-1" : "shrink-0"} style={height === null ? undefined : { height }}>
           <ClientOnly>
             <EquityChart curves={curves} />
           </ClientOnly>
         </div>
+        <ChartResizeHandle
+          frame={frame}
+          height={height}
+          onResize={setHeight}
+          onCommit={(h) => {
+            setHeight(h);
+            save(h);
+          }}
+        />
       </Bento>
 
       {/* Every column, at its natural width: on a narrow screen the table is
@@ -165,14 +291,27 @@ export function TradingLeaderboardView({ curves, now }: { curves: EquitySummary[
             </tr>
           </thead>
           <tbody>
-            {ranked.map((c) => (
-              <tr key={c.id} className="border-b border-line-subtle text-right tabular-nums text-ink-primary last:border-0">
+            {ranked.map((c) => {
+              const d = details.get(c.id)!;
+              const isOpen = open.has(c.id);
+              return (
+              <Fragment key={c.id}>
+              <tr className={`text-right tabular-nums text-ink-primary ${isOpen ? "" : "border-b border-line-subtle"}`}>
                 <td className={`px-3 py-3 text-left ${pinned}`}>
                   <div className="flex items-center gap-2 font-medium">
                     <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: colors.get(c.id) }} />
                     {c.label}
                   </div>
-                  <div className="pl-4 text-xs text-ink-muted">{c.strategy}</div>
+                  <button
+                    type="button"
+                    onClick={() => toggle(c.id)}
+                    aria-expanded={isOpen}
+                    aria-controls={`details-${c.id}`}
+                    className="-my-1 flex min-h-8 items-center gap-1 pl-4 text-xs text-ink-muted hover:text-ink-primary"
+                  >
+                    {c.strategy}
+                    <ChevronDown aria-hidden className={`h-3.5 w-3.5 transition-transform ${isOpen ? "rotate-180" : ""}`} />
+                  </button>
                 </td>
                 <td className="px-3 py-3 font-medium">{money(c.value)}</td>
                 <td className={`px-3 py-3 font-medium ${returnClass(c.returnPct)}`}>{signedPct(c.returnPct)}</td>
@@ -184,7 +323,38 @@ export function TradingLeaderboardView({ curves, now }: { curves: EquitySummary[
                 </td>
                 <td className="px-3 py-3 text-ink-muted">{formatAge(now - c.latestAt)}</td>
               </tr>
-            ))}
+              {isOpen && (
+                <tr id={`details-${c.id}`} className="border-b border-line-subtle last:border-0">
+                  <td colSpan={7} className="p-0">
+                    {/* Pinned to the card's left edge and no wider than the
+                        screen, so on a phone it reads without scrolling sideways. */}
+                    <div className="sticky left-0 w-[calc(100vw-5rem)] max-w-2xl whitespace-normal px-3 pb-3 pl-7 text-left text-xs text-ink-muted">
+                      {d.description && <p className="mb-2 text-sm text-ink-primary">{d.description}</p>}
+                      {(d.params.length > 0 || d.sides) && (
+                        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
+                          {d.params.map((p) => (
+                            <Fragment key={p.name}>
+                              <dt>{p.name}</dt>
+                              <dd className="font-medium tabular-nums text-ink-primary">{p.value}</dd>
+                            </Fragment>
+                          ))}
+                          {d.sides && (
+                            <>
+                              <dt>Trades</dt>
+                              <dd className="font-medium text-ink-primary">{d.sides}</dd>
+                            </>
+                          )}
+                          <dt>Bars</dt>
+                          <dd className="font-medium text-ink-primary">{c.label.split(" ").pop()}</dd>
+                        </dl>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              )}
+              </Fragment>
+              );
+            })}
           </tbody>
         </table>
         </div>

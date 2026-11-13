@@ -29,6 +29,10 @@ export interface EquitySummary {
   /** Short and unique among live deployments, e.g. "QQQ 15m". */
   label: string;
   strategy: string;
+  strategyId: string;
+  symbol: string;
+  /** As reported, e.g. "15min". */
+  interval: string;
   /** The curve on a STARTING_CAPITAL base, beginning at exactly that value. */
   points: EquityPoint[];
   value: number;
@@ -76,6 +80,9 @@ export function summarize(row: EquityCurveRow): EquitySummary {
     id: row.deployment_id,
     label: `${row.symbol} ${row.bar_interval.replace("min", "m")}`,
     strategy: strategyName(row.strategy_id),
+    strategyId: row.strategy_id,
+    symbol: row.symbol,
+    interval: row.bar_interval,
     points,
     value,
     returnPct: (value / STARTING_CAPITAL - 1) * 100,
