@@ -1,7 +1,7 @@
 // Strategy Registry
 // Export all available strategies for the algo-backtest feature
 
-import { StrategyDefinition } from './types';
+import { StrategyDefinition, StrategyParameter } from './types';
 import alligator from './alligator';
 import bollingerBands from './bollinger-bands';
 import breakout from './breakout';
@@ -75,6 +75,25 @@ export const AVAILABLE_STRATEGIES: Record<string, StrategyDefinition> = {
 export * from './types';
 
 // Helper to get default parameter values for a strategy
+/** A number parameter whose default, range and step are all whole numbers: a period, a length, a count. */
+export function isWholeNumberParameter(p: StrategyParameter): boolean {
+  return p.type === 'number' && [p.default, p.min, p.max, p.step].every((v) => v === undefined || Number.isInteger(Number(v)));
+}
+
+/**
+ * The step a sweep starts with: 1 for a whole-number parameter, so a sweep
+ * can land on any period; a decimal parameter's own step (0.5 standard
+ * deviations, 0.05% of price), which suits its range.
+ */
+export function defaultSweepStep(p: StrategyParameter): number {
+  return isWholeNumberParameter(p) ? 1 : (p.step ?? 0.1);
+}
+
+/** A parameter's default sweep: its whole range, by its default step. */
+export function defaultVariation(p: StrategyParameter): { key: string; min: number; max: number; step: number } {
+  return { key: p.key, min: p.min ?? Number(p.default), max: p.max ?? Number(p.default), step: defaultSweepStep(p) };
+}
+
 export function getDefaultParams(strategyId: string): Record<string, number | boolean | string> {
   const strategy = AVAILABLE_STRATEGIES[strategyId];
   if (!strategy?.parameters) return {};

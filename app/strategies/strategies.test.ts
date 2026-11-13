@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getDefaultParams, type OHLCBar, type IndicatorValues, type StrategyDefinition } from "./index";
+import { AVAILABLE_STRATEGIES, defaultSweepStep, defaultVariation, getDefaultParams, isWholeNumberParameter, type OHLCBar, type IndicatorValues, type StrategyDefinition } from "./index";
 import ibsMeanReversion, { ibs } from "./ibs-mean-reversion";
 import ibsTrend from "./ibs-trend";
 import double7s from "./double-7s";
@@ -73,6 +73,24 @@ describe("IBS mean reversion", () => {
   it("skips entries under the 200 SMA when the trend filter is on", () => {
     const nearLow: Bar = { time: 0, open: 108, high: 110, low: 100, close: 101, sma200: 120 };
     expect(signal(ibsMeanReversion, [nearLow], null, { trendFilter: true })).toBe("hold");
+  });
+});
+
+describe("default sweep steps", () => {
+  it("steps whole-number parameters by 1 and decimal ones by their own step", () => {
+    const params = Object.fromEntries(Object.values(AVAILABLE_STRATEGIES).flatMap((s) => (s.parameters ?? []).map((p) => [`${s.id}.${p.key}`, p])));
+    expect(defaultSweepStep(params["ibs-trend.smaPeriod"])).toBe(1);
+    expect(defaultSweepStep(params["ibs-mean-reversion.entryIbs"])).toBe(1);
+    expect(defaultSweepStep(params["bollinger-bands.stdDev"])).toBe(0.5);
+    expect(defaultSweepStep(params["macd-crossover.minHistogramPct"])).toBe(0.05);
+    expect(isWholeNumberParameter(params["bollinger-bands.stdDev"])).toBe(false);
+    expect(defaultVariation(params["ibs-trend.smaPeriod"])).toEqual({ key: "smaPeriod", min: 5, max: 250, step: 1 });
+  });
+
+  it("gives every number parameter in every strategy a step that moves forward", () => {
+    for (const s of Object.values(AVAILABLE_STRATEGIES)) {
+      for (const p of s.parameters ?? []) if (p.type === "number") expect(defaultSweepStep(p), `${s.id}.${p.key}`).toBeGreaterThan(0);
+    }
   });
 });
 

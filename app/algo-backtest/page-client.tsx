@@ -12,8 +12,12 @@ import { cn } from "@/app/lib/utils";
 import { IndicatorData, PositionSide } from "@/app/types";
 import {
   AVAILABLE_STRATEGIES,
+  defaultSweepStep,
+  defaultVariation,
   getDefaultParams,
+  isWholeNumberParameter,
   ParameterizedResult,
+  type StrategyDefinition,
 } from "@/app/strategies";
 import {
   DEFAULT_SIZING,
@@ -92,6 +96,30 @@ interface StrategySettings {
   // Risk sizing and account protection (added 2026-11-04). Settings saved
   // before then have none and get DEFAULT_SIZING; see sizingFrom.
   sizing?: Partial<SizingSettings>;
+  // 2 since sweep steps became editable (2026-11-12). Sweeps saved before
+  // then carry each parameter's old built-in step, which nobody chose, so
+  // they take the current defaults once (see savedVariations).
+  sweepStepsVersion?: number;
+}
+
+const SWEEP_STEPS_VERSION = 2;
+
+/**
+ * A strategy's sweep: the saved one where there is one (old saves get
+ * today's default steps), plus defaults for parameters added since.
+ */
+function savedVariations(strategy: StrategyDefinition, saved: Partial<StrategySettings> | null): ParameterVariationConfig[] {
+  const numeric = (strategy.parameters ?? []).filter((p) => p.type === 'number');
+  const defaults = numeric.map(defaultVariation);
+  if (!saved?.paramVariations || saved.paramVariations.length === 0) return defaults;
+  const current = saved.sweepStepsVersion === SWEEP_STEPS_VERSION;
+  const kept = saved.paramVariations.flatMap((v) => {
+    const p = numeric.find((x) => x.key === v.key);
+    if (!p) return [];
+    return [current && v.step > 0 ? v : { ...v, step: defaultSweepStep(p) }];
+  });
+  const keptKeys = new Set(kept.map((v) => v.key));
+  return [...kept, ...defaults.filter((v) => !keptKeys.has(v.key))];
 }
 
 /** Saved sizing over the defaults, so a field added later still gets a value. */
@@ -363,26 +391,7 @@ export default function AlgoBacktestPage() {
     // Initialize variation configs from saved or from parameter definitions
     const strategy = AVAILABLE_STRATEGIES[selectedStrategyId];
     if (strategy?.parameters) {
-      const defaultVariations = strategy.parameters
-        .filter((p) => p.type === 'number')
-        .map((p) => ({
-          key: p.key,
-          min: p.min ?? Number(p.default),
-          max: p.max ?? Number(p.default),
-          step: p.step ?? 1,
-        }));
-
-      if (saved?.paramVariations && saved.paramVariations.length > 0) {
-        // Merge saved variations with defaults for any new parameters
-        const savedKeys = new Set(saved.paramVariations.map((v) => v.key));
-        const merged = [
-          ...saved.paramVariations.filter((v) => strategy.parameters!.some((p) => p.key === v.key)),
-          ...defaultVariations.filter((v) => !savedKeys.has(v.key)),
-        ];
-        setParamVariations(merged);
-      } else {
-        setParamVariations(defaultVariations);
-      }
+      setParamVariations(savedVariations(strategy, saved));
     } else {
       setParamVariations([]);
     }
@@ -475,6 +484,7 @@ export default function AlgoBacktestPage() {
       enableShorts,
       positionSizePercent,
       sizing,
+      sweepStepsVersion: SWEEP_STEPS_VERSION,
     });
   }, [selectedStrategyId, currentParams, paramVariations, stopLossPercent, takeProfitPercent, enableShorts, positionSizePercent, sizing]);
 
@@ -490,26 +500,7 @@ export default function AlgoBacktestPage() {
       if (saved?.currentParams && key in saved.currentParams) params[key] = saved.currentParams[key];
     }
 
-    let variations: ParameterVariationConfig[] = [];
-    if (strat.parameters) {
-      const numericDefaults = strat.parameters
-        .filter((p) => p.type === 'number')
-        .map((p) => ({
-          key: p.key,
-          min: p.min ?? Number(p.default),
-          max: p.max ?? Number(p.default),
-          step: p.step ?? 1,
-        }));
-      if (saved?.paramVariations && saved.paramVariations.length > 0) {
-        const savedKeys = new Set(saved.paramVariations.map((v) => v.key));
-        variations = [
-          ...saved.paramVariations.filter((v) => strat.parameters!.some((p) => p.key === v.key)),
-          ...numericDefaults.filter((v) => !savedKeys.has(v.key)),
-        ];
-      } else {
-        variations = numericDefaults;
-      }
-    }
+    const variations: ParameterVariationConfig[] = strat.parameters ? savedVariations(strat, saved) : [];
 
     return {
       strategyId,
@@ -1206,10 +1197,12 @@ export default function AlgoBacktestPage() {
                               <Flex wrap='wrap' gap='3'>
                                 {numericParams.map((param) => {
                                   const variation = paramVariations.find((v) => v.key === param.key);
-                                  const setBound = (bound: "min" | "max", raw: string) => {
+                                  const step = variation?.step ?? defaultSweepStep(param);
+                                  const setBound = (bound: "min" | "max" | "step", raw: string) => {
                                     const parsed = parseFloat(raw);
-                                    const fallback = Number(param[bound] ?? param.default);
-                                    const value = isNaN(parsed) ? fallback : parsed;
+                                    const fallback = bound === "step" ? defaultSweepStep(param) : Number(param[bound] ?? param.default);
+                                    // A step has to move forward, or the sweep never ends.
+                                    const value = isNaN(parsed) || (bound === "step" && parsed <= 0) ? fallback : parsed;
                                     setParamVariations((prev) =>
                                       prev.map((v) => (v.key === param.key ? { ...v, [bound]: value } : v))
                                     );
@@ -1225,7 +1218,7 @@ export default function AlgoBacktestPage() {
                                           value={variation?.min ?? param.min ?? Number(param.default)}
                                           min={param.min}
                                           max={param.max}
-                                          step={param.step}
+                                          step={step}
                                           onChange={(raw) => setBound("min", raw)}
                                           className='w-20'
                                         />
@@ -1237,9 +1230,20 @@ export default function AlgoBacktestPage() {
                                           value={variation?.max ?? param.max ?? Number(param.default)}
                                           min={param.min}
                                           max={param.max}
-                                          step={param.step}
+                                          step={step}
                                           onChange={(raw) => setBound("max", raw)}
                                           className='w-20'
+                                        />
+                                        <Text size='1' color='gray' className='pb-2'>
+                                          by
+                                        </Text>
+                                        <NumberField
+                                          label='Step'
+                                          value={step}
+                                          min={isWholeNumberParameter(param) ? 1 : 0.01}
+                                          step={isWholeNumberParameter(param) ? 1 : 0.01}
+                                          onChange={(raw) => setBound("step", raw)}
+                                          className='w-16'
                                         />
                                       </Flex>
                                     </Flex>
@@ -1252,13 +1256,14 @@ export default function AlgoBacktestPage() {
                                   const variation = savedRun?.paramVariations.find((v) => v.key === param.key);
                                   const min = variation?.min ?? param.min ?? Number(param.default);
                                   const max = variation?.max ?? param.max ?? Number(param.default);
+                                  const step = variation?.step ?? defaultSweepStep(param);
                                   return (
                                     <Flex key={param.key} direction='column' gap='1'>
                                       <Text size='1' weight='medium'>
                                         {param.name}
                                       </Text>
                                       <Code size='1' variant='ghost' color='gray'>
-                                        {min !== max ? `${min} → ${max}` : String(min)}
+                                        {min !== max ? `${min} → ${max} by ${step}` : String(min)}
                                       </Code>
                                     </Flex>
                                   );
