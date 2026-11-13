@@ -16,10 +16,14 @@ export interface DeploymentParam {
   value: string;
 }
 
+export type ParamValue = string | number | boolean;
+
 export interface DeploymentDetails {
   description: string | null;
   sides: "Long and short" | "Long only" | null;
   params: DeploymentParam[];
+  /** The same values keyed by parameter key, as the strategy takes them; {} when the id doesn't parse. */
+  values: Record<string, ParamValue>;
 }
 
 export interface DeploymentIdentity {
@@ -42,10 +46,17 @@ function readValue(token: string, p: StrategyParameter): string | null {
   return `${n}${percent ? "%" : ""}`;
 }
 
+/** The value a strategy handler takes for an id token readValue accepted. */
+function rawValue(token: string, p: StrategyParameter): ParamValue {
+  if (p.type === "boolean") return token === "y";
+  if (p.type === "select") return (p.options ?? []).find((o) => slug(o) === token)!;
+  return Number(token.replace(/^m/, "-").replace("p", "."));
+}
+
 export function deploymentDetails(d: DeploymentIdentity): DeploymentDetails {
   const strategy = AVAILABLE_STRATEGIES[d.strategyId];
   const description = strategy?.description ?? null;
-  const none: DeploymentDetails = { description, sides: null, params: [] };
+  const none: DeploymentDetails = { description, sides: null, params: [], values: {} };
   if (!strategy) return none;
 
   const prefix = [d.strategyId, d.symbol.toLowerCase().replace(/\./g, "p"), d.interval.replace("min", "m")].join("-") + "-";
@@ -57,10 +68,12 @@ export function deploymentDetails(d: DeploymentIdentity): DeploymentDetails {
   if (!sides || tokens.length !== parameters.length) return none;
 
   const params: DeploymentParam[] = [];
+  const values: Record<string, ParamValue> = {};
   for (let i = 0; i < parameters.length; i++) {
     const value = readValue(tokens[i], parameters[i]);
     if (value === null) return none;
     params.push({ name: parameters[i].name.replace(/ \(%\)$/, ""), value });
+    values[parameters[i].key] = rawValue(tokens[i], parameters[i]);
   }
-  return { description, sides, params };
+  return { description, sides, params, values };
 }

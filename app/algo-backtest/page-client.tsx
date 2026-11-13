@@ -31,6 +31,7 @@ import {
   type RiskRange,
 } from "@/app/lib/backtest-engine";
 import { useBacktestWorker, type BacktestJobResult, type StrategyRun } from "./useBacktestWorker";
+import { fitsClaudePrefill } from "@/app/lib/claudeLink";
 import { clearResultCache, countCachedResults } from "./resultCache";
 import { getMeta, queryPage, type ResultRow, type RunMeta } from "./runStore";
 import BacktestProgressPanel from "./BacktestProgressPanel";
@@ -42,11 +43,6 @@ const DEFAULT_VISIBLE_CANDLES = 300;
 const STORAGE_KEY_GLOBAL = "algo-backtest-global";
 const STORAGE_KEY_STRATEGY_PREFIX = "algo-backtest-strategy-";
 
-/**
- * Longest encoded ?q= prefill sent to claude.ai/new. Long URLs get refused
- * along the way, so a report bigger than this goes partly by clipboard.
- */
-const CLAUDE_PREFILL_MAX = 8000;
 const CLAUDE_REVIEW_PROMPT = [
   "Review this backtest and tell me whether it is viable to run live as an automated paper-trading deployment:",
   "one AWS Lambda per strategy on Tradier's sandbox, firing after each bar closes and filling with a market order at the next bar's open.",
@@ -700,7 +696,7 @@ export default function AlgoBacktestPage() {
   const reviewWithClaude = useCallback(async () => {
     const full = generateMarkdownReport(true);
     if (!full) return;
-    const fits = (text: string) => encodeURIComponent(text).length <= CLAUDE_PREFILL_MAX;
+    const fits = fitsClaudePrefill;
     let message = `${CLAUDE_REVIEW_PROMPT}\n\n${full}`;
     let trimmed = false;
     if (!fits(message)) {

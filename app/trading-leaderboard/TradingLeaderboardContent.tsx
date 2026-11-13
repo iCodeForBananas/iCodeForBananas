@@ -1,13 +1,18 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { ChevronDown } from "lucide-react";
+import { Check, ChevronDown, MessageSquareText } from "lucide-react";
 import ClientOnly from "@/app/lib/ClientOnly";
 import { Bento } from "@/app/components/ui/bento";
+import { Button } from "@/app/components/ui/button";
 import { createClient } from "@/utils/supabase/client";
 import { STARTING_CAPITAL, formatAge, mergeCurves, niceScale, summarize, type EquityCurveRow, type EquitySummary } from "@/app/lib/tradingEquity";
 import { deploymentDetails } from "@/app/lib/deploymentDetails";
+import { tradingStats } from "@/app/lib/tradingStats";
+import { backtestReference, correlations, parsePriceCsv, type BacktestReference } from "@/app/lib/backtestReference";
+import { buildLeaderboardPrompt } from "@/app/lib/leaderboardPrompt";
+import { CLAUDE_NEW_CHAT, claudePrefillUrl } from "@/app/lib/claudeLink";
 
 const REFRESH_MS = 60_000;
 
@@ -363,8 +368,133 @@ export function TradingLeaderboardView({ curves, now }: { curves: EquitySummary[
   );
 }
 
+type Pnl = { realized: number; open: number };
+type SnapshotPnl = { deployment_id: string; bar_time: string; realized_pnl: number; unrealized_pnl: number };
+
+/**
+ * Realized P&L since each deployment's first report, and its open P&L now,
+ * from the snapshots at its first and latest bar. The curves RPC doesn't
+ * return P&L, but the snapshot table is public to read.
+ */
+async function loadPnl(supabase: NonNullable<ReturnType<typeof createClient>>, rows: EquityCurveRow[]): Promise<Map<string, Pnl>> {
+  const times = [...new Set(rows.flatMap((r) => [r.starting_at, r.latest_at]))];
+  const { data, error } = await supabase
+    .from("trading_equity_snapshots")
+    .select("deployment_id, bar_time, realized_pnl, unrealized_pnl")
+    .in("deployment_id", rows.map((r) => r.deployment_id))
+    .in("bar_time", times);
+  const out = new Map<string, Pnl>();
+  if (error || !data) return out;
+  const at = (id: string, iso: string) => (data as SnapshotPnl[]).find((s) => s.deployment_id === id && Date.parse(s.bar_time) === Date.parse(iso));
+  for (const r of rows) {
+    const first = at(r.deployment_id, r.starting_at);
+    const last = at(r.deployment_id, r.latest_at);
+    if (first && last) out.set(r.deployment_id, { realized: last.realized_pnl - first.realized_pnl, open: last.unrealized_pnl });
+  }
+  return out;
+}
+
+/**
+ * A reference backtest for each deployment not already done, from the app's
+ * own datasets (public/data, about 0.3 to 0.8 MB each). Run in the background
+ * after the leaderboard loads so the prompt can be built inside the click:
+ * Safari blocks the new tab and the clipboard if the click waits on a fetch.
+ * Skipped when the browser asks to save data.
+ */
+async function loadBacktests(rows: EquityCurveRow[], have: ReadonlySet<string>, onOne: (id: string, ref: BacktestReference | null) => void, isCancelled: () => boolean) {
+  const saveData = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData;
+  if (saveData) return;
+  const manifest = (await fetch("/data/manifest.json").then((r) => (r.ok ? r.json() : null)).catch(() => null)) as { files: { file: string; symbol: string; timeframe: string }[] } | null;
+  for (const row of rows) {
+    if (isCancelled()) return;
+    if (have.has(row.deployment_id)) continue;
+    const timeframe = row.bar_interval.replace("min", "m");
+    const entry = manifest?.files.find((f) => f.symbol === row.symbol && f.timeframe === timeframe);
+    const s = summarize(row);
+    const details = deploymentDetails(s);
+    let ref: BacktestReference | null = null;
+    if (entry && details.sides) {
+      const text = await fetch(`/data/${entry.file}`).then((r) => (r.ok ? r.text() : null)).catch(() => null);
+      if (isCancelled()) return;
+      if (text) {
+        ref = backtestReference(parsePriceCsv(text), {
+          strategyId: s.strategyId,
+          values: details.values,
+          shorts: details.sides === "Long and short",
+          dataset: entry.file,
+          live: s.points,
+        });
+      }
+    }
+    onOne(row.deployment_id, ref);
+    // Let the page paint between runs.
+    await new Promise((r) => setTimeout(r, 0));
+  }
+}
+
+type AnalyzeStatus = { tone: "ok" | "warn"; text: string } | null;
+
+/**
+ * Opens a new Claude chat with the analysis prompt typed in, and copies the
+ * same prompt to the clipboard. Both happen inside the click, with the prompt
+ * already built from what the page holds, so popup blockers and Safari's
+ * clipboard rules allow them. A prompt too long for the URL opens an empty
+ * chat and relies on the clipboard.
+ */
+function AnalyzeInClaude({ buildPrompt, disabled }: { buildPrompt: () => { prompt: string; backtestsPending: boolean } | null; disabled: boolean }) {
+  const [status, setStatus] = useState<AnalyzeStatus>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (timer.current) clearTimeout(timer.current);
+  }, []);
+
+  const onClick = () => {
+    const built = buildPrompt();
+    if (!built) return;
+    const { prompt, backtestsPending } = built;
+    const url = claudePrefillUrl(prompt);
+    const copying = navigator.clipboard?.writeText
+      ? navigator.clipboard.writeText(prompt).then(() => true, () => false)
+      : Promise.resolve(false);
+    window.open(url ?? CLAUDE_NEW_CHAT, "_blank", "noopener,noreferrer");
+    void copying.then((copied) => {
+      const pending = backtestsPending ? " The reference backtests were still loading, so the prompt says which are missing." : "";
+      let next: AnalyzeStatus;
+      if (url && copied) next = { tone: "ok", text: `Opened Claude with the prompt filled in; it's on your clipboard too.${pending}` };
+      else if (url) next = { tone: "ok", text: `Opened Claude with the prompt filled in. (Copying to the clipboard didn't work.)${pending}` };
+      else if (copied) next = { tone: "warn", text: `The prompt is too long to fill in through the link, so Claude opened empty. It's on your clipboard: paste it in and send.${pending}` };
+      else next = { tone: "warn", text: "The prompt is too long to fill in through the link and copying it didn't work. Allow clipboard access for this site and try again." };
+      setStatus(next);
+      if (timer.current) clearTimeout(timer.current);
+      timer.current = setTimeout(() => setStatus(null), 12_000);
+    });
+  };
+
+  return (
+    <div className="flex w-full flex-col gap-2 sm:w-auto sm:items-end">
+      <Button
+        variant="primary"
+        size="md"
+        onClick={onClick}
+        disabled={disabled}
+        title="Open a new Claude chat asking which strategies to cut, keep in paper or move to real money, with the current stats filled in"
+        className="w-full sm:w-auto"
+      >
+        {status?.tone === "ok" ? <Check className="size-4" /> : <MessageSquareText className="size-4" />}
+        Analyze in Claude
+      </Button>
+      <p role="status" aria-live="polite" className={`max-w-sm text-xs sm:text-right ${status?.tone === "warn" ? "text-ink-primary" : "text-ink-muted"}`}>
+        {status?.text}
+      </p>
+    </div>
+  );
+}
+
 export default function TradingLeaderboardContent() {
   const [curves, setCurves] = useState<EquitySummary[] | null>(null);
+  const [rows, setRows] = useState<EquityCurveRow[] | null>(null);
+  const [pnl, setPnl] = useState<Map<string, Pnl>>(new Map());
+  const [backtests, setBacktests] = useState<Map<string, BacktestReference | null>>(new Map());
   const [loadedAt, setLoadedAt] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
@@ -379,8 +509,14 @@ export default function TradingLeaderboardContent() {
         return;
       }
       setError(null);
-      setCurves(((data ?? []) as EquityCurveRow[]).map(summarize));
+      const loaded = (data ?? []) as EquityCurveRow[];
+      setRows(loaded);
+      setCurves(loaded.map(summarize));
       setLoadedAt(Date.now());
+      if (supabase && loaded.length > 0) {
+        const next = await loadPnl(supabase, loaded);
+        if (!cancelled) setPnl(next);
+      }
     }
     void load();
     const timer = setInterval(() => void load(), REFRESH_MS);
@@ -390,10 +526,45 @@ export default function TradingLeaderboardContent() {
     };
   }, []);
 
+  // Backtests for deployments not yet done, whenever the set of deployments changes.
+  const rowIds = rows?.map((r) => r.deployment_id).join(",") ?? "";
+  const backtestsRef = useRef(backtests);
+  backtestsRef.current = backtests;
+  useEffect(() => {
+    if (!rows || rows.length === 0) return;
+    let cancelled = false;
+    void loadBacktests(
+      rows,
+      new Set(backtestsRef.current.keys()),
+      (id, ref) => setBacktests((prev) => new Map(prev).set(id, ref)),
+      () => cancelled,
+    );
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rowIds]);
+
+  const buildPrompt = useCallback(() => {
+    if (!rows || rows.length === 0) return null;
+    const stats = tradingStats(rows, Date.now());
+    const done = new Map([...backtests].filter(([, ref]) => ref !== null) as [string, BacktestReference][]);
+    const deployments = stats.deployments.map((s) => {
+      const details = deploymentDetails({ id: s.id, strategyId: s.strategy.id, symbol: s.symbol, interval: s.barInterval });
+      return { stats: s, values: details.values, pnl: pnl.get(s.id) ?? null, backtest: backtests.has(s.id) ? backtests.get(s.id)! : undefined };
+    });
+    const corr = correlations(new Map([...done].map(([id, ref]) => [id, ref.dailyReturns])));
+    return {
+      prompt: buildLeaderboardPrompt({ deployments, correlations: corr, asOf: Date.now() }),
+      backtestsPending: deployments.some((d) => d.backtest === undefined),
+    };
+  }, [rows, pnl, backtests]);
+
   return (
     <main className="flex w-full flex-1 flex-col px-4 py-4">
-      <header className="mb-4">
+      <header className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <h1 className="text-2xl font-bold text-ink-primary">Trading Leaderboard</h1>
+        <AnalyzeInClaude buildPrompt={buildPrompt} disabled={!rows || rows.length === 0} />
       </header>
 
       {error && curves === null && <Bento size="3" className="text-sm text-ink-muted">Couldn&apos;t load the curves: {error}</Bento>}
