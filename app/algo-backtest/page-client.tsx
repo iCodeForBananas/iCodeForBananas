@@ -7,7 +7,7 @@ import BentoPageLayout from "../components/BentoPageLayout";
 import { Bento } from "../components/ui/bento";
 import { Badge, Box, Callout, Checkbox, CheckboxGroup, Code, Flex, Grid, SegmentedControl, Strong, Switch, Table, Text, TextField } from "@radix-ui/themes";
 import { Button } from "@/app/components/ui/button";
-import { Check, ChevronDown, ClipboardCopy, Play, Trash2, X, Zap } from "lucide-react";
+import { Check, ChevronDown, MessageSquareText, Play, Trash2, X, Zap } from "lucide-react";
 import { cn } from "@/app/lib/utils";
 import { IndicatorData, PositionSide } from "@/app/types";
 import {
@@ -37,6 +37,26 @@ const DEFAULT_VISIBLE_CANDLES = 300;
 // localStorage keys
 const STORAGE_KEY_GLOBAL = "algo-backtest-global";
 const STORAGE_KEY_STRATEGY_PREFIX = "algo-backtest-strategy-";
+
+/**
+ * Longest encoded ?q= prefill sent to claude.ai/new. Long URLs get refused
+ * along the way, so a report bigger than this goes partly by clipboard.
+ */
+const CLAUDE_PREFILL_MAX = 8000;
+const CLAUDE_REVIEW_PROMPT = [
+  "Review this backtest and tell me whether it is viable to run live as an automated paper-trading deployment:",
+  "one AWS Lambda per strategy on Tradier's sandbox, firing after each bar closes and filling with a market order at the next bar's open.",
+  "",
+  "Weigh, with numbers from the report:",
+  "- Overfitting: is the edge still there out-of-sample (last 30%), or only in-sample? Is this the best of a large parameter sweep?",
+  "- Sample size: are there enough trades for the win rate, profit factor and Sharpe to mean anything? Treat an infinite profit factor as a warning, not a strength.",
+  "- Risk: max drawdown and losing streaks against what I would tolerate live.",
+  "- Costs: would realistic commission and slippage for this bar size wipe out the average trade?",
+  "- Live mechanics: Tradier sandbox data runs 15 minutes behind, orders only fill in regular hours, and a short needs shares to borrow. Does any of that break this strategy?",
+  "- Buy and hold: is the risk worth it compared with just holding?",
+  "",
+  "End with a verdict (deploy to paper trading, test more first, or don't), the main reasons, and what to change or test before deploying.",
+].join("\n");
 
 // Everything on the page that isn't per strategy, so a refresh comes back to
 // the same run setup. Saved values are checked against what exists now (the
@@ -571,7 +591,7 @@ export default function AlgoBacktestPage() {
   }, [selectedFiles, selectedStrategyIds, selectedStrategyId, paramVariations, currentParams, stopLossPercent, takeProfitPercent, enableShorts, positionSizePercent, commissionBps, slippageBps, sizing, buildSavedRun, runBacktestWorker, refreshCachedCount]);
 
   // Generate markdown report for clipboard
-  const generateMarkdownReport = useCallback(() => {
+  const generateMarkdownReport = useCallback((includeTrades = true) => {
     const result = activeResult;
     if (!result) return '';
     // Prefer the strategy this result was actually generated from. Falls back
@@ -652,7 +672,7 @@ export default function AlgoBacktestPage() {
       `| Sharpe Ratio | ${result.sharpeRatio.toFixed(2)} |`,
     );
 
-    if (result.trades.length > 0) {
+    if (includeTrades && result.trades.length > 0) {
       lines.push(
         '',
         '## Trade Log',
@@ -671,17 +691,33 @@ export default function AlgoBacktestPage() {
     return lines.join('\n');
   }, [activeResult, selectedStrategyId, selectedFiles, availableDatasets, currentParams, stopLossPercent, takeProfitPercent, enableShorts, positionSizePercent, sizing]);
 
-  // Copy report to clipboard
-  const copyReport = useCallback(async () => {
-    const markdown = generateMarkdownReport();
-    if (!markdown) return;
-    try {
-      await navigator.clipboard.writeText(markdown);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      alert('Unable to copy to clipboard. Please check your browser permissions.');
+  // Open the report in a new Claude chat, asking whether it's worth running
+  // live. The whole report rides in the chat's ?q= prefill when it fits; a
+  // long trade log doesn't, so then the prefill carries the report without it
+  // and the full report goes to the clipboard to paste in after.
+  const reviewWithClaude = useCallback(async () => {
+    const full = generateMarkdownReport(true);
+    if (!full) return;
+    const fits = (text: string) => encodeURIComponent(text).length <= CLAUDE_PREFILL_MAX;
+    let message = `${CLAUDE_REVIEW_PROMPT}\n\n${full}`;
+    let trimmed = false;
+    if (!fits(message)) {
+      trimmed = true;
+      message = `${CLAUDE_REVIEW_PROMPT}\n\nThe full trade log is on my clipboard; I'll paste it in my next message.\n\n${generateMarkdownReport(false)}`;
+      if (!fits(message)) message = `${CLAUDE_REVIEW_PROMPT}\n\nThe full report is on my clipboard; I'll paste it in my next message.`;
     }
+    // Open first, inside the click, so a popup blocker allows it.
+    window.open(`https://claude.ai/new?q=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
+    if (trimmed) {
+      try {
+        await navigator.clipboard.writeText(full);
+      } catch {
+        alert('Opened Claude, but the full report could not be copied. Check your browser clipboard permissions.');
+        return;
+      }
+    }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   }, [generateMarkdownReport]);
 
   // Source of the strategy behind the active result, fetched so the Lambda
@@ -1628,11 +1664,11 @@ export default function AlgoBacktestPage() {
                       <Button
                         size='sm'
                         variant="secondary"
-                        onClick={copyReport}
-                        title='Copy backtest report as markdown for LLM review'
+                        onClick={reviewWithClaude}
+                        title='Open this report in Claude and ask whether it is viable to run as a live paper-trading deployment'
                       >
-                        {copied ? <Check className='size-3.5' /> : <ClipboardCopy className='size-3.5' />}
-                        {copied ? "Copied!" : "Copy report"}
+                        {copied ? <Check className='size-3.5' /> : <MessageSquareText className='size-3.5' />}
+                        {copied ? "Opened in Claude" : "Review with Claude"}
                       </Button>
                       <Button
                         size='sm'
