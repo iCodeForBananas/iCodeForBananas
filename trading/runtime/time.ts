@@ -66,8 +66,18 @@ export function parseEtTimestamp(s: unknown): number {
   return etWallToUtcMs(+m[1], +m[2], +m[3], +m[4], +m[5], +(m[6] ?? 0));
 }
 
-/** A bar that closed in [09:30, 16:00) ET is a regular-session bar. */
+/** The regular session, in ET minutes of the day: 09:30 to 16:00. */
+export const SESSION_OPEN_MIN = 9 * 60 + 30;
+export const SESSION_CLOSE_MIN = 16 * 60;
+
+/** A bar that closed in (09:30, 16:00] ET is a regular-session bar; the session's last closes at 16:00. */
 export function isRegularSessionClose(closeMs: number): boolean {
   const min = etMinutesOfDay(closeMs);
-  return min >= 9 * 60 + 30 && min < 16 * 60;
+  return min > SESSION_OPEN_MIN && min <= SESSION_CLOSE_MIN;
+}
+
+/** 09:30 and 16:00 ET on the ET calendar day of `ms`. */
+export function sessionBounds(ms: number): { open: number; close: number } {
+  const p = etParts(ms);
+  return { open: etWallToUtcMs(p.year, p.month, p.day, 9, 30), close: etWallToUtcMs(p.year, p.month, p.day, 16, 0) };
 }

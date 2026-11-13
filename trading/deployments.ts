@@ -1,5 +1,5 @@
 // The live paper-trading deployments. Each entry becomes its own Lambda, its
-// own EventBridge schedule (every bar close, weekdays 04:00-20:59 ET), its own
+// own EventBridge schedule (every regular-session bar close, weekdays), its own
 // state row and its own row on the TradierTrading CloudWatch dashboard. All of
 // them share the Tradier sandbox secret, the state table and the runtime in
 // trading/runtime, which runs the strategy straight from app/strategies.
@@ -31,6 +31,9 @@ export const DEPLOYMENTS: Deployment[] = [
     interval: '15min',
     params: { entryIbs: 20, exitIbs: 50, trendFilter: false },
     ...SHARED_RISK,
+    // Regular-session bars only, 26 a day: 20 calendar days make about 14
+    // sessions, 360 bars, past the default 250.
+    historyDays: 20,
   },
   {
     strategyId: 'ibs-mean-reversion',
@@ -38,9 +41,10 @@ export const DEPLOYMENTS: Deployment[] = [
     interval: '15min',
     params: { entryIbs: 25, exitIbs: 75, trendFilter: false },
     ...SHARED_RISK,
-    // The backtest warmed up on at least 375 bars; 14 days covers thin extended-hours sessions.
+    // The backtest warmed up on at least 375 bars: 25 calendar days make about
+    // 17 sessions of 26 regular-session bars.
     minBars: 375,
-    historyDays: 14,
+    historyDays: 25,
     // Replaced by IBS TXN 1d below: one account holds one net TXN position.
     // Kept deployed with its schedule off, to switch back easily.
     enabled: false,
@@ -62,9 +66,10 @@ export const DEPLOYMENTS: Deployment[] = [
     interval: '15min',
     params: { entryIbs: 25, exitIbs: 90, trendFilter: false },
     ...SHARED_RISK,
-    // The backtest warmed up on at least 450 bars.
+    // The backtest warmed up on at least 450 bars: 30 calendar days make about
+    // 21 sessions of 26 regular-session bars.
     minBars: 450,
-    historyDays: 14,
+    historyDays: 30,
   },
   {
     strategyId: 'ibs-mean-reversion',
@@ -73,9 +78,11 @@ export const DEPLOYMENTS: Deployment[] = [
     interval: '30min',
     params: { entryIbs: 40, exitIbs: 80, trendFilter: false },
     ...SHARED_RISK,
-    // The backtest warmed up on at least 400 bars: about 13 trading days of 30-minute bars.
-    minBars: 400,
-    historyDays: 21,
+    // The backtest warmed up on at least 400 bars, more than the 40 days of
+    // 15-minute data Tradier keeps can make (about 27 sessions of 13 bars).
+    // With the trend filter off, IBS reads no indicators, so 300 is safe.
+    minBars: 300,
+    historyDays: 40,
     // Replaced by IBS AVGO 1h below: one account holds one net AVGO position.
     // Kept deployed with its schedule off, to switch back easily.
     enabled: false,
@@ -86,6 +93,7 @@ export const DEPLOYMENTS: Deployment[] = [
     interval: '15min',
     params: { entryIbs: 20, exitIbs: 50, trendFilter: false },
     ...SHARED_RISK,
+    historyDays: 20,
     // Replaced by EMA price cross 1h below: one account holds one net TQQQ
     // position. Kept deployed with its schedule off, to switch back easily.
     enabled: false,
@@ -93,12 +101,14 @@ export const DEPLOYMENTS: Deployment[] = [
   {
     strategyId: 'ema-crossover',
     symbol: 'TSLA',
-    // Built from 15-minute timesales, aligned to the ET hour.
+    // Built from 15-minute timesales, counted from the 09:30 open.
     interval: '1h',
     params: { fastPeriod: 50, slowPeriod: 31 },
     ...SHARED_RISK,
-    // 250 one-hour bars is about 16 trading days of all-session data.
-    historyDays: 30,
+    // 40 days of 15-minute data make about 190 regular-session hourly bars;
+    // 150 is three times the longest EMA, enough for it to settle.
+    minBars: 150,
+    historyDays: 40,
   },
   {
     strategyId: 'ema-price-cross',
@@ -106,20 +116,22 @@ export const DEPLOYMENTS: Deployment[] = [
     interval: '1h',
     params: { emaPeriod: 2 },
     ...SHARED_RISK,
-    historyDays: 30,
+    // About 190 regular-session hourly bars fit in 40 days; EMA 2 needs few.
+    minBars: 150,
+    historyDays: 40,
     // The TQQQ strategy that trades; IBS TQQQ 15m above is off.
   },
   {
     strategyId: 'ibs-mean-reversion',
     symbol: 'LIN',
-    // Built from 15-minute timesales, aligned to the ET hour.
+    // Built from 15-minute timesales, counted from the 09:30 open.
     interval: '1h',
     params: { entryIbs: 5, exitIbs: 90, trendFilter: false },
     ...SHARED_RISK,
-    // The backtest asked for 450 bars, but LIN trades thinly outside regular
-    // hours: the 40 days of 15-minute data Tradier keeps make about 426 hourly
-    // bars. With the trend filter off, IBS reads no indicators, so 400 is safe.
-    minBars: 400,
+    // The backtest asked for 450 bars, but the 40 days of 15-minute data
+    // Tradier keeps make about 190 regular-session hourly bars. With the trend
+    // filter off, IBS reads no indicators, so 150 is safe.
+    minBars: 150,
     historyDays: 40,
   },
   {
@@ -136,28 +148,27 @@ export const DEPLOYMENTS: Deployment[] = [
   {
     strategyId: 'ibs-mean-reversion',
     symbol: 'AVGO',
-    // Built from 15-minute timesales, aligned to the ET hour. Replaces IBS AVGO 30m above.
+    // Built from 15-minute timesales, counted from the 09:30 open. Replaces IBS AVGO 30m above.
     interval: '1h',
     params: { entryIbs: 35, exitIbs: 75, trendFilter: false },
     ...SHARED_RISK,
-    // The backtest warmed up on at least 375 bars (5x the longest parameter). AVGO
-    // trades actively in extended hours, so 36 calendar days of all-session data
-    // make roughly 25 trading days of up to 16 hourly bars.
-    minBars: 375,
-    historyDays: 36,
+    // The backtest warmed up on at least 375 bars, but the 40 days of 15-minute
+    // data Tradier keeps make about 190 regular-session hourly bars. With the
+    // trend filter off, IBS reads no indicators, so 150 is safe.
+    minBars: 150,
+    historyDays: 40,
   },
   {
     strategyId: 'ema-price-cross',
     symbol: 'MU',
-    // Built from 15-minute timesales, aligned to the ET :00 and :30.
+    // Built from 15-minute timesales, counted from the 09:30 open.
     interval: '30min',
     params: { emaPeriod: 63 },
     ...SHARED_RISK,
-    // The backtest warmed up on at least 315 bars (5x the EMA period). MU trades
-    // actively in extended hours, so 17 calendar days of all-session data make
-    // about 12 trading days of up to 32 half-hour bars.
+    // The backtest warmed up on at least 315 bars (5x the EMA period): 40
+    // calendar days make about 26 sessions of 13 regular-session bars.
     minBars: 315,
-    historyDays: 17,
+    historyDays: 40,
   },
   {
     strategyId: 'ema-crossover',

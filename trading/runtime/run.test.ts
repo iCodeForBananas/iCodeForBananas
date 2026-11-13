@@ -28,18 +28,29 @@ const etIso = (ms: number) => {
   return `${p.year}-${pad(p.month)}-${pad(p.day)}T${pad(p.hour)}:${pad(p.minute)}:00`;
 };
 
-/** 400 bars ending with the one that closes at `lastClose`, its IBS set by `lastIbs`. */
+/** Whether a 15-minute bar opening at `t` is in the weekday regular session, 09:30-16:00 ET. */
+function inSession(t: number): boolean {
+  const p = etParts(t);
+  const weekday = new Date(Date.UTC(p.year, p.month - 1, p.day)).getUTCDay();
+  const min = p.hour * 60 + p.minute;
+  return weekday !== 0 && weekday !== 6 && min >= 9 * 60 + 30 && min < 16 * 60;
+}
+
+/**
+ * `count` regular-session 15-minute bars ending with the one that closes at
+ * `lastClose`, its IBS set by `lastIbs`, as timesales would return them.
+ */
 function makeRows({ lastIbs, lastClose = BOUNDARY, count = 400, price = 100 }: { lastIbs: number; lastClose?: number; count?: number; price?: number }): TimesalesRow[] {
-  const rows: TimesalesRow[] = [];
-  for (let i = count; i >= 1; i--) {
-    const t = lastClose - i * BAR;
+  const times: number[] = [];
+  for (let t = lastClose - BAR; times.length < count; t -= BAR) if (inSession(t)) times.unshift(t);
+  return times.map((t, k) => {
+    const i = count - k;
     const last = i === 1;
     const low = price - 1;
     const high = price + 1;
     const close = last ? low + lastIbs * (high - low) : price + Math.sin(i) * 0.5;
-    rows.push({ time: etIso(t), open: price, high, low, close, volume: 1000 });
-  }
-  return rows;
+    return { time: etIso(t), open: price, high, low, close, volume: 1000 };
+  });
 }
 
 interface FakeOpts {
@@ -193,8 +204,10 @@ describe('runDeployment', () => {
   it('does nothing when invoked too long after the bar became available', async () => {
     const h = harness({ rows: makeRows({ lastIbs: 0.1 }), startAt: AVAILABLE + 3 * 60_000 });
     const r = await h.run();
-    expect(r.reason).toMatch(/too late/);
+    expect(r.reason).toMatch(/no bar became available just now/);
     expect(h.placed).toHaveLength(0);
+    // A schedule's off-bar runs land here; that isn't stale data.
+    expect(h.log().StaleData).toBeUndefined();
   });
 
   it('acts on the bar that closed 15 minutes ago and ignores the newer, possibly partial one', async () => {
@@ -451,6 +464,65 @@ describe('30-minute deployments', () => {
     // IBS (99.2 - 99) / 2 = 0.1 < 0.4: buy.
     expect(r.action).toBe('entry long');
     expect(h.saved[0].barTime).toBe(BOUNDARY - 2 * BAR);
+  });
+});
+
+describe('regular-session intraday bars', () => {
+  const t = (h: number, m: number, day = 9) => etWallToUtcMs(2026, 11, day, h, m);
+  const D1H = resolveDeployment({ strategyId: 'ibs-mean-reversion', symbol: 'AVGO', interval: '1h', params: { entryIbs: 35, exitIbs: 75 }, enableShorts: true, startingEquity: 100_000, minBars: 50 });
+
+  it('expects bars counted from 09:30, and none before the first closes or at the weekend', () => {
+    expect(expectedBarClose('1h', t(10, 0))).toBeNull();
+    expect(expectedBarClose('1h', t(10, 30))).toBe(t(10, 30));
+    expect(expectedBarClose('1h', t(15, 59))).toBe(t(15, 30));
+    // The session's last hourly bar is 15:30-16:00.
+    expect(expectedBarClose('1h', t(16, 0))).toBe(t(16, 0));
+    expect(expectedBarClose('1h', t(18, 0))).toBe(t(16, 0));
+    expect(expectedBarClose('15min', t(9, 44))).toBeNull();
+    expect(expectedBarClose('15min', t(9, 45))).toBe(t(9, 45));
+    expect(expectedBarClose('30min', t(12, 10))).toBe(t(12, 0));
+    // Sunday.
+    expect(expectedBarClose('15min', t(12, 0, 8))).toBeNull();
+  });
+
+  it('skips a run before the day has a bar, without fetching or counting it stale', async () => {
+    const h = harness({ rows: makeRows({ lastIbs: 0.1 }), startAt: t(9, 50) });
+    let fetched = false;
+    h.api.timesales = async () => {
+      fetched = true;
+      return [];
+    };
+    const r = await h.run();
+    expect(r.reason).toMatch(/outside the regular session/);
+    expect(fetched).toBe(false);
+    expect(h.log().StaleData).toBeUndefined();
+  });
+
+  it("evaluates the session's short 15:30-16:00 hourly bar, and logs its order after the close", async () => {
+    // 15-minute bars through 15:45; the 15:30-16:00 hourly bar closes near its low.
+    const rows = makeRows({ lastIbs: 0.5, lastClose: t(16, 0) });
+    rows[rows.length - 2] = { ...rows[rows.length - 2], high: 101, low: 99, close: 99.6 };
+    rows[rows.length - 1] = { ...rows[rows.length - 1], high: 100, low: 99, close: 99.2 };
+    const h = harness({ rows, clockState: 'postmarket', startAt: t(16, 15) + 6_000 });
+    const r = await h.run(undefined, D1H);
+    expect(h.log().bar).toMatchObject({ time: new Date(t(15, 30)).toISOString(), closeTime: new Date(t(16, 0)).toISOString(), low: 99, close: 99.2 });
+    // IBS (99.2 - 99) / 2 = 0.1 < 0.35: buy, but the market is closed.
+    expect(r.action).toBe('entry long');
+    expect(h.placed).toHaveLength(0);
+    expect(h.log().wouldPlace).toEqual([expect.objectContaining({ side: 'buy' })]);
+  });
+
+  it('builds hourly bars from 09:30 and ignores extended-hours bars', async () => {
+    // Regular-session bars to 11:30, plus pre-market and after-hours noise.
+    const rows = makeRows({ lastIbs: 0.5, lastClose: t(11, 30), count: 300 });
+    rows.push({ time: '2026-11-09T07:00:00', open: 50, high: 500, low: 1, close: 2, volume: 1 });
+    rows.push({ time: '2026-11-06T18:00:00', open: 50, high: 500, low: 1, close: 2, volume: 1 });
+    rows.sort((a, b) => String(a.time).localeCompare(String(b.time)));
+    const h = harness({ rows, startAt: t(11, 45) + 6_000 });
+    await h.run(undefined, D1H);
+    const line = h.log();
+    expect(line.bar).toMatchObject({ time: new Date(t(10, 30)).toISOString(), closeTime: new Date(t(11, 30)).toISOString(), high: 101, low: 99 });
+    expect((line.data as { droppedOutsideSession: number }).droppedOutsideSession).toBe(2);
   });
 });
 

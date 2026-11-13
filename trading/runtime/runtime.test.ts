@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { calculateIndicatorsWithParams, deriveRequiredIndicators } from '@/app/lib/backtest-engine';
 import { AVAILABLE_STRATEGIES } from '@/app/strategies';
 import { awsName, deploymentId, functionName, resolveDeployment, validateDeployments, type Deployment } from './config';
-import { aggregateBars, computeSeries, parseBars } from './market';
+import { aggregateBars, computeSeries, intradayBarClose, parseBars, regularSessionBars } from './market';
 import { emfFields } from './metrics';
 import { etDate, etWallToUtcMs, isRegularSessionClose, parseEtTimestamp } from './time';
 import { createTradierClient } from './tradier';
@@ -86,10 +86,13 @@ describe('time', () => {
     expect(etDate(Date.parse('2026-11-07T03:30:00Z'))).toBe('2026-11-06');
   });
 
-  it('knows the regular session', () => {
+  it('knows the regular session: closes after 09:30, through 16:00', () => {
     expect(isRegularSessionClose(etWallToUtcMs(2026, 11, 9, 9, 45))).toBe(true);
-    expect(isRegularSessionClose(etWallToUtcMs(2026, 11, 9, 16, 0))).toBe(false);
-    expect(isRegularSessionClose(etWallToUtcMs(2026, 11, 9, 9, 30))).toBe(true);
+    // The session's last bar closes at 16:00.
+    expect(isRegularSessionClose(etWallToUtcMs(2026, 11, 9, 16, 0))).toBe(true);
+    expect(isRegularSessionClose(etWallToUtcMs(2026, 11, 9, 16, 15))).toBe(false);
+    // A bar closing at 09:30 is the last pre-market one.
+    expect(isRegularSessionClose(etWallToUtcMs(2026, 11, 9, 9, 30))).toBe(false);
     expect(isRegularSessionClose(etWallToUtcMs(2026, 11, 9, 9, 15))).toBe(false);
   });
 });
@@ -139,12 +142,30 @@ describe('market', () => {
     expect(r.droppedIncomplete).toBe(1);
   });
 
-  it('aggregates four 15-minute bars into an hourly bar on the ET hour', () => {
-    const t0 = etWallToUtcMs(2026, 11, 9, 9, 0);
+  it('aggregates hourly bars from the 09:30 open, like the backtest data', () => {
+    const t0 = etWallToUtcMs(2026, 11, 9, 9, 30);
     const src = [0, 1, 2, 3, 4].map((k) => ({ time: t0 + k * BAR, open: 10 + k, high: 20 + k, low: 5 - k, close: 11 + k, volume: 1 }));
     const r = aggregateBars(src, BAR, 4 * BAR, t0 + 5 * BAR);
     expect(r.bars).toEqual([{ time: t0, open: 10, high: 23, low: 2, close: 14, volume: 4 }]);
     expect(r.droppedIncomplete).toBe(1);
+  });
+
+  it('ends the session with a 15:30-16:00 hourly bar, complete at 16:00', () => {
+    const t = (h: number, m: number) => etWallToUtcMs(2026, 11, 9, h, m);
+    const src = [t(14, 30), t(14, 45), t(15, 0), t(15, 15), t(15, 30), t(15, 45)].map((time, k) => ({ time, open: 10 + k, high: 20 + k, low: 5 - k, close: 11 + k, volume: 1 }));
+    const r = aggregateBars(src, BAR, 4 * BAR, t(16, 0));
+    expect(r.bars.map((b) => b.time)).toEqual([t(14, 30), t(15, 30)]);
+    expect(r.bars[1]).toEqual({ time: t(15, 30), open: 14, high: 25, low: 0, close: 16, volume: 2 });
+    expect(intradayBarClose(t(15, 30), 4 * BAR)).toBe(t(16, 0));
+    expect(intradayBarClose(t(14, 30), 4 * BAR)).toBe(t(15, 30));
+    // Before 16:00 the short last bar is still forming.
+    expect(aggregateBars(src, BAR, 4 * BAR, t(15, 59)).bars.map((b) => b.time)).toEqual([t(14, 30)]);
+  });
+
+  it('keeps only regular-session bars, as the backtest data holds', () => {
+    const t = (h: number, m: number) => etWallToUtcMs(2026, 11, 9, h, m);
+    const src = [t(4, 0), t(9, 15), t(9, 30), t(15, 45), t(16, 0), t(19, 45)].map((time) => ({ time, open: 1, high: 2, low: 0.5, close: 1.5, volume: 1 }));
+    expect(regularSessionBars(src).map((b) => b.time)).toEqual([t(9, 30), t(15, 45)]);
   });
 
   it('keeps an older 30-minute bucket that only traded one half', () => {

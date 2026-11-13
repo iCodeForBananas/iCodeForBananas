@@ -54,18 +54,29 @@ change the entry and deploy.
 
 ## What runs, every bar close
 
+Intraday bars are **regular-session only** (09:30-16:00 ET), because that is
+all the backtest data holds, and they are counted from the 09:30 open the way
+the backtest data's are: 30-minute bars at 09:30, 10:00, ...; hourly bars at
+09:30, 10:30, ... 14:30, then a shorter 15:30-16:00 bar. Tradier serves
+timesales only at 1, 5 and 15 minutes, so 30-minute and hourly bars are built
+from 15-minute ones (`aggregateBars` in `runtime/market.ts`).
+
 Tradier's sandbox delays market data by 15 minutes (`DATA_DELAY_MS` in
 `runtime/config.ts`), so intraday runs fire 15 minutes after each bar closes,
-weekdays 04:00-20:59 ET (EventBridge Scheduler, America/New_York), and act on
-that bar. Anything newer in the response is ignored as possibly incomplete.
-Fills therefore land about 15 minutes after the backtest's would. Daily
-deployments run at 16:30 ET.
+weekdays through 16:15 ET (EventBridge Scheduler, America/New_York), and act
+on that bar. Anything newer in the response is ignored as possibly
+incomplete. Fills therefore land about 15 minutes after the backtest's would.
+Daily deployments run at 16:30 ET.
+
+Tradier keeps about 40 days of 15-minute timesales, about 27 sessions: at
+most about 700 15-minute, 350 30-minute or 190 hourly regular-session bars.
+`minBars` has to fit inside that.
 
 1. Reconcile with Tradier (Tradier wins): resolve the pending order, adopt
    Tradier's position on a mismatch, and skip trading the bar on any mismatch
    or unknown open order.
-2. Fetch the same fixed window of `timesales` (`session_filter=all`), drop
-   invalid, duplicate and still-forming bars, and skip unless the bar that
+2. Fetch the same fixed window of `timesales`, drop invalid, duplicate,
+   still-forming and outside-the-session bars, and skip unless the bar that
    became available is there, the run started within 2 minutes of that, and there are
    at least `minBars` bars.
 3. Indicators from the engine, signal from the strategy. Exit first; otherwise
@@ -73,7 +84,10 @@ deployments run at 16:30 ET.
    deployment's equity, subject to the daily loss limit and the drawdown pause.
    The drawdown limit is checked last and closes the position when it trips.
 4. Market orders only when Tradier's clock is `open` and the bar closed in
-   09:30-16:00 ET. An order POST is never retried.
+   the regular session. With the 15-minute data delay the day's last bars
+   (closing 15:45 and 16:00) arrive after the close, so their signals are
+   logged, not traded: Tradier wants a limit price outside market hours. An
+   order POST is never retried.
 5. One conditional state write, and one JSON log line with metrics.
 
 **Deployment equity** = its `startingEquity` ($10,000 for every deployment) +

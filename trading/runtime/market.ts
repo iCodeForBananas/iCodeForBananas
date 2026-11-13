@@ -5,7 +5,7 @@ import { calculateIndicatorsWithParams, deriveRequiredIndicators } from '@/app/l
 import type { IndicatorValues, OHLCBar } from '@/app/strategies';
 import type { ParamValue } from './config';
 import type { HistoryRow, TimesalesRow } from './tradier';
-import { etParts, etWallToUtcMs, parseEtTimestamp } from './time';
+import { SESSION_CLOSE_MIN, SESSION_OPEN_MIN, etMinutesOfDay, etParts, etWallToUtcMs, parseEtTimestamp, sessionBounds } from './time';
 
 export interface Bar {
   time: number; // bar open, UTC epoch ms
@@ -70,18 +70,45 @@ export function parseDailyBars(rows: HistoryRow[], nowMs: number): ParsedBars {
 }
 
 /**
- * Aggregates completed source bars into bars of `targetMs`, aligned to
- * multiples of `targetMs` since the epoch (on the ET :00/:30 for 30 minutes).
- * A bucket that hasn't closed by `nowMs` is dropped, and so is the newest
- * bucket unless its final source bar is there: a 30-minute bar is never built
- * from only its first half. Older buckets keep whatever source bars traded
- * (thin extended-hours sessions skip some).
+ * The bars that open inside the regular session, 09:30-16:00 ET. The
+ * backtest data holds only these, so the live series must too: a pre-market
+ * or after-hours bar would add candles, and EMA inputs, the backtest never saw.
+ */
+export function regularSessionBars(bars: Bar[]): Bar[] {
+  return bars.filter((b) => {
+    const min = etMinutesOfDay(b.time);
+    return min >= SESSION_OPEN_MIN && min < SESSION_CLOSE_MIN;
+  });
+}
+
+/**
+ * When an intraday bar of `intervalMs` opening at `time` closes: a whole
+ * interval later, or at 16:00 ET for a session's last, shorter bar (the
+ * 15:30 hourly bar, as in the backtest data).
+ */
+export function intradayBarClose(time: number, intervalMs: number): number {
+  return Math.min(time + intervalMs, sessionBounds(time).close);
+}
+
+/** The start of the `targetMs` bar holding `time`: 09:30 ET plus whole intervals. */
+function sessionBucketStart(time: number, targetMs: number): number {
+  const { open } = sessionBounds(time);
+  return open + Math.floor((time - open) / targetMs) * targetMs;
+}
+
+/**
+ * Aggregates completed regular-session source bars into bars of `targetMs`,
+ * counted from the 09:30 ET open the way the backtest data's are: 30-minute
+ * bars at 09:30, 10:00, ...; hourly at 09:30, 10:30, ... 14:30, then 15:30-16:00.
+ * A bar that hasn't closed by `nowMs` is dropped, and so is the newest one
+ * unless its final source bar is there: a 30-minute bar is never built from
+ * only its first half. Older bars keep whatever source bars traded.
  */
 export function aggregateBars(bars: Bar[], sourceMs: number, targetMs: number, nowMs: number): { bars: Bar[]; droppedIncomplete: number } {
   if (sourceMs === targetMs) return { bars, droppedIncomplete: 0 };
   const out: (Bar & { lastSub: number })[] = [];
   for (const b of bars) {
-    const start = Math.floor(b.time / targetMs) * targetMs;
+    const start = sessionBucketStart(b.time, targetMs);
     const cur = out[out.length - 1];
     if (cur && cur.time === start) {
       cur.high = Math.max(cur.high, b.high);
@@ -94,10 +121,10 @@ export function aggregateBars(bars: Bar[], sourceMs: number, targetMs: number, n
     }
   }
   let droppedIncomplete = 0;
-  const closed = out.filter((b) => b.time + targetMs <= nowMs);
+  const closed = out.filter((b) => intradayBarClose(b.time, targetMs) <= nowMs);
   droppedIncomplete += out.length - closed.length;
   const last = closed[closed.length - 1];
-  if (last && last.lastSub + sourceMs !== last.time + targetMs) {
+  if (last && last.lastSub + sourceMs !== intradayBarClose(last.time, targetMs)) {
     closed.pop();
     droppedIncomplete++;
   }

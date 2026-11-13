@@ -11,10 +11,10 @@
 
 import type { StrategyDefinition } from '@/app/strategies/types';
 import { DATA_DELAY_MS, INTERVALS, SOURCE_INTERVAL, isDaily, type Interval, type ResolvedDeployment } from './config';
-import { aggregateBars, computeSeries, parseBars, parseDailyBars, sessionClose, type ParsedBars } from './market';
+import { aggregateBars, computeSeries, intradayBarClose, parseBars, parseDailyBars, regularSessionBars, sessionClose, type ParsedBars } from './market';
 import type { EquityReporter } from './equity-report';
 import { emfFields, type MetricName } from './metrics';
-import { etDate, etParts, etStamp, etWallToUtcMs, isRegularSessionClose } from './time';
+import { etDate, etParts, etStamp, etWallToUtcMs, isRegularSessionClose, sessionBounds } from './time';
 import type { TradierApi, TradierOrder } from './tradier';
 
 /** The expected bar must exist, and the run must start, within this long of it becoming available. */
@@ -23,14 +23,23 @@ export const MAX_LATENESS_MS = 2 * 60 * 1000;
 export const DAILY_MAX_LATENESS_MS = 90 * 60 * 1000;
 
 /**
- * The close of the bar a run at `t` should act on: the latest interval
- * boundary, or for daily bars the latest weekday 16:00 ET (a holiday has no
- * bar, so a run on one finds the data stale and does nothing).
+ * The close of the bar a run at `t` should act on. Intraday: the latest
+ * regular-session bar close at or before `t` (09:30 plus whole intervals,
+ * and 16:00), or null on a weekend or before the day's first bar has closed.
+ * Daily: the latest weekday 16:00 ET. A holiday has no bar, so a run on one
+ * finds the data stale and does nothing.
  */
-export function expectedBarClose(interval: Interval, t: number): number {
+export function expectedBarClose(interval: Interval, t: number): number | null {
   if (!isDaily(interval)) {
     const ms = INTERVALS[interval] * 60_000;
-    return Math.floor(t / ms) * ms;
+    const p = etParts(t);
+    const weekday = new Date(Date.UTC(p.year, p.month - 1, p.day)).getUTCDay();
+    if (weekday === 0 || weekday === 6) return null;
+    const { open, close } = sessionBounds(t);
+    if (t < open + ms) return null;
+    // 16:00 closes the session's last bar even when it's short of a full interval.
+    if (t >= close) return close;
+    return open + Math.floor((t - open) / ms) * ms;
   }
   for (let back = 0; back < 7; back++) {
     const p = etParts(t - back * 86_400_000);
@@ -244,7 +253,7 @@ export async function runDeployment(d: ResolvedDeployment, event: RunEvent | und
   const sourceInterval = SOURCE_INTERVAL[d.interval];
   const daily = isDaily(d.interval);
   const sourceMs = sourceInterval === 'daily' ? intervalMs : INTERVALS[sourceInterval] * 60_000;
-  const closeOf = (barTime: number) => (daily ? sessionClose(barTime) : barTime + intervalMs);
+  const closeOf = (barTime: number) => (daily ? sessionClose(barTime) : intradayBarClose(barTime, intervalMs));
   const invokedAt = now();
   const metrics: Partial<Record<MetricName, number | null>> = { Invocations: 1 };
   const log: Record<string, unknown> = {
@@ -262,11 +271,27 @@ export async function runDeployment(d: ResolvedDeployment, event: RunEvent | und
   try {
     if (strategy?.id !== d.strategyId) throw new Error(`Bundled strategy ${strategy?.id} does not match deployment strategy ${d.strategyId}`);
 
+    const skip = (reason: string, stale = false): RunResult => {
+      log.action = 'none';
+      log.why = reason;
+      metrics.Skipped = 1;
+      if (stale) metrics.StaleData = 1;
+      return { ok: true, action: 'none', reason, dryRun };
+    };
+
     // Read the expected bar a few seconds after it becomes available.
     const delay = daily ? 0 : DATA_DELAY_MS;
     let t = now();
-    const boundary = expectedBarClose(d.interval, t - delay);
+    const expected = expectedBarClose(d.interval, t - delay);
+    if (expected === null && !evaluateLatest) return skip('outside the regular session: no bar has closed yet today');
+    // A dry run asking for the latest bar outside the session evaluates the last one there is.
+    const boundary = expected ?? 0;
     const availableAt = boundary + delay;
+    // A schedule also fires where no bar has just become available (an hourly
+    // one's :15 runs, a 15-minute one's after 16:15): nothing to do there.
+    if (expected !== null && !evaluateLatest && t - availableAt > (daily ? DAILY_MAX_LATENESS_MS : MAX_LATENESS_MS)) {
+      return skip(`no bar became available just now; the last closed at ${new Date(boundary).toISOString()}`);
+    }
     if (!daily && t - availableAt < SETTLE_MS) {
       await sleep(SETTLE_MS - (t - availableAt));
       t = now();
@@ -292,7 +317,7 @@ export async function runDeployment(d: ResolvedDeployment, event: RunEvent | und
     metrics.AccountEquity = accountEquity;
 
     // Market data, polled briefly for the just-closed bar.
-    let data: ParsedBars & { droppedIncomplete?: number } = parseBars([], sourceMs, now());
+    let data: ParsedBars & { droppedIncomplete?: number; droppedOutsideSession?: number } = parseBars([], sourceMs, now());
     for (let k = 0; k < FRESHNESS_POLLS; k++) {
       const end = now();
       const start = etDate(end - d.historyDays * 86_400_000);
@@ -301,22 +326,24 @@ export async function runDeployment(d: ResolvedDeployment, event: RunEvent | und
       } else {
         const rows = await tradier.timesales({ symbol: d.symbol, interval: sourceInterval, start: `${start} 00:00`, end: etStamp(end) });
         const parsed = parseBars(rows, sourceMs, dataNow());
-        const agg = aggregateBars(parsed.bars, sourceMs, intervalMs, dataNow());
-        data = { ...parsed, bars: agg.bars, droppedIncomplete: agg.droppedIncomplete };
+        // Regular hours only, like the backtest data.
+        const session = regularSessionBars(parsed.bars);
+        const agg = aggregateBars(session, sourceMs, intervalMs, dataNow());
+        data = { ...parsed, bars: agg.bars, droppedIncomplete: agg.droppedIncomplete, droppedOutsideSession: parsed.bars.length - session.length };
       }
       const newest = data.bars[data.bars.length - 1];
       if (newest && closeOf(newest.time) >= boundary) break;
       if (k < FRESHNESS_POLLS - 1) await sleep(FRESHNESS_POLL_GAP_MS);
     }
     const bars = data.bars;
-    log.data = { sourceInterval, rawBars: data.rawCount, invalidBars: data.invalid, droppedForming: data.droppedForming, droppedIncomplete: data.droppedIncomplete ?? 0, completedBars: bars.length };
-
-    const skip = (reason: string, stale = false): RunResult => {
-      log.action = 'none';
-      log.why = reason;
-      metrics.Skipped = 1;
-      if (stale) metrics.StaleData = 1;
-      return { ok: true, action: 'none', reason, dryRun };
+    log.data = {
+      sourceInterval,
+      rawBars: data.rawCount,
+      invalidBars: data.invalid,
+      droppedForming: data.droppedForming,
+      droppedOutsideSession: data.droppedOutsideSession ?? 0,
+      droppedIncomplete: data.droppedIncomplete ?? 0,
+      completedBars: bars.length,
     };
 
     // --- Data quality gates.
@@ -467,9 +494,11 @@ export async function runDeployment(d: ResolvedDeployment, event: RunEvent | und
     }
 
     // --- Orders only in regular hours (market orders are regular-session only).
-    // Intraday: market orders only while the regular session is open. Daily:
-    // the run comes after the close and the day order fills at the next open,
-    // which is where the backtest fills too.
+    // Intraday: market orders only while the regular session is open. With the
+    // 15-minute data delay, the day's last bars arrive after 16:00, so their
+    // signals are logged, not traded: Tradier wants a limit price outside
+    // market hours. Daily: the run comes after the close, and the order is
+    // meant to fill at the next open, which is where the backtest fills too.
     const regularHours = daily || (clock?.state === 'open' && isRegularSessionClose(barClose));
     log.regularHours = regularHours;
     if (daily) log.orderTiming = 'placed after the close; fills at the next open';

@@ -29,17 +29,21 @@ export interface TradingStackProps extends StackProps {
   equityReporterSecretName: string;
 }
 
-/** Every bar close on weekdays, 04:00-20:59 ET: pre-market, regular and after-hours. */
+/** 15 minutes after every regular-session bar close on weekdays (16:30 ET for daily bars). */
 export function scheduleExpression(d: ResolvedDeployment): string {
   const minutes = INTERVALS[d.interval];
   // Daily: 16:30 ET, after the close. Sandbox data runs 15 minutes behind, so
   // the session's bar isn't final until after 16:15.
   if (minutes >= 1440) return 'cron(30 16 ? * MON-FRI *)';
-  // Hourly bars close on the hour; the minute field only takes steps under 60.
-  // Intraday: sandbox data is 15 minutes behind (DATA_DELAY_MS), so each run
-  // fires 15 minutes after a bar closes, when that bar becomes available.
+  // Intraday bars are regular-session only, counted from 09:30 ET like the
+  // backtest data, and sandbox data is 15 minutes behind (DATA_DELAY_MS), so
+  // each run fires 15 minutes after a bar closes, from the first bar's close
+  // through 16:15. Hourly bars close on the half hour, and the last at 16:00,
+  // so they need both :45 and :15; runs that land between bars exit at once.
   const offset = DATA_DELAY_MS / 60_000;
-  return minutes >= 60 ? `cron(${offset} 4-20 ? * MON-FRI *)` : `cron(${offset % minutes}/${minutes} 4-20 ? * MON-FRI *)`;
+  const firstHour = Math.floor((9 * 60 + 30 + minutes + offset) / 60);
+  const hours = `${firstHour}-16`;
+  return minutes >= 60 ? `cron(${offset},${(30 + offset) % 60} ${hours} ? * MON-FRI *)` : `cron(${offset % minutes}/${minutes} ${hours} ? * MON-FRI *)`;
 }
 
 const minutesOf = (d: ResolvedDeployment) => INTERVALS[d.interval];
@@ -133,7 +137,7 @@ export class TradingStack extends Stack {
 
       const schedule = new scheduler.CfnSchedule(this, `Schedule-${d.id}`, {
         name,
-        description: minutesOf(d) >= 1440 ? 'Weekdays 16:30 ET, after the close' : `${DATA_DELAY_MS / 60_000} minutes after every ${d.interval} bar close, weekdays 04:00-20:59 ET`,
+        description: minutesOf(d) >= 1440 ? 'Weekdays 16:30 ET, after the close' : `${DATA_DELAY_MS / 60_000} minutes after every ${d.interval} regular-session bar close, weekdays`,
         scheduleExpression: scheduleExpression(d),
         scheduleExpressionTimezone: 'America/New_York',
         flexibleTimeWindow: { mode: 'OFF' },
