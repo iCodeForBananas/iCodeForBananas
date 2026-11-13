@@ -6,7 +6,7 @@ import { DATA_DIR, writeManifest } from "./lib/data-manifest.mjs";
 const TICKERS = [
   "AAPL", "AMZN", "AVGO", "COST", "CSCO", "GOOGL", "LIN", "META",
   "MSFT", "MU", "NVDA", "PEP", "PLTR", "TMUS", "TQQQ", "TSLA",
-  "TXN", "WMT", "ES=F", "NQ=F", "SPY", "QQQ",
+  "TXN", "WMT", "SPY", "QQQ",
 ];
 
 const INTERVALS = ["1m", "2m", "5m", "15m", "30m", "1h", "1d", "1wk"];

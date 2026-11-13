@@ -281,62 +281,6 @@
    "label": "CSCO 5M"
   },
   {
-   "file": "ES=F-15m-2026-11-12.csv",
-   "symbol": "ES=F",
-   "timeframe": "15m",
-   "date": "2026-11-12",
-   "label": "ES=F 15M"
-  },
-  {
-   "file": "ES=F-1d-2026-11-12.csv",
-   "symbol": "ES=F",
-   "timeframe": "1d",
-   "date": "2026-11-12",
-   "label": "ES=F 1D"
-  },
-  {
-   "file": "ES=F-1h-2026-11-12.csv",
-   "symbol": "ES=F",
-   "timeframe": "1h",
-   "date": "2026-11-12",
-   "label": "ES=F 1H"
-  },
-  {
-   "file": "ES=F-1m-2026-11-12.csv",
-   "symbol": "ES=F",
-   "timeframe": "1m",
-   "date": "2026-11-12",
-   "label": "ES=F 1M"
-  },
-  {
-   "file": "ES=F-1wk-2026-11-12.csv",
-   "symbol": "ES=F",
-   "timeframe": "1wk",
-   "date": "2026-11-12",
-   "label": "ES=F 1WK"
-  },
-  {
-   "file": "ES=F-2m-2026-11-12.csv",
-   "symbol": "ES=F",
-   "timeframe": "2m",
-   "date": "2026-11-12",
-   "label": "ES=F 2M"
-  },
-  {
-   "file": "ES=F-30m-2026-11-12.csv",
-   "symbol": "ES=F",
-   "timeframe": "30m",
-   "date": "2026-11-12",
-   "label": "ES=F 30M"
-  },
-  {
-   "file": "ES=F-5m-2026-11-12.csv",
-   "symbol": "ES=F",
-   "timeframe": "5m",
-   "date": "2026-11-12",
-   "label": "ES=F 5M"
-  },
-  {
    "file": "GOOGL-15m-2026-11-12.csv",
    "symbol": "GOOGL",
    "timeframe": "15m",
@@ -664,62 +608,6 @@
    "timeframe": "5m",
    "date": "2026-11-12",
    "label": "MU 5M"
-  },
-  {
-   "file": "NQ=F-15m-2026-11-12.csv",
-   "symbol": "NQ=F",
-   "timeframe": "15m",
-   "date": "2026-11-12",
-   "label": "NQ=F 15M"
-  },
-  {
-   "file": "NQ=F-1d-2026-11-12.csv",
-   "symbol": "NQ=F",
-   "timeframe": "1d",
-   "date": "2026-11-12",
-   "label": "NQ=F 1D"
-  },
-  {
-   "file": "NQ=F-1h-2026-11-12.csv",
-   "symbol": "NQ=F",
-   "timeframe": "1h",
-   "date": "2026-11-12",
-   "label": "NQ=F 1H"
-  },
-  {
-   "file": "NQ=F-1m-2026-11-12.csv",
-   "symbol": "NQ=F",
-   "timeframe": "1m",
-   "date": "2026-11-12",
-   "label": "NQ=F 1M"
-  },
-  {
-   "file": "NQ=F-1wk-2026-11-12.csv",
-   "symbol": "NQ=F",
-   "timeframe": "1wk",
-   "date": "2026-11-12",
-   "label": "NQ=F 1WK"
-  },
-  {
-   "file": "NQ=F-2m-2026-11-12.csv",
-   "symbol": "NQ=F",
-   "timeframe": "2m",
-   "date": "2026-11-12",
-   "label": "NQ=F 2M"
-  },
-  {
-   "file": "NQ=F-30m-2026-11-12.csv",
-   "symbol": "NQ=F",
-   "timeframe": "30m",
-   "date": "2026-11-12",
-   "label": "NQ=F 30M"
-  },
-  {
-   "file": "NQ=F-5m-2026-11-12.csv",
-   "symbol": "NQ=F",
-   "timeframe": "5m",
-   "date": "2026-11-12",
-   "label": "NQ=F 5M"
   },
   {
    "file": "NVDA-15m-2026-11-12.csv",
