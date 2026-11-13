@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { getDefaultParams, type OHLCBar, type IndicatorValues, type StrategyDefinition } from "./index";
 import ibsMeanReversion, { ibs } from "./ibs-mean-reversion";
+import ibsTrend from "./ibs-trend";
 import double7s from "./double-7s";
 import cumulativeRsi, { getRsiArray, cumulativeRsiAt } from "./cumulative-rsi";
 import turtle, { priorChannel } from "./turtle";
@@ -72,6 +73,45 @@ describe("IBS mean reversion", () => {
   it("skips entries under the 200 SMA when the trend filter is on", () => {
     const nearLow: Bar = { time: 0, open: 108, high: 110, low: 100, close: 101, sma200: 120 };
     expect(signal(ibsMeanReversion, [nearLow], null, { trendFilter: true })).toBe("hold");
+  });
+});
+
+describe("IBS Trend (directional)", () => {
+  // Closes near the low (IBS 0.1) and near the high (IBS 0.9), and one in the middle.
+  const low = (sma: number): Bar => ({ time: 0, open: 108, high: 110, low: 100, close: 101, sma200: sma, sma50: sma });
+  const high = (sma: number): Bar => ({ time: 0, open: 101, high: 110, low: 100, close: 109, sma200: sma, sma50: sma });
+  const mid = (sma: number): Bar => ({ time: 0, open: 104, high: 110, low: 100, close: 105, sma200: sma, sma50: sma });
+
+  it("buys a close near the low only above the SMA, and shorts a close near the high only below it", () => {
+    expect(signal(ibsTrend, [low(90)])).toBe("buy");
+    expect(signal(ibsTrend, [low(120)])).toBe("hold");
+    expect(signal(ibsTrend, [high(120)])).toBe("sell");
+    expect(signal(ibsTrend, [high(90)])).toBe("hold");
+  });
+
+  it("exits at the other end of the range", () => {
+    expect(signal(ibsTrend, [high(90)], "long")).toBe("sell");
+    expect(signal(ibsTrend, [low(120)], "short")).toBe("buy");
+    expect(signal(ibsTrend, [mid(90)], "long")).toBe("hold");
+  });
+
+  it("exits when price closes through the SMA against the position, unless the trend exit is off", () => {
+    expect(signal(ibsTrend, [mid(120)], "long")).toBe("sell");
+    expect(signal(ibsTrend, [mid(90)], "short")).toBe("buy");
+    expect(signal(ibsTrend, [mid(120)], "long", { trendExit: false })).toBe("hold");
+    expect(signal(ibsTrend, [mid(90)], "short", { trendExit: false })).toBe("hold");
+  });
+
+  it("reads the SMA of its own period, and waits until it exists", () => {
+    const bar: Bar = { time: 0, open: 108, high: 110, low: 100, close: 101, sma200: 120, sma50: 90 };
+    expect(signal(ibsTrend, [bar], null, { smaPeriod: 50 })).toBe("buy");
+    expect(signal(ibsTrend, [bar], null, { smaPeriod: 200 })).toBe("hold");
+    expect(signal(ibsTrend, [{ time: 0, open: 108, high: 110, low: 100, close: 101 }])).toBe("hold");
+  });
+
+  it("asks the engine for the SMA periods it sweeps", () => {
+    const { requiredSMAs } = deriveRequiredIndicators("ibs-trend", [{ smaPeriod: 150 }, { smaPeriod: 250 }]);
+    expect(requiredSMAs).toEqual(expect.arrayContaining([150, 250]));
   });
 });
 

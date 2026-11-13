@@ -18,6 +18,7 @@ import keltnerChannel from './keltner-channel';
 import momentumRoc from './momentum-roc';
 import stochastic from './stochastic';
 import ibsMeanReversion from './ibs-mean-reversion';
+import ibsTrend from './ibs-trend';
 import double7s from './double-7s';
 import cumulativeRsi from './cumulative-rsi';
 import turtle from './turtle';
@@ -61,6 +62,7 @@ export const AVAILABLE_STRATEGIES: Record<string, StrategyDefinition> = {
   'cumulative-rsi': cumulativeRsi,
   'double-7s': double7s,
   'ibs-mean-reversion': ibsMeanReversion,
+  'ibs-trend': ibsTrend,
   'connors-rsi': connorsRsi,
   'connors-r3': connorsR3,
   'connors-percent-b': connorsPercentB,
