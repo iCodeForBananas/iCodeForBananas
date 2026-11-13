@@ -70,6 +70,11 @@ interface GlobalSettings {
   selectedStrategyIds?: string[];
   expandedStrategyIds?: string[];
   datasetSearch?: string;
+  // Commission and slippage describe the market, not a strategy, so every
+  // strategy in a run gets the same. Saved here since 2026-11-12; before that
+  // they were saved per strategy (see the restore below).
+  commissionBps?: number;
+  slippageBps?: number;
 }
 
 interface StrategySettings {
@@ -78,10 +83,12 @@ interface StrategySettings {
   stopLossPercent: number;
   takeProfitPercent: number;
   enableShorts: boolean;
-  // Position sizing & costs (added 2026-05-12 to fix runaway-compounding bug).
+  // Position sizing (added 2026-05-12 to fix runaway-compounding bug).
   positionSizePercent: number; // % of equity allocated per trade
-  commissionBps: number;       // round-trip per fill, in basis points
-  slippageBps: number;         // adverse move on each fill, in basis points
+  // Costs were saved per strategy until 2026-11-12; now they're global
+  // (GlobalSettings). Read only to carry an old value over.
+  commissionBps?: number;
+  slippageBps?: number;
   // Risk sizing and account protection (added 2026-11-04). Settings saved
   // before then have none and get DEFAULT_SIZING; see sizingFrom.
   sizing?: Partial<SizingSettings>;
@@ -386,16 +393,12 @@ export default function AlgoBacktestPage() {
       setTakeProfitPercent(saved.takeProfitPercent ?? 0);
       setEnableShorts(saved.enableShorts ?? false);
       setPositionSizePercent(saved.positionSizePercent ?? 100);
-      setCommissionBps(saved.commissionBps ?? 0);
-      setSlippageBps(saved.slippageBps ?? 0);
       setSizing(sizingFrom(saved));
     } else {
       setStopLossPercent(1);
       setTakeProfitPercent(0);
       setEnableShorts(false);
       setPositionSizePercent(100);
-      setCommissionBps(0);
-      setSlippageBps(0);
       setSizing(DEFAULT_SIZING);
     }
   }, [selectedStrategyId]);
@@ -411,6 +414,12 @@ export default function AlgoBacktestPage() {
     if (saved?.selectedStrategyId && AVAILABLE_STRATEGIES[saved.selectedStrategyId]) {
       setSelectedStrategyId(saved.selectedStrategyId);
     }
+    // Costs: the global value, else what the selected strategy had saved
+    // when costs were per strategy, else none.
+    const legacy = loadStrategySettings(saved?.selectedStrategyId ?? "ema-crossover");
+    const cost = (v: unknown, old: unknown) => (typeof v === "number" && v >= 0 ? v : typeof old === "number" && old >= 0 ? old : 0);
+    setCommissionBps(cost(saved?.commissionBps, legacy?.commissionBps));
+    setSlippageBps(cost(saved?.slippageBps, legacy?.slippageBps));
     if (saved?.showEquityCurve !== undefined) setShowEquityCurve(saved.showEquityCurve);
     if (saved?.visibleCandles !== undefined) setVisibleCandles(saved.visibleCandles);
     setSelectedStrategyIds(known(saved?.selectedStrategyIds));
@@ -450,8 +459,10 @@ export default function AlgoBacktestPage() {
       selectedStrategyIds,
       expandedStrategyIds,
       datasetSearch,
+      commissionBps,
+      slippageBps,
     });
-  }, [settingsRestored, selectedStrategyId, showEquityCurve, visibleCandles, selectedFiles, selectedStrategyIds, expandedStrategyIds, datasetSearch]);
+  }, [settingsRestored, selectedStrategyId, showEquityCurve, visibleCandles, selectedFiles, selectedStrategyIds, expandedStrategyIds, datasetSearch, commissionBps, slippageBps]);
 
   // Save per-strategy settings when any strategy-specific setting changes
   useEffect(() => {
@@ -463,11 +474,9 @@ export default function AlgoBacktestPage() {
       takeProfitPercent,
       enableShorts,
       positionSizePercent,
-      commissionBps,
-      slippageBps,
       sizing,
     });
-  }, [selectedStrategyId, currentParams, paramVariations, stopLossPercent, takeProfitPercent, enableShorts, positionSizePercent, commissionBps, slippageBps, sizing]);
+  }, [selectedStrategyId, currentParams, paramVariations, stopLossPercent, takeProfitPercent, enableShorts, positionSizePercent, sizing]);
 
   // Build a StrategyRun for one strategy from saved per-strategy settings,
   // falling back to defaults if it has never been edited.
@@ -510,11 +519,12 @@ export default function AlgoBacktestPage() {
       takeProfitPercent: saved?.takeProfitPercent ?? 0,
       enableShorts: saved?.enableShorts ?? false,
       positionSizePercent: saved?.positionSizePercent ?? 100,
-      commissionBps: saved?.commissionBps ?? 0,
-      slippageBps: saved?.slippageBps ?? 0,
+      // Costs are the market's, the same for every strategy in the run.
+      commissionBps,
+      slippageBps,
       sizing: sizingFrom(saved),
     };
-  }, []);
+  }, [commissionBps, slippageBps]);
 
   // Run batch backtest with parameter variations against all selected datasets.
   //
@@ -642,6 +652,7 @@ export default function AlgoBacktestPage() {
       ...describeSizing(reportSizing, reportPosSize, reportSL),
       `- **Take Profit:** ${reportTP > 0 ? `${reportTP}%` : 'Disabled'}`,
       `- **Short Selling:** ${reportShorts ? 'Enabled' : 'Disabled'}`,
+      `- **Costs:** ${commissionBps} bps commission and ${slippageBps} bps slippage per fill (each entry and each exit)`,
     ];
 
     if (strat.parameters && strat.parameters.length > 0) {
@@ -689,7 +700,7 @@ export default function AlgoBacktestPage() {
     }
 
     return lines.join('\n');
-  }, [activeResult, selectedStrategyId, selectedFiles, availableDatasets, currentParams, stopLossPercent, takeProfitPercent, enableShorts, positionSizePercent, sizing]);
+  }, [activeResult, selectedStrategyId, selectedFiles, availableDatasets, currentParams, stopLossPercent, takeProfitPercent, enableShorts, positionSizePercent, commissionBps, slippageBps, sizing]);
 
   // Open the report in a new Claude chat, asking whether it's worth running
   // live. The whole report rides in the chat's ?q= prefill when it fits; a
@@ -771,8 +782,8 @@ export default function AlgoBacktestPage() {
     const atrStop = sz.useStopLoss && sz.atrStopMultiple > 0;
     const shorts = isActiveEditorStrategy ? enableShorts : (savedForResult?.enableShorts ?? false);
     const posSize = isActiveEditorStrategy ? positionSizePercent : (savedForResult?.positionSizePercent ?? 100);
-    const commission = isActiveEditorStrategy ? commissionBps : (savedForResult?.commissionBps ?? 0);
-    const slippage = isActiveEditorStrategy ? slippageBps : (savedForResult?.slippageBps ?? 0);
+    const commission = commissionBps;
+    const slippage = slippageBps;
     const cap = positionCapPercent(sz);
     const fixedPct = sz.useStopLoss ? Math.min(posSize, cap) : stopOffPositionPercent(sz, posSize);
 
@@ -794,12 +805,12 @@ export default function AlgoBacktestPage() {
     // Dataset timeframe -> the runtime's Interval (trading/runtime/config.ts).
     const liveIntervals: Record<string, string> = { '1m': '1min', '5m': '5min', '15m': '15min', '30m': '30min', '1h': '1h', '1d': '1d' };
     const interval = liveIntervals[timeframe];
-    // Calendar days that hold minBars bars. Intraday data is 04:00-20:00 ET
-    // (16 hours a session); Tradier keeps 40 days of timesales.
+    // Calendar days that hold minBars bars. The runtime trades regular-session
+    // bars only, 09:30-16:00 ET; Tradier keeps 40 days of timesales.
     const historyDays = interval === '1d'
       ? Math.ceil(minBars * 1.5)
       : interval
-        ? Math.min(40, Math.ceil((minBars / ((16 * 60) / ({ '1min': 1, '5min': 5, '15min': 15, '30min': 30, '1h': 60 } as Record<string, number>)[interval])) * 1.4) + 3)
+        ? Math.min(40, Math.ceil((minBars / Math.ceil(390 / ({ '1min': 1, '5min': 5, '15min': 15, '30min': 30, '1h': 60 } as Record<string, number>)[interval])) * 1.4) + 3)
         : 0;
     const source = strategySource?.id === resultStrategyId ? strategySource.source : null;
 
@@ -860,7 +871,7 @@ export default function AlgoBacktestPage() {
       ...entry,
       '```',
       '',
-      `- **minBars / historyDays** are estimates: ${minBars} bars covers 5× the longest parameter (${longestPeriod}). Check \`historyDays\` really yields \`minBars\` bars for ${symbol}${interval === '1d' ? ' (sessions, not calendar days)' : '; thinly traded names have few extended-hours bars, and intraday history is capped at 40 days'}. If it can't, lower \`minBars\` only as far as the strategy's indicators allow, and say why in the comment.`,
+      `- **minBars / historyDays** are estimates: ${minBars} bars covers 5× the longest parameter (${longestPeriod}). Check \`historyDays\` really yields \`minBars\` bars for ${symbol}${interval === '1d' ? ' (sessions, not calendar days)' : '; intraday bars are regular-session only and history is capped at 40 days, about 27 sessions'}. If it can't, lower \`minBars\` only as far as the strategy's indicators allow, and say why in the comment.`,
       `- **One enabled deployment per symbol.** If another enabled entry already trades ${symbol}, set it to \`enabled: false\` with a comment saying this one replaced it (the existing TXN and TQQQ entries show the pattern). The new deployment adopts Tradier's open position on its first run.`,
       '- **Allocations must total ≤ 100%** across enabled entries. If adding this one goes over, stop and show me the current split and a proposed rebalance before changing any other entry.',
       `- Synth fails on an unknown strategy or parameter; fix the entry, don't loosen the validation.`,
