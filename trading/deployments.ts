@@ -184,6 +184,19 @@ export const DEPLOYMENTS: Deployment[] = [
     minBars: 805,
     historyDays: 1208,
   },
+  {
+    strategyId: 'ema-price-cross',
+    symbol: 'WMT',
+    // Built from 15-minute timesales, counted from the 09:30 open.
+    interval: '1h',
+    params: { emaPeriod: 14 },
+    ...SHARED_RISK,
+    // The backtest asked for 250 bars, but 40 days of 15-minute data make
+    // about 190 regular-session hourly bars. The strategy reads only EMA 14,
+    // so 150 bars (more than 10x its period) is plenty for it to settle.
+    minBars: 150,
+    historyDays: 40,
+  },
 ];
 
 /**
