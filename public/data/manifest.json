@@ -281,6 +281,62 @@
    "label": "CSCO 5M"
   },
   {
+   "file": "EEM-15m-2026-11-16.csv",
+   "symbol": "EEM",
+   "timeframe": "15m",
+   "date": "2026-11-16",
+   "label": "EEM 15M"
+  },
+  {
+   "file": "EEM-1d-2026-11-16.csv",
+   "symbol": "EEM",
+   "timeframe": "1d",
+   "date": "2026-11-16",
+   "label": "EEM 1D"
+  },
+  {
+   "file": "EEM-1h-2026-11-16.csv",
+   "symbol": "EEM",
+   "timeframe": "1h",
+   "date": "2026-11-16",
+   "label": "EEM 1H"
+  },
+  {
+   "file": "EEM-1m-2026-11-16.csv",
+   "symbol": "EEM",
+   "timeframe": "1m",
+   "date": "2026-11-16",
+   "label": "EEM 1M"
+  },
+  {
+   "file": "EEM-1wk-2026-11-16.csv",
+   "symbol": "EEM",
+   "timeframe": "1wk",
+   "date": "2026-11-16",
+   "label": "EEM 1WK"
+  },
+  {
+   "file": "EEM-2m-2026-11-16.csv",
+   "symbol": "EEM",
+   "timeframe": "2m",
+   "date": "2026-11-16",
+   "label": "EEM 2M"
+  },
+  {
+   "file": "EEM-30m-2026-11-16.csv",
+   "symbol": "EEM",
+   "timeframe": "30m",
+   "date": "2026-11-16",
+   "label": "EEM 30M"
+  },
+  {
+   "file": "EEM-5m-2026-11-16.csv",
+   "symbol": "EEM",
+   "timeframe": "5m",
+   "date": "2026-11-16",
+   "label": "EEM 5M"
+  },
+  {
    "file": "GOOGL-15m-2026-11-12.csv",
    "symbol": "GOOGL",
    "timeframe": "15m",
@@ -888,6 +944,62 @@
    "timeframe": "5m",
    "date": "2026-11-12",
    "label": "QQQ 5M"
+  },
+  {
+   "file": "SMH-15m-2026-11-16.csv",
+   "symbol": "SMH",
+   "timeframe": "15m",
+   "date": "2026-11-16",
+   "label": "SMH 15M"
+  },
+  {
+   "file": "SMH-1d-2026-11-16.csv",
+   "symbol": "SMH",
+   "timeframe": "1d",
+   "date": "2026-11-16",
+   "label": "SMH 1D"
+  },
+  {
+   "file": "SMH-1h-2026-11-16.csv",
+   "symbol": "SMH",
+   "timeframe": "1h",
+   "date": "2026-11-16",
+   "label": "SMH 1H"
+  },
+  {
+   "file": "SMH-1m-2026-11-16.csv",
+   "symbol": "SMH",
+   "timeframe": "1m",
+   "date": "2026-11-16",
+   "label": "SMH 1M"
+  },
+  {
+   "file": "SMH-1wk-2026-11-16.csv",
+   "symbol": "SMH",
+   "timeframe": "1wk",
+   "date": "2026-11-16",
+   "label": "SMH 1WK"
+  },
+  {
+   "file": "SMH-2m-2026-11-16.csv",
+   "symbol": "SMH",
+   "timeframe": "2m",
+   "date": "2026-11-16",
+   "label": "SMH 2M"
+  },
+  {
+   "file": "SMH-30m-2026-11-16.csv",
+   "symbol": "SMH",
+   "timeframe": "30m",
+   "date": "2026-11-16",
+   "label": "SMH 30M"
+  },
+  {
+   "file": "SMH-5m-2026-11-16.csv",
+   "symbol": "SMH",
+   "timeframe": "5m",
+   "date": "2026-11-16",
+   "label": "SMH 5M"
   },
   {
    "file": "SOFI-15m-2026-11-12.csv",
