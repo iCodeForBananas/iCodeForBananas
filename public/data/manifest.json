@@ -393,6 +393,62 @@
    "label": "IWB 5M"
   },
   {
+   "file": "JPM-15m-2026-11-16.csv",
+   "symbol": "JPM",
+   "timeframe": "15m",
+   "date": "2026-11-16",
+   "label": "JPM 15M"
+  },
+  {
+   "file": "JPM-1d-2026-11-16.csv",
+   "symbol": "JPM",
+   "timeframe": "1d",
+   "date": "2026-11-16",
+   "label": "JPM 1D"
+  },
+  {
+   "file": "JPM-1h-2026-11-16.csv",
+   "symbol": "JPM",
+   "timeframe": "1h",
+   "date": "2026-11-16",
+   "label": "JPM 1H"
+  },
+  {
+   "file": "JPM-1m-2026-11-16.csv",
+   "symbol": "JPM",
+   "timeframe": "1m",
+   "date": "2026-11-16",
+   "label": "JPM 1M"
+  },
+  {
+   "file": "JPM-1wk-2026-11-16.csv",
+   "symbol": "JPM",
+   "timeframe": "1wk",
+   "date": "2026-11-16",
+   "label": "JPM 1WK"
+  },
+  {
+   "file": "JPM-2m-2026-11-16.csv",
+   "symbol": "JPM",
+   "timeframe": "2m",
+   "date": "2026-11-16",
+   "label": "JPM 2M"
+  },
+  {
+   "file": "JPM-30m-2026-11-16.csv",
+   "symbol": "JPM",
+   "timeframe": "30m",
+   "date": "2026-11-16",
+   "label": "JPM 30M"
+  },
+  {
+   "file": "JPM-5m-2026-11-16.csv",
+   "symbol": "JPM",
+   "timeframe": "5m",
+   "date": "2026-11-16",
+   "label": "JPM 5M"
+  },
+  {
    "file": "LIN-15m-2026-11-12.csv",
    "symbol": "LIN",
    "timeframe": "15m",
@@ -1224,6 +1280,62 @@
    "timeframe": "5m",
    "date": "2026-11-12",
    "label": "WMT 5M"
+  },
+  {
+   "file": "XOM-15m-2026-11-16.csv",
+   "symbol": "XOM",
+   "timeframe": "15m",
+   "date": "2026-11-16",
+   "label": "XOM 15M"
+  },
+  {
+   "file": "XOM-1d-2026-11-16.csv",
+   "symbol": "XOM",
+   "timeframe": "1d",
+   "date": "2026-11-16",
+   "label": "XOM 1D"
+  },
+  {
+   "file": "XOM-1h-2026-11-16.csv",
+   "symbol": "XOM",
+   "timeframe": "1h",
+   "date": "2026-11-16",
+   "label": "XOM 1H"
+  },
+  {
+   "file": "XOM-1m-2026-11-16.csv",
+   "symbol": "XOM",
+   "timeframe": "1m",
+   "date": "2026-11-16",
+   "label": "XOM 1M"
+  },
+  {
+   "file": "XOM-1wk-2026-11-16.csv",
+   "symbol": "XOM",
+   "timeframe": "1wk",
+   "date": "2026-11-16",
+   "label": "XOM 1WK"
+  },
+  {
+   "file": "XOM-2m-2026-11-16.csv",
+   "symbol": "XOM",
+   "timeframe": "2m",
+   "date": "2026-11-16",
+   "label": "XOM 2M"
+  },
+  {
+   "file": "XOM-30m-2026-11-16.csv",
+   "symbol": "XOM",
+   "timeframe": "30m",
+   "date": "2026-11-16",
+   "label": "XOM 30M"
+  },
+  {
+   "file": "XOM-5m-2026-11-16.csv",
+   "symbol": "XOM",
+   "timeframe": "5m",
+   "date": "2026-11-16",
+   "label": "XOM 5M"
   }
  ]
 }
