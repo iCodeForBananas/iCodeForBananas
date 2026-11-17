@@ -2,9 +2,10 @@
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { DropdownMenu } from "@radix-ui/themes";
-import { Check, EllipsisVertical, LineChart as LineChartIcon, MessageSquareText } from "lucide-react";
+import { DropdownMenu, Skeleton } from "@radix-ui/themes";
+import { ArrowDown, Check, EllipsisVertical, LineChart as LineChartIcon, MessageSquareText, RotateCw } from "lucide-react";
 import ClientOnly from "@/app/lib/ClientOnly";
+import BentoPageLayout from "@/app/components/BentoPageLayout";
 import { Bento } from "@/app/components/ui/bento";
 import { Button } from "@/app/components/ui/button";
 import { STARTING_CAPITAL, formatAge, mergeCurves, niceScale, summarize, type EquityCurveRow, type EquitySummary } from "@/app/lib/tradingEquity";
@@ -23,8 +24,9 @@ const REFRESH_MS = 60_000;
 /**
  * One color per deployment, in this order so that no two neighbors in the
  * legend are confusable under color-blindness (checked with the dataviz
- * validator in both themes). The account can't hold more than eight 12%
- * allocations; any beyond that fall back to muted rather than repeating a hue.
+ * validator in both themes). Past eight the hues come round again, drawn
+ * dashed in the chart and as a ring in the table, so no two deployments look
+ * the same (the design system has six identity colors; see color.track).
  */
 const SERIES_COLORS = [
   "var(--ds-color-track-4)",
@@ -36,7 +38,9 @@ const SERIES_COLORS = [
   "var(--ds-color-track-1)",
   "var(--ds-color-track-5)",
 ];
-const colorAt = (i: number) => SERIES_COLORS[i] ?? "var(--ds-color-text-muted)";
+const colorAt = (i: number) => SERIES_COLORS[i % SERIES_COLORS.length];
+/** Past the eighth deployment the hues repeat, so the repeats are dashed to stay told apart. */
+const dashAt = (i: number) => (i < SERIES_COLORS.length ? undefined : "6 3");
 
 const money = (n: number) => `$${Math.round(n).toLocaleString("en-US")}`;
 // Rounded before the sign is chosen, so -0.001 reads +0.00% rather than −0.00%.
@@ -80,7 +84,7 @@ function EquityTooltip({ active, label, payload, labels }: { active?: boolean; l
   );
 }
 
-function EquityChart({ curves }: { curves: EquitySummary[] }) {
+function EquityChart({ curves, highlight }: { curves: EquitySummary[]; highlight: string | null }) {
   const data = useMemo(() => mergeCurves(curves), [curves]);
   const labels = useMemo(() => new Map(curves.map((c) => [c.id, c.label])), [curves]);
   const scale = useMemo(() => niceScale([STARTING_CAPITAL, ...curves.flatMap((c) => c.points.map(([, v]) => v))]), [curves]);
@@ -100,7 +104,7 @@ function EquityChart({ curves }: { curves: EquitySummary[] }) {
           domain={["dataMin", "dataMax"]}
           tickFormatter={(t: number) => axisTime(t, span)}
           minTickGap={56}
-          tick={{ fill: "var(--ds-color-text-muted)", fontSize: 11 }}
+          tick={{ fill: "var(--ds-color-text-muted)", fontSize: 12 }}
           stroke="var(--ds-color-border-strong)"
           tickLine={false}
         />
@@ -109,7 +113,7 @@ function EquityChart({ curves }: { curves: EquitySummary[] }) {
           ticks={scale.ticks}
           tickFormatter={money}
           width={62}
-          tick={{ fill: "var(--ds-color-text-muted)", fontSize: 11 }}
+          tick={{ fill: "var(--ds-color-text-muted)", fontSize: 12 }}
           axisLine={false}
           tickLine={false}
         />
@@ -119,8 +123,20 @@ function EquityChart({ curves }: { curves: EquitySummary[] }) {
           isAnimationActive={false}
           content={(props) => <EquityTooltip active={props.active} label={props.label} payload={props.payload as readonly TooltipEntry[] | undefined} labels={labels} />}
         />
-        {curves.map((c, i) => (
-          <Line key={c.id} dataKey={c.id} name={c.label} stroke={colorAt(i)} strokeWidth={2} dot={false} activeDot={{ r: 4 }} type="linear" isAnimationActive={false} />
+        {curves.map((c, i) => [c, i] as const).sort(([a], [b]) => Number(a.id === highlight) - Number(b.id === highlight)).map(([c, i]) => (
+          <Line
+            key={c.id}
+            dataKey={c.id}
+            name={c.label}
+            stroke={colorAt(i)}
+            strokeDasharray={dashAt(i)}
+            strokeWidth={highlight === c.id ? 2.5 : 1.5}
+            strokeOpacity={highlight === null || highlight === c.id ? 1 : 0.15}
+            dot={false}
+            activeDot={{ r: 4 }}
+            type="linear"
+            isAnimationActive={false}
+          />
         ))}
       </LineChart>
     </ResponsiveContainer>
@@ -259,6 +275,92 @@ function returnClass(pct: number): string {
   return "text-ink-primary";
 }
 
+/** One figure in the summary strip: a label, the number, a line of context. */
+function Stat({ label, value, tone = "", detail }: { label: string; value: string; tone?: string; detail: string }) {
+  return (
+    <div className="flex min-w-0 flex-col gap-1 px-4 py-3">
+      <dt className="text-12 text-ink-muted">{label}</dt>
+      <dd className={`text-20 font-semibold tabular-nums ${tone || "text-ink-primary"}`}>{value}</dd>
+      <dd className="truncate text-12 text-ink-muted">{detail}</dd>
+    </div>
+  );
+}
+
+const signedMoney = (n: number) => {
+  const r = Math.round(n);
+  return `${r >= 0 ? "+" : "−"}${money(Math.abs(r))}`;
+};
+
+/**
+ * The headline numbers across every deployment: the combined P&L in dollars
+ * (each on its own allocation), the best and worst, and how many have enough
+ * data for their results to mean anything.
+ */
+function SummaryStrip({ curves, rows, enough }: { curves: EquitySummary[]; rows: EquityCurveRow[]; enough: (c: EquitySummary) => boolean }) {
+  const allocated = new Map(rows.map((r) => [r.deployment_id, r.starting_equity]));
+  const capital = curves.reduce((s, c) => s + (allocated.get(c.id) ?? STARTING_CAPITAL), 0);
+  const pnl = curves.reduce((s, c) => s + ((allocated.get(c.id) ?? STARTING_CAPITAL) * c.returnPct) / 100, 0);
+  const pct = capital > 0 ? (pnl / capital) * 100 : 0;
+  const byReturn = [...curves].sort((a, b) => b.returnPct - a.returnPct);
+  const best = byReturn[0];
+  const worst = byReturn[byReturn.length - 1];
+  const ready = curves.filter(enough).length;
+  return (
+    <Bento size="1" className="!p-0">
+      <dl className="grid grid-cols-2 lg:grid-cols-4 [&>div]:border-line-subtle max-lg:[&>div:nth-child(-n+2)]:border-b max-lg:[&>div:nth-child(odd)]:border-r lg:[&>div:not(:first-child)]:border-l">
+        <Stat label="Combined P&L" value={signedMoney(pnl)} tone={returnClass(pnl)} detail={`${signedPct(pct)} on ${money(capital)}`} />
+        <Stat label="Best" value={signedPct(best.returnPct)} tone={returnClass(best.returnPct)} detail={`${best.label} · ${best.strategy}`} />
+        <Stat label="Worst" value={signedPct(worst.returnPct)} tone={returnClass(worst.returnPct)} detail={`${worst.label} · ${worst.strategy}`} />
+        <Stat label="Enough data" value={`${ready} of ${curves.length}`} detail={`${SAMPLE.minTrades} trades and ${SAMPLE.minDays} days each`} />
+      </dl>
+    </Bento>
+  );
+}
+
+/**
+ * The chart's key. Each entry picks out its line: hovering or focusing one
+ * dims the rest, and clicking keeps it picked until clicked again.
+ */
+function Legend({
+  curves,
+  colors,
+  dashes,
+  pinned,
+  onPin,
+  onPreview,
+}: {
+  curves: EquitySummary[];
+  colors: Map<string, string>;
+  dashes: Map<string, string | undefined>;
+  pinned: string | null;
+  onPin: (id: string | null) => void;
+  onPreview: (id: string | null) => void;
+}) {
+  return (
+    <ul className="-mx-2 mb-2 flex shrink-0 flex-wrap gap-x-1" aria-label="Deployments in the chart">
+      {curves.map((c) => (
+        <li key={c.id}>
+          <button
+            type="button"
+            aria-pressed={pinned === c.id}
+            onClick={() => onPin(pinned === c.id ? null : c.id)}
+            onMouseEnter={() => onPreview(c.id)}
+            onMouseLeave={() => onPreview(null)}
+            onFocus={() => onPreview(c.id)}
+            onBlur={() => onPreview(null)}
+            className="flex h-7 items-center gap-2 rounded-full px-2 text-12 text-ink-primary outline-none transition-colors hover:bg-surface-sunken focus-visible:ring-2 focus-visible:ring-focus aria-pressed:bg-surface-sunken aria-pressed:font-medium"
+          >
+            <svg aria-hidden width="16" height="2" className="shrink-0">
+              <line x1="0" y1="1" x2="16" y2="1" stroke={colors.get(c.id)} strokeWidth="2" strokeDasharray={dashes.get(c.id) ? "4 2" : undefined} />
+            </svg>
+            {c.label}
+          </button>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 /** What the page shows, given the curves. Colors follow each curve's position in `curves`. */
 export function TradingLeaderboardView({
   curves,
@@ -276,40 +378,54 @@ export function TradingLeaderboardView({
   configs: Map<string, DeploymentConfig>;
 }) {
   const colors = new Map(curves.map((c, i) => [c.id, colorAt(i)]));
+  const dashes = new Map(curves.map((c, i) => [c.id, dashAt(i)]));
   // Deployments with enough data first, by return; the rest below a divider,
   // so a lucky handful of trades never tops the board.
   const byReturn = [...curves].sort((a, b) => b.returnPct - a.returnPct);
   const enough = (c: EquitySummary) => goLive.get(c.id)?.sample.status !== "insufficient";
   const ranked = [...byReturn.filter(enough), ...byReturn.filter((c) => !enough(c))];
   const firstThin = ranked.findIndex((c) => !enough(c));
-  const headCell = "px-3 py-2 font-medium";
-  // The deployment column stays put while the numbers scroll past it, on the
-  // card's own surface so they slide underneath rather than through it.
-  const pinned = "sticky left-0 z-[1] bg-surface-raised";
   const { height, setHeight, save } = useChartHeight();
   const frame = useRef<HTMLDivElement>(null);
-  // The menu column stays at the right edge however far the table scrolls.
-  const pinnedRight = "sticky right-0 z-[1] bg-surface-raised";
   const [panelId, setPanelId] = useState<string | null>(null);
   const menuButtons = useRef(new Map<string, HTMLButtonElement>());
   const panelRow = panelId ? rows.find((r) => r.deployment_id === panelId) : undefined;
+  // The line picked out in the chart: a legend entry or table row being
+  // hovered or focused, else the one clicked in the legend.
+  const [pinned, setPinned] = useState<string | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+  const highlight = preview ?? pinned;
+
+  // One set of cell styles for the whole table: a single row height, the same
+  // padding everywhere, numbers right-aligned in columns wide enough for their
+  // longest value so nothing shifts when a refresh changes a digit.
+  const cell = "h-14 px-2 align-middle sm:px-3";
+  const num = `${cell} text-right sm:min-w-[4.5rem]`;
+  const head = "h-10 px-2 align-middle text-12 font-medium text-ink-muted sm:px-3";
+  const numHead = `${head} text-right`;
+  // The deployment column stays put while the numbers scroll past it, on the
+  // card's own surface so they slide underneath rather than through it; the
+  // menu column stays at the right edge the same way.
+  const pinnedLeft = "sticky left-0 z-[1] bg-surface-raised";
+  const pinnedRight = "sticky right-0 z-[1] bg-surface-raised";
+  const COLUMNS = 11;
 
   return (
     <div className="flex flex-1 flex-col gap-4">
+      <SummaryStrip curves={curves} rows={rows} enough={enough} />
+
       {/* Until the handle is dragged, the chart takes whatever height the
           table leaves, never under 340px; after, the height dragged to. */}
-      <Bento size="3" className={`flex flex-col ${height === null ? "flex-1" : ""}`}>
-        <div className="mb-3 flex shrink-0 flex-wrap gap-x-4 gap-y-1">
-          {curves.map((c) => (
-            <span key={c.id} className="flex items-center gap-2 text-xs text-ink-primary">
-              <span className="h-0.5 w-4 rounded-full" style={{ background: colors.get(c.id) }} />
-              {c.label}
-            </span>
-          ))}
-        </div>
+      <Bento
+        size="2"
+        title="Equity on a $10,000 base"
+        tooltip="Each deployment's account, scaled so they all start at $10,000 and can be compared"
+        className={`flex flex-col ${height === null ? "flex-1" : ""}`}
+      >
+        <Legend curves={curves} colors={colors} dashes={dashes} pinned={pinned} onPin={setPinned} onPreview={setPreview} />
         <div ref={frame} className={height === null ? "min-h-[340px] flex-1" : "shrink-0"} style={height === null ? undefined : { height }}>
           <ClientOnly>
-            <EquityChart curves={curves} />
+            <EquityChart curves={curves} highlight={highlight} />
           </ClientOnly>
         </div>
         <ChartResizeHandle
@@ -327,81 +443,97 @@ export function TradingLeaderboardView({
           wider than the card and scrolls sideways natively. Radix's Card clips
           its own overflow, so the scrolling box is this div inside it, not
           the card. min-w-full keeps the table filling the card when it fits. */}
-      <Bento size="1">
+      <Bento size="1" className="!p-0">
         <div className="overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch]">
-        <table className="w-max min-w-full whitespace-nowrap text-sm">
-          <thead>
-            <tr className="border-b border-line-subtle text-right text-xs text-ink-muted">
-              <th className={`${headCell} ${pinned} text-left`}>Deployment</th>
-              <th className={`${headCell} text-left`} title="Whether the live trades are what the backtest would produce">vs backtest</th>
-              <th className={headCell}>Return</th>
-              <th className={`${headCell} text-left`} title={`Enough data needs ${SAMPLE.minTrades} closed trades and ${SAMPLE.minDays} trading days`}>Sample</th>
-              <th className={headCell}>Trades</th>
-              <th className={headCell} title="Gross profit over gross loss">Profit factor</th>
-              <th className={headCell} title="Average P&L per trade, as a percent of the equity it was sized from">Per trade</th>
-              <th className={headCell}>Max drawdown</th>
-              <th className={headCell}>Updated</th>
-              <th className={`${headCell} ${pinnedRight}`}>
-                <span className="sr-only">Actions</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {ranked.map((c, index) => {
-              const go = goLive.get(c.id);
-              const thin = go?.sample.status === "insufficient";
-              const tradeOk = go?.sample.tradeStatsMeaningful ?? false;
-              // A thin sample's results are shown, but muted: they aren't evidence yet.
-              const weak = "text-ink-muted";
-              return (
-              <Fragment key={c.id}>
-              {index === firstThin && (
-                <tr className="border-b border-line-subtle">
-                  <td colSpan={10} className="p-0">
-                    <div className="sticky left-0 w-[calc(100vw-5rem)] max-w-2xl whitespace-normal px-3 pb-2 pt-4 text-left text-xs text-ink-muted">
-                      <span className="font-medium text-ink-primary">{firstThin === 0 ? "None has enough data yet." : "Not enough data yet."}</span> Under {SAMPLE.minTrades} closed trades or {SAMPLE.minDays} trading days, results can&apos;t be told from luck
-                      {firstThin === 0 ? ", so the returns below are a record, not a ranking." : ", so these aren't ranked against the rows above."}
-                    </div>
-                  </td>
-                </tr>
-              )}
-              <tr className="border-b border-line-subtle text-right tabular-nums text-ink-primary last:border-0">
-                <td className={`px-3 py-3 text-left ${pinned}`}>
-                  <div className="flex items-center gap-2 font-medium">
-                    <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: colors.get(c.id) }} />
-                    {c.label}
-                  </div>
-                  <div className="pl-4 text-xs text-ink-muted">{c.strategy}</div>
-                </td>
-                <td className="px-3 py-3 text-left">{go && <DivergenceChip divergence={go.divergence} short />}</td>
-                <td className={`px-3 py-3 font-medium ${thin ? weak : returnClass(c.returnPct)}`}>{signedPct(c.returnPct)}</td>
-                <td className="px-3 py-3 text-left">
-                  {go && <SampleChip sample={go.sample} text={sampleText(go.sample, go.live?.trades ?? c.trades, go.live?.tradingDays ?? 0, true)} />}
-                </td>
-                <td className="px-3 py-3">
-                  {c.trades}
-                  {c.trades > 0 && <span className="text-ink-muted"> ({Math.round((c.wins / c.trades) * 100)}% won)</span>}
-                </td>
-                <td className={`px-3 py-3 ${tradeOk ? "" : weak}`}>{fmt(go?.live?.profitFactor)}</td>
-                <td className={`px-3 py-3 ${tradeOk ? "" : weak}`}>{fmtSignedPct(go?.live?.expectancyPct)}</td>
-                <td className="px-3 py-3">{c.maxDrawdownPct.toFixed(2)}%</td>
-                <td className="px-3 py-3 text-ink-muted">{formatAge(now - c.latestAt)}</td>
-                <td className={`px-1 py-2 ${pinnedRight}`}>
-                  <RowMenu
-                    label={c.label}
-                    onEquityCurve={() => setPanelId(c.id)}
-                    buttonRef={(el) => {
-                      if (el) menuButtons.current.set(c.id, el);
-                      else menuButtons.current.delete(c.id);
-                    }}
-                  />
-                </td>
+          <table className="w-max min-w-full whitespace-nowrap text-13 tabular-nums">
+            <thead>
+              <tr className="border-b border-line-subtle">
+                <th className={`${head} ${pinnedLeft} pl-4 text-left`}>Deployment</th>
+                <th className={numHead} aria-sort="descending" title="Ranked by return, among deployments with enough data">
+                  <span className="inline-flex items-center gap-1 text-ink-primary">
+                    <ArrowDown aria-hidden className="size-3" />
+                    Return
+                  </span>
+                </th>
+                <th className={`${head} text-left`} title="Whether the live trades are what the backtest would produce">vs backtest</th>
+                <th className={`${head} text-left`} title={`Enough data needs ${SAMPLE.minTrades} closed trades and ${SAMPLE.minDays} trading days`}>Sample</th>
+                <th className={`${numHead} border-l border-line-subtle`} title="Largest peak-to-trough fall in its equity">Max DD</th>
+                <th className={numHead} title="Gross profit over gross loss">Profit factor</th>
+                <th className={numHead} title="Average P&L per trade, as a percent of the equity it was sized from">Per trade</th>
+                <th className={numHead}>Trades</th>
+                <th className={numHead}>Win rate</th>
+                <th className={numHead}>Updated</th>
+                <th className={`${head} ${pinnedRight} w-10 px-1`}>
+                  <span className="sr-only">Actions</span>
+                </th>
               </tr>
-              </Fragment>
-              );
-            })}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {ranked.map((c, index) => {
+                const go = goLive.get(c.id);
+                const thin = go?.sample.status === "insufficient";
+                const tradeOk = go?.sample.tradeStatsMeaningful ?? false;
+                // A thin sample's results are shown, but muted: they aren't evidence yet.
+                const weak = "text-ink-muted";
+                const dimmed = highlight !== null && highlight !== c.id;
+                return (
+                  <Fragment key={c.id}>
+                    {index === firstThin && (
+                      <tr className="border-b border-line-subtle">
+                        <td colSpan={COLUMNS} className="bg-surface-sunken p-0">
+                          <div className="sticky left-0 w-[calc(100vw-4rem)] max-w-2xl whitespace-normal px-4 py-2 text-left text-12 text-ink-muted">
+                            <span className="font-medium text-ink-primary">{firstThin === 0 ? "None has enough data yet" : "Not enough data yet"}</span>
+                            {" · "}Under {SAMPLE.minTrades} closed trades or {SAMPLE.minDays} trading days, results can&apos;t be told from luck
+                            {firstThin === 0 ? ", so the returns below are a record, not a ranking." : ", so these aren't ranked against the rows above."}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                    <tr
+                      className={`border-b border-line-subtle text-ink-primary transition-opacity last:border-0 ${dimmed ? "opacity-60" : ""}`}
+                      onMouseEnter={() => setPreview(c.id)}
+                      onMouseLeave={() => setPreview(null)}
+                    >
+                      <td className={`${cell} ${pinnedLeft} pl-4 text-left`}>
+                        <div className="flex items-center gap-2 font-medium">
+                          <span
+                            aria-hidden
+                            className="size-2 shrink-0 rounded-full"
+                            style={dashes.get(c.id) ? { boxShadow: `inset 0 0 0 1.5px ${colors.get(c.id)}` } : { background: colors.get(c.id) }}
+                          />
+                          {c.label}
+                        </div>
+                        <div className="pl-4 text-12 text-ink-muted">{c.strategy}</div>
+                      </td>
+                      <td className={`${num} font-semibold ${thin ? weak : returnClass(c.returnPct)}`}>{signedPct(c.returnPct)}</td>
+                      <td className={`${cell} text-left sm:min-w-[6rem]`}>
+                        {go?.divergence ? <DivergenceChip divergence={go.divergence} short /> : <Skeleton className="inline-block h-5 w-16 rounded-full align-middle" />}
+                      </td>
+                      <td className={`${cell} text-left sm:min-w-[6.5rem]`}>
+                        {go && <SampleChip sample={go.sample} text={sampleText(go.sample, go.live?.trades ?? c.trades, go.live?.tradingDays ?? 0, true)} />}
+                      </td>
+                      <td className={`${num} border-l border-line-subtle`}>{c.maxDrawdownPct.toFixed(2)}%</td>
+                      <td className={`${num} ${tradeOk ? "" : weak}`}>{fmt(go?.live?.profitFactor)}</td>
+                      <td className={`${num} ${tradeOk ? returnClass(go?.live?.expectancyPct ?? 0) : weak}`}>{fmtSignedPct(go?.live?.expectancyPct)}</td>
+                      <td className={num}>{c.trades}</td>
+                      <td className={`${num} ${tradeOk ? "" : weak}`}>{c.trades > 0 ? `${Math.round((c.wins / c.trades) * 100)}%` : "–"}</td>
+                      <td className={`${num} text-ink-muted`}>{formatAge(now - c.latestAt)}</td>
+                      <td className={`${cell} ${pinnedRight} w-10 px-1 text-center`}>
+                        <RowMenu
+                          label={c.label}
+                          onEquityCurve={() => setPanelId(c.id)}
+                          buttonRef={(el) => {
+                            if (el) menuButtons.current.set(c.id, el);
+                            else menuButtons.current.delete(c.id);
+                          }}
+                        />
+                      </td>
+                    </tr>
+                  </Fragment>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       </Bento>
       {panelRow && (
@@ -417,6 +549,55 @@ export function TradingLeaderboardView({
         />
       )}
     </div>
+  );
+}
+
+/** The page while the curves load: the same frames as the loaded page, with placeholders where the numbers go. */
+function LoadingView() {
+  return (
+    <div className="flex flex-1 flex-col gap-4" aria-busy="true">
+      <p className="sr-only" role="status">
+        Loading the leaderboard
+      </p>
+      <Bento size="1" className="!p-0">
+        <div className="grid grid-cols-2 lg:grid-cols-4">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="flex flex-col gap-2 px-4 py-3">
+              <Skeleton className="h-3 w-20" />
+              <Skeleton className="h-6 w-24" />
+              <Skeleton className="h-3 w-28" />
+            </div>
+          ))}
+        </div>
+      </Bento>
+      <Bento size="2" title="Equity on a $10,000 base" className="flex min-h-[420px] flex-1 flex-col">
+        <Skeleton className="min-h-[340px] w-full flex-1" />
+      </Bento>
+      <Bento size="1" className="!p-0">
+        {[0, 1, 2, 3, 4].map((i) => (
+          <div key={i} className="flex h-14 items-center gap-6 border-b border-line-subtle px-4 last:border-0">
+            <Skeleton className="h-4 w-28" />
+            <Skeleton className="ml-auto h-4 w-16" />
+            <Skeleton className="h-5 w-16 rounded-full" />
+            <Skeleton className="hidden h-4 w-16 sm:block" />
+            <Skeleton className="hidden h-4 w-16 sm:block" />
+          </div>
+        ))}
+      </Bento>
+    </div>
+  );
+}
+
+/** A whole-page message in place of the leaderboard: why there's nothing to show, and what to do. */
+function PageMessage({ title, children, action }: { title: string; children: React.ReactNode; action?: React.ReactNode }) {
+  return (
+    <Bento size="3">
+      <div className="flex flex-col items-start gap-2">
+        <h2 className="text-16 font-semibold text-ink-primary">{title}</h2>
+        <p className="max-w-prose text-13 text-ink-muted">{children}</p>
+        {action && <div className="mt-2">{action}</div>}
+      </div>
+    </Bento>
   );
 }
 
@@ -548,6 +729,7 @@ export default function TradingLeaderboardContent({ deploymentConfigs = [] }: { 
   const [ledger, setLedger] = useState<Map<string, LedgerRow> | null>(null);
   const [loadedAt, setLoadedAt] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -577,7 +759,7 @@ export default function TradingLeaderboardContent({ deploymentConfigs = [] }: { 
       cancelled = true;
       clearInterval(timer);
     };
-  }, []);
+  }, [attempt]);
 
   // Backtests for deployments not yet done, whenever the set of deployments changes.
   const rowIds = rows?.map((r) => r.deployment_id).join(",") ?? "";
@@ -632,16 +814,27 @@ export default function TradingLeaderboardContent({ deploymentConfigs = [] }: { 
   }, [rows, pnl, backtests, goLive]);
 
   return (
-    <main className="flex w-full flex-1 flex-col px-4 py-4">
-      <header className="mb-4 flex flex-wrap items-start justify-between gap-3">
-        <h1 className="text-2xl font-bold text-ink-primary">Trading Leaderboard</h1>
-        <AnalyzeInClaude buildPrompt={buildPrompt} disabled={!rows || rows.length === 0} />
-      </header>
-
-      {error && curves === null && <Bento size="3" className="text-sm text-ink-muted">Couldn&apos;t load the curves: {error}</Bento>}
-      {!error && curves === null && <Bento size="3" className="text-sm text-ink-muted">Loading&hellip;</Bento>}
-      {curves?.length === 0 && <Bento size="3" className="text-sm text-ink-muted">No deployment has reported in the last 7 days.</Bento>}
+    <BentoPageLayout title="Trading Leaderboard" headerActions={<AnalyzeInClaude buildPrompt={buildPrompt} disabled={!rows || rows.length === 0} />}>
+      {error && curves === null && (
+        <PageMessage
+          title="Couldn't load the leaderboard"
+          action={
+            <Button variant="secondary" onClick={() => setAttempt((n) => n + 1)}>
+              <RotateCw className="size-4" />
+              Try again
+            </Button>
+          }
+        >
+          The equity curves didn&apos;t come back from the database ({error}). It tries again every minute on its own.
+        </PageMessage>
+      )}
+      {!error && curves === null && <LoadingView />}
+      {curves?.length === 0 && (
+        <PageMessage title="No deployment has reported this week">
+          Each deployment reports after every bar it trades. None has in the last 7 days, so either the schedules are off in trading/deployments.ts or the markets have been closed.
+        </PageMessage>
+      )}
       {curves && curves.length > 0 && <TradingLeaderboardView curves={curves} rows={rows ?? []} now={loadedAt} goLive={goLive} backtests={backtests} configs={configs} />}
-    </main>
+    </BentoPageLayout>
   );
 }

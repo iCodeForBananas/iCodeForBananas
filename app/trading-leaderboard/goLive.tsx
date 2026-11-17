@@ -46,7 +46,7 @@ export function goLiveFor(row: EquityCurveRow, ledger: LedgerRow | undefined, ba
   return { live, sample, divergence };
 }
 
-export const chip = "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium";
+export const chip = "inline-flex h-5 items-center rounded-full px-2 text-12 font-medium";
 
 /** In a table cell the thin-sample chip says how far along it is, which is the threshold itself. */
 export function sampleText(sample: Sample, trades: number, tradingDays: number, short: boolean): string {
@@ -63,36 +63,39 @@ export const SHORT_DIVERGENCE: Record<Divergence["status"], string> = {
   unavailable: "No data",
 };
 
-export function SampleChip({ sample, text }: { sample: Sample; text?: string }) {
-  const tone =
-    sample.status === "insufficient"
-      ? "bg-surface-sunken text-ink-muted"
-      : sample.status === "negative"
-        ? "bg-danger text-ink-on-primary"
-        : sample.status === "edge"
-          ? "border border-success text-success"
-          : "border border-line-strong text-ink-primary";
+/**
+ * A status chip: neutral, with a dot carrying the signal (red bad, green
+ * good, none for "can't tell yet"), so a column of them reads at a glance
+ * without the color outshouting the P&L numbers beside it.
+ */
+function StatusChip({ dot, quiet = false, title, children }: { dot?: "danger" | "success" | "muted"; quiet?: boolean; title?: string; children: React.ReactNode }) {
+  const tone = quiet ? "bg-surface-sunken text-ink-muted" : "border border-line-subtle bg-surface-raised text-ink-primary";
+  const dotColor = dot === "danger" ? "bg-danger" : dot === "success" ? "bg-success" : "bg-ink-muted";
   return (
-    <span className={`${chip} ${tone}`} title={sample.detail}>
-      {text ?? sample.label}
+    <span className={`${chip} gap-1.5 ${tone}`} title={title}>
+      {dot && <span aria-hidden className={`size-1.5 shrink-0 rounded-full ${dotColor}`} />}
+      {children}
     </span>
   );
 }
 
-export function DivergenceChip({ divergence, short = false }: { divergence: Divergence | null; short?: boolean }) {
-  if (!divergence) return <span className="text-xs text-ink-muted">Loading&hellip;</span>;
-  const tone =
-    divergence.status === "worse"
-      ? "bg-danger text-ink-on-primary"
-      : divergence.status === "in-line"
-        ? "border border-success text-success"
-        : divergence.status === "better"
-          ? "border border-line-strong text-ink-primary"
-          : "bg-surface-sunken text-ink-muted";
+export function SampleChip({ sample, text }: { sample: Sample; text?: string }) {
+  const dot = sample.status === "negative" ? "danger" : sample.status === "edge" ? "success" : sample.status === "insufficient" ? undefined : "muted";
   return (
-    <span className={`${chip} ${tone}`} title={divergence.detail}>
+    <StatusChip dot={dot} quiet={sample.status === "insufficient"} title={sample.detail}>
+      {text ?? sample.label}
+    </StatusChip>
+  );
+}
+
+export function DivergenceChip({ divergence, short = false }: { divergence: Divergence | null; short?: boolean }) {
+  if (!divergence) return <span className="text-12 text-ink-muted">Loading&hellip;</span>;
+  const dot = divergence.status === "worse" ? "danger" : divergence.status === "in-line" ? "success" : divergence.status === "better" ? "muted" : undefined;
+  const quiet = dot === undefined;
+  return (
+    <StatusChip dot={dot} quiet={quiet} title={divergence.detail}>
       {short ? SHORT_DIVERGENCE[divergence.status] : divergence.label}
-    </span>
+    </StatusChip>
   );
 }
 
