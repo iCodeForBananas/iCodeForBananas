@@ -130,6 +130,35 @@ whose SHA-256 is in `trading_equity_reporters`. The token, the Supabase URL and
 the publishable key live in the secret `EQUITY_REPORTER_SECRET_NAME`, outside
 the stack (JSON `{"url": "...", "publishableKey": "...", "token": "..."}`).
 
+### Fills
+
+Every fill is also appended to `public.trading_fills`
+([`supabase/migrations/20261117_trading_fills.sql`](../supabase/migrations/20261117_trading_fills.sql)),
+one row per Tradier order, through `report_trading_fill` and the same token.
+A row has the order (side, shares, price, fill and placement times, the
+signal's reason), the P&L it realized, and the deployment's state right after
+it: position, realized P&L, trade counters, and equity with any rest of the
+position marked at the fill price. The table is append-only: a repeat report of
+an order is ignored, and a trigger refuses UPDATE and DELETE.
+
+Fills are written after the state, before the bar's equity snapshot, and on
+the same terms: capped, never fatal, `fillsReported` and `fillReportErrors` in
+the log line. The line also carries the `fills` themselves, so a failed write
+can be recovered:
+
+```
+npm run backfill-fills            # writes fills.sql, fills.json, report.json to a temp dir
+```
+
+It reads each deployment's log for the fills and the runtime's own accounting,
+and Tradier's order history (through a Lambda invoked with
+`{"orderHistory": true}`, read-only, so the token never leaves AWS) for exact
+fill times. Apply `fills.sql` as the table owner; it skips orders already there.
+
+The trades sit on top of the mark-to-market curve in
+`trading_equity_snapshots` (one row per processed bar), which is what shows a
+drawdown inside a trade.
+
 ## Operations
 
 | | |
@@ -137,6 +166,7 @@ the stack (JSON `{"url": "...", "publishableKey": "...", "token": "..."}`).
 | Deploy / redeploy | `cd trading && npx cdk deploy` |
 | See what would change | `npx cdk diff` |
 | Dry-run every deployment | `npm run dry-run` |
+| Backfill missed fills | `npm run backfill-fills`, then apply its `fills.sql` |
 | Pause everything | set every `enabled: false` and deploy, or `aws scheduler update-schedule` each `tradier-<id>` schedule with `--state DISABLED` |
 | Tear down | flatten positions in Tradier, then `npx cdk destroy`. The state table is retained; delete it by hand if you mean to. |
 

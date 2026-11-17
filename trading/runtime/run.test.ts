@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { AVAILABLE_STRATEGIES } from '@/app/strategies';
 import { DATA_DELAY_MS, resolveDeployment, type ResolvedDeployment } from './config';
-import type { EquityReporter, EquitySnapshot } from './equity-report';
-import { expectedBarClose, rebase, runDeployment, type DeploymentState, type RunDeps, type RunEvent } from './run';
+import type { EquityReporter, EquitySnapshot, FillRecord } from './equity-report';
+import { applyFill, expectedBarClose, newCounters, rebase, runDeployment, type DeploymentState, type RunDeps, type RunEvent } from './run';
 import { etParts, etWallToUtcMs } from './time';
 import type { HistoryRow, TradierApi, TradierOrder, TradierPosition, TimesalesRow } from './tradier';
 
@@ -63,6 +63,8 @@ interface FakeOpts {
   placedStatus?: string;
   fillPrice?: number;
   orderLookup?: Record<string, TradierOrder>;
+  /** transaction_date a newly placed order reports. */
+  fillTime?: string;
   history?: HistoryRow[];
 }
 
@@ -77,13 +79,14 @@ function fakeTradier(o: FakeOpts) {
     balances: async () => ({ total_equity: o.equity ?? 100_000 }),
     positions: async () => o.positions ?? [],
     orders: async () => o.orders ?? [],
+    orderHistory: async () => [],
     order: async (id) => orders.get(id) ?? null,
     async placeMarketOrder(p) {
       placed.push(p);
       const id = String(nextId++);
       const status = o.placedStatus ?? 'filled';
       const last = o.rows[o.rows.length - 1] ?? o.history?.[o.history.length - 1];
-      orders.set(id, { id, status, exec_quantity: status === 'filled' ? p.quantity : 0, avg_fill_price: o.fillPrice ?? Number(last.close) });
+      orders.set(id, { id, status, exec_quantity: status === 'filled' ? p.quantity : 0, avg_fill_price: o.fillPrice ?? Number(last.close), transaction_date: o.fillTime });
       return id;
     },
     async cancelOrder(id) {
@@ -370,7 +373,17 @@ describe('runDeployment', () => {
 describe('equity reporting', () => {
   const reporter = (impl: () => Promise<void> = async () => {}) => {
     const reports: EquitySnapshot[] = [];
-    return { reports, equityReporter: { report: async (s: EquitySnapshot) => { reports.push(s); await impl(); } } };
+    const fills: FillRecord[] = [];
+    const order: string[] = [];
+    return {
+      reports,
+      fills,
+      order,
+      equityReporter: {
+        report: async (s: EquitySnapshot) => { order.push('snapshot'); reports.push(s); await impl(); },
+        reportFill: async (f: FillRecord) => { order.push('fill'); fills.push(f); await impl(); },
+      },
+    };
   };
   const runWith = (h: ReturnType<typeof harness>, equityReporter: EquityReporter, event?: RunEvent) =>
     runDeployment(DEPLOYMENT, event, { ...h.deps, equityReporter, strategy: AVAILABLE_STRATEGIES[DEPLOYMENT.strategyId] });
@@ -421,6 +434,117 @@ describe('equity reporting', () => {
     const r = reporter();
     await runWith(h, r.equityReporter);
     expect(r.reports).toEqual([]);
+  });
+});
+
+describe('fill records', () => {
+  const reporter = (fail = false) => {
+    const fills: FillRecord[] = [];
+    const calls: string[] = [];
+    const equityReporter: EquityReporter = {
+      report: async () => { calls.push('snapshot'); },
+      reportFill: async (f) => {
+        calls.push(`fill ${f.orderId}`);
+        if (fail) throw new Error('Supabase 500');
+        fills.push(f);
+      },
+    };
+    return { fills, calls, equityReporter };
+  };
+  const runWith = (h: ReturnType<typeof harness>, equityReporter: EquityReporter, event?: RunEvent) =>
+    runDeployment(DEPLOYMENT, event, { ...h.deps, equityReporter, strategy: AVAILABLE_STRATEGIES[DEPLOYMENT.strategyId] });
+
+  it('appends an open fill after the state is saved, before the equity snapshot', async () => {
+    const h = harness({ rows: makeRows({ lastIbs: 0.1 }), fillTime: '2026-11-09T15:15:07.000Z' });
+    const r = reporter();
+    let savedFirst = false;
+    r.equityReporter.reportFill = async (f) => { savedFirst = h.saved.length === 1; r.calls.push(`fill ${f.orderId}`); r.fills.push(f); };
+    await runWith(h, r.equityReporter);
+    const close = 99 + 0.1 * 2;
+    const shares = Math.floor(100_000 / close);
+    expect(savedFirst).toBe(true);
+    expect(r.calls).toEqual(['fill 1000', 'snapshot']);
+    expect(r.fills).toEqual([
+      {
+        deploymentId: DEPLOYMENT.id,
+        orderId: '1000',
+        strategyId: 'ibs-mean-reversion',
+        symbol: 'QQQ',
+        interval: '15min',
+        action: 'open',
+        positionSide: 'long',
+        orderSide: 'buy',
+        shares,
+        fillPrice: close,
+        fillTime: Date.parse('2026-11-09T15:15:07.000Z'),
+        placedAt: expect.any(Number),
+        reason: expect.stringMatching(/IBS/),
+        entryPrice: null,
+        realizedPnl: null,
+        tradePnl: null,
+        positionSharesAfter: shares,
+        realizedPnlTotal: 0,
+        equityAfter: 100_000,
+        tradesClosed: 0,
+        winningTrades: 0,
+        pnlScale: 1,
+        source: 'live',
+      },
+    ]);
+    expect(h.log().fills).toHaveLength(1);
+    expect(h.log().fillsReported).toBe(1);
+  });
+
+  it('closes with the P&L, the trade P&L and the equity after it', async () => {
+    const h = harness({
+      rows: makeRows({ lastIbs: 0.95 }),
+      positions: [{ symbol: 'QQQ', quantity: 100, cost_basis: 9500 }],
+      state: { allocationBase: 100_000, realizedPnlTotal: 50, tradesClosed: 2, winningTrades: 1, position: { side: 'long', shares: 100, entryPrice: 95, entryTime: 0, exitOrderId: null, realizedPnl: 0 } },
+    });
+    const r = reporter();
+    await runWith(h, r.equityReporter);
+    const close = 99 + 0.95 * 2;
+    const pnl = (close - 95) * 100;
+    expect(r.fills).toHaveLength(1);
+    expect(r.fills[0]).toMatchObject({ action: 'close', positionSide: 'long', orderSide: 'sell', shares: 100, entryPrice: 95, positionSharesAfter: 0, tradesClosed: 3, winningTrades: 2 });
+    expect(r.fills[0].realizedPnl).toBeCloseTo(pnl, 6);
+    expect(r.fills[0].tradePnl).toBeCloseTo(pnl, 6);
+    expect(r.fills[0].realizedPnlTotal).toBeCloseTo(50 + pnl, 6);
+    expect(r.fills[0].equityAfter).toBeCloseTo(100_050 + pnl, 6);
+  });
+
+  it('records a partial exit with the rest of the position marked at the fill price', () => {
+    const state = { allocationBase: 10_000, realizedPnlTotal: 0, realizedPnlToday: 0, tradesClosed: 0, winningTrades: 0, position: { side: 'short' as const, shares: 10, entryPrice: 50, entryTime: 0, exitOrderId: 'x', realizedPnl: 0 } } as DeploymentState;
+    const counters = newCounters();
+    const pending = { id: '7', kind: 'exit' as const, side: 'short' as const, orderSide: 'buy_to_cover', quantity: 10, barTime: 0, placedAt: 5, reason: 'r' };
+    applyFill(state, pending, { id: '7', status: 'canceled', exec_quantity: 4, avg_fill_price: 48 }, [], counters, 1_000);
+    expect(counters.records).toEqual([
+      expect.objectContaining({ action: 'close', positionSide: 'short', shares: 4, realizedPnl: 8, tradePnl: null, positionSharesAfter: -6, realizedPnlTotal: 8, equityAfter: 10_000 + 8 + 12, fillTime: 1_000, placedAt: 5 }),
+    ]);
+  });
+
+  it('trades on when a fill write fails, and logs which order', async () => {
+    const h = harness({ rows: makeRows({ lastIbs: 0.1 }) });
+    const r = reporter(true);
+    const result = await runWith(h, r.equityReporter);
+    expect(result.ok).toBe(true);
+    expect(h.saved).toHaveLength(1);
+    expect(h.log().fillsReported).toBe(0);
+    expect(h.log().fillReportErrors).toEqual(['order 1000: Supabase 500']);
+    expect(r.calls).toEqual(['fill 1000', 'snapshot']);
+  });
+
+  it('writes nothing on a dry run or a bar without a fill', async () => {
+    const dry = harness({ rows: makeRows({ lastIbs: 0.1 }) });
+    const r1 = reporter();
+    await runWith(dry, r1.equityReporter, { dryRun: true });
+    expect(r1.calls).toEqual([]);
+
+    const hold = harness({ rows: makeRows({ lastIbs: 0.5 }) });
+    const r2 = reporter();
+    await runWith(hold, r2.equityReporter);
+    expect(r2.calls).toEqual(['snapshot']);
+    expect(hold.log().fills).toBeUndefined();
   });
 });
 

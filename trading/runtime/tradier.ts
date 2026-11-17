@@ -27,6 +27,7 @@ export interface TradierOrder {
   exec_quantity?: number | string;
   avg_fill_price?: number | string;
   transaction_date?: string;
+  create_date?: string;
   reason_description?: string;
   tag?: string;
 }
@@ -63,6 +64,8 @@ export interface TradierApi {
   balances(): Promise<{ total_equity?: number | string } | null>;
   positions(): Promise<TradierPosition[]>;
   orders(): Promise<TradierOrder[]>;
+  /** One page of the account's order history, newest first, tags included. Read-only. */
+  orderHistory(page: number, limit: number): Promise<TradierOrder[]>;
   order(orderId: string): Promise<TradierOrder | null>;
   placeMarketOrder(o: { symbol: string; side: string; quantity: number; tag: string }): Promise<string>;
   cancelOrder(orderId: string): Promise<void>;
@@ -134,6 +137,8 @@ export function createTradierClient(loadCreds: () => Promise<TradierCreds>, fetc
     balances: async () => (await call(`/accounts/${await acct()}/balances`))?.balances ?? null,
     positions: async () => asArray((await call(`/accounts/${await acct()}/positions`))?.positions?.position),
     orders: async () => asArray((await call(`/accounts/${await acct()}/orders`, { query: { includeTags: 'true' } }))?.orders?.order),
+    orderHistory: async (page, limit) =>
+      asArray((await call(`/accounts/${await acct()}/orders`, { query: { includeTags: 'true', page: String(page), limit: String(limit) } }))?.orders?.order),
     order: async (id) => (await call(`/accounts/${await acct()}/orders/${id}`, { query: { includeTags: 'true' } }))?.order ?? null,
     async placeMarketOrder({ symbol, side, quantity, tag }) {
       const r = await call(`/accounts/${await acct()}/orders`, {

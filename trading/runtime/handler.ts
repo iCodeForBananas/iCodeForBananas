@@ -7,12 +7,16 @@
 // Test event { "dryRun": true } runs everything and logs the orders it would
 // place, without placing them, writing state or publishing metrics. Add
 // "evaluateLatest": true to evaluate the newest bar even when it's stale.
+//
+// { "orderHistory": true } returns the account's Tradier order history instead
+// (runtime/order-history.ts), read-only, for scripts/backfill-fills.ts.
 
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb';
 import { GetSecretValueCommand, SecretsManagerClient } from '@aws-sdk/client-secrets-manager';
 import type { ResolvedDeployment } from './config';
 import { createEquityReporter, type EquityReporterConfig } from './equity-report';
+import { collectOrderHistory } from './order-history';
 import { runDeployment, type DeploymentState, type RunEvent, type StateStore } from './run';
 import { createTradierClient, type TradierCreds } from './tradier';
 import strategy from '@trading/strategy';
@@ -64,13 +68,15 @@ const store: StateStore = {
   },
 };
 
-export const handler = (event?: RunEvent) =>
-  runDeployment(DEPLOYMENT, event, {
-    strategy,
-    tradier,
-    store,
-    equityReporter,
-    now: Date.now,
-    sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
-    log: (line) => console.log(line),
-  });
+export const handler = (event?: RunEvent & { orderHistory?: boolean }) =>
+  event?.orderHistory === true
+    ? collectOrderHistory(tradier)
+    : runDeployment(DEPLOYMENT, event, {
+        strategy,
+        tradier,
+        store,
+        equityReporter,
+        now: Date.now,
+        sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
+        log: (line) => console.log(line),
+      });

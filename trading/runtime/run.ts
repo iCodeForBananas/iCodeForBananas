@@ -12,7 +12,7 @@
 import type { StrategyDefinition } from '@/app/strategies/types';
 import { DATA_DELAY_MS, INTERVALS, SOURCE_INTERVAL, isDaily, type Interval, type ResolvedDeployment } from './config';
 import { aggregateBars, computeSeries, intradayBarClose, parseBars, parseDailyBars, regularSessionBars, sessionClose, type ParsedBars } from './market';
-import type { EquityReporter } from './equity-report';
+import type { EquityReporter, FillRecord } from './equity-report';
 import { emfFields, type MetricName } from './metrics';
 import { etDate, etParts, etStamp, etWallToUtcMs, isRegularSessionClose, sessionBounds } from './time';
 import type { TradierApi, TradierOrder } from './tradier';
@@ -170,11 +170,20 @@ export function rebase(state: DeploymentState, startingEquity: number, notes: st
   notes.push(`starting equity rebased from ${old.toFixed(2)} to ${startingEquity}: realized P&L, day start and peak scaled by ${k.toFixed(6)}`);
 }
 
-interface Counters {
+/** A fill as applyFill sees it; runDeployment adds who the deployment is. */
+export type FillDraft = Omit<FillRecord, 'deploymentId' | 'strategyId' | 'symbol' | 'interval' | 'source'>;
+
+export interface Counters {
   fills: number;
   tradesClosed: number;
   winningTrades: number;
+  /** Every fill applied this run, in order, with the state right after it. */
+  records: FillDraft[];
 }
+
+export const newCounters = (): Counters => ({ fills: 0, tradesClosed: 0, winningTrades: 0, records: [] });
+
+const signedShares = (p: Position | null) => (p ? (p.side === 'long' ? 1 : -1) * p.shares : 0);
 
 export function applyFill(state: DeploymentState, pending: PendingOrder, order: TradierOrder, notes: string[], counters: Counters, nowMs: number): void {
   const qty = Number(order.exec_quantity ?? 0);
@@ -185,10 +194,30 @@ export function applyFill(state: DeploymentState, pending: PendingOrder, order: 
     return;
   }
   counters.fills++;
+  const parsed = order.transaction_date ? Date.parse(order.transaction_date) : NaN;
+  const fillTime = Number.isFinite(parsed) ? parsed : nowMs;
+  // The deployment's starting equity (rebase sets it before any fill).
+  const base = state.allocationBase ?? 0;
+  const record = (r: Pick<FillDraft, 'action' | 'positionSide' | 'shares' | 'entryPrice' | 'realizedPnl' | 'tradePnl'>, openPnl: number) =>
+    counters.records.push({
+      ...r,
+      orderId: String(order.id),
+      orderSide: pending.orderSide,
+      fillPrice: price,
+      fillTime,
+      placedAt: pending.placedAt ?? null,
+      reason: pending.reason || null,
+      positionSharesAfter: signedShares(state.position),
+      realizedPnlTotal: state.realizedPnlTotal,
+      equityAfter: base + state.realizedPnlTotal + openPnl,
+      tradesClosed: state.tradesClosed,
+      winningTrades: state.winningTrades,
+      pnlScale: 1,
+    });
   if (pending.kind === 'entry') {
-    const parsed = order.transaction_date ? Date.parse(order.transaction_date) : NaN;
-    state.position = { side: pending.side, shares: qty, entryPrice: price, entryTime: Number.isFinite(parsed) ? parsed : nowMs, exitOrderId: null, realizedPnl: 0 };
+    state.position = { side: pending.side, shares: qty, entryPrice: price, entryTime: fillTime, exitOrderId: null, realizedPnl: 0 };
     notes.push(`entry ${pending.side} ${qty} @ ${price} filled (order ${order.id})`);
+    record({ action: 'open', positionSide: pending.side, shares: qty, entryPrice: null, realizedPnl: null, tradePnl: null }, 0);
   } else if (state.position) {
     const pos = state.position;
     const dir = pos.side === 'long' ? 1 : -1;
@@ -210,6 +239,10 @@ export function applyFill(state: DeploymentState, pending: PendingOrder, order: 
         counters.winningTrades++;
       }
     }
+    record(
+      { action: 'close', positionSide: pos.side, shares: closed, entryPrice: pos.entryPrice, realizedPnl: pnl, tradePnl: remaining > 0 ? null : tradePnl },
+      (price - pos.entryPrice) * remaining * dir,
+    );
   }
 }
 
@@ -266,7 +299,7 @@ export async function runDeployment(d: ResolvedDeployment, event: RunEvent | und
     invokedAt: new Date(invokedAt).toISOString(),
     params: d.params,
   };
-  const counters: Counters = { fills: 0, tradesClosed: 0, winningTrades: 0 };
+  const counters = newCounters();
 
   try {
     if (strategy?.id !== d.strategyId) throw new Error(`Bundled strategy ${strategy?.id} does not match deployment strategy ${d.strategyId}`);
@@ -550,11 +583,28 @@ export async function runDeployment(d: ResolvedDeployment, event: RunEvent | und
     log.wouldPlace = wouldPlace;
     log.limits = { maxDailyLossPct: d.maxDailyLossPct, realizedPnlToday: state.realizedPnlToday, dayStartEquity: state.dayStartEquity, dailyLossHit, entriesPaused };
     log.stateAfter = state;
+    // In the log line too, so a fill whose database write failed can be backfilled from it.
+    const fills: FillRecord[] = counters.records.map((r) => ({ ...r, deploymentId: d.id, strategyId: d.strategyId, symbol: d.symbol, interval: d.interval, source: 'live' }));
+    if (fills.length) log.fills = fills;
 
     if (!dryRun) {
       await store.save(state, newest.time);
       log.stateWritten = true;
       // After the save, and never fatal: a dashboard outage must not touch trading.
+      // A fill reaches the database only once its state is saved, so a run that
+      // fails to save re-resolves the order next time and reports it then.
+      if (deps.equityReporter && fills.length) {
+        const failed: string[] = [];
+        for (const f of fills) {
+          try {
+            await deps.equityReporter.reportFill(f);
+          } catch (err) {
+            failed.push(`order ${f.orderId}: ${(err as Error).message}`);
+          }
+        }
+        log.fillsReported = fills.length - failed.length;
+        if (failed.length) log.fillReportErrors = failed;
+      }
       if (deps.equityReporter) {
         try {
           await deps.equityReporter.report({
