@@ -57,6 +57,62 @@
    "label": "AAPL 5M"
   },
   {
+   "file": "AMGN-15m-2026-11-17.csv",
+   "symbol": "AMGN",
+   "timeframe": "15m",
+   "date": "2026-11-17",
+   "label": "AMGN 15M"
+  },
+  {
+   "file": "AMGN-1d-2026-11-17.csv",
+   "symbol": "AMGN",
+   "timeframe": "1d",
+   "date": "2026-11-17",
+   "label": "AMGN 1D"
+  },
+  {
+   "file": "AMGN-1h-2026-11-17.csv",
+   "symbol": "AMGN",
+   "timeframe": "1h",
+   "date": "2026-11-17",
+   "label": "AMGN 1H"
+  },
+  {
+   "file": "AMGN-1m-2026-11-17.csv",
+   "symbol": "AMGN",
+   "timeframe": "1m",
+   "date": "2026-11-17",
+   "label": "AMGN 1M"
+  },
+  {
+   "file": "AMGN-1wk-2026-11-17.csv",
+   "symbol": "AMGN",
+   "timeframe": "1wk",
+   "date": "2026-11-17",
+   "label": "AMGN 1WK"
+  },
+  {
+   "file": "AMGN-2m-2026-11-17.csv",
+   "symbol": "AMGN",
+   "timeframe": "2m",
+   "date": "2026-11-17",
+   "label": "AMGN 2M"
+  },
+  {
+   "file": "AMGN-30m-2026-11-17.csv",
+   "symbol": "AMGN",
+   "timeframe": "30m",
+   "date": "2026-11-17",
+   "label": "AMGN 30M"
+  },
+  {
+   "file": "AMGN-5m-2026-11-17.csv",
+   "symbol": "AMGN",
+   "timeframe": "5m",
+   "date": "2026-11-17",
+   "label": "AMGN 5M"
+  },
+  {
    "file": "AMZN-15m-2026-11-17.csv",
    "symbol": "AMZN",
    "timeframe": "15m",
@@ -720,6 +776,62 @@
    "timeframe": "5m",
    "date": "2026-11-17",
    "label": "MU 5M"
+  },
+  {
+   "file": "NFLX-15m-2026-11-17.csv",
+   "symbol": "NFLX",
+   "timeframe": "15m",
+   "date": "2026-11-17",
+   "label": "NFLX 15M"
+  },
+  {
+   "file": "NFLX-1d-2026-11-17.csv",
+   "symbol": "NFLX",
+   "timeframe": "1d",
+   "date": "2026-11-17",
+   "label": "NFLX 1D"
+  },
+  {
+   "file": "NFLX-1h-2026-11-17.csv",
+   "symbol": "NFLX",
+   "timeframe": "1h",
+   "date": "2026-11-17",
+   "label": "NFLX 1H"
+  },
+  {
+   "file": "NFLX-1m-2026-11-17.csv",
+   "symbol": "NFLX",
+   "timeframe": "1m",
+   "date": "2026-11-17",
+   "label": "NFLX 1M"
+  },
+  {
+   "file": "NFLX-1wk-2026-11-17.csv",
+   "symbol": "NFLX",
+   "timeframe": "1wk",
+   "date": "2026-11-17",
+   "label": "NFLX 1WK"
+  },
+  {
+   "file": "NFLX-2m-2026-11-17.csv",
+   "symbol": "NFLX",
+   "timeframe": "2m",
+   "date": "2026-11-17",
+   "label": "NFLX 2M"
+  },
+  {
+   "file": "NFLX-30m-2026-11-17.csv",
+   "symbol": "NFLX",
+   "timeframe": "30m",
+   "date": "2026-11-17",
+   "label": "NFLX 30M"
+  },
+  {
+   "file": "NFLX-5m-2026-11-17.csv",
+   "symbol": "NFLX",
+   "timeframe": "5m",
+   "date": "2026-11-17",
+   "label": "NFLX 5M"
   },
   {
    "file": "NVDA-15m-2026-11-17.csv",
