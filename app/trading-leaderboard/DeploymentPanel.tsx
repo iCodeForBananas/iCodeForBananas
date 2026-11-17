@@ -14,11 +14,11 @@ import { CartesianGrid, ComposedChart, Line, ReferenceArea, ReferenceDot, Refere
 import ClientOnly from "@/app/lib/ClientOnly";
 import { Bento } from "@/app/components/ui/bento";
 import { Button } from "@/app/components/ui/button";
-import { createClient } from "@/utils/supabase/client";
+import { loadEquitySnapshots } from "@/app/lib/tradingHistorySource";
 import { formatAge, niceScale, type EquityCurveRow } from "@/app/lib/tradingEquity";
 import { deploymentStats } from "@/app/lib/tradingStats";
 import { deploymentDetails, type DeploymentConfig } from "@/app/lib/deploymentDetails";
-import { backtestOverlay, equityHistory, type EquityHistory, type SnapshotRow } from "@/app/lib/equityHistory";
+import { backtestOverlay, equityHistory, type EquityHistory } from "@/app/lib/equityHistory";
 import type { BacktestReference } from "@/app/lib/backtestReference";
 import { DivergenceChip, GoLiveStats, SampleChip, fmt, fmtMoney, fmtSignedPct, type GoLive } from "./goLive";
 
@@ -30,24 +30,6 @@ const DAY_MS = 86_400_000;
 const axisTime = (t: number, spanMs: number) =>
   spanMs <= DAY_MS ? timeFormat.format(t) : spanMs <= 7 * DAY_MS ? `${dayFormat.format(t)}, ${timeFormat.format(t)}` : dayFormat.format(t);
 const at = (t: number | null | undefined) => (t ? `${fullFormat.format(t)} ET` : "–");
-
-/** Every snapshot of one deployment, oldest first, paged past the API's 1,000-row cap. */
-async function loadSnapshots(deploymentId: string): Promise<SnapshotRow[]> {
-  const supabase = createClient();
-  if (!supabase) throw new Error("Supabase isn't configured here.");
-  const rows: SnapshotRow[] = [];
-  for (let from = 0; ; from += 1000) {
-    const { data, error } = await supabase
-      .from("trading_equity_snapshots")
-      .select("bar_time, equity, realized_pnl, unrealized_pnl, position_shares")
-      .eq("deployment_id", deploymentId)
-      .order("bar_time")
-      .range(from, from + 999);
-    if (error) throw new Error(error.message);
-    rows.push(...((data ?? []) as SnapshotRow[]));
-    if (!data || data.length < 1000) return rows;
-  }
-}
 
 type Load = { status: "loading" } | { status: "error"; message: string } | { status: "ready"; history: EquityHistory | null };
 
@@ -148,7 +130,7 @@ export function DeploymentPanel({ row, go, backtest, config, color, now, onClose
   // The curve loads when the panel opens, never with the table.
   useEffect(() => {
     let cancelled = false;
-    loadSnapshots(row.deployment_id)
+    loadEquitySnapshots(row.deployment_id)
       .then((rows) => !cancelled && setLoad({ status: "ready", history: equityHistory(rows) }))
       .catch((e: unknown) => !cancelled && setLoad({ status: "error", message: e instanceof Error ? e.message : String(e) }));
     return () => {

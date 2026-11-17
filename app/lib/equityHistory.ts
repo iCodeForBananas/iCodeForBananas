@@ -7,15 +7,9 @@
 // true mark-to-market curve, not one rebuilt from fills.
 
 import type { EquityPoint } from "./tradingEquity";
+import type { SnapshotRow } from "./tradingHistorySource";
 
-/** A trading_equity_snapshots row, as the panel selects it. */
-export interface SnapshotRow {
-  bar_time: string;
-  equity: number;
-  realized_pnl: number;
-  unrealized_pnl: number;
-  position_shares: number;
-}
+export type { SnapshotRow };
 
 export interface DrawdownPeriod {
   /** The peak it fell from. */

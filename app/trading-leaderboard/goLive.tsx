@@ -6,6 +6,7 @@
 
 import { STARTING_CAPITAL, summarize, type EquityCurveRow } from "@/app/lib/tradingEquity";
 import type { BacktestReference } from "@/app/lib/backtestReference";
+import type { LedgerRow } from "@/app/lib/tradingHistorySource";
 import {
   SAMPLE,
   UNAVAILABLE_DIVERGENCE,
@@ -20,7 +21,7 @@ import {
 } from "@/app/lib/tradeStats";
 
 /** A trading_trade_ledger() row: the deployment's closed trades and time in market. */
-export type LedgerRow = { deployment_id: string; bars: number; bars_in_position: number; trades: [number, number, number, number, number][] };
+export type { LedgerRow };
 
 /** Everything the table and the prompt say about whether a deployment is ready for real money. */
 export interface GoLive {

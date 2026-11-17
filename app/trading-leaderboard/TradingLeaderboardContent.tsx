@@ -7,7 +7,6 @@ import { Check, EllipsisVertical, LineChart as LineChartIcon, MessageSquareText 
 import ClientOnly from "@/app/lib/ClientOnly";
 import { Bento } from "@/app/components/ui/bento";
 import { Button } from "@/app/components/ui/button";
-import { createClient } from "@/utils/supabase/client";
 import { STARTING_CAPITAL, formatAge, mergeCurves, niceScale, summarize, type EquityCurveRow, type EquitySummary } from "@/app/lib/tradingEquity";
 import { deploymentDetails, type DeploymentConfig } from "@/app/lib/deploymentDetails";
 import { tradingStats } from "@/app/lib/tradingStats";
@@ -17,6 +16,7 @@ import { SAMPLE } from "@/app/lib/tradeStats";
 import { CLAUDE_NEW_CHAT, claudePrefillUrl } from "@/app/lib/claudeLink";
 import { DivergenceChip, SampleChip, fmt, fmtSignedPct, goLiveFor, sampleText, type GoLive, type LedgerRow } from "./goLive";
 import { DeploymentPanel } from "./DeploymentPanel";
+import { loadEquityCurves, loadSnapshotPnl, loadTradeLedgers } from "@/app/lib/tradingHistorySource";
 
 const REFRESH_MS = 60_000;
 
@@ -421,23 +421,18 @@ export function TradingLeaderboardView({
 }
 
 type Pnl = { realized: number; open: number };
-type SnapshotPnl = { deployment_id: string; bar_time: string; realized_pnl: number; unrealized_pnl: number };
 
 /**
  * Realized P&L since each deployment's first report, and its open P&L now,
  * from the snapshots at its first and latest bar. The curves RPC doesn't
  * return P&L, but the snapshot table is public to read.
  */
-async function loadPnl(supabase: NonNullable<ReturnType<typeof createClient>>, rows: EquityCurveRow[]): Promise<Map<string, Pnl>> {
+async function loadPnl(rows: EquityCurveRow[]): Promise<Map<string, Pnl>> {
   const times = [...new Set(rows.flatMap((r) => [r.starting_at, r.latest_at]))];
-  const { data, error } = await supabase
-    .from("trading_equity_snapshots")
-    .select("deployment_id, bar_time, realized_pnl, unrealized_pnl")
-    .in("deployment_id", rows.map((r) => r.deployment_id))
-    .in("bar_time", times);
   const out = new Map<string, Pnl>();
-  if (error || !data) return out;
-  const at = (id: string, iso: string) => (data as SnapshotPnl[]).find((s) => s.deployment_id === id && Date.parse(s.bar_time) === Date.parse(iso));
+  const data = await loadSnapshotPnl(rows.map((r) => r.deployment_id), times).catch(() => null);
+  if (!data) return out;
+  const at = (id: string, iso: string) => data.find((s) => s.deployment_id === id && Date.parse(s.bar_time) === Date.parse(iso));
   for (const r of rows) {
     const first = at(r.deployment_id, r.starting_at);
     const last = at(r.deployment_id, r.latest_at);
@@ -555,25 +550,25 @@ export default function TradingLeaderboardContent({ deploymentConfigs = [] }: { 
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const supabase = createClient();
     let cancelled = false;
     async function load() {
-      const { data, error: rpcError } = supabase ? await supabase.rpc("trading_equity_curves") : { data: null, error: { message: "Supabase isn't configured here." } };
-      if (cancelled) return;
-      if (rpcError) {
-        setError(rpcError.message);
+      let loaded: EquityCurveRow[];
+      try {
+        loaded = await loadEquityCurves();
+      } catch (e) {
+        if (!cancelled) setError(e instanceof Error ? e.message : String(e));
         return;
       }
+      if (cancelled) return;
       setError(null);
-      const loaded = (data ?? []) as EquityCurveRow[];
       setRows(loaded);
       setCurves(loaded.map(summarize));
       setLoadedAt(Date.now());
-      if (supabase && loaded.length > 0) {
-        const [next, trades] = await Promise.all([loadPnl(supabase, loaded), supabase.rpc("trading_trade_ledger")]);
+      if (loaded.length > 0) {
+        const [next, trades] = await Promise.all([loadPnl(loaded), loadTradeLedgers().catch(() => null)]);
         if (cancelled) return;
         setPnl(next);
-        setLedger(trades.error || !trades.data ? null : new Map((trades.data as LedgerRow[]).map((r) => [r.deployment_id, r])));
+        setLedger(trades);
       }
     }
     void load();
