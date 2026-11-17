@@ -196,6 +196,23 @@ export const DEPLOYMENTS: Deployment[] = [
     // so 150 bars (more than 10x its period) is plenty for it to settle.
     minBars: 150,
     historyDays: 40,
+    // Replaced by EMA crossover WMT 1h below: one account holds one net WMT
+    // position. Kept deployed with its schedule off, to switch back easily.
+    enabled: false,
+  },
+  {
+    strategyId: 'ema-crossover',
+    symbol: 'WMT',
+    // Built from 15-minute timesales, counted from the 09:30 open.
+    interval: '1h',
+    params: { fastPeriod: 2, slowPeriod: 5 },
+    ...SHARED_RISK,
+    // The backtest asked for 250 bars, but 40 days of 15-minute data make
+    // about 190 regular-session hourly bars. The strategy reads only EMA 2
+    // and EMA 5 and holds for its first 5 bars, so 150 bars (30x the slow
+    // period) is far more than its EMAs need to settle.
+    minBars: 150,
+    historyDays: 40,
   },
 ];
 
