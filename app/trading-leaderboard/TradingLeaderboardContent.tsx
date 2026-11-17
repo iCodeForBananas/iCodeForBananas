@@ -12,6 +12,18 @@ import { deploymentDetails } from "@/app/lib/deploymentDetails";
 import { tradingStats } from "@/app/lib/tradingStats";
 import { backtestReference, correlations, parsePriceCsv, type BacktestReference } from "@/app/lib/backtestReference";
 import { buildLeaderboardPrompt } from "@/app/lib/leaderboardPrompt";
+import {
+  SAMPLE,
+  UNAVAILABLE_DIVERGENCE,
+  compareToBacktest,
+  performanceStats,
+  sampleStatus,
+  tradesFromLedger,
+  type ClosedTrade,
+  type Divergence,
+  type PerformanceStats,
+  type Sample,
+} from "@/app/lib/tradeStats";
 import { CLAUDE_NEW_CHAT, claudePrefillUrl } from "@/app/lib/claudeLink";
 
 const REFRESH_MS = 60_000;
@@ -35,7 +47,11 @@ const SERIES_COLORS = [
 const colorAt = (i: number) => SERIES_COLORS[i] ?? "var(--ds-color-text-muted)";
 
 const money = (n: number) => `$${Math.round(n).toLocaleString("en-US")}`;
-const signedPct = (n: number) => `${n >= 0 ? "+" : "−"}${Math.abs(n).toFixed(2)}%`;
+// Rounded before the sign is chosen, so -0.001 reads +0.00% rather than −0.00%.
+const signedPct = (n: number) => {
+  const r = Math.round(n * 100) / 100;
+  return `${r >= 0 ? "+" : "−"}${Math.abs(r).toFixed(2)}%`;
+};
 
 const ET: Intl.DateTimeFormatOptions = { timeZone: "America/New_York" };
 const dayFormat = new Intl.DateTimeFormat("en-US", { ...ET, month: "short", day: "numeric" });
@@ -223,6 +239,167 @@ function ChartResizeHandle({
   );
 }
 
+/** A trading_trade_ledger() row: the deployment's closed trades and time in market. */
+type LedgerRow = { deployment_id: string; bars: number; bars_in_position: number; trades: [number, number, number, number, number][] };
+
+/** Everything the table and the prompt say about whether a deployment is ready for real money. */
+export interface GoLive {
+  /** Null when the trade ledger couldn't be read; the sample still comes from the trade count. */
+  live: PerformanceStats | null;
+  sample: Sample;
+  /** Null while the backtest is still loading. */
+  divergence: Divergence | null;
+}
+
+export function goLiveFor(row: EquityCurveRow, ledger: LedgerRow | undefined, backtest: BacktestReference | null | undefined): GoLive {
+  const s = summarize(row);
+  // Real dollars: the curve is scaled to a $10,000 base for the chart.
+  const scale = row.starting_equity / STARTING_CAPITAL;
+  const points = s.points.map(([t, v]) => [t, v * scale] as [number, number]);
+  const trades: ClosedTrade[] | null = ledger ? tradesFromLedger(ledger.trades) : null;
+  const live = trades ? performanceStats({ trades, points, bars: ledger!.bars, barsInPosition: ledger!.bars_in_position }) : null;
+  const tradingDays = new Set(points.map(([t]) => new Date(t - 5 * 3_600_000).toISOString().slice(0, 10))).size;
+  const sample = sampleStatus(live ?? { trades: s.trades, tradingDays, tStat: null });
+  // Null only while the backtest is loading; no ledger is its own answer.
+  const divergence = !trades ? UNAVAILABLE_DIVERGENCE : backtest === undefined ? null : compareToBacktest(trades, backtest ? backtest.closedTrades : null);
+  return { live, sample, divergence };
+}
+
+const chip = "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium";
+
+/** In a table cell the thin-sample chip says how far along it is, which is the threshold itself. */
+function sampleText(sample: Sample, trades: number, tradingDays: number, short: boolean): string {
+  if (!short || sample.status !== "insufficient") return sample.label;
+  return trades < SAMPLE.minTrades ? `${trades}/${SAMPLE.minTrades} trades` : `${tradingDays}/${SAMPLE.minDays} days`;
+}
+
+const SHORT_DIVERGENCE: Record<Divergence["status"], string> = {
+  worse: "Worse",
+  "in-line": "In line",
+  better: "Better",
+  "too-early": "Too early",
+  "no-backtest": "No backtest",
+  unavailable: "No data",
+};
+
+function SampleChip({ sample, text }: { sample: Sample; text?: string }) {
+  const tone =
+    sample.status === "insufficient"
+      ? "bg-surface-sunken text-ink-muted"
+      : sample.status === "negative"
+        ? "bg-danger text-ink-on-primary"
+        : sample.status === "edge"
+          ? "border border-success text-success"
+          : "border border-line-strong text-ink-primary";
+  return (
+    <span className={`${chip} ${tone}`} title={sample.detail}>
+      {text ?? sample.label}
+    </span>
+  );
+}
+
+function DivergenceChip({ divergence, short = false }: { divergence: Divergence | null; short?: boolean }) {
+  if (!divergence) return <span className="text-xs text-ink-muted">Loading&hellip;</span>;
+  const tone =
+    divergence.status === "worse"
+      ? "bg-danger text-ink-on-primary"
+      : divergence.status === "in-line"
+        ? "border border-success text-success"
+        : divergence.status === "better"
+          ? "border border-line-strong text-ink-primary"
+          : "bg-surface-sunken text-ink-muted";
+  return (
+    <span className={`${chip} ${tone}`} title={divergence.detail}>
+      {short ? SHORT_DIVERGENCE[divergence.status] : divergence.label}
+    </span>
+  );
+}
+
+const fmt = (n: number | null | undefined, places = 2, suffix = "") =>
+  n === null || n === undefined || Number.isNaN(n) ? "–" : n === Infinity ? "∞" : `${n.toFixed(places)}${suffix}`;
+const fmtSignedPct = (n: number | null | undefined, places = 2) => {
+  if (n === null || n === undefined || Number.isNaN(n)) return "–";
+  const r = Math.round(n * 10 ** places) / 10 ** places;
+  return `${r >= 0 ? "+" : "−"}${Math.abs(r).toFixed(places)}%`;
+};
+const fmtMoney = (n: number | null | undefined) => (n === null || n === undefined ? "–" : `${n < 0 ? "−" : ""}$${Math.abs(Math.round(n)).toLocaleString("en-US")}`);
+
+/**
+ * The full go-live statistics, live beside the backtest, for the row's
+ * detail panel. Live figures that don't mean anything yet are greyed, with
+ * the threshold that would make them count.
+ */
+function GoLiveStats({ go, backtest, value, position }: { go: GoLive; backtest: BacktestReference | null | undefined; value: number; position: string }) {
+  const { live, sample, divergence } = go;
+  const b = backtest?.stats ?? null;
+  const tradeOk = sample.tradeStatsMeaningful;
+  const dailyOk = sample.dailyStatsMeaningful;
+  type Row = [label: string, live: string, backtest: string, meaningful: boolean];
+  const rows: Row[] = live
+    ? [
+        ["Trades (won/lost)", `${live.trades} (${live.wins}/${live.losses})`, b ? String(b.trades) : "–", true],
+        ["Trades per month", fmt(live.tradesPerMonth, 1), fmt(backtest?.tradesPerMonth, 1), tradeOk],
+        ["Win rate", fmt(live.winRatePct, 0, "%"), fmt(b?.winRatePct, 0, "%"), tradeOk],
+        ["Profit factor", fmt(live.profitFactor), fmt(b?.profitFactor), tradeOk],
+        ["Expectancy per trade", live.trades ? `${fmtSignedPct(live.expectancyPct)} · ${fmtMoney(live.expectancy)} · ${fmt(live.expectancyR)}R` : "–", fmtSignedPct(b?.expectancyPct), tradeOk],
+        ["Average win / loss", `${fmtSignedPct(live.avgWinPct)} / ${fmtSignedPct(live.avgLossPct)}`, `${fmtSignedPct(b?.avgWinPct)} / ${fmtSignedPct(b?.avgLossPct)}`, tradeOk],
+        ["Win / loss size", fmt(live.winLossRatio), fmt(b?.winLossRatio), tradeOk],
+        ["Worst trade", live.worstTrade ? `${fmtSignedPct(live.worstTrade.pct)} · ${fmtMoney(live.worstTrade.pnl)}` : "–", fmtSignedPct(b?.worstTrade?.pct), true],
+        ["Longest losing streak", String(live.longestLosingStreak), b ? String(b.longestLosingStreak) : "–", true],
+        ["Net P&L without best trade", fmtMoney(live.netWithoutBest), "", tradeOk],
+        ["Profit from top 3 wins", fmt(live.topThreeSharePct, 0, "%"), fmt(b?.topThreeSharePct, 0, "%"), tradeOk],
+        ["Time in market", fmt(live.exposurePct, 0, "%"), fmt(b?.exposurePct, 0, "%"), true],
+        ["Max drawdown", `${fmt(live.maxDrawdownPct, 2, "%")} · ${fmtMoney(live.maxDrawdownDollars)}`, fmt(b?.maxDrawdownPct, 1, "%"), true],
+        ["Drawdown now", `${fmt(live.currentDrawdownPct, 2, "%")}${live.drawdownDays > 0 ? ` · ${fmt(live.drawdownDays, 1)} days` : ""}`, "", true],
+        ["Time in drawdown", fmt(live.timeInDrawdownPct, 0, "%"), fmt(b?.timeInDrawdownPct, 0, "%"), true],
+        ["Sharpe / Sortino", `${fmt(live.sharpe)} / ${fmt(live.sortino)}`, `${fmt(b?.sharpe)} / ${fmt(b?.sortino)}`, dailyOk],
+        ["Mean trade t-stat", fmt(live.tStat, 1), fmt(b?.tStat, 1), tradeOk],
+        ["Value · position", `${fmtMoney(value)} · ${position}`, "", true],
+      ]
+    : [["Value · position", `${fmtMoney(value)} · ${position}`, "", true]];
+
+  return (
+    <div className="mt-3 flex flex-col gap-3">
+      <div className="flex flex-col gap-1.5">
+        <p>
+          <SampleChip sample={sample} /> <span className="text-ink-primary">{sample.detail}</span>
+        </p>
+        <p>
+          <DivergenceChip divergence={divergence} />{" "}
+          <span className={divergence?.status === "worse" ? "font-medium text-danger" : "text-ink-primary"}>
+            {divergence?.detail ?? "The reference backtest is still loading."}
+          </span>
+        </p>
+      </div>
+      {!live && <p>Trade-level statistics couldn&apos;t be loaded, so only the trade count is shown.</p>}
+      <table className="w-full tabular-nums">
+        <thead>
+          <tr className="text-left text-ink-muted">
+            <th className="py-1 pr-3 font-medium">Statistic</th>
+            <th className="py-1 pr-3 text-right font-medium">Live</th>
+            <th className="py-1 text-right font-medium">Backtest</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(([label, l, bt, ok]) => (
+            <tr key={label} className="border-t border-line-subtle">
+              <td className="py-1 pr-3">{label}</td>
+              <td className={`py-1 pr-3 text-right font-medium ${ok ? "text-ink-primary" : "text-ink-muted opacity-70"}`} title={ok ? undefined : "Not meaningful yet: see the sample above"}>
+                {l}
+              </td>
+              <td className="py-1 text-right text-ink-primary">{bt}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p>
+        Greyed live figures aren&apos;t meaningful yet: trade statistics need {SAMPLE.minTrades} closed trades, Sharpe and Sortino {SAMPLE.minDays} trading days.
+        R takes the average loss as 1R, since the deployments have no stop. The backtest runs the same strategy and sizing on {backtest ? `${fmt(backtest.years, 1)} years of` : "the app's"} historical data, without costs.
+      </p>
+    </div>
+  );
+}
+
 function returnClass(pct: number): string {
   if (pct > 0) return "text-success";
   if (pct < 0) return "text-danger";
@@ -230,9 +407,24 @@ function returnClass(pct: number): string {
 }
 
 /** What the page shows, given the curves. Colors follow each curve's position in `curves`. */
-export function TradingLeaderboardView({ curves, now }: { curves: EquitySummary[]; now: number }) {
+export function TradingLeaderboardView({
+  curves,
+  now,
+  goLive,
+  backtests,
+}: {
+  curves: EquitySummary[];
+  now: number;
+  goLive: Map<string, GoLive>;
+  backtests: Map<string, BacktestReference | null>;
+}) {
   const colors = new Map(curves.map((c, i) => [c.id, colorAt(i)]));
-  const ranked = [...curves].sort((a, b) => b.returnPct - a.returnPct);
+  // Deployments with enough data first, by return; the rest below a divider,
+  // so a lucky handful of trades never tops the board.
+  const byReturn = [...curves].sort((a, b) => b.returnPct - a.returnPct);
+  const enough = (c: EquitySummary) => goLive.get(c.id)?.sample.status !== "insufficient";
+  const ranked = [...byReturn.filter(enough), ...byReturn.filter((c) => !enough(c))];
+  const firstThin = ranked.findIndex((c) => !enough(c));
   const headCell = "px-3 py-2 font-medium";
   // The deployment column stays put while the numbers scroll past it, on the
   // card's own surface so they slide underneath rather than through it.
@@ -287,20 +479,37 @@ export function TradingLeaderboardView({ curves, now }: { curves: EquitySummary[
           <thead>
             <tr className="border-b border-line-subtle text-right text-xs text-ink-muted">
               <th className={`${headCell} ${pinned} text-left`}>Deployment</th>
-              <th className={headCell}>Value</th>
+              <th className={`${headCell} text-left`} title="Whether the live trades are what the backtest would produce">vs backtest</th>
               <th className={headCell}>Return</th>
-              <th className={headCell}>Max drawdown</th>
-              <th className={headCell}>Position</th>
+              <th className={`${headCell} text-left`} title={`Enough data needs ${SAMPLE.minTrades} closed trades and ${SAMPLE.minDays} trading days`}>Sample</th>
               <th className={headCell}>Trades</th>
+              <th className={headCell} title="Gross profit over gross loss">Profit factor</th>
+              <th className={headCell} title="Average P&L per trade, as a percent of the equity it was sized from">Per trade</th>
+              <th className={headCell}>Max drawdown</th>
               <th className={headCell}>Updated</th>
             </tr>
           </thead>
           <tbody>
-            {ranked.map((c) => {
+            {ranked.map((c, index) => {
               const d = details.get(c.id)!;
               const isOpen = open.has(c.id);
+              const go = goLive.get(c.id);
+              const thin = go?.sample.status === "insufficient";
+              const tradeOk = go?.sample.tradeStatsMeaningful ?? false;
+              // A thin sample's results are shown, but muted: they aren't evidence yet.
+              const weak = "text-ink-muted";
               return (
               <Fragment key={c.id}>
+              {index === firstThin && (
+                <tr className="border-b border-line-subtle">
+                  <td colSpan={9} className="p-0">
+                    <div className="sticky left-0 w-[calc(100vw-5rem)] max-w-2xl whitespace-normal px-3 pb-2 pt-4 text-left text-xs text-ink-muted">
+                      <span className="font-medium text-ink-primary">{firstThin === 0 ? "None has enough data yet." : "Not enough data yet."}</span> Under {SAMPLE.minTrades} closed trades or {SAMPLE.minDays} trading days, results can&apos;t be told from luck
+                      {firstThin === 0 ? ", so the returns below are a record, not a ranking." : ", so these aren't ranked against the rows above."}
+                    </div>
+                  </td>
+                </tr>
+              )}
               <tr className={`text-right tabular-nums text-ink-primary ${isOpen ? "" : "border-b border-line-subtle"}`}>
                 <td className={`px-3 py-3 text-left ${pinned}`}>
                   <div className="flex items-center gap-2 font-medium">
@@ -318,19 +527,23 @@ export function TradingLeaderboardView({ curves, now }: { curves: EquitySummary[
                     <ChevronDown aria-hidden className={`h-3.5 w-3.5 transition-transform ${isOpen ? "rotate-180" : ""}`} />
                   </button>
                 </td>
-                <td className="px-3 py-3 font-medium">{money(c.value)}</td>
-                <td className={`px-3 py-3 font-medium ${returnClass(c.returnPct)}`}>{signedPct(c.returnPct)}</td>
-                <td className="px-3 py-3">{c.maxDrawdownPct.toFixed(2)}%</td>
-                <td className="px-3 py-3">{c.position}</td>
+                <td className="px-3 py-3 text-left">{go && <DivergenceChip divergence={go.divergence} short />}</td>
+                <td className={`px-3 py-3 font-medium ${thin ? weak : returnClass(c.returnPct)}`}>{signedPct(c.returnPct)}</td>
+                <td className="px-3 py-3 text-left">
+                  {go && <SampleChip sample={go.sample} text={sampleText(go.sample, go.live?.trades ?? c.trades, go.live?.tradingDays ?? 0, true)} />}
+                </td>
                 <td className="px-3 py-3">
                   {c.trades}
                   {c.trades > 0 && <span className="text-ink-muted"> ({Math.round((c.wins / c.trades) * 100)}% won)</span>}
                 </td>
+                <td className={`px-3 py-3 ${tradeOk ? "" : weak}`}>{fmt(go?.live?.profitFactor)}</td>
+                <td className={`px-3 py-3 ${tradeOk ? "" : weak}`}>{fmtSignedPct(go?.live?.expectancyPct)}</td>
+                <td className="px-3 py-3">{c.maxDrawdownPct.toFixed(2)}%</td>
                 <td className="px-3 py-3 text-ink-muted">{formatAge(now - c.latestAt)}</td>
               </tr>
               {isOpen && (
                 <tr id={`details-${c.id}`} className="border-b border-line-subtle last:border-0">
-                  <td colSpan={7} className="p-0">
+                  <td colSpan={9} className="p-0">
                     {/* Pinned to the card's left edge and no wider than the
                         screen, so on a phone it reads without scrolling sideways. */}
                     <div className="sticky left-0 w-[calc(100vw-5rem)] max-w-2xl whitespace-normal px-3 pb-3 pl-7 text-left text-xs text-ink-muted">
@@ -353,6 +566,7 @@ export function TradingLeaderboardView({ curves, now }: { curves: EquitySummary[
                           <dd className="font-medium text-ink-primary">{c.label.split(" ").pop()}</dd>
                         </dl>
                       )}
+                      {go && <GoLiveStats go={go} backtest={backtests.has(c.id) ? backtests.get(c.id) : undefined} value={c.value} position={c.position} />}
                     </div>
                   </td>
                 </tr>
@@ -495,6 +709,9 @@ export default function TradingLeaderboardContent() {
   const [rows, setRows] = useState<EquityCurveRow[] | null>(null);
   const [pnl, setPnl] = useState<Map<string, Pnl>>(new Map());
   const [backtests, setBacktests] = useState<Map<string, BacktestReference | null>>(new Map());
+  // Null until loaded, and if the ledger function isn't there (the migration
+  // hasn't run): the table then falls back to the trade count alone.
+  const [ledger, setLedger] = useState<Map<string, LedgerRow> | null>(null);
   const [loadedAt, setLoadedAt] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
@@ -514,8 +731,10 @@ export default function TradingLeaderboardContent() {
       setCurves(loaded.map(summarize));
       setLoadedAt(Date.now());
       if (supabase && loaded.length > 0) {
-        const next = await loadPnl(supabase, loaded);
-        if (!cancelled) setPnl(next);
+        const [next, trades] = await Promise.all([loadPnl(supabase, loaded), supabase.rpc("trading_trade_ledger")]);
+        if (cancelled) return;
+        setPnl(next);
+        setLedger(trades.error || !trades.data ? null : new Map((trades.data as LedgerRow[]).map((r) => [r.deployment_id, r])));
       }
     }
     void load();
@@ -545,20 +764,38 @@ export default function TradingLeaderboardContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rowIds]);
 
+  const goLive = useMemo(() => {
+    const out = new Map<string, GoLive>();
+    for (const r of rows ?? []) {
+      const entry = ledger?.get(r.deployment_id);
+      out.set(r.deployment_id, goLiveFor(r, ledger ? (entry ?? { deployment_id: r.deployment_id, bars: 0, bars_in_position: 0, trades: [] }) : undefined, backtests.has(r.deployment_id) ? backtests.get(r.deployment_id) : undefined));
+    }
+    return out;
+  }, [rows, ledger, backtests]);
+
   const buildPrompt = useCallback(() => {
     if (!rows || rows.length === 0) return null;
     const stats = tradingStats(rows, Date.now());
     const done = new Map([...backtests].filter(([, ref]) => ref !== null) as [string, BacktestReference][]);
     const deployments = stats.deployments.map((s) => {
       const details = deploymentDetails({ id: s.id, strategyId: s.strategy.id, symbol: s.symbol, interval: s.barInterval });
-      return { stats: s, values: details.values, pnl: pnl.get(s.id) ?? null, backtest: backtests.has(s.id) ? backtests.get(s.id)! : undefined };
+      const go = goLive.get(s.id);
+      return {
+        stats: s,
+        values: details.values,
+        pnl: pnl.get(s.id) ?? null,
+        backtest: backtests.has(s.id) ? backtests.get(s.id)! : undefined,
+        live: go?.live ?? null,
+        sample: go?.sample ?? null,
+        divergence: go?.divergence ?? null,
+      };
     });
     const corr = correlations(new Map([...done].map(([id, ref]) => [id, ref.dailyReturns])));
     return {
       prompt: buildLeaderboardPrompt({ deployments, correlations: corr, asOf: Date.now() }),
       backtestsPending: deployments.some((d) => d.backtest === undefined),
     };
-  }, [rows, pnl, backtests]);
+  }, [rows, pnl, backtests, goLive]);
 
   return (
     <main className="flex w-full flex-1 flex-col px-4 py-4">
@@ -570,7 +807,7 @@ export default function TradingLeaderboardContent() {
       {error && curves === null && <Bento size="3" className="text-sm text-ink-muted">Couldn&apos;t load the curves: {error}</Bento>}
       {!error && curves === null && <Bento size="3" className="text-sm text-ink-muted">Loading&hellip;</Bento>}
       {curves?.length === 0 && <Bento size="3" className="text-sm text-ink-muted">No deployment has reported in the last 7 days.</Bento>}
-      {curves && curves.length > 0 && <TradingLeaderboardView curves={curves} now={loadedAt} />}
+      {curves && curves.length > 0 && <TradingLeaderboardView curves={curves} now={loadedAt} goLive={goLive} backtests={backtests} />}
     </main>
   );
 }

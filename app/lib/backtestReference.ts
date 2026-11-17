@@ -20,6 +20,7 @@ import type { PricePoint } from "@/app/types";
 import type { ParamValue } from "./deploymentDetails";
 import type { EquityPoint } from "./tradingEquity";
 import { dailyCloses } from "./tradingStats";
+import { performanceStats, type ClosedTrade, type PerformanceStats } from "./tradeStats";
 
 /** What the live runtime does with every deployment, in the engine's terms. */
 export function liveRiskSettings(): RiskSettings {
@@ -65,6 +66,10 @@ export interface BacktestReference {
   sameWindow: { from: string; to: string; backtestPct: number; livePct: number; backtestInTradeAtStart: boolean } | null;
   /** [ET date, daily return %], for correlating deployments. Not printed. */
   dailyReturns: [string, number][];
+  /** Its trades as the live ledger records them, to compare live trades against. */
+  closedTrades: ClosedTrade[];
+  /** The same go-live statistics as the live record, from the same code. */
+  stats: PerformanceStats;
 }
 
 const etDate = new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit" });
@@ -138,6 +143,23 @@ export function backtestReference(bars: PricePoint[], d: ReferenceInput): Backte
     }
   }
 
+  // Each trade sized from the realized equity before it, as the live runtime does.
+  const sorted = [...r.trades].sort((a, b) => a.exitTime - b.exitTime);
+  let realized = INITIAL_CAPITAL;
+  const closedTrades: ClosedTrade[] = sorted.map((t) => {
+    const trade = { time: t.exitTime, pnl: t.pnl, base: realized, count: 1, wins: t.pnl > 0 ? 1 : 0 };
+    realized += t.pnl;
+    return trade;
+  });
+  // Bars spent in a position, for exposure.
+  let inPosition = 0;
+  let k = 0;
+  const byEntry = [...r.trades].sort((a, b) => a.entryTime - b.entryTime);
+  for (const bar of data) {
+    while (k < byEntry.length && byEntry[k].exitTime <= bar.time) k++;
+    if (k < byEntry.length && byEntry[k].entryTime <= bar.time) inPosition++;
+  }
+
   const closes = dailyCloses(curve);
   const dailyReturns: [string, number][] = [];
   for (let i = 1; i < closes.length; i++) dailyReturns.push([closes[i][0], (closes[i][1] / closes[i - 1][1] - 1) * 100]);
@@ -156,6 +178,8 @@ export function backtestReference(bars: PricePoint[], d: ReferenceInput): Backte
     tradesPerMonth: years > 0 ? round(r.totalTrades / (years * 12), 1) : r.totalTrades,
     sameWindow,
     dailyReturns,
+    closedTrades,
+    stats: performanceStats({ trades: closedTrades, points: curve, bars: data.length, barsInPosition: inPosition }),
   };
 }
 
