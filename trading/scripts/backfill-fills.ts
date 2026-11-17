@@ -12,6 +12,11 @@
 //   - Tradier's order history, read by invoking a Lambda with
 //     { "orderHistory": true } so the token never leaves AWS: the exact fill
 //     time, the time the order was placed, and a check on price and quantity.
+//     The sandbox only returns about the last session's orders, so older
+//     fills take their time from the log instead: the end of the run that
+//     placed and confirmed the order (within a few seconds of the fill), or,
+//     for an order placed after the close and found filled a run later, the
+//     next session's 09:30 open, where a market order fills.
 //
 // Writes fills.sql (apply with the Supabase SQL editor or psql as the table
 // owner), fills.json and report.json (what couldn't be backfilled, and why).
@@ -26,6 +31,7 @@ import { functionName, resolveDeployment, type ResolvedDeployment } from '../run
 import type { FillRecord } from '../runtime/equity-report';
 import type { HistoricalOrder } from '../runtime/order-history';
 import type { DeploymentState, Position } from '../runtime/run';
+import { etParts, etWallToUtcMs, SESSION_CLOSE_MIN, SESSION_OPEN_MIN } from '../runtime/time';
 
 const outArg = process.argv.indexOf('--out');
 const outDir = outArg > 0 ? process.argv[outArg + 1] : join(tmpdir(), 'trading-fills-backfill');
@@ -36,6 +42,7 @@ interface LogLine {
   deployment: string;
   dryRun?: boolean;
   invokedAt: string;
+  durationMs?: number;
   notes?: string[];
   ordersPlaced?: { orderId?: string; reason?: string; side?: string }[];
   stateBefore?: Partial<DeploymentState> | null;
@@ -44,6 +51,27 @@ interface LogLine {
 }
 
 const FILL_NOTE = /^(?:entry (long|short) ([\d.]+) @ ([\d.]+)|exit ([\d.]+) @ ([\d.]+)) filled \(order (\d+)\)(?:, realized (-?[\d.]+))?/;
+/** The first weekday 09:30 ET open at or after `ms` (holidays aside). */
+function nextSessionOpen(ms: number): number {
+  for (let back = 0; back < 8; back++) {
+    const p = etParts(ms + back * 86_400_000);
+    const weekday = new Date(Date.UTC(p.year, p.month - 1, p.day)).getUTCDay();
+    const open = etWallToUtcMs(p.year, p.month, p.day, Math.floor(SESSION_OPEN_MIN / 60), SESSION_OPEN_MIN % 60);
+    if (weekday !== 0 && weekday !== 6 && open >= ms) return open;
+  }
+  throw new Error('no weekday in the next week');
+}
+
+/** When a fill rebuilt from a log line happened, as near as the log can tell. */
+function logFillTime(line: LogLine, pending: { placedAt?: number } | null): number {
+  const runEnd = Date.parse(line.invokedAt) + (line.durationMs ?? 0);
+  if (!pending?.placedAt) return runEnd;
+  const p = etParts(pending.placedAt);
+  const minute = p.hour * 60 + p.minute;
+  // Placed outside the session: Tradier filled it at the next open.
+  return minute >= SESSION_CLOSE_MIN || minute < SESSION_OPEN_MIN ? nextSessionOpen(pending.placedAt) : runEnd;
+}
+
 const signed = (p: Position | null | undefined) => (p ? (p.side === 'long' ? 1 : -1) * p.shares : 0);
 
 async function readLines(d: ResolvedDeployment): Promise<LogLine[]> {
@@ -91,7 +119,7 @@ function rebuild(d: ResolvedDeployment, line: LogLine, problems: string[]): Fill
     strategyId: d.strategyId,
     symbol: d.symbol,
     interval: d.interval,
-    fillTime: Date.parse(line.invokedAt),
+    fillTime: logFillTime(line, pending),
     placedAt: pending?.placedAt ?? null,
     reason: pending?.reason ?? placed?.reason ?? null,
     positionSharesAfter: signed(after.position),
@@ -165,7 +193,8 @@ const orders = new Map(history.orders.map((o) => [o.id, o]));
 
 const fills: FillRecord[] = [];
 const problems: string[] = [];
-const perDeployment: Record<string, { fills: number; first: string | null; last: string | null; exactTimes: number }> = {};
+// exactTimes: fill time from Tradier's order record; the rest are from the log (see the header).
+const perDeployment: Record<string, { fills: number; first: string | null; last: string | null; exactTimes: number; timesFromLog: number }> = {};
 for (const d of deployments) {
   const lines = await readLines(d);
   const mine: FillRecord[] = [];
@@ -177,10 +206,11 @@ for (const d of deployments) {
     }
   }
   let exactTimes = 0;
+  let timesFromLog = 0;
   for (const f of mine) {
     const o = orders.get(f.orderId);
     if (!o) {
-      problems.push(`${d.id} order ${f.orderId}: not in Tradier's order history; fill time is the run's start`);
+      timesFromLog++;
       continue;
     }
     const t = o.transactionDate ? Date.parse(o.transactionDate) : NaN;
@@ -194,7 +224,7 @@ for (const d of deployments) {
     if (o.execQuantity != null && o.execQuantity !== f.shares && f.action === 'open') problems.push(`${d.id} order ${f.orderId}: log ${f.shares} shares, Tradier ${o.execQuantity}`);
   }
   fills.push(...mine);
-  perDeployment[d.id] = { fills: mine.length, first: mine.length ? new Date(mine[0].fillTime).toISOString() : null, last: mine.length ? new Date(mine[mine.length - 1].fillTime).toISOString() : null, exactTimes };
+  perDeployment[d.id] = { fills: mine.length, first: mine.length ? new Date(mine[0].fillTime).toISOString() : null, last: mine.length ? new Date(mine[mine.length - 1].fillTime).toISOString() : null, exactTimes, timesFromLog };
 }
 
 // Filled orders Tradier has that no deployment's log accounts for.
