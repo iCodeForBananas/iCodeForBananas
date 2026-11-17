@@ -26,6 +26,22 @@ export interface DeploymentDetails {
   values: Record<string, ParamValue>;
 }
 
+/**
+ * How a deployment is set to run, from trading/deployments.ts as the trading
+ * runtime resolves it (defaults applied). Read on the server at build time.
+ */
+export interface DeploymentConfig {
+  id: string;
+  /** False: its Lambda exists but its schedule is off. */
+  enabled: boolean;
+  enableShorts: boolean;
+  startingEquity: number;
+  positionSizePct: number;
+  maxDailyLossPct: number;
+  drawdownLimitPct: number;
+  drawdownPauseBars: number;
+}
+
 export interface DeploymentIdentity {
   id: string;
   strategyId: string;

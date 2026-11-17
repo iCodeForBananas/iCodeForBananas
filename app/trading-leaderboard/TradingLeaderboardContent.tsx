@@ -2,29 +2,21 @@
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { Check, ChevronDown, MessageSquareText } from "lucide-react";
+import { DropdownMenu } from "@radix-ui/themes";
+import { Check, EllipsisVertical, LineChart as LineChartIcon, MessageSquareText } from "lucide-react";
 import ClientOnly from "@/app/lib/ClientOnly";
 import { Bento } from "@/app/components/ui/bento";
 import { Button } from "@/app/components/ui/button";
 import { createClient } from "@/utils/supabase/client";
 import { STARTING_CAPITAL, formatAge, mergeCurves, niceScale, summarize, type EquityCurveRow, type EquitySummary } from "@/app/lib/tradingEquity";
-import { deploymentDetails } from "@/app/lib/deploymentDetails";
+import { deploymentDetails, type DeploymentConfig } from "@/app/lib/deploymentDetails";
 import { tradingStats } from "@/app/lib/tradingStats";
 import { backtestReference, correlations, parsePriceCsv, type BacktestReference } from "@/app/lib/backtestReference";
 import { buildLeaderboardPrompt } from "@/app/lib/leaderboardPrompt";
-import {
-  SAMPLE,
-  UNAVAILABLE_DIVERGENCE,
-  compareToBacktest,
-  performanceStats,
-  sampleStatus,
-  tradesFromLedger,
-  type ClosedTrade,
-  type Divergence,
-  type PerformanceStats,
-  type Sample,
-} from "@/app/lib/tradeStats";
+import { SAMPLE } from "@/app/lib/tradeStats";
 import { CLAUDE_NEW_CHAT, claudePrefillUrl } from "@/app/lib/claudeLink";
+import { DivergenceChip, SampleChip, fmt, fmtSignedPct, goLiveFor, sampleText, type GoLive, type LedgerRow } from "./goLive";
+import { DeploymentPanel } from "./DeploymentPanel";
 
 const REFRESH_MS = 60_000;
 
@@ -239,164 +231,25 @@ function ChartResizeHandle({
   );
 }
 
-/** A trading_trade_ledger() row: the deployment's closed trades and time in market. */
-type LedgerRow = { deployment_id: string; bars: number; bars_in_position: number; trades: [number, number, number, number, number][] };
-
-/** Everything the table and the prompt say about whether a deployment is ready for real money. */
-export interface GoLive {
-  /** Null when the trade ledger couldn't be read; the sample still comes from the trade count. */
-  live: PerformanceStats | null;
-  sample: Sample;
-  /** Null while the backtest is still loading. */
-  divergence: Divergence | null;
-}
-
-export function goLiveFor(row: EquityCurveRow, ledger: LedgerRow | undefined, backtest: BacktestReference | null | undefined): GoLive {
-  const s = summarize(row);
-  // Real dollars: the curve is scaled to a $10,000 base for the chart.
-  const scale = row.starting_equity / STARTING_CAPITAL;
-  const points = s.points.map(([t, v]) => [t, v * scale] as [number, number]);
-  const trades: ClosedTrade[] | null = ledger ? tradesFromLedger(ledger.trades) : null;
-  const live = trades ? performanceStats({ trades, points, bars: ledger!.bars, barsInPosition: ledger!.bars_in_position }) : null;
-  const tradingDays = new Set(points.map(([t]) => new Date(t - 5 * 3_600_000).toISOString().slice(0, 10))).size;
-  const sample = sampleStatus(live ?? { trades: s.trades, tradingDays, tStat: null });
-  // Null only while the backtest is loading; no ledger is its own answer.
-  const divergence = !trades ? UNAVAILABLE_DIVERGENCE : backtest === undefined ? null : compareToBacktest(trades, backtest ? backtest.closedTrades : null);
-  return { live, sample, divergence };
-}
-
-const chip = "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium";
-
-/** In a table cell the thin-sample chip says how far along it is, which is the threshold itself. */
-function sampleText(sample: Sample, trades: number, tradingDays: number, short: boolean): string {
-  if (!short || sample.status !== "insufficient") return sample.label;
-  return trades < SAMPLE.minTrades ? `${trades}/${SAMPLE.minTrades} trades` : `${tradingDays}/${SAMPLE.minDays} days`;
-}
-
-const SHORT_DIVERGENCE: Record<Divergence["status"], string> = {
-  worse: "Worse",
-  "in-line": "In line",
-  better: "Better",
-  "too-early": "Too early",
-  "no-backtest": "No backtest",
-  unavailable: "No data",
-};
-
-function SampleChip({ sample, text }: { sample: Sample; text?: string }) {
-  const tone =
-    sample.status === "insufficient"
-      ? "bg-surface-sunken text-ink-muted"
-      : sample.status === "negative"
-        ? "bg-danger text-ink-on-primary"
-        : sample.status === "edge"
-          ? "border border-success text-success"
-          : "border border-line-strong text-ink-primary";
-  return (
-    <span className={`${chip} ${tone}`} title={sample.detail}>
-      {text ?? sample.label}
-    </span>
-  );
-}
-
-function DivergenceChip({ divergence, short = false }: { divergence: Divergence | null; short?: boolean }) {
-  if (!divergence) return <span className="text-xs text-ink-muted">Loading&hellip;</span>;
-  const tone =
-    divergence.status === "worse"
-      ? "bg-danger text-ink-on-primary"
-      : divergence.status === "in-line"
-        ? "border border-success text-success"
-        : divergence.status === "better"
-          ? "border border-line-strong text-ink-primary"
-          : "bg-surface-sunken text-ink-muted";
-  return (
-    <span className={`${chip} ${tone}`} title={divergence.detail}>
-      {short ? SHORT_DIVERGENCE[divergence.status] : divergence.label}
-    </span>
-  );
-}
-
-const fmt = (n: number | null | undefined, places = 2, suffix = "") =>
-  n === null || n === undefined || Number.isNaN(n) ? "–" : n === Infinity ? "∞" : `${n.toFixed(places)}${suffix}`;
-const fmtSignedPct = (n: number | null | undefined, places = 2) => {
-  if (n === null || n === undefined || Number.isNaN(n)) return "–";
-  const r = Math.round(n * 10 ** places) / 10 ** places;
-  return `${r >= 0 ? "+" : "−"}${Math.abs(r).toFixed(places)}%`;
-};
-const fmtMoney = (n: number | null | undefined) => (n === null || n === undefined ? "–" : `${n < 0 ? "−" : ""}$${Math.abs(Math.round(n)).toLocaleString("en-US")}`);
-
 /**
- * The full go-live statistics, live beside the backtest, for the row's
- * detail panel. Live figures that don't mean anything yet are greyed, with
- * the threshold that would make them count.
+ * A row's actions: a real menu button (Radix DropdownMenu) whose menu is
+ * portaled to <body>, so the table's scroll container can't clip it.
  */
-function GoLiveStats({ go, backtest, value, position }: { go: GoLive; backtest: BacktestReference | null | undefined; value: number; position: string }) {
-  const { live, sample, divergence } = go;
-  const b = backtest?.stats ?? null;
-  const tradeOk = sample.tradeStatsMeaningful;
-  const dailyOk = sample.dailyStatsMeaningful;
-  type Row = [label: string, live: string, backtest: string, meaningful: boolean];
-  const rows: Row[] = live
-    ? [
-        ["Trades (won/lost)", `${live.trades} (${live.wins}/${live.losses})`, b ? String(b.trades) : "–", true],
-        ["Trades per month", fmt(live.tradesPerMonth, 1), fmt(backtest?.tradesPerMonth, 1), tradeOk],
-        ["Win rate", fmt(live.winRatePct, 0, "%"), fmt(b?.winRatePct, 0, "%"), tradeOk],
-        ["Profit factor", fmt(live.profitFactor), fmt(b?.profitFactor), tradeOk],
-        ["Expectancy per trade", live.trades ? `${fmtSignedPct(live.expectancyPct)} · ${fmtMoney(live.expectancy)} · ${fmt(live.expectancyR)}R` : "–", fmtSignedPct(b?.expectancyPct), tradeOk],
-        ["Average win / loss", `${fmtSignedPct(live.avgWinPct)} / ${fmtSignedPct(live.avgLossPct)}`, `${fmtSignedPct(b?.avgWinPct)} / ${fmtSignedPct(b?.avgLossPct)}`, tradeOk],
-        ["Win / loss size", fmt(live.winLossRatio), fmt(b?.winLossRatio), tradeOk],
-        ["Worst trade", live.worstTrade ? `${fmtSignedPct(live.worstTrade.pct)} · ${fmtMoney(live.worstTrade.pnl)}` : "–", fmtSignedPct(b?.worstTrade?.pct), true],
-        ["Longest losing streak", String(live.longestLosingStreak), b ? String(b.longestLosingStreak) : "–", true],
-        ["Net P&L without best trade", fmtMoney(live.netWithoutBest), "", tradeOk],
-        ["Profit from top 3 wins", fmt(live.topThreeSharePct, 0, "%"), fmt(b?.topThreeSharePct, 0, "%"), tradeOk],
-        ["Time in market", fmt(live.exposurePct, 0, "%"), fmt(b?.exposurePct, 0, "%"), true],
-        ["Max drawdown", `${fmt(live.maxDrawdownPct, 2, "%")} · ${fmtMoney(live.maxDrawdownDollars)}`, fmt(b?.maxDrawdownPct, 1, "%"), true],
-        ["Drawdown now", `${fmt(live.currentDrawdownPct, 2, "%")}${live.drawdownDays > 0 ? ` · ${fmt(live.drawdownDays, 1)} days` : ""}`, "", true],
-        ["Time in drawdown", fmt(live.timeInDrawdownPct, 0, "%"), fmt(b?.timeInDrawdownPct, 0, "%"), true],
-        ["Sharpe / Sortino", `${fmt(live.sharpe)} / ${fmt(live.sortino)}`, `${fmt(b?.sharpe)} / ${fmt(b?.sortino)}`, dailyOk],
-        ["Mean trade t-stat", fmt(live.tStat, 1), fmt(b?.tStat, 1), tradeOk],
-        ["Value · position", `${fmtMoney(value)} · ${position}`, "", true],
-      ]
-    : [["Value · position", `${fmtMoney(value)} · ${position}`, "", true]];
-
+function RowMenu({ label, onEquityCurve, buttonRef }: { label: string; onEquityCurve: () => void; buttonRef: (el: HTMLButtonElement | null) => void }) {
   return (
-    <div className="mt-3 flex flex-col gap-3">
-      <div className="flex flex-col gap-1.5">
-        <p>
-          <SampleChip sample={sample} /> <span className="text-ink-primary">{sample.detail}</span>
-        </p>
-        <p>
-          <DivergenceChip divergence={divergence} />{" "}
-          <span className={divergence?.status === "worse" ? "font-medium text-danger" : "text-ink-primary"}>
-            {divergence?.detail ?? "The reference backtest is still loading."}
-          </span>
-        </p>
-      </div>
-      {!live && <p>Trade-level statistics couldn&apos;t be loaded, so only the trade count is shown.</p>}
-      <table className="w-full tabular-nums">
-        <thead>
-          <tr className="text-left text-ink-muted">
-            <th className="py-1 pr-3 font-medium">Statistic</th>
-            <th className="py-1 pr-3 text-right font-medium">Live</th>
-            <th className="py-1 text-right font-medium">Backtest</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map(([label, l, bt, ok]) => (
-            <tr key={label} className="border-t border-line-subtle">
-              <td className="py-1 pr-3">{label}</td>
-              <td className={`py-1 pr-3 text-right font-medium ${ok ? "text-ink-primary" : "text-ink-muted opacity-70"}`} title={ok ? undefined : "Not meaningful yet: see the sample above"}>
-                {l}
-              </td>
-              <td className="py-1 text-right text-ink-primary">{bt}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <p>
-        Greyed live figures aren&apos;t meaningful yet: trade statistics need {SAMPLE.minTrades} closed trades, Sharpe and Sortino {SAMPLE.minDays} trading days.
-        R takes the average loss as 1R, since the deployments have no stop. The backtest runs the same strategy and sizing on {backtest ? `${fmt(backtest.years, 1)} years of` : "the app's"} historical data, without costs.
-      </p>
-    </div>
+    <DropdownMenu.Root>
+      <DropdownMenu.Trigger>
+        <Button ref={buttonRef} variant="ghost" size="icon" aria-label={`Actions for ${label}`}>
+          <EllipsisVertical className="h-4 w-4" />
+        </Button>
+      </DropdownMenu.Trigger>
+      <DropdownMenu.Content align="end">
+        <DropdownMenu.Item onSelect={onEquityCurve}>
+          <LineChartIcon className="h-4 w-4" />
+          Equity curve
+        </DropdownMenu.Item>
+      </DropdownMenu.Content>
+    </DropdownMenu.Root>
   );
 }
 
@@ -409,14 +262,18 @@ function returnClass(pct: number): string {
 /** What the page shows, given the curves. Colors follow each curve's position in `curves`. */
 export function TradingLeaderboardView({
   curves,
+  rows,
   now,
   goLive,
   backtests,
+  configs,
 }: {
   curves: EquitySummary[];
+  rows: EquityCurveRow[];
   now: number;
   goLive: Map<string, GoLive>;
   backtests: Map<string, BacktestReference | null>;
+  configs: Map<string, DeploymentConfig>;
 }) {
   const colors = new Map(curves.map((c, i) => [c.id, colorAt(i)]));
   // Deployments with enough data first, by return; the rest below a divider,
@@ -431,14 +288,11 @@ export function TradingLeaderboardView({
   const pinned = "sticky left-0 z-[1] bg-surface-raised";
   const { height, setHeight, save } = useChartHeight();
   const frame = useRef<HTMLDivElement>(null);
-  const details = useMemo(() => new Map(curves.map((c) => [c.id, deploymentDetails(c)])), [curves]);
-  const [open, setOpen] = useState<ReadonlySet<string>>(new Set());
-  const toggle = (id: string) =>
-    setOpen((prev) => {
-      const next = new Set(prev);
-      if (!next.delete(id)) next.add(id);
-      return next;
-    });
+  // The menu column stays at the right edge however far the table scrolls.
+  const pinnedRight = "sticky right-0 z-[1] bg-surface-raised";
+  const [panelId, setPanelId] = useState<string | null>(null);
+  const menuButtons = useRef(new Map<string, HTMLButtonElement>());
+  const panelRow = panelId ? rows.find((r) => r.deployment_id === panelId) : undefined;
 
   return (
     <div className="flex flex-1 flex-col gap-4">
@@ -487,12 +341,13 @@ export function TradingLeaderboardView({
               <th className={headCell} title="Average P&L per trade, as a percent of the equity it was sized from">Per trade</th>
               <th className={headCell}>Max drawdown</th>
               <th className={headCell}>Updated</th>
+              <th className={`${headCell} ${pinnedRight}`}>
+                <span className="sr-only">Actions</span>
+              </th>
             </tr>
           </thead>
           <tbody>
             {ranked.map((c, index) => {
-              const d = details.get(c.id)!;
-              const isOpen = open.has(c.id);
               const go = goLive.get(c.id);
               const thin = go?.sample.status === "insufficient";
               const tradeOk = go?.sample.tradeStatsMeaningful ?? false;
@@ -502,7 +357,7 @@ export function TradingLeaderboardView({
               <Fragment key={c.id}>
               {index === firstThin && (
                 <tr className="border-b border-line-subtle">
-                  <td colSpan={9} className="p-0">
+                  <td colSpan={10} className="p-0">
                     <div className="sticky left-0 w-[calc(100vw-5rem)] max-w-2xl whitespace-normal px-3 pb-2 pt-4 text-left text-xs text-ink-muted">
                       <span className="font-medium text-ink-primary">{firstThin === 0 ? "None has enough data yet." : "Not enough data yet."}</span> Under {SAMPLE.minTrades} closed trades or {SAMPLE.minDays} trading days, results can&apos;t be told from luck
                       {firstThin === 0 ? ", so the returns below are a record, not a ranking." : ", so these aren't ranked against the rows above."}
@@ -510,22 +365,13 @@ export function TradingLeaderboardView({
                   </td>
                 </tr>
               )}
-              <tr className={`text-right tabular-nums text-ink-primary ${isOpen ? "" : "border-b border-line-subtle"}`}>
+              <tr className="border-b border-line-subtle text-right tabular-nums text-ink-primary last:border-0">
                 <td className={`px-3 py-3 text-left ${pinned}`}>
                   <div className="flex items-center gap-2 font-medium">
                     <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: colors.get(c.id) }} />
                     {c.label}
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => toggle(c.id)}
-                    aria-expanded={isOpen}
-                    aria-controls={`details-${c.id}`}
-                    className="-my-1 flex min-h-8 items-center gap-1 pl-4 text-xs text-ink-muted hover:text-ink-primary"
-                  >
-                    {c.strategy}
-                    <ChevronDown aria-hidden className={`h-3.5 w-3.5 transition-transform ${isOpen ? "rotate-180" : ""}`} />
-                  </button>
+                  <div className="pl-4 text-xs text-ink-muted">{c.strategy}</div>
                 </td>
                 <td className="px-3 py-3 text-left">{go && <DivergenceChip divergence={go.divergence} short />}</td>
                 <td className={`px-3 py-3 font-medium ${thin ? weak : returnClass(c.returnPct)}`}>{signedPct(c.returnPct)}</td>
@@ -540,37 +386,17 @@ export function TradingLeaderboardView({
                 <td className={`px-3 py-3 ${tradeOk ? "" : weak}`}>{fmtSignedPct(go?.live?.expectancyPct)}</td>
                 <td className="px-3 py-3">{c.maxDrawdownPct.toFixed(2)}%</td>
                 <td className="px-3 py-3 text-ink-muted">{formatAge(now - c.latestAt)}</td>
+                <td className={`px-1 py-2 ${pinnedRight}`}>
+                  <RowMenu
+                    label={c.label}
+                    onEquityCurve={() => setPanelId(c.id)}
+                    buttonRef={(el) => {
+                      if (el) menuButtons.current.set(c.id, el);
+                      else menuButtons.current.delete(c.id);
+                    }}
+                  />
+                </td>
               </tr>
-              {isOpen && (
-                <tr id={`details-${c.id}`} className="border-b border-line-subtle last:border-0">
-                  <td colSpan={9} className="p-0">
-                    {/* Pinned to the card's left edge and no wider than the
-                        screen, so on a phone it reads without scrolling sideways. */}
-                    <div className="sticky left-0 w-[calc(100vw-5rem)] max-w-2xl whitespace-normal px-3 pb-3 pl-7 text-left text-xs text-ink-muted">
-                      {d.description && <p className="mb-2 text-sm text-ink-primary">{d.description}</p>}
-                      {(d.params.length > 0 || d.sides) && (
-                        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
-                          {d.params.map((p) => (
-                            <Fragment key={p.name}>
-                              <dt>{p.name}</dt>
-                              <dd className="font-medium tabular-nums text-ink-primary">{p.value}</dd>
-                            </Fragment>
-                          ))}
-                          {d.sides && (
-                            <>
-                              <dt>Trades</dt>
-                              <dd className="font-medium text-ink-primary">{d.sides}</dd>
-                            </>
-                          )}
-                          <dt>Bars</dt>
-                          <dd className="font-medium text-ink-primary">{c.label.split(" ").pop()}</dd>
-                        </dl>
-                      )}
-                      {go && <GoLiveStats go={go} backtest={backtests.has(c.id) ? backtests.get(c.id) : undefined} value={c.value} position={c.position} />}
-                    </div>
-                  </td>
-                </tr>
-              )}
               </Fragment>
               );
             })}
@@ -578,6 +404,18 @@ export function TradingLeaderboardView({
         </table>
         </div>
       </Bento>
+      {panelRow && (
+        <DeploymentPanel
+          row={panelRow}
+          go={goLive.get(panelRow.deployment_id)}
+          backtest={backtests.has(panelRow.deployment_id) ? backtests.get(panelRow.deployment_id) : undefined}
+          config={configs.get(panelRow.deployment_id)}
+          color={colors.get(panelRow.deployment_id) ?? "var(--ds-color-text-muted)"}
+          now={now}
+          onClose={() => setPanelId(null)}
+          returnFocus={() => menuButtons.current.get(panelRow.deployment_id)?.focus()}
+        />
+      )}
     </div>
   );
 }
@@ -704,7 +542,8 @@ function AnalyzeInClaude({ buildPrompt, disabled }: { buildPrompt: () => { promp
   );
 }
 
-export default function TradingLeaderboardContent() {
+export default function TradingLeaderboardContent({ deploymentConfigs = [] }: { deploymentConfigs?: DeploymentConfig[] }) {
+  const configs = useMemo(() => new Map(deploymentConfigs.map((c) => [c.id, c])), [deploymentConfigs]);
   const [curves, setCurves] = useState<EquitySummary[] | null>(null);
   const [rows, setRows] = useState<EquityCurveRow[] | null>(null);
   const [pnl, setPnl] = useState<Map<string, Pnl>>(new Map());
@@ -807,7 +646,7 @@ export default function TradingLeaderboardContent() {
       {error && curves === null && <Bento size="3" className="text-sm text-ink-muted">Couldn&apos;t load the curves: {error}</Bento>}
       {!error && curves === null && <Bento size="3" className="text-sm text-ink-muted">Loading&hellip;</Bento>}
       {curves?.length === 0 && <Bento size="3" className="text-sm text-ink-muted">No deployment has reported in the last 7 days.</Bento>}
-      {curves && curves.length > 0 && <TradingLeaderboardView curves={curves} now={loadedAt} goLive={goLive} backtests={backtests} />}
+      {curves && curves.length > 0 && <TradingLeaderboardView curves={curves} rows={rows ?? []} now={loadedAt} goLive={goLive} backtests={backtests} configs={configs} />}
     </main>
   );
 }

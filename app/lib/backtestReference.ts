@@ -70,6 +70,8 @@ export interface BacktestReference {
   closedTrades: ClosedTrade[];
   /** The same go-live statistics as the live record, from the same code. */
   stats: PerformanceStats;
+  /** Its equity, marked at every bar, for overlaying on the live curve. */
+  curve: EquityPoint[];
 }
 
 const etDate = new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit" });
@@ -180,6 +182,7 @@ export function backtestReference(bars: PricePoint[], d: ReferenceInput): Backte
     dailyReturns,
     closedTrades,
     stats: performanceStats({ trades: closedTrades, points: curve, bars: data.length, barsInPosition: inPosition }),
+    curve,
   };
 }
 

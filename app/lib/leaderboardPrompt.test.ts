@@ -54,6 +54,7 @@ const ref: BacktestReference = {
   tradesPerMonth: 25,
   sameWindow: { from: "2026-11-09", to: "2026-11-11", backtestPct: 1.1, livePct: 0.6, backtestInTradeAtStart: false },
   dailyReturns: [],
+  curve: [],
   closedTrades: btTrades,
   stats: performanceStats({ trades: btTrades, points, bars: 100, barsInPosition: 40 }),
 };
