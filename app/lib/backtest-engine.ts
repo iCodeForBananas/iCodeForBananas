@@ -242,12 +242,30 @@ export interface ParameterVariationConfig {
 // wide range can't allocate millions of numbers before sampling.
 const MAX_RANGE_VALUES = 10_000;
 
+/** Digits after the decimal point, so 0.25 -> 2 and 1e-7 -> 7. */
+function decimalPlaces(n: number): number {
+  if (!Number.isFinite(n)) return 0;
+  const [mantissa, exponent] = n.toExponential().split("e");
+  const fraction = mantissa.split(".")[1]?.length ?? 0;
+  return Math.max(0, fraction - Number(exponent));
+}
+
+/**
+ * min, min + step, min + 2·step, ... up to max. Each value is counted from
+ * min, not snapped to a multiple of step: 15 to 40 by 10 is 15, 25, 35, not
+ * 20, 30, 40 (which also ran past max). Rounded to the inputs' own decimals,
+ * so a 0.1 step gives 0.3 rather than 0.30000000000000004, which would show
+ * in labels and make a different result-cache key from a typed 0.3.
+ */
 export function generateRangeValues(min: number, max: number, step: number): number[] {
   if (step <= 0) return [min];
+  const places = Math.min(12, Math.max(decimalPlaces(min), decimalPlaces(step)));
+  const scale = 10 ** places;
   const values: number[] = [];
-  for (let v = min; v <= max + step * 1e-9; v += step) {
-    values.push(Math.round(v / step) * step);
-    if (values.length >= MAX_RANGE_VALUES) break;
+  for (let k = 0; values.length < MAX_RANGE_VALUES; k++) {
+    const v = Math.round((min + k * step) * scale) / scale;
+    if (v > max + step * 1e-9) break;
+    values.push(v);
   }
   return values;
 }

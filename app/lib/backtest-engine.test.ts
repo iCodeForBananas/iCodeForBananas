@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   DEFAULT_SIZING,
   generateCombinations,
+  generateRangeValues,
   LEGACY_SIZING,
   MAX_BATCH_RUNS,
   positionCapPercent,
@@ -182,6 +183,19 @@ describe("parameter sweep", () => {
     }
     expect(values(combos, "rocPeriod")).toContain(5);
     expect(values(combos, "rocPeriod")).toContain(120);
+  });
+
+  it("steps from the minimum, never past the maximum", () => {
+    expect(generateRangeValues(15, 40, 10)).toEqual([15, 25, 35]);
+    expect(generateRangeValues(3, 7, 2)).toEqual([3, 5, 7]);
+    expect(generateRangeValues(0.5, 3, 1)).toEqual([0.5, 1.5, 2.5]);
+    expect(generateRangeValues(-10, 5, 5)).toEqual([-10, -5, 0, 5]);
+  });
+
+  it("gives clean decimals for fractional steps", () => {
+    expect(generateRangeValues(0.1, 1, 0.1)).toEqual([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]);
+    expect(generateRangeValues(1, 1.3, 0.1)).toEqual([1, 1.1, 1.2, 1.3]);
+    expect(generateRangeValues(0, 0.15, 0.05)).toEqual([0, 0.05, 0.1, 0.15]);
   });
 
   it("keeps a fixed parameter fixed", () => {
