@@ -185,22 +185,6 @@ export const DEPLOYMENTS: Deployment[] = [
     historyDays: 1208,
   },
   {
-    strategyId: 'ema-price-cross',
-    symbol: 'WMT',
-    // Built from 15-minute timesales, counted from the 09:30 open.
-    interval: '1h',
-    params: { emaPeriod: 14 },
-    ...SHARED_RISK,
-    // The backtest asked for 250 bars, but 40 days of 15-minute data make
-    // about 190 regular-session hourly bars. The strategy reads only EMA 14,
-    // so 150 bars (more than 10x its period) is plenty for it to settle.
-    minBars: 150,
-    historyDays: 40,
-    // Replaced by EMA crossover WMT 1h below: one account holds one net WMT
-    // position. Kept deployed with its schedule off, to switch back easily.
-    enabled: false,
-  },
-  {
     strategyId: 'ema-crossover',
     symbol: 'WMT',
     // Built from 15-minute timesales, counted from the 09:30 open.
@@ -213,6 +197,9 @@ export const DEPLOYMENTS: Deployment[] = [
     // period) is far more than its EMAs need to settle.
     minBars: 150,
     historyDays: 40,
+    // Replaced by EMA price cross WMT 1h (EMA 14) below: one account holds one
+    // net WMT position. Kept deployed with its schedule off, to switch back easily.
+    enabled: false,
   },
   {
     strategyId: 'alligator',
@@ -257,6 +244,41 @@ export const DEPLOYMENTS: Deployment[] = [
     // Year, about 330 bars of 13; the 335 first proposed would fall short then.
     minBars: 200,
     historyDays: 40,
+  },
+  {
+    strategyId: 'ema-price-cross',
+    symbol: 'WMT',
+    interval: '1h',
+    params: {
+      emaPeriod: 14,
+    },
+    startingEquity: 10000,
+    enableShorts: true,
+    positionSizePct: 100,
+    maxDailyLossPct: 100, // off: the backtest had no daily loss limit
+    drawdownLimitPct: 25,
+    drawdownPauseBars: 20,
+    minBars: 64,
+    historyDays: 17,
+  },
+  {
+    strategyId: 'ibs-trend',
+    symbol: 'TMUS',
+    interval: '1h',
+    params: {
+      entryIbs: 5,
+      exitIbs: 50,
+      smaPeriod: 5,
+      trendExit: true,
+    },
+    startingEquity: 10000,
+    enableShorts: true,
+    positionSizePct: 100,
+    maxDailyLossPct: 100, // off: the backtest had no daily loss limit
+    drawdownLimitPct: 25,
+    drawdownPauseBars: 20,
+    minBars: 5,
+    historyDays: 5,
   },
 ];
 
