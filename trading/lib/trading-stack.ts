@@ -1,6 +1,6 @@
 // The whole paper-trading system: shared state table, shared Tradier secret
 // (referenced, not owned), one scheduler role, and per deployment a Lambda,
-// its log group, its schedule and an errors alarm. Plus the dashboard.
+// its log group, its schedule and an errors alarm.
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -17,7 +17,6 @@ import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import type { Construct } from 'constructs';
 import { DATA_DELAY_MS, INTERVALS, functionName, type ResolvedDeployment } from '../runtime/config';
 import { METRIC_DIMENSION, METRIC_NAMESPACE } from '../runtime/metrics';
-import { buildDashboard, type DeployedStrategy } from './dashboard';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const TRADING_DIR = path.join(here, '..');
@@ -78,7 +77,6 @@ export class TradingStack extends Stack {
       description: 'Lets EventBridge Scheduler invoke the Tradier strategy Lambdas',
     });
 
-    const deployed: DeployedStrategy[] = [];
     for (const d of props.deployments) {
       const name = functionName(d);
       const logGroup = new logs.LogGroup(this, `Logs-${d.id}`, {
@@ -174,15 +172,10 @@ export class TradingStack extends Stack {
         Tags.of(resource).add('symbol', d.symbol);
       }
 
-      deployed.push({ deployment: d, fn, logGroup, errorsAlarm });
       new CfnOutput(this, `Function-${d.id}`, { value: fn.functionArn });
       new CfnOutput(this, `ScheduleArn-${d.id}`, { value: schedule.attrArn });
     }
 
-    const dashboard = buildDashboard(this, deployed);
     new CfnOutput(this, 'StateTable', { value: table.tableArn });
-    new CfnOutput(this, 'DashboardUrl', {
-      value: `https://${this.region}.console.aws.amazon.com/cloudwatch/home?region=${this.region}#dashboards/dashboard/${dashboard.dashboardName}`,
-    });
   }
 }

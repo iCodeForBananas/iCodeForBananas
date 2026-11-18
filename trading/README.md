@@ -2,9 +2,8 @@
 
 One CDK stack, `TradierTrading`, that paper-trades strategies from
 `app/strategies` against the **Tradier sandbox**. Each entry in
-[`deployments.ts`](deployments.ts) becomes its own Lambda, schedule, state row,
-errors alarm and section on the `TradierTrading` CloudWatch dashboard. They all
-share one runtime ([`runtime/`](runtime)), one DynamoDB table and one Tradier
+[`deployments.ts`](deployments.ts) becomes its own Lambda, schedule, state row
+and errors alarm. They all share one runtime ([`runtime/`](runtime)), one DynamoDB table and one Tradier
 secret.
 
 The live Lambda runs the **same code the backtester runs**: the strategy's own
@@ -102,7 +101,7 @@ next run, one that did is rebased to its `startingEquity`: realized P&L, the
 day's start and the drawdown peak are scaled by the same factor, so its percent
 return carries over. An open position keeps its share count until it closes.
 
-## Live stats: the dashboard
+## Metrics
 
 Each run's log line is in CloudWatch [Embedded Metric
 Format](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch_Embedded_Metric_Format.html):
@@ -110,12 +109,9 @@ the Lambda writes no extra API calls, and CloudWatch extracts the metrics under
 namespace `TradierTrading`, dimension `Deployment`. The full list is in
 [`runtime/metrics.ts`](runtime/metrics.ts): equity, realized/open/today P&L,
 drawdown %, position, signal, orders, fills, trades closed, winners, skips,
-stale-data skips, reconciliation mismatches, errors and bar lag.
-
-The `TradierTrading` dashboard (its URL is a stack output) shows all
-deployments together, then a section per deployment with current values,
-totals over the selected range, graphs and a table of its latest decisions.
-Dry runs never publish metrics.
+stale-data skips, reconciliation mismatches, errors and bar lag. The
+`Errors` metric drives each deployment's errors alarm. Dry runs never publish
+metrics.
 
 ## Live stats: the public page
 

@@ -650,7 +650,7 @@ export async function runDeployment(d: ResolvedDeployment, event: RunEvent | und
     metrics.TradesClosed = counters.tradesClosed;
     metrics.WinningTrades = counters.winningTrades;
     log.durationMs = now() - invokedAt;
-    // Dry runs log the same line without metrics, so they never show on the dashboard.
+    // Dry runs log the same line without metrics, so they never show in the metrics.
     deps.log(JSON.stringify(dryRun ? log : { ...log, ...emfFields(d.id, metrics, invokedAt) }));
   }
 }

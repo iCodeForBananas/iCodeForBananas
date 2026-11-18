@@ -33,7 +33,7 @@ export type ParamValue = number | boolean | string;
 export interface Deployment {
   /**
    * Optional. By default the id is built from the settings (see deploymentId),
-   * so it names the Lambda, schedule, state row and dashboard row uniquely.
+   * so it names the Lambda, schedule and state row uniquely.
    * Changing a setting therefore makes a new deployment with fresh state.
    */
   id?: string;

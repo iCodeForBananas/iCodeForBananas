@@ -6,7 +6,7 @@
 export const METRIC_NAMESPACE = 'TradierTrading';
 export const METRIC_DIMENSION = 'Deployment';
 
-/** Every metric the runtime publishes, and its unit. The dashboard reads the same list. */
+/** Every metric the runtime publishes, and its unit. */
 export const METRICS = {
   // Gauges, one value per processed bar.
   AccountEquity: 'None',

@@ -1,7 +1,6 @@
 // The live paper-trading deployments. Each entry becomes its own Lambda, its
-// own EventBridge schedule (every regular-session bar close, weekdays), its own
-// state row and its own row on the TradierTrading CloudWatch dashboard. All of
-// them share the Tradier sandbox secret, the state table and the runtime in
+// own EventBridge schedule (every regular-session bar close, weekdays) and its
+// own state row. All of them share the Tradier sandbox secret, the state table and the runtime in
 // trading/runtime, which runs the strategy straight from app/strategies.
 //
 // Each entry's id, and so its Lambda's name, is built from its settings:

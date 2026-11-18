@@ -319,7 +319,7 @@ export function buildDeployPrompt(input: DeployPromptInput): string {
     "5. `npx cdk deploy --require-approval never`.",
     "6. `npm run dry-run -- --latest <deployment id>` (see `deploymentId` in `runtime/config.ts`). Confirm bars, indicator values and a signal with no error, and at least `minBars` bars.",
     "",
-    "Finish with: the deployment id and Lambda name, the dry-run signal, the `TradierTrading` dashboard URL (stack output), and anything you changed beyond the new entry.",
+    "Finish with: the deployment id and Lambda name, the dry-run signal, and anything you changed beyond the new entry.",
     "",
     "---",
     "",

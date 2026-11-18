@@ -14,7 +14,7 @@ if (errors.length > 0) {
 
 const app = new App();
 new TradingStack(app, 'TradierTrading', {
-  description: 'Tradier sandbox paper-trading strategies (one Lambda per deployment) and their dashboard',
+  description: 'Tradier sandbox paper-trading strategies (one Lambda per deployment)',
   env: { account: process.env.CDK_DEFAULT_ACCOUNT, region: process.env.CDK_DEFAULT_REGION },
   deployments: DEPLOYMENTS.map(resolveDeployment),
   tradierSecretName: TRADIER_SECRET_NAME,

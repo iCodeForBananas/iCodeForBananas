@@ -2,7 +2,7 @@
   "name": "tradier-trading",
   "private": true,
   "type": "module",
-  "description": "CDK stack: one Tradier sandbox paper-trading Lambda per entry in deployments.ts, plus a CloudWatch dashboard.",
+  "description": "CDK stack: one Tradier sandbox paper-trading Lambda per entry in deployments.ts.",
   "scripts": {
     "synth": "cdk synth",
     "diff": "cdk diff",
