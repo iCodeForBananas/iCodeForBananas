@@ -20,7 +20,7 @@ import { DeploymentPanel } from "./DeploymentPanel";
 import { DEFAULT_SORT, nextSort, sortCurves, type Sort, type SortKey } from "./leaderboardSort";
 import { loadEquityCurves, loadSnapshotPnl, loadTradeLedgers } from "@/app/lib/tradingHistorySource";
 
-const REFRESH_MS = 60_000;
+const REFRESH_MS = 30_000;
 
 /**
  * One color per deployment, in this order so that no two neighbors in the
@@ -833,7 +833,7 @@ export default function TradingLeaderboardContent({ deploymentConfigs = [] }: { 
             </Button>
           }
         >
-          The equity curves didn&apos;t come back from the database ({error}). It tries again every minute on its own.
+          The equity curves didn&apos;t come back from the database ({error}). It tries again every 30 seconds on its own.
         </PageMessage>
       )}
       {!error && curves === null && <LoadingView />}
