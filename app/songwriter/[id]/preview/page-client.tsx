@@ -152,6 +152,7 @@ const SheetContent = memo(function SheetContent({
   onEditSection,
   bpm,
   kit,
+  hideHeading,
 }: {
   sheet: LeadSheet;
   fullscreen: boolean;
@@ -176,17 +177,21 @@ const SheetContent = memo(function SheetContent({
   onEditSection?: (sectionIndex: number) => void;
   /** Tempo the song's beat markers are read at — the live one, not the saved one. */
   bpm?: number;
+  /** The top bar already shows the title and notes; drop them from the sheet. */
+  hideHeading?: boolean;
 }) {
   const beatTempo = bpm ?? sheet.tempo ?? DEFAULT_BPM;
   const columnsActive = !!(columnCount || columnWidthVw);
   return (
     <div>
-      <div className={`mb-8 border-b-2 border-line-strong border-line-subtle pb-6 ${columnsActive ? "max-w-3xl mx-auto" : ""}`}>
-        <h1
-          className={`font-bold leading-tight mb-3 text-ink-primary ${fullscreen ? "text-[3em]" : "text-[2.25em]"}`}
-        >
-          {sheet.title || "Untitled"}
-        </h1>
+      <div className={`border-b border-line-subtle ${hideHeading ? "mb-6 pb-3" : "mb-8 pb-6"} ${columnsActive ? "max-w-3xl mx-auto" : ""}`}>
+        {!hideHeading && (
+          <h1
+            className={`font-bold leading-tight mb-3 text-ink-primary ${fullscreen ? "text-[1.75em]" : "text-[1.5em]"}`}
+          >
+            {sheet.title || "Untitled"}
+          </h1>
+        )}
         <div className='flex flex-wrap gap-2 text-[0.875em]'>
           {/* The reference's exact three chips — capo, tempo, pattern — in that
               order. Key doesn't get one of its own: the reference has no slot
@@ -198,7 +203,7 @@ const SheetContent = memo(function SheetContent({
           {sheet.tempo && <span className={styles.chip}>{sheet.tempo} bpm</span>}
           <span className={styles.chip}>{kit?.preset ?? "Custom kit"}</span>
         </div>
-        {sheet.general_notes && (
+        {sheet.general_notes && !hideHeading && (
           <p className={`mt-3 italic text-ink-muted text-ink-muted ${fullscreen ? "text-[1em]" : "text-[0.875em]"}`}>
             {sheet.general_notes}
           </p>
@@ -1297,6 +1302,8 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
       drumsOpen={drumsOpen}
       onDrumsToggle={toggleDrums}
       drumsPlaying={kitPlaying}
+      onBackToSongs={() => goTo(router, "/songwriter")}
+      notes={sheet.general_notes}
     />
   );
 
@@ -1378,6 +1385,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                         onAddSection={editMode ? setSectionAfter : undefined}
                         onEditSection={editMode ? setSectionEdit : undefined}
                         fullscreen={false}
+                        hideHeading
                         columnCount={columnCount}
                         columnWidthVw={autoFit ? undefined : columnWidthVw}
                         transposeSteps={transposeSteps}

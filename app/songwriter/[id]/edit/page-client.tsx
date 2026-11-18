@@ -687,6 +687,7 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
         <div className="flex flex-col flex-1 min-h-0 rounded-none border-none bg-surface-base overflow-hidden">
           <TopBar
             onLibraryClick={handleLibraryClick}
+            onBackToSongs={handleLibraryClick}
             title={songTitle}
             mode="free"
             onModeChange={(next) => {
