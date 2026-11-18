@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { AVAILABLE_STRATEGIES, getDefaultParams } from "@/app/strategies";
 import { DEFAULT_SIZING, LEGACY_SIZING } from "@/app/lib/backtest-engine";
-import { INTERVALS } from "@/trading/runtime/config";
+import { INTERVALS, validateDeployments } from "@/trading/runtime/config";
 import {
   BARS_PER_SESSION,
   LIVE_INTERVALS,
@@ -10,6 +10,8 @@ import {
   buildDeployPrompt,
   guaranteedSessions,
   historyWindow,
+  PAUSE_FOREVER_BARS,
+  RISK_KEYS,
   type DeployPromptInput,
   type RunSettings,
 } from "./deployPrompt";
@@ -47,7 +49,7 @@ const entryOf = (text: string) => {
   const start = text.indexOf("```ts\n{");
   return text.slice(start, text.indexOf("```", start + 5));
 };
-/** An entry line by key: `  key: value,` or `  // key: UNKNOWN`. */
+/** An entry line by key: `  key: value,` or `  key: UNKNOWN, // ask: ...`. */
 const line = (text: string, key: string) => entryOf(text).split("\n").find((l) => new RegExp(`^ {2,4}(// )?${key.replace(".", "\\.")}:`).test(l));
 const unknownsOf = (text: string) => text.slice(text.indexOf("## 3."), text.indexOf("## 4."));
 
@@ -105,9 +107,15 @@ describe("literal settings", () => {
     expect(line(text, "positionSizePct")).toBe("  positionSizePct: 100,");
   });
 
-  it("puts the run's values after ...SHARED_RISK, so the run's win", () => {
-    const block = entryOf(prompt({ strategyId: "ema-price-cross" }));
-    expect(block.indexOf("...SHARED_RISK")).toBeLessThan(block.indexOf("enableShorts"));
+  it("writes every risk field itself: no ...SHARED_RISK, nothing left to a default", () => {
+    const text = prompt({ strategyId: "ema-price-cross" });
+    expect(entryOf(text)).not.toContain("SHARED_RISK");
+    for (const key of RISK_KEYS) expect(line(text, key), key).toBeDefined();
+    expect(text).not.toMatch(/daily loss limit, which the backtest didn't have/);
+  });
+
+  it("turns the daily loss limit off, since the backtest has none", () => {
+    expect(line(prompt({ strategyId: "ema-price-cross" }), "maxDailyLossPct")).toBe("  maxDailyLossPct: 100, // off: the backtest had no daily loss limit");
   });
 
   it("uses the size the engine actually traded when the gap cap cut it", () => {
@@ -134,27 +142,36 @@ describe("unknowns are stated, never filled in", () => {
   it("risk-based sizing leaves positionSizePct UNKNOWN and asks", () => {
     const run = fixedRun({ enableShorts: false, positionSizePercent: 50 }, { mode: "risk", useStopLoss: true, atrStopMultiple: 2, riskPercent: 1 });
     const text = prompt({ strategyId: "ema-price-cross", run });
-    expect(line(text, "positionSizePct")).toBe("  // positionSizePct: UNKNOWN");
+    expect(line(text, "positionSizePct")).toBe("  positionSizePct: UNKNOWN, // ask: see Unknown values");
     expect(unknownsOf(text)).toContain("`positionSizePct`: the run sized each trade by risk (1% of equity per stop distance");
     expect(unknownsOf(text)).toContain("Stop and ask me");
   });
 
-  it("no drawdown limit in the run is UNKNOWN, not a made-up number", () => {
+  it("no drawdown limit in the run is written as off, not SHARED_RISK's 25%", () => {
     const text = prompt({ strategyId: "ema-price-cross", run: fixedRun({}, { maxDrawdownPercent: 0 }) });
-    expect(line(text, "drawdownLimitPct")).toBe("  // drawdownLimitPct: UNKNOWN");
-    expect(unknownsOf(text)).toContain("the run had no drawdown limit");
+    expect(line(text, "drawdownLimitPct")).toBe("  drawdownLimitPct: 100, // off: the backtest had no drawdown limit");
+    expect(unknownsOf(text)).toContain("None. Every value above is known.");
   });
 
-  it("a drawdown pause of 0 (never again) is UNKNOWN", () => {
+  it("a drawdown pause of 0 (never again) is written as a pause that never ends", () => {
     const text = prompt({ strategyId: "ema-price-cross", run: fixedRun({}, { maxDrawdownPercent: 20, drawdownPauseBars: 0 }) });
     expect(line(text, "drawdownLimitPct")).toBe("  drawdownLimitPct: 20,");
-    expect(line(text, "drawdownPauseBars")).toBe("  // drawdownPauseBars: UNKNOWN");
+    expect(line(text, "drawdownPauseBars")).toMatch(new RegExp(`^  drawdownPauseBars: ${PAUSE_FOREVER_BARS}, // never trade again`));
+  });
+
+  it("the entry it writes passes the runtime's validation", () => {
+    for (const sizing of [{}, { maxDrawdownPercent: 0 }, { maxDrawdownPercent: 20, drawdownPauseBars: 0 }]) {
+      const text = prompt({ strategyId: "ema-price-cross", run: fixedRun({}, sizing) });
+      const body = entryOf(text).replace("```ts\n", "").replace(/\/\/.*$/gm, "");
+      const entry = Function(`return (${body});`)();
+      expect(validateDeployments([entry]), JSON.stringify(sizing)).toEqual([]);
+    }
   });
 
   it("no recorded run settings: every risk field UNKNOWN", () => {
     const text = prompt({ strategyId: "ema-price-cross", run: null });
-    for (const key of ["startingEquity", "enableShorts", "positionSizePct", "drawdownLimitPct", "drawdownPauseBars"]) {
-      expect(line(text, key)).toBe(`  // ${key}: UNKNOWN`);
+    for (const key of RISK_KEYS) {
+      expect(line(text, key)).toBe(`  ${key}: UNKNOWN, // ask: see Unknown values`);
       expect(unknownsOf(text)).toContain(`\`${key}\`: the run's settings weren't recorded`);
     }
   });
@@ -170,22 +187,22 @@ describe("unknowns are stated, never filled in", () => {
       backtest: { label: "x", totalPnlPercent: 0, totalTrades: 0, winRate: 0, maxDrawdownPercent: 0, sharpeRatio: 0, initialCapital: 10_000 },
     });
     expect(line(text, "fastPeriod")).toBe("    fastPeriod: 5,");
-    expect(line(text, "slowPeriod")).toBe("    // slowPeriod: UNKNOWN");
-    expect(line(text, "minBars")).toBe("  // minBars: UNKNOWN");
+    expect(line(text, "slowPeriod")).toBe("    slowPeriod: UNKNOWN, // ask: see Unknown values");
+    expect(line(text, "minBars")).toBe("  minBars: UNKNOWN, // ask: see Unknown values");
     expect(unknownsOf(text)).toContain("`params.slowPeriod`: not recorded");
   });
 
   it("unknown symbol and unsupported interval are UNKNOWN", () => {
     const text = prompt({ strategyId: "ema-price-cross", timeframe: "4h", symbol: null });
-    expect(line(text, "symbol")).toBe("  // symbol: UNKNOWN");
-    expect(line(text, "interval")).toBe("  // interval: UNKNOWN");
+    expect(line(text, "symbol")).toBe("  symbol: UNKNOWN, // ask: see Unknown values");
+    expect(line(text, "interval")).toBe("  interval: UNKNOWN, // ask: see Unknown values");
     expect(unknownsOf(text)).toContain("the run used 4h bars");
   });
 
   it("an unknowable warmup is UNKNOWN", () => {
     const text = prompt({ strategyId: "ema-price-cross", warmup: { kind: "unknown", reason: "test reason", parts: [] } });
-    expect(line(text, "minBars")).toBe("  // minBars: UNKNOWN");
-    expect(line(text, "historyDays")).toBe("  // historyDays: UNKNOWN");
+    expect(line(text, "minBars")).toBe("  minBars: UNKNOWN, // ask: see Unknown values");
+    expect(line(text, "historyDays")).toBe("  historyDays: UNKNOWN, // ask: see Unknown values");
     expect(unknownsOf(text)).toContain("`minBars`: test reason.");
   });
 
@@ -217,7 +234,7 @@ describe("minBars and historyDays", () => {
   it("a 200 SMA on 1h bars doesn't fit in 40 days: historyDays UNKNOWN, minBars kept", () => {
     const text = prompt({ strategyId: "ibs-mean-reversion", params: { entryIbs: 20, exitIbs: 76, trendFilter: true }, timeframe: "1h" });
     expect(line(text, "minBars")).toBe("  minBars: 200,");
-    expect(line(text, "historyDays")).toBe("  // historyDays: UNKNOWN");
+    expect(line(text, "historyDays")).toBe("  historyDays: UNKNOWN, // ask: see Unknown values");
     expect(unknownsOf(text)).toContain("200 1h bars don't fit");
   });
 

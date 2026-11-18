@@ -97,10 +97,29 @@ export interface EntryField {
   value: string | null;
   /** Only for UNKNOWN: what's missing. */
   unknown?: string;
+  /** A trailing comment, for a value whose meaning isn't obvious. */
+  note?: string;
 }
 
 const lit = (v: ParamValue) => (typeof v === "string" ? `'${v}'` : String(v));
 const num = (n: number) => String(+n.toFixed(4));
+
+/**
+ * The runtime's way to write "off" for a percent limit: the limit trips only
+ * once the loss reaches 100% of equity, which a cash account can't pass.
+ * validateDeployments requires these percents to be > 0 and <= 100.
+ */
+export const LIMIT_OFF_PCT = 100;
+
+/**
+ * drawdownPauseBars for "never trade again", the backtest's pause of 0. The
+ * runtime counts the bars since the trip within the history it fetched, which
+ * never holds this many, so entries stay paused for good.
+ */
+export const PAUSE_FOREVER_BARS = 1_000_000;
+
+/** Every risk field the entry writes, so none comes from SHARED_RISK or the runtime's DEFAULTS. */
+export const RISK_KEYS = ["startingEquity", "enableShorts", "positionSizePct", "maxDailyLossPct", "drawdownLimitPct", "drawdownPauseBars"] as const;
 
 /** The run's risk settings as entry fields, each the run's own value or UNKNOWN. */
 export function riskFields(run: RunSettings, initialCapital: number): EntryField[] {
@@ -123,15 +142,19 @@ export function riskFields(run: RunSettings, initialCapital: number): EntryField
     });
   }
 
-  if (sz.maxDrawdownPercent > 0) {
+  // The backtest has no daily loss limit.
+  fields.push({ key: "maxDailyLossPct", value: String(LIMIT_OFF_PCT), note: "off: the backtest had no daily loss limit" });
+
+  if (sz.maxDrawdownPercent > 0 && sz.maxDrawdownPercent < LIMIT_OFF_PCT) {
     fields.push({ key: "drawdownLimitPct", value: num(sz.maxDrawdownPercent) });
     fields.push(
       sz.drawdownPauseBars > 0
         ? { key: "drawdownPauseBars", value: String(sz.drawdownPauseBars) }
-        : { key: "drawdownPauseBars", value: null, unknown: "the run's pause was 0, which in the backtest means it never traded again; in the runtime 0 means it resumes on the next bar" },
+        : { key: "drawdownPauseBars", value: String(PAUSE_FOREVER_BARS), note: "never trade again, like the backtest's pause of 0 (in the runtime 0 would resume on the next bar)" },
     );
   } else {
-    fields.push({ key: "drawdownLimitPct", value: null, unknown: `the run had no drawdown limit; the runtime requires one (SHARED_RISK sets ${SHARED_RISK.drawdownLimitPct}%)` });
+    fields.push({ key: "drawdownLimitPct", value: String(LIMIT_OFF_PCT), note: "off: the backtest had no drawdown limit" });
+    fields.push({ key: "drawdownPauseBars", value: "0", note: "unused: the drawdown limit is off" });
   }
   return fields;
 }
@@ -162,7 +185,11 @@ function minBarsField(w: Warmup): { field: EntryField; source: string } {
   return { field: { key: "minBars", value: String(w.bars) }, source };
 }
 
-const fieldLine = (f: EntryField) => (f.value === null ? `  // ${f.key}: UNKNOWN` : `  ${f.key}: ${f.value},`);
+// An UNKNOWN is written as a bare identifier, not commented out: commented
+// out, the field would silently take the runtime's default and the entry
+// would still deploy. As written, it fails typecheck until it's filled in.
+const fieldLine = (f: EntryField, indent = "  ") =>
+  f.value === null ? `${indent}${f.key}: UNKNOWN, // ask: see Unknown values` : `${indent}${f.key}: ${f.value},${f.note ? ` // ${f.note}` : ""}`;
 
 export function buildDeployPrompt(input: DeployPromptInput): string {
   const { strategy, run, source, backtest } = input;
@@ -187,7 +214,7 @@ export function buildDeployPrompt(input: DeployPromptInput): string {
 
   const risk: EntryField[] = run
     ? riskFields(run, backtest.initialCapital)
-    : ["startingEquity", "enableShorts", "positionSizePct", "drawdownLimitPct", "drawdownPauseBars"].map((key) => ({ key, value: null, unknown: "the run's settings weren't recorded with this result" }));
+    : RISK_KEYS.map((key) => ({ key, value: null, unknown: "the run's settings weren't recorded with this result" }));
   for (const f of risk) if (f.value === null) unknown(f.key, f.unknown!);
 
   const mb = minBarsField(warmup);
@@ -219,13 +246,13 @@ export function buildDeployPrompt(input: DeployPromptInput): string {
   const entry = [
     "{",
     `  strategyId: '${strategy.id}',`,
-    symbol ? `  symbol: '${symbol}',` : "  // symbol: UNKNOWN",
-    interval ? `  interval: '${interval}',` : "  // interval: UNKNOWN",
+    fieldLine({ key: "symbol", value: symbol ? `'${symbol}'` : null }),
+    fieldLine({ key: "interval", value: interval ? `'${interval}'` : null }),
     "  params: {",
-    ...defs.map((p) => (input.params[p.key] === undefined ? `    // ${p.key}: UNKNOWN` : `    ${p.key}: ${lit(input.params[p.key])},`)),
+    ...defs.map((p) => fieldLine({ key: p.key, value: input.params[p.key] === undefined ? null : lit(input.params[p.key]) }, "    ")),
     "  },",
-    "  ...SHARED_RISK,",
-    ...risk.map(fieldLine),
+    // No ...SHARED_RISK: every risk field is written out, so none comes from it.
+    ...risk.map((f) => fieldLine(f)),
     fieldLine(mb.field),
     fieldLine(historyField),
     "}",
@@ -249,7 +276,7 @@ export function buildDeployPrompt(input: DeployPromptInput): string {
     "",
     "## 2. The deployment entry",
     "",
-    "Add this to `DEPLOYMENTS` in `trading/deployments.ts` exactly as written. Every value is the one the backtest run used; don't change any of them.",
+    "Add this to `DEPLOYMENTS` in `trading/deployments.ts` exactly as written. Every value is the one the backtest run used; don't change any of them, don't add `...SHARED_RISK` or any other field, and don't drop a field because it matches a default. Every risk setting is written out so nothing comes from `SHARED_RISK` or the runtime's `DEFAULTS`.",
     "",
     "```ts",
     ...entry,
@@ -263,7 +290,7 @@ export function buildDeployPrompt(input: DeployPromptInput): string {
   lines.push("", "## 3. Unknown values", "");
   if (unknowns.length) {
     lines.push(
-      "These couldn't be taken from the run. **Stop and ask me for each one before deploying**; don't fill them in:",
+      "These couldn't be taken from the run, and are written as `UNKNOWN` above so the entry won't compile until they're set. **Stop and ask me for each one before deploying**; don't fill them in, comment them out or delete them:",
       "",
       ...unknowns.map((u) => `- ${u}`),
     );
@@ -277,8 +304,6 @@ export function buildDeployPrompt(input: DeployPromptInput): string {
   else if (lacks.length) lines.push("Deploy without them; nothing to configure:", "", ...lacks.map((l) => `- ${l}`));
   else lines.push("None.");
   lines.push(
-    "",
-    `\`SHARED_RISK\` also gives the runtime a ${SHARED_RISK.maxDailyLossPct}% daily loss limit, which the backtest didn't have.`,
     "",
     run ? `Costs the backtest assumed: ${num(run.commissionBps)} bps commission, ${num(run.slippageBps)} bps slippage per fill.` : "Costs the backtest assumed: not recorded.",
   );
