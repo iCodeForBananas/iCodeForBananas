@@ -35,7 +35,7 @@ const secrets = new SecretsManagerClient({});
 async function loadCreds(): Promise<TradierCreds> {
   const res = await secrets.send(new GetSecretValueCommand({ SecretId: SECRET_ID }));
   const parsed = JSON.parse(res.SecretString ?? '{}');
-  if (!parsed.accessToken || !parsed.accountId) throw new Error('Tradier secret is missing accessToken or accountId');
+  if (!parsed.accessToken) throw new Error('Tradier secret is missing accessToken');
   return { accessToken: parsed.accessToken, accountId: parsed.accountId };
 }
 

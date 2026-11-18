@@ -261,7 +261,9 @@ export const DEPLOYMENTS: Deployment[] = [
 ];
 
 /**
- * The Tradier sandbox secret: JSON {"accessToken": "...", "accountId": "VA..."}.
+ * The Tradier sandbox secret: JSON {"accessToken": "...", "accountId": "VA99925108"}.
+ * The account is pinned in runtime/tradier.ts (TRADIER_PAPER_ACCOUNT_ID); a
+ * secret naming any other account is refused.
  * Created outside the stack, so redeploying or destroying the stack never
  * touches the credentials.
  */
