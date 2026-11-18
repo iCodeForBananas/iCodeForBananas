@@ -375,6 +375,22 @@ function computeIndicators(
       };
       break;
     }
+    case "ibs-trend": {
+      // The SMA that sets the direction: longs only above it, shorts only
+      // below it, and (with the trend exit on) a close through it ends the trade.
+      const period = num("smaPeriod", 200);
+      const sma = getSmaArray(data, period);
+      priceLines.push({ values: sma.map((v) => (Number.isNaN(v) ? undefined : v)), color: c.yellow, label: `SMA ${period}`, lineWidth: 2 });
+      oscillator = {
+        type: "ibs",
+        series: [{ values: data.map((d) => ibs(d)), color: c.magenta, label: "IBS" }],
+        hLines: [
+          { value: num("exitIbs", 80) / 100, color: c.red, dashed: true },
+          { value: num("entryIbs", 20) / 100, color: c.green, dashed: true },
+        ],
+      };
+      break;
+    }
     case "time-series-momentum": {
       const lookback = num("lookback", 252);
       const skip = num("skipBars", 0);
