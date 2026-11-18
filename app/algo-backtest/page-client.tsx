@@ -45,18 +45,21 @@ const STORAGE_KEY_GLOBAL = "algo-backtest-global";
 const STORAGE_KEY_STRATEGY_PREFIX = "algo-backtest-strategy-";
 
 const CLAUDE_REVIEW_PROMPT = [
-  "Review this backtest and tell me whether it is viable to run live as an automated paper-trading deployment:",
-  "one AWS Lambda per strategy on Tradier's sandbox, firing after each bar closes and filling with a market order at the next bar's open.",
+  "Is this backtest worth paper trading? I'm screening candidates: the ones that hold up in paper trading become real-money trading systems. Paper trading costs me nothing, so the bar isn't perfection. It's a real, repeatable edge with a credible path to trading real money.",
   "",
-  "Weigh, with numbers from the report:",
-  "- Overfitting: is the edge still there out-of-sample (last 30%), or only in-sample? Is this the best of a large parameter sweep?",
-  "- Sample size: are there enough trades for the win rate, profit factor and Sharpe to mean anything? Treat an infinite profit factor as a warning, not a strength.",
-  "- Risk: max drawdown and losing streaks against what I would tolerate live.",
-  "- Costs: would realistic commission and slippage for this bar size wipe out the average trade?",
-  "- Live mechanics: Tradier sandbox data runs 15 minutes behind, orders only fill in regular hours, and a short needs shares to borrow. Does any of that break this strategy?",
-  "- Buy and hold: is the risk worth it compared with just holding?",
+  "Answer in this shape, nothing else:",
+  "1. First line, one verdict: **PAPER TRADE**, **NOT YET** (name the one change or test to do first), or **REJECT**.",
+  "2. Up to 5 bullets of reasons, each citing a number from the report.",
+  "3. If PAPER TRADE: what live results, over how many trades, would confirm it for real money or kill it.",
+  "No preamble, no general trading advice, no hedging.",
   "",
-  "End with a verdict (deploy to paper trading, test more first, or don't), the main reasons, and what to change or test before deploying.",
+  "Judge it on:",
+  "- Out-of-sample: does the last 30% still make money and beat buy & hold? An edge that's only in-sample is a reject. If it looks like the best of a big parameter sweep, assume it's overfit unless out-of-sample says otherwise.",
+  "- Sample size: under ~30 trades the stats are noise. An infinite profit factor or near-100% win rate is a red flag, not a strength.",
+  "- Edge after costs: is the average trade comfortably bigger than commission plus slippage? Would it survive double the slippage?",
+  "- Drawdown: is the max drawdown something I'd sit through with real money, given the return?",
+  "- Buy & hold: is it worth running instead of just holding?",
+  "- Live fit: it runs on Tradier with 15-minute delayed data, market orders at the next bar's open, regular hours only, whole shares, and no stop or take-profit orders (it exits only on the strategy's own signals). Shorts need borrowable shares. If the result leans on a stop, a take profit or fractional shares, say how much that changes it.",
 ].join("\n");
 
 // Everything on the page that isn't per strategy, so a refresh comes back to
