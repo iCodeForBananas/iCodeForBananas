@@ -245,10 +245,11 @@ export const DEPLOYMENTS: Deployment[] = [
     // (Michael, 2026-11-17: "no stop loss"): the backtest also used a 2x ATR
     // stop and sized each trade to risk 1% of equity at that stop. Live has
     // neither: no stop orders, exits only on the %b signal (or the daily loss
-    // and drawdown limits), and a fixed 50% of equity per trade. Expect deeper
+    // and drawdown limits), and the whole of its own $10,000 in every trade
+    // like the other deployments ("use whole account"). Expect deeper
     // per-trade losses and a larger drawdown than the backtest's 1.48%.
     enableShorts: false,
-    positionSizePct: 50,
+    positionSizePct: 100,
     // The trend filter is on, so the 200-bar SMA is read: no entry can happen
     // until it exists, and as a plain average it's exact from bar 200. The
     // 3-bar %b window needs nothing more. 40 days (Tradier's limit for
