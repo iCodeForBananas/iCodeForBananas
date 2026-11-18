@@ -34,6 +34,7 @@ import { useBacktestWorker, type BacktestJobResult, type StrategyRun } from "./u
 import { fitsClaudePrefill } from "@/app/lib/claudeLink";
 import { clearResultCache, countCachedResults } from "./resultCache";
 import { getMeta, queryPage, type ResultRow, type RunMeta } from "./runStore";
+import { buildDeployPrompt } from "./deployPrompt";
 import BacktestProgressPanel from "./BacktestProgressPanel";
 import ResultsBrowser from "./ResultsBrowser";
 
@@ -737,183 +738,35 @@ export default function AlgoBacktestPage() {
     return () => { cancelled = true; };
   }, [activeResultStrategyId, hasResults]);
 
-  // Generate a copy-pasteable prompt that has Claude add the active result's
-  // strategy to the live paper-trading CDK stack in trading/ (one entry in
-  // trading/deployments.ts), deploy it and check it. The stack runs the same
-  // strategy handler and indicators the backtester does, so the prompt only
-  // has to carry the settings, the source, and whatever the backtest used that
-  // the live runtime can't reproduce. If the runtime (trading/runtime) gains
-  // or loses a feature, change the gaps below with it.
+  // The "Copy Lambda prompt" text (see deployPrompt.ts). It's built from the
+  // settings the run that produced this result used, never from whatever the
+  // editor shows now, and from what the strategy actually reads.
   const generateLambdaPrompt = useCallback(() => {
     const result = activeResult;
     if (!result) return '';
     const resultStrategyId = result.strategyId ?? selectedStrategyId;
     const strat = AVAILABLE_STRATEGIES[resultStrategyId];
     if (!strat) return '';
-
-    const isActiveEditorStrategy = resultStrategyId === selectedStrategyId;
-    const savedForResult = isActiveEditorStrategy ? null : loadStrategySettings(resultStrategyId);
-    // A stop or target sweep ran this result with the values in its params.
-    const risk = withRiskParams(
-      {
-        stopLossPercent: isActiveEditorStrategy ? stopLossPercent : (savedForResult?.stopLossPercent ?? 1),
-        takeProfitPercent: isActiveEditorStrategy ? takeProfitPercent : (savedForResult?.takeProfitPercent ?? 0),
-        sizing: isActiveEditorStrategy ? sizing : sizingFrom(savedForResult),
-      },
-      result.params ?? {},
-    );
-    const sz = risk.sizing!;
-    // A switched-off stop or target is no stop or target, whatever its percent.
-    const sl = !sz.useStopLoss ? 0 : risk.stopLossPercent;
-    const tp = !sz.useTakeProfit ? 0 : risk.takeProfitPercent;
-    const atrStop = sz.useStopLoss && sz.atrStopMultiple > 0;
-    const shorts = isActiveEditorStrategy ? enableShorts : (savedForResult?.enableShorts ?? false);
-    const posSize = isActiveEditorStrategy ? positionSizePercent : (savedForResult?.positionSizePercent ?? 100);
-    const commission = commissionBps;
-    const slippage = slippageBps;
-    const cap = positionCapPercent(sz);
-    const fixedPct = sz.useStopLoss ? Math.min(posSize, cap) : stopOffPositionPercent(sz, posSize);
-
-    const resolvedParams = (strat.parameters ?? []).map((param) => ({
-      param,
-      value: result.params[param.key] ?? currentParams[param.key] ?? param.default,
-    }));
-    const trailingStopEmaPeriod =
-      Number(resolvedParams.find((p) => p.param.key === 'trailingStopEmaPeriod')?.value ?? 0) || 0;
-    const longestPeriod = Math.max(
-      26,
-      ...resolvedParams.map(({ value }) => (typeof value === 'number' ? value : 0)),
-    );
-    const minBars = Math.max(250, longestPeriod * 5);
-
+    const run = lastRunsRef.current.find((r) => r.strategyId === resultStrategyId) ?? null;
     const dataset = availableDatasets.find((d) => d.file === result.dataset);
-    const symbol = dataset?.symbol ?? 'UNKNOWN';
-    const timeframe = (dataset?.timeframe ?? 'unknown').toLowerCase();
-    // Dataset timeframe -> the runtime's Interval (trading/runtime/config.ts).
-    const liveIntervals: Record<string, string> = { '1m': '1min', '5m': '5min', '15m': '15min', '30m': '30min', '1h': '1h', '1d': '1d' };
-    const interval = liveIntervals[timeframe];
-    // Calendar days that hold minBars bars. The runtime trades regular-session
-    // bars only, 09:30-16:00 ET; Tradier keeps 40 days of timesales.
-    const historyDays = interval === '1d'
-      ? Math.ceil(minBars * 1.5)
-      : interval
-        ? Math.min(40, Math.ceil((minBars / Math.ceil(390 / ({ '1min': 1, '5min': 5, '15min': 15, '30min': 30, '1h': 60 } as Record<string, number>)[interval])) * 1.4) + 3)
-        : 0;
-    const source = strategySource?.id === resultStrategyId ? strategySource.source : null;
-
-    // Everything the backtest did that the live runtime does not.
-    const gaps: string[] = [];
-    if (!interval) gaps.push(`**Bar interval ${timeframe}.** The runtime supports 1min, 5min, 15min, 30min, 1h and 1d only.`);
-    if (symbol === 'UNKNOWN') gaps.push("**Symbol.** The dataset this result came from isn't known; ask me which ticker.");
-    if (atrStop) gaps.push(`**ATR stop loss** (${sz.atrStopMultiple} × ATR). The runtime places no stop orders.`);
-    else if (sl > 0) gaps.push(`**Stop loss ${sl}%.** The runtime places no stop orders.`);
-    if (tp > 0) gaps.push(`**Take profit ${tp}%.** The runtime places no limit/target orders.`);
-    if (trailingStopEmaPeriod > 0) gaps.push(`**Trailing EMA${trailingStopEmaPeriod} stop.** The backtest engine applies it outside the strategy handler; the runtime doesn't.`);
-    if (sz.mode === 'risk' && sz.useStopLoss) gaps.push(`**Risk-based sizing** (${sz.riskPercent}% of equity per stop distance). The runtime sizes as a fixed % of equity (\`positionSizePct\`).`);
-    if (sz.allowReversal) gaps.push('**Reversals** (close and open the other side on one bar). The runtime exits or enters on a bar, never both.');
-
-    const params = Object.fromEntries(resolvedParams.map(({ param, value }) => [param.key, value]));
-    const entry = [
-      '{',
-      `  strategyId: '${strat.id}',`,
-      `  symbol: '${symbol}',`,
-      `  interval: '${interval ?? timeframe}',`,
-      `  params: { ${Object.entries(params).map(([k, v]) => `${k}: ${typeof v === 'string' ? `'${v}'` : v}`).join(', ')} },`,
-      '  ...SHARED_RISK,',
-      ...(shorts ? [] : ['  enableShorts: false,']),
-      ...(fixedPct !== 100 ? [`  positionSizePct: ${fixedPct},`] : []),
-      // SHARED_RISK in deployments.ts already sets 25% / 20 bars.
-      ...(sz.maxDrawdownPercent > 0 && sz.maxDrawdownPercent !== 25 ? [`  drawdownLimitPct: ${sz.maxDrawdownPercent},`] : []),
-      ...(sz.maxDrawdownPercent > 0 && sz.drawdownPauseBars !== 20 ? [`  drawdownPauseBars: ${sz.drawdownPauseBars},`] : []),
-      `  minBars: ${minBars},`,
-      `  historyDays: ${historyDays},`,
-      '}',
-    ];
-
-    const lines: string[] = [
-      `# Deploy ${strat.name} on ${symbol} (${interval ?? timeframe}) to the Tradier paper-trading stack`,
-      '',
-      "Add this backtested strategy to the live paper-trading CDK stack in `trading/`, deploy it, and check it's running. Read `trading/README.md`, `trading/deployments.ts` and `trading/runtime/config.ts` first; they're the source of truth for how this works. Don't write a new Lambda, deploy script or CloudFormation template: the stack builds the Lambda, schedule, state row, alarm and dashboard section from one entry in `DEPLOYMENTS`, and bundles the strategy straight from `app/strategies/`.",
-      '',
-      'Work through it without stopping to ask, except where a step below says to stop.',
-      '',
-      '## 1. The strategy code',
-      '',
-      `Make \`app/strategies/${strat.id}.ts\` match the source below, which is what the backtest ran. If the file is missing, create it and register it in \`app/strategies/index.ts\` under \`'${strat.id}'\`. If it exists and differs, the source below wins; tell me what changed. If it already matches, leave it.`,
-      '',
-    ];
-    if (source) {
-      lines.push('```ts', source.trimEnd(), '```');
-    } else {
-      lines.push(`(The source couldn't be loaded when this prompt was copied. Use \`app/strategies/${strat.id}.ts\` as it is and say so.)`);
-    }
-
-    lines.push(
-      '',
-      '## 2. The deployment entry',
-      '',
-      'Add this to `DEPLOYMENTS` in `trading/deployments.ts`, with a short comment like the existing entries (what the backtest warmed up on, where daily bars come from, and so on):',
-      '',
-      '```ts',
-      ...entry,
-      '```',
-      '',
-      `- **minBars / historyDays** are estimates: ${minBars} bars covers 5× the longest parameter (${longestPeriod}). Check \`historyDays\` really yields \`minBars\` bars for ${symbol}${interval === '1d' ? ' (sessions, not calendar days)' : '; intraday bars are regular-session only and history is capped at 40 days, about 27 sessions'}. If it can't, lower \`minBars\` only as far as the strategy's indicators allow, and say why in the comment.`,
-      `- **One enabled deployment per symbol.** If another enabled entry already trades ${symbol}, set it to \`enabled: false\` with a comment saying this one replaced it (the existing TXN and TQQQ entries show the pattern). The new deployment adopts Tradier's open position on its first run.`,
-      '- **Allocations must total ≤ 100%** across enabled entries. If adding this one goes over, stop and show me the current split and a proposed rebalance before changing any other entry.',
-      `- Synth fails on an unknown strategy or parameter; fix the entry, don't loosen the validation.`,
-    );
-
-    lines.push('', '## 3. What the backtest did that the live runtime can\'t', '');
-    if (gaps.length) {
-      lines.push(
-        'The runtime trades market orders on the strategy signal only, with fixed-% sizing, a daily loss limit and a drawdown pause. This backtest also used:',
-        '',
-        ...gaps.map((g) => `- ${g}`),
-        '',
-        "**Stop here and tell me** before deploying: live results won't match the backtest. I'll either accept it, or ask you to add the feature to `trading/runtime` (with tests in `runtime/*.test.ts`) first.",
-      );
-    } else {
-      lines.push('Nothing: every setting this backtest used maps onto the runtime.');
-    }
-    lines.push(
-      '',
-      `Costs the backtest assumed, for comparing results later (nothing to configure): ${commission} bps commission, ${slippage} bps slippage per fill.`,
-    );
-
-    lines.push(
-      '',
-      '## 4. Check, ship, deploy',
-      '',
-      '1. From the repo root: `npx tsc --noEmit`, `npx eslint <changed files>`, `npm run build`, `npm test`. In `trading/`: `npm run typecheck`. Fix anything this change broke.',
-      '2. Commit and push following `CLAUDE.md` (branch, then fast-forward `main`). Never push red.',
-      '3. `aws sts get-caller-identity` to confirm credentials resolve. If they don\'t, stop and tell me how to sign in; never ask me to paste keys.',
-      '4. `cd trading && npx cdk diff`. Expect new resources for this deployment, plus a disabled schedule if you replaced one. If it would replace or delete anything else (the state table, another deployment\'s Lambda), stop and show me.',
-      '5. `npx cdk deploy --require-approval never`.',
-      '6. `npm run dry-run -- --latest <deployment id>` (the id is built from the entry; see `deploymentId` in `runtime/config.ts`). Confirm the logged line shows bars, indicator values and a signal with no error, and enough bars for `minBars`.',
-      '',
-      'Finish with: the deployment id and Lambda name, the dry-run signal, what the `TradierTrading` dashboard URL is (stack output), and anything you changed beyond the new entry.',
-      '',
-      '---',
-      '',
-      `*Backtest this came from (for comparison, not to enforce): ${result.datasetLabel ?? dataset?.label ?? 'n/a'}, ${shorts ? 'long and short' : 'long only'}, ${result.totalPnlPercent >= 0 ? '+' : ''}${result.totalPnlPercent.toFixed(2)}% over ${result.totalTrades} trades, ${result.winRate.toFixed(1)}% win rate, ${result.maxDrawdownPercent.toFixed(2)}% max drawdown, Sharpe ${result.sharpeRatio.toFixed(2)}, starting from $${INITIAL_CAPITAL.toLocaleString()}.*`,
-    );
-
-    return lines.join('\n');
-  }, [
-    activeResult,
-    selectedStrategyId,
-    currentParams,
-    stopLossPercent,
-    takeProfitPercent,
-    enableShorts,
-    positionSizePercent,
-    commissionBps,
-    slippageBps,
-    sizing,
-    availableDatasets,
-    strategySource,
-  ]);
+    return buildDeployPrompt({
+      strategy: strat,
+      params: result.params ?? {},
+      run,
+      symbol: dataset?.symbol ?? null,
+      timeframe: dataset?.timeframe ?? null,
+      source: strategySource?.id === resultStrategyId ? strategySource.source : null,
+      backtest: {
+        label: result.datasetLabel ?? dataset?.label ?? 'n/a',
+        totalPnlPercent: result.totalPnlPercent,
+        totalTrades: result.totalTrades,
+        winRate: result.winRate,
+        maxDrawdownPercent: result.maxDrawdownPercent,
+        sharpeRatio: result.sharpeRatio,
+        initialCapital: INITIAL_CAPITAL,
+      },
+    });
+  }, [activeResult, selectedStrategyId, availableDatasets, strategySource]);
 
   // Copy the Lambda deployment prompt to clipboard
   const copyLambdaPrompt = useCallback(async () => {
