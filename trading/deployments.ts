@@ -241,7 +241,12 @@ export const DEPLOYMENTS: Deployment[] = [
     interval: '30min',
     params: { period: 3, stdDev: 1.5, days: 3, entryPctB: 33, exitPctB: 67, trendFilter: true },
     ...SHARED_RISK,
-    // The backtest was long only, at half its equity per trade.
+    // Long only, like the backtest. Diverges from the backtest on purpose
+    // (Michael, 2026-11-17: "no stop loss"): the backtest also used a 2x ATR
+    // stop and sized each trade to risk 1% of equity at that stop. Live has
+    // neither: no stop orders, exits only on the %b signal (or the daily loss
+    // and drawdown limits), and a fixed 50% of equity per trade. Expect deeper
+    // per-trade losses and a larger drawdown than the backtest's 1.48%.
     enableShorts: false,
     positionSizePct: 50,
     // The trend filter is on, so the 200-bar SMA is read: no entry can happen
