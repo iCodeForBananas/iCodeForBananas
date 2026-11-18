@@ -147,7 +147,7 @@ export function DeploymentPanel({ row, go, backtest, config, color, now, onClose
     <Dialog.Root open onOpenChange={(open) => !open && onClose()}>
       <Dialog.Content
         // A side sheet rather than a centered modal; the whole screen on a phone.
-        className="!fixed !inset-y-0 !right-0 !left-auto !m-0 !h-dvh !max-h-dvh !w-screen !max-w-none !overflow-y-auto !rounded-none !p-0 sm:!w-[max(33vw,28rem)] sm:!border-l sm:!border-line-strong"
+        className="!fixed !inset-y-0 !right-0 !left-auto !m-0 !h-dvh !max-h-dvh !w-screen !max-w-none !overflow-y-auto !rounded-none !p-0 sm:!w-[max(45vw,28rem)] sm:!border-l sm:!border-line-strong"
         onCloseAutoFocus={(e) => {
           e.preventDefault();
           returnFocus();
