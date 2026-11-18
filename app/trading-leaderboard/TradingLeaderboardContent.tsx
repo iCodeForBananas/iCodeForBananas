@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { DropdownMenu, Skeleton } from "@radix-ui/themes";
 import { ArrowDown, ArrowUp, Check, EllipsisVertical, LineChart as LineChartIcon, MessageSquareText, RotateCw } from "lucide-react";
@@ -387,7 +387,6 @@ export function TradingLeaderboardView({
   const sorted = sortCurves(curves, goLive, sort);
   const enough = (c: EquitySummary) => goLive.get(c.id)?.sample.status !== "insufficient";
   const ranked = [...sorted.filter(enough), ...sorted.filter((c) => !enough(c))];
-  const firstThin = ranked.findIndex((c) => !enough(c));
   const { height, setHeight, save } = useChartHeight();
   const frame = useRef<HTMLDivElement>(null);
   const [panelId, setPanelId] = useState<string | null>(null);
@@ -411,7 +410,6 @@ export function TradingLeaderboardView({
   // menu column stays at the right edge the same way.
   const pinnedLeft = "sticky left-0 z-[1] bg-surface-raised";
   const pinnedRight = "sticky right-0 z-[1] bg-surface-raised";
-  const COLUMNS = 11;
   const sortProps = (key: SortKey) => ({ sortKey: key, sort, onSort: (k: SortKey) => setSort((s) => nextSort(s, k)) });
 
   return (
@@ -468,7 +466,7 @@ export function TradingLeaderboardView({
               </tr>
             </thead>
             <tbody>
-              {ranked.map((c, index) => {
+              {ranked.map((c) => {
                 const go = goLive.get(c.id);
                 const thin = go?.sample.status === "insufficient";
                 const tradeOk = go?.sample.tradeStatsMeaningful ?? false;
@@ -476,19 +474,8 @@ export function TradingLeaderboardView({
                 const weak = "text-ink-muted";
                 const dimmed = highlight !== null && highlight !== c.id;
                 return (
-                  <Fragment key={c.id}>
-                    {index === firstThin && (
-                      <tr className="border-b border-line-subtle">
-                        <td colSpan={COLUMNS} className="bg-surface-sunken p-0">
-                          <div className="sticky left-0 w-[calc(100vw-4rem)] max-w-2xl whitespace-normal px-4 py-2 text-left text-12 text-ink-muted">
-                            <span className="font-medium text-ink-primary">{firstThin === 0 ? "None has enough data yet" : "Not enough data yet"}</span>
-                            {" · "}Under {SAMPLE.minTrades} closed trades or {SAMPLE.minDays} trading days, results can&apos;t be told from luck
-                            {firstThin === 0 ? ", so the returns below are a record, not a ranking." : ", so these aren't ranked against the rows above."}
-                          </div>
-                        </td>
-                      </tr>
-                    )}
                     <tr
+                      key={c.id}
                       className={`border-b border-line-subtle text-ink-primary transition-opacity last:border-0 ${dimmed ? "opacity-60" : ""}`}
                       onMouseEnter={() => setPreview(c.id)}
                       onMouseLeave={() => setPreview(null)}
@@ -528,7 +515,6 @@ export function TradingLeaderboardView({
                         />
                       </td>
                     </tr>
-                  </Fragment>
                 );
               })}
             </tbody>
