@@ -52,6 +52,7 @@ import { DEFAULT_KIT, kitFromMetadata, kitToMetadata, type KitSettings } from ".
 import { KitPlayer } from "../../KitPlayer";
 import styles from "../../songwriter.module.css";
 import TopBar from "../../TopBar";
+import { fitForPrint } from "../../printFit";
 import LibraryDrawer from "../../LibraryDrawer";
 import { useLeadSheetLibrary } from "../../useLibrary";
 import { useAutoFit } from "../../useAutoFit";
@@ -153,6 +154,7 @@ const SheetContent = memo(function SheetContent({
   bpm,
   kit,
   hideHeading,
+  forPrint,
 }: {
   sheet: LeadSheet;
   fullscreen: boolean;
@@ -179,12 +181,17 @@ const SheetContent = memo(function SheetContent({
   bpm?: number;
   /** The top bar already shows the title and notes; drop them from the sheet. */
   hideHeading?: boolean;
+  /** The paper copy: the heading spans both columns and the drum-kit chip is left off. */
+  forPrint?: boolean;
 }) {
   const beatTempo = bpm ?? sheet.tempo ?? DEFAULT_BPM;
   const columnsActive = !!(columnCount || columnWidthVw);
   return (
     <div>
-      <div className={`border-b border-line-subtle ${hideHeading ? "mb-6 pb-3" : "mb-8 pb-6"} ${columnsActive ? "max-w-3xl mx-auto" : ""}`}>
+      <div
+        className={`border-b border-line-subtle ${hideHeading ? "mb-6 pb-3" : forPrint ? "mb-5 pb-3" : "mb-8 pb-6"} ${columnsActive ? "max-w-3xl mx-auto" : ""}`}
+        style={forPrint ? { columnSpan: "all" } : undefined}
+      >
         {!hideHeading && (
           <h1
             className={`font-bold leading-tight mb-3 text-ink-primary ${fullscreen ? "text-[1.75em]" : "text-[1.5em]"}`}
@@ -201,7 +208,7 @@ const SheetContent = memo(function SheetContent({
             {sheet.capo ? `Capo ${sheet.capo}` : "No capo"}
           </span>
           {sheet.tempo && <span className={styles.chip}>{sheet.tempo} bpm</span>}
-          <span className={styles.chip}>{kit?.preset ?? "Custom kit"}</span>
+          {!forPrint && <span className={styles.chip}>{kit?.preset ?? "Custom kit"}</span>}
         </div>
         {sheet.general_notes && !hideHeading && (
           <p className={`mt-3 italic text-ink-muted text-ink-muted ${fullscreen ? "text-[1em]" : "text-[0.875em]"}`}>
@@ -211,7 +218,7 @@ const SheetContent = memo(function SheetContent({
       </div>
 
       <div
-        className={`space-y-8 ${columnsActive ? "leadsheet-columns" : ""}`}
+        className={`${forPrint ? "space-y-5" : "space-y-8"} ${columnsActive ? "leadsheet-columns" : ""}`}
         style={
           columnsActive
             ? ({
@@ -232,7 +239,7 @@ const SheetContent = memo(function SheetContent({
           const lines = (section.content ?? "").split("\n");
           return (
             <div key={section.id} style={{ breakInside: "avoid" }}>
-              <div className='mb-4'>
+              <div className={forPrint ? "mb-2" : "mb-4"}>
                 {onEditSection ? (
                   <button
                     type='button'
@@ -255,7 +262,7 @@ const SheetContent = memo(function SheetContent({
               </div>
               {/* No overflow-x here: long lines wrap rather than scroll sideways,
                   so nothing renders a horizontal scrollbar on screen or in print. */}
-              <div className='space-y-3'>
+              <div className={forPrint ? "space-y-1" : "space-y-3"}>
                 <SortableLines enabled={!!onMoveLine} sectionIndex={sectionIndex} count={lines.length}>
                 {lines.map((line, i) => {
                   // The grip and the row travel together; without reordering the
@@ -491,6 +498,18 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
   const [autoFit, setAutoFit] = useState(true);
   const stageRef = useRef<HTMLDivElement | null>(null);
   const sheetRef = useRef<HTMLDivElement | null>(null);
+  const printRef = useRef<HTMLDivElement | null>(null);
+  const printInnerRef = useRef<HTMLDivElement | null>(null);
+
+  // Lay the paper copy out to fit the page on every print, whether it came
+  // from the Print button or the browser's own Ctrl+P.
+  useEffect(() => {
+    const fit = () => {
+      if (printRef.current && printInnerRef.current) fitForPrint(printRef.current, printInnerRef.current);
+    };
+    window.addEventListener("beforeprint", fit);
+    return () => window.removeEventListener("beforeprint", fit);
+  }, []);
   const [follow, setFollow] = useState(true);
   const [autoPlay, setAutoPlay] = useState(false);
   const [bpm, setBpm] = useState(DEFAULT_BPM);
@@ -1303,6 +1322,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
       onDrumsToggle={toggleDrums}
       drumsPlaying={kitPlaying}
       onBackToSongs={() => goTo(router, "/songwriter")}
+      onPrint={() => printSong(sheet.title)}
       notes={sheet.general_notes}
     />
   );
@@ -1311,9 +1331,10 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
     <>
       {/* Print-only view: chrome-free layout that only renders when printing.
           The screen view below is hidden via print:hidden so only this prints. */}
-      <div className='hidden print:block' style={{ background: "#fff", color: "var(--ds-palette-light-foreground)" }}>
-        <div className='leadsheet-force-light max-w-3xl mx-auto px-2 py-4' style={{ fontSize: `${fontScale}%` }}>
-          <SheetContent sheet={sheet} fullscreen={false} transposeSteps={transposeSteps} />
+      <div ref={printRef} className='hidden print:block' style={{ background: "#fff", color: "var(--ds-palette-light-foreground)" }}>
+        {/* Size and columns are set by fitForPrint, not the on-screen text size. */}
+        <div ref={printInnerRef} className='leadsheet-force-light'>
+          <SheetContent sheet={sheet} fullscreen={false} transposeSteps={transposeSteps} forPrint />
         </div>
       </div>
 

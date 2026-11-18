@@ -1,6 +1,6 @@
 "use client";
 
-import { AlignLeft, ChevronRight, Drum, Eye, Menu, PencilLine } from "lucide-react";
+import { AlignLeft, ChevronRight, Drum, Eye, Menu, PencilLine, Printer } from "lucide-react";
 import { ToggleButton } from "@/app/components/ui/toggle-button";
 import { Button } from "@/app/components/ui/button";
 import styles from "./songwriter.module.css";
@@ -32,6 +32,7 @@ export default function TopBar({
   drumsPlaying,
   onBackToSongs,
   notes,
+  onPrint,
 }: {
   /** Opens the song library. Takes its own confirm-before-discard guard where needed. */
   onLibraryClick: () => void;
@@ -55,6 +56,8 @@ export default function TopBar({
   onBackToSongs?: () => void;
   /** The song's general notes, shown on one line beside the title. */
   notes?: string | null;
+  /** Prints the song laid out for paper. */
+  onPrint?: () => void;
 }) {
   const oneLineNotes = notes?.replace(/\s+/g, " ").trim();
   return (
@@ -111,6 +114,13 @@ export default function TopBar({
       {!onBackToSongs && <div className={styles.spacer} />}
 
       {rightSlot}
+
+      {onPrint && (
+        <Button variant='secondary' size='lg' onClick={onPrint} aria-label='Print'>
+          <Printer className='w-5 h-5' />
+          <span className={styles.hideSm}>Print</span>
+        </Button>
+      )}
 
       {onDrumsToggle && (
         <ToggleButton size='lg' pressed={!!drumsOpen}
