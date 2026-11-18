@@ -59,6 +59,27 @@ export const DEPLOYMENTS: Deployment[] = [
     // The backtest warmed up on at least 400 sessions: about 580 calendar days.
     minBars: 400,
     historyDays: 600,
+    // Replaced by IBS TXN 15m (26/76) below: one account holds one net TXN
+    // position, and that one adopts whatever this one left open in Tradier.
+    // Kept deployed with its schedule off, to switch back easily.
+    enabled: false,
+  },
+  {
+    strategyId: 'ibs-mean-reversion',
+    symbol: 'TXN',
+    interval: '15min',
+    params: { entryIbs: 26, exitIbs: 76, trendFilter: false },
+    ...SHARED_RISK,
+    // IBS reads only the current bar. The one lookback in the strategy is the
+    // 200 SMA, and with trendFilter off it isn't read, so minBars is a floor
+    // that would keep the SMA warm rather than something this entry needs.
+    // 30 calendar days hold at least 18 regular-session days even with two
+    // market holidays in the window: over 450 bars of 26, counting a half
+    // day. Tradier keeps 40 days of 15-minute history. The 380 bars /
+    // 24 days first proposed could fall to 14 sessions (364 bars) over
+    // Christmas and New Year, and the deployment would skip every bar.
+    minBars: 200,
+    historyDays: 30,
   },
   {
     strategyId: 'ibs-mean-reversion',
