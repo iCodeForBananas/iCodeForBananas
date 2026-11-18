@@ -6,17 +6,9 @@ if (!TRADIER_BASE_URL.includes('sandbox.tradier.com')) {
   throw new Error(`Refusing to start: Tradier base URL ${TRADIER_BASE_URL} is not the sandbox`);
 }
 
-/**
- * Hard guardrail: every account call (balances, positions, orders, order
- * placement and cancellation) goes to this Tradier paper account and no other.
- * The secret's accountId, when it has one, must match it or the client refuses.
- */
-export const TRADIER_PAPER_ACCOUNT_ID = 'VA99925108';
-
 export interface TradierCreds {
   accessToken: string;
-  /** Optional; if present it must equal TRADIER_PAPER_ACCOUNT_ID. */
-  accountId?: string;
+  accountId: string;
 }
 
 export class TradierError extends Error {
@@ -137,13 +129,7 @@ export function createTradierClient(loadCreds: () => Promise<TradierCreds>, fetc
     throw lastErr;
   }
 
-  const acct = async () => {
-    const { accountId } = await creds();
-    if (accountId && accountId !== TRADIER_PAPER_ACCOUNT_ID) {
-      throw new Error(`Refusing account ${accountId}: trading is pinned to the paper account ${TRADIER_PAPER_ACCOUNT_ID}`);
-    }
-    return TRADIER_PAPER_ACCOUNT_ID;
-  };
+  const acct = async () => (await creds()).accountId;
 
   return {
     accountId: acct,

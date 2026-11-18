@@ -171,7 +171,7 @@ drawdown inside a trade.
 | Tear down | flatten positions in Tradier, then `npx cdk destroy`. The state table is retained; delete it by hand if you mean to. |
 
 The Tradier secret (`TRADIER_SECRET_NAME` in `deployments.ts`, JSON
-`{"accessToken": "...", "accountId": "VA99925108"}`) lives outside the stack, so
+`{"accessToken": "...", "accountId": "VA..."}`) lives outside the stack, so
 deploys and `cdk destroy` never touch it. To change the credentials:
 
 ```
@@ -179,10 +179,7 @@ aws secretsmanager put-secret-value --secret-id <name> --secret-string file://cr
 ```
 
 The base URL is hardcoded to `https://sandbox.tradier.com/v1` and checked on
-every request; nothing can point it at live trading. The account is pinned the
-same way: every balance, position and order call goes to the paper account
-`VA99925108` (`TRADIER_PAPER_ACCOUNT_ID` in `runtime/tradier.ts`), and a secret
-naming any other account is refused before a request is made.
+every request; nothing can point it at live trading.
 
 ## Tests
 

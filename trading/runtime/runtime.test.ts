@@ -5,7 +5,7 @@ import { awsName, deploymentId, functionName, resolveDeployment, validateDeploym
 import { aggregateBars, computeSeries, intradayBarClose, parseBars, regularSessionBars } from './market';
 import { emfFields } from './metrics';
 import { etDate, etWallToUtcMs, isRegularSessionClose, parseEtTimestamp } from './time';
-import { createTradierClient, TRADIER_PAPER_ACCOUNT_ID } from './tradier';
+import { createTradierClient } from './tradier';
 import { DEPLOYMENTS } from '../deployments';
 
 const base: Deployment = { id: 'a', strategyId: 'ibs-mean-reversion', symbol: 'QQQ', interval: '15min' };
@@ -223,7 +223,7 @@ describe('tradier client', () => {
 
   it('never retries a 4xx', async () => {
     let calls = 0;
-    const c = createTradierClient(async () => ({ accessToken: 't', accountId: TRADIER_PAPER_ACCOUNT_ID }), (async () => {
+    const c = createTradierClient(async () => ({ accessToken: 't', accountId: 'VA1' }), (async () => {
       calls++;
       return new Response('bad', { status: 400 });
     }) as typeof fetch);
@@ -233,7 +233,7 @@ describe('tradier client', () => {
 
   it('retries a 5xx up to three attempts', async () => {
     let calls = 0;
-    const c = createTradierClient(async () => ({ accessToken: 't', accountId: TRADIER_PAPER_ACCOUNT_ID }), (async () => {
+    const c = createTradierClient(async () => ({ accessToken: 't', accountId: 'VA1' }), (async () => {
       calls++;
       return calls < 3 ? new Response('down', { status: 503 }) : ok({ clock: { state: 'open' } });
     }) as typeof fetch);
@@ -243,7 +243,7 @@ describe('tradier client', () => {
 
   it('never retries an order placement', async () => {
     let calls = 0;
-    const c = createTradierClient(async () => ({ accessToken: 't', accountId: TRADIER_PAPER_ACCOUNT_ID }), (async () => {
+    const c = createTradierClient(async () => ({ accessToken: 't', accountId: 'VA1' }), (async () => {
       calls++;
       return new Response('down', { status: 502 });
     }) as typeof fetch);
@@ -257,7 +257,7 @@ describe('tradier client', () => {
     let status = 401;
     const c = createTradierClient(async () => {
       loads++;
-      return { accessToken: `t${loads}`, accountId: TRADIER_PAPER_ACCOUNT_ID };
+      return { accessToken: `t${loads}`, accountId: 'VA1' };
     }, (async (url: URL) => {
       urls.push(String(url));
       return status === 401 ? new Response('no', { status }) : ok({ clock: { state: 'closed' } });
@@ -267,30 +267,5 @@ describe('tradier client', () => {
     await c.clock();
     expect(loads).toBe(2);
     expect(urls.every((u) => u.startsWith('https://sandbox.tradier.com/v1/'))).toBe(true);
-  });
-
-  it('sends every account call to the pinned paper account', async () => {
-    const urls: string[] = [];
-    const c = createTradierClient(async () => ({ accessToken: 't' }), (async (url: URL) => {
-      urls.push(String(url));
-      return ok({ order: { id: 7 } });
-    }) as unknown as typeof fetch);
-    await c.placeMarketOrder({ symbol: 'QQQ', side: 'buy', quantity: 1, tag: 'x' });
-    await c.cancelOrder('7');
-    expect(urls).toEqual([
-      'https://sandbox.tradier.com/v1/accounts/VA99925108/orders',
-      'https://sandbox.tradier.com/v1/accounts/VA99925108/orders/7',
-    ]);
-  });
-
-  it('refuses a secret that names another account, before any request', async () => {
-    let calls = 0;
-    const c = createTradierClient(async () => ({ accessToken: 't', accountId: 'VA00000000' }), (async () => {
-      calls++;
-      return ok({});
-    }) as typeof fetch);
-    await expect(c.placeMarketOrder({ symbol: 'QQQ', side: 'buy', quantity: 1, tag: 'x' })).rejects.toThrow(/pinned to the paper account VA99925108/);
-    await expect(c.balances()).rejects.toThrow(/VA00000000/);
-    expect(calls).toBe(0);
   });
 });
