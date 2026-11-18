@@ -3,7 +3,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { DropdownMenu, Skeleton } from "@radix-ui/themes";
-import { ArrowDown, Check, EllipsisVertical, LineChart as LineChartIcon, MessageSquareText, RotateCw } from "lucide-react";
+import { ArrowDown, ArrowUp, Check, EllipsisVertical, LineChart as LineChartIcon, MessageSquareText, RotateCw } from "lucide-react";
 import ClientOnly from "@/app/lib/ClientOnly";
 import BentoPageLayout from "@/app/components/BentoPageLayout";
 import { Bento } from "@/app/components/ui/bento";
@@ -17,6 +17,7 @@ import { SAMPLE } from "@/app/lib/tradeStats";
 import { CLAUDE_NEW_CHAT, claudePrefillUrl } from "@/app/lib/claudeLink";
 import { DivergenceChip, SampleChip, fmt, fmtSignedPct, goLiveFor, sampleText, type GoLive, type LedgerRow } from "./goLive";
 import { DeploymentPanel } from "./DeploymentPanel";
+import { DEFAULT_SORT, nextSort, sortCurves, type Sort, type SortKey } from "./leaderboardSort";
 import { loadEquityCurves, loadSnapshotPnl, loadTradeLedgers } from "@/app/lib/tradingHistorySource";
 
 const REFRESH_MS = 60_000;
@@ -379,11 +380,13 @@ export function TradingLeaderboardView({
 }) {
   const colors = new Map(curves.map((c, i) => [c.id, colorAt(i)]));
   const dashes = new Map(curves.map((c, i) => [c.id, dashAt(i)]));
-  // Deployments with enough data first, by return; the rest below a divider,
-  // so a lucky handful of trades never tops the board.
-  const byReturn = [...curves].sort((a, b) => b.returnPct - a.returnPct);
+  // Deployments with enough data first, by the chosen column (return by
+  // default); the rest below a divider, so a lucky handful of trades never
+  // tops the board whichever column it's sorted on.
+  const [sort, setSort] = useState<Sort>(DEFAULT_SORT);
+  const sorted = sortCurves(curves, goLive, sort);
   const enough = (c: EquitySummary) => goLive.get(c.id)?.sample.status !== "insufficient";
-  const ranked = [...byReturn.filter(enough), ...byReturn.filter((c) => !enough(c))];
+  const ranked = [...sorted.filter(enough), ...sorted.filter((c) => !enough(c))];
   const firstThin = ranked.findIndex((c) => !enough(c));
   const { height, setHeight, save } = useChartHeight();
   const frame = useRef<HTMLDivElement>(null);
@@ -409,6 +412,7 @@ export function TradingLeaderboardView({
   const pinnedLeft = "sticky left-0 z-[1] bg-surface-raised";
   const pinnedRight = "sticky right-0 z-[1] bg-surface-raised";
   const COLUMNS = 11;
+  const sortProps = (key: SortKey) => ({ sortKey: key, sort, onSort: (k: SortKey) => setSort((s) => nextSort(s, k)) });
 
   return (
     <div className="flex flex-1 flex-col gap-4">
@@ -448,21 +452,16 @@ export function TradingLeaderboardView({
           <table className="w-max min-w-full whitespace-nowrap text-13 tabular-nums">
             <thead>
               <tr className="border-b border-line-subtle">
-                <th className={`${head} ${pinnedLeft} pl-4 text-left`}>Deployment</th>
-                <th className={numHead} aria-sort="descending" title="Ranked by return, among deployments with enough data">
-                  <span className="inline-flex items-center gap-1 text-ink-primary">
-                    <ArrowDown aria-hidden className="size-3" />
-                    Return
-                  </span>
-                </th>
-                <th className={`${head} text-left`} title="Whether the live trades are what the backtest would produce">vs backtest</th>
-                <th className={`${head} text-left`} title={`Enough data needs ${SAMPLE.minTrades} closed trades and ${SAMPLE.minDays} trading days`}>Sample</th>
-                <th className={`${numHead} border-l border-line-subtle`} title="Largest peak-to-trough fall in its equity">Max DD</th>
-                <th className={numHead} title="Gross profit over gross loss">Profit factor</th>
-                <th className={numHead} title="Average P&L per trade, as a percent of the equity it was sized from">Per trade</th>
-                <th className={numHead}>Trades</th>
-                <th className={numHead}>Win rate</th>
-                <th className={numHead}>Updated</th>
+                <SortHeader {...sortProps("label")} className={`${head} ${pinnedLeft} pl-4 text-left`}>Deployment</SortHeader>
+                <SortHeader {...sortProps("return")} className={numHead} title="Return, among deployments with enough data">Return</SortHeader>
+                <SortHeader {...sortProps("divergence")} className={`${head} text-left`} title="Whether the live trades are what the backtest would produce">vs backtest</SortHeader>
+                <SortHeader {...sortProps("sample")} className={`${head} text-left`} title={`Enough data needs ${SAMPLE.minTrades} closed trades and ${SAMPLE.minDays} trading days`}>Sample</SortHeader>
+                <SortHeader {...sortProps("maxDrawdown")} className={`${numHead} border-l border-line-subtle`} title="Largest peak-to-trough fall in its equity">Max DD</SortHeader>
+                <SortHeader {...sortProps("profitFactor")} className={numHead} title="Gross profit over gross loss">Profit factor</SortHeader>
+                <SortHeader {...sortProps("perTrade")} className={numHead} title="Average P&L per trade, as a percent of the equity it was sized from">Per trade</SortHeader>
+                <SortHeader {...sortProps("trades")} className={numHead}>Trades</SortHeader>
+                <SortHeader {...sortProps("winRate")} className={numHead}>Win rate</SortHeader>
+                <SortHeader {...sortProps("updated")} className={numHead}>Updated</SortHeader>
                 <th className={`${head} ${pinnedRight} w-10 px-1`}>
                   <span className="sr-only">Actions</span>
                 </th>
@@ -549,6 +548,39 @@ export function TradingLeaderboardView({
         />
       )}
     </div>
+  );
+}
+
+/** A column header that sorts the table: click to sort by it, again to reverse. */
+function SortHeader({
+  sortKey,
+  sort,
+  onSort,
+  className,
+  title,
+  children,
+}: {
+  sortKey: SortKey;
+  sort: Sort;
+  onSort: (key: SortKey) => void;
+  className: string;
+  title?: string;
+  children: React.ReactNode;
+}) {
+  const active = sort.key === sortKey;
+  const Arrow = sort.dir === "asc" ? ArrowUp : ArrowDown;
+  const right = className.includes("text-right");
+  return (
+    <th className={className} aria-sort={active ? (sort.dir === "asc" ? "ascending" : "descending") : "none"} title={title}>
+      <button
+        type="button"
+        onClick={() => onSort(sortKey)}
+        className={`group inline-flex items-center gap-1 rounded-sm hover:text-ink-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${right ? "flex-row-reverse" : ""} ${active ? "text-ink-primary" : ""}`}
+      >
+        {children}
+        <Arrow aria-hidden className={`size-3 ${active ? "" : "opacity-0 group-hover:opacity-50"}`} />
+      </button>
+    </th>
   );
 }
 
