@@ -84,7 +84,10 @@ export class TradingStack extends Stack {
       const logGroup = new logs.LogGroup(this, `Logs-${d.id}`, {
         logGroupName: `/aws/lambda/${name}`,
         retention: logs.RetentionDays.THREE_MONTHS,
-        removalPolicy: RemovalPolicy.DESTROY,
+        // Kept when a deployment is removed from DEPLOYMENTS, so its run log
+        // outlives it (until the retention above expires it). Recreating the
+        // same deployment later needs the old group deleted first.
+        removalPolicy: RemovalPolicy.RETAIN,
       });
 
       const fn = new NodejsFunction(this, `Fn-${d.id}`, {
