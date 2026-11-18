@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { DropdownMenu, Skeleton } from "@radix-ui/themes";
-import { ArrowDown, ArrowUp, Check, EllipsisVertical, LineChart as LineChartIcon, MessageSquareText, RotateCw } from "lucide-react";
+import { Skeleton } from "@radix-ui/themes";
+import { ArrowDown, ArrowUp, Check, LineChart as LineChartIcon, MessageSquareText, RotateCw } from "lucide-react";
 import ClientOnly from "@/app/lib/ClientOnly";
 import BentoPageLayout from "@/app/components/BentoPageLayout";
 import { Bento } from "@/app/components/ui/bento";
@@ -248,25 +248,13 @@ function ChartResizeHandle({
   );
 }
 
-/**
- * A row's actions: a real menu button (Radix DropdownMenu) whose menu is
- * portaled to <body>, so the table's scroll container can't clip it.
- */
-function RowMenu({ label, onEquityCurve, buttonRef }: { label: string; onEquityCurve: () => void; buttonRef: (el: HTMLButtonElement | null) => void }) {
+/** A row's action: opens the deployment panel with its equity curve. */
+function EquityCurveButton({ label, onClick, buttonRef }: { label: string; onClick: () => void; buttonRef: (el: HTMLButtonElement | null) => void }) {
   return (
-    <DropdownMenu.Root>
-      <DropdownMenu.Trigger>
-        <Button ref={buttonRef} variant="ghost" size="icon" aria-label={`Actions for ${label}`}>
-          <EllipsisVertical className="h-4 w-4" />
-        </Button>
-      </DropdownMenu.Trigger>
-      <DropdownMenu.Content align="end">
-        <DropdownMenu.Item onSelect={onEquityCurve}>
-          <LineChartIcon className="h-4 w-4" />
-          Equity curve
-        </DropdownMenu.Item>
-      </DropdownMenu.Content>
-    </DropdownMenu.Root>
+    <Button ref={buttonRef} variant="secondary" size="sm" onClick={onClick} aria-label={`Equity curve for ${label}`}>
+      <LineChartIcon aria-hidden className="h-4 w-4" />
+      Equity curve
+    </Button>
   );
 }
 
@@ -390,7 +378,7 @@ export function TradingLeaderboardView({
   const { height, setHeight, save } = useChartHeight();
   const frame = useRef<HTMLDivElement>(null);
   const [panelId, setPanelId] = useState<string | null>(null);
-  const menuButtons = useRef(new Map<string, HTMLButtonElement>());
+  const curveButtons = useRef(new Map<string, HTMLButtonElement>());
   const panelRow = panelId ? rows.find((r) => r.deployment_id === panelId) : undefined;
   // The line picked out in the chart: a legend entry or table row being
   // hovered or focused, else the one clicked in the legend.
@@ -407,9 +395,11 @@ export function TradingLeaderboardView({
   const numHead = `${head} text-right`;
   // The deployment column stays put while the numbers scroll past it, on the
   // card's own surface so they slide underneath rather than through it; the
-  // menu column stays at the right edge the same way.
-  const pinnedLeft = "sticky left-0 z-[1] bg-surface-raised";
-  const pinnedRight = "sticky right-0 z-[1] bg-surface-raised";
+  // button column stays at the right edge the same way.
+  // Their dividers are inset shadows, not borders: a collapsed table border
+  // stays behind when its sticky cell moves.
+  const pinnedLeft = "sticky left-0 z-[1] bg-surface-raised shadow-[inset_-1px_0_0_var(--color-line-subtle)]";
+  const pinnedRight = "sticky right-0 z-[1] bg-surface-raised !border-l-0 shadow-[inset_1px_0_0_var(--color-line-subtle)]";
   const sortProps = (key: SortKey) => ({ sortKey: key, sort, onSort: (k: SortKey) => setSort((s) => nextSort(s, k)) });
 
   return (
@@ -447,20 +437,20 @@ export function TradingLeaderboardView({
           the card. min-w-full keeps the table filling the card when it fits. */}
       <Bento size="1" className="!p-0">
         <div className="overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch]">
-          <table className="w-max min-w-full whitespace-nowrap text-13 tabular-nums">
+          <table className="w-max min-w-full whitespace-nowrap text-13 tabular-nums [&_td+td]:border-l [&_td]:border-line-subtle [&_th+th]:border-l [&_th]:border-line-subtle">
             <thead>
               <tr className="border-b border-line-subtle">
                 <SortHeader {...sortProps("label")} className={`${head} ${pinnedLeft} pl-4 text-left`}>Deployment</SortHeader>
                 <SortHeader {...sortProps("return")} className={numHead} title="Return, among deployments with enough data">Return</SortHeader>
                 <SortHeader {...sortProps("divergence")} className={`${head} text-left`} title="Whether the live trades are what the backtest would produce">vs backtest</SortHeader>
                 <SortHeader {...sortProps("sample")} className={`${head} text-left`} title={`Enough data needs ${SAMPLE.minTrades} closed trades and ${SAMPLE.minDays} trading days`}>Sample</SortHeader>
-                <SortHeader {...sortProps("maxDrawdown")} className={`${numHead} border-l border-line-subtle`} title="Largest peak-to-trough fall in its equity">Max DD</SortHeader>
+                <SortHeader {...sortProps("maxDrawdown")} className={numHead} title="Largest peak-to-trough fall in its equity">Max DD</SortHeader>
                 <SortHeader {...sortProps("profitFactor")} className={numHead} title="Gross profit over gross loss">Profit factor</SortHeader>
                 <SortHeader {...sortProps("perTrade")} className={numHead} title="Average P&L per trade, as a percent of the equity it was sized from">Per trade</SortHeader>
                 <SortHeader {...sortProps("trades")} className={numHead}>Trades</SortHeader>
                 <SortHeader {...sortProps("winRate")} className={numHead}>Win rate</SortHeader>
                 <SortHeader {...sortProps("updated")} className={numHead}>Updated</SortHeader>
-                <th className={`${head} ${pinnedRight} w-10 px-1`}>
+                <th className={`${head} ${pinnedRight}`}>
                   <span className="sr-only">Actions</span>
                 </th>
               </tr>
@@ -498,19 +488,19 @@ export function TradingLeaderboardView({
                       <td className={`${cell} text-left sm:min-w-[6.5rem]`}>
                         {go && <SampleChip sample={go.sample} text={sampleText(go.sample, go.live?.trades ?? c.trades, go.live?.tradingDays ?? 0, true)} />}
                       </td>
-                      <td className={`${num} border-l border-line-subtle`}>{c.maxDrawdownPct.toFixed(2)}%</td>
+                      <td className={num}>{c.maxDrawdownPct.toFixed(2)}%</td>
                       <td className={`${num} ${tradeOk ? "" : weak}`}>{fmt(go?.live?.profitFactor)}</td>
                       <td className={`${num} ${tradeOk ? returnClass(go?.live?.expectancyPct ?? 0) : weak}`}>{fmtSignedPct(go?.live?.expectancyPct)}</td>
                       <td className={num}>{c.trades}</td>
                       <td className={`${num} ${tradeOk ? "" : weak}`}>{c.trades > 0 ? `${Math.round((c.wins / c.trades) * 100)}%` : "–"}</td>
                       <td className={`${num} text-ink-muted`}>{formatAge(now - c.latestAt)}</td>
-                      <td className={`${cell} ${pinnedRight} w-10 px-1 text-center`}>
-                        <RowMenu
+                      <td className={`${cell} ${pinnedRight} text-center`}>
+                        <EquityCurveButton
                           label={c.label}
-                          onEquityCurve={() => setPanelId(c.id)}
+                          onClick={() => setPanelId(c.id)}
                           buttonRef={(el) => {
-                            if (el) menuButtons.current.set(c.id, el);
-                            else menuButtons.current.delete(c.id);
+                            if (el) curveButtons.current.set(c.id, el);
+                            else curveButtons.current.delete(c.id);
                           }}
                         />
                       </td>
@@ -530,7 +520,7 @@ export function TradingLeaderboardView({
           color={colors.get(panelRow.deployment_id) ?? "var(--ds-color-text-muted)"}
           now={now}
           onClose={() => setPanelId(null)}
-          returnFocus={() => menuButtons.current.get(panelRow.deployment_id)?.focus()}
+          returnFocus={() => curveButtons.current.get(panelRow.deployment_id)?.focus()}
         />
       )}
     </div>

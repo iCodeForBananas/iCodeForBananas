@@ -1,11 +1,11 @@
 "use client";
 
-// The Trading Leaderboard's deployment panel, opened from a row's menu: one
+// The Trading Leaderboard's deployment panel, opened from a row's Equity curve button: one
 // deployment's mark-to-market equity curve (drawdowns shaded, the backtest
 // overlaid), what it holds, how it's configured, and every statistic that
 // doesn't fit the table. A Radix Themes Dialog styled as a side sheet, so
 // focus is trapped while it's open, Escape closes it, and focus goes back to
-// the menu button that opened it. Full-screen at phone width.
+// the button that opened it. Full-screen at phone width.
 
 import { useEffect, useMemo, useState } from "react";
 import { Dialog } from "@radix-ui/themes";
@@ -117,7 +117,7 @@ export interface DeploymentPanelProps {
   color: string;
   now: number;
   onClose: () => void;
-  /** Where focus goes when the panel closes: the menu button that opened it. */
+  /** Where focus goes when the panel closes: the button that opened it. */
   returnFocus: () => void;
 }
 
@@ -147,7 +147,7 @@ export function DeploymentPanel({ row, go, backtest, config, color, now, onClose
     <Dialog.Root open onOpenChange={(open) => !open && onClose()}>
       <Dialog.Content
         // A side sheet rather than a centered modal; the whole screen on a phone.
-        className="!fixed !inset-y-0 !right-0 !left-auto !m-0 !h-dvh !max-h-dvh !w-screen !max-w-none !overflow-y-auto !rounded-none !p-0 sm:!w-[min(46rem,100vw)] sm:!border-l sm:!border-line-strong"
+        className="!fixed !inset-y-0 !right-0 !left-auto !m-0 !h-dvh !max-h-dvh !w-screen !max-w-none !overflow-y-auto !rounded-none !p-0 sm:!w-[max(33vw,28rem)] sm:!border-l sm:!border-line-strong"
         onCloseAutoFocus={(e) => {
           e.preventDefault();
           returnFocus();
