@@ -214,6 +214,26 @@ export const DEPLOYMENTS: Deployment[] = [
     minBars: 150,
     historyDays: 40,
   },
+  {
+    strategyId: 'alligator',
+    symbol: 'SOFI',
+    interval: '15min',
+    // Sweep-derived periods, not the canonical 13/8/5: the "jaw" (35) is the
+    // slowest line but the "teeth" (3) is faster than the "lips" (20), so the
+    // strategy's comments about which line is fastest don't hold here. The
+    // signals are the crossings as coded, Lips through Teeth with Teeth vs Jaw.
+    params: { jawPeriod: 35, jawShift: 1, teethPeriod: 3, teethShift: 8, lipsPeriod: 20, lipsShift: 5 },
+    ...SHARED_RISK,
+    // The strategy holds until max(period + shift) + 1 = 36 bars, but its
+    // lines are recursive smoothed averages seeded from the first bar fetched,
+    // so they need far longer to match the backtest's: after 250 bars the
+    // seed's weight in the 35-period jaw is about 0.2%. 25 calendar days hold
+    // at least 15 regular-session days even with two holidays and a half day,
+    // so 378+ bars of 26; the 17 days first proposed could fall to 222 over
+    // Christmas and New Year, and the deployment would skip every bar.
+    minBars: 250,
+    historyDays: 25,
+  },
 ];
 
 /**
