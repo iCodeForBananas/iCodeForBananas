@@ -219,6 +219,9 @@ export const DEPLOYMENTS: Deployment[] = [
     // Christmas and New Year, and the deployment would skip every bar.
     minBars: 250,
     historyDays: 25,
+    // Replaced by ADX / DMI SOFI 15m below: one account holds one net SOFI
+    // position. Kept deployed with its schedule off, to switch back easily.
+    enabled: false,
   },
   {
     strategyId: 'connors-percent-b',
@@ -278,6 +281,25 @@ export const DEPLOYMENTS: Deployment[] = [
     drawdownPauseBars: 20,
     minBars: 5,
     historyDays: 5,
+  },
+  {
+    strategyId: 'adx-dmi',
+    symbol: 'SOFI',
+    interval: '15min',
+    params: {
+      period: 20,
+      adxThreshold: 25,
+    },
+    startingEquity: 10000,
+    enableShorts: false,
+    // The backtest sized by risk (1% of equity per 2x ATR stop, at most 50%);
+    // the runtime has no stops, so this trades its whole $10,000 (Michael's call).
+    positionSizePct: 100,
+    maxDailyLossPct: 100, // off: the backtest had no daily loss limit
+    drawdownLimitPct: 25,
+    drawdownPauseBars: 20,
+    minBars: 330,
+    historyDays: 21,
   },
 ];
 
