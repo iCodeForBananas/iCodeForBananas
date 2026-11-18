@@ -145,6 +145,24 @@ describe('runDeployment', () => {
     expect(metricNames(line)).toEqual(expect.arrayContaining(['StrategyEquity', 'PositionShares', 'BarLagSeconds', 'Invocations']));
   });
 
+  it('logs how far behind the wall clock the feed is, and trades on when the quote fails', async () => {
+    const h = harness({ rows: makeRows({ lastIbs: 0.1 }) });
+    let at = 0;
+    h.api.quote = async () => ({ symbol: 'QQQ', last: 100, trade_date: (at = h.deps.now()) - 15 * 60_000 });
+    await h.run();
+    const feed = h.log().feed as { wallClock: string; quote: { lagMinutes: number }; newestRawBar: { time: string } };
+    expect(feed.wallClock).toBe(new Date(at).toISOString());
+    expect(feed.quote.lagMinutes).toBe(15);
+    expect(feed.newestRawBar).not.toBeNull();
+
+    const h2 = harness({ rows: makeRows({ lastIbs: 0.1 }) });
+    h2.api.quote = async () => {
+      throw new Error('quote down');
+    };
+    expect((await h2.run()).action).toBe('entry long');
+    expect(h2.log().feed).toMatchObject({ quote: null });
+  });
+
   it('skips a bar it already processed', async () => {
     const h = harness({ rows: makeRows({ lastIbs: 0.1 }), state: { lastProcessedBarTime: lastBarTime, allocationBase: 100_000 } });
     const r = await h.run();

@@ -57,6 +57,16 @@ export interface HistoryRow {
   volume?: number | string;
 }
 
+/** /markets/quotes. Times are epoch ms; in the sandbox they carry its data delay. */
+export interface TradierQuote {
+  symbol: string;
+  last: number | string;
+  trade_date?: number | string;
+  bid?: number | string;
+  ask?: number | string;
+  bid_date?: number | string;
+}
+
 /** What the runtime needs from Tradier; the tests substitute a fake. */
 export interface TradierApi {
   accountId(): Promise<string>;
@@ -72,6 +82,8 @@ export interface TradierApi {
   timesales(q: { symbol: string; interval: string; start: string; end: string }): Promise<TimesalesRow[]>;
   /** Daily bars from /markets/history; start and end are YYYY-MM-DD. */
   history(q: { symbol: string; start: string; end: string }): Promise<HistoryRow[]>;
+  /** Only for logging how delayed the feed is; optional so fakes can leave it out. */
+  quote?(symbol: string): Promise<TradierQuote | null>;
 }
 
 const asArray = <T>(x: T | T[] | null | undefined | 'null'): T[] => (x == null || x === 'null' ? [] : Array.isArray(x) ? x : [x]);
@@ -156,5 +168,6 @@ export function createTradierClient(loadCreds: () => Promise<TradierCreds>, fetc
     timesales: async ({ symbol, interval, start, end }) =>
       asArray((await call('/markets/timesales', { query: { symbol, interval, start, end, session_filter: 'all' } }))?.series?.data),
     history: async ({ symbol, start, end }) => asArray((await call('/markets/history', { query: { symbol, interval: 'daily', start, end } }))?.history?.day),
+    quote: async (symbol) => asArray<TradierQuote>((await call('/markets/quotes', { query: { symbols: symbol }, retry: false }))?.quotes?.quote)[0] ?? null,
   };
 }

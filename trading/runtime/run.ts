@@ -15,7 +15,8 @@ import { aggregateBars, computeSeries, intradayBarClose, parseBars, parseDailyBa
 import type { EquityReporter, FillRecord } from './equity-report';
 import { emfFields, type MetricName } from './metrics';
 import { etDate, etParts, etStamp, etWallToUtcMs, isRegularSessionClose, sessionBounds } from './time';
-import type { TradierApi, TradierOrder } from './tradier';
+import { feedTiming } from './feed-timing';
+import type { TimesalesRow, TradierApi, TradierOrder } from './tradier';
 
 /** The expected bar must exist, and the run must start, within this long of it becoming available. */
 export const MAX_LATENESS_MS = 2 * 60 * 1000;
@@ -351,6 +352,7 @@ export async function runDeployment(d: ResolvedDeployment, event: RunEvent | und
 
     // Market data, polled briefly for the just-closed bar.
     let data: ParsedBars & { droppedIncomplete?: number; droppedOutsideSession?: number } = parseBars([], sourceMs, now());
+    let rawRows: TimesalesRow[] = [];
     for (let k = 0; k < FRESHNESS_POLLS; k++) {
       const end = now();
       const start = etDate(end - d.historyDays * 86_400_000);
@@ -358,6 +360,7 @@ export async function runDeployment(d: ResolvedDeployment, event: RunEvent | und
         data = parseDailyBars(await tradier.history({ symbol: d.symbol, start, end: etDate(end) }), now());
       } else {
         const rows = await tradier.timesales({ symbol: d.symbol, interval: sourceInterval, start: `${start} 00:00`, end: etStamp(end) });
+        rawRows = rows;
         const parsed = parseBars(rows, sourceMs, dataNow());
         // Regular hours only, like the backtest data.
         const session = regularSessionBars(parsed.bars);
@@ -367,6 +370,12 @@ export async function runDeployment(d: ResolvedDeployment, event: RunEvent | und
       const newest = data.bars[data.bars.length - 1];
       if (newest && closeOf(newest.time) >= boundary) break;
       if (k < FRESHNESS_POLLS - 1) await sleep(FRESHNESS_POLL_GAP_MS);
+    }
+    // How far behind the wall clock the sandbox feed is right now. Best effort,
+    // logging only: nothing below reads it.
+    if (!daily && tradier.quote) {
+      const quote = await tradier.quote(d.symbol).catch(() => null);
+      log.feed = feedTiming(now(), rawRows, quote);
     }
     const bars = data.bars;
     log.data = {
