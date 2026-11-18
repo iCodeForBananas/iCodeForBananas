@@ -234,6 +234,24 @@ export const DEPLOYMENTS: Deployment[] = [
     minBars: 250,
     historyDays: 25,
   },
+  {
+    strategyId: 'connors-percent-b',
+    symbol: 'NFLX',
+    // Built from 15-minute timesales; see aggregateBars in runtime/market.ts.
+    interval: '30min',
+    params: { period: 3, stdDev: 1.5, days: 3, entryPctB: 33, exitPctB: 67, trendFilter: true },
+    ...SHARED_RISK,
+    // The backtest was long only, at half its equity per trade.
+    enableShorts: false,
+    positionSizePct: 50,
+    // The trend filter is on, so the 200-bar SMA is read: no entry can happen
+    // until it exists, and as a plain average it's exact from bar 200. The
+    // 3-bar %b window needs nothing more. 40 days (Tradier's limit for
+    // 15-minute data) hold at least 26 sessions even over Christmas and New
+    // Year, about 330 bars of 13; the 335 first proposed would fall short then.
+    minBars: 200,
+    historyDays: 40,
+  },
 ];
 
 /**
