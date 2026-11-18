@@ -124,7 +124,7 @@ describe("literal settings", () => {
   });
 
   it("uses the costs the run assumed", () => {
-    expect(prompt({ strategyId: "ema-price-cross", run: fixedRun({ commissionBps: 3, slippageBps: 4.5 }) })).toContain("3 bps commission, 4.5 bps slippage");
+    expect(prompt({ strategyId: "ema-price-cross", run: fixedRun({ commissionBps: 3, slippageBps: 4.5 }) })).toContain("3 bps commission and 4.5 bps slippage");
   });
 
   it("leaves sweep-only keys out of the strategy's params", () => {

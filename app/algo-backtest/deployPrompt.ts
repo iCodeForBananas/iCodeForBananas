@@ -13,6 +13,7 @@
 import type { StrategyDefinition } from "@/app/strategies/types";
 import { positionCapPercent, stopOffPositionPercent, withRiskParams, type SizingSettings } from "@/app/lib/backtest-engine";
 import { strategyWarmup, type Warmup } from "@/app/lib/strategyWarmup";
+import { costsText } from "./reviewPrompt";
 
 type ParamValue = number | boolean | string;
 
@@ -303,10 +304,10 @@ export function buildDeployPrompt(input: DeployPromptInput): string {
   if (!run) lines.push("Not known: the run's settings weren't recorded.");
   else if (lacks.length) lines.push("Deploy without them; nothing to configure:", "", ...lacks.map((l) => `- ${l}`));
   else lines.push("None.");
-  lines.push(
-    "",
-    run ? `Costs the backtest assumed: ${num(run.commissionBps)} bps commission, ${num(run.slippageBps)} bps slippage per fill.` : "Costs the backtest assumed: not recorded.",
-  );
+  // Only costs the run charged; none charged, nothing to say.
+  const costs = run ? costsText(run) : null;
+  if (costs) lines.push("", `Costs the backtest charged: ${costs}.`);
+  else if (!run) lines.push("", "Costs the backtest charged: not recorded.");
 
   lines.push(
     "",

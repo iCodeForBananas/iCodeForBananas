@@ -27,14 +27,14 @@ import {
   SizingSettings,
   stopOffPositionPercent,
   generateSweep,
-  withRiskParams,
   type RiskRange,
 } from "@/app/lib/backtest-engine";
 import { useBacktestWorker, type BacktestJobResult, type StrategyRun } from "./useBacktestWorker";
 import { fitsClaudePrefill } from "@/app/lib/claudeLink";
 import { clearResultCache, countCachedResults } from "./resultCache";
 import { getMeta, queryPage, type ResultRow, type RunMeta } from "./runStore";
-import { buildDeployPrompt } from "./deployPrompt";
+import { buildDeployPrompt, type RunSettings } from "./deployPrompt";
+import { buildReviewPrompt, settingsLines } from "./reviewPrompt";
 import BacktestProgressPanel from "./BacktestProgressPanel";
 import ResultsBrowser from "./ResultsBrowser";
 
@@ -43,24 +43,6 @@ const DEFAULT_VISIBLE_CANDLES = 300;
 // localStorage keys
 const STORAGE_KEY_GLOBAL = "algo-backtest-global";
 const STORAGE_KEY_STRATEGY_PREFIX = "algo-backtest-strategy-";
-
-const CLAUDE_REVIEW_PROMPT = [
-  "Is this backtest worth paper trading? I'm screening candidates: the ones that hold up in paper trading become real-money trading systems. Paper trading costs me nothing, so the bar isn't perfection. It's a real, repeatable edge with a credible path to trading real money.",
-  "",
-  "Answer in this shape, nothing else:",
-  "1. First line, one verdict: **PAPER TRADE**, **NOT YET** (name the one change or test to do first), or **REJECT**.",
-  "2. Up to 5 bullets of reasons, each citing a number from the report.",
-  "3. If PAPER TRADE: what live results, over how many trades, would confirm it for real money or kill it.",
-  "No preamble, no general trading advice, no hedging.",
-  "",
-  "Judge it on:",
-  "- Out-of-sample: does the last 30% still make money and beat buy & hold? An edge that's only in-sample is a reject. If it looks like the best of a big parameter sweep, assume it's overfit unless out-of-sample says otherwise.",
-  "- Sample size: under ~30 trades the stats are noise. An infinite profit factor or near-100% win rate is a red flag, not a strength.",
-  "- Edge after costs: is the average trade comfortably bigger than commission plus slippage? Would it survive double the slippage?",
-  "- Drawdown: is the max drawdown something I'd sit through with real money, given the return?",
-  "- Buy & hold: is it worth running instead of just holding?",
-  "- Live fit: it runs on Tradier with 15-minute delayed data, market orders at the next bar's open, regular hours only, whole shares, and no stop or take-profit orders (it exits only on the strategy's own signals). Shorts need borrowable shares. If the result leans on a stop, a take profit or fractional shares, say how much that changes it.",
-].join("\n");
 
 // Everything on the page that isn't per strategy, so a refresh comes back to
 // the same run setup. Saved values are checked against what exists now (the
@@ -131,31 +113,6 @@ function sizingFrom(saved: Partial<StrategySettings> | null): SizingSettings {
 }
 
 /** One line per sizing setting, for the report. */
-function describeSizing(sizing: SizingSettings, positionSizePercent: number, stopLossPercent: number): string[] {
-  if (!sizing.useStopLoss) {
-    return [
-      `- **Sizing:** ${stopOffPositionPercent(sizing, positionSizePercent)}% of equity per trade (no stop)`,
-      "- **Stop Loss:** Off; the strategy's own signals are the only exits",
-      `- **Drawdown Limit:** ${sizing.maxDrawdownPercent > 0 ? `${sizing.maxDrawdownPercent}% below peak, then ${sizing.drawdownPauseBars > 0 ? `sit out ${sizing.drawdownPauseBars} bars` : 'stop trading'}` : 'Off'}`,
-    ];
-  }
-  const cap = positionCapPercent(sizing);
-  const stop =
-    sizing.atrStopMultiple > 0
-      ? `${sizing.atrStopMultiple} × ATR(14) from entry${stopLossPercent > 0 ? ` (${stopLossPercent}% until the ATR has warmed up)` : ''}`
-      : stopLossPercent > 0
-        ? `${stopLossPercent}%`
-        : 'Disabled';
-  return [
-    sizing.mode === 'risk'
-      ? `- **Sizing:** Risk ${sizing.riskPercent}% of equity per trade, positions capped at ${cap}% of equity`
-      : `- **Sizing:** Fixed ${Math.min(positionSizePercent, cap)}% of equity per trade`,
-    `- **Stop Loss:** ${stop}`,
-    `- **Gap Cap:** ${sizing.maxGapLossPercent > 0 ? `a ${sizing.gapShockPercent}% gap may cost at most ${sizing.maxGapLossPercent}% of equity` : 'Off'}`,
-    `- **Drawdown Limit:** ${sizing.maxDrawdownPercent > 0 ? `${sizing.maxDrawdownPercent}% below peak, then ${sizing.drawdownPauseBars > 0 ? `sit out ${sizing.drawdownPauseBars} bars` : 'stop trading'}` : 'Off'}`,
-  ];
-}
-
 function loadGlobalSettings(): Partial<GlobalSettings> | null {
   if (typeof window === "undefined") return null;
   try {
@@ -591,33 +548,38 @@ export default function AlgoBacktestPage() {
     }
   }, [selectedFiles, selectedStrategyIds, selectedStrategyId, paramVariations, currentParams, stopLossPercent, takeProfitPercent, enableShorts, positionSizePercent, commissionBps, slippageBps, sizing, buildSavedRun, runBacktestWorker, refreshCachedCount]);
 
+  // The settings the run that produced the active result used; the editor's
+  // only when that run isn't in this tab (it always is once a run finishes).
+  // The report and the review prompt both describe exactly these.
+  const activeResultRun = useCallback((): RunSettings | null => {
+    const result = activeResult;
+    if (!result) return null;
+    const resultStrategyId = result.strategyId ?? selectedStrategyId;
+    const recorded = lastRunsRef.current.find((r) => r.strategyId === resultStrategyId);
+    if (recorded) return recorded;
+    const isActiveEditorStrategy = resultStrategyId === selectedStrategyId;
+    const saved = isActiveEditorStrategy ? null : loadStrategySettings(resultStrategyId);
+    return {
+      stopLossPercent: isActiveEditorStrategy ? stopLossPercent : (saved?.stopLossPercent ?? 1),
+      takeProfitPercent: isActiveEditorStrategy ? takeProfitPercent : (saved?.takeProfitPercent ?? 0),
+      enableShorts: isActiveEditorStrategy ? enableShorts : (saved?.enableShorts ?? false),
+      positionSizePercent: isActiveEditorStrategy ? positionSizePercent : (saved?.positionSizePercent ?? 100),
+      commissionBps,
+      slippageBps,
+      sizing: isActiveEditorStrategy ? sizing : sizingFrom(saved),
+    };
+  }, [activeResult, selectedStrategyId, stopLossPercent, takeProfitPercent, enableShorts, positionSizePercent, commissionBps, slippageBps, sizing]);
+
   // Generate markdown report for clipboard
   const generateMarkdownReport = useCallback((includeTrades = true) => {
     const result = activeResult;
-    if (!result) return '';
+    const run = activeResultRun();
+    if (!result || !run) return '';
     // Prefer the strategy this result was actually generated from. Falls back
     // to the active editor when the API did not tag the result (legacy runs).
     const resultStrategyId = result.strategyId ?? selectedStrategyId;
     const strat = AVAILABLE_STRATEGIES[resultStrategyId];
     if (!strat) return '';
-
-    // Risk settings + shorts also depend on which strategy produced this result.
-    const isActiveEditorStrategy = resultStrategyId === selectedStrategyId;
-    const savedForResult = isActiveEditorStrategy ? null : loadStrategySettings(resultStrategyId);
-    // A stop or target sweep ran this result with the values in its params.
-    const reportRisk = withRiskParams(
-      {
-        stopLossPercent: isActiveEditorStrategy ? stopLossPercent : (savedForResult?.stopLossPercent ?? 1),
-        takeProfitPercent: isActiveEditorStrategy ? takeProfitPercent : (savedForResult?.takeProfitPercent ?? 0),
-        sizing: isActiveEditorStrategy ? sizing : sizingFrom(savedForResult),
-      },
-      result.params ?? {},
-    );
-    const reportSL = reportRisk.stopLossPercent;
-    const reportShorts = isActiveEditorStrategy ? enableShorts : (savedForResult?.enableShorts ?? false);
-    const reportSizing = reportRisk.sizing!;
-    const reportTP = !reportSizing.useTakeProfit ? 0 : reportRisk.takeProfitPercent;
-    const reportPosSize = isActiveEditorStrategy ? positionSizePercent : (savedForResult?.positionSizePercent ?? 100);
 
     const datasetLabels = selectedFiles.map(f => {
       const ds = availableDatasets.find(d => d.file === f);
@@ -640,10 +602,7 @@ export default function AlgoBacktestPage() {
       ...(result.outOfSamplePnlPercent !== undefined
         ? [`- **In-sample (first 70% of bars):** ${(result.inSamplePnlPercent ?? 0).toFixed(2)}%; **out-of-sample (last 30%):** ${result.outOfSamplePnlPercent.toFixed(2)}% vs buy & hold ${(result.outOfSampleBuyAndHoldPercent ?? 0).toFixed(2)}%`]
         : []),
-      ...describeSizing(reportSizing, reportPosSize, reportSL),
-      `- **Take Profit:** ${reportTP > 0 ? `${reportTP}%` : 'Disabled'}`,
-      `- **Short Selling:** ${reportShorts ? 'Enabled' : 'Disabled'}`,
-      `- **Costs:** ${commissionBps} bps commission and ${slippageBps} bps slippage per fill (each entry and each exit)`,
+      ...settingsLines(run, result.params ?? {}),
     ];
 
     if (strat.parameters && strat.parameters.length > 0) {
@@ -691,7 +650,7 @@ export default function AlgoBacktestPage() {
     }
 
     return lines.join('\n');
-  }, [activeResult, selectedStrategyId, selectedFiles, availableDatasets, currentParams, stopLossPercent, takeProfitPercent, enableShorts, positionSizePercent, commissionBps, slippageBps, sizing]);
+  }, [activeResult, activeResultRun, selectedStrategyId, selectedFiles, availableDatasets, currentParams]);
 
   // Open the report in a new Claude chat, asking whether it's worth running
   // live. The whole report rides in the chat's ?q= prefill when it fits; a
@@ -699,14 +658,16 @@ export default function AlgoBacktestPage() {
   // and the full report goes to the clipboard to paste in after.
   const reviewWithClaude = useCallback(async () => {
     const full = generateMarkdownReport(true);
-    if (!full) return;
+    const run = activeResultRun();
+    if (!full || !run) return;
+    const reviewPrompt = buildReviewPrompt(run, activeResult?.params ?? {});
     const fits = fitsClaudePrefill;
-    let message = `${CLAUDE_REVIEW_PROMPT}\n\n${full}`;
+    let message = `${reviewPrompt}\n\n${full}`;
     let trimmed = false;
     if (!fits(message)) {
       trimmed = true;
-      message = `${CLAUDE_REVIEW_PROMPT}\n\nThe full trade log is on my clipboard; I'll paste it in my next message.\n\n${generateMarkdownReport(false)}`;
-      if (!fits(message)) message = `${CLAUDE_REVIEW_PROMPT}\n\nThe full report is on my clipboard; I'll paste it in my next message.`;
+      message = `${reviewPrompt}\n\nThe full trade log is on my clipboard; I'll paste it in my next message.\n\n${generateMarkdownReport(false)}`;
+      if (!fits(message)) message = `${reviewPrompt}\n\nThe full report is on my clipboard; I'll paste it in my next message.`;
     }
     // Open first, inside the click, so a popup blocker allows it.
     window.open(`https://claude.ai/new?q=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
@@ -720,7 +681,7 @@ export default function AlgoBacktestPage() {
     }
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
-  }, [generateMarkdownReport]);
+  }, [generateMarkdownReport, activeResultRun, activeResult]);
 
   // Source of the strategy behind the active result, fetched so the Lambda
   // prompt can carry the exact logic rather than a one-line description.
