@@ -13,8 +13,6 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
     "trading/cdk.out/**",
-    // Standalone iPad app with its own toolchain (space-math-ios/package.json).
-    "space-math-ios/**",
   ]),
 ]);
 
