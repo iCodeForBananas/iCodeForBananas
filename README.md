@@ -1,12 +1,6 @@
 # iCodeForBananas
 
-Personal dashboard built with Next.js 16, React 19, TypeScript, Supabase, and Vercel.
-
-## Features
-
-- **Task Board** — Kanban board (backlog / in-progress / done)
-- **Space Math** — Cai's math practice progress dashboard
-- **Songwriter** — Write, arrange and play jazz lead sheets
+Personal exploration app built with Next.js 16, React 19, TypeScript, Supabase, and Vercel.
 
 ## Page Context Copier
 
