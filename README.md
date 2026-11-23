@@ -20,6 +20,12 @@ A space-themed math game for kids in kindergarten through grade 3, on iPad, iPho
 
 A guitar tuner for iPhone, iPad, Android and the web. Pick a string, pluck it, and turn the peg until the line goes green. It measures against the string you picked rather than the nearest note, so even a badly slack string shows which way to turn. No ads, no accounts, and audio never leaves the device. → [Use it in the browser](https://icodeforbananas.github.io/guitar-tuner/) · [Source on GitHub](https://github.com/iCodeForBananas/guitar-tuner)
 
+## 5×5 Tracker
+
+[![5×5 Tracker](https://raw.githubusercontent.com/iCodeForBananas/five-by-five-tracker/main/docs/marquee/marquee.png)](https://github.com/iCodeForBananas/five-by-five-tracker)
+
+A tracker for the classic 5×5 strength program on iPhone, iPad, Android and the web. Tap a lift after each set, and a 2:00 rest timer sits at the top. Each lift has a bar of reps in the last seven days against its weekly target, and the one furthest behind is flagged to do next, so you rotate lifts without being tied to Workout A or B. Data stays on the device. → [Use it in the browser](https://icodeforbananas.github.io/five-by-five-tracker/) · [Source on GitHub](https://github.com/iCodeForBananas/five-by-five-tracker)
+
 ## SimpleWinClean
 
 [![SimpleWinClean](https://raw.githubusercontent.com/iCodeForBananas/simplewinclean/main/docs/marquee/marquee.png)](https://github.com/iCodeForBananas/simplewinclean)
