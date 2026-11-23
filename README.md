@@ -16,7 +16,7 @@ A space-themed math game for kids in kindergarten through grade 3, on iPad, iPho
 
 ## Guitar Tuner
 
-[![Guitar Tuner](https://raw.githubusercontent.com/iCodeForBananas/guitar-tuner/main/docs/marquee/marquee.png)](https://github.com/iCodeForBananas/guitar-tuner)
+[![Guitar Tuner](https://raw.githubusercontent.com/iCodeForBananas/guitar-tuner/main/docs/marquee/marquee.png?v=2)](https://github.com/iCodeForBananas/guitar-tuner)
 
 A guitar tuner for iPhone, iPad, Android and the web. Pick a string, pluck it, and turn the peg until the line goes green. It measures against the string you picked rather than the nearest note, so even a badly slack string shows which way to turn. No ads, no accounts, and audio never leaves the device. → [Use it in the browser](https://icodeforbananas.github.io/guitar-tuner/) · [Source on GitHub](https://github.com/iCodeForBananas/guitar-tuner)
 
