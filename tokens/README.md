@@ -186,16 +186,14 @@ dialog or panel, `rounded-full` for a dot, avatar or pill.
 
 ## What is deliberately not on the system
 
-**Painted scenes.** `app/shoot-simulator/ShootSimulator.tsx` is a night street
-drawn into a canvas — brick, bark, neon, graffiti, robots — and
-`SpaceBackground` in `app/space-math/SpaceMathPage.tsx` is a starfield. Layer 2
-has nothing to say about what colour a comet tail is, and flattening a scene
-into sixteen terminal colours would delete the artwork rather than standardise
-it. The chrome around both is on the tokens.
+**Painted scenes.** `SpaceBackground` in `app/space-math/SpaceMathPage.tsx` is a
+starfield. Layer 2 has nothing to say about what colour a comet tail is, and
+flattening a scene into sixteen terminal colours would delete the artwork rather
+than standardise it. The chrome around it is on the tokens.
 
 That is the only exception. Grepping `app/` for a colour literal or a Tailwind
-palette class returns those two scenes, plus the print stylesheet, where white
-paper and black ink are the point.
+palette class returns that scene, plus the print stylesheet, where white paper
+and black ink are the point.
 
 ## What is deliberately not tokenized here
 
