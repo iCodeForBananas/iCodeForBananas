@@ -5,6 +5,7 @@ import {
   keyModeForChordType,
   noteAtDegree,
   parseRomanPattern,
+  progressionChordType,
   progressionKeyMode,
 } from "./chordProgressions";
 
@@ -60,5 +61,29 @@ describe("key mode", () => {
   it("spells A minor's minor-key loop as Am F C G", () => {
     const chords = parseRomanPattern("i–VI–III–VII").map((c) => `${noteAtDegree("A", c.degree, false)}${c.quality === "Minor" ? "m" : ""}`);
     expect(chords).toEqual(["Am", "F", "C", "G"]);
+  });
+});
+
+describe("progressionChordType", () => {
+  it("turns E major's I–V–vi–IV into Maj7 and m7 chords when Maj7 is picked", () => {
+    const chords = parseRomanPattern("I–V–vi–IV").map(
+      (c) => `${noteAtDegree("E", c.degree, false)} ${progressionChordType(c.quality, "Maj7")}`
+    );
+    expect(chords).toEqual(["E Maj7", "B Maj7", "C# m7", "A Maj7"]);
+  });
+
+  it("keeps triads for Major and Minor, and diminished chords as they are", () => {
+    expect(progressionChordType("Major", "Major")).toBe("Major");
+    expect(progressionChordType("Minor", "Major")).toBe("Minor");
+    expect(progressionChordType("Major", "Minor")).toBe("Major");
+    expect(progressionChordType("Diminished", "Maj7")).toBe("Diminished");
+  });
+
+  it("only produces types the chord library knows", async () => {
+    const { TYPE_GROUPS } = await import("./chordVoicings");
+    const known = new Set<string>(TYPE_GROUPS.flatMap((g) => [...g.types]));
+    for (const t of known) {
+      for (const q of ["Major", "Minor"] as const) expect(known).toContain(progressionChordType(q, t));
+    }
   });
 });

@@ -138,6 +138,40 @@ export const keyModeForChordType = (chordType: string): KeyMode =>
   // Case matters: the minor types start with a lowercase m, Maj7/Maj9 with an uppercase M.
   chordType === "Minor" || chordType.startsWith("m") ? "minor" : "major";
 
+/**
+ * For each Chord Type setting, the type a progression's major chords take and
+ * the type its minor chords take. Picking Maj7 in E major turns I–V–vi–IV
+ * into EMaj7–BMaj7–C#m7–AMaj7: every chord gets the 7th, and each keeps the
+ * major or minor third the key gives it. A type with no minor counterpart in
+ * the shape library (Add9) leaves minor chords as plain triads.
+ */
+const PROGRESSION_TYPE_PAIRS: Record<string, { major: string; minor: string }> = {
+  Major: { major: "Major", minor: "Minor" },
+  Minor: { major: "Major", minor: "Minor" },
+  Maj7: { major: "Maj7", minor: "m7" },
+  "7": { major: "7", minor: "m7" },
+  m7: { major: "Maj7", minor: "m7" },
+  mMaj7: { major: "Maj7", minor: "mMaj7" },
+  Sus2: { major: "Sus2", minor: "Sus2" },
+  Sus4: { major: "Sus4", minor: "Sus4" },
+  Add9: { major: "Add9", minor: "Minor" },
+  "6": { major: "6", minor: "m6" },
+  m6: { major: "6", minor: "m6" },
+  "9": { major: "9", minor: "m9" },
+  Maj9: { major: "Maj9", minor: "m9" },
+  m9: { major: "Maj9", minor: "m9" },
+  "13": { major: "13", minor: "m11" },
+  Maj13: { major: "Maj13", minor: "m11" },
+  m11: { major: "Maj9", minor: "m11" },
+};
+
+/** The chord type one chord of a progression is shown as, given the Chord Type setting. */
+export const progressionChordType = (quality: ChordQuality, chordType: string): string => {
+  if (quality === "Diminished") return "Diminished";
+  const pair = PROGRESSION_TYPE_PAIRS[chordType] ?? PROGRESSION_TYPE_PAIRS.Major;
+  return quality === "Major" ? pair.major : pair.minor;
+};
+
 /** Only the progressions that live in this key mode; groups left empty drop out. */
 export const filterGroupsByKeyMode = (groups: ProgressionGroup[], mode: KeyMode): ProgressionGroup[] =>
   groups

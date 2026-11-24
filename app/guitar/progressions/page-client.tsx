@@ -7,8 +7,8 @@ import {
   filterGroupsByKeyMode,
   keyModeForChordType,
   noteAtDegree,
+  progressionChordType,
   parseRomanPattern,
-  type ChordQuality,
 } from "@/app/lib/chordProgressions";
 import { formatChordLabel, getNeckVoicings, type NeckVoicing } from "@/app/lib/chordVoicings";
 import { MAX_POSITION, updateGuitarSettings, useGuitarSettings } from "@/app/lib/guitarSettings";
@@ -49,7 +49,7 @@ const anchorIndex = (voicings: NeckVoicing[], targetFret: number | null): number
 function ProgressionChordCard({
   roman,
   note,
-  quality,
+  type,
   voicings,
   index,
   pinnedId,
@@ -59,7 +59,8 @@ function ProgressionChordCard({
 }: {
   roman: string;
   note: string;
-  quality: ChordQuality;
+  /** The chord type shown: the Chord Type setting, fitted to this chord's major or minor third. */
+  type: string;
   /** This chord's rungs, lowest-sounding first. */
   voicings: NeckVoicing[];
   /** Which rung the fret anchor landed this chord on. */
@@ -74,7 +75,7 @@ function ProgressionChordCard({
   const selectedIndex = pinnedIndex >= 0 ? pinnedIndex : index;
   const selected = voicings[selectedIndex];
   const shape = selected?.shape ?? null;
-  const label = formatChordLabel(note, quality);
+  const label = formatChordLabel(note, type);
 
   return (
     <Bento className="flex flex-col items-center gap-2">
@@ -151,13 +152,16 @@ export default function ProgressionsTool() {
       parseRomanPattern(selectedProgressionDef.pattern).map((c) => ({
         ...c,
         note: noteAtDegree(selectedNote, c.degree, useFlats),
+        // Maj7 in the settings makes every chord a 7th chord: Maj7 on the
+        // major ones, m7 on the minor ones, so the progression keeps its key.
+        type: progressionChordType(c.quality, chordType),
       })),
-    [selectedProgressionDef, selectedNote, useFlats]
+    [selectedProgressionDef, selectedNote, useFlats, chordType]
   );
 
   // Each chord's rungs up the neck, lowest-sounding first.
   const progressionVoicingSets = useMemo(
-    () => progressionChords.map((c) => getNeckVoicings(c.note, c.quality, tuning)),
+    () => progressionChords.map((c) => getNeckVoicings(c.note, c.type, tuning)),
     [progressionChords, tuning]
   );
 
@@ -314,7 +318,7 @@ export default function ProgressionsTool() {
               key={i}
               roman={c.roman}
               note={c.note}
-              quality={c.quality}
+              type={c.type}
               voicings={progressionVoicingSets[i] ?? []}
               index={selectedIndices[i] ?? 0}
               pinnedId={pinnedVoicings[i]}
