@@ -358,6 +358,7 @@ export function TradingLeaderboardView({
   goLive,
   backtests,
   configs,
+  onConfigChange = () => {},
 }: {
   curves: EquitySummary[];
   rows: EquityCurveRow[];
@@ -365,6 +366,7 @@ export function TradingLeaderboardView({
   goLive: Map<string, GoLive>;
   backtests: Map<string, BacktestReference | null>;
   configs: Map<string, DeploymentConfig>;
+  onConfigChange?: (id: string, config: DeploymentConfig | null) => void;
 }) {
   const colors = new Map(curves.map((c, i) => [c.id, colorAt(i)]));
   const dashes = new Map(curves.map((c, i) => [c.id, dashAt(i)]));
@@ -479,7 +481,10 @@ export function TradingLeaderboardView({
                           />
                           {c.label}
                         </div>
-                        <div className="pl-4 text-12 text-ink-muted">{c.strategy}</div>
+                        <div className="pl-4 text-12 text-ink-muted">
+                          {c.strategy}
+                          {configs.size > 0 && (configs.get(c.id) ? (configs.get(c.id)!.enabled ? "" : " · Disabled") : " · Not deployed")}
+                        </div>
                       </td>
                       <td className={`${num} font-semibold ${thin ? weak : returnClass(c.returnPct)}`}>{signedPct(c.returnPct)}</td>
                       <td className={`${cell} text-left sm:min-w-[6rem]`}>
@@ -520,6 +525,7 @@ export function TradingLeaderboardView({
           color={colors.get(panelRow.deployment_id) ?? "var(--ds-color-text-muted)"}
           now={now}
           onClose={() => setPanelId(null)}
+          onConfigChange={onConfigChange}
           returnFocus={() => curveButtons.current.get(panelRow.deployment_id)?.focus()}
         />
       )}
@@ -727,7 +733,18 @@ function AnalyzeInClaude({ buildPrompt, disabled }: { buildPrompt: () => { promp
 }
 
 export default function TradingLeaderboardContent({ deploymentConfigs = [] }: { deploymentConfigs?: DeploymentConfig[] }) {
-  const configs = useMemo(() => new Map(deploymentConfigs.map((c) => [c.id, c])), [deploymentConfigs]);
+  // The server's list (revalidated every few minutes), with this visit's own
+  // disables, enables and deletes applied on top so they show at once.
+  const [overrides, setOverrides] = useState<Map<string, DeploymentConfig | null>>(new Map());
+  const configs = useMemo(() => {
+    const out = new Map(deploymentConfigs.map((c) => [c.id, c]));
+    for (const [id, c] of overrides) {
+      if (c) out.set(id, c);
+      else out.delete(id);
+    }
+    return out;
+  }, [deploymentConfigs, overrides]);
+  const onConfigChange = useCallback((id: string, c: DeploymentConfig | null) => setOverrides((prev) => new Map(prev).set(id, c)), []);
   const [curves, setCurves] = useState<EquitySummary[] | null>(null);
   const [rows, setRows] = useState<EquityCurveRow[] | null>(null);
   const [pnl, setPnl] = useState<Map<string, Pnl>>(new Map());
@@ -842,7 +859,7 @@ export default function TradingLeaderboardContent({ deploymentConfigs = [] }: { 
           Each deployment reports after every bar it trades. None has in the last 7 days, so either they&apos;re all paused at /strategy-deployments or the markets have been closed.
         </PageMessage>
       )}
-      {curves && curves.length > 0 && <TradingLeaderboardView curves={curves} rows={rows ?? []} now={loadedAt} goLive={goLive} backtests={backtests} configs={configs} />}
+      {curves && curves.length > 0 && <TradingLeaderboardView curves={curves} rows={rows ?? []} now={loadedAt} goLive={goLive} backtests={backtests} configs={configs} onConfigChange={onConfigChange} />}
     </BentoPageLayout>
   );
 }

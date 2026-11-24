@@ -20,6 +20,7 @@ import { deploymentStats } from "@/app/lib/tradingStats";
 import { deploymentDetails, type DeploymentConfig } from "@/app/lib/deploymentDetails";
 import { backtestOverlay, equityHistory, type EquityHistory } from "@/app/lib/equityHistory";
 import type { BacktestReference } from "@/app/lib/backtestReference";
+import { DeploymentControls } from "./DeploymentControls";
 import { DivergenceChip, GoLiveStats, SampleChip, fmt, fmtMoney, fmtSignedPct, type GoLive } from "./goLive";
 
 const ET: Intl.DateTimeFormatOptions = { timeZone: "America/New_York" };
@@ -117,11 +118,13 @@ export interface DeploymentPanelProps {
   color: string;
   now: number;
   onClose: () => void;
+  /** After a disable, enable or delete from the panel: the new config, or null once deleted. */
+  onConfigChange: (id: string, config: DeploymentConfig | null) => void;
   /** Where focus goes when the panel closes: the button that opened it. */
   returnFocus: () => void;
 }
 
-export function DeploymentPanel({ row, go, backtest, config, color, now, onClose, returnFocus }: DeploymentPanelProps) {
+export function DeploymentPanel({ row, go, backtest, config, color, now, onClose, onConfigChange, returnFocus }: DeploymentPanelProps) {
   const s = useMemo(() => deploymentStats(row, now), [row, now]);
   const details = useMemo(() => deploymentDetails({ id: row.deployment_id, strategyId: row.strategy_id, symbol: row.symbol, interval: row.bar_interval }), [row]);
   const label = `${row.symbol} ${row.bar_interval.replace("min", "m")}`;
@@ -254,7 +257,7 @@ export function DeploymentPanel({ row, go, backtest, config, color, now, onClose
                     ? "No longer deployed"
                     : config.enabled
                       ? "Running, every bar close"
-                      : "Paused",
+                      : "Disabled",
                 ],
                 ...(config
                   ? ([
@@ -265,6 +268,10 @@ export function DeploymentPanel({ row, go, backtest, config, color, now, onClose
                 ["Deployment id", <code key="id" className="break-all text-xs">{row.deployment_id}</code>],
               ]}
             />
+          </Bento>
+
+          <Bento size="2" title="Manage" tooltip="Disable, enable or delete this deployment. Trading operators only.">
+            <DeploymentControls id={row.deployment_id} label={label} config={config} onChange={onConfigChange} />
           </Bento>
 
           <Bento size="2" title="Statistics, live and backtest">
