@@ -14,7 +14,41 @@ esbuild. Each Lambda bundles only its own strategy: esbuild aliases
 carries no crossover code. Change a strategy, redeploy, and live trading
 changes with it.
 
-## Add a strategy
+## Deploy from the backtester (no CDK deploy)
+
+The quickest way: in `/algo-backtest`, pick a result and press **Deploy
+strategy**. The dialog fills every setting from the run that produced the
+result (the same values the Lambda prompt would write), leaves blank anything
+the run can't tell (risk-based sizing, say) for you to fill in, and saves one
+row to `public.strategy_deployments`
+([`supabase/migrations/20261123_strategy_deployments.sql`](../supabase/migrations/20261123_strategy_deployments.sql)).
+Manage them at `/strategy-deployments`: pause, resume, remove.
+
+One Lambda in this stack, `tradier-dispatcher`
+([`runtime/dispatch.ts`](runtime/dispatch.ts)), runs all of them. EventBridge
+Scheduler invokes it every 5 minutes, 09:00-16:55 ET on weekdays. Each tick it
+reads the enabled rows from Supabase (through `strategy_deployments_to_run`,
+with the equity reporter's token), keeps the ones a bar just became available
+for (`isDue`: 15 minutes after an intraday bar's close, 16:30 ET for daily),
+and runs each through `runDeployment`, the same run the per-deployment
+Lambdas do, in parallel. It bundles every strategy in `app/strategies`, so
+deploying a strategy is a database write; only a **new or changed strategy
+file** needs `npx cdk deploy` to reach it. Each run's outcome is written back
+to its row (`last_run_at`, `last_action`, `last_reason`, `last_error`).
+
+- Intervals: 5min, 15min, 30min, 1h, 1d (nothing finer than the tick).
+- Same rules as `deployments.ts`, checked by the API and again by the
+  dispatcher: a known strategy and parameters, one enabled deployment per
+  symbol across both kinds, and no id a code deployment already uses.
+- State lives in its own table, `tradier-trading-app-state`. Ids are built
+  the same way, so they show on the leaderboard like the others.
+- Only trading operators (`public.trading_operators`) can see or write rows.
+- Pausing or removing never touches Tradier: flatten an open position there.
+
+Check one by hand: invoke `tradier-dispatcher` with
+`{"dryRun": true, "evaluateLatest": true, "ids": ["<id>"]}` and read its log.
+
+## Add a strategy in code
 
 1. Add an entry to `DEPLOYMENTS` in [`deployments.ts`](deployments.ts):
 

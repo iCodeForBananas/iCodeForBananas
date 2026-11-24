@@ -16,6 +16,7 @@ import * as scheduler from 'aws-cdk-lib/aws-scheduler';
 import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import type { Construct } from 'constructs';
 import { DATA_DELAY_MS, INTERVALS, functionName, type ResolvedDeployment } from '../runtime/config';
+import { TICK_MINUTES } from '../runtime/app-deployments';
 import { METRIC_DIMENSION, METRIC_NAMESPACE } from '../runtime/metrics';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -176,6 +177,99 @@ export class TradingStack extends Stack {
       new CfnOutput(this, `ScheduleArn-${d.id}`, { value: schedule.attrArn });
     }
 
+    this.addDispatcher(props, schedulerRole, secret, equitySecret);
+
     new CfnOutput(this, 'StateTable', { value: table.tableArn });
+  }
+
+  /**
+   * The dispatcher: one Lambda that runs every deployment published from the
+   * backtester (runtime/dispatch.ts), every 5 minutes through the trading day.
+   * It reads its deployments from Supabase on each tick, so publishing one is a
+   * database write, not a deploy. Its state has its own table, so it can't
+   * touch a code deployment's row.
+   */
+  private addDispatcher(props: TradingStackProps, schedulerRole: iam.Role, secret: secretsmanager.ISecret, equitySecret: secretsmanager.ISecret) {
+    const name = 'tradier-dispatcher';
+    const table = new dynamodb.TableV2(this, 'AppState', {
+      tableName: 'tradier-trading-app-state',
+      partitionKey: { name: 'pk', type: dynamodb.AttributeType.STRING },
+      billing: dynamodb.Billing.onDemand(),
+      pointInTimeRecoverySpecification: { pointInTimeRecoveryEnabled: true },
+      removalPolicy: RemovalPolicy.RETAIN,
+    });
+    const logGroup = new logs.LogGroup(this, 'Logs-Dispatcher', {
+      logGroupName: `/aws/lambda/${name}`,
+      retention: logs.RetentionDays.THREE_MONTHS,
+      removalPolicy: RemovalPolicy.RETAIN,
+    });
+    const fn = new NodejsFunction(this, 'Fn-Dispatcher', {
+      functionName: name,
+      description: 'Tradier sandbox paper trader: runs every strategy deployed from the backtester',
+      entry: path.join(TRADING_DIR, 'runtime', 'dispatcher-handler.ts'),
+      handler: 'handler',
+      projectRoot: REPO_ROOT,
+      depsLockFilePath: path.join(TRADING_DIR, 'package-lock.json'),
+      runtime: lambda.Runtime.NODEJS_22_X,
+      architecture: lambda.Architecture.ARM_64,
+      memorySize: 512,
+      // Under the tick, so one tick never overlaps the next.
+      timeout: Duration.minutes(TICK_MINUTES - 1),
+      reservedConcurrentExecutions: 1,
+      retryAttempts: 0,
+      maxEventAge: Duration.seconds(120),
+      logGroup,
+      environment: {
+        TABLE_NAME: table.tableName,
+        SECRET_ID: props.tradierSecretName,
+        EQUITY_SECRET_ID: props.equityReporterSecretName,
+        NODE_OPTIONS: '--enable-source-maps',
+      },
+      bundling: {
+        format: OutputFormat.ESM,
+        target: 'node22',
+        sourceMap: true,
+        minify: false,
+        externalModules: ['@aws-sdk/*'],
+        mainFields: ['module', 'main'],
+      },
+    });
+    fn.addToRolePolicy(new iam.PolicyStatement({ actions: ['dynamodb:GetItem', 'dynamodb:PutItem'], resources: [table.tableArn] }));
+    secret.grantRead(fn);
+    equitySecret.grantRead(fn);
+    fn.grantInvoke(schedulerRole);
+
+    // Every 5 minutes, 09:00 to 16:55 ET on weekdays: the first 15-minute
+    // bar is available at 10:00 (09:45 + the 15-minute data delay), the last
+    // intraday one at 16:15, the daily run at 16:30. Ticks with nothing due
+    // read Supabase and exit.
+    const schedule = new scheduler.CfnSchedule(this, 'Schedule-Dispatcher', {
+      name,
+      description: `Every ${TICK_MINUTES} minutes through the trading day, weekdays: runs the deployments published from the backtester`,
+      scheduleExpression: `cron(0/${TICK_MINUTES} 9-16 ? * MON-FRI *)`,
+      scheduleExpressionTimezone: 'America/New_York',
+      flexibleTimeWindow: { mode: 'OFF' },
+      state: 'ENABLED',
+      target: {
+        arn: fn.functionArn,
+        roleArn: schedulerRole.roleArn,
+        input: '{}',
+        retryPolicy: { maximumRetryAttempts: 0, maximumEventAgeInSeconds: 120 },
+      },
+    });
+
+    const errorsAlarm = new cloudwatch.Alarm(this, 'ErrorsAlarm-Dispatcher', {
+      alarmName: `${name}-errors`,
+      alarmDescription: 'The dispatcher itself failed (could not read its deployments); see its log group',
+      metric: fn.metricErrors({ period: Duration.minutes(TICK_MINUTES), statistic: 'Sum' }),
+      threshold: 1,
+      evaluationPeriods: 1,
+      comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
+      treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+    });
+    for (const resource of [fn, logGroup, schedule, errorsAlarm, table]) Tags.of(resource).add('role', 'dispatcher');
+
+    new CfnOutput(this, 'DispatcherFunction', { value: fn.functionArn });
+    new CfnOutput(this, 'AppStateTable', { value: table.tableArn });
   }
 }

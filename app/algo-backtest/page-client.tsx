@@ -7,7 +7,7 @@ import BentoPageLayout from "../components/BentoPageLayout";
 import { Bento } from "../components/ui/bento";
 import { Badge, Box, Callout, Checkbox, CheckboxGroup, Code, Flex, Grid, SegmentedControl, Strong, Switch, Table, Text, TextField } from "@radix-ui/themes";
 import { Button } from "@/app/components/ui/button";
-import { Check, ChevronDown, MessageSquareText, Play, Trash2, X, Zap } from "lucide-react";
+import { Check, ChevronDown, MessageSquareText, Play, Rocket, Trash2, X, Zap } from "lucide-react";
 import { cn } from "@/app/lib/utils";
 import { IndicatorData, PositionSide } from "@/app/types";
 import {
@@ -34,6 +34,8 @@ import { fitsClaudePrefill } from "@/app/lib/claudeLink";
 import { clearResultCache, countCachedResults } from "./resultCache";
 import { getMeta, queryPage, type ResultRow, type RunMeta } from "./runStore";
 import { buildDeployPrompt, type RunSettings } from "./deployPrompt";
+import { buildDeployDraft, type DeployDraft } from "./deployConfig";
+import DeployStrategyDialog, { type BacktestSummary } from "./DeployStrategyDialog";
 import { buildReviewPrompt, settingsLines } from "./reviewPrompt";
 import BacktestProgressPanel from "./BacktestProgressPanel";
 import ResultsBrowser from "./ResultsBrowser";
@@ -260,6 +262,8 @@ export default function AlgoBacktestPage() {
   const [copied, setCopied] = useState(false);
   // Copy Lambda deployment prompt state
   const [lambdaPromptCopied, setLambdaPromptCopied] = useState(false);
+  // "Deploy strategy": the dialog's draft, built from the active result's run.
+  const [deploy, setDeploy] = useState<{ strategy: StrategyDefinition; draft: DeployDraft; backtest: BacktestSummary } | null>(null);
 
   // Risk management state (stop loss / take profit)
   // Initialized to 0/false; the strategy change effect restores saved values
@@ -731,6 +735,34 @@ export default function AlgoBacktestPage() {
       },
     });
   }, [activeResult, selectedStrategyId, availableDatasets, strategySource]);
+
+  // Open "Deploy strategy" with the settings of the run that produced this result.
+  const openDeploy = useCallback(() => {
+    const result = activeResult;
+    if (!result) return;
+    const resultStrategyId = result.strategyId ?? selectedStrategyId;
+    const strat = AVAILABLE_STRATEGIES[resultStrategyId];
+    if (!strat) return;
+    const run = lastRunsRef.current.find((r) => r.strategyId === resultStrategyId) ?? null;
+    const dataset = availableDatasets.find((d) => d.file === result.dataset);
+    const backtest = {
+      label: result.datasetLabel ?? dataset?.label ?? 'n/a',
+      totalPnlPercent: result.totalPnlPercent,
+      totalTrades: result.totalTrades,
+      winRate: result.winRate,
+      maxDrawdownPercent: result.maxDrawdownPercent,
+      sharpeRatio: result.sharpeRatio,
+    };
+    const draft = buildDeployDraft({
+      strategy: strat,
+      params: result.params ?? {},
+      run,
+      symbol: dataset?.symbol ?? null,
+      timeframe: dataset?.timeframe ?? null,
+      backtest: { ...backtest, initialCapital: INITIAL_CAPITAL },
+    });
+    setDeploy({ strategy: strat, draft, backtest });
+  }, [activeResult, selectedStrategyId, availableDatasets]);
 
   // Copy the Lambda deployment prompt to clipboard
   const copyLambdaPrompt = useCallback(async () => {
@@ -1508,6 +1540,15 @@ export default function AlgoBacktestPage() {
                         {lambdaPromptCopied ? <Check className='size-3.5' /> : <Zap className='size-3.5' />}
                         {lambdaPromptCopied ? "Copied!" : "Copy Lambda prompt"}
                       </Button>
+                      <Button
+                        size='sm'
+                        variant="primary"
+                        onClick={openDeploy}
+                        title='Paper-trade this result on Tradier: the dispatcher Lambda runs it every bar, no CDK deploy'
+                      >
+                        <Rocket className='size-3.5' />
+                        Deploy strategy
+                      </Button>
                     </Flex>
                   </Flex>
                 </>
@@ -1640,6 +1681,7 @@ export default function AlgoBacktestPage() {
           )}
         </Flex>
       )}
+      {deploy && <DeployStrategyDialog strategy={deploy.strategy} draft={deploy.draft} backtest={deploy.backtest} onClose={() => setDeploy(null)} />}
     </BentoPageLayout>
   );
 }
