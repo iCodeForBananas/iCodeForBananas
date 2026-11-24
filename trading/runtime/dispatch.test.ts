@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { AVAILABLE_STRATEGIES } from '@/app/strategies';
-import { DEPLOYMENTS } from '../deployments';
 import { deploymentId, resolveDeployment, type Deployment } from './config';
 import { deploymentToRow, rowToDeployment, validateAppDeployment, type AppDeploymentInput, type AppDeploymentRow } from './app-deployments';
 import { dispatch, isDue, selectRunnable, type RunOutcome } from './dispatch';
@@ -82,8 +81,9 @@ describe('app deployments', () => {
   });
 
   it('refuses a symbol an enabled code deployment trades, or a code deployment\'s id', () => {
-    const live = resolveDeployment(DEPLOYMENTS.find((d) => resolveDeployment(d).enabled)!);
-    expect(validateAppDeployment(input({ symbol: live.symbol }), DEPLOYMENTS).join()).toContain('already traded by');
+    const live: Deployment = { ...input({ interval: '1h', params: { entryIbs: 5, exitIbs: 50, trendFilter: false } }) };
+    expect(validateAppDeployment(input(), [live]).join()).toContain('already traded by');
+    expect(validateAppDeployment(input(), [{ ...live, enabled: false }])).toEqual([]);
     const code: Deployment = { ...input(), enabled: false };
     expect(validateAppDeployment(input(), [code]).join()).toContain('already deployed from trading/deployments.ts');
   });
@@ -136,6 +136,12 @@ describe('dispatch', () => {
     const { deps, reported } = setup([r], et('10:00'));
     await dispatch({}, deps);
     expect(reported[0]).toMatchObject({ id: r.id, action: 'rejected' });
+  });
+
+  it('runs every enabled deployment when asked for all', async () => {
+    const r = row({ interval: '1d' });
+    const { deps } = setup([r, row({ symbol: 'YYY' }, { enabled: false })], et('11:07'));
+    expect((await dispatch({ all: true, dryRun: true, evaluateLatest: true }, deps)).due).toEqual([r.id]);
   });
 
   it('runs named ids whenever asked, and a dry run writes nothing back', async () => {

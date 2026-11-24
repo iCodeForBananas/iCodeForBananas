@@ -839,7 +839,7 @@ export default function TradingLeaderboardContent({ deploymentConfigs = [] }: { 
       {!error && curves === null && <LoadingView />}
       {curves?.length === 0 && (
         <PageMessage title="No deployment has reported this week">
-          Each deployment reports after every bar it trades. None has in the last 7 days, so either the schedules are off in trading/deployments.ts or the markets have been closed.
+          Each deployment reports after every bar it trades. None has in the last 7 days, so either they&apos;re all paused at /strategy-deployments or the markets have been closed.
         </PageMessage>
       )}
       {curves && curves.length > 0 && <TradingLeaderboardView curves={curves} rows={rows ?? []} now={loadedAt} goLive={goLive} backtests={backtests} configs={configs} />}

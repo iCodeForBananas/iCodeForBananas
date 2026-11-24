@@ -112,7 +112,7 @@ export interface DeploymentPanelProps {
   go: GoLive | undefined;
   /** undefined while loading, null when there's none. */
   backtest: BacktestReference | null | undefined;
-  /** From trading/deployments.ts; undefined when the id isn't there (removed since). */
+  /** From public.strategy_deployments; undefined when the id isn't there (removed since). */
   config: DeploymentConfig | undefined;
   color: string;
   now: number;
@@ -251,10 +251,10 @@ export function DeploymentPanel({ row, go, backtest, config, color, now, onClose
                 [
                   "Schedule",
                   config === undefined
-                    ? "Not in trading/deployments.ts any more"
+                    ? "No longer deployed"
                     : config.enabled
-                      ? "Enabled in trading/deployments.ts"
-                      : "Disabled in trading/deployments.ts",
+                      ? "Running, every bar close"
+                      : "Paused",
                 ],
                 ...(config
                   ? ([

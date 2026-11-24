@@ -27,8 +27,8 @@ export interface DeploymentDetails {
 }
 
 /**
- * How a deployment is set to run, from trading/deployments.ts as the trading
- * runtime resolves it (defaults applied). Read on the server at build time.
+ * How a deployment is set to run, from public.strategy_deployments
+ * (strategy_deployment_configs). Read on the server.
  */
 export interface DeploymentConfig {
   id: string;

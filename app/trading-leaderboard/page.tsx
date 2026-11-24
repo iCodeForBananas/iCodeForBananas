@@ -1,6 +1,4 @@
 import type { Metadata } from "next";
-import { DEPLOYMENTS } from "@/trading/deployments";
-import { resolveDeployment } from "@/trading/runtime/config";
 import type { DeploymentConfig } from "@/app/lib/deploymentDetails";
 import TradingLeaderboardContent from "./TradingLeaderboardContent";
 
@@ -14,20 +12,50 @@ export const metadata: Metadata = {
   },
 };
 
-// Each deployment as the trading runtime resolves it, ids included, so the
-// page and the Lambdas can't disagree about which entry a report came from.
-// trading/runtime/config.ts uses node:crypto, so this stays on the server.
-const configs: DeploymentConfig[] = DEPLOYMENTS.map(resolveDeployment).map((d) => ({
-  id: d.id,
-  enabled: d.enabled,
-  enableShorts: d.enableShorts,
-  startingEquity: d.startingEquity,
-  positionSizePct: d.positionSizePct,
-  maxDailyLossPct: d.maxDailyLossPct,
-  drawdownLimitPct: d.drawdownLimitPct,
-  drawdownPauseBars: d.drawdownPauseBars,
-}));
+// How each deployment is set to run, from public.strategy_deployments (the
+// dispatcher's list), refreshed every few minutes. If it can't be read the
+// page still renders, without the Schedule, Sizing and Limits lines.
+export const revalidate = 300;
 
-export default function TradingLeaderboardPage() {
-  return <TradingLeaderboardContent deploymentConfigs={configs} />;
+interface ConfigRow {
+  id: string;
+  enabled: boolean;
+  enable_shorts: boolean;
+  starting_equity: number;
+  position_size_pct: number;
+  max_daily_loss_pct: number;
+  drawdown_limit_pct: number;
+  drawdown_pause_bars: number;
+}
+
+async function loadConfigs(): Promise<DeploymentConfig[]> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  if (!url || !key) return [];
+  try {
+    const res = await fetch(`${url.replace(/\/+$/, "")}/rest/v1/rpc/strategy_deployment_configs`, {
+      method: "POST",
+      headers: { apikey: key, "Content-Type": "application/json" },
+      body: "{}",
+      next: { revalidate },
+    });
+    if (!res.ok) return [];
+    const rows = (await res.json()) as ConfigRow[];
+    return rows.map((r) => ({
+      id: r.id,
+      enabled: r.enabled,
+      enableShorts: r.enable_shorts,
+      startingEquity: r.starting_equity,
+      positionSizePct: r.position_size_pct,
+      maxDailyLossPct: r.max_daily_loss_pct,
+      drawdownLimitPct: r.drawdown_limit_pct,
+      drawdownPauseBars: r.drawdown_pause_bars,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+export default async function TradingLeaderboardPage() {
+  return <TradingLeaderboardContent deploymentConfigs={await loadConfigs()} />;
 }

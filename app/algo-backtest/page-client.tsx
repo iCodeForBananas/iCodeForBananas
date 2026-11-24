@@ -7,7 +7,7 @@ import BentoPageLayout from "../components/BentoPageLayout";
 import { Bento } from "../components/ui/bento";
 import { Badge, Box, Callout, Checkbox, CheckboxGroup, Code, Flex, Grid, SegmentedControl, Strong, Switch, Table, Text, TextField } from "@radix-ui/themes";
 import { Button } from "@/app/components/ui/button";
-import { Check, ChevronDown, MessageSquareText, Play, Rocket, Trash2, X, Zap } from "lucide-react";
+import { Check, ChevronDown, MessageSquareText, Play, Rocket, Trash2, X } from "lucide-react";
 import { cn } from "@/app/lib/utils";
 import { IndicatorData, PositionSide } from "@/app/types";
 import {
@@ -33,7 +33,7 @@ import { useBacktestWorker, type BacktestJobResult, type StrategyRun } from "./u
 import { fitsClaudePrefill } from "@/app/lib/claudeLink";
 import { clearResultCache, countCachedResults } from "./resultCache";
 import { getMeta, queryPage, type ResultRow, type RunMeta } from "./runStore";
-import { buildDeployPrompt, type RunSettings } from "./deployPrompt";
+import type { RunSettings } from "./deployPrompt";
 import { buildDeployDraft, type DeployDraft } from "./deployConfig";
 import DeployStrategyDialog, { type BacktestSummary } from "./DeployStrategyDialog";
 import { buildReviewPrompt, settingsLines } from "./reviewPrompt";
@@ -260,8 +260,6 @@ export default function AlgoBacktestPage() {
 
   // Copy report state
   const [copied, setCopied] = useState(false);
-  // Copy Lambda deployment prompt state
-  const [lambdaPromptCopied, setLambdaPromptCopied] = useState(false);
   // "Deploy strategy": the dialog's draft, built from the active result's run.
   const [deploy, setDeploy] = useState<{ strategy: StrategyDefinition; draft: DeployDraft; backtest: BacktestSummary } | null>(null);
 
@@ -687,55 +685,6 @@ export default function AlgoBacktestPage() {
     setTimeout(() => setCopied(false), 2000);
   }, [generateMarkdownReport, activeResultRun, activeResult]);
 
-  // Source of the strategy behind the active result, fetched so the Lambda
-  // prompt can carry the exact logic rather than a one-line description.
-  // Prefetched on result change because Safari drops clipboard permission if
-  // the copy has to wait on a network round trip after the click.
-  const [strategySource, setStrategySource] = useState<{ id: string; source: string } | null>(null);
-  const activeResultStrategyId = activeRow?.strategyId ?? selectedStrategyId;
-  const hasResults = runMeta !== null;
-  useEffect(() => {
-    if (!hasResults) return;
-    let cancelled = false;
-    fetch(`/api/strategy-source?id=${encodeURIComponent(activeResultStrategyId)}`)
-      .then((r) => (r.ok ? r.text() : null))
-      .then((source) => {
-        if (!cancelled && source) setStrategySource({ id: activeResultStrategyId, source: source.replace(/\r\n/g, '\n') });
-      })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, [activeResultStrategyId, hasResults]);
-
-  // The "Copy Lambda prompt" text (see deployPrompt.ts). It's built from the
-  // settings the run that produced this result used, never from whatever the
-  // editor shows now, and from what the strategy actually reads.
-  const generateLambdaPrompt = useCallback(() => {
-    const result = activeResult;
-    if (!result) return '';
-    const resultStrategyId = result.strategyId ?? selectedStrategyId;
-    const strat = AVAILABLE_STRATEGIES[resultStrategyId];
-    if (!strat) return '';
-    const run = lastRunsRef.current.find((r) => r.strategyId === resultStrategyId) ?? null;
-    const dataset = availableDatasets.find((d) => d.file === result.dataset);
-    return buildDeployPrompt({
-      strategy: strat,
-      params: result.params ?? {},
-      run,
-      symbol: dataset?.symbol ?? null,
-      timeframe: dataset?.timeframe ?? null,
-      source: strategySource?.id === resultStrategyId ? strategySource.source : null,
-      backtest: {
-        label: result.datasetLabel ?? dataset?.label ?? 'n/a',
-        totalPnlPercent: result.totalPnlPercent,
-        totalTrades: result.totalTrades,
-        winRate: result.winRate,
-        maxDrawdownPercent: result.maxDrawdownPercent,
-        sharpeRatio: result.sharpeRatio,
-        initialCapital: INITIAL_CAPITAL,
-      },
-    });
-  }, [activeResult, selectedStrategyId, availableDatasets, strategySource]);
-
   // Open "Deploy strategy" with the settings of the run that produced this result.
   const openDeploy = useCallback(() => {
     const result = activeResult;
@@ -763,19 +712,6 @@ export default function AlgoBacktestPage() {
     });
     setDeploy({ strategy: strat, draft, backtest });
   }, [activeResult, selectedStrategyId, availableDatasets]);
-
-  // Copy the Lambda deployment prompt to clipboard
-  const copyLambdaPrompt = useCallback(async () => {
-    const prompt = generateLambdaPrompt();
-    if (!prompt) return;
-    try {
-      await navigator.clipboard.writeText(prompt);
-      setLambdaPromptCopied(true);
-      setTimeout(() => setLambdaPromptCopied(false), 2000);
-    } catch {
-      alert('Unable to copy to clipboard. Please check your browser permissions.');
-    }
-  }, [generateLambdaPrompt]);
 
   // Backtest only runs on explicit button click ("Run N Variations") — no auto-run on file or param change.
 
@@ -1530,15 +1466,6 @@ export default function AlgoBacktestPage() {
                       >
                         {copied ? <Check className='size-3.5' /> : <MessageSquareText className='size-3.5' />}
                         {copied ? "Opened in Claude" : "Review with Claude"}
-                      </Button>
-                      <Button
-                        size='sm'
-                        variant="secondary"
-                        onClick={copyLambdaPrompt}
-                        title='Copy a prompt that has Claude add this strategy to the Tradier paper-trading CDK stack and deploy it'
-                      >
-                        {lambdaPromptCopied ? <Check className='size-3.5' /> : <Zap className='size-3.5' />}
-                        {lambdaPromptCopied ? "Copied!" : "Copy Lambda prompt"}
                       </Button>
                       <Button
                         size='sm'

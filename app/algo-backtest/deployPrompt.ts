@@ -7,8 +7,9 @@
 // and the interval's real bar count. Anything that can't be known is written
 // as UNKNOWN and listed for the agent to ask about before deploying.
 //
-// The runtime facts below (intervals, bars per session, history limits,
-// SHARED_RISK) mirror trading/runtime; the tests check them against it.
+// The runtime facts below (intervals, bars per session, history limits)
+// mirror trading/runtime; the tests check them against it. deployConfig.ts
+// builds the "Deploy strategy" form from the same fields.
 
 import type { StrategyDefinition } from "@/app/strategies/types";
 import { positionCapPercent, stopOffPositionPercent, withRiskParams, type SizingSettings } from "@/app/lib/backtest-engine";
@@ -66,9 +67,6 @@ export const maxHistoryDays = (interval: string) => (interval === "1d" ? 3650 : 
 
 /** Sessions any window of `days` calendar days holds, at worst: weekends, a holiday a month, today's unfinished session. */
 export const guaranteedSessions = (days: number) => Math.max(0, Math.floor((days * 5) / 7) - Math.ceil(days / 30) - 1);
-
-/** SHARED_RISK in trading/deployments.ts, which every entry spreads. */
-export const SHARED_RISK = { startingEquity: 10_000, maxDailyLossPct: 2, drawdownLimitPct: 25, drawdownPauseBars: 20 } as const;
 
 export interface HistoryWindow {
   /** Calendar days that always hold minBars bars, or the most allowed when none do. */

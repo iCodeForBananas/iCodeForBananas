@@ -83,6 +83,8 @@ export interface DeploymentSource {
 export interface DispatchEvent extends RunEvent {
   /** Run only these deployment ids, whether or not a bar is due (with dryRun, to check one by hand). */
   ids?: string[];
+  /** Run every enabled deployment, whether or not a bar is due (with dryRun: scripts/dry-run.ts). */
+  all?: boolean;
 }
 
 export interface DispatchDeps extends Omit<RunDeps, 'strategy'> {
@@ -105,7 +107,7 @@ export async function dispatch(event: DispatchEvent | undefined, deps: DispatchD
   const rows = await deps.source.list();
   const { run, rejected } = selectRunnable(rows, deps.codeDeployments);
   const ids = event?.ids?.length ? new Set(event.ids) : null;
-  const due = run.filter((d) => (ids ? ids.has(d.id) : isDue(d.interval, t)));
+  const due = run.filter((d) => (ids ? ids.has(d.id) : event?.all === true || isDue(d.interval, t)));
   const runEvent: RunEvent = { dryRun: event?.dryRun === true, evaluateLatest: event?.evaluateLatest === true };
 
   // In parallel: each run must start within 2 minutes of its bar becoming

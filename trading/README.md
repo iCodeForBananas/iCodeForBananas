@@ -1,18 +1,16 @@
 # Tradier paper trading (CDK)
 
 One CDK stack, `TradierTrading`, that paper-trades strategies from
-`app/strategies` against the **Tradier sandbox**. Each entry in
-[`deployments.ts`](deployments.ts) becomes its own Lambda, schedule, state row
-and errors alarm. They all share one runtime ([`runtime/`](runtime)), one DynamoDB table and one Tradier
-secret.
+`app/strategies` against the **Tradier sandbox**. Every strategy runs on one
+Lambda, `tradier-dispatcher`, from the list in Supabase
+(`public.strategy_deployments`): deploy one from the backtester, and it trades
+from its next bar. No CDK deploy.
 
-The live Lambda runs the **same code the backtester runs**: the strategy's own
+The dispatcher runs the **same code the backtester runs**: the strategy's own
 `handler` from `app/strategies/<id>.ts` and the indicators from
 `calculateIndicatorsWithParams` in `app/lib/backtest-engine.ts`, bundled in by
-esbuild. Each Lambda bundles only its own strategy: esbuild aliases
-`@trading/strategy` to `app/strategies/<strategyId>.ts`, so an IBS Lambda
-carries no crossover code. Change a strategy, redeploy, and live trading
-changes with it.
+esbuild. Change a strategy's code, `npx cdk deploy`, and live trading changes
+with it.
 
 ## Deploy from the backtester (no CDK deploy)
 
@@ -48,7 +46,13 @@ to its row (`last_run_at`, `last_action`, `last_reason`, `last_error`).
 Check one by hand: invoke `tradier-dispatcher` with
 `{"dryRun": true, "evaluateLatest": true, "ids": ["<id>"]}` and read its log.
 
-## Add a strategy in code
+## Add a strategy in code (the old way)
+
+[`deployments.ts`](deployments.ts) is empty: its 19 entries moved to
+`strategy_deployments` on 2026-11-24, with their state copied from
+`tradier-trading-state` to `tradier-trading-app-state`. An entry there still
+gets its own Lambda and schedule, as below, and while it's enabled the
+dispatcher refuses any deployment on its symbol.
 
 1. Add an entry to `DEPLOYMENTS` in [`deployments.ts`](deployments.ts):
 
@@ -193,11 +197,12 @@ drawdown inside a trade.
 
 | | |
 |---|---|
-| Deploy / redeploy | `cd trading && npx cdk deploy` |
-| See what would change | `npx cdk diff` |
-| Dry-run every deployment | `npm run dry-run` |
+| Deploy a strategy | `/algo-backtest`, pick a result, **Deploy strategy** |
+| Pause, resume, remove one | `/strategy-deployments` |
+| Ship strategy code or stack changes | `cd trading && npx cdk deploy` (`npx cdk diff` first) |
+| Dry-run every deployment | `npm run dry-run -- --latest` (or pass deployment ids) |
 | Backfill missed fills | `npm run backfill-fills`, then apply its `fills.sql` |
-| Pause everything | set every `enabled: false` and deploy, or `aws scheduler update-schedule` each `tradier-<id>` schedule with `--state DISABLED` |
+| Pause everything | `aws scheduler update-schedule` the `tradier-dispatcher` schedule with `--state DISABLED`, or pause each one at `/strategy-deployments` |
 | Tear down | flatten positions in Tradier, then `npx cdk destroy`. The state table is retained; delete it by hand if you mean to. |
 
 The Tradier secret (`TRADIER_SECRET_NAME` in `deployments.ts`, JSON

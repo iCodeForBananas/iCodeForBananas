@@ -7,6 +7,10 @@
 //   { "dryRun": true, "ids": ["<deployment id>"], "evaluateLatest": true }
 //     runs those deployments now, places nothing, writes nothing.
 //   { "dryRun": true } runs whatever is due at this tick, the same way.
+//   { "dryRun": true, "all": true, "evaluateLatest": true } runs every enabled one (scripts/dry-run.ts).
+//   { "listDeployments": true } returns the enabled deployments, resolved.
+//   { "orderHistory": true } returns Tradier's order history, read-only
+//     (runtime/order-history.ts), for scripts/backfill-fills.ts.
 
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb';
@@ -14,8 +18,9 @@ import { GetSecretValueCommand, SecretsManagerClient } from '@aws-sdk/client-sec
 import { AVAILABLE_STRATEGIES } from '@/app/strategies';
 import { DEPLOYMENTS } from '../deployments';
 import type { AppDeploymentRow } from './app-deployments';
-import { dispatch, type DeploymentSource, type DispatchEvent } from './dispatch';
+import { dispatch, selectRunnable, type DeploymentSource, type DispatchEvent } from './dispatch';
 import { createEquityReporter, REPORT_TIMEOUT_MS, type EquityReporterConfig } from './equity-report';
+import { collectOrderHistory } from './order-history';
 import type { DeploymentState, StateStore } from './run';
 import { createTradierClient, type TradierCreds } from './tradier';
 
@@ -98,8 +103,10 @@ const store: StateStore = {
   },
 };
 
-export const handler = (event?: DispatchEvent) =>
-  dispatch(event, {
+export const handler = async (event?: DispatchEvent & { orderHistory?: boolean; listDeployments?: boolean }) => {
+  if (event?.orderHistory === true) return collectOrderHistory(tradier);
+  if (event?.listDeployments === true) return selectRunnable(await source.list(), DEPLOYMENTS);
+  return dispatch(event, {
     source,
     strategies: AVAILABLE_STRATEGIES,
     codeDeployments: DEPLOYMENTS,
@@ -110,3 +117,4 @@ export const handler = (event?: DispatchEvent) =>
     sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
     log: (line) => console.log(line),
   });
+};

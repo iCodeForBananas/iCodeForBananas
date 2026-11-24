@@ -1,4 +1,3 @@
-import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { AVAILABLE_STRATEGIES, getDefaultParams } from "@/app/strategies";
 import { DEFAULT_SIZING, LEGACY_SIZING } from "@/app/lib/backtest-engine";
@@ -6,7 +5,6 @@ import { INTERVALS, validateDeployments } from "@/trading/runtime/config";
 import {
   BARS_PER_SESSION,
   LIVE_INTERVALS,
-  SHARED_RISK,
   buildDeployPrompt,
   guaranteedSessions,
   historyWindow,
@@ -57,12 +55,6 @@ describe("matches the runtime", () => {
   it("knows exactly the runtime's intervals", () => {
     expect(new Set(Object.values(LIVE_INTERVALS))).toEqual(new Set(Object.keys(INTERVALS)));
     expect(new Set(Object.keys(BARS_PER_SESSION))).toEqual(new Set(Object.keys(INTERVALS)));
-  });
-
-  it("has the same SHARED_RISK as trading/deployments.ts", () => {
-    const literal = /const SHARED_RISK = (\{[^}]*\})/.exec(readFileSync("trading/deployments.ts", "utf8"))?.[1];
-    expect(literal).toBeDefined();
-    expect(Function(`return (${literal!.replace(/_/g, "")});`)()).toEqual(SHARED_RISK);
   });
 });
 
