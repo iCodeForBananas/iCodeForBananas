@@ -12,7 +12,7 @@ import { Flex, Select, Text, TextField } from "@radix-ui/themes";
 import { Button } from "@/app/components/ui/button";
 import { X } from "lucide-react";
 import { PERCENTILE_LIFTS, latestWeights, percentileBand, populationPercentile } from "./percentile";
-import { weeklyCoverage } from "./coverage";
+import { WINDOW_DAYS, liftCoverage, nextWorkout } from "./coverage";
 
 interface LogEntry {
   id: string;
@@ -239,7 +239,8 @@ export default function WorkoutTrackerContent() {
   }, [logs]);
 
   // Which muscle groups the last 7 days reached, and through what
-  const coverage = useMemo(() => weeklyCoverage(logs, today()), [logs]);
+  const coverage = useMemo(() => liftCoverage(logs, today()), [logs]);
+  const next = useMemo(() => nextWorkout(logs, today()), [logs]);
 
   // ── Bento panel contents ──────────────────────────────────────────────────
 
@@ -359,40 +360,46 @@ export default function WorkoutTrackerContent() {
   );
 
   const coverageContent = (() => {
-    const most = Math.max(...coverage.map((c) => c.score));
-    const missed = coverage.filter((c) => c.score === 0).map((c) => c.muscle);
+    const behind = coverage.filter((c) => c.remaining > 0);
     return (
       <div>
+        <div className='mb-4 rounded-lg border border-line-strong bg-surface-sunken px-3 py-2'>
+          <div className='text-xs text-ink-muted'>Do next</div>
+          <div className='font-semibold'>
+            Workout {next.workout}: {next.lifts.join(", ")}
+          </div>
+          <div className='text-xs text-ink-muted mt-0.5'>{next.reason}</div>
+        </div>
         <p className='text-sm mb-4'>
-          {most === 0
-            ? "Nothing logged in the last 7 days."
-            : missed.length
-              ? <>Not worked this week: <span className='text-danger font-medium'>{missed.join(", ")}</span></>
-              : "Every muscle group worked this week."}
+          {behind.length === 0
+            ? `Every lift is on target for the last ${WINDOW_DAYS} days.`
+            : <>Behind in the last {WINDOW_DAYS} days: <span className='text-danger font-medium'>{behind.map((c) => c.exercise).join(", ")}</span></>}
         </p>
         <div className='space-y-3'>
-          {coverage.map(({ muscle, score, exercises }) => (
-            <div key={muscle}>
-              <div className='flex items-center gap-3'>
-                <div className={`capitalize text-sm w-24 shrink-0 ${score === 0 ? "text-danger" : ""}`}>{muscle}</div>
-                <div className='flex-1 h-2 rounded-full bg-surface-sunken overflow-hidden'>
-                  {score > 0 && (
-                    <div
-                      className='h-full rounded-full'
-                      style={{ width: `${(score / most) * 100}%`, backgroundColor: "var(--ds-color-primary-solid)" }}
-                    />
-                  )}
-                </div>
+          {coverage.map(({ exercise, days, target, remaining }) => (
+            <div key={exercise} className='flex items-center gap-3'>
+              <div className={`text-sm w-32 shrink-0 ${days === 0 ? "text-danger" : ""}`}>{exercise}</div>
+              <div
+                className='flex-1 h-2 rounded-full bg-surface-sunken overflow-hidden'
+                role='meter'
+                aria-label={`${exercise}: ${days} of ${target}`}
+                aria-valuenow={days}
+                aria-valuemin={0}
+                aria-valuemax={target}
+              >
+                {days > 0 && (
+                  <div
+                    className='h-full rounded-full'
+                    style={{
+                      width: `${Math.min(1, days / target) * 100}%`,
+                      backgroundColor: remaining === 0 ? "var(--ds-color-success)" : "var(--ds-color-primary-solid)",
+                    }}
+                  />
+                )}
               </div>
-              <ul className='text-xs mt-1 flex flex-wrap gap-x-3 gap-y-1'>
-                {exercises.map((e) => (
-                  <li key={e.exercise} className={e.days > 0 ? "text-ink-primary font-medium" : "text-ink-muted"}>
-                    {e.exercise}
-                    {e.days > 1 && ` ×${e.days}`}
-                    {!e.primary && <span className='font-normal text-ink-muted'> (assist)</span>}
-                  </li>
-                ))}
-              </ul>
+              <div className='text-sm tabular-nums w-10 text-right shrink-0'>
+                {days}/{target}
+              </div>
             </div>
           ))}
         </div>
@@ -470,9 +477,9 @@ export default function WorkoutTrackerContent() {
     },
     {
       id: "coverage",
-      title: "Muscle Coverage",
+      title: "Workout Coverage",
       tooltip:
-        "Which muscle groups your workouts in the last 7 days reached, and through which exercises. Under each group are the exercises that work it, the ones you did this week in bold. The bar is days that group was worked, with an assisting role (triceps on a bench, biceps on a row) counting as half. Anything not worked this week is what to balance out next.",
+        "Each StrongLifts 5x5 lift in the last 14 days against the program: it alternates Workout A (Squat, Bench Press, Barbell Row) and B (Squat, Overhead Press, Deadlift), three a week, so two weeks is 6 squat days and 3 of each other lift. Do next is the workout whose lifts are furthest behind, or the one after your last workout when they're even.",
       defaultColSpan: 4,
       defaultRowSpan: 3,
       content: coverageContent,

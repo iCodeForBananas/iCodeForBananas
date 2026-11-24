@@ -1,95 +1,64 @@
 import { describe, expect, it } from "vitest";
-import { EXERCISE_MUSCLES, MUSCLE_GROUPS, weeklyCoverage } from "./coverage";
+import { PROGRAM_TARGETS, WORKOUTS, liftCoverage, nextWorkout } from "./coverage";
 
-const group = (cov: ReturnType<typeof weeklyCoverage>, name: string) => cov.find((c) => c.muscle === name)!;
+const workout = (name: "A" | "B", date: string) => WORKOUTS[name].map((exercise) => ({ exercise, date }));
+const by = (cov: ReturnType<typeof liftCoverage>) => Object.fromEntries(cov.map((c) => [c.exercise, c.days]));
 
-describe("weeklyCoverage", () => {
-  it("credits the groups an exercise drives and, at half, the ones it assists", () => {
-    const cov = weeklyCoverage([{ exercise: "Bench Press", date: "2026-10-17" }], "2026-10-17");
-    expect(group(cov, "chest").score).toBe(1);
-    expect(group(cov, "chest").exercises[0]).toEqual({ exercise: "Bench Press", days: 1, primary: true });
-    expect(group(cov, "triceps").score).toBe(0.5);
-    expect(group(cov, "triceps").exercises.find((e) => e.exercise === "Bench Press")).toEqual({
-      exercise: "Bench Press",
-      days: 1,
-      primary: false,
-    });
-    expect(group(cov, "back").exercises.every((e) => e.days === 0)).toBe(true);
-  });
-
-  it("shows a week with no pulling as untouched back and biceps", () => {
-    const logs = [
-      { exercise: "Bench Press", date: "2026-10-13" },
-      { exercise: "Squat", date: "2026-10-15" },
-      { exercise: "Overhead Press", date: "2026-10-17" },
-    ];
-    const cov = weeklyCoverage(logs, "2026-10-17");
-    expect(cov.filter((c) => c.score === 0).map((c) => c.muscle)).toEqual(["back", "biceps"]);
-  });
-
-  it("lists squats under quads and glutes even in a week without them", () => {
-    const cov = weeklyCoverage([], "2026-10-17");
-    for (const name of ["quads", "glutes"]) {
-      expect(group(cov, name).exercises).toContainEqual({ exercise: "Squat", days: 0, primary: true });
-    }
-  });
-
-  it("counts days, not entries, and lists drivers before assisters", () => {
-    const logs = [
-      { exercise: "Bench Press", date: "2026-10-16" },
-      { exercise: "Bench Press", date: "2026-10-16" },
-      { exercise: "Bench Press", date: "2026-10-17" },
-      { exercise: "Overhead Press", date: "2026-10-17" },
-    ];
-    const shoulders = group(weeklyCoverage(logs, "2026-10-17"), "shoulders");
-    expect(shoulders.exercises).toEqual([
-      { exercise: "Overhead Press", days: 1, primary: true },
-      { exercise: "Bench Press", days: 2, primary: false },
-      { exercise: "Barbell Row", days: 0, primary: false },
-    ]);
-    expect(shoulders.score).toBe(2);
-  });
-
-  it("counts only the five 5x5 lifts", () => {
-    const cov = weeklyCoverage([{ exercise: "Bicep Curls", date: "2026-10-17" }], "2026-10-17");
-    expect(group(cov, "biceps")).toEqual({
-      muscle: "biceps",
-      score: 0,
-      exercises: [{ exercise: "Barbell Row", days: 0, primary: false }],
-    });
-  });
-
-  it("ignores logs outside the last seven days, in the future, or for unknown exercises", () => {
-    const logs = [
-      { exercise: "Squat", date: "2026-10-10" }, // 7 days back: just outside
-      { exercise: "Squat", date: "2026-10-18" }, // tomorrow
-      { exercise: "Push-ups", date: "2026-10-17" },
-    ];
-    for (const c of weeklyCoverage(logs, "2026-10-17")) {
-      expect(c.score).toBe(0);
-      expect(c.exercises.every((e) => e.days === 0)).toBe(true);
-    }
-    expect(group(weeklyCoverage([{ exercise: "Squat", date: "2026-10-11" }], "2026-10-17"), "quads").score).toBe(1);
-  });
-
-  it("returns every group head to toe", () => {
-    expect(weeklyCoverage([], "2026-10-17").map((c) => c.muscle)).toEqual([...MUSCLE_GROUPS]);
+describe("PROGRAM_TARGETS", () => {
+  it("is two weeks of alternating workouts: A B A, B A B", () => {
+    const logs = ["A", "B", "A", "B", "A", "B"].flatMap((w, i) => workout(w as "A" | "B", `2026-11-${String(10 + i * 2).padStart(2, "0")}`));
+    const cov = liftCoverage(logs, "2026-11-23");
+    expect(by(cov)).toEqual(PROGRAM_TARGETS);
+    expect(cov.every((c) => c.remaining === 0)).toBe(true);
   });
 });
 
-describe("EXERCISE_MUSCLES", () => {
-  it("drives at least one group per exercise and never lists a group twice", () => {
-    for (const { primary, assists } of Object.values(EXERCISE_MUSCLES)) {
-      expect(primary.length).toBeGreaterThan(0);
-      expect(new Set([...primary, ...assists]).size).toBe(primary.length + assists.length);
-    }
+describe("liftCoverage", () => {
+  it("lists every lift in program order with what's left", () => {
+    expect(liftCoverage(workout("A", "2026-11-23"), "2026-11-23")).toEqual([
+      { exercise: "Squat", days: 1, target: 6, remaining: 5 },
+      { exercise: "Bench Press", days: 1, target: 3, remaining: 2 },
+      { exercise: "Barbell Row", days: 1, target: 3, remaining: 2 },
+      { exercise: "Overhead Press", days: 0, target: 3, remaining: 3 },
+      { exercise: "Deadlift", days: 0, target: 3, remaining: 3 },
+    ]);
   });
 
-  it("is the 5x5 program, and reaches every muscle group from it", () => {
-    expect(Object.keys(EXERCISE_MUSCLES).sort()).toEqual(
-      ["Barbell Row", "Bench Press", "Deadlift", "Overhead Press", "Squat"],
-    );
-    const reached = new Set(Object.values(EXERCISE_MUSCLES).flatMap((m) => [...m.primary, ...m.assists]));
-    expect([...reached].sort()).toEqual([...MUSCLE_GROUPS].sort());
+  it("counts days, not entries, and never goes below zero remaining", () => {
+    const logs = ["2026-11-20", "2026-11-20", "2026-11-21", "2026-11-22", "2026-11-23"].map((date) => ({ exercise: "Deadlift", date }));
+    expect(liftCoverage(logs, "2026-11-23").find((c) => c.exercise === "Deadlift")).toEqual({ exercise: "Deadlift", days: 4, target: 3, remaining: 0 });
+  });
+
+  it("looks back 14 days, ignores the future and anything outside the program", () => {
+    const logs = [
+      { exercise: "Squat", date: "2026-11-09" }, // 14 days back: just outside
+      { exercise: "Squat", date: "2026-11-10" }, // 13 days back: in
+      { exercise: "Squat", date: "2026-11-24" }, // tomorrow
+      { exercise: "Bicep Curls", date: "2026-11-23" },
+    ];
+    expect(by(liftCoverage(logs, "2026-11-23"))).toEqual({ Squat: 1, "Bench Press": 0, "Barbell Row": 0, "Overhead Press": 0, Deadlift: 0 });
+  });
+});
+
+describe("nextWorkout", () => {
+  it("starts with A when nothing is logged", () => {
+    expect(nextWorkout([], "2026-11-23")).toMatchObject({ workout: "A", lifts: ["Squat", "Bench Press", "Barbell Row"] });
+  });
+
+  it("picks the workout whose lifts are furthest behind", () => {
+    const logs = [...workout("A", "2026-11-17"), ...workout("A", "2026-11-19"), ...workout("B", "2026-11-21")];
+    const next = nextWorkout(logs, "2026-11-23");
+    expect(next.workout).toBe("B");
+    expect(next.reason).toContain("Overhead Press 1/3, Deadlift 1/3");
+  });
+
+  it("alternates from the last workout on a tie", () => {
+    expect(nextWorkout([...workout("B", "2026-11-20"), ...workout("A", "2026-11-22")], "2026-11-23").workout).toBe("B");
+    expect(nextWorkout([...workout("A", "2026-11-20"), ...workout("B", "2026-11-22")], "2026-11-23").workout).toBe("A");
+  });
+
+  it("still alternates once the cycle is complete", () => {
+    const logs = ["A", "B", "A", "B", "A", "B"].flatMap((w, i) => workout(w as "A" | "B", `2026-11-${String(10 + i * 2).padStart(2, "0")}`));
+    expect(nextWorkout(logs, "2026-11-23").workout).toBe("A");
   });
 });
