@@ -10,23 +10,40 @@ import {
   progressionChordType,
   parseRomanPattern,
 } from "@/app/lib/chordProgressions";
-import { formatChordLabel, getNeckVoicings, type NeckVoicing } from "@/app/lib/chordVoicings";
-import { MAX_POSITION, updateGuitarSettings, useGuitarSettings } from "@/app/lib/guitarSettings";
+import { TYPE_GROUPS, formatChordLabel, getNeckVoicings, type NeckVoicing } from "@/app/lib/chordVoicings";
+import { useGuitarSettings } from "@/app/lib/guitarSettings";
 import type { GuitarTuning } from "@/app/lib/tunings";
 import { Bento } from "@/app/components/ui/bento";
+import { Button } from "@/app/components/ui/button";
 import ChordDiagram from "@/app/components/ChordDiagram";
 import GuitarToolView from "../GuitarToolView";
 import { ordinal } from "../GuitarSettingsPanel";
 
-// `null` anchors the progression at each chord's lowest-sounding voicing, which
-// is the open shape wherever one exists.
-const POSITION_OPTIONS: { value: number | null; label: string }[] = [
-  { value: null, label: "Open position" },
-  ...Array.from({ length: MAX_POSITION }, (_, i) => ({
-    value: i + 1,
-    label: `${ordinal(i + 1)} position (fret ${i + 1})`,
-  })),
-];
+/**
+ * How a shape reads in the Position dropdown: open position when it rings open
+ * strings down by the nut, otherwise the fret the hand sits at, then the shape.
+ */
+const positionLabel = (v: NeckVoicing): string => {
+  const open = v.startFret <= 3 && v.shape.frets.includes(0);
+  const where = open ? "Open position" : `${ordinal(Math.max(v.startFret, 1))} position`;
+  const shape = v.label === "Open / Standard" ? "" : ` · ${v.label}`;
+  return `${where}${shape}`;
+};
+
+/** Diminished chords have no shapes of their own here, but stay pickable on the ° chords. */
+const typeOptionsFor = (quality: string): string[] => {
+  const all: string[] = TYPE_GROUPS.flatMap((g) => [...g.types]);
+  return quality === "Diminished" ? ["Diminished", ...all] : all;
+};
+
+/** What one chord of the progression has been changed to, by hand. */
+interface ChordPick {
+  type?: string;
+  /** The exact shape picked. */
+  voicingId?: string;
+  /** Where the hand was, so changing the type keeps the chord near it. */
+  fret?: number | null;
+}
 
 /**
  * The rung this chord is played on. With no fret asked for that is the bottom of
@@ -50,30 +67,27 @@ function ProgressionChordCard({
   roman,
   note,
   type,
+  typeOptions,
   voicings,
-  index,
-  pinnedId,
+  selected,
   useFlats,
   tuning,
-  onPick,
+  onTypeChange,
+  onPositionChange,
 }: {
   roman: string;
   note: string;
-  /** The chord type shown: the Chord Type setting, fitted to this chord's major or minor third. */
+  /** The chord type shown: picked on this card, or the Chord Type setting fitted to the key. */
   type: string;
-  /** This chord's rungs, lowest-sounding first. */
+  typeOptions: string[];
+  /** This chord's shapes up the neck, lowest-sounding first. */
   voicings: NeckVoicing[];
-  /** Which rung the fret anchor landed this chord on. */
-  index: number;
-  /** Set when this one chord was picked by hand, overriding the fret anchor. */
-  pinnedId?: string;
+  selected: NeckVoicing | undefined;
   useFlats: boolean;
   tuning: GuitarTuning;
-  onPick: (voicingId: string) => void;
+  onTypeChange: (type: string) => void;
+  onPositionChange: (voicing: NeckVoicing) => void;
 }) {
-  const pinnedIndex = pinnedId ? voicings.findIndex((v) => v.id === pinnedId) : -1;
-  const selectedIndex = pinnedIndex >= 0 ? pinnedIndex : index;
-  const selected = voicings[selectedIndex];
   const shape = selected?.shape ?? null;
   const label = formatChordLabel(note, type);
 
@@ -93,23 +107,37 @@ function ProgressionChordCard({
           <p className="text-xs text-ink-muted">No voicing available.</p>
         </div>
       )}
-      {voicings.length > 0 && (
-        <Select.Root size="1" value={selected?.id} onValueChange={onPick}>
-          <Select.Trigger
-            aria-label="Voicing"
-            title="Pin this one chord to a shape, wherever the rest of the progression sits"
-            className="w-full max-w-[150px]"
-          />
+      <div className="flex w-full max-w-[180px] flex-col gap-1.5">
+        <Select.Root size="1" value={type} onValueChange={onTypeChange}>
+          <Select.Trigger aria-label="Chord type" title="Chord type for this chord" className="w-full" />
           <Select.Content position="popper">
-            {voicings.map((v) => (
-              <Select.Item key={v.id} value={v.id}>
-                {v.label}
-                {v.position ? ` (${v.position})` : ""}
+            {typeOptions.map((t) => (
+              <Select.Item key={t} value={t}>
+                {formatChordLabel(note, t)}
               </Select.Item>
             ))}
           </Select.Content>
         </Select.Root>
-      )}
+        {voicings.length > 0 && (
+          <Select.Root
+            size="1"
+            value={selected?.id}
+            onValueChange={(id) => {
+              const v = voicings.find((x) => x.id === id);
+              if (v) onPositionChange(v);
+            }}
+          >
+            <Select.Trigger aria-label="Position" title="Where on the neck to play this chord" className="w-full" />
+            <Select.Content position="popper">
+              {voicings.map((v) => (
+                <Select.Item key={v.id} value={v.id}>
+                  {positionLabel(v)}
+                </Select.Item>
+              ))}
+            </Select.Content>
+          </Select.Root>
+        )}
+      </div>
     </Bento>
   );
 }
@@ -120,9 +148,8 @@ export default function ProgressionsTool() {
     chordType,
     useFlats,
     tuning,
-    // Where the progression sits on the neck, from the shared settings: every
-    // chord takes the voicing that puts the hand nearest this fret.
-    position: progressionFret,
+    // Only the starting point: each chord card picks its own position.
+    position: defaultFret,
   } = useGuitarSettings();
 
   // A minor chord type means a minor key: only progressions whose tonic is a
@@ -131,13 +158,6 @@ export default function ProgressionsTool() {
   const groups = useMemo(() => filterGroupsByKeyMode(PROGRESSION_GROUPS, keyMode), [keyMode]);
 
   const [chosenProgressionName, setSelectedProgressionName] = useState(PROGRESSION_GROUPS[0].items[0].name);
-  // Per-chord voicing picks, scoped to the progression and position they were
-  // made on, so changing either starts fresh without a reset effect.
-  const [progressionVoicings, setProgressionVoicings] = useState<{
-    progression: string;
-    position: number | null;
-    byIndex: Record<number, string>;
-  }>({ progression: chosenProgressionName, position: progressionFret, byIndex: {} });
 
   // Switching key mode can hide the chosen progression; fall back to the first
   // one that fits rather than showing a progression in the wrong mode.
@@ -147,46 +167,46 @@ export default function ProgressionsTool() {
   );
   const selectedProgressionName = selectedProgressionDef.name;
 
-  const progressionChords = useMemo(
+  // Per-chord type and position, scoped to the progression they were made on,
+  // so picking another progression starts fresh without a reset effect.
+  const [custom, setCustom] = useState<{ progression: string; byIndex: Record<number, ChordPick> }>({
+    progression: selectedProgressionName,
+    byIndex: {},
+  });
+  const picks = useMemo<Record<number, ChordPick>>(
+    () => (custom.progression === selectedProgressionName ? custom.byIndex : {}),
+    [custom, selectedProgressionName]
+  );
+
+  const chords = useMemo(
     () =>
-      parseRomanPattern(selectedProgressionDef.pattern).map((c) => ({
-        ...c,
-        note: noteAtDegree(selectedNote, c.degree, useFlats),
-        // Maj7 in the settings makes every chord a 7th chord: Maj7 on the
-        // major ones, m7 on the minor ones, so the progression keeps its key.
-        type: progressionChordType(c.quality, chordType),
-      })),
-    [selectedProgressionDef, selectedNote, useFlats, chordType]
+      parseRomanPattern(selectedProgressionDef.pattern).map((c, i) => {
+        const note = noteAtDegree(selectedNote, c.degree, useFlats);
+        const pick = picks[i] ?? {};
+        // Until a card says otherwise, the Chord Type setting fitted to the key:
+        // Maj7 makes the major chords Maj7 and the minor ones m7.
+        const type = pick.type ?? progressionChordType(c.quality, chordType);
+        const voicings = getNeckVoicings(note, type, tuning);
+        const selected =
+          voicings.find((v) => v.id === pick.voicingId) ??
+          voicings[anchorIndex(voicings, pick.fret !== undefined ? pick.fret : defaultFret)];
+        return { ...c, note, type, voicings, selected, typeOptions: typeOptionsFor(c.quality) };
+      }),
+    [selectedProgressionDef, selectedNote, useFlats, chordType, tuning, defaultFret, picks]
   );
 
-  // Each chord's rungs up the neck, lowest-sounding first.
-  const progressionVoicingSets = useMemo(
-    () => progressionChords.map((c) => getNeckVoicings(c.note, c.type, tuning)),
-    [progressionChords, tuning]
-  );
+  const setPick = (index: number, pick: ChordPick) =>
+    setCustom({ progression: selectedProgressionName, byIndex: { ...picks, [index]: pick } });
 
-  // Which rung of each chord the chosen fret lands on.
-  const selectedIndices = useMemo(
-    () => progressionVoicingSets.map((v) => anchorIndex(v, progressionFret)),
-    [progressionVoicingSets, progressionFret]
-  );
+  // A new type keeps the hand where it was: the old shape's fret becomes the
+  // target, and the new type's nearest shape is shown.
+  const changeType = (index: number, type: string) =>
+    setPick(index, { type, fret: chords[index].selected?.startFret ?? picks[index]?.fret });
 
-  // Pinned chords survive a key change, but not a switch to another
-  // progression or a new position: moving the progression is a statement about
-  // all of it, so it releases the chords that were pinned by hand.
-  const pinsApply =
-    progressionVoicings.progression === selectedProgressionName && progressionVoicings.position === progressionFret;
-  const pinnedVoicings = pinsApply ? progressionVoicings.byIndex : {};
+  const changePosition = (index: number, v: NeckVoicing) =>
+    setPick(index, { type: chords[index].type, voicingId: v.id, fret: v.startFret });
 
-  const handleProgressionVoicingChange = (index: number, voicingId: string) => {
-    setProgressionVoicings({
-      progression: selectedProgressionName,
-      position: progressionFret,
-      byIndex: { ...pinnedVoicings, [index]: voicingId },
-    });
-  };
-
-  const anchorProgression = (fret: number | null) => updateGuitarSettings({ position: fret });
+  const hasPicks = Object.keys(picks).length > 0;
 
   // Sidebar rather than a dropdown: the whole point is scanning the feelings
   // and clicking through them quickly, which a closed <select> can't do.
@@ -273,58 +293,37 @@ export default function ProgressionsTool() {
             </p>
           </div>
 
-          {/* Place the whole progression on the neck */}
-          <div className="flex shrink-0 flex-col gap-2">
-            <div className="flex flex-col gap-1">
-              <label
-                htmlFor="progression-fret-position"
-                className="text-xs font-semibold uppercase tracking-wider text-ink-muted"
-                title="Anchor the progression at a spot on the fretboard — every chord takes the voicing that puts your hand nearest that fret"
-              >
-                Position
-              </label>
-              {/* Radix Select can't use "" as a value, so "open position" is "open". */}
-              <Select.Root
-                size="3"
-                value={progressionFret === null ? "open" : String(progressionFret)}
-                onValueChange={(v) => anchorProgression(v === "open" ? null : Number(v))}
-              >
-                <Select.Trigger
-                  id="progression-fret-position"
-                  title="Anchor the progression at a spot on the fretboard"
-                  className="w-full min-w-[200px]"
-                />
-                <Select.Content position="popper">
-                  {POSITION_OPTIONS.map((option) => (
-                    <Select.Item key={option.label} value={option.value === null ? "open" : String(option.value)}>
-                      {option.label}
-                    </Select.Item>
-                  ))}
-                </Select.Content>
-              </Select.Root>
-            </div>
-
-            <p className="max-w-[240px] text-xs text-ink-muted">
-              {progressionFret === null
-                ? "The lowest way to play it — open chords wherever they exist."
-                : `Every chord in the shape closest to ${ordinal(progressionFret)} position (fret ${progressionFret}).`}
+          <div className="flex shrink-0 flex-col items-start gap-2">
+            <p className="max-w-[260px] text-xs text-ink-muted">
+              Pick a type and position on each chord to build your own version. They start from Chord Type and
+              Position in settings.
             </p>
+            {hasPicks && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setCustom({ progression: selectedProgressionName, byIndex: {} })}
+              >
+                Reset chords
+              </Button>
+            )}
           </div>
         </div>
 
         <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))" }}>
-          {progressionChords.map((c, i) => (
+          {chords.map((c, i) => (
             <ProgressionChordCard
               key={i}
               roman={c.roman}
               note={c.note}
               type={c.type}
-              voicings={progressionVoicingSets[i] ?? []}
-              index={selectedIndices[i] ?? 0}
-              pinnedId={pinnedVoicings[i]}
+              typeOptions={c.typeOptions}
+              voicings={c.voicings}
+              selected={c.selected}
               useFlats={useFlats}
               tuning={tuning}
-              onPick={(voicingId) => handleProgressionVoicingChange(i, voicingId)}
+              onTypeChange={(t) => changeType(i, t)}
+              onPositionChange={(v) => changePosition(i, v)}
             />
           ))}
         </div>
@@ -335,7 +334,7 @@ export default function ProgressionsTool() {
   return (
     <GuitarToolView
       title="Chord Progressions"
-      tooltip="Progressions grouped by genre and by feeling, in your key. A minor Chord Type shows minor-key progressions and a major one shows major-key progressions. Position (also in settings) puts every chord in the shape closest to that fret, and each card's dropdown pins one chord to a shape of your own."
+      tooltip="Progressions grouped by genre and by feeling, in your key. A minor Chord Type shows minor-key progressions and a major one shows major-key progressions. Each chord card has its own Chord Type and Position dropdowns, so you can build the progression chord by chord; they start from the settings."
     >
       {/* A fixed height so the list and the chords scroll side by side. */}
       <div className="md:h-[calc(100dvh-9rem)]">{progressionContent}</div>
