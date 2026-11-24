@@ -7,7 +7,7 @@ import {
   GROUP_TOOLTIPS,
   TYPE_GROUPS,
 } from "@/app/lib/chordVoicings";
-import { updateGuitarSettings, useGuitarSettings } from "@/app/lib/guitarSettings";
+import { MAX_POSITION, updateGuitarSettings, useGuitarSettings } from "@/app/lib/guitarSettings";
 import { TUNINGS } from "@/app/lib/tunings";
 import { Bento } from "@/app/components/ui/bento";
 import { ToggleButton } from "@/app/components/ui/toggle-button";
@@ -18,12 +18,21 @@ function PickButton({ on, ...props }: Omit<React.ComponentProps<typeof ToggleBut
   return <ToggleButton size='xl' {...props} pressed={on} />;
 }
 
+/** 1st, 2nd, 3rd, 4th … 11th, 12th. */
+export function ordinal(n: number): string {
+  const teen = n % 100 >= 11 && n % 100 <= 13;
+  const suffix = teen ? "th" : (["th", "st", "nd", "rd"][n % 10] ?? "th");
+  return `${n}${suffix}`;
+}
+
+const POSITIONS: (number | null)[] = [null, ...Array.from({ length: MAX_POSITION }, (_, i) => i + 1)];
+
 /**
- * Root note, chord type and tuning: the settings every Guitar tool follows.
+ * Root note, chord type, tuning and position: the settings every Guitar tool follows.
  * Shown at the top of each tool and on the Settings page.
  */
 export default function GuitarSettingsPanel() {
-  const { rootNote: selectedNote, chordType: selectedType, useFlats, tuning } = useGuitarSettings();
+  const { rootNote: selectedNote, chordType: selectedType, useFlats, tuning, position } = useGuitarSettings();
   const displayNotes = useFlats ? flatNotes : sharpNotes;
 
   const handleFlatsToggle = () => {
@@ -122,6 +131,28 @@ export default function GuitarSettingsPanel() {
           </PickButton>
         ))}
         <span className="ml-1 text-xs text-ink-muted tabular-nums">{tuning.notes.join(" ")}</span>
+      </div>
+    </div>
+
+    {/* Row 4: Position */}
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+      <p
+        className="text-xs font-semibold text-ink-muted uppercase tracking-wider shrink-0"
+        title="Where your fretting hand sits — 5th position puts your index finger at the 5th fret. Chords are shown in the shape closest to it"
+      >
+        Position
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {POSITIONS.map((p) => (
+          <PickButton
+            key={p ?? "open"}
+            on={position === p}
+            onClick={() => updateGuitarSettings({ position: p })}
+            title={p === null ? "Open position — the lowest shape of each chord, open strings wherever they exist" : `${ordinal(p)} position — index finger at fret ${p}`}
+          >
+            {p === null ? "Open" : ordinal(p)}
+          </PickButton>
+        ))}
       </div>
     </div>
   </Bento>

@@ -17,13 +17,22 @@ export interface GuitarSettings {
   chordType: ChordType;
   useFlats: boolean;
   tuningId: string;
+  /**
+   * Where the fretting hand sits: position N puts the index finger at fret N.
+   * null is open position, the lowest way to play each chord.
+   */
+  position: number | null;
 }
+
+/** Highest position the pickers offer. */
+export const MAX_POSITION = 12;
 
 const DEFAULTS: GuitarSettings = {
   rootNote: "C",
   chordType: "Major",
   useFlats: false,
   tuningId: STANDARD_TUNING.id,
+  position: null,
 };
 
 const DB_NAME = "guitar-settings";

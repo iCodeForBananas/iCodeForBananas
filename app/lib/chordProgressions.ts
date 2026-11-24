@@ -123,6 +123,27 @@ export const noteAtDegree = (rootNote: string, degree: number, useFlats: boolean
   return useFlats ? sharpToFlat[sharpName] ?? sharpName : sharpName;
 };
 
+export type KeyMode = "major" | "minor";
+
+/** Whether a progression is read in a minor key: its tonic is a lowercase i. */
+export const progressionKeyMode = (pattern: string): KeyMode =>
+  isMinorKeyPattern(pattern.split(/[–-]/)) ? "minor" : "major";
+
+/**
+ * The key a chord type puts you in. Minor types (Minor, m7, mMaj7, m6, m9,
+ * m11) mean a minor key; everything else, sus and add chords included, is
+ * built on a major third and reads as major.
+ */
+export const keyModeForChordType = (chordType: string): KeyMode =>
+  // Case matters: the minor types start with a lowercase m, Maj7/Maj9 with an uppercase M.
+  chordType === "Minor" || chordType.startsWith("m") ? "minor" : "major";
+
+/** Only the progressions that live in this key mode; groups left empty drop out. */
+export const filterGroupsByKeyMode = (groups: ProgressionGroup[], mode: KeyMode): ProgressionGroup[] =>
+  groups
+    .map((g) => ({ ...g, items: g.items.filter((p) => progressionKeyMode(p.pattern) === mode) }))
+    .filter((g) => g.items.length > 0);
+
 // ── Curated progressions ────────────────────────────────────────────────────
 
 export const PROGRESSION_GROUPS: ProgressionGroup[] = [
@@ -232,6 +253,171 @@ export const PROGRESSION_GROUPS: ProgressionGroup[] = [
         songs: ["Hit the Road Jack"],
         themes: ["Yearning"],
       },
+    ],
+  },
+  // ── By genre ──────────────────────────────────────────────────────────────
+  // Common changes each style leans on, major- and minor-key both, so the
+  // key filter (major or minor, from the Chord Type setting) always leaves
+  // something in every genre that uses that mode. Patterns overlap with the
+  // feeling groups below on purpose: same chords, filed where a player
+  // looking for a style would look. Names stay unique, since a progression
+  // is selected by name.
+  {
+    label: "Genre · Pop",
+    items: [
+      { name: "Radio Pop", pattern: "I–V–vi–IV", description: "The default chorus of modern pop. Bright, resolved, impossible not to sing over." },
+      { name: "Pop Ballad Loop", pattern: "vi–IV–I–V", description: "The same four chords started on the minor. Verse-friendly and a little wounded." },
+      { name: "Chorus Lift", pattern: "IV–I–V–vi", description: "Starts on the IV so the chorus feels like it is already rising." },
+      { name: "Pre-Chorus Climb", pattern: "ii–iii–IV–V", description: "A stepwise climb that hands off to the chorus on the V." },
+      { name: "Dark Pop", pattern: "i–VI–III–VII", description: "The four-chord loop in minor. Moody but still built for a hook." },
+      { name: "Synth Pop Minor", pattern: "i–VII–VI–VII", description: "Rocks between two major chords under a minor tonic. Cold and pulsing." },
+    ],
+  },
+  {
+    label: "Genre · Rock",
+    items: [
+      { name: "Classic Rock", pattern: "I–bVII–IV–I", description: "The flat-seven swagger of riff rock, landing back home every bar." },
+      { name: "Arena Rock", pattern: "I–V–IV–I", description: "Big open chords and a falling IV. Built for a stadium singalong." },
+      { name: "Power Chord Drive", pattern: "I–bIII–IV–I", description: "A borrowed flat-three punch. Sounds great with distortion and palm muting." },
+      { name: "Stadium Stomp", pattern: "I–IV–bVII–IV", description: "Two chords of lift and one of grit, on a loop." },
+      { name: "Hard Rock Minor", pattern: "i–VI–VII–i", description: "Climbs up to the tonic in two steps. The minor-key rock workhorse." },
+      { name: "Riff Rock Minor", pattern: "i–VII–iv–i", description: "Falls a step, drops to the iv, and slams back on the root." },
+    ],
+  },
+  {
+    label: "Genre · Pop Punk",
+    items: [
+      { name: "Pop Punk Power", pattern: "I–V–vi–IV", description: "Four chords, fast downstrokes, and a gang vocal on top." },
+      { name: "Skate Park", pattern: "I–IV–vi–V", description: "Bright and hooky, with the vi giving the chorus its ache." },
+      { name: "Warped Tour", pattern: "vi–IV–I–V", description: "Starts on the minor for the angsty verse, same chords as the chorus." },
+      { name: "Basement Show", pattern: "I–V–IV–V", description: "Never sits on the IV. Pure forward momentum." },
+      { name: "Pop Punk Minor", pattern: "i–VI–III–VII", description: "The minor-key anthem loop, played twice as fast." },
+      { name: "Breakup Bridge", pattern: "i–VII–VI–VII", description: "A minor bridge that keeps circling instead of resolving." },
+    ],
+  },
+  {
+    label: "Genre · Punk",
+    items: [
+      { name: "Three-Chord Punk", pattern: "I–IV–V–IV", description: "Everything you need to start a band. Loud, simple, and fast." },
+      { name: "Garage Punk", pattern: "I–bVII–IV–V", description: "Raw flat-seven grit before snapping to the V." },
+      { name: "Street Punk", pattern: "I–IV–I–V", description: "Chant-along changes that never leave home for long." },
+      { name: "Hardcore Minor", pattern: "i–VI–VII–VII", description: "Minor, aggressive, and hammering the VII into the turnaround." },
+      { name: "Post-Punk", pattern: "i–iv–VII–III", description: "Cold minor motion that lands on a brighter III." },
+    ],
+  },
+  {
+    label: "Genre · Folk",
+    items: [
+      { name: "Folk Strum", pattern: "I–IV–I–V", description: "Two chords of home and one of leaving. Every campfire knows it." },
+      { name: "Road Song", pattern: "I–V–IV–I", description: "Out to the V and back down through the IV. Plain and honest." },
+      { name: "Front Porch", pattern: "I–vi–IV–V", description: "Gentle and familiar, with a soft minor in the middle." },
+      { name: "Fingerpicked Folk", pattern: "I–iii–IV–I", description: "The iii adds a wistful step on the way to the IV." },
+      { name: "Murder Ballad", pattern: "i–VII–VI–VII", description: "Old-world minor that circles like a story being retold." },
+      { name: "Sea Shanty", pattern: "i–VII–i–V", description: "Minor with a strong major V. Built for stomping and singing." },
+      { name: "Old World", pattern: "i–III–VII–i", description: "Modal and ancient-sounding. Celtic and Appalachian roots." },
+    ],
+  },
+  {
+    label: "Genre · Country",
+    items: [
+      { name: "Honky-Tonk", pattern: "I–IV–V–I", description: "The bar-band backbone. Simple changes, room for the story." },
+      { name: "Two-Step", pattern: "I–I–IV–V", description: "Two bars of home before the lift. Made for dancing." },
+      { name: "Nashville Ballad", pattern: "I–V–vi–IV", description: "Modern country radio's go-to chorus." },
+      { name: "Back Road", pattern: "I–ii–IV–I", description: "A gentle step up through the ii and back home." },
+      { name: "Country Waltz", pattern: "I–IV–I–V–I", description: "Three-quarter-time changes for a slow dance." },
+      { name: "Dark Holler", pattern: "i–VII–i–VI", description: "Minor-key mountain music. Lonesome and a little haunted." },
+    ],
+  },
+  {
+    label: "Genre · Indie / Alt",
+    items: [
+      { name: "Bedroom Indie", pattern: "I–iii–vi–IV", description: "Soft and floaty. The iii keeps it from sounding like radio pop." },
+      { name: "Dream Pop", pattern: "I–II–IV–I", description: "The major II lifts the floor out. Hazy and shimmering." },
+      { name: "Indie Jangle", pattern: "I–IV–ii–V", description: "Bright chiming changes for clean, chorus-soaked guitars." },
+      { name: "Midwest Emo", pattern: "I–iii–IV–iv", description: "Ends on the borrowed minor iv. Wistful and twinkly." },
+      { name: "Alt Minor", pattern: "i–VII–III–VI", description: "Falls without ever resolving. Brooding and hypnotic." },
+      { name: "Grunge Shift", pattern: "i–III–IV–VI", description: "A minor tonic with a major IV. Heavy but strangely bright." },
+    ],
+  },
+  {
+    label: "Genre · Blues",
+    items: [
+      { name: "Quick-Change Blues", pattern: "I–IV–I–I–IV–IV–I–I–V–IV–I–V", description: "Twelve-bar blues with the IV visited in bar two." },
+      { name: "Eight-Bar Blues", pattern: "I–V–IV–IV–I–V–I–V", description: "A shorter blues form. Gospel-tinged and compact." },
+      { name: "Blues Turnaround", pattern: "I–IV–I–V", description: "The last four bars of a blues, looped." },
+      { name: "Minor Blues", pattern: "i–i–i–i–iv–iv–i–i–V–iv–i–V", description: "Twelve bars in minor. Slow, heavy, and moody." },
+      { name: "Minor Blues Vamp", pattern: "i–iv–i–V", description: "A short minor-blues loop to solo over." },
+    ],
+  },
+  {
+    label: "Genre · R&B / Soul",
+    items: [
+      { name: "Classic Soul", pattern: "I–vi–IV–V", description: "Motown-era changes. Sweet and danceable." },
+      { name: "Slow Jam", pattern: "IV–iii–ii–I", description: "Walks down to the tonic. Smooth and late-night." },
+      { name: "Neo-Soul Loop", pattern: "ii–V–iii–vi", description: "Jazz movement that never quite lands. Add 7ths for the full sound." },
+      { name: "Soul Lift", pattern: "I–iii–IV–V", description: "Warm and climbing, with room for big vocal runs." },
+      { name: "Minor R&B", pattern: "i–VI–iv–V", description: "Moody minor that pulls hard into the V." },
+      { name: "Minor Groove", pattern: "i–iv–i–iv", description: "Two-chord minor vamp. All about the rhythm section." },
+    ],
+  },
+  {
+    label: "Genre · Gospel",
+    items: [
+      { name: "Church Turnaround", pattern: "I–IV–I–V", description: "The Sunday-morning backbone. Rooted and joyful." },
+      { name: "Gospel Walk-Up", pattern: "I–iii–IV–#iv°–V", description: "A chromatic climb through a diminished passing chord to the V." },
+      { name: "Amen Cadence", pattern: "I–IV–I", description: "The plagal 'amen' close. Peaceful and final." },
+      { name: "Praise Loop", pattern: "IV–V–iii–vi", description: "Rising worship changes that build toward the chorus." },
+      { name: "Minor Hymn", pattern: "i–iv–V–i", description: "A solemn minor hymn with a strong major V." },
+    ],
+  },
+  {
+    label: "Genre · Reggae",
+    items: [
+      { name: "Island Skank", pattern: "I–IV–V–IV", description: "Off-beat chops over the simplest changes." },
+      { name: "Rocksteady", pattern: "I–vi–IV–V", description: "Doo-wop changes slowed down and laid back." },
+      { name: "Sunshine Vamp", pattern: "I–IV", description: "Two chords forever. All the feel is in the rhythm." },
+      { name: "Roots Minor", pattern: "i–VII–i–VII", description: "Minor two-chord roots groove. Deep and steady." },
+      { name: "Dub Minor", pattern: "i–iv–i–v", description: "Minor and spacious. Leaves room for echo and bass." },
+    ],
+  },
+  {
+    label: "Genre · Metal",
+    items: [
+      { name: "Gallop", pattern: "i–VI–VII–i", description: "Heavy minor climb. Made for galloping palm-muted riffs." },
+      { name: "Phrygian Doom", pattern: "i–bII–i–VII", description: "The half-step flat-two is the darkest sound in metal." },
+      { name: "Power Metal", pattern: "i–VI–III–VII", description: "Epic minor loop. Fast, soaring, and triumphant." },
+      { name: "Harmonic Minor Metal", pattern: "i–VI–V–i", description: "The major V gives it a neoclassical, sinister bite." },
+      { name: "Hair Metal", pattern: "I–IV–bVII–I", description: "Major-key party metal with a flat-seven strut." },
+    ],
+  },
+  {
+    label: "Genre · EDM / Dance",
+    items: [
+      { name: "Festival Drop", pattern: "vi–IV–I–V", description: "The euphoric big-room build. Hands in the air." },
+      { name: "House Piano", pattern: "I–V–vi–iii", description: "Bright piano stabs that never fully settle." },
+      { name: "Euphoric Trance", pattern: "i–VI–III–VII", description: "Minor and soaring. The classic trance breakdown." },
+      { name: "Deep House Minor", pattern: "i–iv–VII–III", description: "Smooth minor movement for a late-night groove." },
+      { name: "Dark Techno", pattern: "i–VI", description: "Two chords and a kick drum. Hypnotic by design." },
+    ],
+  },
+  {
+    label: "Genre · Hip-Hop / Lo-fi",
+    items: [
+      { name: "Lo-fi Loop", pattern: "ii–V–I–vi", description: "Jazzy and dusty. Add 7ths and let it loop forever." },
+      { name: "Chillhop", pattern: "IV–iii–vi–V", description: "Soft and nostalgic. Study-beats territory." },
+      { name: "Boom Bap Minor", pattern: "i–iv–i–v", description: "Dark minor sample-loop changes." },
+      { name: "Trap Minor", pattern: "i–VI–VII–VI", description: "Brooding minor loop under heavy 808s." },
+      { name: "Two-Chord Trap", pattern: "i–VI", description: "Minimal and menacing. Built to rap over." },
+    ],
+  },
+  {
+    label: "Genre · Latin",
+    items: [
+      { name: "Salsa Montuno", pattern: "I–IV–V–IV", description: "The montuno vamp. Repeats while the band takes off." },
+      { name: "Bossa Turnaround", pattern: "I–VI–ii–V", description: "Gentle bossa nova motion. Smooth and swaying." },
+      { name: "Bachata", pattern: "i–iv–V–i", description: "Romantic minor changes with a pull to the major V." },
+      { name: "Reggaeton", pattern: "i–VI–III–VII", description: "The dembow loop. Minor, rhythmic, and catchy." },
+      { name: "Tango", pattern: "i–V–i–iv", description: "Dramatic minor push and pull." },
     ],
   },
   {

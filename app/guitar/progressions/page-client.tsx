@@ -4,27 +4,27 @@ import { useMemo, useState } from "react";
 import { Select } from "@radix-ui/themes";
 import {
   PROGRESSION_GROUPS,
+  filterGroupsByKeyMode,
+  keyModeForChordType,
   noteAtDegree,
   parseRomanPattern,
   type ChordQuality,
 } from "@/app/lib/chordProgressions";
 import { formatChordLabel, getNeckVoicings, type NeckVoicing } from "@/app/lib/chordVoicings";
-import { useGuitarSettings } from "@/app/lib/guitarSettings";
+import { MAX_POSITION, updateGuitarSettings, useGuitarSettings } from "@/app/lib/guitarSettings";
 import type { GuitarTuning } from "@/app/lib/tunings";
 import { Bento } from "@/app/components/ui/bento";
 import ChordDiagram from "@/app/components/ChordDiagram";
 import GuitarToolView from "../GuitarToolView";
-
-/** Highest fret the Around-fret dropdown will aim a progression at. */
-const MAX_TARGET_FRET = 12;
+import { ordinal } from "../GuitarSettingsPanel";
 
 // `null` anchors the progression at each chord's lowest-sounding voicing, which
 // is the open shape wherever one exists.
 const POSITION_OPTIONS: { value: number | null; label: string }[] = [
-  { value: null, label: "Open / lowest position" },
-  ...Array.from({ length: MAX_TARGET_FRET }, (_, i) => ({
+  { value: null, label: "Open position" },
+  ...Array.from({ length: MAX_POSITION }, (_, i) => ({
     value: i + 1,
-    label: `Around fret ${i + 1}`,
+    label: `${ordinal(i + 1)} position (fret ${i + 1})`,
   })),
 ];
 
@@ -114,25 +114,37 @@ function ProgressionChordCard({
 }
 
 export default function ProgressionsTool() {
-  const { rootNote: selectedNote, useFlats, tuning } = useGuitarSettings();
+  const {
+    rootNote: selectedNote,
+    chordType,
+    useFlats,
+    tuning,
+    // Where the progression sits on the neck, from the shared settings: every
+    // chord takes the voicing that puts the hand nearest this fret.
+    position: progressionFret,
+  } = useGuitarSettings();
 
-  const [selectedProgressionName, setSelectedProgressionName] = useState(PROGRESSION_GROUPS[0].items[0].name);
-  // Per-chord voicing picks, scoped to the progression they were made on so
-  // switching progressions starts fresh without a reset effect.
+  // A minor chord type means a minor key: only progressions whose tonic is a
+  // minor i, so picking A + Minor lists A minor progressions and nothing else.
+  const keyMode = keyModeForChordType(chordType);
+  const groups = useMemo(() => filterGroupsByKeyMode(PROGRESSION_GROUPS, keyMode), [keyMode]);
+
+  const [chosenProgressionName, setSelectedProgressionName] = useState(PROGRESSION_GROUPS[0].items[0].name);
+  // Per-chord voicing picks, scoped to the progression and position they were
+  // made on, so changing either starts fresh without a reset effect.
   const [progressionVoicings, setProgressionVoicings] = useState<{
     progression: string;
+    position: number | null;
     byIndex: Record<number, string>;
-  }>({ progression: selectedProgressionName, byIndex: {} });
-  // Where the progression sits on the neck: every chord takes the voicing that
-  // puts the hand nearest this fret.
-  const [progressionFret, setProgressionFret] = useState<number | null>(null);
+  }>({ progression: chosenProgressionName, position: progressionFret, byIndex: {} });
 
+  // Switching key mode can hide the chosen progression; fall back to the first
+  // one that fits rather than showing a progression in the wrong mode.
   const selectedProgressionDef = useMemo(
-    () =>
-      PROGRESSION_GROUPS.flatMap((g) => g.items).find((p) => p.name === selectedProgressionName) ??
-      PROGRESSION_GROUPS[0].items[0],
-    [selectedProgressionName]
+    () => groups.flatMap((g) => g.items).find((p) => p.name === chosenProgressionName) ?? groups[0].items[0],
+    [groups, chosenProgressionName]
   );
+  const selectedProgressionName = selectedProgressionDef.name;
 
   const progressionChords = useMemo(
     () =>
@@ -155,26 +167,22 @@ export default function ProgressionsTool() {
     [progressionVoicingSets, progressionFret]
   );
 
-  // Pinned chords survive a key change, but not a switch to another progression.
-  const pinnedVoicings =
-    progressionVoicings.progression === selectedProgressionName ? progressionVoicings.byIndex : {};
+  // Pinned chords survive a key change, but not a switch to another
+  // progression or a new position: moving the progression is a statement about
+  // all of it, so it releases the chords that were pinned by hand.
+  const pinsApply =
+    progressionVoicings.progression === selectedProgressionName && progressionVoicings.position === progressionFret;
+  const pinnedVoicings = pinsApply ? progressionVoicings.byIndex : {};
 
   const handleProgressionVoicingChange = (index: number, voicingId: string) => {
-    setProgressionVoicings((prev) => ({
+    setProgressionVoicings({
       progression: selectedProgressionName,
-      byIndex:
-        prev.progression === selectedProgressionName
-          ? { ...prev.byIndex, [index]: voicingId }
-          : { [index]: voicingId },
-    }));
+      position: progressionFret,
+      byIndex: { ...pinnedVoicings, [index]: voicingId },
+    });
   };
 
-  // Moving the progression is a statement about all of it, so it releases the
-  // chords that were pinned by hand rather than leaving some behind.
-  const anchorProgression = (fret: number | null) => {
-    setProgressionFret(fret);
-    setProgressionVoicings({ progression: selectedProgressionName, byIndex: {} });
-  };
+  const anchorProgression = (fret: number | null) => updateGuitarSettings({ position: fret });
 
   // Sidebar rather than a dropdown: the whole point is scanning the feelings
   // and clicking through them quickly, which a closed <select> can't do.
@@ -183,9 +191,16 @@ export default function ProgressionsTool() {
       <div
         className="flex max-h-64 min-h-0 shrink-0 flex-col overflow-y-auto rounded-lg border border-line-subtle md:max-h-none md:w-72"
         role="listbox"
-        aria-label="Chord progressions by feeling"
+        aria-label="Chord progressions by genre and feeling"
       >
-        {PROGRESSION_GROUPS.map((group) => (
+        <p className="border-b border-line-subtle px-3 py-2 text-xs text-ink-muted">
+          {keyMode === "minor" ? "Minor" : "Major"}-key progressions in{" "}
+          <span className="font-semibold text-ink-primary">
+            {selectedNote} {keyMode}
+          </span>
+          . Change Chord Type in settings to switch.
+        </p>
+        {groups.map((group) => (
           <div key={group.label}>
             <p className="sticky top-0 z-10 border-b border-line-subtle bg-surface-sunken px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
               {group.label}
@@ -262,7 +277,7 @@ export default function ProgressionsTool() {
                 className="text-xs font-semibold uppercase tracking-wider text-ink-muted"
                 title="Anchor the progression at a spot on the fretboard — every chord takes the voicing that puts your hand nearest that fret"
               >
-                Fretboard Position
+                Position
               </label>
               {/* Radix Select can't use "" as a value, so "open position" is "open". */}
               <Select.Root
@@ -288,7 +303,7 @@ export default function ProgressionsTool() {
             <p className="max-w-[240px] text-xs text-ink-muted">
               {progressionFret === null
                 ? "The lowest way to play it — open chords wherever they exist."
-                : `Every chord in the shape that sits closest to fret ${progressionFret}.`}
+                : `Every chord in the shape closest to ${ordinal(progressionFret)} position (fret ${progressionFret}).`}
             </p>
           </div>
         </div>
@@ -316,7 +331,7 @@ export default function ProgressionsTool() {
   return (
     <GuitarToolView
       title="Chord Progressions"
-      tooltip="Progressions grouped by the feeling they create — the chords render in your key, the Roman numeral pattern stays fixed while the chords follow your root note. Fretboard Position puts the whole progression near a fret of your choosing, and each card's dropdown pins one chord to a shape of your own."
+      tooltip="Progressions grouped by genre and by feeling, in your key. A minor Chord Type shows minor-key progressions and a major one shows major-key progressions. Position (also in settings) puts every chord in the shape closest to that fret, and each card's dropdown pins one chord to a shape of your own."
     >
       {/* A fixed height so the list and the chords scroll side by side. */}
       <div className="md:h-[calc(100dvh-9rem)]">{progressionContent}</div>
