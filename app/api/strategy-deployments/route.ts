@@ -14,7 +14,7 @@ export const dynamic = "force-dynamic";
 // read and write to trading operators.
 
 const COLUMNS =
-  "id, strategy_id, symbol, bar_interval, params, enable_shorts, starting_equity, position_size_pct, max_daily_loss_pct, drawdown_limit_pct, drawdown_pause_bars, min_bars, history_days, enabled, backtest, last_run_at, last_action, last_reason, last_error, created_at, updated_at";
+  "id, strategy_id, symbol, bar_interval, params, enable_shorts, starting_equity, position_size_pct, max_daily_loss_pct, drawdown_limit_pct, drawdown_pause_bars, min_bars, history_days, enabled, backtest, last_run_at, last_action, last_reason, last_error, teardown_requested_at, created_at, updated_at";
 
 const fail = (status: number, error: string, details?: string[]) => NextResponse.json({ error, details }, { status });
 
@@ -84,7 +84,9 @@ export async function PATCH(request: NextRequest) {
     const errors = validateAppDeployment({ ...rowToDeployment(current), enabled: true }, DEPLOYMENTS);
     if (errors.length) return fail(422, "It can't be resumed.", errors);
   }
-  const { data, error } = await supabase.from("strategy_deployments").update({ enabled: body.enabled }).eq("id", body.id).select(COLUMNS).maybeSingle();
+  // Enabling one that was deleted but hasn't finished closing calls the delete off.
+  const change = body.enabled ? { enabled: true, teardown_requested_at: null } : { enabled: false };
+  const { data, error } = await supabase.from("strategy_deployments").update(change).eq("id", body.id).select(COLUMNS).maybeSingle();
   if (error) return dbError(error);
   if (!data) return fail(404, "No such deployment.");
   return NextResponse.json({ deployment: data });
@@ -95,8 +97,17 @@ export async function DELETE(request: NextRequest) {
   if (!user) return fail(401, "Sign in to remove a deployment.");
   const id = request.nextUrl.searchParams.get("id");
   if (!id) return fail(400, "Send an id.");
-  const { data, error } = await supabase.from("strategy_deployments").delete().eq("id", id).select("id").maybeSingle();
+  // A delete closes the position first, and only the dispatcher can reach
+  // Tradier: this turns it off and asks; the dispatcher closes the position
+  // on its next tick (at the next open, if the market is shut) and then
+  // deletes the row itself.
+  const { data, error } = await supabase
+    .from("strategy_deployments")
+    .update({ enabled: false, teardown_requested_at: new Date().toISOString() })
+    .eq("id", id)
+    .select(COLUMNS)
+    .maybeSingle();
   if (error) return dbError(error);
   if (!data) return fail(404, "No such deployment.");
-  return NextResponse.json({ deleted: id });
+  return NextResponse.json({ deployment: data }, { status: 202 });
 }

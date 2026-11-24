@@ -56,8 +56,8 @@ export const FRESHNESS_POLL_GAP_MS = 5 * 1000;
 export const FILL_POLL_MS = 1500;
 export const FILL_POLL_ATTEMPTS = 6;
 
-const OPEN_ORDER_STATUSES = new Set(['open', 'partially_filled', 'pending']);
-const DEAD_ORDER_STATUSES = new Set(['rejected', 'canceled', 'cancelled', 'expired', 'error']);
+export const OPEN_ORDER_STATUSES = new Set(['open', 'partially_filled', 'pending']);
+export const DEAD_ORDER_STATUSES = new Set(['rejected', 'canceled', 'cancelled', 'expired', 'error']);
 
 export interface Position {
   side: 'long' | 'short';

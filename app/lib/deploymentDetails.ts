@@ -40,6 +40,8 @@ export interface DeploymentConfig {
   maxDailyLossPct: number;
   drawdownLimitPct: number;
   drawdownPauseBars: number;
+  /** Deleted: the dispatcher is closing its position, then removes it. */
+  tearingDown: boolean;
 }
 
 export interface DeploymentIdentity {

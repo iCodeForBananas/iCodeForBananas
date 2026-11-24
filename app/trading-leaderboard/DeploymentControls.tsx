@@ -3,8 +3,9 @@
 // Turn a deployment off, back on, or tear it down, from the leaderboard's
 // deployment panel. The writes go through /api/strategy-deployments, which
 // only trading operators can use; anyone else gets its error back here.
-// Neither pausing nor deleting touches Tradier: a position it holds stays
-// open there until it's closed there.
+// Disabling leaves a position open. Deleting closes it: the dispatcher
+// cancels the deployment's order, closes at market on its next tick (at the
+// next open if the market is shut), then deletes the row.
 
 import { useState } from "react";
 import { Callout } from "@radix-ui/themes";
@@ -17,7 +18,7 @@ export interface DeploymentControlsProps {
   label: string;
   /** undefined when it's no longer deployed. */
   config: DeploymentConfig | undefined;
-  /** The new config after a pause or resume, null after a delete. */
+  /** The new config after a disable, enable or delete. */
   onChange: (id: string, config: DeploymentConfig | null) => void;
 }
 
@@ -46,13 +47,13 @@ export function DeploymentControls({ id, label, config, onChange }: DeploymentCo
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id, enabled }),
     });
-    if (ok) onChange(id, { ...config, enabled });
+    if (ok) onChange(id, { ...config, enabled, tearingDown: enabled ? false : config.tearingDown });
   }
 
   async function remove() {
     const ok = await send(`/api/strategy-deployments?id=${encodeURIComponent(id)}`, { method: "DELETE" });
     setConfirming(false);
-    if (ok) onChange(id, null);
+    if (ok && config) onChange(id, { ...config, enabled: false, tearingDown: true });
   }
 
   if (!config) {
@@ -62,21 +63,23 @@ export function DeploymentControls({ id, label, config, onChange }: DeploymentCo
   return (
     <div className="flex flex-col gap-3">
       <p className="text-sm text-ink-muted">
-        {config.enabled
-          ? "Running. Disabling stops it trading from the next bar; enabling it again picks up where it left off."
-          : "Disabled: the dispatcher skips it. Enable it to resume trading with its state intact."}{" "}
-        Neither disabling nor deleting closes a position it holds in Tradier.
+        {config.tearingDown
+          ? "Deleted. Its position is being closed at market (at the next open if the market is shut); it disappears once flat. Enable it to call the delete off."
+          : config.enabled
+            ? "Running. Disabling stops it trading from the next bar and leaves any position open; enabling it again picks up where it left off."
+            : "Disabled: the dispatcher skips it, and any position stays open. Enable it to resume trading with its state intact."}{" "}
+        Deleting closes its position at market first.
       </p>
       <div className="flex flex-wrap gap-2">
         <Button variant="secondary" size="sm" disabled={busy} onClick={() => void setEnabled(!config.enabled)}>
           {config.enabled ? <Pause className="size-3.5" /> : <Play className="size-3.5" />}
           {config.enabled ? "Disable" : "Enable"}
         </Button>
-        {confirming ? (
+        {config.tearingDown ? null : confirming ? (
           <>
             <Button variant="danger" size="sm" disabled={busy} onClick={() => void remove()}>
               <Trash2 className="size-3.5" />
-              Delete {label} for good
+              Close the position and delete {label}
             </Button>
             <Button variant="ghost" size="sm" disabled={busy} onClick={() => setConfirming(false)}>
               Cancel

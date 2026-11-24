@@ -483,7 +483,7 @@ export function TradingLeaderboardView({
                         </div>
                         <div className="pl-4 text-12 text-ink-muted">
                           {c.strategy}
-                          {configs.size > 0 && (configs.get(c.id) ? (configs.get(c.id)!.enabled ? "" : " · Disabled") : " · Not deployed")}
+                          {configs.size > 0 && (configs.get(c.id) ? (configs.get(c.id)!.tearingDown ? " · Closing" : configs.get(c.id)!.enabled ? "" : " · Disabled") : " · Not deployed")}
                         </div>
                       </td>
                       <td className={`${num} font-semibold ${thin ? weak : returnClass(c.returnPct)}`}>{signedPct(c.returnPct)}</td>

@@ -102,9 +102,10 @@ describe('dispatch', () => {
   const noTradier = new Proxy({}, { get: () => () => Promise.reject(new Error('tradier down')) }) as unknown as TradierApi;
   const setup = (rows: AppDeploymentRow[], t: number) => {
     const reported: RunOutcome[] = [];
+    const finished: string[] = [];
     const logs: string[] = [];
     const deps = {
-      source: { list: async () => rows, reportRun: async (o: RunOutcome) => void reported.push(o) },
+      source: { list: async () => rows, reportRun: async (o: RunOutcome) => void reported.push(o), finishTeardown: async (id: string) => void finished.push(id) },
       strategies: AVAILABLE_STRATEGIES,
       codeDeployments: [],
       tradier: noTradier,
@@ -113,7 +114,7 @@ describe('dispatch', () => {
       sleep: async () => {},
       log: (l: string) => void logs.push(l),
     };
-    return { deps, reported, logs };
+    return { deps, reported, logs, finished };
   };
 
   it('runs nothing between bars, and reports nothing', async () => {
@@ -152,4 +153,29 @@ describe('dispatch', () => {
     expect(res.outcomes[0].error).toBe('tradier down');
     expect(reported).toEqual([]);
   });
+
+  it('removes a deleted deployment that is already flat, on any tick', async () => {
+    const r = row({}, { enabled: false, teardown_requested_at: '2026-11-23T15:00:00Z' });
+    const { deps, finished, reported } = setup([r], et('10:05'));
+    deps.tradier = { ...flatTradier } as TradierApi;
+    const res = await dispatch({}, deps);
+    expect(res.due).toEqual([]);
+    expect(finished).toEqual([r.id]);
+    expect(res.teardowns[0]).toMatchObject({ id: r.id, action: 'removed (flat)' });
+    expect(reported).toEqual([]);
+  });
+
+  it('keeps a deleted deployment and reports the error when the teardown fails', async () => {
+    const r = row({}, { enabled: false, teardown_requested_at: '2026-11-23T15:00:00Z' });
+    const { deps, finished, reported } = setup([r], et('10:05'));
+    await dispatch({}, deps);
+    expect(finished).toEqual([]);
+    expect(reported).toEqual([{ id: r.id, at: et('10:05'), action: 'teardown error', reason: null, error: 'tradier down' }]);
+  });
 });
+
+const flatTradier: Partial<TradierApi> = {
+  clock: async () => ({ state: 'open' }),
+  positions: async () => [],
+  orders: async () => [],
+};

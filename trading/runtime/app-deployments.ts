@@ -31,6 +31,8 @@ export interface AppDeploymentRow {
   history_days: number;
   enabled: boolean;
   created_at?: string;
+  /** Set when someone deleted it: the dispatcher closes its position, then deletes the row. */
+  teardown_requested_at?: string | null;
 }
 
 /** What the backtester sends to publish a deployment. The id is derived, never sent. */

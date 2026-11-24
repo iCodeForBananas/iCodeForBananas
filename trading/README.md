@@ -20,7 +20,16 @@ result (the same values the Lambda prompt would write), leaves blank anything
 the run can't tell (risk-based sizing, say) for you to fill in, and saves one
 row to `public.strategy_deployments`
 ([`supabase/migrations/20261123_strategy_deployments.sql`](../supabase/migrations/20261123_strategy_deployments.sql)).
-Manage them at `/strategy-deployments`: pause, resume, remove.
+Manage them at `/strategy-deployments` or from a deployment's panel on the
+`/trading-leaderboard`: pause, resume, remove. Pausing leaves any position
+open. Removing closes it: the API turns the deployment off and sets
+`teardown_requested_at`; on each tick the dispatcher (`runtime/teardown.ts`)
+cancels its working orders, closes its position at market while the market
+is open, and once it's flat deletes the row
+(`finish_strategy_deployment_teardown`). When another enabled deployment
+trades the same symbol, only the shares this one's state holds are closed.
+Teardown is part of the dispatcher, so it needs the stack deployed
+(`npx cdk deploy`) after this change.
 
 One Lambda in this stack, `tradier-dispatcher`
 ([`runtime/dispatch.ts`](runtime/dispatch.ts)), runs all of them. EventBridge

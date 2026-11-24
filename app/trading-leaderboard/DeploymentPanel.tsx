@@ -255,9 +255,11 @@ export function DeploymentPanel({ row, go, backtest, config, color, now, onClose
                   "Schedule",
                   config === undefined
                     ? "No longer deployed"
-                    : config.enabled
-                      ? "Running, every bar close"
-                      : "Disabled",
+                    : config.tearingDown
+                      ? "Deleted: closing its position, then removed"
+                      : config.enabled
+                        ? "Running, every bar close"
+                        : "Disabled",
                 ],
                 ...(config
                   ? ([

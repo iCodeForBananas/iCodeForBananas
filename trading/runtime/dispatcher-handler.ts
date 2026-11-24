@@ -84,6 +84,9 @@ const source: DeploymentSource = {
       p_error: o.error,
     }, REPORT_TIMEOUT_MS);
   },
+  finishTeardown: async (id) => {
+    await rpc('finish_strategy_deployment_teardown', { p_id: id }, 10_000);
+  },
 };
 
 const store: StateStore = {

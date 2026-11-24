@@ -26,6 +26,8 @@ interface ConfigRow {
   max_daily_loss_pct: number;
   drawdown_limit_pct: number;
   drawdown_pause_bars: number;
+  /** Missing until the 20261125 migration has run. */
+  teardown_requested_at?: string | null;
 }
 
 async function loadConfigs(): Promise<DeploymentConfig[]> {
@@ -50,6 +52,7 @@ async function loadConfigs(): Promise<DeploymentConfig[]> {
       maxDailyLossPct: r.max_daily_loss_pct,
       drawdownLimitPct: r.drawdown_limit_pct,
       drawdownPauseBars: r.drawdown_pause_bars,
+      tearingDown: r.teardown_requested_at != null,
     }));
   } catch {
     return [];

@@ -12,6 +12,7 @@ import type { StrategyDefinition } from '@/app/strategies/types';
 import { DATA_DELAY_MS, resolveDeployment, type Deployment, type Interval, type ResolvedDeployment } from './config';
 import { TICK_MINUTES, rowToDeployment, validateAppDeployment, type AppDeploymentRow } from './app-deployments';
 import { expectedBarClose, runDeployment, type RunDeps, type RunEvent } from './run';
+import { teardownDeployment } from './teardown';
 import { etParts } from './time';
 
 const TICK_MS = TICK_MINUTES * 60_000;
@@ -78,6 +79,8 @@ export interface DeploymentSource {
   list(): Promise<AppDeploymentRow[]>;
   /** Best effort: a failure is logged, never fatal. */
   reportRun(outcome: RunOutcome): Promise<void>;
+  /** Deletes a torn-down deployment's row once it's flat. */
+  finishTeardown(id: string): Promise<void>;
 }
 
 export interface DispatchEvent extends RunEvent {
@@ -100,6 +103,8 @@ export interface DispatchResult {
   due: string[];
   outcomes: RunOutcome[];
   rejected: Selection['rejected'];
+  /** Deleted deployments worked on this tick: closing their positions, or removed once flat. */
+  teardowns: RunOutcome[];
 }
 
 export async function dispatch(event: DispatchEvent | undefined, deps: DispatchDeps): Promise<DispatchResult> {
@@ -119,6 +124,25 @@ export async function dispatch(event: DispatchEvent | undefined, deps: DispatchD
       return runDeployment(d, runEvent, { ...deps, strategy });
     }),
   );
+  // Deleted deployments, every tick until they're flat: cancel, close, remove.
+  // Not with `ids`, which is for checking named deployments by hand.
+  const tearingDown = ids ? [] : rows.filter((r) => r.teardown_requested_at && !r.enabled);
+  const enabledSymbols = new Set(run.map((d) => d.symbol));
+  const teardowns: RunOutcome[] = await Promise.all(
+    tearingDown.map(async (r): Promise<RunOutcome> => {
+      try {
+        const res = await teardownDeployment(r, enabledSymbols.has(r.symbol), runEvent.dryRun === true, deps);
+        if (res.status === 'flat' && !runEvent.dryRun) {
+          await deps.source.finishTeardown(r.id);
+          return { id: r.id, at: t, action: `removed (${res.action})`, reason: res.reason, error: null };
+        }
+        return { id: r.id, at: t, action: `teardown: ${res.action}`, reason: res.reason, error: null };
+      } catch (err) {
+        return { id: r.id, at: t, action: 'teardown error', reason: null, error: String((err as Error)?.message ?? err) };
+      }
+    }),
+  );
+
   const outcomes: RunOutcome[] = settled.map((s, i) => ({
     id: due[i].id,
     at: t,
@@ -132,13 +156,16 @@ export async function dispatch(event: DispatchEvent | undefined, deps: DispatchD
     const reports = [
       ...outcomes,
       ...rejected.map((r) => ({ id: r.id, at: t, action: 'rejected', reason: r.errors.join('; '), error: null })),
+      // A removed row has nothing left to report to.
+      ...teardowns.filter((o) => !o.action.startsWith('removed')),
     ];
     const failed: string[] = [];
     await Promise.all(reports.map((o) => deps.source.reportRun(o).catch((err: Error) => failed.push(`${o.id}: ${err.message}`))));
     if (failed.length) deps.log(JSON.stringify({ level: 'warn', dispatcher: true, runReportErrors: failed }));
   }
 
-  const result: DispatchResult = { tick: new Date(t).toISOString(), enabled: rows.filter((r) => r.enabled).length, due: due.map((d) => d.id), outcomes, rejected };
+  if (teardowns.some((o) => o.error)) deps.log(JSON.stringify({ level: 'warn', dispatcher: true, teardownErrors: teardowns.filter((o) => o.error) }));
+  const result: DispatchResult = { tick: new Date(t).toISOString(), enabled: rows.filter((r) => r.enabled).length, due: due.map((d) => d.id), outcomes, rejected, teardowns };
   deps.log(JSON.stringify({ level: outcomes.some((o) => o.error) || rejected.length ? 'warn' : 'info', dispatcher: true, ...result }));
   return result;
 }

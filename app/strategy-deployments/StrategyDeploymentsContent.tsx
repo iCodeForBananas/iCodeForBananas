@@ -2,8 +2,9 @@
 
 // The strategies deployed from the backtester: what each trades, whether it's
 // on, and what the dispatcher did with it last. Pausing stops new runs on the
-// next tick; removing deletes the row. Neither touches Tradier, so an open
-// position stays open until it's closed there.
+// next tick and leaves any position open. Removing closes the position: the
+// dispatcher cancels its order, closes at market (at the next open if the
+// market is shut), then deletes the row.
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
@@ -28,6 +29,7 @@ interface Row {
   last_action: string | null;
   last_reason: string | null;
   last_error: string | null;
+  teardown_requested_at: string | null;
   created_at: string;
 }
 
@@ -69,7 +71,7 @@ export default function StrategyDeploymentsContent() {
   const setEnabled = (id: string, enabled: boolean) =>
     act(id, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, enabled }) });
   const remove = (r: Row) => {
-    if (!confirm(`Remove ${r.id}? Any position it holds stays open in Tradier until you close it there.`)) return;
+    if (!confirm(`Remove ${r.id}? Its position is closed at market (at the next open if the market is shut), then it's deleted.`)) return;
     void act(r.id, { method: "DELETE" }, `/api/strategy-deployments?id=${encodeURIComponent(r.id)}`);
   };
 
@@ -131,7 +133,7 @@ export default function StrategyDeploymentsContent() {
                       </Text>
                     </Table.Cell>
                     <Table.Cell>
-                      <Badge color={r.enabled ? "green" : "gray"}>{r.enabled ? "Running" : "Paused"}</Badge>
+                      <Badge color={r.teardown_requested_at ? "orange" : r.enabled ? "green" : "gray"}>{r.teardown_requested_at ? "Closing" : r.enabled ? "Running" : "Paused"}</Badge>
                     </Table.Cell>
                     <Table.Cell>
                       {r.last_run_at ? (
@@ -157,7 +159,7 @@ export default function StrategyDeploymentsContent() {
                           {r.enabled ? <Pause className="size-3.5" /> : <Play className="size-3.5" />}
                           {r.enabled ? "Pause" : "Resume"}
                         </Button>
-                        <Button size="sm" variant="danger" disabled={busy === r.id} onClick={() => remove(r)} aria-label={`Remove ${r.id}`}>
+                        <Button size="sm" variant="danger" disabled={busy === r.id || !!r.teardown_requested_at} onClick={() => remove(r)} aria-label={`Remove ${r.id}`}>
                           <Trash2 className="size-3.5" />
                         </Button>
                       </div>
