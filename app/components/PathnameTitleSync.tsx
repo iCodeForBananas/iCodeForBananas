@@ -21,7 +21,6 @@ const TITLES: Record<string, string> = {
   "/songwriter":                          "Songwriter | iCodeForBananas",
   "/spelling-bee":                        "Spelling Bee | iCodeForBananas",
   "/trading-leaderboard":                 "Trading Leaderboard | iCodeForBananas",
-  "/word-climb":                          "Word Climb | iCodeForBananas",
   "/workout-tracker":                     "Workout Tracker | iCodeForBananas",
 };
 

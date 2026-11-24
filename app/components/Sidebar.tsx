@@ -34,8 +34,6 @@ export const LINKS: { href: string; text: string; category: Category; auth?: boo
   { href: "/trading-leaderboard", text: "Trading Leaderboard", category: "Trading", abbr: "TL" },
   // Tools
   { href: "/workout-tracker", text: "Workout Tracker", category: "Tools" },
-  // Education
-  { href: "/word-climb", text: "Word Climb", category: "Education", abbr: "WC" },
   // Experiments
 ];
 
