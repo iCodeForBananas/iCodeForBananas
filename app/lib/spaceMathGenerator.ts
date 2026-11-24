@@ -34,6 +34,10 @@ export interface Problem {
   // however many cells the kid actually shaded, compared the same way any
   // other answer is.
   shadeTarget?: { shape: FractionVisual["shape"]; total: number; target: number };
+  // An analog clock drawn above the question (tell-time).
+  clock?: { hour: number; minute: number };
+  // A picture graph or bar graph drawn above the question.
+  graph?: { kind: "picture" | "bar"; title: string; rows: [string, number][] };
 }
 
 // ─── Problem Generator ────────────────────────────────────────────────────────
@@ -56,6 +60,31 @@ function chainAdd(terms: number[], blankIndex: number | null): { question: strin
   const parts = terms.map((t, i) => (i === blankIndex ? "__" : String(t)));
   if (blankIndex === null) return { question: `${parts.join(" + ")} = ?`, answer: sum };
   return { question: `${parts.join(" + ")} = ${sum}`, answer: terms[blankIndex] };
+}
+
+const randInt = (lo: number, hi: number): number => Math.floor(Math.random() * (hi - lo + 1)) + lo;
+
+// 4 options (or fewer if the pool is small) drawn from a fixed pool, always
+// including the answer, in a stable order.
+function anyOpts<T>(answer: T, pool: T[]): T[] {
+  const others = pool.filter((p) => p !== answer).sort(() => Math.random() - 0.5).slice(0, 3);
+  return [answer, ...others].sort((a, b) => pool.indexOf(a) - pool.indexOf(b));
+}
+
+const ONES = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen"];
+const TENS = ["", "", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"];
+
+// Number name for 0-999, the way a second grader writes it ("three hundred forty-five")
+export function numberName(n: number): string {
+  const h = Math.floor(n / 100);
+  const rest = n % 100;
+  const parts: string[] = [];
+  if (h > 0) parts.push(`${ONES[h]} hundred`);
+  if (rest > 0 || h === 0) {
+    if (rest < 20) parts.push(ONES[rest]);
+    else parts.push(TENS[Math.floor(rest / 10)] + (rest % 10 ? `-${ONES[rest % 10]}` : ""));
+  }
+  return parts.join(" ");
 }
 
 const WP_ITEMS = ["apples", "stickers", "marbles", "cookies", "toy cars", "crayons", "shells", "coins"];
@@ -776,7 +805,7 @@ export function buildProblem(type: ProblemType, min: number, max: number): Probl
         // All three blank — the "answer" is the H,T,O triple, picked from a
         // multiple-choice set of plausible place-value mix-ups.
         const answer = `${h},${t},${o}`;
-        const candidates = [answer, `${t},${h},${o}`, `${h},${o},${t}`, `${o},${t},${h}`];
+        const candidates = [answer, `${t},${h},${o}`, `${h},${o},${t}`, `${o},${t},${h}`, `${h},${(t + 1) % 10},${o}`, `${h},${t},${(o + 1) % 10}`, `${(h % 9) + 1},${t},${o}`];
         return {
           question: `${num} = __ x 100 + __ x 10 + __ x 1`,
           answer,
@@ -1158,7 +1187,7 @@ export function buildProblem(type: ProblemType, min: number, max: number): Probl
     const total = FRACTION_DENOMS[Math.floor(Math.random() * FRACTION_DENOMS.length)];
     const shaded = Math.floor(Math.random() * (total - 1)) + 1;
     const answer = `${shaded}/${total}`;
-    const candidates = [answer, `${total - shaded}/${total}`, `${Math.max(1, shaded - 1)}/${total}`, `${Math.min(total - 1, shaded + 1)}/${total}`];
+    const candidates = [answer, `${total - shaded}/${total}`, `${Math.max(1, shaded - 1)}/${total}`, `${Math.min(total - 1, shaded + 1)}/${total}`, `${total}/${shaded}`, `${shaded}/${total + 1}`];
     return {
       id,
       type,
@@ -1557,6 +1586,230 @@ export function buildProblem(type: ProblemType, min: number, max: number): Probl
       options: numOpts(answer),
       signature: `peri:${Math.min(w, h)},${Math.max(w, h)}`,
     };
+  }
+
+  // ─── Grade 2 enVision coverage (Topics 2, 4, 7, 8, 9, 12-15) ──────────────
+
+  if (type === "equal-groups") {
+    const groups = randInt(min, max);
+    const size = randInt(2, 5);
+    const answer = groups * size;
+    return {
+      id,
+      type,
+      question: `${groups} groups of ${size}: ${Array(groups).fill(size).join(" + ")} = ?`,
+      answer,
+      options: numOpts(answer),
+      signature: `eqg:${groups}x${size}`,
+    };
+  }
+
+  if (type === "add-four-2digit") {
+    const count = randInt(3, 4);
+    const terms = Array.from({ length: count }, () => randInt(min, max));
+    const answer = terms.reduce((s, n) => s + n, 0);
+    return {
+      id,
+      type,
+      question: `${terms.join(" + ")} = ?`,
+      answer,
+      options: numOpts(answer),
+      signature: `a4:${[...terms].sort((a, b) => a - b).join(",")}`,
+    };
+  }
+
+  if (type === "word-problem") {
+    const item = pickOne(WP_ITEMS);
+    const kind = randInt(0, 3);
+    if (kind === 0) {
+      const a = randInt(min, max), b = randInt(min, max);
+      return { id, type, question: `Mia has ${a} ${item}. She gets ${b} more. How many now?`, answer: a + b, options: numOpts(a + b), signature: `wp0:${a},${b}` };
+    }
+    if (kind === 1) {
+      const a = randInt(Math.max(min, 20), max + 20), b = randInt(min, a - 1);
+      return { id, type, question: `Leo had ${a} ${item}. He gave away ${b}. How many are left?`, answer: a - b, options: numOpts(a - b), signature: `wp1:${a},${b}` };
+    }
+    if (kind === 2) {
+      const a = randInt(min, max), b = randInt(min, max);
+      const big = Math.max(a, b) + 5, small = Math.min(a, b);
+      return { id, type, question: `Sam has ${big} ${item}. Ana has ${small}. How many more does Sam have?`, answer: big - small, options: numOpts(big - small), signature: `wp2:${big},${small}` };
+    }
+    // two-step
+    const a = randInt(min, max), b = randInt(min, max), c = randInt(1, Math.min(a + b - 1, 20));
+    const answer = a + b - c;
+    return { id, type, question: `There are ${a} ${item}. ${b} more are added, then ${c} are taken away. How many now?`, answer, options: numOpts(answer), signature: `wp3:${a},${b},${c}` };
+  }
+
+  if (type === "tell-time") {
+    const hour = randInt(1, 12);
+    const minute = randInt(0, 11) * 5;
+    const fmt = (h: number, m: number) => `${h}:${String(m).padStart(2, "0")}`;
+    const answer = fmt(hour, minute);
+    const candidates = [
+      fmt(minute === 0 ? 12 : minute / 5, (hour % 12) * 5), // hands swapped
+      fmt(hour, (minute + 5) % 60),
+      fmt(hour, (minute + 55) % 60),
+      fmt((hour % 12) + 1, minute),
+      fmt(hour === 1 ? 12 : hour - 1, minute),
+    ];
+    return { id, type, question: "What time does the clock show?", answer, options: strOpts(answer, candidates), signature: `time:${answer}`, clock: { hour, minute } };
+  }
+
+  if (type === "am-pm") {
+    const events: [string, "a.m." | "p.m."][] = [
+      ["eat breakfast", "a.m."], ["wake up", "a.m."], ["go to school", "a.m."], ["start the school day", "a.m."],
+      ["eat dinner", "p.m."], ["go to bed", "p.m."], ["walk home from school", "p.m."], ["watch the sunset", "p.m."],
+    ];
+    const [what, answer] = pickOne(events);
+    return { id, type, question: `Do you usually ${what} in the a.m. or p.m.?`, answer, options: ["a.m.", "p.m."], signature: `ampm:${what}` };
+  }
+
+  if (type === "count-coins") {
+    const coins: [string, number][] = [["quarter", 25], ["dime", 10], ["nickel", 5], ["penny", 1]];
+    const parts: string[] = [];
+    let answer = 0;
+    for (const [name, value] of coins) {
+      const n = randInt(0, name === "quarter" ? 3 : 4);
+      if (n === 0) continue;
+      answer += n * value;
+      parts.push(`${n} ${n === 1 ? name : name === "penny" ? "pennies" : name + "s"}`);
+    }
+    if (parts.length === 0) { parts.push("1 dime"); answer = 10; }
+    return { id, type, question: `${parts.join(", ")} = ? cents`, answer, options: numOpts(answer), signature: `coin:${parts.join(",")}` };
+  }
+
+  if (type === "money-word") {
+    const a = randInt(min, max), b = randInt(min, max);
+    if (Math.random() < 0.5) {
+      return { id, type, question: `A toy costs $${a}. A book costs $${b}. How many dollars for both?`, answer: a + b, options: numOpts(a + b), signature: `mw0:${a},${b}` };
+    }
+    const have = Math.max(a, b) + randInt(5, 20), cost = Math.min(a, b);
+    return { id, type, question: `You have $${have}. You spend $${cost}. How many dollars are left?`, answer: have - cost, options: numOpts(have - cost), signature: `mw1:${have},${cost}` };
+  }
+
+  if (type === "expanded-form") {
+    const h = randInt(1, 9), t = randInt(0, 9), o = randInt(0, 9);
+    const n = h * 100 + t * 10 + o;
+    if (Math.random() < 0.5) {
+      const parts = [h * 100, t * 10, o].filter((p) => p > 0);
+      return { id, type, question: `${parts.join(" + ")} = ?`, answer: n, options: numOpts(n), signature: `exp0:${n}` };
+    }
+    const answer = `${h * 100} + ${t * 10} + ${o}`;
+    const candidates = [
+      `${h} + ${t} + ${o}`,
+      `${t * 100} + ${h * 10} + ${o}`,
+      `${h * 100} + ${o * 10} + ${t}`,
+      `${h * 10} + ${t * 100} + ${o}`,
+      `${(h % 9) * 100 + 100} + ${t * 10} + ${o}`,
+    ];
+    return { id, type, question: `Expanded form of ${n}?`, answer, options: strOpts(answer, candidates), signature: `exp1:${n}` };
+  }
+
+  if (type === "number-names") {
+    const h = randInt(1, 9), t = randInt(0, 9), o = randInt(0, 9);
+    const n = h * 100 + t * 10 + o;
+    const name = numberName(n);
+    const alts = [h * 100 + o * 10 + t, t * 100 + h * 10 + o, n + 10, n - 1, n + 100].filter((x) => x !== n && x > 99 && x < 1000);
+    if (Math.random() < 0.5) {
+      return { id, type, question: `Which number is ${name}?`, answer: n, options: strOpts(String(n), alts.map(String)).map(Number), signature: `nn0:${n}` };
+    }
+    return { id, type, question: `How do you say ${n}?`, answer: name, options: strOpts(name, alts.map(numberName)), signature: `nn1:${n}` };
+  }
+
+  if (type === "length-units") {
+    const items: [string, string][] = [
+      ["a pencil", "inches"], ["a crayon", "centimeters"], ["a paper clip", "centimeters"], ["a book", "inches"],
+      ["a classroom", "feet"], ["a door", "feet"], ["a football field", "yards"], ["a swimming pool", "meters"],
+      ["a hallway", "meters"], ["a bed", "feet"],
+    ];
+    const [thing, answer] = pickOne(items);
+    return { id, type, question: `Best unit to measure ${thing}?`, answer, options: strOpts(answer, ["inches", "feet", "yards", "centimeters", "meters"]), signature: `unit:${thing}` };
+  }
+
+  if (type === "ruler-measure") {
+    const start = randInt(0, 4);
+    const len = randInt(min, max);
+    const unit = Math.random() < 0.5 ? "inches" : "cm";
+    return { id, type, question: `An object starts at ${start} and ends at ${start + len} on a ruler. How many ${unit} long?`, answer: len, options: numOpts(len), signature: `rule:${start},${len}` };
+  }
+
+  if (type === "length-compare") {
+    const a = randInt(min, max), b = randInt(min, max);
+    const long = Math.max(a, b) + 3, short = Math.min(a, b);
+    const unit = pickOne(["cm", "inches", "feet", "meters"]);
+    const [x, y] = pickOne([["The red ribbon", "the blue ribbon"], ["A rope", "a stick"], ["Max's paper chain", "Zoe's paper chain"]]);
+    return { id, type, question: `${x} is ${long} ${unit}. ${y[0].toUpperCase() + y.slice(1)} is ${short} ${unit}. How much longer is ${x.toLowerCase()}?`, answer: long - short, options: numOpts(long - short), signature: `lc:${long},${short}` };
+  }
+
+  if (type === "shape-attributes") {
+    const shapes: [string, number][] = [["triangle", 3], ["quadrilateral", 4], ["pentagon", 5], ["hexagon", 6], ["octagon", 8]];
+    const [name, sides] = pickOne(shapes);
+    const kind = randInt(0, 3);
+    if (kind === 0) return { id, type, question: `How many sides does a ${name} have?`, answer: sides, options: anyOpts(sides, [3, 4, 5, 6, 8]), signature: `sh0:${name}` };
+    if (kind === 1) return { id, type, question: `How many vertices (corners) does a ${name} have?`, answer: sides, options: anyOpts(sides, [3, 4, 5, 6, 8]), signature: `sh1:${name}` };
+    if (kind === 2) return { id, type, question: `A flat shape with ${sides} sides is a...`, answer: name, options: strOpts(name, shapes.map(([n]) => n)), signature: `sh2:${name}` };
+    const solids: [string, number][] = [["cube", 6], ["rectangular prism", 6]];
+    const [solid, faces] = pickOne(solids);
+    return { id, type, question: `How many faces does a ${solid} have?`, answer: faces, options: [4, 5, 6, 8], signature: `sh3:${solid}` };
+  }
+
+  if (type === "partition-rect") {
+    const rows = randInt(min, max), cols = randInt(min, max);
+    const answer = rows * cols;
+    return { id, type, question: `A rectangle is split into ${rows} rows and ${cols} columns of same-size squares. How many squares?`, answer, options: numOpts(answer), signature: `prt:${rows}x${cols}` };
+  }
+
+  if (type === "number-line-jump") {
+    const start = randInt(min, max - 30);
+    const jump = randInt(1, 6) * (Math.random() < 0.5 ? 5 : 10);
+    const forward = Math.random() < 0.5 || start - jump < 0;
+    const answer = forward ? start + jump : start - jump;
+    return { id, type, question: `Start at ${start} on a number line. Jump ${jump} ${forward ? "right" : "left"}. Where do you land?`, answer, options: numOpts(answer), signature: `nl:${start}${forward ? "+" : "-"}${jump}` };
+  }
+
+  if (type === "length-word") {
+    const a = randInt(min, max), b = randInt(min, max);
+    const unit = pickOne(["feet", "meters", "inches", "cm"]);
+    if (Math.random() < 0.5) {
+      return { id, type, question: `A fence has two parts: ${a} ${unit} and ${b} ${unit}. How long is the fence?`, answer: a + b, options: numOpts(a + b), signature: `lw0:${a},${b}` };
+    }
+    const total = a + b;
+    return { id, type, question: `A ${total}-${unit === "feet" ? "foot" : unit === "inches" ? "inch" : unit.replace(/s$/, "")} rope is cut. One piece is ${a} ${unit}. How long is the other piece?`, answer: b, options: numOpts(b), signature: `lw1:${total},${a}` };
+  }
+
+  if (type === "picture-graph" || type === "bar-graph") {
+    const categories = pickOne([
+      ["Apples", "Bananas", "Grapes", "Pears"],
+      ["Dogs", "Cats", "Fish", "Birds"],
+      ["Red", "Blue", "Green", "Yellow"],
+      ["Soccer", "Swim", "Bike", "Dance"],
+    ]).slice(0, randInt(3, 4));
+    const values = categories.map(() => randInt(min, max));
+    // Ensure a single largest and smallest so "most"/"fewest" have one answer
+    const uniq = new Set(values);
+    if (uniq.size !== values.length) values.forEach((_, i) => (values[i] = min + i * 2 + randInt(0, 1)));
+    values.sort(() => Math.random() - 0.5);
+    const rows: [string, number][] = categories.map((c, i) => [c, values[i]]);
+    const title = type === "picture-graph" ? "Picture graph (each ● = 1)" : "Bar graph";
+    const i = randInt(0, rows.length - 1);
+    let j = randInt(0, rows.length - 1);
+    if (j === i) j = (i + 1) % rows.length;
+    const kind = randInt(0, 3);
+    const graph = { kind: type === "picture-graph" ? ("picture" as const) : ("bar" as const), title, rows };
+    if (kind === 0) {
+      const answer = Math.abs(rows[i][1] - rows[j][1]);
+      const [more, less] = rows[i][1] >= rows[j][1] ? [rows[i][0], rows[j][0]] : [rows[j][0], rows[i][0]];
+      return { id, type, question: `How many more ${more} than ${less}?`, answer, options: numOpts(answer), signature: `g0:${rows.map((r) => r[1]).join(",")}`, graph };
+    }
+    if (kind === 1) {
+      const answer = rows[i][1] + rows[j][1];
+      return { id, type, question: `${rows[i][0]} and ${rows[j][0]} together?`, answer, options: numOpts(answer), signature: `g1:${rows.map((r) => r[1]).join(",")}`, graph };
+    }
+    if (kind === 2) {
+      const best = rows.reduce((a, b) => (b[1] > a[1] ? b : a));
+      return { id, type, question: "Which has the most?", answer: best[0], options: categories, signature: `g2:${rows.map((r) => r[1]).join(",")}`, graph };
+    }
+    return { id, type, question: `How many ${rows[i][0]}?`, answer: rows[i][1], options: numOpts(rows[i][1]), signature: `g3:${rows.map((r) => r[1]).join(",")}`, graph };
   }
 
   return buildProblem("addition", min, max);

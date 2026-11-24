@@ -193,6 +193,79 @@ const FractionShape = ({ visual, size = 120 }: { visual: FractionVisual; size?: 
   );
 };
 
+// ─── ClockFace ────────────────────────────────────────────────────────────────
+
+const ClockFace = ({ hour, minute, size = 150 }: { hour: number; minute: number; size?: number }) => {
+  const c = size / 2;
+  const r = c - 6;
+  const ink = "var(--ds-color-text-primary)";
+  const minuteTip = polarPoint(c, c, r * 0.82, minute * 6);
+  const hourTip = polarPoint(c, c, r * 0.5, (hour % 12) * 30 + minute * 0.5);
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role='img' aria-label='Analog clock'>
+      <circle cx={c} cy={c} r={r} fill='var(--ds-color-surface-raised)' stroke={ink} strokeWidth={3} />
+      {Array.from({ length: 12 }, (_, i) => {
+        const p = polarPoint(c, c, r * 0.78, (i + 1) * 30);
+        return (
+          <text key={i} x={p.x} y={p.y} textAnchor='middle' dominantBaseline='central' fontSize={size * 0.1} fontWeight={700} fill={ink}>
+            {i + 1}
+          </text>
+        );
+      })}
+      <line x1={c} y1={c} x2={hourTip.x} y2={hourTip.y} stroke={ink} strokeWidth={6} strokeLinecap='round' />
+      <line x1={c} y1={c} x2={minuteTip.x} y2={minuteTip.y} stroke='var(--ds-color-primary-solid)' strokeWidth={3.5} strokeLinecap='round' />
+      <circle cx={c} cy={c} r={5} fill={ink} />
+    </svg>
+  );
+};
+
+// ─── DataGraph ────────────────────────────────────────────────────────────────
+// A picture graph (one dot per unit) or a horizontal bar graph with a scale.
+
+const DataGraph = ({ graph }: { graph: NonNullable<Problem["graph"]> }) => {
+  const maxVal = Math.max(...graph.rows.map(([, v]) => v));
+  const scaleMax = Math.ceil(maxVal / 5) * 5;
+  return (
+    <div className='inline-block text-left text-ink-primary'>
+      <div className='text-sm font-bold text-ink-muted mb-1'>{graph.title}</div>
+      <table className='text-base sm:text-lg'>
+        <tbody>
+          {graph.rows.map(([label, value]) => (
+            <tr key={label}>
+              <td className='pr-3 font-semibold whitespace-nowrap'>{label}</td>
+              <td className='py-0.5'>
+                {graph.kind === "picture" ? (
+                  <span className='tracking-widest text-primary-text' aria-label={`${value}`}>
+                    {"●".repeat(value)}
+                  </span>
+                ) : (
+                  <div className='relative h-5 w-48 sm:w-64 border-l-2 border-line-strong'>
+                    <div className='h-full bg-primary-solid' style={{ width: `${(value / scaleMax) * 100}%` }} />
+                  </div>
+                )}
+              </td>
+            </tr>
+          ))}
+          {graph.kind === "bar" && (
+            <tr>
+              <td />
+              <td>
+                <div className='relative h-4 w-48 sm:w-64 text-xs text-ink-muted'>
+                  {Array.from({ length: scaleMax / 5 + 1 }, (_, i) => (
+                    <span key={i} className='absolute -translate-x-1/2' style={{ left: `${((i * 5) / scaleMax) * 100}%` }}>
+                      {i * 5}
+                    </span>
+                  ))}
+                </div>
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+};
+
 // ─── ShadeGrid ────────────────────────────────────────────────────────────────
 // The real click-to-shade primitive: pie wedges / bar segments / grid cells /
 // a set of dots, each one an independently tappable (and keyboard-operable)
@@ -843,7 +916,11 @@ export default function SpaceMathPage() {
               <div className='w-full flex-1 min-h-0'>
                 <div className='w-full h-full bg-surface-raised border border-line-subtle rounded-lg p-4 sm:p-6 relative overflow-hidden flex flex-col'>
                   <div className='text-center mb-2 sm:mb-3 shrink-0'>
-                    <h2 className='font-black mb-1 tracking-tight leading-snug text-3xl sm:text-4xl md:text-5xl break-words text-ink-primary'>
+                    <h2
+                      className={`font-black mb-1 tracking-tight leading-snug break-words text-ink-primary ${
+                        problem.question.length > 40 ? "text-xl sm:text-2xl md:text-3xl" : "text-3xl sm:text-4xl md:text-5xl"
+                      }`}
+                    >
                       {problem.question}
                     </h2>
                     {problem.visual && (
@@ -851,6 +928,16 @@ export default function SpaceMathPage() {
                         {problem.visual.map((v, i) => (
                           <FractionShape key={i} visual={v} />
                         ))}
+                      </div>
+                    )}
+                    {problem.clock && (
+                      <div className='flex justify-center mt-2'>
+                        <ClockFace hour={problem.clock.hour} minute={problem.clock.minute} />
+                      </div>
+                    )}
+                    {problem.graph && (
+                      <div className='flex justify-center mt-2'>
+                        <DataGraph graph={problem.graph} />
                       </div>
                     )}
                   </div>

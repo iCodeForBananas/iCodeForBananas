@@ -37,4 +37,24 @@ describe("spaceMathSkills", () => {
       }
     }
   });
+
+  it("every multiple-choice question offers its answer among distinct options", () => {
+    for (const skill of SKILLS) {
+      for (let i = 0; i < 200; i++) {
+        const p = buildProblem(skill.type, skill.min, skill.max);
+        if (p.shadeTarget) continue;
+        const label = `${skill.key}: ${p.question}`;
+        expect(p.options.map(String), label).toContain(String(p.answer));
+        expect(new Set(p.options.map(String)).size, label).toBe(p.options.length);
+        expect(p.options.length, label).toBeGreaterThanOrEqual(2);
+      }
+    }
+  });
+
+  it("the Grade 2 enVision topics appear on the ladder in topic order", () => {
+    const order = ["g2-equal-groups", "g2-add-four", "g2-word-problem", "g2-time", "g2-expanded", "g2-add-3digit", "g2-sub-borrow-hard", "g2-ruler", "g2-shapes", "g2-number-line", "g2-bar-graph"];
+    const idx = order.map((k) => SKILLS.findIndex((s) => s.key === k));
+    expect(idx.every((i) => i >= 0)).toBe(true);
+    expect([...idx].sort((a, b) => a - b)).toEqual(idx);
+  });
 });
