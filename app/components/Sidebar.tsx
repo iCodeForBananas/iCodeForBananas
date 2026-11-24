@@ -24,7 +24,6 @@ export const LINKS: { href: string; text: string; category: Category; auth?: boo
   { href: "/guitar/chord-types", text: "Chord Types", category: "Guitar", abbr: "CT" },
   { href: "/guitar/circle-of-fifths", text: "Circle of Fifths", category: "Guitar", abbr: "C5" },
   { href: "/guitar/inversions", text: "Inversions", category: "Guitar", abbr: "IN" },
-  { href: "/guitar/triads", text: "Triad Shapes", category: "Guitar", abbr: "TS" },
   { href: "/guitar/scale-tool", text: "Scale Tool", category: "Guitar", abbr: "ST" },
   { href: "/guitar/chord-finder", text: "Chord Finder", category: "Guitar", abbr: "CF" },
   { href: "/guitar/progressions", text: "Chord Progressions", category: "Guitar", abbr: "CP" },
