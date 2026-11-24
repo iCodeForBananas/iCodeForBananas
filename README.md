@@ -16,6 +16,8 @@ A space-themed math game for kids in kindergarten through grade 3, on iPad, iPho
 
 ## Word Climb
 
+[![Word Climb](https://raw.githubusercontent.com/iCodeForBananas/word-climb/main/docs/marquee/marquee.png)](https://github.com/iCodeForBananas/word-climb)
+
 A reading game for kids in kindergarten through grade 3. They climb a mountain one level at a time, from their first sight words to grade 3 sentences, reading each card out loud while a grown-up taps Yes or Not yet. Spaced repetition decides what comes back, and there are no ads, no accounts and no tracking. → [Play in the browser](https://icodeforbananas.github.io/word-climb/) · [Source on GitHub](https://github.com/iCodeForBananas/word-climb)
 
 ## Guitar Tuner
