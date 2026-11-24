@@ -36,8 +36,6 @@ export const LINKS: { href: string; text: string; category: Category; auth?: boo
   // Tools
   { href: "/workout-tracker", text: "Workout Tracker", category: "Tools" },
   // Education
-  { href: "/learning-progress", text: "Learning Progress", category: "Education", abbr: "LP" },
-  { href: "/space-math", text: "Space Math", category: "Education", abbr: "SP" },
   { href: "/word-climb", text: "Word Climb", category: "Education", abbr: "WC" },
   // Experiments
 ];
