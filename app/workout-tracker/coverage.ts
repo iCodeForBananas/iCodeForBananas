@@ -1,6 +1,6 @@
 /**
  * How the last two weeks of logs measure up to the StrongLifts 5x5 program,
- * lift by lift, and which workout to do next.
+ * lift by lift.
  *
  * The program alternates two workouts, three a week:
  *   A: Squat, Bench Press, Barbell Row
@@ -59,43 +59,4 @@ export function liftCoverage(logs: { exercise: string; date: string }[], today: 
     const n = days.get(exercise)!.size;
     return { exercise, days: n, target, remaining: Math.max(0, target - n) };
   });
-}
-
-export interface NextWorkout {
-  workout: WorkoutName;
-  lifts: readonly string[];
-  reason: string;
-}
-
-/**
- * The workout that does the most to even things out: the one whose own lifts
- * (Bench Press and Barbell Row for A, Overhead Press and Deadlift for B) are
- * furthest behind their targets. On a tie, the one after the last workout
- * logged, so A and B keep alternating; with nothing logged at all, A.
- */
-export function nextWorkout(logs: { exercise: string; date: string }[], today: string, windowDays = WINDOW_DAYS): NextWorkout {
-  const coverage = new Map(liftCoverage(logs, today, windowDays).map((c) => [c.exercise, c]));
-  const own = (w: WorkoutName): string[] => WORKOUTS[w].filter((e) => e !== "Squat");
-  const behind = (w: WorkoutName) => own(w).reduce((sum, e) => sum + coverage.get(e)!.remaining, 0);
-  const tally = (w: WorkoutName) => own(w).map((e) => `${e} ${coverage.get(e)!.days}/${coverage.get(e)!.target}`).join(", ");
-  const a = behind("A");
-  const b = behind("B");
-  const pick = (workout: WorkoutName, reason: string): NextWorkout => ({ workout, lifts: WORKOUTS[workout], reason });
-
-  if (a !== b) {
-    const w: WorkoutName = a > b ? "A" : "B";
-    return pick(w, `Its lifts are furthest behind: ${tally(w)} in the last ${windowDays} days.`);
-  }
-
-  // A tie: alternate from the most recent day either workout's own lifts were logged.
-  const end = dayNumber(today);
-  let last: { workout: WorkoutName; date: string } | null = null;
-  for (const l of logs) {
-    if (dayNumber(l.date) > end) continue;
-    const workout: WorkoutName | null = own("A").includes(l.exercise) ? "A" : own("B").includes(l.exercise) ? "B" : null;
-    if (workout && (!last || l.date > last.date)) last = { workout, date: l.date };
-  }
-  if (!last) return pick("A", "Nothing logged yet: start the program with A.");
-  const w: WorkoutName = last.workout === "A" ? "B" : "A";
-  return pick(w, `Both are even, and your last workout was ${last.workout}.`);
 }

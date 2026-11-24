@@ -6,13 +6,12 @@ import ClientOnly from "@/app/lib/ClientOnly";
 import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/app/hooks/useAuth";
 import BentoPageLayout from "@/app/components/BentoPageLayout";
-import BentoBoard, { type BentoPanel } from "@/app/components/BentoBoard";
 import { Bento } from "@/app/components/ui/bento";
 import { Flex, Select, Text, TextField } from "@radix-ui/themes";
 import { Button } from "@/app/components/ui/button";
 import { X } from "lucide-react";
 import { PERCENTILE_LIFTS, latestWeights, percentileBand, populationPercentile } from "./percentile";
-import { WINDOW_DAYS, liftCoverage, nextWorkout } from "./coverage";
+import { WINDOW_DAYS, liftCoverage } from "./coverage";
 
 interface LogEntry {
   id: string;
@@ -63,7 +62,10 @@ export default function WorkoutTrackerContent() {
   // default to whatever happened to sort first in the array, and silently
   // changed to "Barbell Row" the moment it was added at the top of the list.
   const [selected, setSelected] = useState("Bench Press");
-  const [weight, setWeight] = useState("");
+  // What's been typed into the weight field; null until something is, and
+  // again after a submit or a new lift, when the field shows that lift's
+  // last logged weight (weightValue below).
+  const [typedWeight, setTypedWeight] = useState<string | null>(null);
   const [page, setPage] = useState(0);
   const PAGE_SIZE = 10;
   // Reads are public: anyone can see the log. Writes stay behind auth, both
@@ -81,8 +83,8 @@ export default function WorkoutTrackerContent() {
   const submit = async () => {
     const sb = getSupabase();
     if (!sb) return;
-    await sb.from("workout_logs").insert({ user_id: user!.id, exercise: selected, date, weight: +weight || 0 });
-    setWeight("");
+    await sb.from("workout_logs").insert({ user_id: user!.id, exercise: selected, date, weight: +weightValue || 0 });
+    setTypedWeight(null);
     setPage(0);
     reload();
   };
@@ -156,15 +158,17 @@ export default function WorkoutTrackerContent() {
   // percentiles below are measured on.
   const latest = useMemo(() => latestWeights(logs), [logs]);
 
-  // Picking an exercise prefills the weight it was last logged at, so a
-  // lift that's always the same number doesn't need retyping every time.
+  // Until something is typed, the weight field holds the selected lift's last
+  // logged weight: on load, after picking another lift, and after a submit,
+  // so a lift that's always the same number never needs retyping.
   // Bodyweight exercises are typically logged with no weight at all, so a
-  // last value of 0 clears the field rather than filling in a literal "0"
-  // that would read as a real number instead of "bodyweight only".
+  // last value of 0 leaves the field empty rather than a literal "0" that
+  // would read as a real number instead of "bodyweight only".
+  const lastWeight = latest.get(selected)?.weight;
+  const weightValue = typedWeight ?? (lastWeight ? String(lastWeight) : "");
   const selectExercise = (name: string) => {
     setSelected(name);
-    const last = latest.get(name)?.weight;
-    setWeight(last ? String(last) : "");
+    setTypedWeight(null);
   };
 
   // Axis text is sized down on a narrow chart. Measuring the chart's own rendered width (rather than the viewport) means
@@ -238,9 +242,8 @@ export default function WorkoutTrackerContent() {
     return weeks;
   }, [logs]);
 
-  // Which muscle groups the last 7 days reached, and through what
+  // Each 5x5 lift over the last 14 days against the program
   const coverage = useMemo(() => liftCoverage(logs, today()), [logs]);
-  const next = useMemo(() => nextWorkout(logs, today()), [logs]);
 
   // ── Bento panel contents ──────────────────────────────────────────────────
 
@@ -363,13 +366,6 @@ export default function WorkoutTrackerContent() {
     const behind = coverage.filter((c) => c.remaining > 0);
     return (
       <div>
-        <div className='mb-4 rounded-lg border border-line-strong bg-surface-sunken px-3 py-2'>
-          <div className='text-xs text-ink-muted'>Do next</div>
-          <div className='font-semibold'>
-            Workout {next.workout}: {next.lifts.join(", ")}
-          </div>
-          <div className='text-xs text-ink-muted mt-0.5'>{next.reason}</div>
-        </div>
         <p className='text-sm mb-4'>
           {behind.length === 0
             ? `Every lift is on target for the last ${WINDOW_DAYS} days.`
@@ -466,36 +462,6 @@ export default function WorkoutTrackerContent() {
     );
   })();
 
-  const bentoPanels: BentoPanel[] = [
-    {
-      id: "activity",
-      title: "Activity",
-      tooltip: "Your workout frequency over the past year — darker yellow means more sessions that day.",
-      defaultColSpan: 8,
-      defaultRowSpan: 3,
-      content: activityContent,
-    },
-    {
-      id: "coverage",
-      title: "Workout Coverage",
-      tooltip:
-        "Each StrongLifts 5x5 lift in the last 14 days against the program: it alternates Workout A (Squat, Bench Press, Barbell Row) and B (Squat, Overhead Press, Deadlift), three a week, so two weeks is 6 squat days and 3 of each other lift. Do next is the workout whose lifts are furthest behind, or the one after your last workout when they're even.",
-      defaultColSpan: 4,
-      defaultRowSpan: 3,
-      content: coverageContent,
-    },
-    {
-      id: "entries",
-      title: "All Entries",
-      tooltip: user
-        ? "Every workout you've logged, sorted newest first. Click × to delete an entry."
-        : "Every workout logged, sorted newest first.",
-      defaultColSpan: 12,
-      defaultRowSpan: 4,
-      content: allEntriesContent,
-    },
-  ];
-
   return (
     <BentoPageLayout title="Workout Tracker">
       {/* Log form */}
@@ -523,10 +489,10 @@ export default function WorkoutTrackerContent() {
               size='3'
               min={0}
               step={5}
-              value={weight}
+              value={weightValue}
               placeholder='lbs'
               aria-label='Weight in pounds'
-              onChange={(e) => setWeight(e.target.value)}
+              onChange={(e) => setTypedWeight(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && submit()}
               className='w-full sm:w-24'
             />
@@ -537,13 +503,22 @@ export default function WorkoutTrackerContent() {
         </Bento>
       )}
 
+      {/* First under the form: what the last two weeks are short of. */}
+      <Bento
+        title='Workout Coverage'
+        tooltip='Each StrongLifts 5x5 lift in the last 14 days against the program: it alternates Workout A (Squat, Bench Press, Barbell Row) and B (Squat, Overhead Press, Deadlift), three a week, so two weeks is 6 squat days and 3 of each other lift.'
+        className='mb-4'
+      >
+        {coverageContent}
+      </Bento>
+
       {/* Weight progress chart */}
       {exercisesWithLogs.length > 0 && chartData.length > 0 && (
         <Bento
           title='Weight Progress'
           className='mb-4'
         >
-          <div ref={chartRef} className='h-[360px] sm:h-[480px]'>
+          <div ref={chartRef} className='h-[300px] sm:h-[480px]'>
             <ClientOnly>
               <ResponsiveContainer width='100%' height='100%'>
                 <LineChart data={chartData}>
@@ -596,15 +571,25 @@ export default function WorkoutTrackerContent() {
       {/* Strength vs the general adult male population, per
           lift. "Male, Est." in the title rather than leaving that assumption
           silent — the source table is user-supplied, not a cited dataset,
-          and doesn't cover women or account for age. Its own panel right
-          after the chart rather than folded into the draggable board below,
-          so it stays put next to the numbers it explains. */}
+          and doesn't cover women or account for age. */}
       <Bento title='Strength Percentile (Male, Est.)' className='mb-4'>
         {progressContent}
       </Bento>
 
-      {/* Activity, Body Part Coverage, All Entries — bento grid */}
-      <BentoBoard panels={bentoPanels} storageKey="workout-tracker-bento-layout" />
+      <Bento
+        title='Activity'
+        tooltip='Your workout frequency over the past year: darker means more lifts logged that day.'
+        className='mb-4'
+      >
+        {activityContent}
+      </Bento>
+
+      <Bento
+        title='All Entries'
+        tooltip={user ? "Every workout you've logged, sorted newest first. Tap × to delete an entry." : "Every workout logged, sorted newest first."}
+      >
+        {allEntriesContent}
+      </Bento>
     </BentoPageLayout>
   );
 }

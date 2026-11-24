@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PROGRAM_TARGETS, WORKOUTS, liftCoverage, nextWorkout } from "./coverage";
+import { PROGRAM_TARGETS, WORKOUTS, liftCoverage } from "./coverage";
 
 const workout = (name: "A" | "B", date: string) => WORKOUTS[name].map((exercise) => ({ exercise, date }));
 const by = (cov: ReturnType<typeof liftCoverage>) => Object.fromEntries(cov.map((c) => [c.exercise, c.days]));
@@ -37,28 +37,5 @@ describe("liftCoverage", () => {
       { exercise: "Bicep Curls", date: "2026-11-23" },
     ];
     expect(by(liftCoverage(logs, "2026-11-23"))).toEqual({ Squat: 1, "Bench Press": 0, "Barbell Row": 0, "Overhead Press": 0, Deadlift: 0 });
-  });
-});
-
-describe("nextWorkout", () => {
-  it("starts with A when nothing is logged", () => {
-    expect(nextWorkout([], "2026-11-23")).toMatchObject({ workout: "A", lifts: ["Squat", "Bench Press", "Barbell Row"] });
-  });
-
-  it("picks the workout whose lifts are furthest behind", () => {
-    const logs = [...workout("A", "2026-11-17"), ...workout("A", "2026-11-19"), ...workout("B", "2026-11-21")];
-    const next = nextWorkout(logs, "2026-11-23");
-    expect(next.workout).toBe("B");
-    expect(next.reason).toContain("Overhead Press 1/3, Deadlift 1/3");
-  });
-
-  it("alternates from the last workout on a tie", () => {
-    expect(nextWorkout([...workout("B", "2026-11-20"), ...workout("A", "2026-11-22")], "2026-11-23").workout).toBe("B");
-    expect(nextWorkout([...workout("A", "2026-11-20"), ...workout("B", "2026-11-22")], "2026-11-23").workout).toBe("A");
-  });
-
-  it("still alternates once the cycle is complete", () => {
-    const logs = ["A", "B", "A", "B", "A", "B"].flatMap((w, i) => workout(w as "A" | "B", `2026-11-${String(10 + i * 2).padStart(2, "0")}`));
-    expect(nextWorkout(logs, "2026-11-23").workout).toBe("A");
   });
 });
