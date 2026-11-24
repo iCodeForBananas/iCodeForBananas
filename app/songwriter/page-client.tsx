@@ -19,6 +19,7 @@ import { VisibilityPicker } from "./VisibilityPicker";
 import { SongAttribution } from "./SongAttribution";
 import styles from "./songwriter.module.css";
 import { useSongbookPortal } from "./portal";
+import { track } from "@/app/lib/analytics";
 
 /**
  * The full-page library — reachable from the app's own sidebar link, not
@@ -99,6 +100,7 @@ export default function LeadSheetList() {
       await setVisibility(sheet, "unlisted");
     }
     await navigator.clipboard.writeText(`${window.location.origin}/songwriter/share/${sheet.id}`);
+    track("share", { method: "link", content_type: "song", item_id: sheet.id });
     setSharedId(sheet.id);
     setTimeout(() => setSharedId(null), 2000);
   }

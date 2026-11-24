@@ -6,6 +6,7 @@ import { useAuth } from "@/app/hooks/useAuth";
 import { LINKS } from "./components/Sidebar";
 import BentoPageLayout from "./components/BentoPageLayout";
 import { Button } from "@/app/components/ui/button";
+import { track } from "@/app/lib/analytics";
 
 // Tablet+ breakpoint (sm and up) uses this many columns. Keeping it odd,
 // and padding the tile count to an odd multiple of it, guarantees a single
@@ -56,7 +57,13 @@ export default function Home() {
                   tappedHref === href ? "btn-tap-active" : ""
                 }`}
               >
-                <Link href={href} onClick={() => handleTap(href)}>
+                <Link
+                  href={href}
+                  onClick={() => {
+                    handleTap(href);
+                    track("select_content", { content_type: "tool", item_id: href });
+                  }}
+                >
                   {text}
                 </Link>
               </Button>

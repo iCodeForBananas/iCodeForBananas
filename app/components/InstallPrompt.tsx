@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Download, X } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
 import { Bento } from "@/app/components/ui/bento";
+import { track } from "@/app/lib/analytics";
 
 /**
  * What Chrome fires once a site meets its install criteria — a manifest with
@@ -91,7 +92,12 @@ export default function InstallPrompt() {
       const event = window.__installPromptEvent;
       if (!event) return;
       setDeferred(event);
-      if (!snoozed()) setVisible(true);
+      if (!snoozed()) {
+        setVisible((was) => {
+          if (!was) track("install_prompt_shown");
+          return true;
+        });
+      }
     };
     const onBeforeInstallPrompt = (e: Event) => {
       // Chrome's own mini-infobar goes away the moment this is preventDefault'd,
@@ -101,6 +107,7 @@ export default function InstallPrompt() {
       adopt();
     };
     const onInstalled = () => {
+      track("app_installed");
       window.__installPromptEvent = null;
       setDeferred(null);
       setVisible(false);
@@ -120,8 +127,10 @@ export default function InstallPrompt() {
   const install = useCallback(async () => {
     if (!deferred) return;
     setVisible(false);
+    track("install_prompt_click");
     await deferred.prompt();
     const { outcome } = await deferred.userChoice;
+    track("install_prompt_result", { outcome });
     // A prompt can only be fired once; Chrome sends a fresh event if the app
     // is still installable later.
     window.__installPromptEvent = null;
@@ -130,6 +139,7 @@ export default function InstallPrompt() {
   }, [deferred]);
 
   const dismiss = () => {
+    track("install_prompt_dismiss");
     snooze();
     setVisible(false);
   };

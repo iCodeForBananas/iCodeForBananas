@@ -56,6 +56,7 @@ import LibraryDrawer from "../../LibraryDrawer";
 import { useLeadSheetLibrary } from "../../useLibrary";
 import { useAutoFit } from "../../useAutoFit";
 import { readPanelOpen, writePanelOpen } from "../../panelStorage";
+import { track } from "@/app/lib/analytics";
 import PreviewSidebar, {
   MIN_SCALE,
   MAX_SCALE,
@@ -1065,6 +1066,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
       }
     }
     await navigator.clipboard.writeText(`${window.location.origin}/songwriter/share/${id}`);
+    track("share", { method: "link", content_type: "song", item_id: id });
     setShared(true);
     setTimeout(() => setShared(false), 2000);
   };

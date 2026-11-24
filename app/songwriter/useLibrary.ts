@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/app/hooks/useAuth";
+import { track } from "@/app/lib/analytics";
 import type { LeadSheet } from "./shared";
 import { makeSection } from "./shared";
 import { cacheSheet, cacheSheetList, getCachedSheetList, getCachedSheetIds } from "./offlineCache";
@@ -93,6 +94,7 @@ export function useLeadSheetLibrary() {
       })
       .select()
       .single();
+    if (data?.id) track("song_create");
     return data?.id ?? null;
   }
 

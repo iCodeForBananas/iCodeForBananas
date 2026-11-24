@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
 import { Bento } from "@/app/components/ui/bento";
 import { Heading } from "@radix-ui/themes";
+import { track } from "@/app/lib/analytics";
 
 export default function LoginForm() {
   const [email, setEmail] = useState("");
@@ -21,10 +22,15 @@ export default function LoginForm() {
     return supabaseRef.current;
   };
 
+  useEffect(() => {
+    track("login_view");
+  }, []);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError("");
+    track("login_submit");
     const sb = getSupabase();
     if (!sb) {
       setError("Supabase is not configured.");
@@ -33,10 +39,12 @@ export default function LoginForm() {
     }
     const { error } = await sb.auth.signInWithPassword({ email, password });
     if (error) {
+      track("login_failed", { reason: error.message });
       setError(error.message);
       setLoading(false);
       return;
     }
+    track("login", { method: "password" });
     const returnTo = searchParams.get("returnTo");
     if (returnTo && returnTo.startsWith("/")) {
       window.location.href = returnTo;

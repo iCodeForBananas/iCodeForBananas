@@ -15,6 +15,7 @@ import PathnameTitleSync from "./components/PathnameTitleSync";
 import CopyPageHandler from "./components/CopyPageHandler";
 import InstallPrompt from "./components/InstallPrompt";
 import UpdateAvailable from "./components/UpdateAvailable";
+import ToolEngagement from "./components/ToolEngagement";
 
 /**
  * Every face on the site — UI chrome, song titles, library headers, all of
@@ -144,6 +145,7 @@ export default function RootLayout({
         <SpeedInsights />
         <PathnameTitleSync />
         <CopyPageHandler />
+        <ToolEngagement />
       </body>
     </html>
   );

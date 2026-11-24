@@ -47,6 +47,7 @@ import TapTiming from "../../TapTiming";
 import TrackEditor from "../../TrackEditor";
 import SyntaxHelp from "../../SyntaxHelp";
 import { useSongbookPortal } from "../../portal";
+import { track } from "@/app/lib/analytics";
 
 // ─── Text ↔ LeadSheet ─────────────────────────────────────────────────────────
 
@@ -248,6 +249,9 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
   const replaceInputRef = useRef<HTMLInputElement>(null);
   /** Timestamp of last revision snapshot, to throttle auto-save revisions */
   const lastRevisionAt = useRef<number>(0);
+  // Autosave runs every few seconds; only its first success counts as an
+  // edit, so the funnel sees one event per editing session, not hundreds.
+  const trackedEdit = useRef(false);
   /** Metadata as loaded, so a save can't drop keys the text doesn't carry. */
   const sheetMetadata = useRef<LeadSheetMetadata>({});
   /**
@@ -434,6 +438,10 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
       }
 
       baseUpdatedAt.current = data[0].updated_at;
+      if (manual || !trackedEdit.current) {
+        trackedEdit.current = true;
+        track("song_save", { manual });
+      }
       await clearPendingEdit(sheetId);
       setDirty(false);
       setSaveError(false);
