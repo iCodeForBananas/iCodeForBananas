@@ -107,7 +107,7 @@ function ProgressionChordCard({
           <p className="text-xs text-ink-muted">No voicing available.</p>
         </div>
       )}
-      <div className="flex w-full max-w-[180px] flex-col gap-1.5">
+      <div className="flex w-full max-w-[180px] flex-col gap-2">
         <Select.Root size="1" value={type} onValueChange={onTypeChange}>
           <Select.Trigger aria-label="Chord type" title="Chord type for this chord" className="w-full" />
           <Select.Content position="popper">

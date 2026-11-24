@@ -97,7 +97,7 @@ function EquityCurve({ history, overlay, color }: { history: EquityHistory; over
 
 function Facts({ items }: { items: [label: string, value: React.ReactNode][] }) {
   return (
-    <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
+    <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
       {items.map(([label, value]) => (
         <div key={label} className="contents">
           <dt className="text-ink-muted">{label}</dt>
@@ -189,11 +189,11 @@ export function DeploymentPanel({ row, go, backtest, config, color, now, onClose
               )}
             </div>
             <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-muted">
-              <span className="flex items-center gap-1.5"><span className="h-0.5 w-4 rounded-full" style={{ background: color }} />Live</span>
-              <span className="flex items-center gap-1.5"><span className="h-0 w-4 border-t-2 border-dashed border-ink-muted" />Backtest, same bars</span>
-              <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded-sm bg-danger/20" />In drawdown</span>
-              <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-success" />Peak</span>
-              <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-danger" />Deepest point</span>
+              <span className="flex items-center gap-2"><span className="h-0.5 w-4 rounded-full" style={{ background: color }} />Live</span>
+              <span className="flex items-center gap-2"><span className="h-0 w-4 border-t-2 border-dashed border-ink-muted" />Backtest, same bars</span>
+              <span className="flex items-center gap-2"><span className="h-3 w-3 rounded-sm bg-danger/20" />In drawdown</span>
+              <span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-success" />Peak</span>
+              <span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-danger" />Deepest point</span>
             </div>
             {history && (
               <div className="mt-4">

@@ -29,7 +29,7 @@ export default function BentoPageLayout({
 }: BentoPageLayoutProps) {
   return (
     <div className='flex flex-col flex-1 min-h-0'>
-      <main className='flex flex-col flex-1 min-h-0 pl-2 pt-2 pr-0 pb-0 sm:pl-4 sm:pt-4 sm:pr-0 sm:pb-0'>
+      <main className='flex flex-col flex-1 min-h-0'>
         <div
           className={`flex flex-col flex-1 min-h-0 rounded-none border-none bg-surface-base overflow-hidden${maxWidth ? ` ${maxWidth} mx-auto` : ""}${boxClassName ? ` ${boxClassName}` : ""}`}
         >

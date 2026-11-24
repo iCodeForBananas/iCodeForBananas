@@ -72,7 +72,7 @@ function StatusChip({ dot, quiet = false, title, children }: { dot?: "danger" | 
   const tone = quiet ? "bg-surface-sunken text-ink-muted" : "border border-line-subtle bg-surface-raised text-ink-primary";
   const dotColor = dot === "danger" ? "bg-danger" : dot === "success" ? "bg-success" : "bg-ink-muted";
   return (
-    <span className={`${chip} gap-1.5 ${tone}`} title={title}>
+    <span className={`${chip} gap-2 ${tone}`} title={title}>
       {dot && <span aria-hidden className={`size-1.5 shrink-0 rounded-full ${dotColor}`} />}
       {children}
     </span>
@@ -144,7 +144,7 @@ export function GoLiveStats({ go, backtest, value, position }: { go: GoLive; bac
 
   return (
     <div className="mt-3 flex flex-col gap-3">
-      <div className="flex flex-col gap-1.5">
+      <div className="flex flex-col gap-2">
         <p>
           <SampleChip sample={sample} /> <span className="text-ink-primary">{sample.detail}</span>
         </p>
