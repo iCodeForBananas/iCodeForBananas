@@ -1,7 +1,7 @@
 // Chord type groups, and every playable way to voice one of those types for a
-// given root, up and down the neck. Shared by the Guitar tools so
-// progression-builder (and anything else that wants "all the ways to play
-// this chord") can share it instead of re-deriving it.
+// given root, up and down the neck. Shared by the Guitar tools so anything
+// that wants "all the ways to play this chord" can share it instead of
+// re-deriving it.
 
 import {
   type ChordShape,
@@ -32,24 +32,6 @@ export const TYPE_GROUPS = [
 ] as const;
 
 export type ChordType = (typeof TYPE_GROUPS)[number]["types"][number];
-
-// The same catalog split by quality, for anything that wants to show only
-// the chords that fit a root already committed to being major or minor
-// (progression-builder's columns). Sus/Add chords have no third at all —
-// major or minor — but the shapes here are built as major-chord variants,
-// so they sit on the major side rather than in both lists.
-export const MAJOR_TYPE_GROUPS = [
-  { label: "Triads", types: ["Major"] },
-  { label: "7th Chords", types: ["Maj7", "7"] },
-  { label: "Sus / Add", types: ["Sus2", "Sus4", "Add9"] },
-  { label: "Extended", types: ["6", "9", "Maj9", "13", "Maj13"] },
-] as const;
-
-export const MINOR_TYPE_GROUPS = [
-  { label: "Triads", types: ["Minor"] },
-  { label: "7th Chords", types: ["m7", "mMaj7"] },
-  { label: "Extended", types: ["m6", "m9", "m11"] },
-] as const;
 
 export const CHORD_TYPE_TOOLTIPS: Record<string, string> = {
   Major: "Happy and bright — the most common chord type. A great starting point for any beginner",

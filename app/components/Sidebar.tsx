@@ -25,7 +25,6 @@ export const LINKS: { href: string; text: string; category: Category; auth?: boo
   { href: "/guitar/scale-tool", text: "Scale Tool", category: "Guitar", abbr: "ST" },
   { href: "/guitar/chord-finder", text: "Chord Finder", category: "Guitar", abbr: "CF" },
   { href: "/guitar/progressions", text: "Chord Progressions", category: "Guitar", abbr: "CP" },
-  { href: "/progression-builder", text: "Progression Builder", category: "Guitar", abbr: "PB" },
   { href: "/fretboard-quiz", text: "Fretboard Quiz", category: "Guitar" },
   // Trading
   { href: "/algo-backtest", text: "Algo Backtest", category: "Trading", abbr: "AB" },

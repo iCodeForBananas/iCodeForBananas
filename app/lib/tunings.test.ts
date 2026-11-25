@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { aShapeTemplates, chordShapes, eShapeTemplates, sharpNotes, type ChordShape } from "./chordShapes";
 import { getNeckVoicings, getVoicings, TYPE_GROUPS } from "./chordVoicings";
-import { TRIAD_STRING_SETS, triadVoicings, type TriadVoicing } from "./triads";
 import {
   DROP_D_TUNING,
   OPEN_E_TUNING,
@@ -127,38 +126,6 @@ describe("getNeckVoicings in other tunings", () => {
   it("offers no barre where the strings do not ring a major chord", () => {
     expect(getNeckVoicings("G", "Minor", OPEN_G_TUNING).some((v) => v.label === "Full Barre")).toBe(false);
     expect(getNeckVoicings("G", "Major", DROP_D_TUNING).some((v) => v.label === "Full Barre")).toBe(false);
-  });
-});
-
-describe("triadVoicings in other tunings", () => {
-  const intervals = [0, 4, 7];
-
-  // sharpNotes starts at A, which is pitch class 9.
-  const tonesOf = (rootIndex: number) => intervals.map((n) => (9 + rootIndex + n) % 12);
-
-  it.each(TUNINGS)("spells the chord with the right note on the bottom in $name", (tuning) => {
-    for (const [rootIndex, root] of sharpNotes.entries()) {
-      const tones = tonesOf(rootIndex);
-      for (const v of triadVoicings(root, intervals, tuning)) {
-        const sounded = pitches(v.shape, tuning.midi).filter((p): p is number => p !== null);
-        expect([...sounded.map((p) => p % 12)].sort((a, b) => a - b), `${root} ${v.id}`).toEqual(
-          [...tones].sort((a, b) => a - b)
-        );
-        const bottom = tones[v.inversion === "root" ? 0 : v.inversion === "first" ? 1 : 2];
-        expect(sounded[0] % 12, `${root} ${v.id}`).toBe(bottom);
-      }
-    }
-  });
-
-  it("only changes the low string set in drop D", () => {
-    // Strings 6-5-4 can lose shapes: the wider gap to the D string pushes some
-    // past a hand's reach.
-    const offLowString = (v: TriadVoicing) => v.stringSet !== TRIAD_STRING_SETS[0].key;
-    for (const root of sharpNotes) {
-      const voicings = triadVoicings(root, intervals, DROP_D_TUNING);
-      expect(voicings.filter(offLowString), root).toEqual(triadVoicings(root, intervals).filter(offLowString));
-      expect(voicings.filter((v) => !offLowString(v)).length, root).toBeGreaterThan(0);
-    }
   });
 });
 
