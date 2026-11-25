@@ -111,7 +111,11 @@ function sizingFrom(saved: Partial<StrategySettings> | null): SizingSettings {
   // Settings saved before the take profit switch (2026-11-05) had it on
   // whenever the percent was above 0.
   const useTakeProfit = saved?.sizing?.useTakeProfit ?? (saved?.takeProfitPercent ?? 0) > 0;
-  return { ...DEFAULT_SIZING, useTakeProfit, ...(saved?.sizing ?? {}) };
+  // With shorts on, reversal defaults on: without it an always-in strategy (a
+  // crossover) closes on the opposite signal and never opens the other side,
+  // so it trades only one direction. A saved explicit choice still wins.
+  const allowReversal = saved?.sizing?.allowReversal ?? (saved?.enableShorts ?? false);
+  return { ...DEFAULT_SIZING, useTakeProfit, ...(saved?.sizing ?? {}), allowReversal };
 }
 
 /** One line per sizing setting, for the report. */
@@ -1313,7 +1317,15 @@ export default function AlgoBacktestPage() {
                 </Flex>
                 <Text as='label' size='2'>
                   <Flex gap='2' align='center'>
-                    <Switch size='1' checked={enableShorts} onCheckedChange={setEnableShorts} />
+                    <Switch
+                      size='1'
+                      checked={enableShorts}
+                      onCheckedChange={(on) => {
+                        setEnableShorts(on);
+                        // Turning shorts on turns reversal on with them; see sizingFrom.
+                        if (on) updateSizing({ allowReversal: true });
+                      }}
+                    />
                     Enable shorts
                   </Flex>
                 </Text>
@@ -1332,7 +1344,9 @@ export default function AlgoBacktestPage() {
                 <Text size='1' color='gray'>
                   {sizing.allowReversal
                     ? 'An exit whose bar also signals the other side closes and reopens at the same next open.'
-                    : 'An exit only closes; the next trade waits for a later bar.'}
+                    : enableShorts
+                      ? 'An exit only closes; the next trade waits for a later bar. Crossover strategies will trade only one side.'
+                      : 'An exit only closes; the next trade waits for a later bar.'}
                 </Text>
               </Flex>
             </Bento>
