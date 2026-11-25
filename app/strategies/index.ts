@@ -37,6 +37,11 @@ import openingRangeBreakout from './opening-range-breakout';
 import intradayMomentum from './intraday-momentum';
 import vwapTrend from './vwap-trend';
 import candlestickPatterns from './candlestick-patterns';
+import supertrend from './supertrend';
+import squeezeMomentum from './squeeze-momentum';
+import parabolicSar from './parabolic-sar';
+import hullMa from './hull-ma';
+import moneyFlowIndex from './money-flow-index';
 
 export const AVAILABLE_STRATEGIES: Record<string, StrategyDefinition> = {
   // Trend Following
@@ -57,6 +62,10 @@ export const AVAILABLE_STRATEGIES: Record<string, StrategyDefinition> = {
   'ichimoku': ichimoku,
   'adx-dmi': adxDmi,
   'regression-momentum': regressionMomentum,
+  'supertrend': supertrend,
+  'parabolic-sar': parabolicSar,
+  'hull-ma': hullMa,
+  'squeeze-momentum': squeezeMomentum,
   // Mean Reversion
   'bollinger-bands': bollingerBands,
   'keltner-channel': keltnerChannel,
@@ -70,6 +79,7 @@ export const AVAILABLE_STRATEGIES: Record<string, StrategyDefinition> = {
   'connors-rsi': connorsRsi,
   'connors-r3': connorsR3,
   'connors-percent-b': connorsPercentB,
+  'money-flow-index': moneyFlowIndex,
   // Support & Resistance
   'supply-demand': supplyDemand,
   // Calendar

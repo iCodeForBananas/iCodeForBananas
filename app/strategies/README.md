@@ -285,6 +285,19 @@ bullish one). Patterns alone are a weak edge on US stocks (Marshall, Young &
 Rose 2006), so `candlestick-patterns` adds context: the prior move, an optional
 200 SMA filter and a relative volume filter, and exits after a fixed hold.
 
+## TradingView Favorites
+
+Popular TradingView built-ins and community scripts, computed with the
+helpers in `ta.ts` (cached ATR, SMA, WMA, standard deviation, linear regression):
+
+| Strategy | Source | Idea |
+|----------|--------|------|
+| `supertrend` | Olivier Seban | ATR trailing line; trade its flips (ATR 10, x3) |
+| `parabolic-sar` | Wilder 1978 | Accelerating trailing stop; trade its flips |
+| `hull-ma` | Alan Hull 2005 | Trade the turns of a low-lag moving average |
+| `squeeze-momentum` | Carter's TTM Squeeze, LazyBear | Bollinger inside Keltner, then enter when it fires |
+| `money-flow-index` | Quong & Soudack 1989 | Volume-weighted RSI mean reversion; needs volume |
+
 ## Strategy Behavior
 
 - The backtest engine calls your handler for each candle in sequence
