@@ -7,6 +7,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { parsePriceCsv } from "@/app/lib/backtestReference";
+import type { OHLCBar, IndicatorValues } from "./types";
 import { calculateIndicatorsWithParams } from "@/app/lib/backtest-engine";
 import { getRsiArray } from "./cumulative-rsi";
 import { wilderRsi } from "./connors-rsi";
@@ -19,7 +20,7 @@ import { getSqueeze } from "./squeeze-momentum";
 import { atrArray, wmaOf, stdevOf } from "./ta";
 
 const file = readdirSync("public/data").find((f) => /^SPY-1d-.*\.csv$/.test(f))!;
-const s = parsePriceCsv(readFileSync(`public/data/${file}`, "utf8")).slice(-2500);
+const s = parsePriceCsv(readFileSync(`public/data/${file}`, "utf8")).slice(-2500) as (OHLCBar & IndicatorValues)[];
 const n = s.length;
 const close = s.map((b) => b.close);
 const high = s.map((b) => b.high);
