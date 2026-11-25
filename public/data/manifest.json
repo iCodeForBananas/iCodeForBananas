@@ -561,6 +561,62 @@
    "label": "GOOGL 5M"
   },
   {
+   "file": "INTC-15m-2026-11-25.csv",
+   "symbol": "INTC",
+   "timeframe": "15m",
+   "date": "2026-11-25",
+   "label": "INTC 15M"
+  },
+  {
+   "file": "INTC-1d-2026-11-25.csv",
+   "symbol": "INTC",
+   "timeframe": "1d",
+   "date": "2026-11-25",
+   "label": "INTC 1D"
+  },
+  {
+   "file": "INTC-1h-2026-11-25.csv",
+   "symbol": "INTC",
+   "timeframe": "1h",
+   "date": "2026-11-25",
+   "label": "INTC 1H"
+  },
+  {
+   "file": "INTC-1m-2026-11-25.csv",
+   "symbol": "INTC",
+   "timeframe": "1m",
+   "date": "2026-11-25",
+   "label": "INTC 1M"
+  },
+  {
+   "file": "INTC-1wk-2026-11-25.csv",
+   "symbol": "INTC",
+   "timeframe": "1wk",
+   "date": "2026-11-25",
+   "label": "INTC 1WK"
+  },
+  {
+   "file": "INTC-2m-2026-11-25.csv",
+   "symbol": "INTC",
+   "timeframe": "2m",
+   "date": "2026-11-25",
+   "label": "INTC 2M"
+  },
+  {
+   "file": "INTC-30m-2026-11-25.csv",
+   "symbol": "INTC",
+   "timeframe": "30m",
+   "date": "2026-11-25",
+   "label": "INTC 30M"
+  },
+  {
+   "file": "INTC-5m-2026-11-25.csv",
+   "symbol": "INTC",
+   "timeframe": "5m",
+   "date": "2026-11-25",
+   "label": "INTC 5M"
+  },
+  {
    "file": "IWB-15m-2026-11-17.csv",
    "symbol": "IWB",
    "timeframe": "15m",
@@ -1119,6 +1175,62 @@
    "timeframe": "5m",
    "date": "2026-11-17",
    "label": "PLTR 5M"
+  },
+  {
+   "file": "QCOM-15m-2026-11-25.csv",
+   "symbol": "QCOM",
+   "timeframe": "15m",
+   "date": "2026-11-25",
+   "label": "QCOM 15M"
+  },
+  {
+   "file": "QCOM-1d-2026-11-25.csv",
+   "symbol": "QCOM",
+   "timeframe": "1d",
+   "date": "2026-11-25",
+   "label": "QCOM 1D"
+  },
+  {
+   "file": "QCOM-1h-2026-11-25.csv",
+   "symbol": "QCOM",
+   "timeframe": "1h",
+   "date": "2026-11-25",
+   "label": "QCOM 1H"
+  },
+  {
+   "file": "QCOM-1m-2026-11-25.csv",
+   "symbol": "QCOM",
+   "timeframe": "1m",
+   "date": "2026-11-25",
+   "label": "QCOM 1M"
+  },
+  {
+   "file": "QCOM-1wk-2026-11-25.csv",
+   "symbol": "QCOM",
+   "timeframe": "1wk",
+   "date": "2026-11-25",
+   "label": "QCOM 1WK"
+  },
+  {
+   "file": "QCOM-2m-2026-11-25.csv",
+   "symbol": "QCOM",
+   "timeframe": "2m",
+   "date": "2026-11-25",
+   "label": "QCOM 2M"
+  },
+  {
+   "file": "QCOM-30m-2026-11-25.csv",
+   "symbol": "QCOM",
+   "timeframe": "30m",
+   "date": "2026-11-25",
+   "label": "QCOM 30M"
+  },
+  {
+   "file": "QCOM-5m-2026-11-25.csv",
+   "symbol": "QCOM",
+   "timeframe": "5m",
+   "date": "2026-11-25",
+   "label": "QCOM 5M"
   },
   {
    "file": "QQQ-15m-2026-11-17.csv",
