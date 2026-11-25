@@ -113,7 +113,7 @@ export type BacktestWorkerMessage =
   | { type: "error"; jobId: string; error: string };
 
 const BASE_CHART_KEYS: ReadonlyArray<keyof IndicatorData> = [
-  "time", "open", "high", "low", "close",
+  "time", "open", "high", "low", "close", "volume",
   "prevClose", "prevHigh", "prevLow",
 ];
 
@@ -248,7 +248,9 @@ async function fetchCsv(file: string): Promise<{ data: PricePoint[]; hash: strin
     // Orders fill at the next bar's open, so a bar with any unusable price
     // is dropped rather than half used.
     if (isNaN(time) || !(open > 0 && high > 0 && low > 0 && close > 0)) continue;
-    data.push({ time, open, high, low, close });
+    // Volume is optional: a file without the column, or a blank cell, leaves it out.
+    const volume = values.length > 5 ? parseFloat(values[5]) : NaN;
+    data.push(volume >= 0 ? { time, open, high, low, close, volume } : { time, open, high, low, close });
   }
   data.sort((a, b) => a.time - b.time);
   return { data, hash };

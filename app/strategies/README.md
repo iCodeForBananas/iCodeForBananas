@@ -230,6 +230,61 @@ The backtest engine pre-calculates these indicators for every candle:
 | `lowerBand` | Donchian lower band | 20 |
 | `midLine` | Donchian midline | 20 |
 
+## Volume
+
+Bars carry `volume` when the source has it: the bundled CSVs in `public/data`
+and the live Tradier feed both do. It is optional, so check before use.
+`volume.ts` has ready-made helpers that return `NaN` when volume is missing:
+
+| Helper | What it gives |
+|--------|---------------|
+| `hasVolume(bar)` | Whether the bar has volume |
+| `sessionVwap(series)` | Session VWAP per bar, reset each day |
+| `relativeVolume(series, i, n)` | Bar volume over the prior `n` bars' average |
+| `openingRelativeVolume(series, i, days)` | Opening bar volume vs. the same bar of prior sessions |
+| `onBalanceVolume(series)` | Granville's OBV |
+
+## Intraday Strategies
+
+`session.ts` gives each bar its New York date, minute, place in the regular
+session and bar length, using only that bar and earlier ones:
+
+```typescript
+const info = sessionInfo(series);
+if (!isIntraday(info, index)) return { action: 'hold', reason: 'Needs intraday bars' };
+info.sessionBar[index];        // 0 = first bar of the session (9:30)
+info.sessionStart[index];      // index of the session's first bar
+isFlattenBar(info, index);     // last decision that fills before the close
+```
+
+Orders fill at the next bar's open, so "flat by the close" means exiting on
+`isFlattenBar`: on hourly bars that is the 14:30 bar, filled at the 15:30 open.
+
+| Strategy | Source | Idea |
+|----------|--------|------|
+| `opening-range-breakout` | Crabel 1990; Zarattini, Barbon & Aziz 2024 | Trade a break of the first hour's range; optional opening relative volume filter |
+| `intraday-momentum` | Gao, Han, Li & Zhou, JFE 2018 | The morning move predicts the move into the close |
+| `vwap-trend` | Zarattini & Aziz 2023 | Long above session VWAP, short below |
+
+## Candlestick Patterns
+
+`candle-patterns.ts` detects engulfing, hammer / shooting star, morning /
+evening star, piercing line / dark cloud cover, harami, three white soldiers /
+black crows and inside bar breakouts. Shapes are measured as proportions of
+the bar (body, range, shadows) and "long" bodies against the average of the
+last 10, so the rules work on any price and timeframe. Use them in any strategy:
+
+```typescript
+import { detectPattern, detectPatterns } from './candle-patterns';
+detectPattern(series, index, 'engulfing', 5); // 1 bullish, -1 bearish, 0 none
+detectPatterns(series, index, ['hammer', 'star'], 5); // { bull: [...], bear: [...] }
+```
+
+The last argument requires a prior move against a reversal (a decline before a
+bullish one). Patterns alone are a weak edge on US stocks (Marshall, Young &
+Rose 2006), so `candlestick-patterns` adds context: the prior move, an optional
+200 SMA filter and a relative volume filter, and exits after a fixed hold.
+
 ## Strategy Behavior
 
 - The backtest engine calls your handler for each candle in sequence

@@ -57,6 +57,118 @@
    "label": "AAPL 5M"
   },
   {
+   "file": "ADBE-15m-2026-11-25.csv",
+   "symbol": "ADBE",
+   "timeframe": "15m",
+   "date": "2026-11-25",
+   "label": "ADBE 15M"
+  },
+  {
+   "file": "ADBE-1d-2026-11-25.csv",
+   "symbol": "ADBE",
+   "timeframe": "1d",
+   "date": "2026-11-25",
+   "label": "ADBE 1D"
+  },
+  {
+   "file": "ADBE-1h-2026-11-25.csv",
+   "symbol": "ADBE",
+   "timeframe": "1h",
+   "date": "2026-11-25",
+   "label": "ADBE 1H"
+  },
+  {
+   "file": "ADBE-1m-2026-11-25.csv",
+   "symbol": "ADBE",
+   "timeframe": "1m",
+   "date": "2026-11-25",
+   "label": "ADBE 1M"
+  },
+  {
+   "file": "ADBE-1wk-2026-11-25.csv",
+   "symbol": "ADBE",
+   "timeframe": "1wk",
+   "date": "2026-11-25",
+   "label": "ADBE 1WK"
+  },
+  {
+   "file": "ADBE-2m-2026-11-25.csv",
+   "symbol": "ADBE",
+   "timeframe": "2m",
+   "date": "2026-11-25",
+   "label": "ADBE 2M"
+  },
+  {
+   "file": "ADBE-30m-2026-11-25.csv",
+   "symbol": "ADBE",
+   "timeframe": "30m",
+   "date": "2026-11-25",
+   "label": "ADBE 30M"
+  },
+  {
+   "file": "ADBE-5m-2026-11-25.csv",
+   "symbol": "ADBE",
+   "timeframe": "5m",
+   "date": "2026-11-25",
+   "label": "ADBE 5M"
+  },
+  {
+   "file": "AMD-15m-2026-11-25.csv",
+   "symbol": "AMD",
+   "timeframe": "15m",
+   "date": "2026-11-25",
+   "label": "AMD 15M"
+  },
+  {
+   "file": "AMD-1d-2026-11-25.csv",
+   "symbol": "AMD",
+   "timeframe": "1d",
+   "date": "2026-11-25",
+   "label": "AMD 1D"
+  },
+  {
+   "file": "AMD-1h-2026-11-25.csv",
+   "symbol": "AMD",
+   "timeframe": "1h",
+   "date": "2026-11-25",
+   "label": "AMD 1H"
+  },
+  {
+   "file": "AMD-1m-2026-11-25.csv",
+   "symbol": "AMD",
+   "timeframe": "1m",
+   "date": "2026-11-25",
+   "label": "AMD 1M"
+  },
+  {
+   "file": "AMD-1wk-2026-11-25.csv",
+   "symbol": "AMD",
+   "timeframe": "1wk",
+   "date": "2026-11-25",
+   "label": "AMD 1WK"
+  },
+  {
+   "file": "AMD-2m-2026-11-25.csv",
+   "symbol": "AMD",
+   "timeframe": "2m",
+   "date": "2026-11-25",
+   "label": "AMD 2M"
+  },
+  {
+   "file": "AMD-30m-2026-11-25.csv",
+   "symbol": "AMD",
+   "timeframe": "30m",
+   "date": "2026-11-25",
+   "label": "AMD 30M"
+  },
+  {
+   "file": "AMD-5m-2026-11-25.csv",
+   "symbol": "AMD",
+   "timeframe": "5m",
+   "date": "2026-11-25",
+   "label": "AMD 5M"
+  },
+  {
    "file": "AMGN-15m-2026-11-17.csv",
    "symbol": "AMGN",
    "timeframe": "15m",
@@ -741,6 +853,13 @@
    "timeframe": "1d",
    "date": "2026-11-17",
    "label": "MU 1D"
+  },
+  {
+   "file": "MU-1h-2026-11-25.csv",
+   "symbol": "MU",
+   "timeframe": "1h",
+   "date": "2026-11-25",
+   "label": "MU 1H"
   },
   {
    "file": "MU-1m-2026-11-17.csv",

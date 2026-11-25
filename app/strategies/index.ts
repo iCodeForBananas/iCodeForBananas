@@ -33,6 +33,10 @@ import adxDmi from './adx-dmi';
 import regressionMomentum from './regression-momentum';
 import connorsR3 from './connors-r3';
 import connorsPercentB from './connors-percent-b';
+import openingRangeBreakout from './opening-range-breakout';
+import intradayMomentum from './intraday-momentum';
+import vwapTrend from './vwap-trend';
+import candlestickPatterns from './candlestick-patterns';
 
 export const AVAILABLE_STRATEGIES: Record<string, StrategyDefinition> = {
   // Trend Following
@@ -70,6 +74,12 @@ export const AVAILABLE_STRATEGIES: Record<string, StrategyDefinition> = {
   'supply-demand': supplyDemand,
   // Calendar
   'turn-of-month': turnOfMonth,
+  // Intraday (hourly and shorter; flat by the close)
+  'opening-range-breakout': openingRangeBreakout,
+  'intraday-momentum': intradayMomentum,
+  'vwap-trend': vwapTrend,
+  // Price Action
+  'candlestick-patterns': candlestickPatterns,
 };
 
 export * from './types';

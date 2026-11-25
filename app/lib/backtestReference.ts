@@ -87,7 +87,8 @@ export function parsePriceCsv(text: string): PricePoint[] {
     const time = Date.parse(v[0]);
     const [open, high, low, close] = [v[1], v[2], v[3], v[4]].map(Number);
     if (Number.isNaN(time) || !(open > 0 && high > 0 && low > 0 && close > 0)) continue;
-    out.push({ time, open, high, low, close });
+    const volume = v.length > 5 && v[5].trim() !== "" ? Number(v[5]) : NaN;
+    out.push(volume >= 0 ? { time, open, high, low, close, volume } : { time, open, high, low, close });
   }
   return out.sort((a, b) => a.time - b.time);
 }

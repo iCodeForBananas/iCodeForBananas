@@ -8,6 +8,7 @@ const TICKERS = [
   "MSFT", "MU", "NVDA", "PEP", "PLTR", "TMUS", "TQQQ", "TSLA",
   "TXN", "WMT", "SPY", "QQQ", "JPM", "XOM",
   "SMH", "EEM", "SOFI", "IWB", "NFLX", "AMGN",
+  "AMD", "ADBE",
 ];
 
 const INTERVALS = ["1m", "2m", "5m", "15m", "30m", "1h", "1d", "1wk"];

@@ -6,6 +6,8 @@ export interface PricePoint {
   high: number;
   low: number;
   close: number;
+  /** Shares traded in the bar; absent where the source has none. */
+  volume?: number;
   donchianMiddle?: number;
   ema?: number;
   trailstopSma?: number;
