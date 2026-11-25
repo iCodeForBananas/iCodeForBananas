@@ -22,10 +22,13 @@ export interface DeploymentControlsProps {
   onChange: (id: string, config: DeploymentConfig | null) => void;
 }
 
-export function DeploymentControls({ id, label, config, onChange }: DeploymentControlsProps) {
+/**
+ * The writes behind a deployment's controls, shared by the panel and the
+ * leaderboard row's menu so both do exactly the same thing.
+ */
+export function useDeploymentActions(id: string, config: DeploymentConfig | undefined, onChange: DeploymentControlsProps["onChange"]) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [confirming, setConfirming] = useState(false);
 
   async function send(url: string, init: RequestInit): Promise<boolean> {
     setBusy(true);
@@ -40,21 +43,29 @@ export function DeploymentControls({ id, label, config, onChange }: DeploymentCo
     return true;
   }
 
-  async function setEnabled(enabled: boolean) {
-    if (!config) return;
+  async function setEnabled(enabled: boolean): Promise<boolean> {
+    if (!config) return false;
     const ok = await send("/api/strategy-deployments", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id, enabled }),
     });
     if (ok) onChange(id, { ...config, enabled, tearingDown: enabled ? false : config.tearingDown });
+    return ok;
   }
 
-  async function remove() {
+  async function remove(): Promise<boolean> {
     const ok = await send(`/api/strategy-deployments?id=${encodeURIComponent(id)}`, { method: "DELETE" });
-    setConfirming(false);
     if (ok && config) onChange(id, { ...config, enabled: false, tearingDown: true });
+    return ok;
   }
+
+  return { busy, error, clearError: () => setError(null), setEnabled, remove };
+}
+
+export function DeploymentControls({ id, label, config, onChange }: DeploymentControlsProps) {
+  const { busy, error, setEnabled, remove } = useDeploymentActions(id, config, onChange);
+  const [confirming, setConfirming] = useState(false);
 
   if (!config) {
     return <p className="text-sm text-ink-muted">Not deployed any more. Deploy it again from the Algo Back Tester.</p>;
@@ -77,7 +88,7 @@ export function DeploymentControls({ id, label, config, onChange }: DeploymentCo
         </Button>
         {config.tearingDown ? null : confirming ? (
           <>
-            <Button variant="danger" size="sm" disabled={busy} onClick={() => void remove()}>
+            <Button variant="danger" size="sm" disabled={busy} onClick={() => void remove().then(() => setConfirming(false))}>
               <Trash2 className="size-3.5" />
               Close the position and delete {label}
             </Button>

@@ -17,6 +17,7 @@ import { SAMPLE } from "@/app/lib/tradeStats";
 import { CLAUDE_NEW_CHAT, claudePrefillUrl } from "@/app/lib/claudeLink";
 import { DivergenceChip, SampleChip, fmt, fmtSignedPct, goLiveFor, sampleText, type GoLive, type LedgerRow } from "./goLive";
 import { DeploymentPanel } from "./DeploymentPanel";
+import { DeploymentMenu } from "./DeploymentMenu";
 import { DEFAULT_SORT, nextSort, sortCurves, type Sort, type SortKey } from "./leaderboardSort";
 import { loadEquityCurves, loadSnapshotPnl, loadTradeLedgers } from "@/app/lib/tradingHistorySource";
 
@@ -500,14 +501,17 @@ export function TradingLeaderboardView({
                       <td className={`${num} ${tradeOk ? "" : weak}`}>{c.trades > 0 ? `${Math.round((c.wins / c.trades) * 100)}%` : "–"}</td>
                       <td className={`${num} text-ink-muted`}>{formatAge(now - c.latestAt)}</td>
                       <td className={`${cell} ${pinnedRight} text-center`}>
-                        <EquityCurveButton
-                          label={c.label}
-                          onClick={() => setPanelId(c.id)}
-                          buttonRef={(el) => {
-                            if (el) curveButtons.current.set(c.id, el);
-                            else curveButtons.current.delete(c.id);
-                          }}
-                        />
+                        <div className="flex items-center justify-center gap-1">
+                          <EquityCurveButton
+                            label={c.label}
+                            onClick={() => setPanelId(c.id)}
+                            buttonRef={(el) => {
+                              if (el) curveButtons.current.set(c.id, el);
+                              else curveButtons.current.delete(c.id);
+                            }}
+                          />
+                          <DeploymentMenu id={c.id} label={c.label} config={configs.get(c.id)} onChange={onConfigChange} onOpenDetails={() => setPanelId(c.id)} />
+                        </div>
                       </td>
                     </tr>
                 );
