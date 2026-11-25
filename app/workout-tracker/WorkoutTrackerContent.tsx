@@ -11,7 +11,7 @@ import { Flex, Select, Text, TextField } from "@radix-ui/themes";
 import { Button } from "@/app/components/ui/button";
 import { X } from "lucide-react";
 import { PERCENTILE_LIFTS, latestWeights, percentileBand, populationPercentile } from "./percentile";
-import { WINDOW_DAYS, liftCoverage } from "./coverage";
+import { liftCoverage } from "./coverage";
 
 interface LogEntry {
   id: string;
@@ -363,14 +363,8 @@ export default function WorkoutTrackerContent() {
   );
 
   const coverageContent = (() => {
-    const behind = coverage.filter((c) => c.remaining > 0);
     return (
       <div>
-        <p className='text-sm mb-4'>
-          {behind.length === 0
-            ? `Every lift is on target for the last ${WINDOW_DAYS} days.`
-            : <>Behind in the last {WINDOW_DAYS} days: <span className='text-danger font-medium'>{behind.map((c) => c.exercise).join(", ")}</span></>}
-        </p>
         <div className='space-y-3'>
           {coverage.map(({ exercise, days, target, remaining }) => (
             <div key={exercise} className='flex items-center gap-3'>
