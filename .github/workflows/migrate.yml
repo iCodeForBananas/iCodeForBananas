@@ -2,6 +2,12 @@
 #   SUPABASE_ACCESS_TOKEN — personal access token from supabase.com/dashboard/account/tokens
 #   SUPABASE_DB_PASSWORD  — database password for the project (Supabase project settings → Database)
 #   SUPABASE_PROJECT_ID   — project reference ID (Supabase project settings → General)
+#
+# Migration files are named <14-digit version>_<name>.sql, and every version
+# must be unique: YYYYMMDD plus a six-digit sequence for that day
+# (20261125000000, 20261125000001, ...). A migration applied by hand (SQL
+# editor, MCP) must still get a file here, and its version recorded in
+# supabase_migrations.schema_migrations, or `db push` refuses to run.
 
 name: Apply Supabase Migrations
 
@@ -11,6 +17,12 @@ on:
       - main
     paths:
       - 'supabase/migrations/**'
+      - '.github/workflows/migrate.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: supabase-migrations
+  cancel-in-progress: false
 
 jobs:
   migrate:
@@ -18,8 +30,20 @@ jobs:
     env:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
 
     steps:
+      - name: Check secrets
+        run: |
+          missing=""
+          for name in SUPABASE_ACCESS_TOKEN SUPABASE_DB_PASSWORD SUPABASE_PROJECT_ID; do
+            [ -n "${!name}" ] || missing="$missing $name"
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::Missing repository secrets:$missing"
+            exit 1
+          fi
+
       - uses: actions/checkout@v4
 
       - uses: supabase/setup-cli@v1
@@ -27,7 +51,10 @@ jobs:
           version: latest
 
       - name: Link Supabase project
-        run: supabase link --project-ref ${{ secrets.SUPABASE_PROJECT_ID }}
+        run: supabase link --project-ref "$SUPABASE_PROJECT_ID" --password "$SUPABASE_DB_PASSWORD"
+
+      - name: Show migration status
+        run: supabase migration list --password "$SUPABASE_DB_PASSWORD"
 
       - name: Apply pending migrations
-        run: supabase db push
+        run: supabase db push --yes --password "$SUPABASE_DB_PASSWORD"

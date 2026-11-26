@@ -19,7 +19,7 @@ strategy**. The dialog fills every setting from the run that produced the
 result (the same values the Lambda prompt would write), leaves blank anything
 the run can't tell (risk-based sizing, say) for you to fill in, and saves one
 row to `public.strategy_deployments`
-([`supabase/migrations/20261123_strategy_deployments.sql`](../supabase/migrations/20261123_strategy_deployments.sql)).
+([`supabase/migrations/20261123000000_strategy_deployments.sql`](../supabase/migrations/20261123000000_strategy_deployments.sql)).
 Manage them at `/strategy-deployments` or from a deployment's panel on the
 `/trading-leaderboard`: pause, resume, remove. Pausing leaves any position
 open. Removing closes it: the API turns the deployment off and sets
@@ -176,7 +176,7 @@ the stack (JSON `{"url": "...", "publishableKey": "...", "token": "..."}`).
 ### Fills
 
 Every fill is also appended to `public.trading_fills`
-([`supabase/migrations/20261117_trading_fills.sql`](../supabase/migrations/20261117_trading_fills.sql)),
+([`supabase/migrations/20261117000000_trading_fills.sql`](../supabase/migrations/20261117000000_trading_fills.sql)),
 one row per Tradier order, through `report_trading_fill` and the same token.
 A row has the order (side, shares, price, fill and placement times, the
 signal's reason), the P&L it realized, and the deployment's state right after

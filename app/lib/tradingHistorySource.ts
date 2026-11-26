@@ -3,9 +3,9 @@
 // names, so moving to a different source is a change to this file only.
 //
 // Today both come from public.trading_equity_snapshots, a row per bar each
-// trading Lambda processes (supabase/migrations/20261108_trading_equity.sql):
+// trading Lambda processes (supabase/migrations/20261108000000_trading_equity.sql):
 // equity is marked to that bar's close, open P&L included. Trades are derived
-// from it by public.trading_trade_ledger (20261116_trading_trade_ledger.sql)
+// from it by public.trading_trade_ledger (20261116000000_trading_trade_ledger.sql)
 // as the bars where trades_closed goes up.
 
 import { createClient } from "@/utils/supabase/client";

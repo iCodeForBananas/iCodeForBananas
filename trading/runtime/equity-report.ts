@@ -1,6 +1,6 @@
 // Publishes to Supabase for the public /trading-leaderboard page: each
-// processed bar's equity (supabase/migrations/20261108_trading_equity.sql) and
-// each fill (20261117_trading_fills.sql). Global fetch only. Best effort: the
+// processed bar's equity (supabase/migrations/20261108000000_trading_equity.sql) and
+// each fill (20261117000000_trading_fills.sql). Global fetch only. Best effort: the
 // caller logs a failure and trades on.
 
 export interface EquitySnapshot {
