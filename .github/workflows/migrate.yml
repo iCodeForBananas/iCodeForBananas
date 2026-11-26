@@ -49,13 +49,13 @@ jobs:
 
       - uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: 3.4.0
 
       - name: Link Supabase project
         run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
 
       - name: Show migration status
-        run: supabase migration list
+        run: supabase migration list --remote
 
       - name: Apply pending migrations
-        run: supabase db push --yes
+        run: supabase db push --remote --yes
