@@ -1,6 +1,7 @@
 # Required GitHub Actions secrets (Settings → Secrets → Actions):
 #   SUPABASE_ACCESS_TOKEN — personal access token from supabase.com/dashboard/account/tokens
-#   SUPABASE_DB_PASSWORD  — database password for the project (Supabase project settings → Database)
+#   SUPABASE_DB_PASSWORD  — optional. Without it the CLI uses the access token to
+#                           get temporary database credentials.
 #   SUPABASE_PROJECT_ID   — project reference ID (Supabase project settings → General)
 #
 # Migration files are named <14-digit version>_<name>.sql, and every version
@@ -36,7 +37,7 @@ jobs:
       - name: Check secrets
         run: |
           missing=""
-          for name in SUPABASE_ACCESS_TOKEN SUPABASE_DB_PASSWORD SUPABASE_PROJECT_ID; do
+          for name in SUPABASE_ACCESS_TOKEN SUPABASE_PROJECT_ID; do
             [ -n "${!name}" ] || missing="$missing $name"
           done
           if [ -n "$missing" ]; then
@@ -51,10 +52,10 @@ jobs:
           version: latest
 
       - name: Link Supabase project
-        run: supabase link --project-ref "$SUPABASE_PROJECT_ID" --password "$SUPABASE_DB_PASSWORD"
+        run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
 
       - name: Show migration status
-        run: supabase migration list --password "$SUPABASE_DB_PASSWORD"
+        run: supabase migration list
 
       - name: Apply pending migrations
-        run: supabase db push --yes --password "$SUPABASE_DB_PASSWORD"
+        run: supabase db push --yes
