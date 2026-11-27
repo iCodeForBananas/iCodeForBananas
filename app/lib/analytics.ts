@@ -40,6 +40,6 @@ export function track(name: string, params: Params = {}): void {
  */
 export function toolFromPath(pathname: string): string | null {
   const first = pathname.split("/").filter(Boolean)[0];
-  if (!first || first === "login" || first === "settings" || first === "api") return null;
+  if (!first || first === "login" || first === "register" || first === "auth" || first === "settings" || first === "api") return null;
   return first;
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/app/components/ui/button";
@@ -86,6 +87,12 @@ export default function LoginForm() {
             {loading ? "Signing in…" : "Sign In"}
           </Button>
         </form>
+        <p className='mt-5 text-center text-13 text-ink-muted'>
+          New here?{" "}
+          <Link href='/register' className='underline hover:text-ink-primary'>
+            Create an account
+          </Link>
+        </p>
       </Bento>
     </div>
   );

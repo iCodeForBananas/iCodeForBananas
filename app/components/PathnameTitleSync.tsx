@@ -16,6 +16,7 @@ const TITLES: Record<string, string> = {
   "/fretboard-explorer":                  "Fretboard Explorer | iCodeForBananas",
   "/fretboard-quiz":                      "Fretboard Quiz | iCodeForBananas",
   "/login":                               "Sign In | iCodeForBananas",
+  "/register":                            "Create Account | iCodeForBananas",
   "/inversion-picker":                     "Inversion Picker | iCodeForBananas",
   "/settings":                            "Settings | iCodeForBananas",
   "/songwriter":                          "Songwriter | iCodeForBananas",

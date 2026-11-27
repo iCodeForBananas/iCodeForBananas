@@ -9,6 +9,7 @@ describe("toolFromPath", () => {
   it("skips home and non-tool pages", () => {
     expect(toolFromPath("/")).toBeNull();
     expect(toolFromPath("/login")).toBeNull();
+    expect(toolFromPath("/register")).toBeNull();
     expect(toolFromPath("/settings")).toBeNull();
   });
 });
