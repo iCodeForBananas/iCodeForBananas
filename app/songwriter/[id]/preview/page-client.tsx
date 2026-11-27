@@ -22,7 +22,7 @@ import { goTo } from "../../offlineNav";
 import { useCommands } from "@/app/components/ui/command-palette";
 import { PerformanceView } from "../../PerformanceView";
 import { sheetToSong } from "../../song";
-import LineEditor, { type LineTarget } from "../../LineEditor";
+import InlineLineInput from "../../InlineLineInput";
 import SectionEditor from "../../SectionEditor";
 import { asSectionHeader } from "../../songText";
 import {
@@ -128,13 +128,30 @@ function EditModeBanner({
           error ? "text-danger" : "text-primary-text"
         }`}
       >
-        {error ?? "Tap a line to edit it, or drag its grip to move it."}
+        {error ?? "Edit a line where it is, or drag its grip to move it."}
       </span>
       <Button variant="primary" type='button' size='sm' onClick={onDone} className='shrink-0'>
         Done
       </Button>
     </div>
   );
+}
+
+const samePos = (a: LinePos | null, sectionIndex: number, lineIndex: number) =>
+  !!a && a.sectionIndex === sectionIndex && a.lineIndex === lineIndex;
+
+/** Edit mode's handle on the lines: each one an input, edited where it sits. */
+interface LineEditing {
+  /** A new line that isn't in the song yet — the end of a section, or under one just entered. */
+  draft: LinePos | null;
+  /** A line whose input should take the caret as soon as it appears. */
+  focus: LinePos | null;
+  onFocused: () => void;
+  /** `insert` means `pos` is the draft, so the text goes in rather than over. */
+  onCommit: (pos: LinePos, text: string, insert: boolean, andAnother: boolean) => void;
+  onDelete: (pos: LinePos, expected: string) => void;
+  onDraft: (pos: LinePos) => void;
+  onDiscardDraft: () => void;
 }
 
 const SheetContent = memo(function SheetContent({
@@ -146,8 +163,7 @@ const SheetContent = memo(function SheetContent({
   timeline,
   activeCueIndex = null,
   onSeekToLine,
-  onEditLine,
-  onInsertLine,
+  editing,
   onMoveLine,
   onAddSection,
   onEditSection,
@@ -165,10 +181,8 @@ const SheetContent = memo(function SheetContent({
   timeline?: Timeline;
   activeCueIndex?: number | null;
   onSeekToLine?: (sectionIndex: number, lineIndex: number) => void;
-  /** Present only in edit mode — it turns every line into a tap target. */
-  onEditLine?: (sectionIndex: number, lineIndex: number) => void;
-  /** Opens a blank line at an index that doesn't exist yet — the end of a section. */
-  onInsertLine?: (sectionIndex: number, lineIndex: number) => void;
+  /** Present only in edit mode — it turns every line into an input, edited in place. */
+  editing?: LineEditing;
   /** Present in edit mode — gives every line a grip and accepts the drop. */
   onMoveLine?: (from: LinePos, to: LinePos) => void;
   /** Opens the new-section sheet, landing the section after the one given. */
@@ -269,65 +283,65 @@ const SheetContent = memo(function SheetContent({
                     ) : (
                       row
                     );
-                  if (line.trim() === "") {
-                    // Editing makes the gaps tappable too — a blank line is
-                    // where the next lyric goes.
-                    return withGrip(
-                      onEditLine ? (
-                        <button
-                          key={i}
-                          type='button'
-                          onClick={() => onEditLine(sectionIndex, i)}
-                          aria-label={`Edit blank line ${i + 1}`}
-                          className='block w-full h-8 rounded-md border border-dashed border-line-strong/10 border-line-subtle hover:border-line-strong hover:bg-surface-raised transition-colors duration-150'
+                  const sectionName = section.label || section.type;
+                  // The new line goes in above whatever is at its index, and
+                  // isn't one of the sortable rows until it's saved. It has no
+                  // grip yet, so it keeps the grip's width to line up.
+                  const draftRow = (lineIndex: number) =>
+                    editing && samePos(editing.draft, sectionIndex, lineIndex) ? (
+                      <div key={`draft:${lineIndex}`} className='flex items-stretch gap-1'>
+                        <div className='w-10 shrink-0' />
+                        <InlineLineInput
+                          value=''
+                          label={`${sectionName}, new line`}
+                          autoFocus
+                          onCommit={(text, another) =>
+                            editing.onCommit({ sectionIndex, lineIndex }, text, true, another)
+                          }
+                          onDelete={editing.onDiscardDraft}
                         />
-                      ) : (
-                        <div key={i} data-fit-line className='h-3' />
-                      )
-                    );
+                      </div>
+                    ) : null;
+                  if (editing) {
+                    const pos = { sectionIndex, lineIndex: i };
+                    return [
+                      draftRow(i),
+                      withGrip(
+                        // Keyed by the text, so a save that changes the line
+                        // starts the input over from what the song now says.
+                        <InlineLineInput
+                          key={`${i}:${line}`}
+                          value={line}
+                          label={`${sectionName}, line ${i + 1}`}
+                          autoFocus={samePos(editing.focus, sectionIndex, i)}
+                          onFocused={editing.onFocused}
+                          onCommit={(text, another) => editing.onCommit(pos, text, false, another)}
+                          onDelete={(expected) => editing.onDelete(pos, expected)}
+                        />
+                      ),
+                      i === lines.length - 1 ? draftRow(lines.length) : null,
+                    ];
+                  }
+                  if (line.trim() === "") {
+                    return <div key={i} data-fit-line className='h-3' />;
                   }
                   const cueInfo  = getCueTagInfo(line);
                   const displayLine = cueInfo ? stripCueMarkers(line) : line;
                   const cueIndex = timeline?.lineCue.get(lineKey(sectionIndex, i));
                   const active = cueIndex !== undefined && cueIndex === activeCueIndex;
-                  // Editing wins over seeking: a tap in edit mode is meant for
-                  // the keyboard, not the transport.
-                  const seekable = !onEditLine && cueIndex !== undefined && !!onSeekToLine;
-                  return withGrip(
+                  const seekable = cueIndex !== undefined && !!onSeekToLine;
+                  return (
                     <div
                       key={i}
                       data-fit-line
                       data-active-cue={active || undefined}
-                      role={onEditLine || seekable ? "button" : undefined}
-                      tabIndex={onEditLine ? 0 : undefined}
-                      onClick={
-                        onEditLine
-                          ? () => onEditLine(sectionIndex, i)
-                          : seekable
-                            ? () => onSeekToLine!(sectionIndex, i)
-                            : undefined
-                      }
-                      onKeyDown={
-                        onEditLine
-                          ? (e) => {
-                              if (e.key === "Enter" || e.key === " ") {
-                                e.preventDefault();
-                                onEditLine(sectionIndex, i);
-                              }
-                            }
-                          : undefined
-                      }
+                      role={seekable ? "button" : undefined}
+                      onClick={seekable ? () => onSeekToLine!(sectionIndex, i) : undefined}
                       className={`rounded-md px-2 transition-colors duration-150 ${
                         active
                           ? "bg-primary-solid/20 shadow-[inset_3px_0_0_0_var(--ds-color-primary-solid)]"
                           : ""
-                      } ${
-                        onEditLine
-                          ? "cursor-pointer py-2 border border-dashed border-line-strong/10 border-line-subtle hover:border-line-strong hover:bg-surface-raised active:bg-primary-solid/15 active:bg-primary-solid/20"
-                          : seekable
-                            ? "cursor-pointer print:cursor-auto"
-                            : ""
-                      }`}
+                      } ${seekable ? "cursor-pointer print:cursor-auto" : ""}`}
                     >
                       {cueInfo && (
                         <span
@@ -350,13 +364,13 @@ const SheetContent = memo(function SheetContent({
                   );
                 })}
                 </SortableLines>
-                {(onInsertLine || onAddSection) && (
+                {(editing || onAddSection) && (
                   <div className='flex gap-2'>
-                    {onInsertLine && (
+                    {editing && (
                       <Button
                         type='button'
                         variant='secondary'
-                        onClick={() => onInsertLine(sectionIndex, lines.length)}
+                        onClick={() => editing.onDraft({ sectionIndex, lineIndex: lines.length })}
                         className='flex-1'
                       >
                         <Plus className='w-3.5 h-3.5' />
@@ -463,14 +477,21 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
   useCommands("song", songCommands);
 
   const [editMode, setEditMode] = useState(false);
-  const [editTarget, setEditTarget] = useState<LineTarget | null>(null);
+  /** A new line being typed in edit mode, not in the song until it's saved. */
+  const [lineDraft, setLineDraft] = useState<LinePos | null>(null);
+  /** A line whose input should take the caret when it appears (a new section's first). */
+  const [lineFocus, setLineFocus] = useState<LinePos | null>(null);
+  const leaveEditMode = () => {
+    setEditMode(false);
+    setLineDraft(null);
+    setLineFocus(null);
+  };
   /** Index the new section lands after; -1 puts it at the top of a bare song. */
   const [sectionAfter, setSectionAfter] = useState<number | null>(null);
   /** Index of the section whose name is open for editing. */
   const [sectionEdit, setSectionEdit] = useState<number | null>(null);
-  const [lineSaving, setLineSaving] = useState(false);
-  const [lineError, setLineError] = useState<string | null>(null);
-  // A failed drag has no sheet open to report into, so it borrows the banner.
+  // A failed drag or line save has no sheet open to report into, so it
+  // borrows the banner.
   const [moveError, setMoveError] = useState<string | null>(null);
   const moveErrorTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const flashMoveError = (message: string) => {
@@ -743,38 +764,6 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
     [timeline, seek]
   );
 
-  // A tapped line opens as it is *stored* — brackets, cue tags and @0:12
-  // markers included — so what comes back can go straight back into the song.
-  const openLineEditor = useCallback(
-    (sectionIndex: number, lineIndex: number) => {
-      if (!sheet) return;
-      const section = sheet.sections[sectionIndex];
-      if (!section) return;
-      setLineError(null);
-      setEditTarget({
-        sectionIndex,
-        lineIndex,
-        sectionLabel: section.label || section.type,
-        text: (section.content ?? "").split("\n")[lineIndex] ?? "",
-      });
-    },
-    [sheet]
-  );
-
-  // A line that doesn't exist yet: the end of a section, or the gap under the
-  // line just saved. Nothing is written until it's saved, so backing out of one
-  // leaves the song exactly as it was.
-  const openLineInsert = useCallback(
-    (sectionIndex: number, lineIndex: number, sectionLabel?: string) => {
-      const section = sheet?.sections[sectionIndex];
-      const label = sectionLabel ?? (section ? section.label || section.type : null);
-      if (!label) return;
-      setLineError(null);
-      setEditTarget({ sectionIndex, lineIndex, sectionLabel: label, text: "", insert: true });
-    },
-    [sheet]
-  );
-
   // Adding a part of the song: an empty section with one blank line to tap.
   const addSection = async (type: SectionType, label: string) => {
     if (!sheet || sectionAfter === null) return;
@@ -794,10 +783,9 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
         return;
       }
       // Straight into typing it, which is what adding a chorus is really for.
-      // The new section already has one empty line, so this fills that in
-      // rather than pushing a second blank one under it.
-      setLineError(null);
-      setEditTarget({ sectionIndex: sectionAfter + 1, lineIndex: 0, sectionLabel: label, text: "" });
+      // The new section already has one empty line, so the caret goes there
+      // rather than into a second blank one under it.
+      setLineFocus({ sectionIndex: sectionAfter + 1, lineIndex: 0 });
     } catch {
       flashMoveError("Couldn't add that section — check your connection and try again.");
     }
@@ -827,17 +815,22 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
    */
   const commitSections = async (sections: Section[]): Promise<boolean> => {
     if (!sheet) return false;
-    const updatedAt = new Date().toISOString();
-    const next: LeadSheet = { ...sheet, sections, updated_at: updatedAt };
+    const next: LeadSheet = { ...sheet, sections, updated_at: new Date().toISOString() };
+    if (!(await persistSheet(next))) return false;
+    setSheet(next);
+    return true;
+  };
+
+  /** The write behind commitSections, without touching what's on screen. */
+  const persistSheet = async (next: LeadSheet): Promise<boolean> => {
     const sb = createClient()!;
     const { data, error } = await sb
       .from("lead_sheets")
-      .update({ sections, updated_at: updatedAt })
+      .update({ sections: next.sections, updated_at: next.updated_at })
       .eq("id", id)
       .select("id");
     if (error) throw error;
     if (!data || data.length === 0) return false;
-    setSheet(next);
     await cacheSheet(next);
     // A line fixed on stage belongs in History like one typed in the editor.
     // It rides along after the save, so a failed snapshot never costs the edit.
@@ -912,83 +905,119 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
   };
 
   /**
-   * Take a line out of the song. Emptying the box is how a line gets deleted —
-   * leaving the gap behind would only make a blank line to tap past next time.
+   * Lines edited in place show the change at once and write it behind the
+   * scenes. Every edit reads the sheet as the last edit left it, not as the
+   * last render saw it, and the writes go out one after another — so moving
+   * straight from one line to the next can't lose the first.
    */
-  const deleteLine = async (sectionIndex: number, lineIndex: number, andAnother: boolean) => {
-    if (!sheet) return;
-    setLineSaving(true);
-    setLineError(null);
-    const sections = sheet.sections.map((section, i) => {
-      if (i !== sectionIndex) return section;
-      const lines = (section.content ?? "").split("\n");
-      lines.splice(lineIndex, 1);
-      return { ...section, content: lines.join("\n") };
-    });
-    try {
-      if (!(await commitSections(sections))) {
-        setLineError("This song belongs to someone else, so it can't be edited here.");
-        return;
+  const latestSheet = useRef<LeadSheet | null>(null);
+  useEffect(() => {
+    latestSheet.current = sheet;
+  }, [sheet]);
+  const lineWrites = useRef<Promise<void>>(Promise.resolve());
+
+  const applyLineEdit = (
+    edit: (sections: Section[]) => Section[] | null,
+    failure: string
+  ) => {
+    const base = latestSheet.current;
+    if (!base) return;
+    const sections = edit(base.sections);
+    if (!sections) return;
+    const next: LeadSheet = { ...base, sections, updated_at: new Date().toISOString() };
+    latestSheet.current = next;
+    setSheet(next);
+    lineWrites.current = lineWrites.current.then(async () => {
+      let message: string | null = null;
+      try {
+        if (!(await persistSheet(next))) {
+          message = "This song belongs to someone else, so it can't be edited here.";
+        }
+      } catch {
+        message = failure;
       }
-      // Whatever was under it has moved up into the gap, so carrying on means
-      // the same index again, not the next one.
-      if (andAnother) openLineInsert(sectionIndex, lineIndex);
-      else setEditTarget(null);
-    } catch {
-      setLineError("Couldn't remove that line — check your connection and try again.");
-    } finally {
-      setLineSaving(false);
-    }
+      if (!message) return;
+      flashMoveError(message);
+      // Put the song back as it was, unless something newer has already
+      // been laid over this edit.
+      if (latestSheet.current === next) {
+        latestSheet.current = base;
+        setSheet(base);
+      }
+    });
   };
 
-  const saveLine = async (text: string, andAnother = false) => {
-    if (!sheet || !editTarget) return;
-    const { sectionIndex, lineIndex, insert } = editTarget;
-    // Nothing left in the box: delete the line rather than store an empty one.
-    // On an insert there is no line yet, so a blank one simply never gets made.
+  /**
+   * Take a line out of the song — the bin beside it, or emptying it. The gap
+   * isn't kept, since it would only be a blank line to tap past next time.
+   * `expected` is what the line should say; if a save that landed first moved
+   * something else into this spot, nothing is deleted.
+   */
+  const removeLine = ({ sectionIndex, lineIndex }: LinePos, expected?: string) => {
+    applyLineEdit((sections) => {
+      const section = sections[sectionIndex];
+      if (!section) return null;
+      const lines = (section.content ?? "").split("\n");
+      if (lineIndex >= lines.length) return null;
+      if (expected !== undefined && lines[lineIndex] !== expected) return null;
+      lines.splice(lineIndex, 1);
+      return sections.map((s, i) => (i === sectionIndex ? { ...s, content: lines.join("\n") } : s));
+    }, "Couldn't remove that line — check your connection and try again.");
+  };
+
+  /**
+   * A line left or entered in place. The same rules the line sheet had: an
+   * emptied line is deleted, a new one left empty is never made, and a lone
+   * [Chorus] starts a new part of the song. `andAnother` (Enter) opens a new
+   * line underneath.
+   */
+  const commitLine = (pos: LinePos, text: string, insert: boolean, andAnother: boolean) => {
+    const { sectionIndex, lineIndex } = pos;
+    const stored = (latestSheet.current?.sections[sectionIndex]?.content ?? "").split("\n")[lineIndex];
     if (text.trim() === "") {
-      if (!insert) {
-        await deleteLine(sectionIndex, lineIndex, andAnother);
-        return;
-      }
-      if (andAnother) openLineInsert(sectionIndex, lineIndex);
-      else setEditTarget(null);
+      if (!insert && stored !== undefined && stored.trim() !== "") removeLine(pos, stored);
+      // Whatever was under a deleted line has moved up into its place, so
+      // carrying on means the same index again.
+      const gone = !insert && stored !== undefined && stored.trim() !== "";
+      setLineDraft(andAnother ? { sectionIndex, lineIndex: gone || insert ? lineIndex : lineIndex + 1 } : null);
       return;
     }
-    if (!insert && text === editTarget.text) {
-      if (andAnother) openLineInsert(sectionIndex, lineIndex + 1);
-      else setEditTarget(null);
+    if (!insert && text === stored) {
+      setLineDraft(andAnother ? { sectionIndex, lineIndex: lineIndex + 1 } : null);
       return;
     }
-    setLineSaving(true);
-    setLineError(null);
     const header = asSectionHeader(text);
-    const split =
-      header !== null ? splitAtHeader(sheet.sections, sectionIndex, lineIndex, !!insert, header) : null;
-    const sections =
-      split?.sections ??
-      sheet.sections.map((section, i) => {
+    let split: ReturnType<typeof splitAtHeader> | null = null;
+    applyLineEdit((sections) => {
+      if (!sections[sectionIndex]) return null;
+      if (header !== null) {
+        split = splitAtHeader(sections, sectionIndex, lineIndex, insert, header);
+        return split.sections;
+      }
+      return sections.map((section, i) => {
         if (i !== sectionIndex) return section;
         const lines = (section.content ?? "").split("\n");
         if (insert) lines.splice(lineIndex, 0, text);
         else lines[lineIndex] = text;
         return { ...section, content: lines.join("\n") };
       });
-    try {
-      if (!(await commitSections(sections))) {
-        setLineError("This song belongs to someone else, so it can't be edited here.");
-        return;
-      }
-      // Carrying on: after a header that's the first line of the part it just
-      // started, otherwise the next line down.
-      if (andAnother && split) openLineInsert(split.newIndex, split.newLineIndex, split.label);
-      else if (andAnother) openLineInsert(sectionIndex, lineIndex + 1);
-      else setEditTarget(null);
-    } catch {
-      setLineError("Couldn't save that line — check your connection and try again.");
-    } finally {
-      setLineSaving(false);
-    }
+    }, "Couldn't save that line — check your connection and try again.");
+    // Carrying on: after a header that's the first line of the part it just
+    // started, otherwise the next line down.
+    const made = split as ReturnType<typeof splitAtHeader> | null;
+    if (!andAnother) setLineDraft(null);
+    else if (made) setLineDraft({ sectionIndex: made.newIndex, lineIndex: made.newLineIndex });
+    else setLineDraft({ sectionIndex, lineIndex: lineIndex + 1 });
+  };
+
+  const lineEditing: LineEditing = {
+    draft: lineDraft,
+    focus: lineFocus,
+    onFocused: () => setLineFocus(null),
+    onCommit: commitLine,
+    onDelete: (pos, expected) => removeLine(pos, expected),
+    onDraft: (pos) => setLineDraft(pos),
+    onDiscardDraft: () => setLineDraft(null),
   };
 
   /** The text of a line being dragged, for the card that follows the finger. */
@@ -1269,7 +1298,8 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
           goTo(router, `/songwriter/${id}/edit`);
           return;
         }
-        setEditMode(next === "lines");
+        if (next === "lines") setEditMode(true);
+        else leaveEditMode();
       }}
       rightSlot={
         !editMode ? (
@@ -1330,14 +1360,13 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
         {fullscreen ? (
           <div className='fixed inset-0 z-50 flex bg-surface-base'>
             <div className='flex flex-col flex-1 min-w-0'>
-              {editMode && <EditModeBanner error={moveError} onDone={() => setEditMode(false)} className='px-6 sm:px-8' />}
+              {editMode && <EditModeBanner error={moveError} onDone={leaveEditMode} className='px-6 sm:px-8' />}
               <div className='flex-1 overflow-y-auto overflow-x-hidden'>
                 <div className='w-full px-6 py-8 sm:px-8' style={{ fontSize: `${fontScale}%` }}>
                   <LineDndProvider onMove={editMode ? moveLine : undefined} lineTextAt={lineTextAt}>
                     <SheetContent
                       sheet={sheet}
-                      onEditLine={editMode ? openLineEditor : undefined}
-                      onInsertLine={editMode ? openLineInsert : undefined}
+                      editing={editMode ? lineEditing : undefined}
                       onMoveLine={editMode ? moveLine : undefined}
                       onAddSection={editMode ? setSectionAfter : undefined}
                       onEditSection={editMode ? setSectionEdit : undefined}
@@ -1368,7 +1397,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
             <div className='relative flex flex-1 min-h-0 overflow-hidden'>
               {libraryPanel}
               <div className='flex flex-col flex-1 min-w-0'>
-                {editMode && <EditModeBanner error={moveError} onDone={() => setEditMode(false)} className='px-6 sm:px-8' />}
+                {editMode && <EditModeBanner error={moveError} onDone={leaveEditMode} className='px-6 sm:px-8' />}
                 {/* Scrollable content — the reference's `.stage`. The scrollbar's
                     room is reserved even when there is nothing to scroll, so a
                     fit that adds or removes the scrollbar does not change the
@@ -1378,8 +1407,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                     <LineDndProvider onMove={editMode ? moveLine : undefined} lineTextAt={lineTextAt}>
                       <SheetContent
                         sheet={sheet}
-                        onEditLine={editMode ? openLineEditor : undefined}
-                        onInsertLine={editMode ? openLineInsert : undefined}
+                        editing={editMode ? lineEditing : undefined}
                         onMoveLine={editMode ? moveLine : undefined}
                         onAddSection={editMode ? setSectionAfter : undefined}
                         onEditSection={editMode ? setSectionEdit : undefined}
@@ -1417,23 +1445,6 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
 
         {playbackOpen && videoLink && withVideo && !offline && (
           <YouTubePanel link={videoLink} status={video.status} mount={video.mount} />
-        )}
-
-        {editTarget && (
-          <LineEditor
-            key={`${editTarget.sectionIndex}:${editTarget.lineIndex}:${editTarget.insert ? "new" : "edit"}`}
-            target={editTarget}
-            transposeSteps={transposeSteps}
-            saving={lineSaving}
-            error={lineError}
-            onSave={saveLine}
-            onDelete={
-              editTarget.insert
-                ? undefined
-                : () => deleteLine(editTarget.sectionIndex, editTarget.lineIndex, false)
-            }
-            onCancel={() => setEditTarget(null)}
-          />
         )}
 
         {sectionAfter !== null && sheet && (

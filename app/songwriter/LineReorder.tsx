@@ -49,8 +49,9 @@ function parseDragId(id: string | number): LinePos | null {
 
 /**
  * One draggable line: a grip, and the row itself beside it. The grip is its own
- * button so a tap on the line still opens the editor — only the grip drags,
- * which is the only way this works on a phone.
+ * button so a tap on the line's input still types into it — only the grip
+ * drags, which is the only way this works on a phone. It stretches to the
+ * row's height, so it's as tall as the input it moves.
  */
 export function SortableLine({ id, children }: { id: string; children: ReactNode }) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging, isOver } =
@@ -60,7 +61,7 @@ export function SortableLine({ id, children }: { id: string; children: ReactNode
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Translate.toString(transform), transition }}
-      className={`flex items-start gap-1 rounded-md ${isDragging ? "opacity-40" : ""} ${
+      className={`flex items-stretch gap-1 rounded-md ${isDragging ? "opacity-40" : ""} ${
         isOver && !isDragging ? "ring-2 ring-focus" : ""
       }`}
     >
@@ -69,16 +70,16 @@ export function SortableLine({ id, children }: { id: string; children: ReactNode
         {...attributes}
         {...listeners}
         variant='ghost'
-        size='icon'
+        size='icon-lg'
         // Without this a drag off the grip scrolls the page instead.
         style={{ touchAction: "none" }}
         aria-label='Drag to move this line'
         title='Drag to move this line'
-        className='m-0 mt-1 shrink-0 cursor-grab active:cursor-grabbing'
+        className='m-0 shrink-0 !h-auto self-stretch cursor-grab active:cursor-grabbing'
       >
         <GripVertical className='h-4 w-4' />
       </Button>
-      <div className='min-w-0 flex-1'>{children}</div>
+      <div className='flex min-w-0 flex-1'>{children}</div>
     </div>
   );
 }
