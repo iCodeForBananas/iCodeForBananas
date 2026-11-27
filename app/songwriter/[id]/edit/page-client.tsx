@@ -284,7 +284,7 @@ export default function EditLeadSheet({ params }: { params: Promise<{ id: string
     [rawText]
   );
   const hasTiming = timingCount > 0;
-  // Read straight from the text being edited, so the breadcrumb tracks a
+  // Read straight from the text being edited, so the top bar tracks a
   // title change on the very keystroke that makes it — same source `saveSheet`
   // reads from, just not waiting for the debounce.
   const songTitle = useMemo(() => parseText(rawText).title || "Untitled", [rawText]);

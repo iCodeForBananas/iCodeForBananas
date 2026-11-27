@@ -91,53 +91,6 @@
   text-overflow: ellipsis;
 }
 
-/* "Songs > Title  notes" - the way back to the list, the song's name and
-   its notes on one line. Grows into the free space and gives way first. */
-.crumbs {
-  display: flex;
-  align-items: baseline;
-  gap: var(--ds-space-8);
-  flex: 1 1 12rem;
-  min-width: 0;
-}
-
-.crumbs .brand {
-  margin-right: 0;
-  flex: 0 1 auto;
-  min-width: 0;
-}
-
-.crumbLink {
-  font-size: 15px;
-  color: var(--ds-color-text-muted, inherit);
-  white-space: nowrap;
-  text-decoration: none;
-}
-
-.crumbLink:hover,
-.crumbLink:focus-visible {
-  text-decoration: underline;
-}
-
-.crumbSep {
-  width: 14px;
-  height: 14px;
-  flex: none;
-  align-self: center;
-  opacity: 0.6;
-}
-
-.crumbNotes {
-  flex: 1 1 0;
-  min-width: 4rem;
-  font-size: 14px;
-  font-style: italic;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  opacity: 0.75;
-}
-
 .spacer {
   flex: 1;
   min-width: 8px;

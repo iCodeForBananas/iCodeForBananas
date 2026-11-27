@@ -153,7 +153,6 @@ const SheetContent = memo(function SheetContent({
   onEditSection,
   bpm,
   kit,
-  hideHeading,
 }: {
   sheet: LeadSheet;
   fullscreen: boolean;
@@ -178,37 +177,37 @@ const SheetContent = memo(function SheetContent({
   onEditSection?: (sectionIndex: number) => void;
   /** Tempo the song's beat markers are read at — the live one, not the saved one. */
   bpm?: number;
-  /** The top bar already shows the title and notes; drop them from the sheet. */
-  hideHeading?: boolean;
 }) {
   const beatTempo = bpm ?? sheet.tempo ?? DEFAULT_BPM;
   const columnsActive = !!(columnCount || columnWidthVw);
   return (
     <div>
-      <div className={`border-b border-line-subtle ${hideHeading ? "mb-6 pb-3" : "mb-8 pb-6"} ${columnsActive ? "max-w-3xl mx-auto" : ""}`}>
-        {!hideHeading && (
-          <h1
-            className={`font-bold leading-tight mb-3 text-ink-primary ${fullscreen ? "text-[1.75em]" : "text-[1.5em]"}`}
-          >
-            {sheet.title || "Untitled"}
-          </h1>
+      {/* The song's bar: the full width of the sheet, whatever the columns
+          below are doing. Title, then the capo with the song's notes beside
+          it, then tempo and pattern. Key doesn't get a chip of its own: the
+          reference has no slot for it here, and it's still readable (and
+          editable) as `Key: G` in Freeform. */}
+      <div
+        data-testid='sheet-bar'
+        className={`w-full flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-line-subtle ${fullscreen ? "mb-8 pb-6" : "mb-6 pb-3"}`}
+      >
+        <h1
+          className={`font-bold leading-tight text-ink-primary ${fullscreen ? "text-[1.75em]" : "text-[1.5em]"}`}
+        >
+          {sheet.title || "Untitled"}
+        </h1>
+        <span className={`${styles.chip} ${sheet.capo ? styles.chipAccent : ""} text-[0.875em]`}>
+          {sheet.capo ? `Capo ${sheet.capo}` : "No capo"}
+        </span>
+        {sheet.general_notes ? (
+          <p className='flex-1 min-w-[12rem] italic text-ink-muted text-[0.875em]'>{sheet.general_notes}</p>
+        ) : (
+          <div className='flex-1' />
         )}
         <div className='flex flex-wrap gap-2 text-[0.875em]'>
-          {/* The reference's exact three chips — capo, tempo, pattern — in that
-              order. Key doesn't get one of its own: the reference has no slot
-              for it here, and it's still readable (and editable) as `Key: G`
-              in Freeform. */}
-          <span className={`${styles.chip} ${sheet.capo ? styles.chipAccent : ""}`}>
-            {sheet.capo ? `Capo ${sheet.capo}` : "No capo"}
-          </span>
           {sheet.tempo && <span className={styles.chip}>{sheet.tempo} bpm</span>}
           <span className={styles.chip}>{kit?.preset ?? "Custom kit"}</span>
         </div>
-        {sheet.general_notes && !hideHeading && (
-          <p className={`mt-3 italic text-ink-muted text-ink-muted ${fullscreen ? "text-[1em]" : "text-[0.875em]"}`}>
-            {sheet.general_notes}
-          </p>
-        )}
       </div>
 
       <div
@@ -1264,7 +1263,6 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
     <TopBar
       onLibraryClick={toggleLibrary}
       libraryOpen={libraryOpen}
-      title={sheet.title || "Untitled"}
       mode={editMode ? "lines" : "play"}
       onModeChange={(next) => {
         if (next === "free") {
@@ -1305,7 +1303,6 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
       onDrumsToggle={toggleDrums}
       drumsPlaying={kitPlaying}
       onBackToSongs={() => goTo(router, "/songwriter")}
-      notes={sheet.general_notes}
     />
   );
 
@@ -1387,7 +1384,6 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
                         onAddSection={editMode ? setSectionAfter : undefined}
                         onEditSection={editMode ? setSectionEdit : undefined}
                         fullscreen={false}
-                        hideHeading
                         columnCount={columnCount}
                         columnWidthVw={autoFit ? undefined : columnWidthVw}
                         transposeSteps={transposeSteps}
