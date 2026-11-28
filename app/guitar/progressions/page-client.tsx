@@ -10,7 +10,14 @@ import {
   progressionChordType,
   parseRomanPattern,
 } from "@/app/lib/chordProgressions";
-import { TYPE_GROUPS, formatChordLabel, getNeckVoicings, type NeckVoicing } from "@/app/lib/chordVoicings";
+import {
+  TYPE_GROUPS,
+  formatChordLabel,
+  getNeckVoicings,
+  getPowerChordVoicings,
+  type NeckVoicing,
+} from "@/app/lib/chordVoicings";
+import { powerChordLabel } from "@/app/lib/powerChords";
 import { useGuitarSettings } from "@/app/lib/guitarSettings";
 import type { GuitarTuning } from "@/app/lib/tunings";
 import { Bento } from "@/app/components/ui/bento";
@@ -28,6 +35,12 @@ const positionLabel = (v: NeckVoicing): string => {
   const where = open ? "Open position" : `${ordinal(Math.max(v.startFret, 1))} position`;
   const shape = v.label === "Open / Standard" ? "" : ` · ${v.label}`;
   return `${where}${shape}`;
+};
+
+/** A power chord reads by its name, where the hand sits and which string the root is on. */
+const powerPositionLabel = (note: string, v: NeckVoicing): string => {
+  const where = v.startFret === 0 ? "Open position" : `${ordinal(v.startFret)} position`;
+  return `${powerChordLabel(note)} power chord · ${where} · ${v.label}`;
 };
 
 /** Diminished chords have no shapes of their own here, but stay pickable on the ° chords. */
@@ -69,7 +82,9 @@ function ProgressionChordCard({
   type,
   typeOptions,
   voicings,
+  powerVoicings,
   selected,
+  isPower,
   useFlats,
   tuning,
   onTypeChange,
@@ -82,14 +97,19 @@ function ProgressionChordCard({
   typeOptions: string[];
   /** This chord's shapes up the neck, lowest-sounding first. */
   voicings: NeckVoicing[];
+  /** The root-and-fifth shapes on this chord's root, whatever its type. */
+  powerVoicings: NeckVoicing[];
   selected: NeckVoicing | undefined;
+  /** The selected shape is one of the power chords. */
+  isPower: boolean;
   useFlats: boolean;
   tuning: GuitarTuning;
   onTypeChange: (type: string) => void;
   onPositionChange: (voicing: NeckVoicing) => void;
 }) {
   const shape = selected?.shape ?? null;
-  const label = formatChordLabel(note, type);
+  const label = isPower ? powerChordLabel(note) : formatChordLabel(note, type);
+  const allVoicings = [...voicings, ...powerVoicings];
 
   return (
     <Bento className="flex flex-col items-center gap-2">
@@ -118,12 +138,12 @@ function ProgressionChordCard({
             ))}
           </Select.Content>
         </Select.Root>
-        {voicings.length > 0 && (
+        {allVoicings.length > 0 && (
           <Select.Root
             size="1"
             value={selected?.id}
             onValueChange={(id) => {
-              const v = voicings.find((x) => x.id === id);
+              const v = allVoicings.find((x) => x.id === id);
               if (v) onPositionChange(v);
             }}
           >
@@ -134,6 +154,19 @@ function ProgressionChordCard({
                   {positionLabel(v)}
                 </Select.Item>
               ))}
+              {powerVoicings.length > 0 && (
+                <>
+                  {voicings.length > 0 && <Select.Separator />}
+                  <Select.Group>
+                    <Select.Label>Power chord</Select.Label>
+                    {powerVoicings.map((v) => (
+                      <Select.Item key={v.id} value={v.id}>
+                        {powerPositionLabel(note, v)}
+                      </Select.Item>
+                    ))}
+                  </Select.Group>
+                </>
+              )}
             </Select.Content>
           </Select.Root>
         )}
@@ -187,10 +220,24 @@ export default function ProgressionsTool() {
         // Maj7 makes the major chords Maj7 and the minor ones m7.
         const type = pick.type ?? progressionChordType(c.quality, chordType);
         const voicings = getNeckVoicings(note, type, tuning);
+        // Only ever picked by hand: the ladder the default position is found on
+        // is the chord's own shapes, not these.
+        const powerVoicings = getPowerChordVoicings(note, tuning);
+        const power = powerVoicings.find((v) => v.id === pick.voicingId);
         const selected =
+          power ??
           voicings.find((v) => v.id === pick.voicingId) ??
           voicings[anchorIndex(voicings, pick.fret !== undefined ? pick.fret : defaultFret)];
-        return { ...c, note, type, voicings, selected, typeOptions: typeOptionsFor(c.quality) };
+        return {
+          ...c,
+          note,
+          type,
+          voicings,
+          powerVoicings,
+          selected,
+          isPower: power !== undefined,
+          typeOptions: typeOptionsFor(c.quality),
+        };
       }),
     [selectedProgressionDef, selectedNote, useFlats, chordType, tuning, defaultFret, picks]
   );
@@ -200,8 +247,13 @@ export default function ProgressionsTool() {
 
   // A new type keeps the hand where it was: the old shape's fret becomes the
   // target, and the new type's nearest shape is shown.
+  // A power chord is the same whatever the type, so it stays picked.
   const changeType = (index: number, type: string) =>
-    setPick(index, { type, fret: chords[index].selected?.startFret ?? picks[index]?.fret });
+    setPick(index, {
+      type,
+      voicingId: chords[index].isPower ? chords[index].selected?.id : undefined,
+      fret: chords[index].selected?.startFret ?? picks[index]?.fret,
+    });
 
   const changePosition = (index: number, v: NeckVoicing) =>
     setPick(index, { type: chords[index].type, voicingId: v.id, fret: v.startFret });
@@ -319,7 +371,9 @@ export default function ProgressionsTool() {
               type={c.type}
               typeOptions={c.typeOptions}
               voicings={c.voicings}
+              powerVoicings={c.powerVoicings}
               selected={c.selected}
+              isPower={c.isPower}
               useFlats={useFlats}
               tuning={tuning}
               onTypeChange={(t) => changeType(i, t)}

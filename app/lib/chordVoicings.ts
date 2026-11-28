@@ -17,6 +17,7 @@ import {
   semitoneFromA,
 } from "./chordShapes";
 import { STANDARD_TUNING, retuneShape, type GuitarTuning } from "./tunings";
+import { powerChordShapes } from "./powerChords";
 
 // ── Chord type groups ─────────────────────────────────────────────────────────
 
@@ -202,6 +203,20 @@ export const getNeckVoicings = (
 
   return voicings.sort((a, b) => a.center - b.center || a.bass - b.bass);
 };
+
+/**
+ * The power chords on this root, 6th-string root then 5th-string root, as rungs
+ * a chord card can be pinned to. They have no type: every quality on a root
+ * reduces to the same root and fifth.
+ */
+export const getPowerChordVoicings = (note: string, tuning: GuitarTuning = STANDARD_TUNING): NeckVoicing[] =>
+  powerChordShapes(note, tuning).map(({ id, shape, rootString }) => ({
+    shape,
+    id,
+    label: `${tuning.midi.length - rootString}th-string root`,
+    startFret: shapeStartFret(shape),
+    ...voicingHeight(shape, tuning.midi),
+  }));
 
 /** The Chord Types cards want each shape once, where it naturally falls. */
 export const getVoicings = (
