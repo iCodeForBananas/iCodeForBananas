@@ -107,28 +107,17 @@ function loadColumnWidthVw(id: string): number {
 
 function EditModeBanner({
   onDone,
-  error = null,
   className = "",
 }: {
   onDone: () => void;
-  /** Takes the banner over when a drag couldn't be saved. */
-  error?: string | null;
   className?: string;
 }) {
   return (
     <div
-      className={`flex items-center justify-between gap-2 border-t py-2 print:hidden ${
-        error
-          ? "border-danger/30 bg-danger/10"
-          : "border-primary-solid/30 bg-primary-solid/10"
-      } ${className}`}
+      className={`flex items-center justify-between gap-2 border-t py-2 print:hidden border-primary-solid/30 bg-primary-solid/10 ${className}`}
     >
-      <span
-        className={`text-xs font-medium ${
-          error ? "text-danger" : "text-primary-text"
-        }`}
-      >
-        {error ?? "Edit a line where it is, or drag its grip to move it."}
+      <span className='text-xs font-medium text-primary-text'>
+        Edit a line where it is, or drag its grip to move it.
       </span>
       <Button variant="primary" type='button' size='sm' onClick={onDone} className='shrink-0'>
         Done
@@ -490,14 +479,13 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
   const [sectionAfter, setSectionAfter] = useState<number | null>(null);
   /** Index of the section whose name is open for editing. */
   const [sectionEdit, setSectionEdit] = useState<number | null>(null);
-  // A failed drag or line save has no sheet open to report into, so it
-  // borrows the banner.
-  const [moveError, setMoveError] = useState<string | null>(null);
-  const moveErrorTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const flashMoveError = (message: string) => {
-    setMoveError(message);
-    if (moveErrorTimer.current) clearTimeout(moveErrorTimer.current);
-    moveErrorTimer.current = setTimeout(() => setMoveError(null), 5000);
+  // An edit that couldn't be saved is put back and said so in a toast.
+  const [editError, setEditError] = useState<string | null>(null);
+  const editErrorTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showEditError = (message: string) => {
+    setEditError(message);
+    if (editErrorTimer.current) clearTimeout(editErrorTimer.current);
+    editErrorTimer.current = setTimeout(() => setEditError(null), 5000);
   };
   const [playbackOpen, setPlaybackOpen] = useState(false);
   // Both panels default open on a wide screen and closed on a narrow one —
@@ -765,63 +753,37 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
   );
 
   // Adding a part of the song: an empty section with one blank line to tap.
-  const addSection = async (type: SectionType, label: string) => {
-    if (!sheet || sectionAfter === null) return;
-    const section: Section = {
-      id: crypto.randomUUID(),
-      type,
-      label,
-      content: "",
-      notes: "",
-    };
-    const sections = [...sheet.sections];
-    sections.splice(sectionAfter + 1, 0, section);
+  const addSection = (type: SectionType, label: string) => {
+    if (sectionAfter === null) return;
+    const at = sectionAfter + 1;
     setSectionAfter(null);
-    try {
-      if (!(await commitSections(sections))) {
-        flashMoveError("This song belongs to someone else, so it can't be edited here.");
-        return;
-      }
-      // Straight into typing it, which is what adding a chorus is really for.
-      // The new section already has one empty line, so the caret goes there
-      // rather than into a second blank one under it.
-      setLineFocus({ sectionIndex: sectionAfter + 1, lineIndex: 0 });
-    } catch {
-      flashMoveError("Couldn't add that section — check your connection and try again.");
-    }
+    applySheetEdit((sections) => {
+      const next = [...sections];
+      next.splice(at, 0, { id: crypto.randomUUID(), type, label, content: "", notes: "" });
+      return next;
+    }, "Couldn't add that section — check your connection and try again.");
+    // Straight into typing it, which is what adding a chorus is really for.
+    // The new section already has one empty line, so the caret goes there
+    // rather than into a second blank one under it.
+    setLineFocus({ sectionIndex: at, lineIndex: 0 });
   };
 
   // Renaming a part of the song where it is read: the badge over each section
   // is the handle, so nothing has to be retyped as [Chorus] to fix a name.
-  const renameSection = async (type: SectionType, label: string) => {
-    if (!sheet || sectionEdit === null) return;
+  const renameSection = (type: SectionType, label: string) => {
+    if (sectionEdit === null) return;
     const index = sectionEdit;
     setSectionEdit(null);
-    const sections = sheet.sections.map((section, i) =>
-      i === index ? { ...section, type, label } : section
+    applySheetEdit(
+      (sections) => sections.map((section, i) => (i === index ? { ...section, type, label } : section)),
+      "Couldn't rename that section — check your connection and try again."
     );
-    try {
-      if (!(await commitSections(sections))) {
-        flashMoveError("This song belongs to someone else, so it can't be edited here.");
-      }
-    } catch {
-      flashMoveError("Couldn't rename that section — check your connection and try again.");
-    }
   };
 
   /**
-   * Write a new set of sections to the song. Returns false when the update
-   * touched no row, which is RLS turning down an edit to someone else's song.
+   * Write a version of the song. Returns false when the update touched no row,
+   * which is RLS turning down an edit to someone else's song.
    */
-  const commitSections = async (sections: Section[]): Promise<boolean> => {
-    if (!sheet) return false;
-    const next: LeadSheet = { ...sheet, sections, updated_at: new Date().toISOString() };
-    if (!(await persistSheet(next))) return false;
-    setSheet(next);
-    return true;
-  };
-
-  /** The write behind commitSections, without touching what's on screen. */
   const persistSheet = async (next: LeadSheet): Promise<boolean> => {
     const sb = createClient()!;
     const { data, error } = await sb
@@ -844,23 +806,19 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
   // Dropped somewhere new: pull the line out of where it was and put it back in
   // at the other end. Within a section that's a reorder; across two it's a move,
   // and the drop side decided whether it lands above or below the line it hit.
-  const moveLine = async (from: LinePos, to: LinePos) => {
-    if (!sheet) return;
-    const lines = linesOf(sheet.sections);
-    const source = lines[from.sectionIndex];
-    const target = lines[to.sectionIndex];
-    if (!source || !target) return;
-    const [text] = source.splice(from.lineIndex, 1);
-    if (text === undefined) return;
-    const at = Math.max(0, Math.min(target.length, to.lineIndex));
-    target.splice(at, 0, text);
-    const sections = sheet.sections.map((section, i) => ({ ...section, content: lines[i].join("\n") }));
-    try {
-      const ok = await commitSections(sections);
-      if (!ok) flashMoveError("This song belongs to someone else, so it can't be edited here.");
-    } catch {
-      flashMoveError("Couldn't move that line — check your connection and try again.");
-    }
+  // The line lands where it was dropped straight away; the save follows.
+  const moveLine = (from: LinePos, to: LinePos) => {
+    applySheetEdit((sections) => {
+      const lines = linesOf(sections);
+      const source = lines[from.sectionIndex];
+      const target = lines[to.sectionIndex];
+      if (!source || !target) return null;
+      const [text] = source.splice(from.lineIndex, 1);
+      if (text === undefined) return null;
+      const at = Math.max(0, Math.min(target.length, to.lineIndex));
+      target.splice(at, 0, text);
+      return sections.map((section, i) => ({ ...section, content: lines[i].join("\n") }));
+    }, "Couldn't move that line — check your connection and try again.");
   };
 
   /**
@@ -905,18 +863,28 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
   };
 
   /**
-   * Lines edited in place show the change at once and write it behind the
-   * scenes. Every edit reads the sheet as the last edit left it, not as the
-   * last render saw it, and the writes go out one after another — so moving
-   * straight from one line to the next can't lose the first.
+   * Every edit in edit-lines mode — a line typed, deleted or dragged, a
+   * section added or renamed — shows on the sheet at once and is written
+   * behind the scenes. Each edit reads the sheet as the last edit left it, not
+   * as the last render saw it, and the writes go out one after another, so
+   * quick edits in a row can't lose one another.
+   *
+   * If a write fails, the sheet flips back to the last version the server
+   * took, every edit still waiting behind it is dropped (each one was built on
+   * the edit that failed), and a toast says what happened.
    */
   const latestSheet = useRef<LeadSheet | null>(null);
   useEffect(() => {
     latestSheet.current = sheet;
   }, [sheet]);
-  const lineWrites = useRef<Promise<void>>(Promise.resolve());
+  const sheetWrites = useRef<Promise<void>>(Promise.resolve());
+  /** The last version known to be on the server, while edits are in flight. */
+  const savedSheet = useRef<LeadSheet | null>(null);
+  const pendingWrites = useRef(0);
+  /** Bumped by a failure, so the edits queued behind it know to stand down. */
+  const editGeneration = useRef(0);
 
-  const applyLineEdit = (
+  const applySheetEdit = (
     edit: (sections: Section[]) => Section[] | null,
     failure: string
   ) => {
@@ -925,24 +893,32 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
     const sections = edit(base.sections);
     if (!sections) return;
     const next: LeadSheet = { ...base, sections, updated_at: new Date().toISOString() };
+    // Nothing in flight means what's on screen is what the server has.
+    if (pendingWrites.current === 0) savedSheet.current = base;
+    pendingWrites.current += 1;
+    const generation = editGeneration.current;
     latestSheet.current = next;
     setSheet(next);
-    lineWrites.current = lineWrites.current.then(async () => {
-      let message: string | null = null;
+    sheetWrites.current = sheetWrites.current.then(async () => {
       try {
-        if (!(await persistSheet(next))) {
+        if (generation !== editGeneration.current) return;
+        let message: string | null = null;
+        try {
+          if (await persistSheet(next)) {
+            savedSheet.current = next;
+            return;
+          }
           message = "This song belongs to someone else, so it can't be edited here.";
+        } catch {
+          message = failure;
         }
-      } catch {
-        message = failure;
-      }
-      if (!message) return;
-      flashMoveError(message);
-      // Put the song back as it was, unless something newer has already
-      // been laid over this edit.
-      if (latestSheet.current === next) {
-        latestSheet.current = base;
-        setSheet(base);
+        editGeneration.current += 1;
+        const back = savedSheet.current ?? base;
+        latestSheet.current = back;
+        setSheet(back);
+        showEditError(message);
+      } finally {
+        pendingWrites.current -= 1;
       }
     });
   };
@@ -954,7 +930,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
    * something else into this spot, nothing is deleted.
    */
   const removeLine = ({ sectionIndex, lineIndex }: LinePos, expected?: string) => {
-    applyLineEdit((sections) => {
+    applySheetEdit((sections) => {
       const section = sections[sectionIndex];
       if (!section) return null;
       const lines = (section.content ?? "").split("\n");
@@ -988,7 +964,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
     }
     const header = asSectionHeader(text);
     let split: ReturnType<typeof splitAtHeader> | null = null;
-    applyLineEdit((sections) => {
+    applySheetEdit((sections) => {
       if (!sections[sectionIndex]) return null;
       if (header !== null) {
         split = splitAtHeader(sections, sectionIndex, lineIndex, insert, header);
@@ -1136,7 +1112,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
   };
 
   useEffect(() => () => { if (bpmSaveTimer.current) clearTimeout(bpmSaveTimer.current); }, []);
-  useEffect(() => () => { if (moveErrorTimer.current) clearTimeout(moveErrorTimer.current); }, []);
+  useEffect(() => () => { if (editErrorTimer.current) clearTimeout(editErrorTimer.current); }, []);
 
   /**
    * The kit is part of how the song is played, so it rides along on the sheet's
@@ -1360,7 +1336,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
         {fullscreen ? (
           <div className='fixed inset-0 z-50 flex bg-surface-base'>
             <div className='flex flex-col flex-1 min-w-0'>
-              {editMode && <EditModeBanner error={moveError} onDone={leaveEditMode} className='px-6 sm:px-8' />}
+              {editMode && <EditModeBanner onDone={leaveEditMode} className='px-6 sm:px-8' />}
               <div className='flex-1 overflow-y-auto overflow-x-hidden'>
                 <div className='w-full px-6 py-8 sm:px-8' style={{ fontSize: `${fontScale}%` }}>
                   <LineDndProvider onMove={editMode ? moveLine : undefined} lineTextAt={lineTextAt}>
@@ -1397,7 +1373,7 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
             <div className='relative flex flex-1 min-h-0 overflow-hidden'>
               {libraryPanel}
               <div className='flex flex-col flex-1 min-w-0'>
-                {editMode && <EditModeBanner error={moveError} onDone={leaveEditMode} className='px-6 sm:px-8' />}
+                {editMode && <EditModeBanner onDone={leaveEditMode} className='px-6 sm:px-8' />}
                 {/* Scrollable content — the reference's `.stage`. The scrollbar's
                     room is reserved even when there is nothing to scroll, so a
                     fit that adds or removes the scrollbar does not change the
@@ -1445,6 +1421,15 @@ export default function PreviewLeadSheet({ params }: { params: Promise<{ id: str
 
         {playbackOpen && videoLink && withVideo && !offline && (
           <YouTubePanel link={videoLink} status={video.status} mount={video.mount} />
+        )}
+
+        {editError && (
+          <div
+            role='alert'
+            className='fixed bottom-6 left-1/2 z-[70] w-[min(28rem,calc(100vw-2rem))] -translate-x-1/2 rounded-lg border border-danger/40 bg-surface-raised px-4 py-3 text-sm font-medium text-danger shadow-xl print:hidden'
+          >
+            {editError}
+          </div>
         )}
 
         {sectionAfter !== null && sheet && (
